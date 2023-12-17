@@ -1,32 +1,41 @@
 package edu.missouristate.mars.tools;
 
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.MIPSProgram;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.simulator.Simulator;
+import edu.missouristate.mars.util.FilenameFinder;
+import edu.missouristate.mars.venus.RunSpeedPanel;
+
 import javax.swing.*;
-import javax.swing.border.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileFilter;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
-import java.io.*;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.simulator.Simulator;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.tools.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.venus.RunSpeedPanel;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * An abstract class that provides generic components to facilitate implementation of
- * a MarsTool and/or stand-alone Mars-based application.  Provides default definitions
- * of both the action() method required to implement MarsTool and the go() method
- * conventionally used to launch a Mars-based stand-alone application. It also provides
- * generic definitions for interactively controlling the application.  The generic controls
- * for MarsTools are 3 buttons:  connect/disconnect to MIPS resource (memory and/or
- * registers), reset, and close (exit).  The generic controls for stand-alone Mars apps
- * include: button that triggers a file open dialog, a text field to display status
- * messages, the run-speed slider to control execution rate when running a MIPS program,
- * a button that assembles and runs the current MIPS program, a button to interrupt
- * the running MIPS program, a reset button, and an exit button.
+ * a MarsTool and/or stand-alone Mars-based application.
+ * <p>
+ * Provides default definitions of both the action() method required to implement MarsTool and the go() method
+ * conventionally used to launch a Mars-based stand-alone application.
+ * <p>
+ * It also provides generic definitions for interactively controlling the application.
+ * <p>
+ * The generic controls for MarsTools are three buttons: connect/disconnect to MIPS resource (memory and/or registers),
+ * reset, and close (exit).
+ * <p>
+ * The generic controls for stand-alone Mars apps include: button that triggers a file open dialog, a text field to
+ * display status messages, the run-speed slider to control execution rate when running a MIPS program, a button that
+ * assembles and runs the current MIPS program, a button to interrupt the running MIPS program, a reset button, and an
+ * exit button.
  * Pete Sanderson, 14 November 2006.
  */
 public abstract class AbstractMarsToolAndApplication extends JFrame implements MarsTool, Observer {
@@ -96,21 +105,21 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     //////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Run the simulator as stand-alone application.  For this default implementation,
-     * the user-defined main display of the user interface is identical for both stand-alone
-     * and MARS Tools menu use, but the control buttons are different because the stand-alone
-     * must include a mechansim for controlling the opening, assembling, and executing of
-     * an underlying MIPS program.  The generic controls include: a button that triggers a
-     * file open dialog, a text field to display status messages, the run-speed slider
-     * to control execution rate when running a MIPS program, a button that assembles and
-     * runs the current MIPS program, a reset button, and an exit button.
-     * This method calls 3 methods that can be defined/overriden in the subclass: initializePreGUI()
-     * for any special initialization that must be completed before building the user
-     * interface (e.g. data structures whose properties determine default GUI settings),
-     * initializePostGUI() for any special initialization that cannot be
-     * completed until after the building the user interface (e.g. data structure whose
-     * properties are determined by default GUI settings), and buildMainDisplayArea()
-     * to contain application-specific displays of parameters and results.
+     * Run the simulator as a stand-alone application.
+     * <p>
+     * For this default implementation, the user-defined main display of the user interface is identical for both
+     * stand-alone and MARS Tools menu use, but the control buttons are different because the stand-alone must include
+     * a mechanism for controlling the opening, assembling, and executing of an underlying MIPS program.
+     * <p>
+     * The generic controls include: a button that triggers a file open dialog, a text field to display status messages,
+     * the run-speed slider to control execution rate when running a MIPS program, a button that assembles and runs the
+     * current MIPS program, a reset button, and an exit button.
+     * <p>
+     * This method calls 3 methods that can be defined/overridden in the subclass: initializePreGUI() for any special
+     * initialization that must be completed before building the user interface (e.g. data structures whose properties
+     * determine default GUI settings), initializePostGUI() for any special initialization that cannot be completed
+     * until after the building the user interface (e.g. data structure whose properties are determined by default GUI
+     * settings), and buildMainDisplayArea() to contain application-specific displays of parameters and results.
      */
     public void go() {
         theWindow = this;
@@ -145,7 +154,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * Required MarsTool method to carry out Tool functions.  It is invoked when MARS
      * user selects this tool from the Tools menu.  This default implementation provides
      * generic definitions for interactively controlling the tool.  The generic controls
-     * for MarsTools are 3 buttons:  connect/disconnect to MIPS resource (memory and/or
+     * for MarsTools are three buttons: connect/disconnect to MIPS resource (memory and/or
      * registers), reset, and close (exit).  Like "go()" above, this default version
      * calls 3 methods that can be defined/overriden in the subclass: initializePreGUI()
      * for any special initialization that must be completed before building the user
@@ -225,7 +234,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
 
     /**
-     * The MarsTool default set of controls has one row of 3 buttons.  It includes a dual-purpose button to
+     * The MarsTool default set of controls has one row of three buttons.  It includes a dual-purpose button to
      * attach or detach simulator to MIPS memory, a button to reset the cache, and one to close the tool.
      */
     protected JComponent buildButtonAreaMarsTool() {
@@ -484,11 +493,11 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     }
 
     /**
-     * Add this app/tool as an Observer of the specified subrange of MIPS memory.  Note
+     * Add this app/tool as an Observer of the specified MIPS memory sub-range. Note
      * that this method is not invoked automatically like the no-argument version, but
      * if you use this method, you can still take advantage of provided default deleteAsObserver()
-     * since it will remove the app as a memory observer regardless of the subrange
-     * or number of subranges it is registered for.
+     * since it will remove the app as a memory observer regardless of the sub-range
+     * or number of sub-ranges it is registered for.
      *
      * @param lowEnd  low end of memory address range.
      * @param highEnd high end of memory address range; must be >= lowEnd
@@ -670,8 +679,6 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     private class CreateAssembleRunMIPSProgram implements Runnable {
         public void run() {
             String noSupportForExceptionHandler = null;  // no auto-loaded exception handlers.
-            // boolean extendedAssemblerEnabled = true;     // In this context, no reason to constrain.
-            // boolean warningsAreErrors = false;           // Ditto.
 
             String exceptionHandler = null;
             if (Globals.getSettings().getExceptionHandlerEnabled() &&
@@ -720,7 +727,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
                 operationStatusMessages.displayNonTerminatingMessage("Running " + fileToAssemble);
                 program.simulate(-1); // unlimited steps
             } catch (NullPointerException npe) {
-                // This will occur if program execution is interrupted by Stop button.
+                // This will occur if the stop button interrupts program execution.
                 terminatingMessage = "User interrupt: ";
             } catch (ProcessingException pe) {
                 terminatingMessage = "Runtime error: ";

@@ -106,14 +106,9 @@ public class BackStepper {
     public void backStep() {
         if (engaged && !backSteps.empty()) {
             ProgramStatement statement = ((BackStep) backSteps.peek()).ps;
-            engaged = false; // GOTTA DO THIS SO METHOD CALL IN SWITCH WILL NOT RESULT IN NEW ACTION ON STACK!
+            engaged = false; // NEED TO DO THIS SO METHOD CALL IN SWITCH WILL NOT RESULT IN A NEW ACTION ON THE STACK!
             do {
                 BackStep step = (BackStep) backSteps.pop();
-            /*
-            	System.out.println("backstep POP: action "+step.action+" pc "+Binary.intToHexString(step.pc)+
-            	                   " source "+((step.ps==null)? "none":step.ps.getSource())+
-            							 " parm1 "+step.param1+" parm2 "+step.param2);
-            */
                 if (step.pc != NOT_PC_VALUE) {
                     RegisterFile.setProgramCounter(step.pc);
                 }
@@ -351,11 +346,6 @@ public class BackStepper {
             param1 = parm1;
             param2 = parm2;
             inDelaySlot = Simulator.inDelaySlot(); // ADDED 25 June 2007
-         /*				
-            System.out.println("backstep PUSH: action "+action+" pc "+Binary.intToHexString(pc)+
-         		                   " source "+((ps==null)? "none":ps.getSource())+
-         								 " parm1 "+param1+" parm2 "+param2);
-         */
         }
     }
 

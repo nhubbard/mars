@@ -1,8 +1,11 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Service to display string stored starting at address in $a0 onto the console.

@@ -2,10 +2,15 @@ package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.mips.hardware.*;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 
 /**
  * Dump MIPS memory contents in Segment Window format.  Each line of
@@ -55,11 +60,11 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
 
         PrintStream out = new PrintStream(new FileOutputStream(file));
 
-        boolean hexAddresses = Globals.getSettings().getDisplayAddressesInHex();
+        boolean hexAddresses = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX);
 
         // If address in data segment, print in same format as Data Segment Window
         if (Memory.inDataSegment(firstAddress)) {
-            boolean hexValues = Globals.getSettings().getDisplayValuesInHex();
+            boolean hexValues = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX);
             int offset = 0;
             String string = "";
             try {

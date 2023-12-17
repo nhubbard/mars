@@ -1,9 +1,12 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
+import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.TokenMarker;
 
-import javax.swing.event.*;
-import javax.swing.text.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
+import javax.swing.text.PlainDocument;
+import javax.swing.text.Segment;
 import javax.swing.undo.UndoableEdit;
 
 /**

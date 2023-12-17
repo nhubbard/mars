@@ -1,9 +1,11 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Service to open file name specified by $a0. File descriptor returned in $v0.
@@ -65,13 +67,5 @@ public class SyscallOpen extends AbstractSyscall {
         // USER PROGRAM TO CHECK FOR BAD FILE OPEN.  MARS SHOULD NOT PRE-EMPTIVELY
         // TERMINATE MIPS EXECUTION BECAUSE OF IT.  Thanks to UCLA student
         // Duy Truong for pointing this out.  DPS 28-July-2009.
-         /*
-			if (retValue < 0) // some error in opening file
-         {
-            throw new ProcessingException(statement,
-                SystemIO.getFileErrorMessage()+" (syscall "+this.getNumber()+")", 
-					 Exceptions.SYSCALL_EXCEPTION);
-         } 
-			*/
     }
 }

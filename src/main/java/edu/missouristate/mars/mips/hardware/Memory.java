@@ -1,9 +1,11 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.mips.instructions.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.simulator.Exceptions;
+import edu.missouristate.mars.util.Binary;
 
 import java.util.*;
 
@@ -275,13 +277,6 @@ public class Memory extends Observable {
         memoryMapLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getMemoryMapLimitAddress(),
                 memoryMapBaseAddress +
                         BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES);
-      /*	System.out.println("dataSegmentLimitAddress "+Binary.intToHexString(dataSegmentLimitAddress));
-      	System.out.println("textLimitAddress "+Binary.intToHexString(textLimitAddress));
-      	System.out.println("kernelDataSegmentLimitAddress "+Binary.intToHexString(kernelDataSegmentLimitAddress));
-      	System.out.println("kernelTextLimitAddress "+Binary.intToHexString(kernelTextLimitAddress));
-      	System.out.println("stackLimitAddress "+Binary.intToHexString(stackLimitAddress));
-      	System.out.println("memoryMapLimitAddress "+Binary.intToHexString(memoryMapLimitAddress));
-      */
     }
 
 
@@ -880,19 +875,6 @@ public class Memory extends Observable {
 
     public ProgramStatement getStatement(int address) throws AddressErrorException {
         return getStatement(address, true);
-      	/*
-         if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address))) {
-            throw new AddressErrorException(
-               "fetch address for text segment out of range or not aligned to word boundary ",
-               Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-         }
-         if (inTextSegment(address)) {
-            return readProgramStatement(address, textBaseAddress, textBlockTable, true);
-         } 
-         else {
-            return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable,true);
-         }
-      	*/
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -908,19 +890,6 @@ public class Memory extends Observable {
 
     public ProgramStatement getStatementNoNotify(int address) throws AddressErrorException {
         return getStatement(address, false);
-      	/*
-         if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address))) {
-            throw new AddressErrorException(
-               "fetch address for text segment out of range or not aligned to word boundary ",
-               Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-         }
-         if (inTextSegment(address)) {
-            return readProgramStatement(address, textBaseAddress, textBlockTable, false);
-         } 
-         else {
-            return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, false);
-         }
-      	*/
     }
 
     //////////

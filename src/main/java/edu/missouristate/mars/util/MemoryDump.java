@@ -1,14 +1,11 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class MemoryDump {
 

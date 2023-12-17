@@ -1,12 +1,14 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
 
-import javax.swing.text.*;
 import javax.swing.*;
+import javax.swing.text.Segment;
+import javax.swing.text.TabExpander;
+import javax.swing.text.Utilities;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.MouseEvent;
 
 /**
  * Class with several utility functions used by jEdit's syntax colorizing
@@ -129,14 +131,14 @@ public class SyntaxUtilities {
      * Paints the specified line onto the graphics context. Note that this
      * method will mess with the offset and count values of the segment.
      *
-     * @param line The line segment
-     * @param tokens The token list for the line
-     * @param styles The syntax style list
+     * @param line     The line segment
+     * @param tokens   The token list for the line
+     * @param styles   The syntax style list
      * @param expander The tab expander used to determine tab stops. May
-     * be null
-     * @param gfx The graphics context
-     * @param x The x co-ordinate
-     * @param y The y co-ordinate
+     *                 be null
+     * @param gfx      The graphics context
+     * @param x        The x co-ordinate
+     * @param y        The y co-ordinate
      * @return The x co-ordinate, plus the width of the painted string
      */
     public static int paintSyntaxLine(Segment line, Token tokens,

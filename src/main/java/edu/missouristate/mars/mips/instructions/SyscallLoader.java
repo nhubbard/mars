@@ -1,10 +1,13 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.mips.instructions.syscalls.*;
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
+import edu.missouristate.mars.mips.instructions.syscalls.SyscallNumberOverride;
+import edu.missouristate.mars.util.FilenameFinder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+
 /****************************************************************************/
 /* This class provides functionality to bring external Syscall definitions
  * into MARS.  This permits anyone with knowledge of the Mars public interfaces,
@@ -52,7 +55,7 @@ class SyscallLoader {
                     if (!Syscall.class.isAssignableFrom(clas)) {
                         continue;
                     }
-                    Syscall syscall = (Syscall) clas.newInstance();
+                    Syscall syscall = (Syscall) clas.getDeclaredConstructor().newInstance();
                     if (findSyscall(syscall.getNumber()) == null) {
                         syscallList.add(syscall);
                     } else {

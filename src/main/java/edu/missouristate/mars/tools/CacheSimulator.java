@@ -1,14 +1,20 @@
 package edu.missouristate.mars.tools;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.util.Binary;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.tools.*;
-import edu.missouristate.mars.mips.hardware.*;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.util.Observable;
+import java.util.Random;
 
 /**
  * A data cache simulator.  It can be run either as a stand-alone Java application having
@@ -221,10 +227,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         JPanel replacementPolicyRow = getPanelWithBorderLayout();
         replacementPolicyRow.setBorder(emptyBorder);
         replacementPolicyRow.add(new JLabel("Block Replacement Policy "), BorderLayout.WEST);
-      /*       replacementPolicyDisplay = new JTextField("N/A",6);
-         replacementPolicyDisplay.setEditable(false);
-         replacementPolicyDisplay.setBackground(backgroundColor);
-         replacementPolicyDisplay.setHorizontalAlignment(JTextField.RIGHT); */
         replacementPolicyRow.add(cacheReplacementSelector, BorderLayout.EAST);
 
         JPanel cacheSetSizeRow = getPanelWithBorderLayout();
@@ -232,17 +234,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         cacheSetSizeRow.add(new JLabel("Set size (blocks) "), BorderLayout.WEST);
         cacheSetSizeRow.add(cacheSetSizeSelector, BorderLayout.EAST);
 
-        // Cachable address range "selection" removed for now...
-      /*
-         JPanel cachableAddressesRow = getPanelWithBorderLayout();
-         cachableAddressesRow.setBorder(emptyBorder);
-         cachableAddressesRow.add(new JLabel("Cachable Addresses "),BorderLayout.WEST);
-         cachableAddressesDisplay = new JTextField("all data segment");
-         cachableAddressesDisplay.setEditable(false);
-         cachableAddressesDisplay.setBackground(backgroundColor);
-         cachableAddressesDisplay.setHorizontalAlignment(JTextField.RIGHT);
-         cachableAddressesRow.add(cachableAddressesDisplay, BorderLayout.EAST);
-      */
         JPanel cacheNumberBlocksRow = getPanelWithBorderLayout();
         cacheNumberBlocksRow.setBorder(emptyBorder);
         cacheNumberBlocksRow.add(new JLabel("Number of blocks "), BorderLayout.WEST);
@@ -337,13 +328,13 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         animations = new Animation();
         animations.fillAnimationBoxWithCacheBlocks();
         JPanel animationsPanel = new JPanel(new GridLayout(1, 2));
-        Box animationsLabel = Box.createVerticalBox();
+        Box animationLabel = Box.createVerticalBox();
         JPanel tableTitle1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JPanel tableTitle2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
         tableTitle1.add(new JLabel("Cache Block Table"));
         tableTitle2.add(new JLabel("(block 0 at top)"));
-        animationsLabel.add(tableTitle1);
-        animationsLabel.add(tableTitle2);
+        animationLabel.add(tableTitle1);
+        animationLabel.add(tableTitle2);
         Dimension colorKeyBoxSize = new Dimension(8, 8);
 
         JPanel emptyKey = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -370,11 +361,11 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         hitKey.add(hitBox);
         hitKey.add(new JLabel(" = hit"));
 
-        animationsLabel.add(emptyKey);
-        animationsLabel.add(hitKey);
-        animationsLabel.add(missKey);
-        animationsLabel.add(Box.createVerticalGlue());
-        animationsPanel.add(animationsLabel);
+        animationLabel.add(emptyKey);
+        animationLabel.add(hitKey);
+        animationLabel.add(missKey);
+        animationLabel.add(Box.createVerticalGlue());
+        animationsPanel.add(animationLabel);
         animationsPanel.add(animations.getAnimationBox());
 
         performance.add(animationsPanel);
@@ -715,7 +706,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     // The block value for a given address identifies its block index into the cache.
     // That's why its called "direct mapped."  This is the only cache block it can
     // occupy.  If that cache block is empty or if it is occupied by a different tag,
-    // this is a MISS.  If that cache block is occupied by the same tag, this is a HIT.
+    // this is a MISS.  If the same tag occupies that cache block, this is a HIT.
     // There is no replacement policy: upon a cache miss of an occupied block, the old
     // block is written out (unless write-through) and the new one read in.
     // Those actions are not simulated here.

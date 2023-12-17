@@ -460,8 +460,8 @@ public class MarsLaunch {
             }
             // Added logic to check for warnings and print if any. DPS 11/28/06
             ErrorList warnings = code.assemble(MIPSProgramsToAssemble, pseudo, warningsAreErrors);
-            if (warnings != null && warnings.warningsOccurred()) {
-                out.println(warnings.generateWarningReport());
+            if (warnings != null && warnings.hasWarnings()) {
+                out.println(warnings.generateReport(true));
             }
             RegisterFile.initializeProgramCounter(startAtMain); // DPS 3/9/09
             if (simulate) {

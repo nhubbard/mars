@@ -1,8 +1,7 @@
 package edu.missouristate.mars.tools;//.bhtsim;
 
-import java.util.Vector;
-
 import javax.swing.table.AbstractTableModel;
+import java.util.Vector;
 
 /**
  * Simulates the actual functionality of a Branch History Table (BHT).
@@ -69,7 +68,7 @@ public class BHTableModel extends AbstractTableModel {
 
 
     /**
-     * Returns the name of the i-th column of the table.
+     * Returns the i-th name column of the table.
      * Required by the TableModel interface.
      *
      * @param i the index of the column
@@ -84,7 +83,7 @@ public class BHTableModel extends AbstractTableModel {
 
 
     /**
-     * Returns the class/type of the i-th column of the table.
+     * Returns the i-th column class/type of the table.
      * Required by the TableModel interface.
      *
      * @param i the index of the column
@@ -110,7 +109,7 @@ public class BHTableModel extends AbstractTableModel {
 
 
     /**
-     * Returns the number of entries of the BHT.
+     * Returns the number of entries in the BHT.
      * Required by the TableModel interface.
      *
      * @return number of rows / entries of the BHT

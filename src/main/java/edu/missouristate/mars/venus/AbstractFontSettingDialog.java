@@ -1,23 +1,23 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.util.EditorFont;
 
-import java.util.*;
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.text.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
-import java.io.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Vector;
 
 /**
  * Abstract class for a font selection dialog.
  */
 public abstract class AbstractFontSettingDialog extends JDialog {
-
     JDialog editorDialog;
     JComboBox fontFamilySelector, fontStyleSelector;
     JSlider fontSizeSelector;
@@ -25,7 +25,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     JLabel fontSample;
     protected Font currentFont;
 
-    // Used to determine upon OK, whether or not anything has changed.
+    // Used to determine upon OK, whether anything has changed.
     String initialFontFamily, initialFontStyle, initialFontSize;
 
     /**

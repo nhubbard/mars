@@ -1,11 +1,12 @@
 package edu.missouristate.mars.mips.hardware;
 
-import java.util.Observer;
-
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
+
+import java.util.Observer;
 
 /**
  * Represents the collection of MIPS registers.
@@ -276,7 +277,7 @@ public class RegisterFile {
         for (int i = 0; i < regFile.length; i++) {
             regFile[i].resetValue();
         }
-        initializeProgramCounter(Globals.getSettings().getStartAtMain());// replaces "programCounter.resetValue()", DPS 3/3/09
+        initializeProgramCounter(Globals.getSettings().getBooleanSetting(Settings.START_AT_MAIN));// replaces "programCounter.resetValue()", DPS 3/3/09
         hi.resetValue();
         lo.resetValue();
     }
@@ -294,7 +295,7 @@ public class RegisterFile {
      * will add the given Observer to each one.  Currently does not apply to Program
      * Counter.
      */
-    public static void addRegistersObserver(Observer observer) {
+    public static void addRegisterObserver(Observer observer) {
         for (int i = 0; i < regFile.length; i++) {
             regFile[i].addObserver(observer);
         }
@@ -307,7 +308,7 @@ public class RegisterFile {
      * will delete the given Observer from each one.  Currently does not apply to Program
      * Counter.
      */
-    public static void deleteRegistersObserver(Observer observer) {
+    public static void deleteRegisterObserver(Observer observer) {
         for (int i = 0; i < regFile.length; i++) {
             regFile[i].deleteObserver(observer);
         }

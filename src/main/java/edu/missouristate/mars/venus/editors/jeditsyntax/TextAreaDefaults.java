@@ -3,8 +3,8 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
 
-import javax.swing.JPopupMenu;
-import java.awt.Color;
+import javax.swing.*;
+import java.awt.*;
 
 /**
  * Encapsulates default settings for a text area. This can be passed

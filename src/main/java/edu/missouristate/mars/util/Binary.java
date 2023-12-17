@@ -2,7 +2,7 @@ package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.Globals;
 
-import java.util.*;
+import java.util.Arrays;
 
 /**
  * Some utility methods for working with binary representations.
@@ -267,7 +267,7 @@ public class Binary {
     }
 
     /**
-     * Returns a 6 character string representing the 16-bit hexadecimal equivalent of the
+     * Returns a six character string representing the 16-bit hexadecimal equivalent of the
      * given integer value.  First two characters are "0x".  It assumes value will "fit"
      * in 16 bits.  If non-negative, prepend leading zeroes to that string as necessary
      * to make it always four hexadecimal digits.  If negative, chop off the first
@@ -483,11 +483,11 @@ public class Binary {
 
 
     /**
-     * Returns the bit value of the given bit position of the given int value.
+     * Returns the bit value at the given position in the given int value.
      *
      * @param value The value to read the bit from.
      * @param bit   bit position in range 0 (least significant) to 31 (most)
-     * @return 0 if the bit position contains 0, and 1 otherwise.
+     * @return Zero if the bit position contains 0, and 1 otherwise.
      **/
 
     public static int bitValue(int value, int bit) {
@@ -496,11 +496,11 @@ public class Binary {
 
 
     /**
-     * Returns the bit value of the given bit position of the given long value.
+     * Returns the bit value at the given bit position of the given long value.
      *
      * @param value The value to read the bit from.
      * @param bit   bit position in range 0 (least significant) to 63 (most)
-     * @return 0 if the bit position contains 0, and 1 otherwise.
+     * @return Zero if the bit position contains 0, and 1 otherwise.
      **/
 
     public static int bitValue(long value, int bit) {

@@ -1,11 +1,16 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.MIPSProgram;
+import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.assembler.Symbol;
+import edu.missouristate.mars.assembler.TokenList;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.Binary;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
 
 /**
  * ExtendedInstruction represents a MIPS extended (a.k.a pseudo) instruction.  This
@@ -180,7 +185,7 @@ public class ExtendedInstruction extends Instruction {
      * <LI>BROFFnm means substitute n if delayed branching is NOT enabled otherwise substitute m.  n and m are single digit numbers indicating constant branch offset (in words).  Added in 3.4.1 release.
      * </UL>
      *
-     * @param template  a String containing template for basic statement.
+     * @param template     a String containing template for basic statement.
      * @param theTokenList a TokenList containing tokens from extended instruction.
      * @return String representing basic assembler statement.
      */
@@ -195,7 +200,7 @@ public class ExtendedInstruction extends Instruction {
         // additional changes, so for now I will generate "nop" in either case, then come back to it for the
         // next major release.
         if (instruction.indexOf("DBNOP") >= 0) {
-            return Globals.getSettings().getDelayedBranchingEnabled() ? "nop" : "";
+            return Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED) ? "nop" : "";
         }
         // substitute first operand token for template's RG1 or OP1, second for RG2 or OP2, etc
         for (int op = 1; op < theTokenList.size(); op++) {
@@ -464,7 +469,7 @@ public class ExtendedInstruction extends Instruction {
                 String disabled = instruction.substring(index + 5, index + 6);
                 String enabled = instruction.substring(index + 6, index + 7);
                 instruction = substitute(instruction, "BROFF" + disabled + enabled,
-                        Globals.getSettings().getDelayedBranchingEnabled() ? enabled : disabled);
+                        Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED) ? enabled : disabled);
             } catch (IndexOutOfBoundsException iooe) {
                 instruction = substitute(instruction, "BROFF", "BAD_PSEUDO_OP_SPEC");
             }
@@ -584,7 +589,7 @@ public class ExtendedInstruction extends Instruction {
         // then don't count the nop in the instruction length.   DPS 23-Jan-2008
         int instructionCount = 0;
         for (int i = 0; i < translationList.size(); i++) {
-            if (((String) translationList.get(i)).indexOf("DBNOP") >= 0 && !Globals.getSettings().getDelayedBranchingEnabled())
+            if (((String) translationList.get(i)).indexOf("DBNOP") >= 0 && !Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED))
                 continue;
             instructionCount++;
         }

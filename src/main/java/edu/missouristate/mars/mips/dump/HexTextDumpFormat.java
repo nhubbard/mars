@@ -1,9 +1,13 @@
 package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 
 /**
  * Class that represents the "hexadecimal text" memory dump format.  The output

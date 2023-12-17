@@ -1,7 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
 import javax.swing.text.Segment;
-import java.util.*;
+import java.util.ArrayList;
 
 /**
  * A token marker that splits lines of text into tokens. Each token carries
@@ -186,10 +186,10 @@ public abstract class TokenMarker {
      * This default definition returns null;
      * override it in language-specific subclasses.
      *
-     * @param line      String containing current line
-     * @param tokenList first Token on the current line
-     * @param tokenAtOffset     the pertinent Token object
-     * @param tokenText the source String that matched to the token
+     * @param line          String containing current line
+     * @param tokenList     first Token on the current line
+     * @param tokenAtOffset the pertinent Token object
+     * @param tokenText     the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
     public ArrayList getTokenPrefixMatchHelp(String line, Token tokenList, Token tokenAtOffset, String tokenText) {

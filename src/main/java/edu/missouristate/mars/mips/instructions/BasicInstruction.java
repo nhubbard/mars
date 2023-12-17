@@ -23,7 +23,7 @@ public class BasicInstruction extends Instruction {
      *
      * @param example     An example usage of the instruction, as a String.
      * @param instrFormat The format is R, I, I-branch or J.
-     * @param operMask    The opcode mask is a 32 character string that contains the opcode in binary in the appropriate bit positions and codes for operand positions ('f', 's', 't') in the remainding positions.
+     * @param operMask    The opcode mask is a 32-character string that contains the opcode in binary in the appropriate bit positions and codes for operand positions ('f', 's', 't') in the remainding positions.
      * @param simCode     The inline definition of an object and class which anonymously implements the SimulationCode interface.
      * @see SimulationCode
      **/
@@ -78,13 +78,14 @@ public class BasicInstruction extends Instruction {
     }
 
     /**
-     * Gets the operand format of the instruction.  MIPS defines 3 of these
-     * R-format, I-format, and J-format.  R-format is all registers.  I-format
-     * is address formed from register base with immediate offset.  J-format
-     * is for jump destination addresses.  I have added one more:
-     * I-branch-format, for branch destination addresses.  These are a variation
-     * of the I-format in that the computed value is address relative to the
-     * Program Counter.  All four formats are represented by static objects.
+     * Gets the operand format of the instruction.
+     * MIPS defines three of these: R-format, I-format, and J-format.
+     * R-format is all registers.
+     * I-format is address formed from register base with immediate offset.
+     * J-format is for jump destination addresses.
+     * I have added one more: I-branch-format, for branch destination addresses.
+     * These are a variation of the I-format in that the computed value is address relative to the Program Counter.
+     * Static objects represent all four formats.
      *
      * @return The machine instruction format, R, I, J or I-branch.
      */

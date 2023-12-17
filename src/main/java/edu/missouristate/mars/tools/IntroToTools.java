@@ -2,9 +2,6 @@ package edu.missouristate.mars.tools;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-
-import edu.missouristate.mars.*;
 
 /**
  * The "hello world" of MarsTools!

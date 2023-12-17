@@ -1,9 +1,9 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * The Memory Initialization File (.mif) VHDL-supported file format

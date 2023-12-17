@@ -1,8 +1,6 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.*;
-
-import java.util.*;
+import java.util.Observable;
 
 /**
  * Abstraction to represent a register of a MIPS Assembler.

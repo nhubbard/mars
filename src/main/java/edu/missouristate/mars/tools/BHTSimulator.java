@@ -1,19 +1,12 @@
 package edu.missouristate.mars.tools;
 
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.*;
+
+import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Observable;
-
-import javax.swing.JComponent;
-
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-//import edu.missouristate.mars.tools.bhtsim.BHTSimGUI;
-//import edu.missouristate.mars.tools.bhtsim.BHTableModel;
 
 
 /**
@@ -27,11 +20,10 @@ import edu.missouristate.mars.mips.hardware.RegisterFile;
  * A change of the configuration however causes a re-initialization of the BHT.
  * <p>
  * The tool can be used to show how branch prediction works in case of loops and how effective such simple methods are.
- * In case of nested loops the difference of BHT with 1 or 2 Bit history can be explored and visualized.
+ * In case of nested loops the difference of BHT with one or two bit history can be explored and visualized.
  *
  * @author ingo.kofler@itec.uni-klu.ac.at
  */
-//@SuppressWarnings("serial")
 public class BHTSimulator extends AbstractMarsToolAndApplication implements ActionListener {
 
 

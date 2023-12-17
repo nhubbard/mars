@@ -1,9 +1,9 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.util.Binary;
 
-import java.util.*;
+import java.util.Observer;
 
 /**
  * Represents Coprocessor 1, the Floating Point Unit (FPU)
@@ -404,10 +404,10 @@ public class Coprocessor1 {
 
 
     /**
-     * Each individual register is a separate object and Observable.  This handy method
+     * Each register is a separate object and Observable.  This handy method
      * will add the given Observer to each one.
      */
-    public static void addRegistersObserver(Observer observer) {
+    public static void addRegisterObserver(Observer observer) {
         for (int i = 0; i < registers.length; i++) {
             registers[i].addObserver(observer);
         }
@@ -415,10 +415,10 @@ public class Coprocessor1 {
 
 
     /**
-     * Each individual register is a separate object and Observable.  This handy method
+     * Each register is a separate object and Observable.  This handy method
      * will delete the given Observer from each one.
      */
-    public static void deleteRegistersObserver(Observer observer) {
+    public static void deleteRegisterObserver(Observer observer) {
         for (int i = 0; i < registers.length; i++) {
             registers[i].deleteObserver(observer);
         }
@@ -471,7 +471,7 @@ public class Coprocessor1 {
      * Get value of specified condition flag (0-7).
      *
      * @param flag condition flag number (0-7)
-     * @return 0 if condition is false, 1 if condition is true
+     * @return Zero if condition is false, 1 if condition is true
      */
     public static int getConditionFlag(int flag) {
         if (flag < 0 || flag >= numConditionFlags)

@@ -10,7 +10,7 @@
 
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
+import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
 
 import javax.swing.text.Segment;
 
@@ -78,7 +78,7 @@ public class KeywordMap {
      * Adds a key-value mapping.
      *
      * @param keyword The key
-     * @param id The value
+     * @param id      The value
      */
     public void add(String keyword, byte id) {
         int key = getStringMapKey(keyword);

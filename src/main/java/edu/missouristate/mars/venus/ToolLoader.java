@@ -85,7 +85,6 @@ public class ToolLoader {
         // not be located in the mars.tools folder, the loop below will not process
         // it correctly.  Not sure how to create a Class object given an absolute
         // pathname.
-        //candidates.addAll(mars.Globals.getExternalTools());  // this by itself is not enough...
         HashMap tools = new HashMap();
         for (int i = 0; i < candidates.size(); i++) {
             String file = (String) candidates.get(i);
@@ -105,7 +104,7 @@ public class ToolLoader {
                             Modifier.isInterface(clas.getModifiers())) {
                         continue;
                     }
-                    toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.newInstance()));
+                    toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
                 } catch (Exception e) {
                     System.out.println("Error instantiating MarsTool from file " + file + ": " + e);
                 }

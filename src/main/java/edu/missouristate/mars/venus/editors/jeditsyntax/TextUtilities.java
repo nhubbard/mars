@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import javax.swing.text.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 
 /**
  * Class with several utility functions used by the text area component.

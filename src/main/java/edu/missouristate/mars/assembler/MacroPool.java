@@ -1,9 +1,8 @@
 package edu.missouristate.mars.assembler;
 
-import java.util.ArrayList;
-
-import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.MIPSProgram;
+
+import java.util.ArrayList;
 
 /**
  * Stores information of macros defined by now. <br>

@@ -2,7 +2,8 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Models the collection of MIPS memory configurations.
@@ -139,15 +140,7 @@ public class MemoryConfigurations {
             defaultConfiguration = (MemoryConfiguration) configurations.get(0);
             currentConfiguration = defaultConfiguration;
             // Get current config from settings
-            //String currentConfigurationIdentifier = Globals.getSettings().getMemoryConfiguration();
             setCurrentConfiguration(getConfigurationByName(Globals.getSettings().getMemoryConfiguration()));
-            //	Iterator configurationsIterator = getConfigurationsIterator();
-            //	while (configurationsIterator.hasNext()) {
-            //  MemoryConfiguration config = (MemoryConfiguration)configurationsIterator.next();
-            //	  if (currentConfigurationIdentifier.equals(config.getConfigurationIdentifier())) {
-            //	     setCurrentConfiguration(config);
-            //			}
-            //	   }
         }
     }
 

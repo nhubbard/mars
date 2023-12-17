@@ -22,7 +22,7 @@ public class SettingsAssembleAllAction extends GuiAction {
     }
 
     public void actionPerformed(ActionEvent e) {
-        Globals.getSettings().setAssembleAllEnabled(
+        Globals.getSettings().setBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED,
                 ((JCheckBoxMenuItem) e.getSource()).isSelected());
     }
 

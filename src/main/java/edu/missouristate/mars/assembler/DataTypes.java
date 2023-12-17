@@ -126,7 +126,7 @@ public final class DataTypes {
      * Determines whether given floating point value falls within value range for given directive.
      * For float, this refers to range of the data type, not precision.  Example: 1.23456789012345
      * be stored in a float with loss of precision.  It's within the range.  But 1.23e500 cannot be
-     * stored in a float because the exponent 500 is too large (float allows 8 bits for exponent).
+     * stored in a float because the exponent 500 is too large (float allows eight bits for exponent).
      *
      * @param direct Directive that controls storage allocation for value.
      * @param value  The value to be stored.

@@ -1,22 +1,24 @@
 package edu.missouristate.mars.tools;
 
-import edu.missouristate.mars.simulator.Simulator;
-import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.venus.*;
-
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
-
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.RunSpeedPanel;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Exceptions;
+import edu.missouristate.mars.simulator.Simulator;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.venus.AbstractFontSettingDialog;
 
+import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.DefaultCaret;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Random;
 
 /**
  * Keyboard and Display Simulator.  It can be run either as a stand-alone Java application having
@@ -386,15 +388,6 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         String stringCaretPosition = "";
         // display position as stream or 2D depending on random access
         if (displayRandomAccessMode) {
-            //             if ( caretPosition == rows*(columns+1)+1) {
-            //                stringCaretPosition = "(0,0)";
-            //             }
-            //             else if ( (caretPosition+1) % (columns+1) == 0) {
-            //                stringCaretPosition = "(0,"+((caretPosition/(columns+1))+1)+")";
-            //             }
-            //             else {
-            //                stringCaretPosition = "("+(caretPosition%(columns+1))+","+(caretPosition/(columns+1))+")";
-            //             }
             if (((caretPosition + 1) % (columns + 1) != 0)) {
                 stringCaretPosition = "(" + (caretPosition % (columns + 1)) + "," + (caretPosition / (columns + 1)) + ")";
             } else if (((caretPosition + 1) % (columns + 1) == 0) && ((caretPosition / (columns + 1)) + 1 == rows)) {

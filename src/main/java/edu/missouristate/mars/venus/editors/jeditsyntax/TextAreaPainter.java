@@ -1,12 +1,14 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
+import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
+import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.TokenMarker;
 
-import javax.swing.ToolTipManager;
-import javax.swing.text.*;
-import javax.swing.JComponent;
-import java.awt.event.MouseEvent;
+import javax.swing.*;
+import javax.swing.text.Segment;
+import javax.swing.text.TabExpander;
+import javax.swing.text.Utilities;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 
 /**
  * The text area repaint manager. It performs double buffering and paints
@@ -53,19 +55,6 @@ public class TextAreaPainter extends JComponent implements TabExpander {
         paintInvalid = defaults.paintInvalid;
         eolMarkerColor = defaults.eolMarkerColor;
         eolMarkers = defaults.eolMarkers;
-    }
-
-    /**
-     * Returns if this component can be traversed by pressing the
-     * Tab key. This returns false.
-     * <p>
-     * NOTE: as of Java 1.4 this method is deprecated and no longer
-     * has the desired effect because the focus subsystem does not
-     * call it.  I've implemented a KeyEventDispatcher in JEditTextArea
-     * to handle Tabs. DPS 12-May-2010
-     */
-    public final boolean isManagingFocus() {
-        return false;
     }
 
     /**
@@ -336,27 +325,12 @@ public class TextAreaPainter extends JComponent implements TabExpander {
      * @param evt The mouse event
      */
     public String getToolTipText(MouseEvent evt) {
-        //          if(highlights != null)
-        //             return highlights.getToolTipText(evt);
-        //          else
-        //             return null;
         if (highlights != null)
             return highlights.getToolTipText(evt);
         else if (this.textArea.getTokenMarker() == null)
             return null;
         else
             return this.textArea.getSyntaxSensitiveToolTipText(evt.getX(), evt.getY());
-        //           int line = yToLine(evt.getY());
-        //  int offset = xToOffset(line,evt.getX());
-        //          {
-        //             if (evt instanceof InstructionMouseEvent) {
-        //                System.out.println("get Tool Tip Text for InstructionMouseEvent");
-        //                return "Instruction: "+ ((InstructionMouseEvent)evt).getLine().toString();
-        //             }
-        //             else {
-        //                return "Not a fake?";//null;
-        //             }
-        //          }
     }
 
     /**
@@ -572,21 +546,13 @@ public class TextAreaPainter extends JComponent implements TabExpander {
         y += fm.getHeight();
         x = SyntaxUtilities.paintSyntaxLine(currentLine,
                 currentLineTokens, styles, this, gfx, x, y);
-        //          count++;
-        //          if (count % 100 == 10) {
-        //             textArea.setToolTipText("Setting Text at Count of "+count); System.out.println("set tool tip");
-        //          }
-        //          if (count % 100 == 60) {
-        //             textArea.setToolTipText(null);System.out.println("reset tool tip");
-        //          }
-        //System.out.println("SyntaxUtilities.paintSyntaxLine "+ (++count));
         if (eolMarkers) {
             gfx.setColor(eolMarkerColor);
             gfx.drawString(".", x, y);
         }
     }
 
-    protected void paintHighlight(Graphics gfx, int line, int y) {//System.out.println("paintHighlight "+ (++count));
+    protected void paintHighlight(Graphics gfx, int line, int y) {
         if (line >= textArea.getSelectionStartLine()
                 && line <= textArea.getSelectionEndLine())
             paintLineHighlight(gfx, line, y);

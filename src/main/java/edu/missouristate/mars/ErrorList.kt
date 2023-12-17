@@ -49,7 +49,8 @@ class ErrorList {
      * Determine whether error(s) have occurred or not.
      * @return `true` if error(s) have occurred. Does not include warnings.
      */
-    val hasErrors: Boolean get() = errorCount > 0
+    val hasErrors: Boolean
+        @JvmName("hasErrors") get() = errorCount > 0
 
     @Deprecated("Use hasErrors property instead.", ReplaceWith("hasErrors"))
     fun errorsOccurred(): Boolean = hasErrors
@@ -58,7 +59,8 @@ class ErrorList {
      * Determine whether warning(s) have occurred or not.
      * @return `true` if warnings(s) have occurred. Does not include errors.
      */
-    val hasWarnings: Boolean get() = warningCount > 0
+    val hasWarnings: Boolean
+        @JvmName("hasWarnings") get() = warningCount > 0
 
     @Deprecated("Use hasWarnings property instead.", ReplaceWith("hasWarnings"))
     fun warningsOccurred(): Boolean = hasWarnings
@@ -78,12 +80,14 @@ class ErrorList {
     fun add(message: ErrorMessage, index: Int = messages.size) {
         if (errorCount > Globals.maximumErrorMessages) return
         if (errorCount == Globals.maximumErrorMessages) {
-            messages.add(ErrorMessage(
-                null,
-                message.line,
-                message.position,
-                message = "Error limit of ${Globals.maximumErrorMessages} exceeded."
-            ))
+            messages.add(
+                ErrorMessage(
+                    null,
+                    message.line,
+                    message.position,
+                    message = "Error limit of ${Globals.maximumErrorMessages} exceeded."
+                )
+            )
             return
         }
         messages.add(index, message)

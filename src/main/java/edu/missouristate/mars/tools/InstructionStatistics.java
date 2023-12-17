@@ -1,21 +1,14 @@
 package edu.missouristate.mars.tools;
 
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.util.Observable;
-
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JTextField;
-
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+
+import javax.swing.*;
+import java.awt.*;
+import java.util.Observable;
 
 /**
  * A MARS tool for obtaining instruction statistics by instruction category.

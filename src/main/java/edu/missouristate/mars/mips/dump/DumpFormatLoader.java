@@ -1,10 +1,10 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.util.FilenameFinder;
 
-import java.util.*;
-import java.lang.reflect.*;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+
 /****************************************************************************/
 /* This class provides functionality to bring external memory dump format definitions
  * into MARS.  This is adapted from the ToolLoader class, which is in turn adapted
@@ -43,7 +43,7 @@ public class DumpFormatLoader {
                     if (DumpFormat.class.isAssignableFrom(clas) &&
                             !Modifier.isAbstract(clas.getModifiers()) &&
                             !Modifier.isInterface(clas.getModifiers())) {
-                        formatList.add(clas.newInstance());
+                        formatList.add(clas.getDeclaredConstructor().newInstance());
                     }
                 } catch (Exception e) {
                     System.out.println("Error instantiating DumpFormat from file " + file + ": " + e);

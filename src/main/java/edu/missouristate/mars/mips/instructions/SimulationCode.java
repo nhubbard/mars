@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
 
 /**
  * Interface to represent the method for simulating the execution of a specific MIPS basic

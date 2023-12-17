@@ -1,8 +1,6 @@
 package edu.missouristate.mars.assembler;
 
-import edu.missouristate.mars.*;
-
-import java.util.*;
+import edu.missouristate.mars.MIPSProgram;
 
 /**
  * Handy class to represent, for a given line of source code, the code

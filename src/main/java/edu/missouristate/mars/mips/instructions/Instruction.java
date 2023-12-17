@@ -1,9 +1,10 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.assembler.TokenList;
+import edu.missouristate.mars.assembler.Tokenizer;
 
-import java.util.*;
+import java.util.StringTokenizer;
 
 /**
  * Base class to represent member of MIPS instruction set.

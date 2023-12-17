@@ -225,7 +225,7 @@ public class Assembler {
         accumulatedDataSegmentForwardReferences.generateErrorMessages(errors);
 
         // Throw collection of errors accumulated through the first pass.
-        if (errors.getHasErrors()) {
+        if (errors.hasErrors()) {
             throw new ProcessingException(errors);
         }
         if (Globals.debug)
@@ -241,7 +241,7 @@ public class Assembler {
             for (int i = 0; i < parsedList.size(); i++) {
                 statement = (ProgramStatement) parsedList.get(i);
                 statement.buildBasicStatementFromBasicInstruction(errors);
-                if (errors.errorsOccurred()) {
+                if (errors.hasErrors()) {
                     throw new ProcessingException(errors);
                 }
                 if (statement.getInstruction() instanceof BasicInstruction) {
@@ -358,7 +358,7 @@ public class Assembler {
         // but in case of duplicate I like having both statements handy for error message.
         Collections.sort(machineList, new ProgramStatementComparator());
         catchDuplicateAddresses(machineList, errors);
-        if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
+        if (errors.hasErrors() || errors.hasWarnings() && warningsAreErrors) {
             throw new ProcessingException(errors);
         }
         return machineList;
@@ -376,7 +376,7 @@ public class Assembler {
                         "Duplicate text segment address: "
                                 + NumberDisplayBaseChooser.formatUnsignedInteger(ps2
                                 .getAddress(), (Globals.getSettings()
-                                .getDisplayAddressesInHex()) ? 16 : 10)
+                                .getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)) ? 16 : 10)
                                 + " already occupied by " + ps1.getSourceFile() + " line "
                                 + ps1.getSourceLine() + " (caused by use of "
                                 + ((Memory.inTextSegment(ps2.getAddress())) ? ".text" : ".ktext")
@@ -448,20 +448,6 @@ public class Assembler {
                 errors.add(new ErrorMessage(fileCurrentlyBeingAssembled, tokens.get(0)
                         .getSourceLine(), 0, "Detected a macro expansion loop (recursive reference). "));
             } else {
-                //                for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
-                //                   String substituted = macro.getSubstitutedLine(i, tokens, counter, errors);
-                //                   TokenList tokenList2 = fileCurrentlyBeingAssembled.getTokenizer().tokenizeLine(
-                //                      i, substituted, errors);
-                //                   // If token list getProcessedLine() is not empty, then .eqv was performed and it contains the modified source.
-                //                	// Put it into the line to be parsed, so it will be displayed properly in text segment display. DPS 23 Jan 2013
-                //                   if (tokenList2.getProcessedLine().length() > 0)
-                //                      substituted = tokenList2.getProcessedLine();
-                //                   // recursively parse lines of expanded macro
-                //                   ArrayList<ProgramStatement> statements = parseLine(tokenList2, "<" + (i-macro.getFromLine()+macro.getOriginalFromLine()) + "> "
-                //                      + substituted.trim(), sourceLineNumber, extendedAssemblerEnabled);
-                //                   if (statements != null)
-                //                      ret.addAll(statements);
-                //                }
                 for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
 
                     String substituted = macro.getSubstitutedLine(i, tokens, counter, errors);
@@ -561,7 +547,7 @@ public class Assembler {
             current.addLabel(tokens.get(0).getValue());
     }
 
-    // Determine whether or not a compact (16-bit) translation from
+    // Determine whether a compact (16-bit) translation from
     // pseudo-instruction to basic instruction can be applied. If
     // the argument is a basic instruction, obviously not. If an
     // extended instruction, we have to be operating under a 16-bit
@@ -892,7 +878,7 @@ public class Assembler {
     // //////////////////////////////////////////////////////////////////////////////////
     // Processes the .word/.half/.byte/.float/.double directive.
     // Can also handle "directive continuations", e.g. second or subsequent line
-    // of a multiline list, which does not contain the directive token. Just pass the
+    // of a multiline list, which does not contain the directive token. Pass the
     // current directive as argument.
     private void storeNumeric(TokenList tokens, Directives directive, ErrorList errors) {
         Token token = tokens.get(0);
@@ -904,7 +890,7 @@ public class Assembler {
         if (token.getType() == TokenTypes.DIRECTIVE)
             tokenStart = 1;
 
-        // Set byte length in memory of each number (e.g. WORD is 4, BYTE is 1, etc)
+        // Set byte length in memory of each number (e.g. WORD is 4, BYTE is 1, etc.)
         int lengthInBytes = DataTypes.getLengthInBytes(directive);
 
         // Handle the "value : n" format, which replicates the value "n" times.
@@ -995,7 +981,7 @@ public class Assembler {
             int value = Binary.stringToInt(token.getValue());
             int fullvalue = value;
             // DPS 4-Jan-2013.  Overriding 6-Jan-2005 KENV changes.
-            // If value is out of range for the directive, will simply truncate
+            // If value is out of range for the directive, will truncate
             // the leading bits (includes sign bits). This is what SPIM does.
             // But will issue a warning (not error) which SPIM does not do.
             if (directive == Directives.BYTE) {
@@ -1186,7 +1172,7 @@ public class Assembler {
     } // storeStrings()
 
     // //////////////////////////////////////////////////////////////////////////////////
-    // Simply check to see if we are in data segment. Generate error if not.
+    // Check to see if we are in data segment. Generate error if not.
     private boolean passesDataSegmentCheck(Token token) {
         if (!this.inDataSegment) {
             errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token

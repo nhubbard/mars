@@ -1,13 +1,26 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.syscalls.*;
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Coprocessor0;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
+import edu.missouristate.mars.simulator.DelayedBranch;
+import edu.missouristate.mars.simulator.Exceptions;
+import edu.missouristate.mars.util.Binary;
 
-import java.util.*;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.StringTokenizer;
 
 /**
  * The list of Instruction objects, each of which represents a MIPS instruction.
@@ -1269,11 +1282,6 @@ public class InstructionSet {
                                 float add2 = Float.intBitsToFloat(Coprocessor1.getValue(operands[2]));
                                 float sum = add1 + add2;
                                 // overflow detected when sum is positive or negative infinity.
-                  /*
-                  if (sum == Float.NEGATIVE_INFINITY || sum == Float.POSITIVE_INFINITY) {
-                    throw new ProcessingException(statement,"arithmetic overflow");
-                  }
-                  */
                                 Coprocessor1.updateRegister(operands[0], Float.floatToIntBits(sum));
                             }
                         }));
@@ -2818,7 +2826,7 @@ public class InstructionSet {
     // the bottom (currently line 194, heavily commented).
 
     private void processBranch(int displacement) {
-        if (Globals.getSettings().getDelayedBranchingEnabled()) {
+        if (Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)) {
             // Register the branch target address (absolute byte address).
             DelayedBranch.register(RegisterFile.getProgramCounter() + (displacement << 2));
         } else {
@@ -2840,7 +2848,7 @@ public class InstructionSet {
      */
 
     private void processJump(int targetAddress) {
-        if (Globals.getSettings().getDelayedBranchingEnabled()) {
+        if (Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)) {
             DelayedBranch.register(targetAddress);
         } else {
             RegisterFile.setProgramCounter(targetAddress);
@@ -2861,7 +2869,7 @@ public class InstructionSet {
 
     private void processReturnAddress(int register) {
         RegisterFile.updateRegister(register, RegisterFile.getProgramCounter() +
-                ((Globals.getSettings().getDelayedBranchingEnabled()) ?
+                ((Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)) ?
                         Instruction.INSTRUCTION_LENGTH : 0));
     }
 

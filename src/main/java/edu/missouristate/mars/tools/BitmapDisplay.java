@@ -1,15 +1,16 @@
 package edu.missouristate.mars.tools;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
-
-import edu.missouristate.mars.tools.*;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Observable;
 
 /**
  * Bitmapp display simulator.  It can be run either as a stand-alone Java application having
@@ -330,25 +331,25 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
         // ALL COMPONENTS FOR "ORGANIZATION" SECTION
 
-        JPanel unitWidthInPixelsRow = getPanelWithBorderLayout();
-        unitWidthInPixelsRow.setBorder(emptyBorder);
-        unitWidthInPixelsRow.add(new JLabel("Unit Width in Pixels "), BorderLayout.WEST);
-        unitWidthInPixelsRow.add(visualizationUnitPixelWidthSelector, BorderLayout.EAST);
+        JPanel unitWidthInPixelRow = getPanelWithBorderLayout();
+        unitWidthInPixelRow.setBorder(emptyBorder);
+        unitWidthInPixelRow.add(new JLabel("Unit Width in Pixels "), BorderLayout.WEST);
+        unitWidthInPixelRow.add(visualizationUnitPixelWidthSelector, BorderLayout.EAST);
 
-        JPanel unitHeightInPixelsRow = getPanelWithBorderLayout();
-        unitHeightInPixelsRow.setBorder(emptyBorder);
-        unitHeightInPixelsRow.add(new JLabel("Unit Height in Pixels "), BorderLayout.WEST);
-        unitHeightInPixelsRow.add(visualizationUnitPixelHeightSelector, BorderLayout.EAST);
+        JPanel unitHeightInPixelRow = getPanelWithBorderLayout();
+        unitHeightInPixelRow.setBorder(emptyBorder);
+        unitHeightInPixelRow.add(new JLabel("Unit Height in Pixels "), BorderLayout.WEST);
+        unitHeightInPixelRow.add(visualizationUnitPixelHeightSelector, BorderLayout.EAST);
 
-        JPanel widthInPixelsRow = getPanelWithBorderLayout();
-        widthInPixelsRow.setBorder(emptyBorder);
-        widthInPixelsRow.add(new JLabel("Display Width in Pixels "), BorderLayout.WEST);
-        widthInPixelsRow.add(visualizationPixelWidthSelector, BorderLayout.EAST);
+        JPanel widthInPixelRow = getPanelWithBorderLayout();
+        widthInPixelRow.setBorder(emptyBorder);
+        widthInPixelRow.add(new JLabel("Display Width in Pixels "), BorderLayout.WEST);
+        widthInPixelRow.add(visualizationPixelWidthSelector, BorderLayout.EAST);
 
-        JPanel heightInPixelsRow = getPanelWithBorderLayout();
-        heightInPixelsRow.setBorder(emptyBorder);
-        heightInPixelsRow.add(new JLabel("Display Height in Pixels "), BorderLayout.WEST);
-        heightInPixelsRow.add(visualizationPixelHeightSelector, BorderLayout.EAST);
+        JPanel heightInPixelRow = getPanelWithBorderLayout();
+        heightInPixelRow.setBorder(emptyBorder);
+        heightInPixelRow.add(new JLabel("Display Height in Pixels "), BorderLayout.WEST);
+        heightInPixelRow.add(visualizationPixelHeightSelector, BorderLayout.EAST);
 
         JPanel baseAddressRow = getPanelWithBorderLayout();
         baseAddressRow.setBorder(emptyBorder);
@@ -357,10 +358,10 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
 
         // Lay 'em out in the grid...
-        organization.add(unitWidthInPixelsRow);
-        organization.add(unitHeightInPixelsRow);
-        organization.add(widthInPixelsRow);
-        organization.add(heightInPixelsRow);
+        organization.add(unitWidthInPixelRow);
+        organization.add(unitHeightInPixelRow);
+        organization.add(widthInPixelRow);
+        organization.add(heightInPixelRow);
         organization.add(baseAddressRow);
         return organization;
     }
@@ -381,7 +382,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     private void initializeDisplayBaseChoices() {
         int[] displayBaseAddressArray = {Memory.dataSegmentBaseAddress, Memory.globalPointer, Memory.dataBaseAddress,
                 Memory.heapBaseAddress, Memory.memoryMapBaseAddress};
-        // Must agree with above in number and order...
+        // Must agree with previous conditions in number and order...
         String[] descriptions = {" (global data)", " ($gp)", " (static data)", " (heap)", " (memory map)"};
         displayBaseAddresses = displayBaseAddressArray;
         displayBaseAddressChoices = new String[displayBaseAddressArray.length];
@@ -530,7 +531,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
             grid[row][column] = color;
         }
 
-        // Just set all grid elements to black.
+        // Set all grid elements to black.
         private void reset() {
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < columns; j++) {

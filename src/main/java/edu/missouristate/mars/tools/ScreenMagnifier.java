@@ -515,7 +515,7 @@ class CaptureModel {
     }
 
     /**
-     * Determine whether or not capture will automatically occur.
+     * Determine whether capture will automatically occur.
      *
      * @return True if automatic capture will occur, false otherwise.
      */
@@ -524,7 +524,7 @@ class CaptureModel {
     }
 
     /**
-     * Specify whether or not capture will automatically occur.
+     * Specify whether capture will automatically occur.
      *
      * @param set True if capture is to be automatically performed when
      *            associated event occurs, false otherwise.

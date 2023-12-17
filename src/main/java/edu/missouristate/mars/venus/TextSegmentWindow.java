@@ -163,7 +163,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         tableScroller = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
         contentPane.add(tableScroller);
-        if (Globals.getSettings().getProgramArguments()) {
+        if (Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
             addProgramArgumentsPanel();
         }
 
@@ -572,7 +572,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         // Select the source code cell for this row by generating a fake Mouse Pressed event
         // and explicitly invoking the table's mouse listener.
         MouseEvent fakeMouseEvent = new MouseEvent(table, MouseEvent.MOUSE_PRESSED,
-                new Date().getTime(), MouseEvent.BUTTON1_MASK,
+                new Date().getTime(), MouseEvent.BUTTON1_DOWN_MASK,
                 (int) sourceCell.getX() + 1,
                 (int) sourceCell.getY() + 1, 1, false);
         MouseListener[] mouseListeners = table.getMouseListeners();
@@ -591,7 +591,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         // event on its mouse listener.
         Rectangle rect = ((MyTippedJTable) table).getRectForColumnIndex(BREAK_COLUMN);
         MouseEvent fakeMouseEvent = new MouseEvent(table, MouseEvent.MOUSE_CLICKED,
-                new Date().getTime(), MouseEvent.BUTTON1_MASK,
+                new Date().getTime(), MouseEvent.BUTTON1_DOWN_MASK,
                 (int) rect.getX(), (int) rect.getY(), 1, false);
         MouseListener[] mouseListeners = ((MyTippedJTable) table).tableHeader.getMouseListeners();
         for (int i = 0; i < mouseListeners.length; i++) {
@@ -969,17 +969,6 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         protected JTableHeader createDefaultTableHeader() {
             tableHeader = new TextTableHeader(columnModel);
             return tableHeader;
-            /*
-                new JTableHeader(columnModel) {
-                   public String getToolTipText(MouseEvent e) {
-                     String tip = null;
-                     java.awt.Point p = e.getPoint();
-                     int index = columnModel.getColumnIndexAtX(p.x);
-                     int realIndex = columnModel.getColumn(index).getModelIndex();
-                     return columnToolTips[realIndex];
-                  }
-               };
-              */
         }
 
         // Given the model index of a column header, will return rectangle

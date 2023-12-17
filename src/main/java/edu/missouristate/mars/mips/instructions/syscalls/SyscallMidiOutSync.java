@@ -1,9 +1,8 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
 
 /**
  * Service to output simulated MIDI tone to sound card.  The call does

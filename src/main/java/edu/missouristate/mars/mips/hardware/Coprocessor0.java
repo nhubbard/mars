@@ -2,7 +2,7 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
 
-import java.util.*;
+import java.util.Observer;
 
 /**
  * Represents Coprocessor 0.  We will use only its interrupt/exception registers.
@@ -91,7 +91,7 @@ public class Coprocessor0 {
      * Returns the value of the register who's number is num.
      *
      * @param num The register number.
-     * @return The value of the given register.  0 for non-implemented registers
+     * @return The value of the given register. Zero for non-implemented registers
      **/
 
     public static int getValue(int num) {
@@ -176,23 +176,22 @@ public class Coprocessor0 {
     }
 
     /**
-     * Each individual register is a separate object and Observable.  This handy method
+     * Each register is a separate object and Observable.  This handy method
      * will add the given Observer to each one.
      */
-    public static void addRegistersObserver(Observer observer) {
+    public static void addRegisterObserver(Observer observer) {
         for (int i = 0; i < registers.length; i++) {
             registers[i].addObserver(observer);
         }
     }
 
     /**
-     * Each individual register is a separate object and Observable.  This handy method
+     * Each register is a separate object and Observable.  This handy method
      * will delete the given Observer from each one.
      */
-    public static void deleteRegistersObserver(Observer observer) {
+    public static void deleteRegisterObserver(Observer observer) {
         for (int i = 0; i < registers.length; i++) {
             registers[i].deleteObserver(observer);
         }
     }
-
 }

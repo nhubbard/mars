@@ -1,13 +1,16 @@
 package edu.missouristate.mars.tools;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.venus.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
-import java.util.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * Simple Demo of Mars tool capability
@@ -171,50 +174,23 @@ public class MarsBot implements Observer, MarsTool {
 
         public void paintComponent(Graphics g) {
             long tempN;
-            // System.out.println("MarsBotDisplay.paintComponent: I'm painting! n is " + n);
 
-
-            // Recover Graphics2D
             Graphics2D g2 = (Graphics2D) g;
-            
-            /*
-            if (clearTheDisplay)
-            {
-                g2.setColor(Color.lightGray);
-                g2.fillRect(0, 0, width - 1, height - 1); // Clear all previous drawn information
-                clearTheDisplay = false;
-            }
-            */
 
             // Draw the track left behind, for each segment of the path
             g2.setColor(Color.blue);
             for (int i = 1; i <= trackIndex; i += 2) // Index grows by two (begin-end pair)
             {
-                //System.out.print(".");
                 try {
                     g2.drawLine((int) arrayOfTrack[i - 1].getX(), (int) arrayOfTrack[i - 1].getY(),
                             (int) arrayOfTrack[i].getX(), (int) arrayOfTrack[i].getY());
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    // No action   TBD sloppy
-                } catch (NullPointerException e) {
-                    // No action   TBD sloppy
+                } catch (ArrayIndexOutOfBoundsException | NullPointerException ignored) {
+                    // No action. TBD sloppy
                 }
             }
 
             g2.setColor(Color.black);
             g2.fillRect((int) MarsBotXPosition, (int) MarsBotYPosition, 20, 20); // Draw bot at its current position
-         
-            /*
-             g2.setColor(Color.blue);
-             g2.setFont(new Font(g2.getFont().getName(), g2.getFont().getStyle(), 20) );  // same font and style in larger size
-             g2.drawOval( width/2 - 30,  // TBD Hardcoded oval size
-             height/2 - 30,
-             60,
-             60);
-             g2.drawString(" " + n, width/2, height/2);
-             */
-
-
         }
 
     } // end private inner class MarsBotDisplay
@@ -285,10 +261,6 @@ public class MarsBot implements Observer, MarsTool {
                         arrayOfTrack[trackIndex] = new Point((int) MarsBotXPosition, (int) MarsBotYPosition);
                         trackIndex++;  // the index of the next start point
                     }
-
-                    //System.out.println("MarsBotDisplay.paintComponent: putting point in track array at " + trackIndex);
-
-                    //System.out.println(message + notice.getValue() );
                 } else if (address == ADDR_MOVE) {
                     message = "MarsBot.update: got move control value: ";
                     if (notice.getValue() == 0) MarsBotMoving = false;
@@ -300,11 +272,7 @@ public class MarsBot implements Observer, MarsTool {
                     // this tool. This tool is being notified of the writes in the usual
                     // manner, but the writes are already known to this tool.
                     // NO ACTION
-                } else {
-                    //message = "MarsBot.update: HEY!!! unknown address of " + Integer.toString(address) + ", value: ";
-                    //System.out.println(message + notice.getValue() );
                 }
-
             }
         }
 

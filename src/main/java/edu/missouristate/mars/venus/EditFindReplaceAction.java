@@ -35,7 +35,7 @@ public class EditFindReplaceAction extends GuiAction {
         JTextField findInputField, replaceInputField;
         JCheckBox caseSensitiveCheckBox;
         JRadioButton linearFromStart, circularFromCursor;
-        private JLabel resultsLabel;
+        private JLabel resultLabel;
 
         public static final String FIND_TOOL_TIP_TEXT = "Find next occurrence of given text; wraps around at end";
         public static final String REPLACE_TOOL_TIP_TEXT = "Replace current occurrence of text then find next";
@@ -112,10 +112,10 @@ public class EditFindReplaceAction extends GuiAction {
             optionsPanel.add(Box.createHorizontalStrut(5));
             JPanel resultsPanel = new JPanel(new GridLayout(1, 1));
             resultsPanel.setBorder(BorderFactory.createTitledBorder("Outcome"));
-            resultsLabel = new JLabel("");
-            resultsLabel.setForeground(Color.RED);
-            resultsLabel.setToolTipText(RESULTS_TOOL_TIP_TEXT);
-            resultsPanel.add(resultsLabel);
+            resultLabel = new JLabel("");
+            resultLabel.setForeground(Color.RED);
+            resultLabel.setToolTipText(RESULTS_TOOL_TIP_TEXT);
+            resultsPanel.add(resultLabel);
             optionsPanel.add(resultsPanel);
             return optionsPanel;
         }
@@ -178,7 +178,7 @@ public class EditFindReplaceAction extends GuiAction {
         //  object.  The operation will wrap around when it reaches the end of the
         //  document.  If found, the matching text is selected.
         private void performFind() {
-            resultsLabel.setText("");
+            resultLabel.setText("");
             if (findInputField.getText().length() > 0) {
                 EditPane editPane = mainUI.getMainPane().getEditPane();
                 // Being cautious. Should not be null because find/replace tool button disabled if no file open
@@ -186,13 +186,13 @@ public class EditFindReplaceAction extends GuiAction {
                     searchString = findInputField.getText();
                     int posn = editPane.doFindText(searchString, caseSensitiveCheckBox.isSelected());
                     if (posn == MARSTextEditingArea.TEXT_NOT_FOUND) {
-                        resultsLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_NOT_FOUND);
+                        resultLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_NOT_FOUND);
                     } else {
-                        resultsLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_FOUND);
+                        resultLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_FOUND);
                     }
                 }
             } else {
-                resultsLabel.setText(findButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
+                resultLabel.setText(findButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
             }
         }
 
@@ -202,7 +202,7 @@ public class EditFindReplaceAction extends GuiAction {
         // of Replace will do the replace.  This is apparently common behavior for replace
         // buttons of different apps I've checked.
         private void performReplace() {
-            resultsLabel.setText("");
+            resultLabel.setText("");
             if (findInputField.getText().length() > 0) {
                 EditPane editPane = mainUI.getMainPane().getEditPane();
                 // Being cautious. Should not be null b/c find/replace tool button disabled if no file open
@@ -225,10 +225,10 @@ public class EditFindReplaceAction extends GuiAction {
                             result += RESULTS_TEXT_REPLACED;
                             break;
                     }
-                    resultsLabel.setText(result);
+                    resultLabel.setText(result);
                 }
             } else {
-                resultsLabel.setText(replaceButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
+                resultLabel.setText(replaceButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
             }
 
         }
@@ -236,7 +236,7 @@ public class EditFindReplaceAction extends GuiAction {
         // Performs a replace-all.  Makes one pass through the document starting at
         // position 0.
         private void performReplaceAll() {
-            resultsLabel.setText("");
+            resultLabel.setText("");
             if (findInputField.getText().length() > 0) {
                 EditPane editPane = mainUI.getMainPane().getEditPane();
                 // Being cautious. Should not be null b/c find/replace tool button disabled if no file open
@@ -244,13 +244,13 @@ public class EditFindReplaceAction extends GuiAction {
                     searchString = findInputField.getText();
                     int replaceCount = editPane.doReplaceAll(searchString, replaceInputField.getText(), caseSensitiveCheckBox.isSelected());
                     if (replaceCount == 0) {
-                        resultsLabel.setText(replaceAllButton.getText() + ": " + RESULTS_TEXT_NOT_FOUND);
+                        resultLabel.setText(replaceAllButton.getText() + ": " + RESULTS_TEXT_NOT_FOUND);
                     } else {
-                        resultsLabel.setText(replaceAllButton.getText() + ": " + RESULTS_TEXT_REPLACED_ALL + " " + replaceCount + " occurrence" + (replaceCount == 1 ? "" : "s"));
+                        resultLabel.setText(replaceAllButton.getText() + ": " + RESULTS_TEXT_REPLACED_ALL + " " + replaceCount + " occurrence" + (replaceCount == 1 ? "" : "s"));
                     }
                 }
             } else {
-                resultsLabel.setText(replaceAllButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
+                resultLabel.setText(replaceAllButton.getText() + ": " + RESULTS_NO_TEXT_TO_FIND);
             }
         }
 

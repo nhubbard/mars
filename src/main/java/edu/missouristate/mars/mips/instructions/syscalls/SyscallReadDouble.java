@@ -1,9 +1,11 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.simulator.Exceptions;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Service to read the bits of console input double into $f0 and $f1.

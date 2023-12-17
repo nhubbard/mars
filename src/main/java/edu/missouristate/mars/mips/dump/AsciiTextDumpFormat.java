@@ -1,10 +1,14 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.util.Binary;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 
 /**
  * Class that represents the "ASCII text" memory dump format. Memory contents
@@ -32,7 +36,7 @@ public class AsciiTextDumpFormat extends AbstractDumpFormat {
     /**
      * Interpret MIPS memory contents as ASCII characters.  Each line of
      * text contains one memory word written in ASCII characters.  Those
-     * corresponding to tab, newline, null, etc are rendered as backslash
+     * corresponding to tab, newline, null, etc. are rendered as backslash
      * followed by single-character code, e.g. \t for tab, \0 for null.
      * Non-printing character (control code,
      * values above 127) is rendered as a period (.).  Written

@@ -74,7 +74,7 @@ public class RunStepAction extends GuiAction {
         if (pe != null) {
             RunGoAction.resetMaxSteps();
             mainUI.getMessagesPane().postMarsMessage(
-                    pe.errors().generateErrorReport());
+                    pe.errors().generateReport());
             mainUI.getMessagesPane().postMarsMessage(
                     "\n" + name + ": execution terminated with errors.\n\n");
             mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
@@ -94,7 +94,7 @@ public class RunStepAction extends GuiAction {
     private void processProgramArgumentsIfAny() {
         String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
         if (programArguments == null || programArguments.length() == 0 ||
-                !Globals.getSettings().getProgramArguments()) {
+                !Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
             return;
         }
         new ProgramArgumentList(programArguments).storeProgramArguments();

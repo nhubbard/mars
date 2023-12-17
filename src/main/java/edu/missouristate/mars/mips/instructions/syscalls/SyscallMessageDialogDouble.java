@@ -1,11 +1,15 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.simulator.Exceptions;
 
-import javax.swing.JOptionPane;
+import javax.swing.*;
 
 /**
  * Service to display a message to user.

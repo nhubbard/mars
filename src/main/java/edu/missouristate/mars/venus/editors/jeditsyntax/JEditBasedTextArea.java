@@ -76,12 +76,6 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
         return getPainter().getFont();
     }
 
-
-// 		public void repaint() {		 getPainter().repaint();		 }
-// 		 public Dimension getSize() { return painter.getSize(); }
-// 		 public void setSize(Dimension d) { painter.setSize(d);}
-
-
     /**
      * Use for highlighting the line currently being edited.
      *

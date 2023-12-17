@@ -204,15 +204,15 @@ public class Globals {
     // Read assembly language file extensions from properties file.  Resulting
     // string is tokenized into array list (assume StringTokenizer default delimiters).
     private static ArrayList getFileExtensions() {
-        ArrayList extensionsList = new ArrayList();
+        ArrayList extensionList = new ArrayList();
         String extensions = getPropertyEntry(configPropertiesFile, "Extensions");
         if (extensions != null) {
             StringTokenizer st = new StringTokenizer(extensions);
             while (st.hasMoreTokens()) {
-                extensionsList.add(st.nextToken());
+                extensionList.add(st.nextToken());
             }
         }
-        return extensionsList;
+        return extensionList;
     }
 
     /**

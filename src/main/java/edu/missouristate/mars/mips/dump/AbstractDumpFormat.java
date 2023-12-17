@@ -1,8 +1,9 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * Abstract class for memory dump file formats.  Provides constructors and

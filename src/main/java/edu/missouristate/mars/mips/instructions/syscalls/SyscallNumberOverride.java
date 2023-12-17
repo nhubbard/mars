@@ -1,9 +1,5 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import java.util.*;
-
-import edu.missouristate.mars.util.*;
-
 /**
  * Represents User override of default syscall number assignment.
  * Such overrides are specified in the config.txt file read when

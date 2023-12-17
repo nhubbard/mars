@@ -148,7 +148,9 @@ class ErrorMessage {
                 try {
                     val line = match.substring(1, match.length - 1).toInt()
                     macroHistory.add(line)
-                } catch (e: NumberFormatException) { break }
+                } catch (e: NumberFormatException) {
+                    break
+                }
                 verify = verify.substring(match.length).trim()
             } else break
         }

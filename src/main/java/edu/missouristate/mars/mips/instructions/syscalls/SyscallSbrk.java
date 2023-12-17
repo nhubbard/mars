@@ -1,9 +1,10 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.simulator.Exceptions;
 
 /**
  * Service to allocate amount of heap memory specified in $a0, putting address into $v0.

@@ -1,10 +1,9 @@
 package edu.missouristate.mars.util;
 
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
 
 import java.awt.*;
-import java.util.*;
-import java.awt.Font;
+import java.util.Arrays;
 
 /**
  * Specialized Font class designed to be used by both the

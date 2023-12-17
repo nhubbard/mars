@@ -48,7 +48,7 @@ public class DelayedBranch {
      * If a branch is registered but not triggered, this registration will be ignored
      * (cannot happen if class usage protocol is followed).  If a branch is currently
      * registered and triggered, reset the state back to registered (but not triggered)
-     * in order to carry over the delay slot for another execution cycle.  This is the
+     * to carry over the delay slot for another execution cycle.  This is the
      * only public member of the class.
      *
      * @param targetAddress The address to branch to after executing the next instruction

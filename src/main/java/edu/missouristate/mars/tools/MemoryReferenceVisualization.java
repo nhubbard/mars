@@ -1,15 +1,19 @@
 package edu.missouristate.mars.tools;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
-
-import edu.missouristate.mars.tools.*;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Arrays;
+import java.util.Observable;
 
 /**
  * Memory reference visualization.  It can be run either as a stand-alone Java application having
@@ -389,25 +393,25 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         wordsPerUnitRow.add(new JLabel("Memory Words per Unit "), BorderLayout.WEST);
         wordsPerUnitRow.add(wordsPerUnitSelector, BorderLayout.EAST);
 
-        JPanel unitWidthInPixelsRow = getPanelWithBorderLayout();
-        unitWidthInPixelsRow.setBorder(emptyBorder);
-        unitWidthInPixelsRow.add(new JLabel("Unit Width in Pixels "), BorderLayout.WEST);
-        unitWidthInPixelsRow.add(visualizationUnitPixelWidthSelector, BorderLayout.EAST);
+        JPanel unitWidthInPixelRow = getPanelWithBorderLayout();
+        unitWidthInPixelRow.setBorder(emptyBorder);
+        unitWidthInPixelRow.add(new JLabel("Unit Width in Pixels "), BorderLayout.WEST);
+        unitWidthInPixelRow.add(visualizationUnitPixelWidthSelector, BorderLayout.EAST);
 
-        JPanel unitHeightInPixelsRow = getPanelWithBorderLayout();
-        unitHeightInPixelsRow.setBorder(emptyBorder);
-        unitHeightInPixelsRow.add(new JLabel("Unit Height in Pixels "), BorderLayout.WEST);
-        unitHeightInPixelsRow.add(visualizationUnitPixelHeightSelector, BorderLayout.EAST);
+        JPanel unitHeightInPixelRow = getPanelWithBorderLayout();
+        unitHeightInPixelRow.setBorder(emptyBorder);
+        unitHeightInPixelRow.add(new JLabel("Unit Height in Pixels "), BorderLayout.WEST);
+        unitHeightInPixelRow.add(visualizationUnitPixelHeightSelector, BorderLayout.EAST);
 
-        JPanel widthInPixelsRow = getPanelWithBorderLayout();
-        widthInPixelsRow.setBorder(emptyBorder);
-        widthInPixelsRow.add(new JLabel("Display Width in Pixels "), BorderLayout.WEST);
-        widthInPixelsRow.add(visualizationPixelWidthSelector, BorderLayout.EAST);
+        JPanel widthInPixelRow = getPanelWithBorderLayout();
+        widthInPixelRow.setBorder(emptyBorder);
+        widthInPixelRow.add(new JLabel("Display Width in Pixels "), BorderLayout.WEST);
+        widthInPixelRow.add(visualizationPixelWidthSelector, BorderLayout.EAST);
 
-        JPanel heightInPixelsRow = getPanelWithBorderLayout();
-        heightInPixelsRow.setBorder(emptyBorder);
-        heightInPixelsRow.add(new JLabel("Display Height in Pixels "), BorderLayout.WEST);
-        heightInPixelsRow.add(visualizationPixelHeightSelector, BorderLayout.EAST);
+        JPanel heightInPixelRow = getPanelWithBorderLayout();
+        heightInPixelRow.setBorder(emptyBorder);
+        heightInPixelRow.add(new JLabel("Display Height in Pixels "), BorderLayout.WEST);
+        heightInPixelRow.add(visualizationPixelHeightSelector, BorderLayout.EAST);
 
         JPanel baseAddressRow = getPanelWithBorderLayout();
         baseAddressRow.setBorder(emptyBorder);
@@ -419,10 +423,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         // Lay 'em out in the grid...
         organization.add(hashMarksRow);
         organization.add(wordsPerUnitRow);
-        organization.add(unitWidthInPixelsRow);
-        organization.add(unitHeightInPixelsRow);
-        organization.add(widthInPixelsRow);
-        organization.add(heightInPixelsRow);
+        organization.add(unitWidthInPixelRow);
+        organization.add(unitHeightInPixelRow);
+        organization.add(widthInPixelRow);
+        organization.add(heightInPixelRow);
         organization.add(baseAddressRow);
         organization.add(colorChooserControls.colorChooserRow);
         organization.add(colorChooserControls.countDisplayRow);

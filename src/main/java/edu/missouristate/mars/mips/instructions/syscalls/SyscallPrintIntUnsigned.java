@@ -1,8 +1,10 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Service to display integer stored in $a0 on the console as unsigned decimal.

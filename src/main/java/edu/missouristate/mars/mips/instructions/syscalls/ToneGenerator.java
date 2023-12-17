@@ -1,15 +1,12 @@
-
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 
 import javax.sound.midi.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-/////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////
 //
 //  The ToneGenerator and Tone classes were developed by Otterbein College
 //  student Tony Brock in July 2007.  They simulate MIDI output through the
@@ -25,9 +22,6 @@ import java.util.concurrent.Executors;
 //      pool executor, and
 //  (3) simplify the interface by removing all the unused versions
 //       that provided default values for various parameters
-/////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
 
 /*
  * Creates a Tone object and passes it to a thread to "play" it using MIDI.

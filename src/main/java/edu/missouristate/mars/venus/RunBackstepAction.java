@@ -3,7 +3,6 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -39,12 +38,12 @@ public class RunBackstepAction extends GuiAction {
         if (Globals.getSettings().getBackSteppingEnabled()) {
             boolean inDelaySlot = Globals.program.getBackStepper().inDelaySlot(); // Added 25 June 2007
             Memory.getInstance().addObserver(executePane.getDataSegmentWindow());
-            RegisterFile.addRegistersObserver(executePane.getRegistersWindow());
-            Coprocessor0.addRegistersObserver(executePane.getCoprocessor0Window());
-            Coprocessor1.addRegistersObserver(executePane.getCoprocessor1Window());
+            RegisterFile.addRegisterObserver(executePane.getRegistersWindow());
+            Coprocessor0.addRegisterObserver(executePane.getCoprocessor0Window());
+            Coprocessor1.addRegisterObserver(executePane.getCoprocessor1Window());
             Globals.program.getBackStepper().backStep();
             Memory.getInstance().deleteObserver(executePane.getDataSegmentWindow());
-            RegisterFile.deleteRegistersObserver(executePane.getRegistersWindow());
+            RegisterFile.deleteRegisterObserver(executePane.getRegistersWindow());
             executePane.getRegistersWindow().updateRegisters();
             executePane.getCoprocessor1Window().updateRegisters();
             executePane.getCoprocessor0Window().updateRegisters();
@@ -52,23 +51,6 @@ public class RunBackstepAction extends GuiAction {
             executePane.getTextSegmentWindow().highlightStepAtPC(inDelaySlot); // Argument aded 25 June 2007
             FileStatus.set(FileStatus.RUNNABLE);
             // if we've backed all the way, disable the button
-            //    if (Globals.program.getBackStepper().empty()) {
-            //     ((AbstractAction)((AbstractButton)e.getSource()).getAction()).setEnabled(false);
-            //}
-         /*
-         if (pe !=null) {
-            RunGoAction.resetMaxSteps();
-            mainUI.getMessagesPane().postMarsMessage(
-                                pe.errors().generateErrorReport());
-            mainUI.getMessagesPane().postMarsMessage(
-                                "\n"+name+": execution terminated with errors.\n\n");
-            mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
-            FileStatus.set(FileStatus.TERMINATED); // should be redundant.
-         					executePane.getTextSegmentWindow().setCodeHighlighting(true);
-         	executePane.getTextSegmentWindow().unhighlightAllSteps();
-            executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter()-4);
-         }
-         */
             mainUI.setReset(false);
         }
     }

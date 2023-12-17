@@ -3,7 +3,6 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 import edu.missouristate.mars.util.Binary;
 
 import java.awt.*;
-import java.util.StringTokenizer;
 
 /**
  * A simple text style class. It can specify the color, italic flag,

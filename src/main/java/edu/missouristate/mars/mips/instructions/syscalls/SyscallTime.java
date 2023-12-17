@@ -1,8 +1,9 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.Binary;
 
 /**
  * Service to read a character from input console into $a0.

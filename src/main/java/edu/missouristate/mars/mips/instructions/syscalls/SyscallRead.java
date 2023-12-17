@@ -1,9 +1,11 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Service to read from file descriptor given in $a0.  $a1 specifies buffer
@@ -41,14 +43,6 @@ public class SyscallRead extends AbstractSyscall {
         // user program to check the syscall's return value.  MARS should not
         // re-emptively terminate MIPS execution because of it.  Thanks to
         // UCLA student Duy Truong for pointing this out.  DPS 28-July-2009
-         /*
-         if (retLength < 0) // some error in opening file
-         {
-            throw new ProcessingException(statement,
-                                    SystemIO.getFileErrorMessage()+" (syscall 14)",
-                                    Exceptions.SYSCALL_EXCEPTION);
-         }
-			*/
         // copy bytes from returned buffer into MARS memory
         try {
             while (index < retLength) {

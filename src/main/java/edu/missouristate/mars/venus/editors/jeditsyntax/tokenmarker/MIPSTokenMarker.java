@@ -1,15 +1,22 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.assembler.Directives;
+import edu.missouristate.mars.assembler.TokenTypes;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
-import edu.missouristate.mars.venus.editors.jeditsyntax.*;
-import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.mips.instructions.BasicInstruction;
+import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.venus.editors.jeditsyntax.KeywordMap;
+import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
 
 import javax.swing.text.Segment;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.TreeSet;
 
 /**
  * MIPS token marker.
@@ -215,7 +222,7 @@ public class MIPSTokenMarker extends TokenMarker {
                 matches = new ArrayList();
                 for (int i = 0; i < instrMatches.size(); i++) {
                     Instruction inst = (Instruction) instrMatches.get(i);
-                    if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
+                    if (Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) || inst instanceof BasicInstruction) {
                         matches.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
                         realMatches++;
                     }
@@ -397,7 +404,7 @@ public class MIPSTokenMarker extends TokenMarker {
         TreeSet mnemonics = new TreeSet();
         for (int i = 0; i < matches.size(); i++) {
             Instruction inst = (Instruction) matches.get(i);
-            if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
+            if (Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) || inst instanceof BasicInstruction) {
                 if (exact) {
                     results.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), exact));
                 } else {

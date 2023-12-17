@@ -177,7 +177,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         // Select the memory address cell by generating a fake Mouse Pressed event within its
         // extent and explicitly invoking the table's mouse listener.
         MouseEvent fakeMouseEvent = new MouseEvent(dataTable, MouseEvent.MOUSE_PRESSED,
-                new Date().getTime(), MouseEvent.BUTTON1_MASK,
+                new Date().getTime(), MouseEvent.BUTTON1_DOWN_MASK,
                 (int) addressCell.getX() + 1,
                 (int) addressCell.getY() + 1, 1, false);
         MouseListener[] mouseListeners = dataTable.getMouseListeners();
@@ -236,7 +236,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         ((CustomComboBoxModel) baseAddressSelector.getModel()).forceComboBoxUpdate(desiredComboBoxIndex);
         baseAddressButtons[desiredComboBoxIndex].getActionListeners()[0].actionPerformed(null);
         // STEP 3:  Display memory chunk containing this address, which may be
-        // different than the one just displayed.
+        // different from the one just displayed.
         int baseAddress = displayBaseAddressArray[desiredComboBoxIndex];
         if (baseAddress == -1) {
             if (desiredComboBoxIndex == GLOBAL_POINTER_ADDRESS_INDEX) {
@@ -252,7 +252,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         int byteOffset = address - baseAddress;
         int chunkOffset = byteOffset / MEMORY_CHUNK_SIZE;
         int byteOffsetIntoChunk = byteOffset % MEMORY_CHUNK_SIZE;
-        // Subtract 1 from chunkOffset because we're gonna call the "next" action
+        // Subtract 1 from chunkOffset because we're going to call the "next" action
         // listener to get the correct chunk loaded and displayed, and the first
         // thing it does is increment firstAddress by MEMORY_CHUNK_SIZE.  Here
         // we do an offsetting decrement in advance because we don't want the
@@ -288,12 +288,12 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     private static final int STACK_POINTER_BASE_ADDRESS_INDEX = 4; //5;
     private static final int KERNEL_DATA_BASE_ADDRESS_INDEX = 6;
     private static final int MMIO_BASE_ADDRESS_INDEX = 7;
-    // Must agree with above in number and order...
+    // Must agree with previous code in name and order...
     private int[] displayBaseAddressArray = {Memory.externBaseAddress,
             Memory.dataBaseAddress, Memory.heapBaseAddress, -1 /*Memory.globalPointer*/,
             -1 /*Memory.stackPointer*/, Memory.textBaseAddress, Memory.kernelDataBaseAddress,
             Memory.memoryMapBaseAddress,};
-    // Must agree with above in number and order...
+    // Must agree with previous code in number and order...
     String[] descriptions = {" (.extern)", " (.data)", " (heap)", "current $gp",
             "current $sp", " (.text)", " (.kdata)", " (MMIO)"};
 
@@ -516,7 +516,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     }
 
     /**
-     * Update data display to show this value (I'm not sure it is being called).
+     * Update data display to show this value (I'm not sure if it is being called).
      */
 
     public void updateCell(int address, int value) {
@@ -979,7 +979,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
             cell.setHorizontalAlignment(SwingConstants.RIGHT);
             int rowFirstAddress = Binary.stringToInt(table.getValueAt(row, ADDRESS_COLUMN).toString());
-            if (settings.getDataSegmentHighlighting() && addressHighlighting && rowFirstAddress == addressRowFirstAddress && column == addressColumn) {
+            if (settings.getBooleanSetting(Settings.DATA_SEGMENT_HIGHLIGHTING) && addressHighlighting && rowFirstAddress == addressRowFirstAddress && column == addressColumn) {
                 cell.setBackground(settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_BACKGROUND));
                 cell.setForeground(settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_FOREGROUND));
                 cell.setFont(settings.getFontByPosition(Settings.DATASEGMENT_HIGHLIGHT_FONT));
