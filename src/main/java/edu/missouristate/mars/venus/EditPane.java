@@ -130,21 +130,19 @@ public class EditPane extends JPanel implements Observer {
 
         // Listener fires when "Show Line Numbers" check box is clicked.
         showLineNumbers.addItemListener(
-                new ItemListener() {
-                    public void itemStateChanged(ItemEvent e) {
-                        if (showLineNumbers.isSelected()) {
-                            lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
-                            lineNumbers.setVisible(true);
-                        } else {
-                            lineNumbers.setText("");
-                            lineNumbers.setVisible(false);
-                        }
-                        sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
-                        Globals.getSettings().setBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED, showLineNumbers.isSelected());
-                        // needed because caret disappears when checkbox clicked
-                        sourceCode.setCaretVisible(true);
-                        sourceCode.requestFocusInWindow();
+                e -> {
+                    if (showLineNumbers.isSelected()) {
+                        lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
+                        lineNumbers.setVisible(true);
+                    } else {
+                        lineNumbers.setText("");
+                        lineNumbers.setVisible(false);
                     }
+                    sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
+                    Globals.getSettings().setBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED, showLineNumbers.isSelected());
+                    // needed because caret disappears when checkbox clicked
+                    sourceCode.setCaretVisible(true);
+                    sourceCode.requestFocusInWindow();
                 });
 
         JPanel editInfo = new JPanel(new BorderLayout());
@@ -189,7 +187,7 @@ public class EditPane extends JPanel implements Observer {
     private static final String spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 
     public String getLineNumbersList(javax.swing.text.Document doc) {
-        StringBuffer lineNumberList = new StringBuffer("<html>");
+        StringBuilder lineNumberList = new StringBuilder("<html>");
         int lineCount = doc.getDefaultRootElement().getElementCount(); //this.getSourceLineCount();
         int digits = Integer.toString(lineCount).length();
         for (int i = 1; i <= lineCount; i++) {

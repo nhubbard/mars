@@ -328,10 +328,10 @@ public class Assembler {
         // Generates machine code statements from the list of basic assembler statements
         // and writes the statement to memory.
         ProgramStatement statement;
-        for (int i = 0; i < machineList.size(); i++) {
+        for (ProgramStatement programStatement : machineList) {
             if (errors.isErrorLimitExceeded())
                 break;
-            statement = (ProgramStatement) machineList.get(i);
+            statement = (ProgramStatement) programStatement;
             statement.buildMachineStatementFromBasicStatement(errors);
             if (Globals.debug)
                 System.out.println(statement);
@@ -356,7 +356,7 @@ public class Assembler {
         // Such occurances will be flagged as errors.
         // Yes, I would not have to sort here if I used SortedSet rather than ArrayList
         // but in case of duplicate I like having both statements handy for error message.
-        Collections.sort(machineList, new ProgramStatementComparator());
+        machineList.sort(new ProgramStatementComparator());
         catchDuplicateAddresses(machineList, errors);
         if (errors.hasErrors() || errors.hasWarnings() && warningsAreErrors) {
             throw new ProcessingException(errors);
@@ -401,7 +401,7 @@ public class Assembler {
     private ArrayList<ProgramStatement> parseLine(TokenList tokenList, String source,
                                                   int sourceLineNumber, boolean extendedAssemblerEnabled) {
 
-        ArrayList<ProgramStatement> ret = new ArrayList<ProgramStatement>();
+        ArrayList<ProgramStatement> ret = new ArrayList<>();
 
         ProgramStatement programStatement;
         TokenList tokens = this.stripComment(tokenList);
@@ -1387,8 +1387,8 @@ public class Assembler {
         // undefined labels.
         private void generateErrorMessages(ErrorList errors) {
             DataSegmentForwardReference entry;
-            for (int i = 0; i < forwardReferenceList.size(); i++) {
-                entry = (DataSegmentForwardReference) forwardReferenceList.get(i);
+            for (DataSegmentForwardReference dataSegmentForwardReference : forwardReferenceList) {
+                entry = (DataSegmentForwardReference) dataSegmentForwardReference;
                 errors.add(new ErrorMessage(entry.token.getSourceMIPSProgram(), entry.token
                         .getSourceLine(), entry.token.getStartPos(), "Symbol \""
                         + entry.token.getValue() + "\" not found in symbol table."));

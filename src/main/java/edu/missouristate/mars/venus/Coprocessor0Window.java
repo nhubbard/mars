@@ -114,8 +114,8 @@ public class Coprocessor0Window extends JPanel implements Observer {
      */
     public void updateRegisters(int base) {
         registers = Coprocessor0.getRegisters();
-        for (int i = 0; i < registers.length; i++) {
-            this.updateRegisterValue(registers[i].getNumber(), registers[i].getValue(), base);
+        for (Register register : registers) {
+            this.updateRegisterValue(register.getNumber(), register.getValue(), base);
         }
     }
 
@@ -157,9 +157,8 @@ public class Coprocessor0Window extends JPanel implements Observer {
                 // Simulated MIPS execution stops.  Stop responding.
                 Coprocessor0.deleteRegisterObserver(this);
             }
-        } else if (obj instanceof RegisterAccessNotice) {
+        } else if (obj instanceof RegisterAccessNotice access) {
             // NOTE: each register is a separate Observable
-            RegisterAccessNotice access = (RegisterAccessNotice) obj;
             if (access.getAccessType() == AccessNotice.WRITE) {
                 // For now, use highlighting technique used by Label Window feature to highlight
                 // memory cell corresponding to a selected label.  The highlighting is not

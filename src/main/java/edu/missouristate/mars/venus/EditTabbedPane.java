@@ -41,20 +41,18 @@ public class EditTabbedPane extends JTabbedPane {
         this.mainPane = mainPane;
         this.editor.setEditTabbedPane(this);
         this.addChangeListener(
-                new ChangeListener() {
-                    public void stateChanged(ChangeEvent e) {
-                        EditPane editPane = (EditPane) getSelectedComponent();
-                        if (editPane != null) {
-                            // New IF statement to permit free traversal of edit panes w/o invalidating
-                            // assembly if assemble-all is selected.  DPS 9-Aug-2011
-                            if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
-                                EditTabbedPane.this.updateTitles(editPane);
-                            } else {
-                                EditTabbedPane.this.updateTitlesAndMenuState(editPane);
-                                EditTabbedPane.this.mainPane.getExecutePane().clearPane();
-                            }
-                            editPane.tellEditingComponentToRequestFocusInWindow();
+                e -> {
+                    EditPane editPane = (EditPane) getSelectedComponent();
+                    if (editPane != null) {
+                        // New IF statement to permit free traversal of edit panes w/o invalidating
+                        // assembly if assemble-all is selected.  DPS 9-Aug-2011
+                        if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+                            EditTabbedPane.this.updateTitles(editPane);
+                        } else {
+                            EditTabbedPane.this.updateTitlesAndMenuState(editPane);
+                            EditTabbedPane.this.mainPane.getExecutePane().clearPane();
                         }
+                        editPane.tellEditingComponentToRequestFocusInWindow();
                     }
                 });
     }
@@ -473,16 +471,13 @@ public class EditTabbedPane extends JTabbedPane {
     public boolean editsSavedOrAbandoned() {
         EditPane currentPane = getCurrentEditTab();
         if (currentPane != null && currentPane.hasUnsavedEdits()) {
-            switch (confirm(currentPane.getFilename())) {
-                case JOptionPane.YES_OPTION:
-                    return saveCurrentFile();
-                case JOptionPane.NO_OPTION:
-                    return true;
-                case JOptionPane.CANCEL_OPTION:
-                    return false;
-                default: // should never occur
-                    return false;
-            }
+            return switch (confirm(currentPane.getFilename())) {
+                case JOptionPane.YES_OPTION -> saveCurrentFile();
+                case JOptionPane.NO_OPTION -> true;
+                case JOptionPane.CANCEL_OPTION -> false;
+                default -> // should never occur
+                        false;
+            };
         } else {
             return true;
         }
@@ -590,7 +585,7 @@ public class EditTabbedPane extends JTabbedPane {
                 // StringBuffer is preallocated to full filelength to eliminate dynamic
                 // expansion as lines are added to it. Previously, each line was appended
                 // to the Edit pane as it was read, way slower due to dynamic string alloc.
-                StringBuffer fileContents = new StringBuffer((int) theFile.length());
+                StringBuilder fileContents = new StringBuilder((int) theFile.length());
                 int lineNumber = 1;
                 String line = Globals.program.getSourceLine(lineNumber++);
                 while (line != null) {
@@ -661,8 +656,8 @@ public class EditTabbedPane extends JTabbedPane {
                 // clear out the list and populate from our own ArrayList.
                 // Last one added becomes the default.
                 fileChooser.resetChoosableFileFilters();
-                for (int i = 0; i < fileFilterList.size(); i++) {
-                    fileChooser.addChoosableFileFilter((FileFilter) fileFilterList.get(i));
+                for (FileFilter fileFilter : fileFilterList) {
+                    fileChooser.addChoosableFileFilter((FileFilter) fileFilter);
                 }
                 // Restore listener.
                 if (activeListener) {

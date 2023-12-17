@@ -81,27 +81,26 @@ public class MipsXray extends AbstractMarsToolAndApplication {
      */
     protected JComponent getHelpComponent() {
         final String helpContent =
-                "This plugin is used to visualizate the behavior of mips processor using the default datapath. \n" +
-                        "It reads the source code instruction and generates an animation representing the inputs and \n" +
-                        "outputs of functional blocks and the interconnection between them.  The basic signals \n" +
-                        "represented are, control signals, opcode bits and data of functional blocks.\n" +
-                        "\n" +
-                        "Besides the datapath representation, information for each instruction is displayed below\n" +
-                        "the datapath. That display includes opcode value, with the correspondent colors used to\n" +
-                        "represent the signals in datapath, mnemonic of the instruction processed at the moment, registers\n" +
-                        "used in the instruction and a label that indicates the color code used to represent control signals\n" +
-                        "\n" +
-                        "To see the datapath of register bank and control units click inside the functional unit.\n\n" +
-                        "Version 2.0\n" +
-                        "Developed by M�rcio Roberto, Guilherme Sales, Fabr�cio Vivas, Fl�vio Cardeal and F�bio L�cio\n" +
-                        "Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.\n";
+                """
+                        This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
+                        It reads the source code instruction and generates an animation representing the inputs and\s
+                        outputs of functional blocks and the interconnection between them.  The basic signals\s
+                        represented are, control signals, opcode bits and data of functional blocks.
+
+                        Besides the datapath representation, information for each instruction is displayed below
+                        the datapath. That display includes opcode value, with the correspondent colors used to
+                        represent the signals in datapath, mnemonic of the instruction processed at the moment, registers
+                        used in the instruction and a label that indicates the color code used to represent control signals
+
+                        To see the datapath of register bank and control units click inside the functional unit.
+
+                        Version 2.0
+                        Developed by M�rcio Roberto, Guilherme Sales, Fabr�cio Vivas, Fl�vio Cardeal and F�bio L�cio
+                        Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.
+                        """;
         JButton help = new JButton("Help");
         help.addActionListener(
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        JOptionPane.showMessageDialog(theWindow, helpContent);
-                    }
-                });
+                e -> JOptionPane.showMessageDialog(theWindow, helpContent));
         return help;
     }
 
@@ -256,7 +255,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     //set action in the menu bar.
     private void createActionObjects() {
         Toolkit tk = Toolkit.getDefaultToolkit();
-        Class cs = this.getClass();
+        Class<? extends MipsXray> cs = this.getClass();
         try {
             runAssembleAction = new RunAssembleAction("Assemble",
                     new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "Assemble22.png"))),
@@ -327,9 +326,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     direction = movingDownside;
             }
             String[] list = listTargetVertex.split("#");
-            targetVertex = new ArrayList<Integer>();
-            for (int i = 0; i < list.length; i++) {
-                targetVertex.add(Integer.parseInt(list[i]));
+            targetVertex = new ArrayList<>();
+            for (String s : list) {
+                targetVertex.add(Integer.parseInt(s));
                 //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
             }
             String[] listColor = listOfColors.split("#");
@@ -510,15 +509,15 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             // load and initialise the images
             initImages();
 
-            vertexList = new ArrayList<Vertex>();
+            vertexList = new ArrayList<>();
             counter = 0;
             justStarted = true;
             instructionCode = instructionBinary;
 
             //declaration of labels definition.
-            opcodeEquivalenceTable = new HashMap<String, String>();
-            functionEquivalenceTable = new HashMap<String, String>();
-            registerEquivalenceTable = new HashMap<String, String>();
+            opcodeEquivalenceTable = new HashMap<>();
+            functionEquivalenceTable = new HashMap<>();
+            registerEquivalenceTable = new HashMap<>();
 
             countRegLabel = 400;
             countALULabel = 380;
@@ -615,22 +614,21 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     }
                 }
                 //loading matrix of control of vertex.
-                outputGraph = new Vector<Vector<Vertex>>();
-                vertexTraversed = new ArrayList<Vertex>();
+                outputGraph = new Vector<>();
+                vertexTraversed = new ArrayList<>();
                 int size = vertexList.size();
                 Vertex vertex;
                 ArrayList<Integer> targetList;
-                for (int i = 0; i < vertexList.size(); i++) {
-                    vertex = vertexList.get(i);
+                for (Vertex value : vertexList) {
+                    vertex = value;
                     targetList = vertex.getTargetVertex();
-                    Vector<Vertex> vertexOfTargets = new Vector<Vertex>();
-                    for (int k = 0; k < targetList.size(); k++) {
-                        vertexOfTargets.add(vertexList.get(targetList.get(k)));
+                    Vector<Vertex> vertexOfTargets = new Vector<>();
+                    for (Integer integer : targetList) {
+                        vertexOfTargets.add(vertexList.get(integer));
                     }
                     outputGraph.add(vertexOfTargets);
                 }
-                for (int i = 0; i < outputGraph.size(); i++) {
-                    Vector<Vertex> vert = outputGraph.get(i);
+                for (Vector<Vertex> vert : outputGraph) {
                 }
 
                 vertexList.get(0).setActive(true);
@@ -1326,8 +1324,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
                                 Boolean hasThisVertex = false;
-                                for (int m = 0; m < vertexTraversed.size(); m++) {
-                                    if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex())
+                                for (Vertex vertex : vertexTraversed) {
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
                                         hasThisVertex = true;
                                 }
                                 if (hasThisVertex == false) {
@@ -1344,8 +1342,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
                                 Boolean hasThisVertex = false;
-                                for (int m = 0; m < vertexTraversed.size(); m++) {
-                                    if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex())
+                                for (Vertex vertex : vertexTraversed) {
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
                                         hasThisVertex = true;
                                 }
                                 if (hasThisVertex == false) {
@@ -1369,8 +1367,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
                                 Boolean hasThisVertex = false;
-                                for (int m = 0; m < vertexTraversed.size(); m++) {
-                                    if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex())
+                                for (Vertex vertex : vertexTraversed) {
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
                                         hasThisVertex = true;
                                 }
                                 if (hasThisVertex == false) {
@@ -1389,8 +1387,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
                                 Boolean hasThisVertex = false;
-                                for (int m = 0; m < vertexTraversed.size(); m++) {
-                                    if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex())
+                                for (Vertex vertex : vertexTraversed) {
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
                                         hasThisVertex = true;
                                 }
                                 if (hasThisVertex == false) {

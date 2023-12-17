@@ -124,8 +124,8 @@ public class RegistersWindow extends JPanel implements Observer {
      */
     public void updateRegisters(int base) {
         registers = RegisterFile.getRegisters();
-        for (int i = 0; i < registers.length; i++) {
-            updateRegisterValue(registers[i].getNumber(), registers[i].getValue(), base);
+        for (Register register : registers) {
+            updateRegisterValue(register.getNumber(), register.getValue(), base);
         }
         updateRegisterUnsignedValue(32, RegisterFile.getProgramCounter(), base);
         updateRegisterValue(33, RegisterFile.getValue(33), base);
@@ -173,9 +173,8 @@ public class RegistersWindow extends JPanel implements Observer {
                 // Simulated MIPS execution stops.  Stop responding.
                 RegisterFile.deleteRegisterObserver(this);
             }
-        } else if (obj instanceof RegisterAccessNotice) {
+        } else if (obj instanceof RegisterAccessNotice access) {
             // NOTE: each register is a separate Observable
-            RegisterAccessNotice access = (RegisterAccessNotice) obj;
             if (access.getAccessType() == AccessNotice.WRITE) {
                 // Uses the same highlighting technique as for Text Segment -- see
                 // AddressCellRenderer class in DataSegmentWindow.java.

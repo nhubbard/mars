@@ -83,9 +83,9 @@ public class SymbolTable {
      * @return The memory address of the label given, or NOT_FOUND if not found in symbol table.
      **/
     public int getAddress(String s) {
-        for (int i = 0; i < table.size(); i++) {
-            if (((Symbol) (table.get(i))).getName().equals(s)) {
-                return ((Symbol) table.get(i)).getAddress();
+        for (Object o : table) {
+            if (((Symbol) o).getName().equals(s)) {
+                return ((Symbol) o).getAddress();
             }
         }
         return NOT_FOUND;
@@ -113,9 +113,9 @@ public class SymbolTable {
      **/
 
     public Symbol getSymbol(String s) {
-        for (int i = 0; i < table.size(); i++) {
-            if (((Symbol) (table.get(i))).getName().equals(s)) {
-                return (Symbol) table.get(i);
+        for (Object o : table) {
+            if (((Symbol) o).getName().equals(s)) {
+                return (Symbol) o;
             }
         }
         return null;
@@ -135,9 +135,9 @@ public class SymbolTable {
         } catch (NumberFormatException e) {
             return null;
         }
-        for (int i = 0; i < table.size(); i++) {
-            if (((Symbol) (table.get(i))).getAddress() == address) {
-                return (Symbol) table.get(i);
+        for (Object o : table) {
+            if (((Symbol) o).getAddress() == address) {
+                return (Symbol) o;
             }
         }
         return null;
@@ -164,9 +164,9 @@ public class SymbolTable {
 
     public ArrayList getDataSymbols() {
         ArrayList list = new ArrayList();
-        for (int i = 0; i < table.size(); i++) {
-            if (((Symbol) table.get(i)).getType()) {
-                list.add(table.get(i));
+        for (Object o : table) {
+            if (((Symbol) o).getType()) {
+                list.add(o);
             }
         }
         return list;
@@ -181,9 +181,9 @@ public class SymbolTable {
 
     public ArrayList getTextSymbols() {
         ArrayList list = new ArrayList();
-        for (int i = 0; i < table.size(); i++) {
-            if (!((Symbol) table.get(i)).getType()) {
-                list.add(table.get(i));
+        for (Object o : table) {
+            if (!((Symbol) o).getType()) {
+                list.add(o);
             }
         }
         return list;
@@ -197,8 +197,8 @@ public class SymbolTable {
 
     public ArrayList getAllSymbols() {
         ArrayList list = new ArrayList();
-        for (int i = 0; i < table.size(); i++) {
-            list.add(table.get(i));
+        for (Object o : table) {
+            list.add(o);
         }
         return list;
     }

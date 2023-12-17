@@ -114,8 +114,8 @@ public class TokenList implements Cloneable {
 
     public String toString() {
         String stringified = "";
-        for (int i = 0; i < tokenList.size(); i++) {
-            stringified += tokenList.get(i).toString() + " ";
+        for (Object o : tokenList) {
+            stringified += o.toString() + " ";
         }
         return stringified;
     }
@@ -130,8 +130,8 @@ public class TokenList implements Cloneable {
 
     public String toTypeString() {
         String stringified = "";
-        for (int i = 0; i < tokenList.size(); i++) {
-            stringified += ((Token) tokenList.get(i)).getType().toString() + " ";
+        for (Object o : tokenList) {
+            stringified += ((Token) o).getType().toString() + " ";
         }
         return stringified;
     }

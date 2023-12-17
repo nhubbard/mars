@@ -104,9 +104,9 @@ public class RunAssembleAction extends GuiAction {
                 mainUI.messagesPane.postMarsMessage(
                         name + ": operation completed with errors.\n\n");
                 // Select editor line containing first error, and corresponding error message.
-                ArrayList errorMessages = pe.errors().getMessages();
-                for (int i = 0; i < errorMessages.size(); i++) {
-                    ErrorMessage em = (ErrorMessage) errorMessages.get(i);
+                ArrayList<ErrorMessage> errorMessages = pe.errors().getMessages();
+                for (Object errorMessage : errorMessages) {
+                    ErrorMessage em = (ErrorMessage) errorMessage;
                     // No line or position may mean File Not Found (e.g. exception file). Don't try to open. DPS 3-Oct-2010
                     if (em.getLine() == 0 && em.getPosition() == 0) {
                         continue;

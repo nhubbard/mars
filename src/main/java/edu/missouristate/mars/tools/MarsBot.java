@@ -50,29 +50,20 @@ public class MarsBot implements Observer, MarsTool {
             JPanel buttonPanel = new JPanel();
             JButton clearButton = new JButton("Clear");
             clearButton.addActionListener(
-                    new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            graphicArea.clear();
-                            MarsBotLeaveTrack = false; // true --> leave track when moving, false --> do not ...
-                            MarsBotXPosition = 0; // X pixel position of MarsBot
-                            MarsBotYPosition = 0; // Y pixel position of MarsBot
-                            MarsBotMoving = false; // true --> MarsBot is moving, false --> MarsBot not moving
+                    e -> {
+                        graphicArea.clear();
+                        MarsBotLeaveTrack = false; // true --> leave track when moving, false --> do not ...
+                        MarsBotXPosition = 0; // X pixel position of MarsBot
+                        MarsBotYPosition = 0; // Y pixel position of MarsBot
+                        MarsBotMoving = false; // true --> MarsBot is moving, false --> MarsBot not moving
 
-                            trackIndex = 0;
-
-                        }
+                        trackIndex = 0;
 
                     });
             buttonPanel.add(clearButton);
             JButton closeButton = new JButton("Close");
             closeButton.addActionListener(
-                    new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            frame.setVisible(false);
-
-                        }
-
-                    });
+                    e -> frame.setVisible(false));
             buttonPanel.add(closeButton);
             panel.add(graphicArea, BorderLayout.CENTER);
             panel.add(buttonPanel, BorderLayout.SOUTH);

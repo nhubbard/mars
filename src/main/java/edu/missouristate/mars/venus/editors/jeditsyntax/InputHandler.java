@@ -316,9 +316,8 @@ public abstract class InputHandler extends KeyAdapter {
     public static JEditTextArea getTextArea(EventObject evt) {
         if (evt != null) {
             Object o = evt.getSource();
-            if (o instanceof Component) {
+            if (o instanceof Component c) {
                 // find the parent text area
-                Component c = (Component) o;
                 for (; ; ) {
                     if (c instanceof JEditTextArea)
                         return (JEditTextArea) c;
@@ -949,9 +948,8 @@ public abstract class InputHandler extends KeyAdapter {
             int repeatCount = textArea.getInputHandler().getRepeatCount();
 
             if (textArea.isEditable()) {
-                StringBuffer buf = new StringBuffer();
-                for (int i = 0; i < repeatCount; i++)
-                    buf.append(str);
+                StringBuilder buf = new StringBuilder();
+                buf.append(String.valueOf(str).repeat(Math.max(0, repeatCount)));
                 textArea.overwriteSetSelectedText(buf.toString());
             } else {
                 textArea.getToolkit().beep();

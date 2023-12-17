@@ -678,9 +678,9 @@ public class ProgramStatement {
             int addressBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
             int valueBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
 
-            StringBuffer result = new StringBuffer();
-            for (int i = 0; i < list.size(); i++) {
-                ListElement e = (ListElement) list.get(i);
+            StringBuilder result = new StringBuilder();
+            for (Object o : list) {
+                ListElement e = (ListElement) o;
                 switch (e.type) {
                     case 0:
                         result.append(e.sValue);

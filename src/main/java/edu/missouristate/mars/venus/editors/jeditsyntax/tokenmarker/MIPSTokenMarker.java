@@ -220,8 +220,8 @@ public class MIPSTokenMarker extends TokenMarker {
             if (instrMatches.size() > 0) {
                 int realMatches = 0;
                 matches = new ArrayList();
-                for (int i = 0; i < instrMatches.size(); i++) {
-                    Instruction inst = (Instruction) instrMatches.get(i);
+                for (Object instrMatch : instrMatches) {
+                    Instruction inst = (Instruction) instrMatch;
                     if (Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) || inst instanceof BasicInstruction) {
                         matches.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
                         realMatches++;
@@ -376,8 +376,8 @@ public class MIPSTokenMarker extends TokenMarker {
         }
         if (directiveMatches != null) {
             matches = new ArrayList();
-            for (int i = 0; i < directiveMatches.size(); i++) {
-                Directives direct = (Directives) directiveMatches.get(i);
+            for (Object directiveMatch : directiveMatches) {
+                Directives direct = (Directives) directiveMatch;
                 matches.add(new PopupHelpItem(tokenText, direct.getName(), direct.getDescription(), exact));
             }
         }
@@ -402,8 +402,8 @@ public class MIPSTokenMarker extends TokenMarker {
         int realMatches = 0;
         HashMap insts = new HashMap();
         TreeSet mnemonics = new TreeSet();
-        for (int i = 0; i < matches.size(); i++) {
-            Instruction inst = (Instruction) matches.get(i);
+        for (Object match : matches) {
+            Instruction inst = (Instruction) match;
             if (Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) || inst instanceof BasicInstruction) {
                 if (exact) {
                     results.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), exact));
@@ -425,9 +425,8 @@ public class MIPSTokenMarker extends TokenMarker {
             }
         } else {
             if (!exact) {
-                Iterator mnemonicList = mnemonics.iterator();
-                while (mnemonicList.hasNext()) {
-                    String mnemonic = (String) mnemonicList.next();
+                for (Object o : mnemonics) {
+                    String mnemonic = (String) o;
                     String info = (String) insts.get(mnemonic);
                     results.add(new PopupHelpItem(tokenText, mnemonic, info, exact));
                 }
@@ -450,13 +449,13 @@ public class MIPSTokenMarker extends TokenMarker {
             cKeywords = new KeywordMap(false);
             // add Instruction mnemonics
             ArrayList instructionSet = Globals.instructionSet.getInstructionList();
-            for (int i = 0; i < instructionSet.size(); i++) {
-                cKeywords.add(((Instruction) instructionSet.get(i)).getName(), Token.KEYWORD1);
+            for (Object object : instructionSet) {
+                cKeywords.add(((Instruction) object).getName(), Token.KEYWORD1);
             }
             // add assembler directives
             ArrayList directiveSet = Directives.getDirectiveList();
-            for (int i = 0; i < directiveSet.size(); i++) {
-                cKeywords.add(((Directives) directiveSet.get(i)).getName(), Token.KEYWORD2);
+            for (Object o : directiveSet) {
+                cKeywords.add(((Directives) o).getName(), Token.KEYWORD2);
             }
             // add integer register file
             Register[] registerFile = RegisterFile.getRegisters();
@@ -466,8 +465,8 @@ public class MIPSTokenMarker extends TokenMarker {
             }
             // add Coprocessor 1 (floating point) register file
             Register[] coprocessor1RegisterFile = Coprocessor1.getRegisters();
-            for (int i = 0; i < coprocessor1RegisterFile.length; i++) {
-                cKeywords.add(coprocessor1RegisterFile[i].getName(), Token.KEYWORD3);
+            for (Register register : coprocessor1RegisterFile) {
+                cKeywords.add(register.getName(), Token.KEYWORD3);
             }
             // Note: Coprocessor 0 registers referenced only by number: $8, $12, $13, $14. These are already in the map
 

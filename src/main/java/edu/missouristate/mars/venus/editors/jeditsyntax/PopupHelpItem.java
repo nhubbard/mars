@@ -109,8 +109,7 @@ public class PopupHelpItem {
     public static int maxExampleLength(java.util.ArrayList matches) {
         int length = 0;
         if (matches != null) {
-            for (int i = 0; i < matches.size(); i++) {
-                Object match = matches.get(i);
+            for (Object match : matches) {
                 if (match instanceof PopupHelpItem) {
                     length = Math.max(length, ((PopupHelpItem) match).getExampleLength());
                 }

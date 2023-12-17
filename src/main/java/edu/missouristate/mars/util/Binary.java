@@ -352,7 +352,7 @@ public class Binary {
         // valid hex two's complement values as exceptions.  We'll catch those and
         // do our own validation.
         try {
-            result = Integer.decode(s).intValue();
+            result = Integer.decode(s);
         } catch (NumberFormatException nfe) {
             // Multistep process toward validation of hex two's complement. 3-step test:
             //   (1) exactly 10 characters long,
@@ -418,7 +418,7 @@ public class Binary {
         // valid hex two's complement values as exceptions.  We'll catch those and
         // do our own validation.
         try {
-            result = Long.decode(s).longValue();
+            result = Long.decode(s);
         } catch (NumberFormatException nfe) {
             // Multistep process toward validation of hex two's complement. 3-step test:
             //   (1) exactly 18 characters long,
@@ -635,9 +635,7 @@ public class Binary {
                     (v.length() > 1))  // Has to have more digits than the leading zero
                 return true;  // Form is 0.... and the entire string is parseable as a number
 
-        } catch (StringIndexOutOfBoundsException e) {
-            return false;
-        } catch (NumberFormatException e) {
+        } catch (StringIndexOutOfBoundsException | NumberFormatException e) {
             return false;
         }
 

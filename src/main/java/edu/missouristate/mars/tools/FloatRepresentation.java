@@ -327,25 +327,23 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         JComboBox<String> registerSelect = new JComboBox<>(registerList);
         registerSelect.setSelectedIndex(0);  // No register attached
         registerSelect.setToolTipText("Attach to selected FP register");
-        registerSelect.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                JComboBox<String> cb = (JComboBox<String>) e.getSource();
-                int selectedIndex = cb.getSelectedIndex();
+        registerSelect.addActionListener(e -> {
+            JComboBox<String> cb = (JComboBox<String>) e.getSource();
+            int selectedIndex = cb.getSelectedIndex();
+            if (isObserving()) {
+                deleteAsObserver();
+            }
+            if (selectedIndex == 0) {
+                attachedRegister = null;
+                updateDisplays(new FlavorsOfFloat());
+                instructions.setText("The program is not attached to any MIPS floating point registers.");
+            } else {
+                attachedRegister = fpRegisters[selectedIndex - 1];
+                updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
                 if (isObserving()) {
-                    deleteAsObserver();
+                    addAsObserver();
                 }
-                if (selectedIndex == 0) {
-                    attachedRegister = null;
-                    updateDisplays(new FlavorsOfFloat());
-                    instructions.setText("The program is not attached to any MIPS floating point registers.");
-                } else {
-                    attachedRegister = fpRegisters[selectedIndex - 1];
-                    updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
-                    if (isObserving()) {
-                        addAsObserver();
-                    }
-                    instructions.setText("The program and register " + attachedRegister.getName() + " will respond to each other when MIPS program connected or running.");
-                }
+                instructions.setText("The program and register " + attachedRegister.getName() + " will respond to each other when MIPS program connected or running.");
             }
         });
 
@@ -406,11 +404,11 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         // Will change significandLabel text only if it needs to be changed...
         if (flavors.binaryString.substring(maxLengthBinarySign, maxLengthBinarySign + maxLengthBinaryExponent).equals(zeroes.substring(maxLengthBinarySign, maxLengthBinarySign + maxLengthBinaryExponent))) {
             // Will change text only if it truly is changing....
-            if (significandLabel.getText().indexOf("deno") < 0) {
+            if (!significandLabel.getText().contains("deno")) {
                 significandLabel.setText(denormalizedLabel);
             }
         } else {
-            if (significandLabel.getText().indexOf("unde") < 0) {
+            if (!significandLabel.getText().contains("unde")) {
                 significandLabel.setText(normalizedLabel);
             }
         }
@@ -570,32 +568,11 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // handy utility.
         private boolean isHexDigit(char digit) {
-            boolean result = false;
-            switch (digit) {
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                case 'a':
-                case 'b':
-                case 'c':
-                case 'd':
-                case 'e':
-                case 'f':
-                case 'A':
-                case 'B':
-                case 'C':
-                case 'D':
-                case 'E':
-                case 'F':
-                    result = true;
-            }
+            boolean result = switch (digit) {
+                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F' ->
+                        true;
+                default -> false;
+            };
             return result;
         }
     }
@@ -642,12 +619,10 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // handy utility
         private boolean isBinaryDigit(char digit) {
-            boolean result = false;
-            switch (digit) {
-                case '0':
-                case '1':
-                    result = true;
-            }
+            boolean result = switch (digit) {
+                case '0', '1' -> true;
+                default -> false;
+            };
             return result;
         }
 
@@ -692,25 +667,10 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // handy utility
         private boolean isDecimalFloatDigit(char digit) {
-            boolean result = false;
-            switch (digit) {
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                case '-':
-                case '+':
-                case '.':
-                case 'e':
-                case 'E':
-                    result = true;
-            }
+            boolean result = switch (digit) {
+                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '+', '.', 'e', 'E' -> true;
+                default -> false;
+            };
             return result;
         }
 

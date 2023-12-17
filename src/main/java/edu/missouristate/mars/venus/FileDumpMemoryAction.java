@@ -117,11 +117,7 @@ public class FileDumpMemoryAction extends GuiAction {
             contents.add(new Label("There is nothing to dump!"), BorderLayout.NORTH);
             JButton OKButton = new JButton("OK");
             OKButton.addActionListener(
-                    new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            closeDialog();
-                        }
-                    });
+                    e -> closeDialog());
             contents.add(OKButton, BorderLayout.SOUTH);
             return contents;
         }
@@ -157,22 +153,16 @@ public class FileDumpMemoryAction extends GuiAction {
         Box controlPanel = Box.createHorizontalBox();
         JButton dumpButton = new JButton("Dump To File...");
         dumpButton.addActionListener(
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        if (performDump(segmentListBaseArray[segmentListSelector.getSelectedIndex()],
-                                segmentListHighArray[segmentListSelector.getSelectedIndex()],
-                                (DumpFormat) formatListSelector.getSelectedItem())) {
-                            closeDialog();
-                        }
+                e -> {
+                    if (performDump(segmentListBaseArray[segmentListSelector.getSelectedIndex()],
+                            segmentListHighArray[segmentListSelector.getSelectedIndex()],
+                            (DumpFormat) formatListSelector.getSelectedItem())) {
+                        closeDialog();
                     }
                 });
         JButton cancelButton = new JButton("Cancel");
         cancelButton.addActionListener(
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        closeDialog();
-                    }
-                });
+                e -> closeDialog());
         controlPanel.add(Box.createHorizontalGlue());
         controlPanel.add(dumpButton);
         controlPanel.add(Box.createHorizontalGlue());
@@ -219,9 +209,8 @@ public class FileDumpMemoryAction extends GuiAction {
             if (operationOK) {
                 try {
                     format.dumpMemoryRange(theFile, firstAddress, lastAddress);
-                } catch (AddressErrorException aee) {
+                } catch (AddressErrorException | IOException aee) {
 
-                } catch (IOException ioe) {
                 }
             }
         }

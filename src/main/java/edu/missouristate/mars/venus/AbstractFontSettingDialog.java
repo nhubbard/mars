@@ -40,14 +40,12 @@ public abstract class AbstractFontSettingDialog extends JDialog {
         overallPanel.add(buildDialogPanel(), BorderLayout.CENTER);
         overallPanel.add(buildControlPanel(), BorderLayout.SOUTH);
         this.setContentPane(overallPanel);
-        this.setDefaultCloseOperation(
-                JDialog.DO_NOTHING_ON_CLOSE);
-        this.addWindowListener(
-                new WindowAdapter() {
-                    public void windowClosing(WindowEvent we) {
-                        closeDialog();
-                    }
-                });
+        this.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        this.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent we) {
+                closeDialog();
+            }
+        });
         this.pack();
         this.setLocationRelativeTo(owner);
     }
@@ -83,32 +81,21 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
         fontSizeSelector = new JSlider(EditorFont.MIN_SIZE, EditorFont.MAX_SIZE, currentFont.getSize());
         fontSizeSelector.setToolTipText("Use slider to select font size from " + EditorFont.MIN_SIZE + " to " + EditorFont.MAX_SIZE + ".");
-        fontSizeSelector.addChangeListener(
-                new ChangeListener() {
-                    public void stateChanged(ChangeEvent e) {
-                        Integer value = ((JSlider) e.getSource()).getValue();
-                        fontSizeSpinSelector.setValue(value);
-                        fontSample.setFont(getFont());
-                    }
-                });
+        fontSizeSelector.addChangeListener(e -> {
+            Integer value = ((JSlider) e.getSource()).getValue();
+            fontSizeSpinSelector.setValue(value);
+            fontSample.setFont(getFont());
+        });
         SpinnerNumberModel fontSizeSpinnerModel = new SpinnerNumberModel(currentFont.getSize(), EditorFont.MIN_SIZE, EditorFont.MAX_SIZE, 1);
         fontSizeSpinSelector = new JSpinner(fontSizeSpinnerModel);
         fontSizeSpinSelector.setToolTipText("Current font size in points.");
-        fontSizeSpinSelector.addChangeListener(
-                new ChangeListener() {
-                    public void stateChanged(ChangeEvent e) {
-                        Object value = ((JSpinner) e.getSource()).getValue();
-                        fontSizeSelector.setValue(((Integer) value).intValue());
-                        fontSample.setFont(getFont());
-                    }
-                });
+        fontSizeSpinSelector.addChangeListener(e -> {
+            Object value = ((JSpinner) e.getSource()).getValue();
+            fontSizeSelector.setValue((Integer) value);
+            fontSample.setFont(getFont());
+        });
         // Action listener to update sample when family or style selected
-        ActionListener updateSample =
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        fontSample.setFont(getFont());
-                    }
-                };
+        ActionListener updateSample = e -> fontSample.setFont(getFont());
         fontFamilySelector.addActionListener(updateSample);
         fontStyleSelector.addActionListener(updateSample);
 
@@ -141,10 +128,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
 
     public Font getFont() {
-        return EditorFont.createFontFromStringValues(
-                (String) fontFamilySelector.getSelectedItem(),
-                (String) fontStyleSelector.getSelectedItem(),
-                fontSizeSpinSelector.getValue().toString());
+        return EditorFont.createFontFromStringValues((String) fontFamilySelector.getSelectedItem(), (String) fontStyleSelector.getSelectedItem(), fontSizeSpinSelector.getValue().toString());
     }
 
     // User has clicked "Apply" or "Apply and Close" button.
@@ -216,8 +200,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
             separator = new JSeparator(JSeparator.HORIZONTAL);
         }
 
-        public Component getListCellRendererComponent(JList list,
-                                                      String value, int index, boolean isSelected, boolean cellHasFocus) {
+        public Component getListCellRendererComponent(JList list, String value, int index, boolean isSelected, boolean cellHasFocus) {
             String str = (value == null) ? "" : value;
             if (SEPARATOR.equals(str)) {
                 return separator;

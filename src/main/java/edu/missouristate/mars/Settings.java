@@ -1212,8 +1212,8 @@ public class Settings extends Observable {
 
     public void setTextColumnOrder(int[] columnOrder) {
         String stringifiedOrder = new String();
-        for (int i = 0; i < columnOrder.length; i++) {
-            stringifiedOrder += Integer.toString(columnOrder[i]) + " ";
+        for (int j : columnOrder) {
+            stringifiedOrder += Integer.toString(j) + " ";
         }
         setStringSetting(TEXT_COLUMN_ORDER, stringifiedOrder);
     }
@@ -1379,7 +1379,7 @@ public class Settings extends Observable {
             for (int i = 0; i < booleanSettingsKeys.length; i++) {
                 settingValue = Globals.getPropertyEntry(filename, booleanSettingsKeys[i]);
                 if (settingValue != null) {
-                    booleanSettingsValues[i] = defaultBooleanSettingsValues[i] = Boolean.valueOf(settingValue).booleanValue();
+                    booleanSettingsValues[i] = defaultBooleanSettingsValues[i] = Boolean.valueOf(settingValue);
                 }
             }
             for (int i = 0; i < stringSettingsKeys.length; i++) {

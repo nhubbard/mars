@@ -44,9 +44,9 @@ public class MacroPool {
      */
     public MacroPool(MIPSProgram mipsProgram) {
         this.program = mipsProgram;
-        macroList = new ArrayList<Macro>();
-        callStack = new ArrayList<Integer>();
-        callStackOrigLines = new ArrayList<Integer>();
+        macroList = new ArrayList<>();
+        callStack = new ArrayList<>();
+        callStackOrigLines = new ArrayList<>();
         current = null;
         counter = 0;
     }

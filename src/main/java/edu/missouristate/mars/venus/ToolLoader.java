@@ -5,9 +5,7 @@ import edu.missouristate.mars.util.*;
 
 import javax.swing.*;
 import java.awt.event.*;
-import java.io.*;
 import java.util.*;
-import java.util.zip.*;
 import java.lang.reflect.*;
 
 /**
@@ -48,8 +46,8 @@ public class ToolLoader {
             menu.setMnemonic(KeyEvent.VK_T);
             // traverse array list and build menu
             MarsToolClassAndInstance listItem;
-            for (int i = 0; i < marsToolList.size(); i++) {
-                listItem = (MarsToolClassAndInstance) marsToolList.get(i);
+            for (Object o : marsToolList) {
+                listItem = (MarsToolClassAndInstance) o;
                 menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
             }
         }
@@ -86,8 +84,8 @@ public class ToolLoader {
         // it correctly.  Not sure how to create a Class object given an absolute
         // pathname.
         HashMap tools = new HashMap();
-        for (int i = 0; i < candidates.size(); i++) {
-            String file = (String) candidates.get(i);
+        for (Object candidate : candidates) {
+            String file = (String) candidate;
             // Do not add class if already encountered (happens if run in MARS development directory)
             if (tools.containsKey(file)) {
                 continue;
@@ -98,7 +96,7 @@ public class ToolLoader {
                 try {
                     // grab the class, make sure it implements MarsTool, instantiate, add to menu
                     String toolClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
-                    Class clas = Class.forName(toolClassName);
+                    Class<?> clas = Class.forName(toolClassName);
                     if (!MarsTool.class.isAssignableFrom(clas) ||
                             Modifier.isAbstract(clas.getModifiers()) ||
                             Modifier.isInterface(clas.getModifiers())) {

@@ -140,14 +140,12 @@ public class JEditTextArea extends JComponent {
         // but that seems heavy-handed.
         // DPS 12May2010
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
-                new KeyEventDispatcher() {
-                    public boolean dispatchKeyEvent(KeyEvent e) {
-                        if (JEditTextArea.this.isFocusOwner() && e.getKeyCode() == KeyEvent.VK_TAB && e.getModifiersEx() == 0) {
-                            processKeyEvent(e);
-                            return true;
-                        } else {
-                            return false;
-                        }
+                e -> {
+                    if (JEditTextArea.this.isFocusOwner() && e.getKeyCode() == KeyEvent.VK_TAB && e.getModifiersEx() == 0) {
+                        processKeyEvent(e);
+                        return true;
+                    } else {
+                        return false;
                     }
                 });
 
@@ -1095,7 +1093,7 @@ public class JEditTextArea extends JComponent {
                 start = tmp;
             }
 
-            StringBuffer buf = new StringBuffer();
+            StringBuilder buf = new StringBuilder();
             Segment seg = new Segment();
 
             for (int i = selectionStartLine; i <= selectionEndLine; i++) {
@@ -1392,9 +1390,8 @@ public class JEditTextArea extends JComponent {
             String selection = getSelectedText();
 
             int repeatCount = inputHandler.getRepeatCount();
-            StringBuffer buf = new StringBuffer();
-            for (int i = 0; i < repeatCount; i++)
-                buf.append(selection);
+            StringBuilder buf = new StringBuilder();
+            buf.append(String.valueOf(selection).repeat(Math.max(0, repeatCount)));
 
             clipboard.setContents(new StringSelection(buf.toString()), null);
         }
@@ -1415,9 +1412,8 @@ public class JEditTextArea extends JComponent {
                         .replace('\r', '\n');
 
                 int repeatCount = inputHandler.getRepeatCount();
-                StringBuffer buf = new StringBuffer();
-                for (int i = 0; i < repeatCount; i++)
-                    buf.append(selection);
+                StringBuilder buf = new StringBuilder();
+                buf.append(selection.repeat(Math.max(0, repeatCount)));
                 selection = buf.toString();
                 setSelectedText(selection);
             } catch (Exception e) {
@@ -1712,13 +1708,11 @@ public class JEditTextArea extends JComponent {
             // and the result is that scrolling doesn't stop after
             // the mouse is released
             SwingUtilities.invokeLater(
-                    new Runnable() {
-                        public void run() {
-                            if (evt.getAdjustable() == vertical)
-                                setFirstLine(vertical.getValue());
-                            else
-                                setHorizontalOffset(-horizontal.getValue());
-                        }
+                    () -> {
+                        if (evt.getAdjustable() == vertical)
+                            setFirstLine(vertical.getValue());
+                        else
+                            setHorizontalOffset(-horizontal.getValue());
                     });
         }
     }
@@ -1987,8 +1981,7 @@ public class JEditTextArea extends JComponent {
         }
 
         public boolean addEdit(UndoableEdit edit) {
-            if (edit instanceof CaretUndo) {
-                CaretUndo cedit = (CaretUndo) edit;
+            if (edit instanceof CaretUndo cedit) {
                 start = cedit.start;
                 end = cedit.end;
                 cedit.die();
@@ -2136,8 +2129,8 @@ public class JEditTextArea extends JComponent {
         if (helpItems != null) {
             popupMenu = new JPopupMenu();
             int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
-            for (int i = 0; i < helpItems.size(); i++) {
-                PopupHelpItem item = (PopupHelpItem) helpItems.get(i);
+            for (Object helpItem : helpItems) {
+                PopupHelpItem item = (PopupHelpItem) helpItem;
                 JMenuItem menuItem = new JMenuItem("<html><tt>" + item.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;") + "</tt>" + item.getDescription() + "</html>");
                 if (item.getExact()) {
                     // The instruction name is completed so the role of the popup changes
@@ -2270,11 +2263,7 @@ public class JEditTextArea extends JComponent {
                 newPath[0] = path[0];
                 newPath[1] = (MenuElement) popupMenu.getComponent(index);
                 SwingUtilities.invokeLater(
-                        new Runnable() {
-                            public void run() {
-                                MenuSelectionManager.defaultManager().setSelectedPath(newPath);
-                            }
-                        });
+                        () -> MenuSelectionManager.defaultManager().setSelectedPath(newPath));
                 return true;
             } else {
                 return false;

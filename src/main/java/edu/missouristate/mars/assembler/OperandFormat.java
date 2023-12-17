@@ -48,8 +48,8 @@ public class OperandFormat {
             return null;
         if (instrMatches.size() == 1)
             return (Instruction) instrMatches.get(0);
-        for (int i = 0; i < instrMatches.size(); i++) {
-            Instruction potentialMatch = (Instruction) instrMatches.get(i);
+        for (Object instrMatch : instrMatches) {
+            Instruction potentialMatch = (Instruction) instrMatch;
             if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList()))
                 return potentialMatch;
         }

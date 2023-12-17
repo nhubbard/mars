@@ -142,14 +142,14 @@ public class LabelsWindow extends JInternalFrame {
         listOfLabelsForSymbolTable.add(new LabelsForSymbolTable(null));// global symtab
         ArrayList MIPSProgramsAssembled = RunAssembleAction.getMIPSProgramsToAssemble();
         Box allSymtabTables = Box.createVerticalBox();
-        for (int i = 0; i < MIPSProgramsAssembled.size(); i++) {
+        for (Object object : MIPSProgramsAssembled) {
             listOfLabelsForSymbolTable.add(new LabelsForSymbolTable(
-                    (MIPSProgram) MIPSProgramsAssembled.get(i)));
+                    (MIPSProgram) object));
         }
         ArrayList tableNames = new ArrayList();
         JTableHeader tableHeader = null;
-        for (int i = 0; i < listOfLabelsForSymbolTable.size(); i++) {
-            LabelsForSymbolTable symtab = (LabelsForSymbolTable) listOfLabelsForSymbolTable.get(i);
+        for (Object o : listOfLabelsForSymbolTable) {
+            LabelsForSymbolTable symtab = (LabelsForSymbolTable) o;
             if (symtab.hasSymbols()) {
                 String name = symtab.getSymbolTableName();
                 if (name.length() > MAX_DISPLAYED_CHARS) {
@@ -184,8 +184,8 @@ public class LabelsWindow extends JInternalFrame {
         // Does it do any good?  Addressing problem that occurs when label (filename) is wider than
         // the table beneath it -- the table column widths are stretched to attain the same width and
         // the address information requires scrolling to see.  All because of a long file name.
-        for (int i = 0; i < tableNames.size(); i++) {
-            JComponent nameLabel = (JComponent) tableNames.get(i);
+        for (Object tableName : tableNames) {
+            JComponent nameLabel = (JComponent) tableName;
             nameLabel.setMaximumSize(new Dimension(
                     labelScrollPane.getViewport().getViewSize().width,
                     (int) (1.5 * nameLabel.getFontMetrics(nameLabel.getFont()).getHeight())));
@@ -201,8 +201,8 @@ public class LabelsWindow extends JInternalFrame {
      */
     public void updateLabelAddresses() {
         if (listOfLabelsForSymbolTable != null) {
-            for (int i = 0; i < listOfLabelsForSymbolTable.size(); i++) {
-                ((LabelsForSymbolTable) listOfLabelsForSymbolTable.get(i)).updateLabelAddresses();
+            for (Object o : listOfLabelsForSymbolTable) {
+                ((LabelsForSymbolTable) o).updateLabelAddresses();
             }
         }
     }
@@ -212,8 +212,8 @@ public class LabelsWindow extends JInternalFrame {
     //   Listener class to respond to "Text" or "Data" checkbox click
     private class LabelItemListener implements ItemListener {
         public void itemStateChanged(ItemEvent ie) {
-            for (int i = 0; i < listOfLabelsForSymbolTable.size(); i++) {
-                ((LabelsForSymbolTable) listOfLabelsForSymbolTable.get(i)).generateLabelTable();
+            for (Object o : listOfLabelsForSymbolTable) {
+                ((LabelsForSymbolTable) o).generateLabelTable();
             }
         }
     }
@@ -300,7 +300,7 @@ public class LabelsWindow extends JInternalFrame {
             } else {
                 symbols = new ArrayList();
             }
-            Collections.sort(symbols, tableSortComparator); // DPS 25 Dec 2008
+            symbols.sort(tableSortComparator); // DPS 25 Dec 2008
             labelData = new Object[symbols.size()][2];
 
             for (int i = 0; i < symbols.size(); i++) {//sets up the label table
@@ -415,8 +415,7 @@ public class LabelsWindow extends JInternalFrame {
         // Implement cell tool tips.  All of them are the same (although they could be customized).
         public Component prepareRenderer(TableCellRenderer renderer, int rowIndex, int vColIndex) {
             Component c = super.prepareRenderer(renderer, rowIndex, vColIndex);
-            if (c instanceof JComponent) {
-                JComponent jc = (JComponent) c;
+            if (c instanceof JComponent jc) {
                 jc.setToolTipText("Click on label or address to view it in Text/Data Segment");
             }
             return c;

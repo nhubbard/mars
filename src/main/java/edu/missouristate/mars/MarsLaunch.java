@@ -149,8 +149,8 @@ public class MarsLaunch {
         if (dumpTriples == null)
             return;
 
-        for (int i = 0; i < dumpTriples.size(); i++) {
-            String[] triple = (String[]) dumpTriples.get(i);
+        for (Object dumpTriple : dumpTriples) {
+            String[] triple = (String[]) dumpTriple;
             File file = new File(triple[2]);
             Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0]);
             // If not segment name, see if it is address range instead.  DPS 14-July-2008
@@ -160,9 +160,7 @@ public class MarsLaunch {
                     segInfo = new Integer[2];
                     segInfo[0] = Binary.stringToInt(memoryRange[0]); // low end of range
                     segInfo[1] = Binary.stringToInt(memoryRange[1]); // high end of range
-                } catch (NumberFormatException nfe) {
-                    segInfo = null;
-                } catch (NullPointerException npe) {
+                } catch (NumberFormatException | NullPointerException nfe) {
                     segInfo = null;
                 }
             }
@@ -178,12 +176,12 @@ public class MarsLaunch {
                 continue;
             }
             try {
-                int highAddress = Globals.memory.getAddressOfFirstNull(segInfo[0].intValue(), segInfo[1].intValue()) - Memory.WORD_LENGTH_BYTES;
-                if (highAddress < segInfo[0].intValue()) {
+                int highAddress = Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1]) - Memory.WORD_LENGTH_BYTES;
+                if (highAddress < segInfo[0]) {
                     out.println("This segment has not been written to, there is nothing to dump.");
                     continue;
                 }
-                format.dumpMemoryRange(file, segInfo[0].intValue(), highAddress);
+                format.dumpMemoryRange(file, segInfo[0], highAddress);
             } catch (FileNotFoundException e) {
                 out.println("Error while attempting to save dump, file " + file + " was not found!");
                 continue;
@@ -206,12 +204,10 @@ public class MarsLaunch {
         // System.setProperty("apple.laf.useScreenMenuBar", "true"); // Puts MARS menu on Mac OS menu bar
         new MarsSplashScreen(splashDuration).showSplash();
         SwingUtilities.invokeLater(
-                new Runnable() {
-                    public void run() {
-                        //Turn off metal's use of bold fonts
-                        //UIManager.put("swing.boldMetal", Boolean.FALSE);
-                        new VenusUI("MARS " + Globals.version);
-                    }
+                () -> {
+                    //Turn off metal's use of bold fonts
+                    //UIManager.put("swing.boldMetal", Boolean.FALSE);
+                    new VenusUI("MARS " + Globals.version);
                 });
         return;
     }
@@ -292,7 +288,7 @@ public class MarsLaunch {
             if (args[i].toLowerCase().indexOf("ae") == 0) {
                 String s = args[i].substring(2);
                 try {
-                    assembleErrorExitCode = Integer.decode(s).intValue();
+                    assembleErrorExitCode = Integer.decode(s);
                     continue;
                 } catch (NumberFormatException nfe) {
                     // Let it fall thru and get handled by catch-all
@@ -302,7 +298,7 @@ public class MarsLaunch {
             if (args[i].toLowerCase().indexOf("se") == 0) {
                 String s = args[i].substring(2);
                 try {
-                    simulateErrorExitCode = Integer.decode(s).intValue();
+                    simulateErrorExitCode = Integer.decode(s);
                     continue;
                 } catch (NumberFormatException nfe) {
                     // Let it fall thru and get handled by catch-all
@@ -390,7 +386,7 @@ public class MarsLaunch {
             // Check for stand-alone integer, which is the max execution steps option
             try {
                 Integer.decode(args[i]);
-                maxSteps = Integer.decode(args[i]).intValue(); // if we got here, it has to be OK 
+                maxSteps = Integer.decode(args[i]); // if we got here, it has to be OK
                 continue;
             } catch (NumberFormatException nfe) {
             }
@@ -437,8 +433,8 @@ public class MarsLaunch {
                     ArrayList moreFilesToAssemble = FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
                     // Remove any duplicates then merge the two lists.
                     for (int index2 = 0; index2 < moreFilesToAssemble.size(); index2++) {
-                        for (int index1 = 0; index1 < filesToAssemble.size(); index1++) {
-                            if (filesToAssemble.get(index1).equals(moreFilesToAssemble.get(index2))) {
+                        for (Object o : filesToAssemble) {
+                            if (o.equals(moreFilesToAssemble.get(index2))) {
                                 moreFilesToAssemble.remove(index2);
                                 index2--; // adjust for left shift in moreFilesToAssemble...
                                 break;    // break out of inner loop...
@@ -525,8 +521,7 @@ public class MarsLaunch {
                         private int lastAddress = 0;
 
                         public void update(Observable o, Object obj) {
-                            if (obj instanceof AccessNotice) {
-                                AccessNotice notice = (AccessNotice) obj;
+                            if (obj instanceof AccessNotice notice) {
                                 if (!notice.accessIsFromMIPS())
                                     return;
                                 if (notice.getAccessType() != AccessNotice.READ)
@@ -566,9 +561,8 @@ public class MarsLaunch {
         String strValue;
         // Display requested register contents
         out.println();
-        Iterator regIter = registerDisplayList.iterator();
-        while (regIter.hasNext()) {
-            String reg = regIter.next().toString();
+        for (Object o : registerDisplayList) {
+            String reg = o.toString();
             if (RegisterFile.getUserRegister(reg) != null) {
                 // integer register
                 if (verbose)
@@ -628,20 +622,12 @@ public class MarsLaunch {
     //////////////////////////////////////////////////////////////////////
     // Formats int value for display: decimal, hex, ascii    
     private String formatIntForDisplay(int value) {
-        String strValue;
-        switch (displayFormat) {
-            case DECIMAL:
-                strValue = "" + value;
-                break;
-            case HEXADECIMAL:
-                strValue = Binary.intToHexString(value);
-                break;
-            case ASCII:
-                strValue = Binary.intToAscii(value);
-                break;
-            default:
-                strValue = Binary.intToHexString(value);
-        }
+        String strValue = switch (displayFormat) {
+            case DECIMAL -> "" + value;
+            case HEXADECIMAL -> Binary.intToHexString(value);
+            case ASCII -> Binary.intToAscii(value);
+            default -> Binary.intToHexString(value);
+        };
         return strValue;
     }
 
@@ -673,7 +659,7 @@ public class MarsLaunch {
                     // Allow display of binary text segment (machine code) DPS 14-July-2008
                     if (Memory.inTextSegment(addr) || Memory.inKernelTextSegment(addr)) {
                         Integer iValue = Globals.memory.getRawWordOrNull(addr);
-                        value = (iValue == null) ? 0 : iValue.intValue();
+                        value = (iValue == null) ? 0 : iValue;
                     } else {
                         value = Globals.memory.getWord(addr);
                     }
@@ -692,8 +678,8 @@ public class MarsLaunch {
     //  present, it must be processed before all others.  Since messages may
     //  be output as early as during the command parse.  
     private void processDisplayMessagesToErrSwitch(String[] args, String displayMessagesToErrSwitch) {
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].toLowerCase().equals(displayMessagesToErrSwitch)) {
+        for (String arg : args) {
+            if (arg.toLowerCase().equals(displayMessagesToErrSwitch)) {
                 out = System.err;
                 return;
             }
@@ -705,8 +691,8 @@ public class MarsLaunch {
 
     private void displayCopyright(String[] args, String noCopyrightSwitch) {
         boolean print = true;
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].toLowerCase().equals(noCopyrightSwitch)) {
+        for (String arg : args) {
+            if (arg.toLowerCase().equals(noCopyrightSwitch)) {
                 return;
             }
         }

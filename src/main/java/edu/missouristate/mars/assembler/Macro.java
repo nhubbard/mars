@@ -36,8 +36,8 @@ public class Macro {
         program = null;
         fromLine = toLine = 0;
         origFromLine = origToLine = 0;
-        args = new ArrayList<String>();
-        labels = new ArrayList<String>();
+        args = new ArrayList<>();
+        labels = new ArrayList<>();
     }
 
     public String getName() {
@@ -102,8 +102,7 @@ public class Macro {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Macro) {
-            Macro macro = (Macro) obj;
+        if (obj instanceof Macro macro) {
             return macro.getName().equals(name) && (macro.args.size() == args.size());
         }
         return super.equals(obj);
