@@ -1,4 +1,4 @@
-package edu.missouristate.mars.tools;//.bhtsim;
+package edu.missouristate.mars.tools;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.Vector;
@@ -10,7 +10,7 @@ import java.util.Vector;
  * The entries of the BHT are stored as a Vector of BHTEntry objects.
  * The number of entries is configurable but has to be a power of 2.
  * The history kept by each BHT entry is also configurable during run-time.
- * A change of the configuration however causes a complete reset of the BHT.
+ * A change of the configuration, however, causes a complete reset of the BHT.
  * <p>
  * The typical interaction is as follows:
  * <ul>
@@ -20,8 +20,9 @@ import java.util.Vector;
  * <li>After detecting if the branch was really taken or not, this feedback is provided to the BHT by the {@link BHTableModel#updatePredictionAtIdx(int, boolean)} method.</li>
  * </ul>
  * <p>
- * Additionally it serves as TableModel that can be directly used to render the state of the BHT in a JTable.
- * Feedback provided to the BHT causes a change of the internal state and a repaint of the table(s) associated to this model.
+ * Additionally, it serves as a TableModel that can be directly used to render the state of the BHT in a JTable.
+ * Feedback provided to the BHT causes a change of the internal state and a repaint of the table(s)
+ * associated with this model.
  *
  * @author ingo.kofler@itec.uni-klu.ac.at
  */
@@ -32,28 +33,23 @@ public class BHTableModel extends AbstractTableModel {
     /**
      * vector holding the entries of the BHT
      */
-    private Vector m_entries;
+    private Vector<BHTEntry> entries;
 
     /**
      * number of entries in the BHT
      */
-    private int m_entryCnt;
-
-    /**
-     * number of past branch events to remember
-     */
-    private int m_historySize;
+    private int entryCount;
 
     /**
      * name of the table columns
      */
-    private String m_columnNames[] = {"Index", "History", "Prediction", "Correct", "Incorrect", "Precision"};
+    private final String[] columnNames = {"Index", "History", "Prediction", "Correct", "Incorrect", "Precision"};
 
     /**
      * type of the table columns
      */
     //@SuppressWarnings("unchecked")
-    private Class m_columnClasses[] = {Integer.class, String.class, String.class, Integer.class, Integer.class, Double.class};
+    private final Class<?>[] columnClasses = {Integer.class, String.class, String.class, Integer.class, Integer.class, Double.class};
 
 
     /**
@@ -75,10 +71,10 @@ public class BHTableModel extends AbstractTableModel {
      * @return name of the i-th column
      */
     public String getColumnName(int i) {
-        if (i < 0 || i > m_columnNames.length)
-            throw new IllegalArgumentException("Illegal column index " + i + " (must be in range 0.." + (m_columnNames.length - 1) + ")");
+        if (i < 0 || i > columnNames.length)
+            throw new IllegalArgumentException("Illegal column index " + i + " (must be in range 0.." + (columnNames.length - 1) + ")");
 
-        return m_columnNames[i];
+        return columnNames[i];
     }
 
 
@@ -89,11 +85,11 @@ public class BHTableModel extends AbstractTableModel {
      * @param i the index of the column
      * @return class representing the type of the i-th column
      */
-    public Class getColumnClass(int i) {
-        if (i < 0 || i > m_columnClasses.length)
-            throw new IllegalArgumentException("Illegal column index " + i + " (must be in range 0.." + (m_columnClasses.length - 1) + ")");
+    public Class<?> getColumnClass(int i) {
+        if (i < 0 || i > columnClasses.length)
+            throw new IllegalArgumentException("Illegal column index " + i + " (must be in range 0.." + (columnClasses.length - 1) + ")");
 
-        return m_columnClasses[i];
+        return columnClasses[i];
     }
 
 
@@ -115,7 +111,7 @@ public class BHTableModel extends AbstractTableModel {
      * @return number of rows / entries of the BHT
      */
     public int getRowCount() {
-        return m_entryCnt;
+        return entryCount;
     }
 
 
@@ -129,7 +125,7 @@ public class BHTableModel extends AbstractTableModel {
      */
     public Object getValueAt(int row, int col) {
 
-        BHTEntry e = (BHTEntry) m_entries.elementAt(row);
+        BHTEntry e = entries.elementAt(row);
         if (e == null) return "";
 
         if (col == 0) return row;
@@ -146,7 +142,7 @@ public class BHTableModel extends AbstractTableModel {
     /**
      * Initializes the BHT with the given size and history.
      * All previous data like the BHT entries' history and statistics will get lost.
-     * A refresh of the table that use this BHT as model will be triggered.
+     * A refresh of the table that uses this BHT as model will be triggered.
      *
      * @param numEntries  number of entries in the BHT (has to be a power of 2)
      * @param historySize size of the history to consider
@@ -159,13 +155,15 @@ public class BHTableModel extends AbstractTableModel {
         if (historySize < 1 || historySize > 2)
             throw new IllegalArgumentException("Only history sizes of 1 or 2 supported.");
 
-        m_entryCnt = numEntries;
-        m_historySize = historySize;
+        entryCount = numEntries;
+        /*
+          number of past branch events to remember
+         */
 
-        m_entries = new Vector();
+        entries = new Vector<>();
 
-        for (int i = 0; i < m_entryCnt; i++) {
-            m_entries.add(new BHTEntry(m_historySize, initVal));
+        for (int i = 0; i < entryCount; i++) {
+            entries.add(new BHTEntry(historySize, initVal));
         }
 
         // refresh the table(s)
@@ -184,7 +182,7 @@ public class BHTableModel extends AbstractTableModel {
         if (address < 0)
             throw new IllegalArgumentException("No negative addresses supported");
 
-        return (address >> 2) % m_entryCnt;
+        return (address >> 2) % entryCount;
     }
 
 
@@ -195,10 +193,10 @@ public class BHTableModel extends AbstractTableModel {
      * @return the prediction to take (true) or do not take (false) the branch
      */
     public boolean getPredictionAtIdx(int index) {
-        if (index < 0 || index > m_entryCnt)
-            throw new IllegalArgumentException("Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
+        if (index < 0 || index > entryCount)
+            throw new IllegalArgumentException("Only indexes in the range 0 to " + (entryCount - 1) + " allowed");
 
-        return ((BHTEntry) m_entries.elementAt(index)).getPrediction();
+        return entries.elementAt(index).getPrediction();
     }
 
 
@@ -207,13 +205,12 @@ public class BHTableModel extends AbstractTableModel {
      * This causes a change in the model and signals to update the connected table(s).
      *
      * @param index       the index of the entry in the BHT
-     * @param branchTaken
      */
     public void updatePredictionAtIdx(int index, boolean branchTaken) {
-        if (index < 0 || index > m_entryCnt)
-            throw new IllegalArgumentException("Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
+        if (index < 0 || index > entryCount)
+            throw new IllegalArgumentException("Only indexes in the range 0 to " + (entryCount - 1) + " allowed");
 
-        ((BHTEntry) m_entries.elementAt(index)).updatePrediction(branchTaken);
+        entries.elementAt(index).updatePrediction(branchTaken);
         fireTableRowsUpdated(index, index);
     }
 

@@ -11,6 +11,8 @@ import java.util.Enumeration;
 import java.util.EventObject;
 import java.util.Hashtable;
 
+// TODO: Same issue as before -- this class has weird type invariants that need to be handled.
+
 /**
  * An input handler converts the user's key strokes into concrete actions.
  * It also takes care of macro recording and action repetition.<p>

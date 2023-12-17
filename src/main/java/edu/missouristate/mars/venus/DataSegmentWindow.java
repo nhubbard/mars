@@ -57,7 +57,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // The combo box replaced the row of buttons when number of buttons expanded to 7!
     // We'll keep the button objects however and manually invoke their action listeners
     // when the corresponding combo box item is selected.  DPS 22-Nov-2006
-    JComboBox baseAddressSelector;
+    JComboBox<String> baseAddressSelector;
 
     // The next bunch are initialized dynamically in initializeBaseAddressChoices()
     private String[] displayBaseAddressChoices;
@@ -86,7 +86,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         tablePanel = new JPanel(new GridLayout(1, 2, 10, 0));
         JPanel features = new JPanel();
         Toolkit tk = Toolkit.getDefaultToolkit();
-        Class cs = this.getClass();
+        Class<?> cs = this.getClass();
         try {
             prevButton = new PrevButton(new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "Previous22.png"))));//"Back16.gif"))));//"Down16.gif"))));
             nextButton = new NextButton(new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "Next22.png"))));//"Forward16.gif")))); //"Up16.gif"))));
@@ -105,7 +105,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         }
 
         initializeBaseAddressChoices();
-        baseAddressSelector = new JComboBox();
+        baseAddressSelector = new JComboBox<>();
         baseAddressSelector.setModel(new CustomComboBoxModel(displayBaseAddressChoices));
         baseAddressSelector.setEditable(false);
         baseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
@@ -794,7 +794,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
      */
 
     public void update(Observable observable, Object obj) {
-        if (observable == mars.simulator.Simulator.getInstance()) {
+        if (observable == Simulator.getInstance()) {
             SimulatorNotice notice = (SimulatorNotice) obj;
             if (notice.getAction() == SimulatorNotice.SIMULATOR_START) {
 
@@ -834,8 +834,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // setSelectedIndex to also call selectedItemChanged() did not help.  Only this
     // solution to extend the model class to call the protected
     // "fireContentsChanged()" method worked. DPS 25-Jan-2009
-    private class CustomComboBoxModel extends DefaultComboBoxModel {
-        public CustomComboBoxModel(Object[] list) {
+    private class CustomComboBoxModel extends DefaultComboBoxModel<String> {
+        public CustomComboBoxModel(String[] list) {
             super(list);
         }
 
@@ -896,7 +896,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class getColumnClass(int c) {
+        public Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 

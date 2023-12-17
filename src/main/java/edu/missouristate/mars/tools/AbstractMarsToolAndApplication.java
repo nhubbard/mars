@@ -3,6 +3,7 @@ package edu.missouristate.mars.tools;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.MIPSProgram;
 import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.FilenameFinder;
@@ -681,7 +682,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
             String noSupportForExceptionHandler = null;  // no auto-loaded exception handlers.
 
             String exceptionHandler = null;
-            if (Globals.getSettings().getExceptionHandlerEnabled() &&
+            if (Globals.getSettings().getBooleanSetting(Settings.EXCEPTION_HANDLER_ENABLED) &&
                     Globals.getSettings().getExceptionHandler() != null &&
                     Globals.getSettings().getExceptionHandler().length() > 0) {
                 exceptionHandler = Globals.getSettings().getExceptionHandler();
@@ -692,15 +693,15 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
             MIPSProgram program = new MIPSProgram();
             Globals.program = program; // Shouldn't have to do this...
             String fileToAssemble = mostRecentlyOpenedFile.getPath();
-            ArrayList filesToAssemble = null;
+            ArrayList<String> filesToAssemble;
             if (multiFileAssemble) {// setting (check box in file open dialog) calls for multiple file assembly 
                 filesToAssemble = FilenameFinder.getFilenameList(
                         new File(fileToAssemble).getParent(), Globals.fileExtensions);
             } else {
-                filesToAssemble = new ArrayList();
+                filesToAssemble = new ArrayList<>();
                 filesToAssemble.add(fileToAssemble);
             }
-            ArrayList programsToAssemble = null;
+            ArrayList<MIPSProgram> programsToAssemble;
             try {
                 operationStatusMessages.displayNonTerminatingMessage("Assembling " + fileToAssemble);
                 programsToAssemble = program.prepareFilesForAssembly(filesToAssemble, fileToAssemble, exceptionHandler);
@@ -710,7 +711,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
             }
 
             try {
-                program.assemble(programsToAssemble, Globals.getSettings().getExtendedAssemblerEnabled(), Globals.getSettings().getWarningsAreErrors());
+                program.assemble(programsToAssemble, Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED), Globals.getSettings().getBooleanSetting(Settings.WARNINGS_ARE_ERRORS));
             } catch (ProcessingException pe) {
                 operationStatusMessages.displayTerminatingMessage("Assembly Error: " + fileToAssemble);
                 return;

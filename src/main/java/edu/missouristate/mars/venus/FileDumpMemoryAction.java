@@ -21,18 +21,11 @@ public class FileDumpMemoryAction extends GuiAction {
     private JDialog dumpDialog;
     private static final String title = "Dump Memory To File";
 
-    // A series of parallel arrays representing the memory segments that can be dumped.
-    private String[] segmentArray;
-    private int[] baseAddressArray;
-    private int[] limitAddressArray;
-    private int[] highAddressArray;
-    // These three are allocated and filled by buildDialogPanel() and used by action listeners.
-    private String[] segmentListArray;
     private int[] segmentListBaseArray;
     private int[] segmentListHighArray;
 
-    private JComboBox segmentListSelector;
-    private JComboBox formatListSelector;
+    private JComboBox<String> segmentListSelector;
+    private JComboBox<DumpFormat> formatListSelector;
 
     public FileDumpMemoryAction(String name, Icon icon, String descrip,
                                 Integer mnemonic, KeyStroke accel, VenusUI gui) {
@@ -77,13 +70,15 @@ public class FileDumpMemoryAction extends GuiAction {
         JPanel contents = new JPanel(new BorderLayout(20, 20));
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        segmentArray = MemoryDump.getSegmentNames();
-        baseAddressArray = MemoryDump.getBaseAddresses(segmentArray);
-        limitAddressArray = MemoryDump.getLimitAddresses(segmentArray);
-        highAddressArray = new int[segmentArray.length];
+        // A series of parallel arrays representing the memory segments that can be dumped.
+        String[] segmentArray = MemoryDump.getSegmentNames();
+        int[] baseAddressArray = MemoryDump.getBaseAddresses(segmentArray);
+        int[] limitAddressArray = MemoryDump.getLimitAddresses(segmentArray);
+        int[] highAddressArray = new int[segmentArray.length];
 
 
-        segmentListArray = new String[segmentArray.length];
+        // These three are allocated and filled by buildDialogPanel() and used by action listeners.
+        String[] segmentListArray = new String[segmentArray.length];
         segmentListBaseArray = new int[segmentArray.length];
         segmentListHighArray = new int[segmentArray.length];
 
@@ -139,7 +134,7 @@ public class FileDumpMemoryAction extends GuiAction {
         }
 
         // Create segment selector.  First element selected by default.
-        segmentListSelector = new JComboBox(segmentListArray);
+        segmentListSelector = new JComboBox<>(segmentListArray);
         segmentListSelector.setSelectedIndex(0);
         JPanel segmentPanel = new JPanel(new BorderLayout());
         segmentPanel.add(new Label("Memory Segment"), BorderLayout.NORTH);
@@ -147,8 +142,10 @@ public class FileDumpMemoryAction extends GuiAction {
         contents.add(segmentPanel, BorderLayout.WEST);
 
         // Next, create list of all available dump formats.
-        ArrayList dumpFormats = (new DumpFormatLoader()).loadDumpFormats();
-        formatListSelector = new JComboBox(dumpFormats.toArray());
+        ArrayList<DumpFormat> dumpFormats = (new DumpFormatLoader()).loadDumpFormats();
+        DumpFormat[] dumpFormatsArray = new DumpFormat[dumpFormats.size()];
+        dumpFormats.toArray(dumpFormatsArray);
+        formatListSelector = new JComboBox<>(dumpFormatsArray);
         formatListSelector.setRenderer(new DumpFormatComboBoxRenderer(formatListSelector));
         formatListSelector.setSelectedIndex(0);
         JPanel formatPanel = new JPanel(new BorderLayout());
@@ -242,9 +239,9 @@ public class FileDumpMemoryAction extends GuiAction {
     // http://forum.java.sun.com/thread.jspa?threadID=488762&messageID=2292482
 
     private class DumpFormatComboBoxRenderer extends BasicComboBoxRenderer {
-        private JComboBox myMaster;
+        private final JComboBox<DumpFormat> myMaster;
 
-        public DumpFormatComboBoxRenderer(JComboBox myMaster) {
+        public DumpFormatComboBoxRenderer(JComboBox<DumpFormat> myMaster) {
             super();
             this.myMaster = myMaster;
         }
@@ -253,8 +250,8 @@ public class FileDumpMemoryAction extends GuiAction {
                                                       boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             setToolTipText(value.toString());
-            if (index >= 0 && ((DumpFormat) (myMaster.getItemAt(index))).getDescription() != null) {
-                setToolTipText(((DumpFormat) (myMaster.getItemAt(index))).getDescription());
+            if (index >= 0 && myMaster.getItemAt(index).getDescription() != null) {
+                setToolTipText(myMaster.getItemAt(index).getDescription());
             }
             return this;
         }

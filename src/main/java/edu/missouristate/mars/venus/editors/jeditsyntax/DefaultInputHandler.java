@@ -9,6 +9,8 @@ import java.util.Hashtable;
 import java.util.StringTokenizer;
 import java.util.Properties;
 
+// TODO: Fix this class. It's got some weird invariant typing issues.
+
 /**
  * The default input handler. It maps sequences of keystrokes into actions
  * and inserts key typed events into the text area.

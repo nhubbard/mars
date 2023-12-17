@@ -245,20 +245,19 @@ public class MIPSProgram {
      * @throws ProcessingException Will throw exception if errors occured while reading or tokenizing.
      **/
 
-    public ArrayList prepareFilesForAssembly(ArrayList filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
-        ArrayList MIPSProgramsToAssemble = new ArrayList();
+    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
+        ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
         int leadFilePosition = 0;
-        if (exceptionHandler != null && exceptionHandler.length() > 0) {
+        if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
             filenames.add(0, exceptionHandler);
             leadFilePosition = 1;
         }
-        for (int i = 0; i < filenames.size(); i++) {
-            String filename = (String) filenames.get(i);
-            MIPSProgram preparee = (filename.equals(leadFilename)) ? this : new MIPSProgram();
-            preparee.readSource(filename);
+        for (String s : filenames) {
+            MIPSProgram preparee = (s.equals(leadFilename)) ? this : new MIPSProgram();
+            preparee.readSource(s);
             preparee.tokenize();
             // I want "this" MIPSProgram to be the first in the list...except for exception handler
-            if (preparee == this && MIPSProgramsToAssemble.size() > 0) {
+            if (preparee == this && !MIPSProgramsToAssemble.isEmpty()) {
                 MIPSProgramsToAssemble.add(leadFilePosition, preparee);
             } else {
                 MIPSProgramsToAssemble.add(preparee);

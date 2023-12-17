@@ -251,18 +251,17 @@ public class HelpHelpAction extends GuiAction {
 
     /////////////////////////////////////////////////////////////////////////////
     private JScrollPane createMipsDirectivesHelpPane() {
-        Vector exampleList = new Vector();
+        Vector<String> exampleList = new Vector<>();
         String blanks = "            ";  // 12 blanks
         Directives direct;
-        Iterator it = Directives.getDirectiveList().iterator();
-        while (it.hasNext()) {
-            direct = (Directives) it.next();
+        for (Directives directives : Directives.getDirectiveList()) {
+            direct = directives;
             exampleList.add(direct.toString()
                     + blanks.substring(0, Math.max(0, blanks.length() - direct.toString().length()))
                     + direct.getDescription());
         }
         Collections.sort(exampleList);
-        JList examples = new JList(exampleList);
+        JList<String> examples = new JList<>(exampleList);
         JScrollPane mipsScrollPane = new JScrollPane(examples, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         examples.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -271,14 +270,14 @@ public class HelpHelpAction extends GuiAction {
 
     ////////////////////////////////////////////////////////////////////////////
     private JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
-        ArrayList instructionList = Globals.instructionSet.getInstructionList();
-        Vector exampleList = new Vector(instructionList.size());
-        Iterator it = instructionList.iterator();
+        ArrayList<Instruction> instructionList = Globals.instructionSet.getInstructionList();
+        Vector<String> exampleList = new Vector<>(instructionList.size());
+        Iterator<Instruction> it = instructionList.iterator();
         Instruction instr;
         String blanks = "                        ";  // 24 blanks
-        Class instructionClass;
+        Class<? super Instruction> instructionClass;
         while (it.hasNext()) {
-            instr = (Instruction) it.next();
+            instr = it.next();
             try {
                 if (Class.forName(instructionClassName).isInstance(instr)) {
                     exampleList.add(instr.getExampleFormat()
@@ -290,7 +289,7 @@ public class HelpHelpAction extends GuiAction {
             }
         }
         Collections.sort(exampleList);
-        JList examples = new JList(exampleList);
+        JList<String> examples = new JList<>(exampleList);
         JScrollPane mipsScrollPane = new JScrollPane(examples, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         examples.setFont(new Font("Monospaced", Font.PLAIN, 12));
@@ -299,18 +298,17 @@ public class HelpHelpAction extends GuiAction {
     }
 
 
-    private class MyCellRenderer extends JLabel implements ListCellRenderer {
+    private class MyCellRenderer extends JLabel implements ListCellRenderer<String> {
         // This is the only method defined by ListCellRenderer.
         // We just reconfigure the JLabel each time we're called.
         public Component getListCellRendererComponent(
                 JList list, // the list
-                Object value, // value to display
+                String value, // value to display
                 int index, // cell index
                 boolean isSelected, // is the cell selected
                 boolean cellHasFocus) // does the cell have focus
         {
-            String s = value.toString();
-            setText(s);
+            setText(value);
             if (isSelected) {
                 setBackground(list.getSelectionBackground());
                 setForeground(list.getSelectionForeground());

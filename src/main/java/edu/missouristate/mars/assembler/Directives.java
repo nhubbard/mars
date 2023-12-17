@@ -14,7 +14,7 @@ import java.util.ArrayList;
 
 public final class Directives {
 
-    private static ArrayList directiveList = new ArrayList();
+    private static final ArrayList<Directives> directiveList = new ArrayList<>();
     public static final Directives DATA = new Directives(".data", "Subsequent items stored in Data segment at next available address");
     public static final Directives TEXT = new Directives(".text", "Subsequent items (instructions) stored in Text segment at next available address");
     public static final Directives WORD = new Directives(".word", "Store the listed value(s) as 32 bit words on word boundary");
@@ -40,8 +40,8 @@ public final class Directives {
     public static final Directives INCLUDE = new Directives(".include", "Insert the contents of the specified file.  Put filename in quotes.");
 
 
-    private String descriptor;
-    private String description; // help text
+    private final String descriptor;
+    private final String description; // help text
 
     private Directives() {
         // private ctor assures no objects can be created other than those above.
@@ -65,8 +65,8 @@ public final class Directives {
 
     public static Directives matchDirective(String str) {
         Directives match;
-        for (int i = 0; i < directiveList.size(); i++) {
-            match = (Directives) directiveList.get(i);
+        for (Directives directives : directiveList) {
+            match = directives;
             if (str.equalsIgnoreCase(match.descriptor)) {
                 return match;
             }
@@ -83,14 +83,14 @@ public final class Directives {
      * @return If match is found, returns ArrayList of matching Directives objects, else returns <tt>null</tt>.
      **/
 
-    public static ArrayList prefixMatchDirectives(String str) {
-        ArrayList matches = null;
-        for (int i = 0; i < directiveList.size(); i++) {
-            if (((Directives) directiveList.get(i)).descriptor.toLowerCase().startsWith(str.toLowerCase())) {
+    public static ArrayList<Directives> prefixMatchDirectives(String str) {
+        ArrayList<Directives> matches = null;
+        for (Directives directives : directiveList) {
+            if (directives.descriptor.toLowerCase().startsWith(str.toLowerCase())) {
                 if (matches == null) {
-                    matches = new ArrayList();
+                    matches = new ArrayList<>();
                 }
-                matches.add(directiveList.get(i));
+                matches.add(directives);
             }
         }
         return matches;
@@ -133,7 +133,7 @@ public final class Directives {
      *
      * @return MIPS Directive
      **/
-    public static ArrayList getDirectiveList() {
+    public static ArrayList<Directives> getDirectiveList() {
         return directiveList;
     }
 
@@ -158,5 +158,4 @@ public final class Directives {
     public static boolean isFloatingDirective(Directives direct) {
         return direct == Directives.FLOAT || direct == Directives.DOUBLE;
     }
-
 }

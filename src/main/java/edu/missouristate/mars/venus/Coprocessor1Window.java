@@ -323,7 +323,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class getColumnClass(int c) {
+        public Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 

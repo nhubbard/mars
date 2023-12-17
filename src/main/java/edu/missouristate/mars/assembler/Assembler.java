@@ -53,7 +53,7 @@ public class Assembler {
      * statement.
      * @see ProgramStatement
      **/
-    public ArrayList assemble(MIPSProgram p, boolean extendedAssemblerEnabled)
+    public ArrayList<ProgramStatement> assemble(MIPSProgram p, boolean extendedAssemblerEnabled)
             throws ProcessingException {
         return assemble(p, extendedAssemblerEnabled, false);
     }
@@ -76,9 +76,9 @@ public class Assembler {
      * statement.
      * @see ProgramStatement
      **/
-    public ArrayList assemble(MIPSProgram p, boolean extendedAssemblerEnabled,
+    public ArrayList<ProgramStatement> assemble(MIPSProgram p, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors) throws ProcessingException {
-        ArrayList programFiles = new ArrayList();
+        ArrayList<MIPSProgram> programFiles = new ArrayList<>();
         programFiles.add(p);
         return this.assemble(programFiles, extendedAssemblerEnabled, warningsAreErrors);
     }
@@ -108,7 +108,7 @@ public class Assembler {
      * statement. Returns null if incoming array list is null or empty.
      * @see ProgramStatement
      **/
-    public ArrayList assemble(ArrayList tokenizedProgramFiles, boolean extendedAssemblerEnabled)
+    public ArrayList<ProgramStatement> assemble(ArrayList<MIPSProgram> tokenizedProgramFiles, boolean extendedAssemblerEnabled)
             throws ProcessingException {
         return assemble(tokenizedProgramFiles, extendedAssemblerEnabled, false);
     }
@@ -132,10 +132,10 @@ public class Assembler {
      * statement. Returns null if incoming array list is null or empty.
      * @see ProgramStatement
      **/
-    public ArrayList assemble(ArrayList tokenizedProgramFiles, boolean extendedAssemblerEnabled,
+    public ArrayList<ProgramStatement> assemble(ArrayList<MIPSProgram> tokenizedProgramFiles, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors) throws ProcessingException {
 
-        if (tokenizedProgramFiles == null || tokenizedProgramFiles.size() == 0)
+        if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty())
             return null;
         textAddress = new UserKernelAddressSpace(Memory.textBaseAddress,
                 Memory.kernelTextBaseAddress);
@@ -146,7 +146,7 @@ public class Assembler {
         accumulatedDataSegmentForwardReferences = new DataSegmentForwardReferences();
         Globals.symbolTable.clear();
         Globals.memory.clear();
-        ArrayList<ProgramStatement> machineList = new ArrayList();
+        ArrayList<ProgramStatement> machineList = new ArrayList<>();
         this.errors = new ErrorList();
         if (Globals.debug)
             System.out.println("Assembler first pass begins:");
@@ -154,10 +154,10 @@ public class Assembler {
         // TO SECOND PASS. THIS ASSURES ALL SYMBOL TABLES ARE CORRECTLY BUILT.
         // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
         // ONE LOCAL SYMBOL TABLE FOR EACH SOURCE FILE.
-        for (int fileIndex = 0; fileIndex < tokenizedProgramFiles.size(); fileIndex++) {
+        for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
             if (errors.isErrorLimitExceeded())
                 break;
-            this.fileCurrentlyBeingAssembled = (MIPSProgram) tokenizedProgramFiles.get(fileIndex);
+            this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
             // List of labels declared ".globl". new list for each file assembled
             this.globalDeclarationList = new TokenList();
             // Parser begins by default in text segment until directed otherwise.
@@ -176,8 +176,8 @@ public class Assembler {
             // tokenList is an ArrayList of TokenList objects, one per source line;
             // each ArrayList in tokenList consists of Token objects.
             ArrayList<SourceLine> sourceLineList = fileCurrentlyBeingAssembled.getSourceLineList();
-            ArrayList tokenList = fileCurrentlyBeingAssembled.getTokenList();
-            ArrayList parsedList = fileCurrentlyBeingAssembled.createParsedList();
+            ArrayList<TokenList> tokenList = fileCurrentlyBeingAssembled.getTokenList();
+            ArrayList<ProgramStatement> parsedList = fileCurrentlyBeingAssembled.createParsedList();
             // each file keeps its own macro definitions
             MacroPool macroPool = fileCurrentlyBeingAssembled.createMacroPool();
             // FIRST PASS OF ASSEMBLER VERIFIES SYNTAX, GENERATES SYMBOL TABLE,
@@ -186,12 +186,12 @@ public class Assembler {
             for (int i = 0; i < tokenList.size(); i++) {
                 if (errors.isErrorLimitExceeded())
                     break;
-                for (int z = 0; z < ((TokenList) tokenList.get(i)).size(); z++) {
-                    Token t = ((TokenList) tokenList.get(i)).get(z);
+                for (int z = 0; z < tokenList.get(i).size(); z++) {
+                    Token t = tokenList.get(i).get(z);
                     // record this token's original source program and line #. Differs from final, if .include used
                     t.setOriginal(sourceLineList.get(i).getMIPSProgram(), sourceLineList.get(i).getLineNumber());
                 }
-                statements = this.parseLine((TokenList) tokenList.get(i),
+                statements = this.parseLine(tokenList.get(i),
                         sourceLineList.get(i).getSource(),
                         sourceLineList.get(i).getLineNumber(),
                         extendedAssemblerEnabled);
@@ -232,14 +232,14 @@ public class Assembler {
             System.out.println("Assembler second pass begins");
         // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
         // Generates basic assembler statements...
-        for (int fileIndex = 0; fileIndex < tokenizedProgramFiles.size(); fileIndex++) {
+        for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
             if (errors.isErrorLimitExceeded())
                 break;
-            this.fileCurrentlyBeingAssembled = (MIPSProgram) tokenizedProgramFiles.get(fileIndex);
-            ArrayList parsedList = fileCurrentlyBeingAssembled.getParsedList();
+            this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
+            ArrayList<ProgramStatement> parsedList = fileCurrentlyBeingAssembled.getParsedList();
             ProgramStatement statement;
-            for (int i = 0; i < parsedList.size(); i++) {
-                statement = (ProgramStatement) parsedList.get(i);
+            for (ProgramStatement programStatement : parsedList) {
+                statement = programStatement;
                 statement.buildBasicStatementFromBasicInstruction(errors);
                 if (errors.hasErrors()) {
                     throw new ProcessingException(errors);
@@ -276,11 +276,11 @@ public class Assembler {
 
                     // ////////////////////////////////////////////////////////////////////////////
                     // If we are using compact memory config and there is a compact expansion, use it
-                    ArrayList templateList;
+                    ArrayList<String> templateList;
                     if (compactTranslationCanBeApplied(statement)) {
-                        templateList = inst.getCompactBasicIntructionTemplateList();
+                        templateList = inst.getCompactBasicInstructionTemplateList();
                     } else {
-                        templateList = inst.getBasicIntructionTemplateList();
+                        templateList = inst.getBasicInstructionTemplateList();
                     }
 
                     // subsequent ProgramStatement constructor needs the correct text segment address.
@@ -306,7 +306,7 @@ public class Assembler {
                         // statement, add to list.
                         TokenList newTokenList = new Tokenizer().tokenizeLine(sourceLine,
                                 instruction, errors, false);
-                        ArrayList instrMatches = this.matchInstruction(newTokenList.get(0));
+                        ArrayList<Instruction> instrMatches = this.matchInstruction(newTokenList.get(0));
                         Instruction instr = OperandFormat.bestOperandMatch(newTokenList,
                                 instrMatches);
                         // Only first generated instruction is linked to original source
@@ -367,10 +367,10 @@ public class Assembler {
     // //////////////////////////////////////////////////////////////////////
     // Will check for duplicate text addresses, which can happen inadvertantly when using
     // operand on .text directive. Will generate error message for each one that occurs.
-    private void catchDuplicateAddresses(ArrayList instructions, ErrorList errors) {
+    private void catchDuplicateAddresses(ArrayList<ProgramStatement> instructions, ErrorList errors) {
         for (int i = 0; i < instructions.size() - 1; i++) {
-            ProgramStatement ps1 = (ProgramStatement) instructions.get(i);
-            ProgramStatement ps2 = (ProgramStatement) instructions.get(i + 1);
+            ProgramStatement ps1 = instructions.get(i);
+            ProgramStatement ps2 = instructions.get(i + 1);
             if (ps1.getAddress() == ps2.getAddress()) {
                 errors.add(new ErrorMessage(ps2.getSourceMIPSProgram(), ps2.getSourceLine(), 0,
                         "Duplicate text segment address: "
@@ -512,7 +512,7 @@ public class Assembler {
         // is not
         // yet implemented.
         if (!this.inDataSegment) {
-            ArrayList instrMatches = this.matchInstruction(token);
+            ArrayList<Instruction> instrMatches = this.matchInstruction(token);
             if (instrMatches == null)
                 return ret;
             // OK, we've got an operator match, let's check the operands.
@@ -853,7 +853,7 @@ public class Assembler {
     // //////////////////////////////////////////////////////////////////////////////////
     // Given token, find the corresponding Instruction object. If token was not
     // recognized as OPERATOR, there is a problem.
-    private ArrayList matchInstruction(Token token) {
+    private ArrayList<Instruction> matchInstruction(Token token) {
         if (token.getType() != TokenTypes.OPERATOR) {
             if (token.getSourceMIPSProgram().getLocalMacroPool()
                     .matchesAnyMacroName(token.getValue()))
@@ -866,7 +866,7 @@ public class Assembler {
                         + "\" is not a recognized operator"));
             return null;
         }
-        ArrayList inst = Globals.instructionSet.matchOperator(token.getValue());
+        ArrayList<Instruction> inst = Globals.instructionSet.matchOperator(token.getValue());
         if (inst == null) { // This should NEVER happen...
             this.errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(),
                     token.getStartPos(), "Internal Assembler error: \"" + token.getValue()
@@ -1248,16 +1248,16 @@ public class Assembler {
     // ProgramStatements.
     // Sorting is based on unsigned integer value of
     // ProgramStatement.getAddress()
-    private class ProgramStatementComparator implements Comparator {
+    private class ProgramStatementComparator implements Comparator<ProgramStatement> {
         // Will be used to sort the collection. Unsigned int compare, because
         // all kernel 32-bit
         // addresses have 1 in high order bit, which makes the int negative.
         // "Unsigned" compare
         // is needed when signs of the two operands differ.
-        public int compare(Object obj1, Object obj2) {
-            if (obj1 instanceof ProgramStatement && obj2 instanceof ProgramStatement) {
-                int addr1 = ((ProgramStatement) obj1).getAddress();
-                int addr2 = ((ProgramStatement) obj2).getAddress();
+        public int compare(ProgramStatement obj1, ProgramStatement obj2) {
+            if (obj1 != null && obj2 != null) {
+                int addr1 = obj1.getAddress();
+                int addr2 = obj2.getAddress();
                 return (addr1 < 0 && addr2 >= 0 || addr1 >= 0 && addr2 < 0) ? addr2 : addr1 - addr2;
             } else {
                 throw new ClassCastException();
@@ -1324,11 +1324,11 @@ public class Assembler {
     // - number of bytes (addresses are 4 bytes but may be used with any of
     // the integer directives: .word, .half, .byte)
     // - the label's token. Normally need only the name but error message needs more.
-    private class DataSegmentForwardReferences {
-        private ArrayList forwardReferenceList;
+    private static class DataSegmentForwardReferences {
+        private final ArrayList<DataSegmentForwardReference> forwardReferenceList;
 
         private DataSegmentForwardReferences() {
-            forwardReferenceList = new ArrayList();
+            forwardReferenceList = new ArrayList<>();
         }
 
         private int size() {
@@ -1367,7 +1367,7 @@ public class Assembler {
             int labelAddress;
             DataSegmentForwardReference entry;
             for (int i = 0; i < forwardReferenceList.size(); i++) {
-                entry = (DataSegmentForwardReference) forwardReferenceList.get(i);
+                entry = forwardReferenceList.get(i);
                 labelAddress = localSymtab.getAddressLocalOrGlobal(entry.token.getValue());
                 if (labelAddress != SymbolTable.NOT_FOUND) {
                     // patch address has to be valid b/c we already stored there...

@@ -24,7 +24,8 @@ import java.util.StringTokenizer;
  */
 public class ExtendedInstruction extends Instruction {
 
-    private ArrayList translationStrings, compactTranslationStrings;
+    private ArrayList<String> translationStrings;
+    private ArrayList<String> compactTranslationStrings;
 
     /**
      * Constructor for ExtendedInstruction.
@@ -101,7 +102,7 @@ public class ExtendedInstruction extends Instruction {
      * @return ArrayList of Strings.
      */
 
-    public ArrayList getBasicIntructionTemplateList() {
+    public ArrayList<String> getBasicInstructionTemplateList() {
         return translationStrings;
     }
 
@@ -141,7 +142,7 @@ public class ExtendedInstruction extends Instruction {
      * have a compact alternative.
      */
 
-    public ArrayList getCompactBasicIntructionTemplateList() {
+    public ArrayList<String> getCompactBasicInstructionTemplateList() {
         return compactTranslationStrings;
     }
 
@@ -559,11 +560,11 @@ public class ExtendedInstruction extends Instruction {
     // expands to, which is a string, and breaks out into separate
     // instructions.  They are separated by '\n' character.
 
-    private ArrayList buildTranslationList(String translation) {
-        if (translation == null || translation.length() == 0) {
+    private ArrayList<String> buildTranslationList(String translation) {
+        if (translation == null || translation.isEmpty()) {
             return null;
         }
-        ArrayList translationList = new ArrayList();
+        ArrayList<String> translationList = new ArrayList<>();
         StringTokenizer st = new StringTokenizer(translation, "\n");
         while (st.hasMoreTokens()) {
             translationList.add(st.nextToken());
@@ -580,16 +581,16 @@ public class ExtendedInstruction extends Instruction {
      * Returns length in bytes of corresponding binary instruction(s).
      * Returns 0 if the ArrayList is null or empty.
      */
-    private int getInstructionLength(ArrayList translationList) {
-        if (translationList == null || translationList.size() == 0) {
+    private int getInstructionLength(ArrayList<String> translationList) {
+        if (translationList == null || translationList.isEmpty()) {
             return 0;
         }
         // If instruction template is DBNOP, that means generate a "nop" instruction but only
         // if Delayed branching is enabled.  Otherwise generate nothing.  If generating nothing,
         // then don't count the nop in the instruction length.   DPS 23-Jan-2008
         int instructionCount = 0;
-        for (int i = 0; i < translationList.size(); i++) {
-            if (((String) translationList.get(i)).indexOf("DBNOP") >= 0 && !Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED))
+        for (String s : translationList) {
+            if (s.contains("DBNOP") && !Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED))
                 continue;
             instructionCount++;
         }

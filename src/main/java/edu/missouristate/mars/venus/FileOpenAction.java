@@ -19,7 +19,7 @@ public class FileOpenAction extends GuiAction {
     private File mostRecentlyOpenedFile;
     private JFileChooser fileChooser;
     private int fileFilterCount;
-    private ArrayList fileFilterList;
+    private ArrayList<FileFilter> fileFilterList;
     private PropertyChangeListener listenForUserAddedFileFilter;
 
     public FileOpenAction(String name, Icon icon, String descrip,

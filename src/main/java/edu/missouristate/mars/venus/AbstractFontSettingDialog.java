@@ -19,7 +19,7 @@ import java.util.Vector;
  */
 public abstract class AbstractFontSettingDialog extends JDialog {
     JDialog editorDialog;
-    JComboBox fontFamilySelector, fontStyleSelector;
+    JComboBox<String> fontFamilySelector, fontStyleSelector;
     JSlider fontSizeSelector;
     JSpinner fontSizeSpinSelector;
     JLabel fontSample;
@@ -67,7 +67,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
         // with a horizontal line separating the two groups.
         String[][] fullList = {commonFontFamilies, allFontFamilies};
 
-        fontFamilySelector = new JComboBox(makeVectorData(fullList));
+        fontFamilySelector = new JComboBox<>(makeVectorData(fullList));
         fontFamilySelector.setRenderer(new ComboBoxRenderer());
         fontFamilySelector.addActionListener(new BlockComboListener(fontFamilySelector));
         fontFamilySelector.setSelectedItem(currentFont.getFamily());
@@ -76,7 +76,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
         fontFamilySelector.setToolTipText("Short list of common font families followed by complete list.");
 
         String[] fontStyles = EditorFont.getFontStyleStrings();
-        fontStyleSelector = new JComboBox(fontStyles);
+        fontStyleSelector = new JComboBox<>(fontStyles);
         fontStyleSelector.setSelectedItem(EditorFont.styleIntToStyleString(currentFont.getStyle()));
         fontStyleSelector.setEditable(false);
         fontStyleSelector.setToolTipText("List of available font styles.");
@@ -191,15 +191,15 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     // Given an array of string arrays, will produce a Vector contenating
     // the arrays with a separator between each.
-    private Vector makeVectorData(String[][] str) {
+    private Vector<String> makeVectorData(String[][] str) {
         boolean needSeparator = false;
-        Vector data = new Vector();
-        for (int i = 0; i < str.length; i++) {
+        Vector<String> data = new Vector<>();
+        for (String[] strings : str) {
             if (needSeparator) {
                 data.addElement(SEPARATOR);
             }
-            for (int j = 0; j < str[i].length; j++) {
-                data.addElement(str[i][j]);
+            for (String string : strings) {
+                data.addElement(string);
                 needSeparator = true;
             }
         }
@@ -207,7 +207,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     }
 
     // Required renderer for handling the separator bar.
-    private class ComboBoxRenderer extends JLabel implements ListCellRenderer {
+    private static class ComboBoxRenderer extends JLabel implements ListCellRenderer<String> {
         JSeparator separator;
 
         public ComboBoxRenderer() {
@@ -217,8 +217,8 @@ public abstract class AbstractFontSettingDialog extends JDialog {
         }
 
         public Component getListCellRendererComponent(JList list,
-                                                      Object value, int index, boolean isSelected, boolean cellHasFocus) {
-            String str = (value == null) ? "" : value.toString();
+                                                      String value, int index, boolean isSelected, boolean cellHasFocus) {
+            String str = (value == null) ? "" : value;
             if (SEPARATOR.equals(str)) {
                 return separator;
             }
@@ -236,11 +236,11 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     }
 
     // Required listener to handle the separator bar.
-    private class BlockComboListener implements ActionListener {
-        JComboBox combo;
+    private static class BlockComboListener implements ActionListener {
+        JComboBox<String> combo;
         Object currentItem;
 
-        BlockComboListener(JComboBox combo) {
+        BlockComboListener(JComboBox<String> combo) {
             this.combo = combo;
             combo.setSelectedIndex(0);
             currentItem = combo.getSelectedItem();
