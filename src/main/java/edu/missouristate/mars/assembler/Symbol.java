@@ -8,9 +8,9 @@ package edu.missouristate.mars.assembler;
  **/
 
 public class Symbol {
-    private String name;
+    private final String name;
     private int address;
-    private boolean data; // boolean true if data symbol false if text symbol.
+    private final boolean data; // boolean true if data symbol false if text symbol.
     public static final boolean TEXT_SYMBOL = false;
     public static final boolean DATA_SYMBOL = true;
 
@@ -67,6 +67,5 @@ public class Symbol {
 
     public void setAddress(int newAddress) {
         this.address = newAddress;
-        return;
     }
 }

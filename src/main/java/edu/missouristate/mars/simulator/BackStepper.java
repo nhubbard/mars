@@ -1,11 +1,8 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
-
-import java.util.*;
 
 /**
  * Used to "step backward" through execution, undoing each instruction.
@@ -34,7 +31,7 @@ public class BackStepper {
     private static final int NOT_PC_VALUE = -1;
 
     private boolean engaged;
-    private BackstepStack backSteps;
+    private final BackstepStack backSteps;
 
     // One can argue using java.util.Stack, given its clumsy implementation.
     // A homegrown linked implementation will be more streamlined, but
@@ -105,10 +102,10 @@ public class BackStepper {
     // Use a do-while loop based on the backstep's program statement reference.
     public void backStep() {
         if (engaged && !backSteps.empty()) {
-            ProgramStatement statement = ((BackStep) backSteps.peek()).ps;
+            ProgramStatement statement = backSteps.peek().ps;
             engaged = false; // NEED TO DO THIS SO METHOD CALL IN SWITCH WILL NOT RESULT IN A NEW ACTION ON THE STACK!
             do {
-                BackStep step = (BackStep) backSteps.pop();
+                BackStep step = backSteps.pop();
                 if (step.pc != NOT_PC_VALUE) {
                     RegisterFile.setProgramCounter(step.pc);
                 }
@@ -152,7 +149,7 @@ public class BackStepper {
                     System.out.println("Internal MARS error: address exception while back-stepping.");
                     System.exit(0);
                 }
-            } while (!backSteps.empty() && statement == ((BackStep) backSteps.peek()).ps);
+            } while (!backSteps.empty() && statement == backSteps.peek().ps);
             engaged = true;  // RESET IT (was disabled at top of loop -- see comment)
         }
     }
@@ -315,7 +312,7 @@ public class BackStepper {
 
 
     // Represents a "back step" (undo action) on the stack.
-    private class BackStep {
+    private static class BackStep {
         private int action;  // what do do MEMORY_RESTORE_WORD, etc
         private int pc;      // program counter value when original step occurred
         private ProgramStatement ps;   // statement whose action is being "undone" here
@@ -362,11 +359,11 @@ public class BackStepper {
     // regardless of how many steps are executed.  This will speed things up a bit
     // and make life easier for the garbage collector.
 
-    private class BackstepStack {
-        private int capacity;
+    private static class BackstepStack {
+        private final int capacity;
         private int size;
         private int top;
-        private BackStep[] stack;
+        private final BackStep[] stack;
 
         // Stack is created upon successful assembly or reset.  The one-time overhead of
         // creating all the BackStep objects will not be noticed by the user, and enhances

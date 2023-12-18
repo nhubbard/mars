@@ -21,7 +21,6 @@ import javax.swing.event.*;
 public class Coprocessor0Window extends JPanel implements Observer {
     private static JTable table;
     private static Register[] registers;
-    private Object[][] tableData;
     private boolean highlighting;
     private int highlightRow;
     private ExecutePane executePane;
@@ -60,7 +59,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
 
     public Object[][] setupWindow() {
         registers = Coprocessor0.getRegisters();
-        tableData = new Object[registers.length][3];
+        Object[][] tableData = new Object[registers.length][3];
         rowGivenRegNumber = new int[32]; // maximum number of registers
         for (int i = 0; i < registers.length; i++) {
             rowGivenRegNumber[registers[i].getNumber()] = i;
@@ -191,8 +190,8 @@ public class Coprocessor0Window extends JPanel implements Observer {
      * all columns.
      */
     private class RegisterCellRenderer extends DefaultTableCellRenderer {
-        private Font font;
-        private int alignment;
+        private final Font font;
+        private final int alignment;
 
         public RegisterCellRenderer(Font font, int alignment) {
             super();
@@ -224,9 +223,9 @@ public class Coprocessor0Window extends JPanel implements Observer {
     }
 
 
-    class RegTableModel extends AbstractTableModel {
+    static class RegTableModel extends AbstractTableModel {
         final String[] columnNames = {"Name", "Number", "Value"};
-        Object[][] data;
+        final Object[][] data;
 
         public RegTableModel(Object[][] d) {
             data = d;
@@ -263,11 +262,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
         public boolean isCellEditable(int row, int col) {
             //Note that the data/cell address is constant,
             //no matter where the cell appears onscreen.
-            if (col == VALUE_COLUMN) {
-                return true;
-            } else {
-                return false;
-            }
+            return col == VALUE_COLUMN;
         }
 
 
@@ -277,7 +272,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
          * value is valid, MIPS register is updated.
          */
         public void setValueAt(Object value, int row, int col) {
-            int val = 0;
+            int val;
             try {
                 val = Binary.stringToInt((String) value);
             } catch (NumberFormatException nfe) {
@@ -293,7 +288,6 @@ public class Coprocessor0Window extends JPanel implements Observer {
             int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
             data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
             fireTableCellUpdated(row, col);
-            return;
         }
 
 
@@ -329,14 +323,14 @@ public class Coprocessor0Window extends JPanel implements Observer {
     // the first column. From Sun's JTable tutorial.
     // http://java.sun.com/docs/books/tutorial/uiswing/components/table.html
     //
-    private class MyTippedJTable extends JTable {
+    private static class MyTippedJTable extends JTable {
         MyTippedJTable(RegTableModel m) {
             super(m);
             this.setRowSelectionAllowed(true); // highlights background color of entire row
             this.setSelectionBackground(Color.GREEN);
         }
 
-        private String[] regToolTips = {
+        private final String[] regToolTips = {
                 /* $8  */  "Memory address at which address exception occurred",
                 /* $12 */  "Interrupt mask and enable bits",
                 /* $13 */  "Exception type and pending interrupt bits",
@@ -345,7 +339,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
 
         //Implement table cell tool tips.
         public String getToolTipText(MouseEvent e) {
-            String tip = null;
+            String tip;
             java.awt.Point p = e.getPoint();
             int rowIndex = rowAtPoint(p);
             int colIndex = columnAtPoint(p);
@@ -365,7 +359,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
             return tip;
         }
 
-        private String[] columnToolTips = {
+        private final String[] columnToolTips = {
                 /* name */   "Each register has a tool tip describing its usage convention",
                 /* number */ "Register number.  In your program, precede it with $",
                 /* value */  "Current 32 bit value"

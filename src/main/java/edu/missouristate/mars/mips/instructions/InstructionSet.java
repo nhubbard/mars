@@ -4,23 +4,18 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.StringTokenizer;
+import java.util.*;
 
 /**
  * The list of Instruction objects, each of which represents a MIPS instruction.
@@ -32,22 +27,22 @@ import java.util.StringTokenizer;
  */
 
 public class InstructionSet {
-    private ArrayList<Instruction> instructionList;
-    private ArrayList opcodeMatchMaps;
+    private final ArrayList<Instruction> instructionList;
+    private ArrayList<MatchMap> opcodeMatchMaps;
     private SyscallLoader syscallLoader;
 
     /**
      * Creates a new InstructionSet object.
      */
     public InstructionSet() {
-        instructionList = new ArrayList();
+        instructionList = new ArrayList<>();
 
     }
 
     /**
      * Retrieve the current instruction set.
      */
-    public ArrayList getInstructionList() {
+    public ArrayList<Instruction> getInstructionList() {
         return instructionList;
 
     }
@@ -542,7 +537,7 @@ public class InstructionSet {
                             try {
                                 int address = RegisterFile.getValue(operands[2]) + operands[1];
                                 int result = RegisterFile.getValue(operands[0]);
-                                for (int i = 0; i <= address % Globals.memory.WORD_LENGTH_BYTES; i++) {
+                                for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
                                     result = Binary.setByte(result, 3 - i, Globals.memory.getByte(address - i));
                                 }
                                 RegisterFile.updateRegister(operands[0], result);
@@ -560,7 +555,7 @@ public class InstructionSet {
                             try {
                                 int address = RegisterFile.getValue(operands[2]) + operands[1];
                                 int result = RegisterFile.getValue(operands[0]);
-                                for (int i = 0; i <= 3 - (address % Globals.memory.WORD_LENGTH_BYTES); i++) {
+                                for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
                                     result = Binary.setByte(result, i, Globals.memory.getByte(address + i));
                                 }
                                 RegisterFile.updateRegister(operands[0], result);
@@ -611,7 +606,7 @@ public class InstructionSet {
                             try {
                                 int address = RegisterFile.getValue(operands[2]) + operands[1];
                                 int source = RegisterFile.getValue(operands[0]);
-                                for (int i = 0; i <= address % Globals.memory.WORD_LENGTH_BYTES; i++) {
+                                for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
                                     Globals.memory.setByte(address - i, Binary.getByte(source, 3 - i));
                                 }
                             } catch (AddressErrorException e) {
@@ -628,7 +623,7 @@ public class InstructionSet {
                             try {
                                 int address = RegisterFile.getValue(operands[2]) + operands[1];
                                 int source = RegisterFile.getValue(operands[0]);
-                                for (int i = 0; i <= 3 - (address % Globals.memory.WORD_LENGTH_BYTES); i++) {
+                                for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
                                     Globals.memory.setByte(address + i, Binary.getByte(source, i));
                                 }
                             } catch (AddressErrorException e) {
@@ -1169,7 +1164,7 @@ public class InstructionSet {
                         statement -> {
                             int[] operands = statement.getOperands();
                             float value = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-                            int floatSqrt = 0;
+                            int floatSqrt;
                             if (value < 0.0f) {
                                 // This is subject to refinement later.  Release 4.0 defines floor, ceil, trunc, round
                                 // to act silently rather than raise Invalid Operation exception, so sqrt should do the
@@ -1234,7 +1229,7 @@ public class InstructionSet {
                             // carry out the MIPS and IEEE 754 standard.
                             int[] operands = statement.getOperands();
                             float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-                            int below = 0, above = 0, round = Math.round(floatValue);
+                            int below, above, round = Math.round(floatValue);
                             // According to MIPS32 spec, if any of these conditions is true, set
                             // Invalid Operation in the FCSR (Floating point Control/Status Register) and
                             // set result to be 2^31-1.  MARS does not implement this register (as of release 3.4.1).
@@ -1246,15 +1241,14 @@ public class InstructionSet {
                                     || floatValue > (float) Integer.MAX_VALUE) {
                                 round = Integer.MAX_VALUE;
                             } else {
-                                Float floatObj = floatValue;
                                 // If we are EXACTLY in the middle, then round to even!  To determine this,
                                 // find next higher integer and next lower integer, then see if distances
                                 // are exactly equal.
                                 if (floatValue < 0.0F) {
-                                    above = floatObj.intValue(); // truncates
+                                    above = ((Float) floatValue).intValue(); // truncates
                                     below = above - 1;
                                 } else {
-                                    below = floatObj.intValue(); // truncates
+                                    below = ((Float) floatValue).intValue(); // truncates
                                     above = below + 1;
                                 }
                                 if (floatValue - below == above - floatValue) { // exactly in the middle?
@@ -1370,7 +1364,7 @@ public class InstructionSet {
                             }
                             double value = Double.longBitsToDouble(Binary.twoIntsToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            long longSqrt = 0;
+                            long longSqrt;
                             if (value < 0.0) {
                                 // This is subject to refinement later.  Release 4.0 defines floor, ceil, trunc, round
                                 // to act silently rather than raise Invalid Operation exception, so sqrt should do the
@@ -1446,7 +1440,7 @@ public class InstructionSet {
                             }
                             double doubleValue = Double.longBitsToDouble(Binary.twoIntsToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            int below = 0, above = 0;
+                            int below, above;
                             int round = (int) Math.round(doubleValue);
                             // See comments in round.w.s above concerning FSCR...
                             if (Double.isNaN(doubleValue)
@@ -1455,15 +1449,14 @@ public class InstructionSet {
                                     || doubleValue > (double) Integer.MAX_VALUE) {
                                 round = Integer.MAX_VALUE;
                             } else {
-                                Double doubleObj = doubleValue;
                                 // If we are EXACTLY in the middle, then round to even!  To determine this,
                                 // find next higher integer and next lower integer, then see if distances
                                 // are exactly equal.
                                 if (doubleValue < 0.0) {
-                                    above = doubleObj.intValue(); // truncates
+                                    above = (int) doubleValue; // truncates
                                     below = above - 1;
                                 } else {
-                                    below = doubleObj.intValue(); // truncates
+                                    below = (int) doubleValue; // truncates
                                     above = below + 1;
                                 }
                                 if (doubleValue - below == above - doubleValue) { // exactly in the middle?
@@ -1778,7 +1771,7 @@ public class InstructionSet {
                             }
                             // convert single precision in $f1 to double stored in $f2
                             long result = Double.doubleToLongBits(
-                                    (double) Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
+                                    Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
                             Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
                             Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
                         }));
@@ -1794,7 +1787,7 @@ public class InstructionSet {
                             }
                             // convert integer to double (interpret $f1 value as int?)
                             long result = Double.doubleToLongBits(
-                                    (double) Coprocessor1.getValue(operands[1]));
+                                    Coprocessor1.getValue(operands[1]));
                             Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
                             Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
                         }));
@@ -2094,7 +2087,7 @@ public class InstructionSet {
                                 throw new ProcessingException(statement, "first register must be even-numbered");
                             }
                             // IF statement added by DPS 13-July-2011.
-                            if (!Globals.memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
+                            if (!Memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
                                 throw new ProcessingException(statement,
                                         new AddressErrorException("address not aligned on doubleword boundary ",
                                                 Exceptions.ADDRESS_EXCEPTION_LOAD, RegisterFile.getValue(operands[2]) + operands[1]));
@@ -2137,7 +2130,7 @@ public class InstructionSet {
                                 throw new ProcessingException(statement, "first register must be even-numbered");
                             }
                             // IF statement added by DPS 13-July-2011.
-                            if (!Globals.memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
+                            if (!Memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
                                 throw new ProcessingException(statement,
                                         new AddressErrorException("address not aligned on doubleword boundary ",
                                                 Exceptions.ADDRESS_EXCEPTION_STORE, RegisterFile.getValue(operands[2]) + operands[1]));
@@ -2334,19 +2327,18 @@ public class InstructionSet {
         // Initialization step.  Create token list for each instruction example.  This is
         // used by parser to determine user program correct syntax.
         for (Instruction instruction : instructionList) {
-            Instruction inst = (Instruction) instruction;
-            inst.createExampleTokenList();
+            instruction.createExampleTokenList();
         }
 
-        HashMap maskMap = new HashMap();
-        ArrayList matchMaps = new ArrayList();
-        for (Object rawInstr : instructionList) {
+        HashMap<Integer, HashMap<Integer, Instruction>> maskMap = new HashMap<>();
+        ArrayList<MatchMap> matchMaps = new ArrayList<>();
+        for (Instruction rawInstr : instructionList) {
             if (rawInstr instanceof BasicInstruction basic) {
                 Integer mask = basic.getOpcodeMask();
                 Integer match = basic.getOpcodeMatch();
-                HashMap matchMap = (HashMap) maskMap.get(mask);
+                HashMap<Integer, Instruction> matchMap = maskMap.get(mask);
                 if (matchMap == null) {
-                    matchMap = new HashMap();
+                    matchMap = new HashMap<>();
                     maskMap.put(mask, matchMap);
                     matchMaps.add(new MatchMap(mask, matchMap));
                 }
@@ -2358,10 +2350,9 @@ public class InstructionSet {
     }
 
     public BasicInstruction findByBinaryCode(int binaryInstr) {
-        ArrayList matchMaps = this.opcodeMatchMaps;
-        for (Object matchMap : matchMaps) {
-            MatchMap map = (MatchMap) matchMap;
-            BasicInstruction ret = map.find(binaryInstr);
+        ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
+        for (MatchMap matchMap : matchMaps) {
+            BasicInstruction ret = matchMap.find(binaryInstr);
             if (ret != null) return ret;
         }
         return null;
@@ -2371,29 +2362,33 @@ public class InstructionSet {
      */
 
     private void addPseudoInstructions() {
-        InputStream is = null;
+        InputStream is;
         BufferedReader in = null;
         try {
             // leading "/" prevents package name being prepended to filepath.
             is = this.getClass().getResourceAsStream("/PseudoOps.txt");
-            in = new BufferedReader(new InputStreamReader(is));
+            in = new BufferedReader(new InputStreamReader(Objects.requireNonNull(is)));
         } catch (NullPointerException e) {
             System.out.println(
                     "Error: MIPS pseudo-instruction file PseudoOps.txt not found.");
             System.exit(0);
         }
         try {
-            String line, pseudoOp, template, firstTemplate, token;
+            String line;
+            String pseudoOp;
+            StringBuilder template;
+            String firstTemplate;
+            String token;
             String description;
             StringTokenizer tokenizer;
             while ((line = in.readLine()) != null) {
                 // skip over: comment lines, empty lines, lines starting with blank.
                 if (!line.startsWith("#") && !line.startsWith(" ")
-                        && line.length() > 0) {
+                        && !line.isEmpty()) {
                     description = "";
                     tokenizer = new StringTokenizer(line, "\t");
                     pseudoOp = tokenizer.nextToken();
-                    template = "";
+                    template = new StringBuilder();
                     firstTemplate = null;
                     while (tokenizer.hasMoreTokens()) {
                         token = tokenizer.nextToken();
@@ -2404,18 +2399,18 @@ public class InstructionSet {
                         }
                         if (token.startsWith("COMPACT")) {
                             // has second template for Compact (16-bit) memory config -- added DPS 3 Aug 2009
-                            firstTemplate = template;
-                            template = "";
+                            firstTemplate = template.toString();
+                            template = new StringBuilder();
                             continue;
                         }
-                        template = template + token;
+                        template.append(token);
                         if (tokenizer.hasMoreTokens()) {
-                            template = template + "\n";
+                            template.append("\n");
                         }
                     }
                     ExtendedInstruction inst = (firstTemplate == null)
-                            ? new ExtendedInstruction(pseudoOp, template, description)
-                            : new ExtendedInstruction(pseudoOp, firstTemplate, template, description);
+                            ? new ExtendedInstruction(pseudoOp, template.toString(), description)
+                            : new ExtendedInstruction(pseudoOp, firstTemplate, template.toString(), description);
                     instructionList.add(inst);
                     //if (firstTemplate != null) System.out.println("\npseudoOp: "+pseudoOp+"\ndefault template:\n"+firstTemplate+"\ncompact template:\n"+template);
                 }
@@ -2462,14 +2457,14 @@ public class InstructionSet {
      * @param name a string
      * @return list of matching Instruction object(s), or null if none match.
      */
-    public ArrayList prefixMatchOperator(String name) {
-        ArrayList matchingInstructions = null;
-        // Linear search for now....
+    public ArrayList<Instruction> prefixMatchOperator(String name) {
+        ArrayList<Instruction> matchingInstructions = null;
+        // Linear search for now
         if (name != null) {
             for (Instruction instruction : instructionList) {
-                if (((Instruction) instruction).getName().toLowerCase().startsWith(name.toLowerCase())) {
+                if (instruction.getName().toLowerCase().startsWith(name.toLowerCase())) {
                     if (matchingInstructions == null)
-                        matchingInstructions = new ArrayList();
+                        matchingInstructions = new ArrayList<>();
                     matchingInstructions.add(instruction);
                 }
             }
@@ -2559,12 +2554,12 @@ public class InstructionSet {
                         Instruction.INSTRUCTION_LENGTH : 0));
     }
 
-    private static class MatchMap implements Comparable {
-        private int mask;
-        private int maskLength; // number of 1 bits in mask
-        private HashMap matchMap;
+    private static class MatchMap implements Comparable<MatchMap> {
+        private final int mask;
+        private final int maskLength; // number of 1 bits in mask
+        private final HashMap<Integer, Instruction> matchMap;
 
-        public MatchMap(int mask, HashMap matchMap) {
+        public MatchMap(int mask, HashMap<Integer, Instruction> matchMap) {
             this.mask = mask;
             this.matchMap = matchMap;
 
@@ -2581,10 +2576,9 @@ public class InstructionSet {
             return o instanceof MatchMap && mask == ((MatchMap) o).mask;
         }
 
-        public int compareTo(Object other) {
-            MatchMap o = (MatchMap) other;
-            int d = o.maskLength - this.maskLength;
-            if (d == 0) d = this.mask - o.mask;
+        public int compareTo(@NotNull MatchMap other) {
+            int d = other.maskLength - this.maskLength;
+            if (d == 0) d = this.mask - other.mask;
             return d;
         }
 

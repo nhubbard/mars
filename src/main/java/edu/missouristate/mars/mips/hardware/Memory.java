@@ -6,6 +6,7 @@ import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -117,7 +118,7 @@ public class Memory extends Observable {
     // and high end of address range, but retrieval from the tree has to be based
     // on target address being ANYWHERE IN THE RANGE (not an exact key match).
 
-    Collection observables = getNewMemoryObserversCollection();
+    Collection<MemoryObservable> observables = getNewMemoryObserversCollection();
 
     // The data segment is allocated in blocks of 1024 ints (4096 bytes).  Each block is
     // referenced by a "block table" entry, and the table has 1024 entries.  The capacity
@@ -210,7 +211,7 @@ public class Memory extends Observable {
     // (greedy rather than lazy instantiation).  The constructor is private and getInstance()
     // always returns this instance.
 
-    private static Memory uniqueMemoryInstance = new Memory();
+    private static final Memory uniqueMemoryInstance = new Memory();
 
 
     /*
@@ -586,7 +587,7 @@ public class Memory extends Observable {
     }
 
 
-    /********************************  THE GETTER METHODS  ******************************/
+    /* *******************************  THE GETTER METHODS  ******************************/
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -606,7 +607,7 @@ public class Memory extends Observable {
 
     // Does the real work, but includes option to NOT notify observers.
     private int get(int address, int length, boolean notify) throws AddressErrorException {
-        int value = 0;
+        int value;
         int relativeByteAddress;
         if (inDataSegment(address)) {
             // in data segment.  Will read one byte at a time, w/o regard to boundaries.
@@ -668,7 +669,7 @@ public class Memory extends Observable {
     // Doing so would be detrimental to simulation runtime performance, so
     // I decided to keep the duplicate logic.
     public int getRawWord(int address) throws AddressErrorException {
-        int value = 0;
+        int value;
         int relative;
         if (address % WORD_LENGTH_BYTES != 0) {
             throw new AddressErrorException("address for fetch not aligned on word boundary",
@@ -755,9 +756,7 @@ public class Memory extends Observable {
         } else if (inTextSegment(address) || inKernelTextSegment(address)) {
             try {
                 value = (getStatementNoNotify(address) == null) ? null : getStatementNoNotify(address).getBinaryStatement();
-            } catch (AddressErrorException aee) {
-                value = null;
-            }
+            } catch (AddressErrorException ignored) {}
         } else if (inKernelDataSegment(address)) {
             // in kernel data segment
             relative = (address - kernelDataBaseAddress) >> 2; // convert byte address to words
@@ -915,7 +914,7 @@ public class Memory extends Observable {
     }
 
 
-    /*********************************  THE UTILITIES  *************************************/
+    /* ********************************  THE UTILITIES  *************************************/
 
     /**
      * Utility to determine if given address is word-aligned.
@@ -1121,7 +1120,7 @@ public class Memory extends Observable {
      * receives does not come from the memory object itself, but
      * instead from a delegate.
      *
-     * @throws UnsupportedOperationException
+     * @throws UnsupportedOperationException always
      */
     public void notifyObservers() {
         throw new UnsupportedOperationException();
@@ -1132,22 +1131,24 @@ public class Memory extends Observable {
      * receives does not come from the memory object itself, but
      * instead from a delegate.
      *
-     * @throws UnsupportedOperationException
+     * @throws UnsupportedOperationException always
      */
     public void notifyObservers(Object obj) {
         throw new UnsupportedOperationException();
     }
 
 
-    private Collection getNewMemoryObserversCollection() {
-        return new Vector();  // Vectors are thread-safe
+    private Collection<MemoryObservable> getNewMemoryObserversCollection() {
+        return new Vector<>();  // Vectors are thread-safe
     }
 
     /////////////////////////////////////////////////////////////////////////
     // Private class whose objects will represent an observable-observer pair
     // for a given memory address or range.
-    private class MemoryObservable extends Observable implements Comparable {
-        private int lowAddress, highAddress;
+    @SuppressWarnings("ComparatorMethodParameterNotUsed")
+    private static class MemoryObservable extends Observable implements Comparable<MemoryObservable> {
+        private final int lowAddress;
+        private final int highAddress;
 
         public MemoryObservable(Observer obs, int startAddr, int endAddr) {
             lowAddress = startAddr;
@@ -1166,14 +1167,12 @@ public class Memory extends Observable {
 
         // Useful to have for future refactoring, if it actually becomes worthwhile to sort
         // these or put 'em in a tree (rather than sequential search through list).
-        public int compareTo(Object obj) {
-            if (!(obj instanceof MemoryObservable mo)) {
-                throw new ClassCastException();
-            }
-            if (this.lowAddress < mo.lowAddress || this.lowAddress == mo.lowAddress && this.highAddress < mo.highAddress) {
+        @Override
+        public int compareTo(@NotNull MemoryObservable obj) {
+            if (this.lowAddress < obj.lowAddress || this.lowAddress == obj.lowAddress && this.highAddress < obj.highAddress) {
                 return -1;
             }
-            if (this.lowAddress > mo.lowAddress || this.lowAddress == mo.lowAddress && this.highAddress > mo.highAddress) {
+            if (this.lowAddress > obj.lowAddress || this.highAddress > obj.highAddress) {
                 return -1;
             }
             return 0;  // they have to be equal at this point.
@@ -1191,11 +1190,11 @@ public class Memory extends Observable {
     // The "|| Globals.getGui()==null" is a hack added 19 July 2012 DPS.  IF MIPS simulation
     // is from command mode, Globals.program is null but still want ability to observe.
     private void notifyAnyObservers(int type, int address, int length, int value) {
-        if ((Globals.program != null || Globals.getGui() == null) && this.observables.size() > 0) {
-            Iterator it = this.observables.iterator();
+        if ((Globals.program != null || Globals.getGui() == null) && !this.observables.isEmpty()) {
+            Iterator<MemoryObservable> it = this.observables.iterator();
             MemoryObservable mo;
             while (it.hasNext()) {
-                mo = (MemoryObservable) it.next();
+                mo = it.next();
                 if (mo.match(address)) {
                     mo.notifyObserver(new MemoryAccessNotice(type, address, length, value));
                 }
@@ -1313,7 +1312,7 @@ public class Memory extends Observable {
     //
 
     private synchronized int fetchWordFromTable(int[][] blockTable, int relative) {
-        int value = 0;
+        int value;
         int block, offset;
         block = relative / BLOCK_LENGTH_WORDS;
         offset = relative % BLOCK_LENGTH_WORDS;
@@ -1339,7 +1338,7 @@ public class Memory extends Observable {
     //
 
     private synchronized Integer fetchWordOrNullFromTable(int[][] blockTable, int relative) {
-        int value = 0;
+        int value;
         int block, offset;
         block = relative / BLOCK_LENGTH_WORDS;
         offset = relative % BLOCK_LENGTH_WORDS;

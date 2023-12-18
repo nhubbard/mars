@@ -33,9 +33,7 @@ public class OperandFormat {
     static boolean tokenOperandMatch(TokenList candidateList, Instruction inst, ErrorList errors) {
         if (!numOperandsCheck(candidateList, inst, errors))
             return false;
-        if (!operandTypeCheck(candidateList, inst, errors))
-            return false;
-        return true;
+        return operandTypeCheck(candidateList, inst, errors);
     }
 
     /*
@@ -43,17 +41,16 @@ public class OperandFormat {
      * first such Instruction that has an exact operand match.  If none match,
      * return the first Instruction and let client deal with operand mismatches.
      */
-    static Instruction bestOperandMatch(TokenList tokenList, ArrayList instrMatches) {
+    static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
         if (instrMatches == null)
             return null;
         if (instrMatches.size() == 1)
-            return (Instruction) instrMatches.get(0);
-        for (Object instrMatch : instrMatches) {
-            Instruction potentialMatch = (Instruction) instrMatch;
-            if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList()))
-                return potentialMatch;
+            return instrMatches.get(0);
+        for (Instruction instruction : instrMatches) {
+            if (tokenOperandMatch(tokenList, instruction, new ErrorList()))
+                return instruction;
         }
-        return (Instruction) instrMatches.get(0);
+        return instrMatches.get(0);
     }
 
     // Simply check to see if numbers of operands are correct and generate error message if not.
@@ -143,7 +140,8 @@ public class OperandFormat {
             }
         }
 
-        /********  nice little debugging code to see which operand format
+        /*
+         ******  nice little debugging code to see which operand format
          ********  the operands for this source code instruction matched.
          System.out.print("Candidate: ");
          for (int i=1; i<spec.size(); i++) {
@@ -163,7 +161,6 @@ public class OperandFormat {
     private static void generateMessage(Token token, String mess, ErrorList errors) {
         errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(),
                 "\"" + token.getValue() + "\": " + mess));
-        return;
     }
 
 }

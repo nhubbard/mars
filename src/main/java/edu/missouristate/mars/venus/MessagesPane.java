@@ -22,8 +22,10 @@ import javax.swing.text.Position.Bias;
  **/
 
 public class MessagesPane extends JTabbedPane {
-    JTextArea assemble, run;
-    JPanel assembleTab, runTab;
+    final JTextArea assemble;
+    final JTextArea run;
+    final JPanel assembleTab;
+    final JPanel runTab;
     // These constants are designed to keep scrolled contents of the
     // two message areas from becoming overwhelmingly large (which
     // seems to slow things down as new text is appended).  Once it
@@ -74,7 +76,7 @@ public class MessagesPane extends JTabbedPane {
                         } catch (BadLocationException ble) {
                             text = "";
                         }
-                        if (text.length() > 0) {
+                        if (!text.isEmpty()) {
                             // If error or warning, parse out the line and column number.
                             if (text.startsWith(ErrorList.ERROR_MESSAGE_PREFIX) || text.startsWith(ErrorList.WARNING_MESSAGE_PREFIX)) {
                                 assemble.select(lineStart, lineEnd);
@@ -95,18 +97,14 @@ public class MessagesPane extends JTabbedPane {
                                     if (stringTokens[i].equals(columnToken) && i < stringTokens.length - 1)
                                         columnString = stringTokens[i + 1];
                                 }
-                                int line = 0;
-                                int column = 0;
+                                int line;
+                                int column;
                                 try {
                                     line = Integer.parseInt(lineString);
-                                } catch (NumberFormatException nfe) {
-                                    line = 0;
-                                }
+                                } catch (NumberFormatException ignored) {}
                                 try {
                                     column = Integer.parseInt(columnString);
-                                } catch (NumberFormatException nfe) {
-                                    column = 0;
-                                }
+                                } catch (NumberFormatException ignored) {}
                                 // everything between FILENAME_PREFIX and LINE_PREFIX is filename.
                                 int fileNameStart = text.indexOf(ErrorList.FILENAME_PREFIX) + ErrorList.FILENAME_PREFIX.length();
                                 int fileNameEnd = text.indexOf(ErrorList.LINE_PREFIX);
@@ -114,7 +112,7 @@ public class MessagesPane extends JTabbedPane {
                                 if (fileNameStart < fileNameEnd && fileNameStart >= ErrorList.FILENAME_PREFIX.length()) {
                                     fileName = text.substring(fileNameStart, fileNameEnd).trim();
                                 }
-                                if (fileName != null && fileName.length() > 0) {
+                                if (fileName != null && !fileName.isEmpty()) {
                                     selectEditorTextLine(fileName, line, column);
                                     selectErrorMessage(fileName, line, column);
                                 }
@@ -164,9 +162,9 @@ public class MessagesPane extends JTabbedPane {
         String errorReportSubstring = new java.io.File(fileName).getName() + ErrorList.LINE_PREFIX + line + ErrorList.POSITION_PREFIX + column;
         int textPosition = assemble.getText().lastIndexOf(errorReportSubstring);
         if (textPosition >= 0) {
-            int textLine = 0;
-            int lineStart = 0;
-            int lineEnd = 0;
+            int textLine;
+            int lineStart;
+            int lineEnd;
             try {
                 textLine = assemble.getLineOfOffset(textPosition);
                 lineStart = assemble.getLineStartOffset(textLine);
@@ -343,9 +341,9 @@ public class MessagesPane extends JTabbedPane {
     // Thread class for obtaining user input in the Run I/O window (MessagesPane)
     // Written by Ricardo Fern�ndez Pascual [rfernandez@ditec.um.es] December 2009.
     class Asker implements Runnable {
-        ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<>(1);
+        final ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<>(1);
         int initialPos;
-        int maxLen;
+        final int maxLen;
 
         Asker(int maxLen) {
             this.maxLen = maxLen;

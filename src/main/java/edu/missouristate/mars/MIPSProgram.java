@@ -1,6 +1,5 @@
 package edu.missouristate.mars;
 
-import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
@@ -24,10 +23,10 @@ public class MIPSProgram {
     private boolean steppedExecution = false;
 
     private String filename;
-    private ArrayList sourceList;
-    private ArrayList tokenList;
-    private ArrayList parsedList;
-    private ArrayList machineList;
+    private ArrayList<String> sourceList;
+    private ArrayList<TokenList> tokenList;
+    private ArrayList<ProgramStatement> parsedList;
+    private ArrayList<ProgramStatement> machineList;
     private BackStepper backStepper;
     private SymbolTable localSymbolTable;
     private MacroPool macroPool;
@@ -40,7 +39,7 @@ public class MIPSProgram {
      * @return ArrayList of String.  Each String is one line of MIPS source code.
      **/
 
-    public ArrayList getSourceList() {
+    public ArrayList<String> getSourceList() {
         return sourceList;
     }
 
@@ -53,7 +52,7 @@ public class MIPSProgram {
 
     public void setSourceLineList(ArrayList<SourceLine> sourceLineList) {
         this.sourceLineList = sourceLineList;
-        sourceList = new ArrayList();
+        sourceList = new ArrayList<>();
         for (SourceLine sl : sourceLineList) {
             sourceList.add(sl.getSource());
         }
@@ -88,7 +87,7 @@ public class MIPSProgram {
      * @see TokenList
      **/
 
-    public ArrayList getTokenList() {
+    public ArrayList<TokenList> getTokenList() {
         return tokenList;
     }
 
@@ -110,8 +109,8 @@ public class MIPSProgram {
      * @see ProgramStatement
      **/
 
-    public ArrayList createParsedList() {
-        parsedList = new ArrayList();
+    public ArrayList<ProgramStatement> createParsedList() {
+        parsedList = new ArrayList<>();
         return parsedList;
     }
 
@@ -123,7 +122,7 @@ public class MIPSProgram {
      * @see ProgramStatement
      **/
 
-    public ArrayList getParsedList() {
+    public ArrayList<ProgramStatement> getParsedList() {
         return parsedList;
     }
 
@@ -135,7 +134,7 @@ public class MIPSProgram {
      * @see ProgramStatement
      **/
 
-    public ArrayList getMachineList() {
+    public ArrayList<ProgramStatement> getMachineList() {
         return machineList;
     }
 
@@ -179,7 +178,7 @@ public class MIPSProgram {
 
     public String getSourceLine(int i) {
         if ((i >= 1) && (i <= sourceList.size()))
-            return (String) sourceList.get(i - 1);
+            return sourceList.get(i - 1);
         else
             return null;
     }
@@ -196,8 +195,8 @@ public class MIPSProgram {
 
     public void readSource(String file) throws ProcessingException {
         this.filename = file;
-        this.sourceList = new ArrayList();
-        ErrorList errors = null;
+        this.sourceList = new ArrayList<>();
+        ErrorList errors;
         BufferedReader inputFile;
         String line;
         int lengthSoFar = 0;
@@ -213,7 +212,6 @@ public class MIPSProgram {
             errors.add(new ErrorMessage((MIPSProgram) null, 0, 0, e.toString()));
             throw new ProcessingException(errors);
         }
-        return;
     }
 
     /**
@@ -226,7 +224,6 @@ public class MIPSProgram {
         this.tokenizer = new Tokenizer();
         this.tokenList = tokenizer.tokenize(this);
         this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
-        return;
     }
 
     /**
@@ -253,14 +250,14 @@ public class MIPSProgram {
             leadFilePosition = 1;
         }
         for (String s : filenames) {
-            MIPSProgram preparee = (s.equals(leadFilename)) ? this : new MIPSProgram();
-            preparee.readSource(s);
-            preparee.tokenize();
+            MIPSProgram currentProgram = (s.equals(leadFilename)) ? this : new MIPSProgram();
+            currentProgram.readSource(s);
+            currentProgram.tokenize();
             // I want "this" MIPSProgram to be the first in the list...except for exception handler
-            if (preparee == this && !MIPSProgramsToAssemble.isEmpty()) {
-                MIPSProgramsToAssemble.add(leadFilePosition, preparee);
+            if (currentProgram == this && !MIPSProgramsToAssemble.isEmpty()) {
+                MIPSProgramsToAssemble.add(leadFilePosition, currentProgram);
             } else {
-                MIPSProgramsToAssemble.add(preparee);
+                MIPSProgramsToAssemble.add(currentProgram);
             }
         }
         return MIPSProgramsToAssemble;
@@ -277,7 +274,7 @@ public class MIPSProgram {
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
 
-    public ErrorList assemble(ArrayList MIPSProgramsToAssemble, boolean extendedAssemblerEnabled)
+    public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled)
             throws ProcessingException {
         return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, false);
     }
@@ -295,7 +292,7 @@ public class MIPSProgram {
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
 
-    public ErrorList assemble(ArrayList MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
+    public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors) throws ProcessingException {
         this.backStepper = null;
         Assembler asm = new Assembler();
@@ -362,8 +359,7 @@ public class MIPSProgram {
     public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
         steppedExecution = true;
         Simulator sim = Simulator.getInstance();
-        boolean done = sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
-        return done;
+        return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
     }
 
     /**

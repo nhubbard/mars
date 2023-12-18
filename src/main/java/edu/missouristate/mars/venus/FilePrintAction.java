@@ -1,12 +1,8 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.io.*;
-import java.awt.print.*;
 import java.util.*;
 
 /**
@@ -42,28 +38,26 @@ public class FilePrintAction extends GuiAction {
         }
         BufferedReader in = new BufferedReader(new StringReader(editPane.getSource()));
         int lineNumberDigits = Integer.valueOf(editPane.getSourceLineCount()).toString().length();
-        String line;
-        String lineNumberString = "";
+        StringBuilder line;
+        StringBuilder lineNumberString = new StringBuilder();
         int lineNumber = 0;
         int numchars;
         try {
-            line = in.readLine();
+            line = Optional.ofNullable(in.readLine()).map(StringBuilder::new).orElse(null);
             while (line != null) {
                 if (editPane.showingLineNumbers()) {
                     lineNumber++;
-                    lineNumberString = Integer.valueOf(lineNumber).toString() + ": ";
+                    lineNumberString = new StringBuilder(Integer.valueOf(lineNumber).toString() + ": ");
                     while (lineNumberString.length() < lineNumberDigits) {
-                        lineNumberString = lineNumberString + " ";
+                        lineNumberString.append(" ");
                     }
                 }
-                line = lineNumberString + line + "\n";
-                out.write(line.toCharArray(), 0, line.length());
-                line = in.readLine();
+                line = new StringBuilder(lineNumberString + line.toString() + "\n");
+                out.write(line.toString().toCharArray(), 0, line.length());
+                line = Optional.ofNullable(in.readLine()).map(StringBuilder::new).orElse(null);
             }
             in.close();
             out.close();
-        } catch (IOException ioe) {
-        }
-        return;
+        } catch (IOException ignored) {}
     }
 }

@@ -27,8 +27,9 @@
  */
 package edu.missouristate.mars.venus;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.awt.*;
-import java.awt.event.*;
 import java.io.*;
 import java.text.*;
 import java.util.*;
@@ -43,7 +44,7 @@ import java.util.*;
  **/
 public class HardcopyWriter extends Writer {
     // These are the instance variables for the class
-    protected PrintJob job; // The PrintJob object in use
+    protected final PrintJob job; // The PrintJob object in use
     protected Graphics page; // Graphics object for current page
     protected String jobname; // The name of the print job
     protected int fontsize; // Point size of the font
@@ -61,13 +62,13 @@ public class HardcopyWriter extends Writer {
     protected int lineascent; // Offset of font baseline
     protected int chars_per_line; // Number of characters per line
     protected int lines_per_page; // Number of lines per page
-    protected int chars_per_tab = 4; // Added by Pete Sanderson 8-17-04
+    protected final int chars_per_tab = 4; // Added by Pete Sanderson 8-17-04
     protected int charnum = 0, linenum = 0; // Current column and line position
     protected int pagenum = 0; // Current page number
     // A field to save state between invocations of the write( ) method
     private boolean last_char_was_return = false;
     // A static variable that holds user preferences between print jobs
-    protected static Properties printprops = new Properties();
+    protected static final Properties printprops = new Properties();
 
     /**
      * The constructor for this class has a bunch of arguments:
@@ -99,7 +100,7 @@ public class HardcopyWriter extends Writer {
         }
         if (job == null)
             throw new PrintCanceledException("User cancelled print request");
-        /*******************************************************
+        /* *****************************************************
          SANDERSON OVERRIDE 8-17-2004:
          I didn't like the results produced by the code below, so am commenting
          it out and just setting pagedpi to 72.  This assures, among other things,
@@ -120,7 +121,7 @@ public class HardcopyWriter extends Writer {
          // (1 point = 1/72 of an inch) but Windows measures it in pixels.
          fontsize = fontsize * pagedpi / 72;
          }
-         ***********************************/
+         */
 
         pagedpi = 72;
         pagesize = new Dimension((int) (8.5 * pagedpi), 11 * pagedpi);
@@ -163,8 +164,8 @@ public class HardcopyWriter extends Writer {
      * This is the write( ) method of the stream. All Writer subclasses
      * implement this. All other versions of write( ) are variants of this one
      **/
-    public void write(char[] buffer, int index, int len) {
-        synchronized (this.lock) { // For thread safety
+    public void write(char @NotNull [] buffer, int index, int len) {
+        synchronized (this) { // For thread safety
             // Loop through all the characters passed to us
             for (int i = index; i < index + len; i++) {
                 // If we haven't begun a page (or a new page), do that now.
@@ -221,7 +222,7 @@ public class HardcopyWriter extends Writer {
      * Print the pending page (if any) and terminate the PrintJob.
      */
     public void close() {
-        synchronized (this.lock) {
+        synchronized (this) {
             if (page != null) page.dispose(); // Send page to the printer
             job.end(); // Terminate the job
         }
@@ -234,14 +235,12 @@ public class HardcopyWriter extends Writer {
      * Monospaced font having the same metrics.
      **/
     public void setFontStyle(int style) {
-        synchronized (this.lock) {
+        synchronized (this) {
             // Try to set a new font, but restore current one if it fails
             Font current = font;
             try {
                 font = new Font("Monospaced", style, fontsize);
-            } catch (Exception e) {
-                font = current;
-            }
+            } catch (Exception ignored) {}
             // If a page is pending, set the new font. Otherwise newpage( ) will
             if (page != null) page.setFont(font);
         }
@@ -251,7 +250,7 @@ public class HardcopyWriter extends Writer {
      * End the current page. Subsequent output will be on a new page.
      */
     public void pageBreak() {
-        synchronized (this.lock) {
+        synchronized (this) {
             newpage();
         }
     }

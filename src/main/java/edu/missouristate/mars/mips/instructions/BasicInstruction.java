@@ -11,12 +11,12 @@ package edu.missouristate.mars.mips.instructions;
 public class BasicInstruction extends Instruction {
 
     private String instructionName;
-    private BasicInstructionFormat instructionFormat;
-    private String operationMask;
-    private SimulationCode simulationCode;
+    private final BasicInstructionFormat instructionFormat;
+    private final String operationMask;
+    private final SimulationCode simulationCode;
 
-    private int opcodeMask;  // integer with 1's where constants required (0/1 become 1, f/s/t become 0)
-    private int opcodeMatch; // integer matching constants required (0/1 become 0/1, f/s/t become 0)
+    private final int opcodeMask;  // integer with 1's where constants required (0/1 become 1, f/s/t become 0)
+    private final int opcodeMatch; // integer matching constants required (0/1 become 0/1, f/s/t become 0)
 
     /**
      * BasicInstruction constructor.

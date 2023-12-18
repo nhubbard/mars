@@ -1,14 +1,9 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.*;
-import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.*;
 
 import java.util.*;
-import javax.swing.*;
-import java.awt.event.*;
 
 /**
  * Models Program Arguments, one or more strings provided to the MIPS
@@ -21,7 +16,7 @@ import java.awt.event.*;
 
 public class ProgramArgumentList {
 
-    ArrayList programArgumentList;
+    final ArrayList<String> programArgumentList;
 
     /**
      * Constructor that parses string to produce list.  Delimiters
@@ -32,7 +27,7 @@ public class ProgramArgumentList {
      */
     public ProgramArgumentList(String args) {
         StringTokenizer st = new StringTokenizer(args);
-        programArgumentList = new ArrayList(st.countTokens());
+        programArgumentList = new ArrayList<>(st.countTokens());
         while (st.hasMoreTokens()) {
             programArgumentList.add(st.nextToken());
         }
@@ -51,15 +46,13 @@ public class ProgramArgumentList {
      * Constructor that gets list from section of String array, one
      * argument per element.
      *
-     * @param args          Array of String, each element containing one argument
+     * @param list          Array of String, each element containing one argument
      * @param startPosition Index of array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
     public ProgramArgumentList(String[] list, int startPosition) {
-        programArgumentList = new ArrayList(list.length - startPosition);
-        for (int i = startPosition; i < list.length; i++) {
-            programArgumentList.add(list[i]);
-        }
+        programArgumentList = new ArrayList<>(list.length - startPosition);
+        programArgumentList.addAll(Arrays.asList(list).subList(startPosition, list.length));
     }
 
     /**
@@ -67,7 +60,7 @@ public class ProgramArgumentList {
      *
      * @param list ArrayList of String, each element containing one argument
      */
-    public ProgramArgumentList(ArrayList list) {
+    public ProgramArgumentList(ArrayList<String> list) {
         this(list, 0);
     }
 
@@ -76,15 +69,15 @@ public class ProgramArgumentList {
      * Constructor that gets list from section of String ArrayList, one
      * argument per element.
      *
-     * @param args          ArrayList of String, each element containing one argument
+     * @param list          ArrayList of String, each element containing one argument
      * @param startPosition Index of array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
-    public ProgramArgumentList(ArrayList list, int startPosition) {
+    public ProgramArgumentList(ArrayList<String> list, int startPosition) {
         if (list == null || list.size() < startPosition) {
-            programArgumentList = new ArrayList(0);
+            programArgumentList = new ArrayList<>(0);
         } else {
-            programArgumentList = new ArrayList(list.size() - startPosition);
+            programArgumentList = new ArrayList<>(list.size() - startPosition);
             for (int i = startPosition; i < list.size(); i++) {
                 programArgumentList.add(list.get(i));
             }
@@ -102,7 +95,7 @@ public class ProgramArgumentList {
     // to the argument count (argc), and $a1 is set to the stack
     // address holding the first argument pointer (argv).
     public void storeProgramArguments() {
-        if (programArgumentList == null || programArgumentList.size() == 0) {
+        if (programArgumentList == null || programArgumentList.isEmpty()) {
             return;
         }
         // Runtime stack initialization from stack top-down (each is 4 bytes) :
@@ -132,7 +125,7 @@ public class ProgramArgumentList {
         int[] argStartAddress = new int[programArgumentList.size()];
         try { // needed for all memory writes
             for (int i = 0; i < programArgumentList.size(); i++) {
-                programArgument = (String) programArgumentList.get(i);
+                programArgument = programArgumentList.get(i);
                 Globals.memory.set(highAddress, 0, 1);  // trailing null byte for each argument
                 highAddress--;
                 for (int j = programArgument.length() - 1; j >= 0; j--) {
@@ -170,7 +163,6 @@ public class ProgramArgumentList {
             System.out.println("Internal Error: Memory write error occurred while storing program arguments! " + aee);
             System.exit(0);
         }
-        return;
     }
 
 

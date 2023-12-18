@@ -9,7 +9,7 @@ import javax.swing.*;
  */
 
 public class GuiAction extends AbstractAction {
-    protected VenusUI mainUI;
+    protected final VenusUI mainUI;
 
     protected GuiAction(String name, Icon icon, String descrip,
                         Integer mnemonic, KeyStroke accel, VenusUI gui) {

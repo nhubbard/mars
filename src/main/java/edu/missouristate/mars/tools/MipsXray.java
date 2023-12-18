@@ -18,6 +18,7 @@ import org.w3c.dom.NodeList;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.*;
@@ -26,34 +27,29 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.Serial;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Observable;
-import java.util.Vector;
+import java.util.*;
 
 public class MipsXray extends AbstractMarsToolAndApplication {
+    @Serial
     private static final long serialVersionUID = -1L;
-    private static String heading = "MIPS X-Ray - Animation of MIPS Datapath";
-    private static String version = " Version 2.0";
+    private static final String heading = "MIPS X-Ray - Animation of MIPS Datapath";
+    private static final String version = " Version 2.0";
 
     protected Graphics g;
     protected int lastAddress = -1; //address of instruction in memory
     protected JLabel label;
-    private Container painel = this.getContentPane();
-    private DatapathAnimation datapathAnimation;   //class panel that runs datapath animation.
+    private final Container painel = this.getContentPane();
 
     private GraphicsConfiguration gc;
     private BufferedImage datapath;
     private String instructionBinary;
 
-    //Components to add menu bar in the plugin window.
-    private JButton Assemble, Step, runBackStep;
     private Action runAssembleAction, runStepAction, runBackstepAction;
 
     private VenusUI mainUI;
     private JToolBar toolbar;
-    private Timer time;
 
     public MipsXray(String title, String heading) {
         super(title, heading);
@@ -111,8 +107,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
      * in the SOUTH area.
      */
     protected JComponent buildAnimationSequence() {
-        JPanel image = new JPanel(new GridBagLayout());
-        return image;
+        return new JPanel(new GridBagLayout());
     }
 
     // Insert image in the panel and configure the parameters to run animation.
@@ -126,7 +121,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
         try {
             BufferedImage im = ImageIO.read(
-                    getClass().getResource(Globals.imagesPath + "datapath.png"));
+                    Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
 
             int transparency = im.getColorModel().getTransparency();
             datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(),
@@ -142,7 +137,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             e.printStackTrace();
         }
         System.setProperty("sun.java2d.translaccel", "true");
-        ImageIcon icon = new ImageIcon(getClass().getResource(Globals.imagesPath + "datapath.png"));
+        ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
         Image im = icon.getImage();
         icon = new ImageIcon(im);
 
@@ -163,7 +158,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
         try {
             BufferedImage im = ImageIO.read(
-                    getClass().getResource(Globals.imagesPath + figure));
+                    Objects.requireNonNull(getClass().getResource(Globals.imagesPath + figure)));
 
             int transparency = im.getColorModel().getTransparency();
             datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(),
@@ -179,7 +174,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             e.printStackTrace();
         }
         System.setProperty("sun.java2d.translaccel", "true");
-        ImageIcon icon = new ImageIcon(getClass().getResource(Globals.imagesPath + figure));
+        ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(Globals.imagesPath + figure)));
         Image im = icon.getImage();
         icon = new ImageIcon(im);
 
@@ -207,7 +202,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         ProgramStatement stmt;
 
         try {
-            BasicInstruction instr = null;
+            BasicInstruction instr;
             stmt = Memory.getInstance().getStatement(currentAdress);
             if (stmt == null) {
                 return;
@@ -218,7 +213,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             BasicInstructionFormat format = instr.getInstructionFormat();
 
             painel.removeAll();
-            datapathAnimation = new DatapathAnimation(instructionBinary);
+            //class panel that runs datapath animation.
+            DatapathAnimation datapathAnimation = new DatapathAnimation(instructionBinary);
             this.createActionObjects();
             toolbar = this.setUpToolBar();
             painel.add(toolbar, BorderLayout.NORTH);
@@ -239,15 +235,16 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     //set the tool bar that controls the step in a time instruction running.
     private JToolBar setUpToolBar() {
         JToolBar toolBar = new JToolBar();
-        Assemble = new JButton(runAssembleAction);
-        Assemble.setText("");
-        runBackStep = new JButton(runBackstepAction);
+        //Components to add menu bar in the plugin window.
+        JButton assemble = new JButton(runAssembleAction);
+        assemble.setText("");
+        JButton runBackStep = new JButton(runBackstepAction);
         runBackStep.setText("");
 
-        Step = new JButton(runStepAction);
-        Step.setText("");
-        toolBar.add(Assemble);
-        toolBar.add(Step);
+        JButton step = new JButton(runStepAction);
+        step.setText("");
+        toolBar.add(assemble);
+        toolBar.add(step);
 
         return toolBar;
     }
@@ -281,7 +278,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
 
 
-    class Vertex {
+    static class Vertex {
         private int numIndex;
         private int init;
         private int end;
@@ -291,14 +288,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         public static final int movingDownside = 2;
         public static final int movingLeft = 3;
         public static final int movingRight = 4;
-        public int direction;
+        public final int direction;
         public int oppositeAxis;
         private boolean isMovingXaxis;
         private Color color;
         private boolean first_interaction;
         private boolean active;
-        private boolean isText;
-        private ArrayList<Integer> targetVertex;
+        private final boolean isText;
+        private final ArrayList<Integer> targetVertex;
 
         public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis,
                       String listOfColors, String listTargetVertex, boolean isText) {
@@ -313,7 +310,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             this.active = false;
             this.isText = isText;
             this.color = new Color(0, 153, 0);
-            if (isMovingXaxis == true) {
+            if (isMovingXaxis) {
                 if (init < end)
                     direction = movingLeft;
                 else
@@ -437,16 +434,12 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         /**
          *
          */
+        @Serial
         private static final long serialVersionUID = -2681757800180958534L;
 
-        //config variables
-        private int PERIOD = 5;    // velocity of frames in ms
         private static final int PWIDTH = 1000;     // size of this panel
         private static final int PHEIGHT = 574;
-        private GraphicsConfiguration gc;
-        private GraphicsDevice gd;    // for reporting accl. memory usage
-        private int accelMemory;
-        private DecimalFormat df;
+        private final GraphicsConfiguration gc;
 
         private int counter;            //verify then remove.
         private boolean justStarted;    //flag to start movement
@@ -459,32 +452,25 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
         //	 private Vertex[][] inputGraph;
         private Vector<Vector<Vertex>> outputGraph;
-        private ArrayList<Vertex> vertexList;
+        private final ArrayList<Vertex> vertexList;
         private ArrayList<Vertex> vertexTraversed;
         //Screen Label variables
 
-        private HashMap<String, String> opcodeEquivalenceTable;
-        private HashMap<String, String> functionEquivalenceTable;
-        private HashMap<String, String> registerEquivalenceTable;
+        private final HashMap<String, String> opcodeEquivalenceTable;
+        private final HashMap<String, String> functionEquivalenceTable;
+        private final HashMap<String, String> registerEquivalenceTable;
 
         private String instructionCode;
 
-        private int countRegLabel;
-        private int countALULabel;
-        private int countPCLabel;
-
         //Colors variables
-        private Color green1 = new Color(0, 153, 0);
-        private Color green2 = new Color(0, 77, 0);
-        private Color yellow2 = new Color(185, 182, 42);
-        private Color orange1 = new Color(255, 102, 0);
-        private Color orange = new Color(119, 34, 34);
-        private Color blue2 = new Color(0, 153, 255);
+        private final Color green1 = new Color(0, 153, 0);
+        private final Color green2 = new Color(0, 77, 0);
+        private final Color yellow2 = new Color(185, 182, 42);
+        private final Color orange1 = new Color(255, 102, 0);
+        private final Color orange = new Color(119, 34, 34);
+        private final Color blue2 = new Color(0, 153, 255);
 
-        private int register = 1;
-        private int control = 2;
-        private int aluControl = 3;
-        private int alu = 4;
+        private final int alu = 4;
         private int currentUnit;
         private Graphics2D g2d;
 
@@ -497,12 +483,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         public DatapathAnimation(String instructionBinary) {
-            df = new DecimalFormat("0.0");  // 1 dp
+            DecimalFormat df = new DecimalFormat("0.0");  // 1 dp
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            gd = ge.getDefaultScreenDevice();
+            // for reporting accl. memory usage
+            GraphicsDevice gd = ge.getDefaultScreenDevice();
             gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
 
-            accelMemory = gd.getAvailableAcceleratedMemory();  // in bytes
+            int accelMemory = gd.getAvailableAcceleratedMemory();  // in bytes
             setBackground(Color.white);
             setPreferredSize(new Dimension(PWIDTH, PHEIGHT));
 
@@ -519,9 +506,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             functionEquivalenceTable = new HashMap<>();
             registerEquivalenceTable = new HashMap<>();
 
-            countRegLabel = 400;
-            countALULabel = 380;
-            countPCLabel = 380;
+            int countRegLabel = 400;
+            int countALULabel = 380;
+            int countPCLabel = 380;
             loadHashMapValues();
             addMouseListener(this);
 
@@ -537,14 +524,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         //import the list of opcodes of mips set of instructions
-        public void importXmlStringData(String xmlName, HashMap table, String elementTree, String tagId, String tagData) {
+        public void importXmlStringData(String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(false);
             DocumentBuilder docBuilder;
             try {
                 //System.out.println();
                 docBuilder = dbf.newDocumentBuilder();
-                Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
+                Document doc = docBuilder.parse(Objects.requireNonNull(getClass().getResource(xmlName)).toString());
                 Element root = doc.getDocumentElement();
                 Element equivalenceItem;
                 NodeList bitList, mnemonic;
@@ -569,7 +556,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             DocumentBuilder docBuilder;
             try {
                 docBuilder = dbf.newDocumentBuilder();
-                Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
+                Document doc = docBuilder.parse(Objects.requireNonNull(getClass().getResource(xmlName)).toString());
                 Element root = doc.getDocumentElement();
                 Element datapath_mapItem;
                 NodeList index_vertex, name, init, end, color, other_axis, isMovingXaxis, targetVertex, sourceVertex, isText;
@@ -581,7 +568,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     init = datapath_mapItem.getElementsByTagName("init");
                     end = datapath_mapItem.getElementsByTagName("end");
                     //definition of colors line
-                    if (instructionCode.substring(0, 6).equals("000000")) {//R-type instructions
+                    if (instructionCode.startsWith("000000")) {//R-type instructions
                         color = datapath_mapItem.getElementsByTagName("color_Rtype");
                         //System.out.println("rtype");
                     } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
@@ -647,7 +634,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             Font fontTitle = new Font("Verdana", Font.PLAIN, 10);
 
             TextLayout textVariable;
-            if (instructionCode.substring(0, 6).equals("000000")) {  //R-type instructions description on screen definition.
+            if (instructionCode.startsWith("000000")) {  //R-type instructions description on screen definition.
                 textVariable = new TextLayout("REGISTER TYPE INSTRUCTION", new Font("Arial", Font.BOLD, 25), frc);
                 g2d.setColor(Color.black);
                 textVariable.draw(g2d, 280, 30);
@@ -1058,7 +1045,10 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         //set the initial state of the variables that controls the animation, and start the timer that triggers the animation.
         public void startAnimation(String codeInstruction) {
             instructionCode = codeInstruction;
-            time = new Timer(PERIOD, this);    // start timer
+            //config variables
+            // velocity of frames in ms
+            int PERIOD = 5;
+            Timer time = new Timer(PERIOD, this);    // start timer
             time.start();
             // 	this.repaint();
         }
@@ -1067,7 +1057,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         private void initImages() {
             try {
                 BufferedImage im = ImageIO.read(
-                        getClass().getResource(Globals.imagesPath + "datapath.png"));
+                        Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
 
                 int transparency = im.getColorModel().getTransparency();
                 datapath = gc.createCompatibleImage(
@@ -1132,7 +1122,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             track = new int[size];
             for (int i = 0; i < size; i++)
                 track[i] = v.getInit() + i;
-            if (v.isActive() == true) {
+            if (v.isActive()) {
                 v.setFirst_interaction(false);
                 for (int i = 0; i < size; i++) {
                     if (track[i] <= v.getCurrent()) {
@@ -1143,7 +1133,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                 if (v.getCurrent() == track[size - 1])
                     v.setActive(false);
                 v.setCurrent(v.getCurrent() + 1);
-            } else if (v.isFirst_interaction() == false) {
+            } else if (!v.isFirst_interaction()) {
                 for (int i = 0; i < size; i++) {
                     g2d.setColor(v.getColor());
                     g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
@@ -1164,7 +1154,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             for (int i = 0; i < size; i++)
                 track[i] = v.getInit() - i;
 
-            if (v.isActive() == true) {
+            if (v.isActive()) {
                 v.setFirst_interaction(false);
                 for (int i = 0; i < size; i++) {
                     if (track[i] >= v.getCurrent()) {
@@ -1176,7 +1166,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     v.setActive(false);
 
                 v.setCurrent(v.getCurrent() - 1);
-            } else if (v.isFirst_interaction() == false) {
+            } else if (!v.isFirst_interaction()) {
                 for (int i = 0; i < size; i++) {
                     g2d.setColor(v.getColor());
                     g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
@@ -1203,7 +1193,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     track[i] = v.getInit() + i;
             }
 
-            if (v.isActive() == true) {
+            if (v.isActive()) {
                 v.setFirst_interaction(false);
                 for (int i = 0; i < size; i++) {
                     if (track[i] >= v.getCurrent()) {
@@ -1215,7 +1205,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     v.setActive(false);
                 v.setCurrent(v.getCurrent() - 1);
 
-            } else if (v.isFirst_interaction() == false) {
+            } else if (!v.isFirst_interaction()) {
                 for (int i = 0; i < size; i++) {
                     g2d.setColor(v.getColor());
                     g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
@@ -1236,7 +1226,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             for (int i = 0; i < size; i++)
                 track[i] = v.getInit() + i;
 
-            if (v.isActive() == true) {
+            if (v.isActive()) {
                 v.setFirst_interaction(false);
                 for (int i = 0; i < size; i++) {
                     if (track[i] <= v.getCurrent()) {
@@ -1248,7 +1238,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                 if (v.getCurrent() == track[size - 1])
                     v.setActive(false);
                 v.setCurrent(v.getCurrent() + 1);
-            } else if (v.isFirst_interaction() == false) {
+            } else if (!v.isFirst_interaction()) {
                 for (int i = 0; i < size; i++) {
                     g2d.setColor(v.getColor());
                     g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
@@ -1270,7 +1260,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                 actionInFunctionalBlock = new TextLayout(" ", new Font("Verdana", Font.BOLD, 13), frc);
             }
             if (v.getName().equals("ALUVALUE")) {
-                if (instructionCode.substring(0, 6).equals("000000"))//R-type instruction
+                if (instructionCode.startsWith("000000"))//R-type instruction
                     actionInFunctionalBlock = new TextLayout(functionEquivalenceTable.get(instructionCode.substring(26, 32)), new Font("Verdana", Font.BOLD, 13), frc);
                 else //other instructions
                     actionInFunctionalBlock = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), new Font("Verdana", Font.BOLD, 13), frc);
@@ -1283,7 +1273,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                 if (!instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]"))
                     actionInFunctionalBlock = new TextLayout(" ", new Font("Verdana", Font.BOLD, 13), frc);
             }
-            if (v.isActive() == true) {
+            if (v.isActive()) {
                 v.setFirst_interaction(false);
                 actionInFunctionalBlock.draw(g2d, v.getOppositeAxis(), v.getCurrent());
                 if (v.getCurrent() == v.getEnd())
@@ -1315,20 +1305,22 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             Vertex vert;
             for (int i = 0; i < vertexTraversed.size(); i++) {
                 vert = vertexTraversed.get(i);
-                if (vert.isMovingXaxis == true) {
-                    if (vert.getDirection() == vert.movingLeft) {
+                if (vert.isMovingXaxis) {
+                    if (vert.getDirection() == Vertex.movingLeft) {
                         printTrackLtoR(vert);
-                        if (vert.isActive() == false) {
+                        if (!vert.isActive()) {
                             int j = vert.getTargetVertex().size();
                             Vertex tempVertex;
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                Boolean hasThisVertex = false;
+                                boolean hasThisVertex = false;
                                 for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
                                         hasThisVertex = true;
+                                        break;
+                                    }
                                 }
-                                if (hasThisVertex == false) {
+                                if (!hasThisVertex) {
                                     outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
                                     vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
                                 }
@@ -1336,17 +1328,19 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                         }
                     } else {
                         printTrackRtoL(vert);
-                        if (vert.isActive() == false) {
+                        if (!vert.isActive()) {
                             int j = vert.getTargetVertex().size();
                             Vertex tempVertex;
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                Boolean hasThisVertex = false;
+                                boolean hasThisVertex = false;
                                 for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
                                         hasThisVertex = true;
+                                        break;
+                                    }
                                 }
-                                if (hasThisVertex == false) {
+                                if (!hasThisVertex) {
                                     outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
                                     vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
                                 }
@@ -1355,23 +1349,25 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     }
                 } //end of condition of X axis
                 else {
-                    if (vert.getDirection() == vert.movingDownside) {
-                        if (vert.isText == true)
+                    if (vert.getDirection() == Vertex.movingDownside) {
+                        if (vert.isText)
                             printTextDtoU(vert);
                         else
                             printTrackDtoU(vert);
 
-                        if (vert.isActive() == false) {
+                        if (!vert.isActive()) {
                             int j = vert.getTargetVertex().size();
                             Vertex tempVertex;
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                Boolean hasThisVertex = false;
+                                boolean hasThisVertex = false;
                                 for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
                                         hasThisVertex = true;
+                                        break;
+                                    }
                                 }
-                                if (hasThisVertex == false) {
+                                if (!hasThisVertex) {
                                     outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
                                     vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
                                 }
@@ -1381,17 +1377,19 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                     } else {
 
                         printTrackUtoD(vert);
-                        if (vert.isActive() == false) {
+                        if (!vert.isActive()) {
                             int j = vert.getTargetVertex().size();
                             Vertex tempVertex;
                             for (int k = 0; k < j; k++) {
                                 tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                Boolean hasThisVertex = false;
+                                boolean hasThisVertex = false;
                                 for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex())
+                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
                                         hasThisVertex = true;
+                                        break;
+                                    }
                                 }
-                                if (hasThisVertex == false) {
+                                if (!hasThisVertex) {
                                     outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
                                     vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
                                 }
@@ -1411,18 +1409,21 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
             if (e.getPoint().getX() > 425 && e.getPoint().getX() < 520 && e.getPoint().getY() > 300 && e.getPoint().getY() < 425) {
                 buildMainDisplayArea("register.png");
+                int register = 1;
                 FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, register);
                 fu.run();
             }
 
             if (e.getPoint().getX() > 355 && e.getPoint().getX() < 415 && e.getPoint().getY() > 180 && e.getPoint().getY() < 280) {
                 buildMainDisplayArea("control.png");
+                int control = 2;
                 FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, control);
                 fu.run();
             }
 
             if (e.getPoint().getX() > 560 && e.getPoint().getX() < 620 && e.getPoint().getY() > 450 && e.getPoint().getY() < 520) {
                 buildMainDisplayArea("ALUcontrol.png");
+                int aluControl = 3;
                 FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, aluControl);
                 fu.run();
             }

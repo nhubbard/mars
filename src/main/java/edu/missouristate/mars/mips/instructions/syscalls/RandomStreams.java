@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import java.util.HashMap;
+import java.util.Random;
 
 
 /**
@@ -14,5 +15,5 @@ public class RandomStreams {
      * Collection of pseudorandom number streams available for use in Rand-type syscalls.
      * The streams are by default not seeded.
      */
-    static final HashMap randomStreams = new HashMap();
+    static final HashMap<Integer, Random> randomStreams = new HashMap<>();
 }

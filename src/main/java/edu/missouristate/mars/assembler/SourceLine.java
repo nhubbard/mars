@@ -11,10 +11,10 @@ import edu.missouristate.mars.MIPSProgram;
  * to the user.
  */
 public class SourceLine {
-    private String source;
+    private final String source;
     private String filename;
-    private MIPSProgram mipsProgram;
-    private int lineNumber;
+    private final MIPSProgram mipsProgram;
+    private final int lineNumber;
 
     /**
      * SourceLine constructor

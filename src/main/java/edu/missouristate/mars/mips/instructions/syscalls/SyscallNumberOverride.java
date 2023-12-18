@@ -7,7 +7,7 @@ package edu.missouristate.mars.mips.instructions.syscalls;
  */
 
 public class SyscallNumberOverride {
-    private String serviceName;
+    private final String serviceName;
     private int newServiceNumber;
 
     /**

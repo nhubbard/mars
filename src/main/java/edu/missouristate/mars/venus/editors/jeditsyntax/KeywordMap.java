@@ -104,7 +104,7 @@ public class KeywordMap {
     }
 
     // protected members
-    protected int mapLength;
+    protected final int mapLength;
 
     protected int getStringMapKey(String s) {
         return (Character.toUpperCase(s.charAt(0)) +
@@ -119,18 +119,18 @@ public class KeywordMap {
     }
 
     // private members
-    class Keyword {
+    static class Keyword {
         public Keyword(char[] keyword, byte id, Keyword next) {
             this.keyword = keyword;
             this.id = id;
             this.next = next;
         }
 
-        public char[] keyword;
-        public byte id;
-        public Keyword next;
+        public final char[] keyword;
+        public final byte id;
+        public final Keyword next;
     }
 
-    private Keyword[] map;
+    private final Keyword[] map;
     private boolean ignoreCase;
 }

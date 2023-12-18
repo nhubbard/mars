@@ -7,7 +7,6 @@ import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.util.*;
 
-import java.io.*;
 import java.util.*;
 
 /**
@@ -18,8 +17,8 @@ import java.util.*;
  */
 public class Globals {
     // List these first because they are referenced by methods called at initialization.
-    private static String configPropertiesFile = "Config";
-    private static String syscallPropertiesFile = "Syscall";
+    private static final String configPropertiesFile = "Config";
+    private static final String syscallPropertiesFile = "Syscall";
 
     /**
      * The set of implemented MIPS instructions.
@@ -40,7 +39,7 @@ public class Globals {
     /**
      * Lock variable used at head of synchronized block to guard MIPS memory and registers
      **/
-    public static Object memoryAndRegistersLock = new Object();
+    public static final Object memoryAndRegistersLock = new Object();
     /**
      * Flag to determine whether or not to produce internal debugging information.
      **/
@@ -52,7 +51,7 @@ public class Globals {
     /**
      * String to GUI's RunI/O text area when echoing user input from pop-up dialog.
      */
-    public static String userInputAlert = "**** user input : ";
+    public static final String userInputAlert = "**** user input : ";
     /**
      * Path to folder that contains images
      */
@@ -110,7 +109,7 @@ public class Globals {
     public static boolean runSpeedPanelExists = false;
 
     private static String getCopyrightYears() {
-        return "2003-2014";
+        return "2003-2023";
     }
 
     private static String getCopyrightHolders() {
@@ -195,7 +194,7 @@ public class Globals {
         Properties properties = PropertiesFile.loadPropertiesFromFile(propertiesFile);
         try {
             limit = Integer.parseInt(properties.getProperty(propertyName, Integer.toString(defaultValue)));
-        } catch (NumberFormatException nfe) {
+        } catch (NumberFormatException ignored) {
         } // do nothing, I already have a default
         return limit;
     }

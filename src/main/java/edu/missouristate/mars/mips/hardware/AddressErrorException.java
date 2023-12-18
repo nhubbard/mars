@@ -10,8 +10,8 @@ import edu.missouristate.mars.util.Binary;
  * @version August 2003
  **/
 public class AddressErrorException extends Exception {
-    private int address;
-    private int type;  // Exceptions.ADDRESS_EXCEPTION_LOAD,Exceptions.ADDRESS_EXCEPTION_STORE
+    private final int address;
+    private final int type;  // Exceptions.ADDRESS_EXCEPTION_LOAD,Exceptions.ADDRESS_EXCEPTION_STORE
 
 
     /**

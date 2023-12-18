@@ -6,7 +6,7 @@ import edu.missouristate.mars.ProgramStatement;
 
 /**
  * Abstract class that a MIPS syscall system service may extend.  A qualifying service
- * must be a class in the mars.mips.instructions.syscalls package that
+ * must be a class in the {@code edu.missouristate.mars.mips.instructions.syscalls} package that
  * implements the Syscall interface, must be compiled into a .class file,
  * and its .class file must be in the same folder as Syscall.class.
  * Mars will detect a qualifying syscall upon startup, create an instance
@@ -18,7 +18,7 @@ import edu.missouristate.mars.ProgramStatement;
 
 public abstract class AbstractSyscall implements Syscall {
     private int serviceNumber;
-    private String serviceName;
+    private final String serviceName;
 
     /**
      * Constructor is provided so subclass may initialize instance variables.

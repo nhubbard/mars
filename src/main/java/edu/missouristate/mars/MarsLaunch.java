@@ -1,16 +1,23 @@
 package edu.missouristate.mars;
 
-import edu.missouristate.mars.venus.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.dump.*;
+import edu.missouristate.mars.mips.dump.DumpFormat;
+import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.simulator.*;
+import edu.missouristate.mars.simulator.ProgramArgumentList;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.FilenameFinder;
+import edu.missouristate.mars.util.MemoryDump;
+import edu.missouristate.mars.venus.VenusUI;
 
-import java.io.*;
-import java.util.*;
-import java.awt.*;
 import javax.swing.*;
-import javax.swing.JOptionPane;   // KENV 9/8/2004
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * Launch the Mars application
@@ -87,15 +94,15 @@ public class MarsLaunch {
     private static final int DECIMAL = 0; // memory and register display format
     private static final int HEXADECIMAL = 1;// memory and register display format
     private static final int ASCII = 2;// memory and register display format
-    private ArrayList registerDisplayList;
-    private ArrayList memoryDisplayList;
-    private ArrayList filenameList;
+    private ArrayList<String> registerDisplayList;
+    private ArrayList<String> memoryDisplayList;
+    private ArrayList<String> filenameList;
     private MIPSProgram code;
     private int maxSteps;
     private int instructionCount;
     private PrintStream out; // stream for display of command line output
-    private ArrayList dumpTriples = null; // each element holds 3 arguments for dump option
-    private ArrayList programArgumentList; // optional program args for MIPS program (becomes argc, argv)
+    private ArrayList<String[]> dumpTriples = null; // each element holds 3 arguments for dump option
+    private ArrayList<String> programArgumentList; // optional program args for MIPS program (becomes argc, argv)
     private int assembleErrorExitCode;  // MARS command exit code to return if assemble error occurs
     private int simulateErrorExitCode;// MARS command exit code to return if simulation error occurs
 
@@ -120,9 +127,9 @@ public class MarsLaunch {
             instructionCount = 0;
             assembleErrorExitCode = 0;
             simulateErrorExitCode = 0;
-            registerDisplayList = new ArrayList();
-            memoryDisplayList = new ArrayList();
-            filenameList = new ArrayList();
+            registerDisplayList = new ArrayList<>();
+            memoryDisplayList = new ArrayList<>();
+            filenameList = new ArrayList<>();
             MemoryConfigurations.setCurrentConfiguration(MemoryConfigurations.getDefaultConfiguration());
             // do NOT use Globals.program for command line MARS -- it triggers 'backstep' log.
             code = new MIPSProgram();
@@ -146,8 +153,7 @@ public class MarsLaunch {
 
     private void dumpSegments() {
 
-        if (dumpTriples == null)
-            return;
+        if (dumpTriples == null) return;
 
         for (Object dumpTriple : dumpTriples) {
             String[] triple = (String[]) dumpTriple;
@@ -169,7 +175,7 @@ public class MarsLaunch {
                 continue;
             }
             DumpFormatLoader loader = new DumpFormatLoader();
-            ArrayList dumpFormats = loader.loadDumpFormats();
+            ArrayList<DumpFormat> dumpFormats = loader.loadDumpFormats();
             DumpFormat format = DumpFormatLoader.findDumpFormatGivenCommandDescriptor(dumpFormats, triple[1]);
             if (format == null) {
                 out.println("Error while attempting to save dump, format " + triple[1] + " was not found!");
@@ -184,13 +190,10 @@ public class MarsLaunch {
                 format.dumpMemoryRange(file, segInfo[0], highAddress);
             } catch (FileNotFoundException e) {
                 out.println("Error while attempting to save dump, file " + file + " was not found!");
-                continue;
             } catch (AddressErrorException e) {
                 out.println("Error while attempting to save dump, file " + file + "!  Could not access address: " + e.getAddress() + "!");
-                continue;
             } catch (IOException e) {
                 out.println("Error while attempting to save dump, file " + file + "!  Disk IO failed!");
-                continue;
             }
         }
     }
@@ -203,13 +206,11 @@ public class MarsLaunch {
     private void launchIDE() {
         // System.setProperty("apple.laf.useScreenMenuBar", "true"); // Puts MARS menu on Mac OS menu bar
         new MarsSplashScreen(splashDuration).showSplash();
-        SwingUtilities.invokeLater(
-                () -> {
-                    //Turn off metal's use of bold fonts
-                    //UIManager.put("swing.boldMetal", Boolean.FALSE);
-                    new VenusUI("MARS " + Globals.version);
-                });
-        return;
+        SwingUtilities.invokeLater(() -> {
+            //Turn off metal's use of bold fonts
+            //UIManager.put("swing.boldMetal", Boolean.FALSE);
+            new VenusUI("MARS " + Globals.version);
+        });
     }
 
 
@@ -226,8 +227,7 @@ public class MarsLaunch {
         boolean argsOK = true;
         boolean inProgramArgumentList = false;
         programArgumentList = null;
-        if (args.length == 0)
-            return true; // should not get here...
+        if (args.length == 0) return true; // should not get here...
         // If the option to display MARS messages to standard erro is used,
         // it must be processed before any others (since messages may be
         // generated during option parsing).
@@ -242,14 +242,14 @@ public class MarsLaunch {
             // that will become "argc" and "argv" for the MIPS program.
             if (inProgramArgumentList) {
                 if (programArgumentList == null) {
-                    programArgumentList = new ArrayList();
+                    programArgumentList = new ArrayList<>();
                 }
                 programArgumentList.add(args[i]);
                 continue;
             }
             // Once we hit "pa", all remaining command args are assumed
             // to be program arguments.
-            if (args[i].toLowerCase().equals("pa")) {
+            if (args[i].equalsIgnoreCase("pa")) {
                 inProgramArgumentList = true;
                 continue;
             }
@@ -261,19 +261,18 @@ public class MarsLaunch {
             if (args[i].toLowerCase().equals(noCopyrightSwitch)) {
                 continue;
             }
-            if (args[i].toLowerCase().equals("dump")) {
+            if (args[i].equalsIgnoreCase("dump")) {
                 if (args.length <= (i + 3)) {
                     out.println("Dump command line argument requires a segment, format and file name.");
                     argsOK = false;
                 } else {
-                    if (dumpTriples == null)
-                        dumpTriples = new ArrayList();
+                    if (dumpTriples == null) dumpTriples = new ArrayList<>();
                     dumpTriples.add(new String[]{args[++i], args[++i], args[++i]});
                     //simulate = false;
                 }
                 continue;
             }
-            if (args[i].toLowerCase().equals("mc")) {
+            if (args[i].equalsIgnoreCase("mc")) {
                 String configName = args[++i];
                 MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
                 if (config == null) {
@@ -304,69 +303,67 @@ public class MarsLaunch {
                     // Let it fall thru and get handled by catch-all
                 }
             }
-            if (args[i].toLowerCase().equals("d")) {
+            if (args[i].equalsIgnoreCase("d")) {
                 Globals.debug = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("a")) {
+            if (args[i].equalsIgnoreCase("a")) {
                 simulate = false;
                 continue;
             }
-            if (args[i].toLowerCase().equals("ad") ||
-                    args[i].toLowerCase().equals("da")) {
+            if (args[i].equalsIgnoreCase("ad") || args[i].equalsIgnoreCase("da")) {
                 Globals.debug = true;
                 simulate = false;
                 continue;
             }
-            if (args[i].toLowerCase().equals("p")) {
+            if (args[i].equalsIgnoreCase("p")) {
                 assembleProject = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("dec")) {
+            if (args[i].equalsIgnoreCase("dec")) {
                 displayFormat = DECIMAL;
                 continue;
             }
-            if (args[i].toLowerCase().equals("hex")) {
+            if (args[i].equalsIgnoreCase("hex")) {
                 displayFormat = HEXADECIMAL;
                 continue;
             }
-            if (args[i].toLowerCase().equals("ascii")) {
+            if (args[i].equalsIgnoreCase("ascii")) {
                 displayFormat = ASCII;
                 continue;
             }
-            if (args[i].toLowerCase().equals("b")) {
+            if (args[i].equalsIgnoreCase("b")) {
                 verbose = false;
                 continue;
             }
-            if (args[i].toLowerCase().equals("db")) {
+            if (args[i].equalsIgnoreCase("db")) {
                 delayedBranching = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("np") || args[i].toLowerCase().equals("ne")) {
+            if (args[i].equalsIgnoreCase("np") || args[i].equalsIgnoreCase("ne")) {
                 pseudo = false;
                 continue;
             }
-            if (args[i].toLowerCase().equals("we")) { // added 14-July-2008 DPS
+            if (args[i].equalsIgnoreCase("we")) { // added 14-July-2008 DPS
                 warningsAreErrors = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("sm")) { // added 17-Dec-2009 DPS
+            if (args[i].equalsIgnoreCase("sm")) { // added 17-Dec-2009 DPS
                 startAtMain = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("smc")) { // added 5-Jul-2013 DPS
+            if (args[i].equalsIgnoreCase("smc")) { // added 5-Jul-2013 DPS
                 selfModifyingCode = true;
                 continue;
             }
-            if (args[i].toLowerCase().equals("ic")) { // added 19-Jul-2012 DPS
+            if (args[i].equalsIgnoreCase("ic")) { // added 19-Jul-2012 DPS
                 countInstructions = true;
                 continue;
             }
 
 
             if (args[i].indexOf("$") == 0) {
-                if (RegisterFile.getUserRegister(args[i]) == null &&
-                        Coprocessor1.getRegister(args[i]) == null) {
+                if (RegisterFile.getUserRegister(args[i]) == null && Coprocessor1.getRegister(args[i]) == null) {
                     out.println("Invalid Register Name: " + args[i]);
                 } else {
                     registerDisplayList.add(args[i]);
@@ -374,8 +371,7 @@ public class MarsLaunch {
                 continue;
             }
             // check for register name w/o $.  added 14-July-2008 DPS
-            if (RegisterFile.getUserRegister("$" + args[i]) != null ||
-                    Coprocessor1.getRegister("$" + args[i]) != null) {
+            if (RegisterFile.getUserRegister("$" + args[i]) != null || Coprocessor1.getRegister("$" + args[i]) != null) {
                 registerDisplayList.add("$" + args[i]);
                 continue;
             }
@@ -385,10 +381,11 @@ public class MarsLaunch {
             }
             // Check for stand-alone integer, which is the max execution steps option
             try {
+                //noinspection ResultOfMethodCallIgnored
                 Integer.decode(args[i]);
                 maxSteps = Integer.decode(args[i]); // if we got here, it has to be OK
                 continue;
-            } catch (NumberFormatException nfe) {
+            } catch (NumberFormatException ignored) {
             }
             // Check for integer address range (m-n)
             try {
@@ -416,21 +413,21 @@ public class MarsLaunch {
 
     private boolean runCommand() {
         boolean programRan = false;
-        if (filenameList.size() == 0) {
-            return programRan;
+        if (filenameList.isEmpty()) {
+            return false;
         }
         try {
             Globals.getSettings().setBooleanSettingNonPersistent(Settings.DELAYED_BRANCHING_ENABLED, delayedBranching);
             Globals.getSettings().setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
-            File mainFile = new File((String) filenameList.get(0)).getAbsoluteFile();// First file is "main" file
-            ArrayList filesToAssemble;
+            File mainFile = new File(filenameList.get(0)).getAbsoluteFile();// First file is "main" file
+            ArrayList<String> filesToAssemble;
             if (assembleProject) {
                 filesToAssemble = FilenameFinder.getFilenameList(mainFile.getParent(), Globals.fileExtensions);
                 if (filenameList.size() > 1) {
                     // Using "p" project option PLUS listing more than one filename on command line.
                     // Add the additional files, avoiding duplicates.
                     filenameList.remove(0); // first one has already been processed
-                    ArrayList moreFilesToAssemble = FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
+                    ArrayList<String> moreFilesToAssemble = FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
                     // Remove any duplicates then merge the two lists.
                     for (int index2 = 0; index2 < moreFilesToAssemble.size(); index2++) {
                         for (Object o : filesToAssemble) {
@@ -449,8 +446,7 @@ public class MarsLaunch {
             if (Globals.debug) {
                 out.println("--------  TOKENIZING BEGINS  -----------");
             }
-            ArrayList MIPSProgramsToAssemble =
-                    code.prepareFilesForAssembly(filesToAssemble, mainFile.getAbsolutePath(), null);
+            ArrayList<MIPSProgram> MIPSProgramsToAssemble = code.prepareFilesForAssembly(filesToAssemble, mainFile.getAbsolutePath(), null);
             if (Globals.debug) {
                 out.println("--------  ASSEMBLY BEGINS  -----------");
             }
@@ -493,8 +489,7 @@ public class MarsLaunch {
 
     private String[] checkMemoryAddressRange(String arg) throws NumberFormatException {
         String[] memoryRange = null;
-        if (arg.indexOf(rangeSeparator) > 0 &&
-                arg.indexOf(rangeSeparator) < arg.length() - 1) {
+        if (arg.indexOf(rangeSeparator) > 0 && arg.indexOf(rangeSeparator) < arg.length() - 1) {
             // assume correct format, two numbers separated by -, no embedded spaces.
             // If that doesn't work it is invalid.
             memoryRange = new String[2];
@@ -502,9 +497,7 @@ public class MarsLaunch {
             memoryRange[1] = arg.substring(arg.indexOf(rangeSeparator) + 1);
             // NOTE: I will use homegrown decoder, because Integer.decode will throw
             // exception on address higher than 0x7FFFFFFF (e.g. sign bit is 1).
-            if (Binary.stringToInt(memoryRange[0]) > Binary.stringToInt(memoryRange[1]) ||
-                    !Memory.wordAligned(Binary.stringToInt(memoryRange[0])) ||
-                    !Memory.wordAligned(Binary.stringToInt(memoryRange[1]))) {
+            if (Binary.stringToInt(memoryRange[0]) > Binary.stringToInt(memoryRange[1]) || !Memory.wordAligned(Binary.stringToInt(memoryRange[0])) || !Memory.wordAligned(Binary.stringToInt(memoryRange[1]))) {
                 throw new NumberFormatException();
             }
         }
@@ -516,25 +509,21 @@ public class MarsLaunch {
     // DPS 19 July 2012
     private void establishObserver() {
         if (countInstructions) {
-            Observer instructionCounter =
-                    new Observer() {
-                        private int lastAddress = 0;
+            Observer instructionCounter = new Observer() {
+                private int lastAddress = 0;
 
-                        public void update(Observable o, Object obj) {
-                            if (obj instanceof AccessNotice notice) {
-                                if (!notice.accessIsFromMIPS())
-                                    return;
-                                if (notice.getAccessType() != AccessNotice.READ)
-                                    return;
-                                MemoryAccessNotice m = (MemoryAccessNotice) notice;
-                                int a = m.getAddress();
-                                if (a == lastAddress)
-                                    return;
-                                lastAddress = a;
-                                instructionCount++;
-                            }
-                        }
-                    };
+                public void update(Observable o, Object obj) {
+                    if (obj instanceof AccessNotice notice) {
+                        if (!notice.accessIsFromMIPS()) return;
+                        if (notice.getAccessType() != AccessNotice.READ) return;
+                        MemoryAccessNotice m = (MemoryAccessNotice) notice;
+                        int a = m.getAddress();
+                        if (a == lastAddress) return;
+                        lastAddress = a;
+                        instructionCount++;
+                    }
+                }
+            };
             try {
                 Globals.memory.addObserver(instructionCounter, Memory.textBaseAddress, Memory.textLimitAddress);
             } catch (AddressErrorException aee) {
@@ -565,8 +554,7 @@ public class MarsLaunch {
             String reg = o.toString();
             if (RegisterFile.getUserRegister(reg) != null) {
                 // integer register
-                if (verbose)
-                    out.print(reg + "\t");
+                if (verbose) out.print(reg + "\t");
                 value = RegisterFile.getUserRegister(reg).getValue();
                 out.println(formatIntForDisplay(value));
             } else {
@@ -580,22 +568,18 @@ public class MarsLaunch {
                     dvalue = Coprocessor1.getDoubleFromRegisterPair(reg);
                     lvalue = Coprocessor1.getLongFromRegisterPair(reg);
                     hasDouble = true;
-                } catch (InvalidRegisterAccessException irae) {
+                } catch (InvalidRegisterAccessException ignored) {
                 }
                 if (verbose) {
                     out.print(reg + "\t");
                 }
                 if (displayFormat == HEXADECIMAL) {
                     // display float (and double, if applicable) in hex
-                    out.print(
-                            Binary.binaryStringToHexString(
-                                    Binary.intToBinaryString(ivalue)));
+                    out.print(Binary.binaryStringToHexString(Binary.intToBinaryString(ivalue)));
                     if (hasDouble) {
-                        out.println("\t" +
-                                Binary.binaryStringToHexString(
-                                        Binary.longToBinaryString(lvalue)));
+                        out.println("\t" + Binary.binaryStringToHexString(Binary.longToBinaryString(lvalue)));
                     } else {
-                        out.println("");
+                        out.println();
                     }
                 } else if (displayFormat == DECIMAL) {
                     // display float (and double, if applicable) in decimal
@@ -603,16 +587,14 @@ public class MarsLaunch {
                     if (hasDouble) {
                         out.println("\t" + dvalue);
                     } else {
-                        out.println("");
+                        out.println();
                     }
                 } else { // displayFormat == ASCII
                     out.print(Binary.intToAscii(ivalue));
                     if (hasDouble) {
-                        out.println("\t" +
-                                Binary.intToAscii(Binary.highOrderLongToInt(lvalue)) +
-                                Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
+                        out.println("\t" + Binary.intToAscii(Binary.highOrderLongToInt(lvalue)) + Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
                     } else {
-                        out.println("");
+                        out.println();
                     }
                 }
             }
@@ -622,13 +604,11 @@ public class MarsLaunch {
     //////////////////////////////////////////////////////////////////////
     // Formats int value for display: decimal, hex, ascii    
     private String formatIntForDisplay(int value) {
-        String strValue = switch (displayFormat) {
+        return switch (displayFormat) {
             case DECIMAL -> "" + value;
-            case HEXADECIMAL -> Binary.intToHexString(value);
             case ASCII -> Binary.intToAscii(value);
             default -> Binary.intToHexString(value);
         };
-        return strValue;
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -637,18 +617,17 @@ public class MarsLaunch {
     private void displayMemoryPostMortem() {
         int value;
         // Display requested memory range contents
-        Iterator memIter = memoryDisplayList.iterator();
+        Iterator<String> memIter = memoryDisplayList.iterator();
         int addressStart = 0, addressEnd = 0;
         while (memIter.hasNext()) {
             try { // This will succeed; error would have been caught during command arg parse
-                addressStart = Binary.stringToInt(memIter.next().toString());
-                addressEnd = Binary.stringToInt(memIter.next().toString());
-            } catch (NumberFormatException nfe) {
+                addressStart = Binary.stringToInt(memIter.next());
+                addressEnd = Binary.stringToInt(memIter.next());
+            } catch (NumberFormatException ignored) {
             }
             int valuesDisplayed = 0;
             for (int addr = addressStart; addr <= addressEnd; addr += Memory.WORD_LENGTH_BYTES) {
-                if (addr < 0 && addressEnd > 0)
-                    break;  // happens only if addressEnd is 0x7ffffffc
+                if (addr < 0 && addressEnd > 0) break;  // happens only if addressEnd is 0x7ffffffc
                 if (valuesDisplayed % memoryWordsPerLine == 0) {
                     out.print((valuesDisplayed > 0) ? "\n" : "");
                     if (verbose) {
@@ -705,19 +684,19 @@ public class MarsLaunch {
 
     private void displayHelp() {
         String[] segmentNames = MemoryDump.getSegmentNames();
-        String segments = "";
+        StringBuilder segments = new StringBuilder();
         for (int i = 0; i < segmentNames.length; i++) {
-            segments += segmentNames[i];
+            segments.append(segmentNames[i]);
             if (i < segmentNames.length - 1) {
-                segments += ", ";
+                segments.append(", ");
             }
         }
-        ArrayList dumpFormats = (new DumpFormatLoader()).loadDumpFormats();
-        String formats = "";
+        ArrayList<DumpFormat> dumpFormats = (new DumpFormatLoader()).loadDumpFormats();
+        StringBuilder formats = new StringBuilder();
         for (int i = 0; i < dumpFormats.size(); i++) {
-            formats += ((DumpFormat) dumpFormats.get(i)).getCommandDescriptor();
+            formats.append(dumpFormats.get(i).getCommandDescriptor());
             if (i < dumpFormats.size() - 1) {
-                formats += ", ";
+                formats.append(", ");
             }
         }
         out.println("Usage:  Mars  [options] filename [additional filenames]");

@@ -20,17 +20,17 @@ import java.util.ArrayList;
  * @author M.H.Sekhavat <sekhavat17@gmail.com>
  */
 public class MacroPool {
-    private MIPSProgram program;
+    private final MIPSProgram program;
     /**
      * List of macros defined by now
      */
-    private ArrayList<Macro> macroList;
+    private final ArrayList<Macro> macroList;
     /**
      * @see MacroPool#beginMacro
      */
     private Macro current;
-    private ArrayList<Integer> callStack;
-    private ArrayList<Integer> callStackOrigLines;
+    private final ArrayList<Integer> callStack;
+    private final ArrayList<Integer> callStackOrigLines;
     /**
      * @see #getNextCounter()
      */
@@ -93,7 +93,7 @@ public class MacroPool {
      * tokens passed
      */
     public Macro getMatchingMacro(TokenList tokens, int callerLine) {
-        if (tokens.size() < 1)
+        if (tokens.isEmpty())
             return null;
         Macro ret = null;
         Token firstToken = tokens.get(0);
@@ -108,7 +108,6 @@ public class MacroPool {
     }
 
     /**
-     * @param value
      * @return true if any macros have been defined with name <code>value</code>
      * by now, not concerning arguments count.
      */
@@ -162,12 +161,12 @@ public class MacroPool {
 
 
     public String getExpansionHistory() {
-        String ret = "";
+        StringBuilder ret = new StringBuilder();
         for (int i = 0; i < callStackOrigLines.size(); i++) {
             if (i > 0)
-                ret += "->";
-            ret += callStackOrigLines.get(i).toString();
+                ret.append("->");
+            ret.append(callStackOrigLines.get(i).toString());
         }
-        return ret;
+        return ret.toString();
     }
 }

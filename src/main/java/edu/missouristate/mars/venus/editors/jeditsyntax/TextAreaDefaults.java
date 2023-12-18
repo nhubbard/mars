@@ -13,7 +13,6 @@ import java.awt.*;
  * creating the text area is that this method is faster.
  */
 public class TextAreaDefaults {
-    private static TextAreaDefaults DEFAULTS;
 
     public InputHandler inputHandler;
     public SyntaxDocument document;
@@ -46,7 +45,7 @@ public class TextAreaDefaults {
      * in.
      */
     public static TextAreaDefaults getDefaults() {
-        DEFAULTS = new TextAreaDefaults();
+        TextAreaDefaults DEFAULTS = new TextAreaDefaults();
 
         DEFAULTS.inputHandler = new DefaultInputHandler();
         DEFAULTS.inputHandler.addDefaultKeyBindings();

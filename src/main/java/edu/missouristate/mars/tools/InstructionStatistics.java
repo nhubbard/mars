@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.Arrays;
 import java.util.Observable;
 
 /**
@@ -22,17 +23,17 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * name of the tool
      */
-    private static String NAME = "Instruction Statistics";
+    private static final String NAME = "Instruction Statistics";
 
     /**
      * version and author information of the tool
      */
-    private static String VERSION = "Version 1.0 (Ingo Kofler)";
+    private static final String VERSION = "Version 1.0 (Ingo Kofler)";
 
     /**
      * heading of the tool
      */
-    private static String HEADING = "";
+    private static final String HEADING = "";
 
 
     /**
@@ -69,33 +70,33 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * text field for visualizing the total number of instructions processed
      */
-    private JTextField m_tfTotalCounter;
+    private JTextField totalCounterField;
 
     /**
      * array of text field - one for each instruction category
      */
-    private JTextField m_tfCounters[];
+    private JTextField[] instructionCounterFields;
 
     /**
      * array of progress pars - one for each instruction category
      */
-    private JProgressBar m_pbCounters[];
+    private JProgressBar[] instructionProgressBars;
 
 
     /**
      * counter for the total number of instructions processed
      */
-    private int m_totalCounter = 0;
+    private int totalCounter = 0;
 
     /**
      * array of counter variables - one for each instruction category
      */
-    private int m_counters[] = new int[MAX_CATEGORY];
+    private final int[] counters = new int[MAX_CATEGORY];
 
     /**
      * names of the instruction categories as array
      */
-    private String m_categoryLabels[] = {"ALU", "Jump", "Branch", "Memory", "Other"};
+    private final String[] categoryLabels = {"ALU", "Jump", "Branch", "Memory", "Other"};
 
 
     // From Felipe Lessa's instruction counter.  Prevent double-counting of instructions 
@@ -146,18 +147,18 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
         // Create GUI elements for the tool
         JPanel panel = new JPanel(new GridBagLayout());
 
-        m_tfTotalCounter = new JTextField("0", 10);
-        m_tfTotalCounter.setEditable(false);
+        totalCounterField = new JTextField("0", 10);
+        totalCounterField.setEditable(false);
 
-        m_tfCounters = new JTextField[MAX_CATEGORY];
-        m_pbCounters = new JProgressBar[MAX_CATEGORY];
+        instructionCounterFields = new JTextField[MAX_CATEGORY];
+        instructionProgressBars = new JProgressBar[MAX_CATEGORY];
 
         // for each category a text field and a progress bar is created
         for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
-            m_tfCounters[i] = new JTextField("0", 10);
-            m_tfCounters[i].setEditable(false);
-            m_pbCounters[i] = new JProgressBar(JProgressBar.HORIZONTAL);
-            m_pbCounters[i].setStringPainted(true);
+            instructionCounterFields[i] = new JTextField("0", 10);
+            instructionCounterFields[i].setEditable(false);
+            instructionProgressBars[i] = new JProgressBar(JProgressBar.HORIZONTAL);
+            instructionProgressBars[i].setStringPainted(true);
         }
 
         GridBagConstraints c = new GridBagConstraints();
@@ -170,7 +171,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
         c.insets = new Insets(0, 0, 17, 0);
         panel.add(new JLabel("Total: "), c);
         c.gridx = 3;
-        panel.add(m_tfTotalCounter, c);
+        panel.add(totalCounterField, c);
 
         c.insets = new Insets(3, 3, 3, 3);
 
@@ -178,11 +179,11 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
         for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
             c.gridy++;
             c.gridx = 2;
-            panel.add(new JLabel(m_categoryLabels[i] + ":   "), c);
+            panel.add(new JLabel(categoryLabels[i] + ":   "), c);
             c.gridx = 3;
-            panel.add(m_tfCounters[i], c);
+            panel.add(instructionCounterFields[i], c);
             c.gridx = 4;
-            panel.add(m_pbCounters[i], c);
+            panel.add(instructionProgressBars[i], c);
         }
 
         return panel;
@@ -223,12 +224,12 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
                 return InstructionStatistics.CATEGORY_ALU; // srl, sra, sllv, srlv, srav
             if (funct == 0x08 || funct == 0x09)
                 return InstructionStatistics.CATEGORY_JUMP; // jr, jalr
-            if (0x10 <= funct && funct <= 0x2F)
+            if (0x10 <= funct)
                 return InstructionStatistics.CATEGORY_ALU; // mfhi, mthi, mflo, mtlo, mult, multu, div, divu, add, addu, sub, subu, and, or, xor, nor, slt, sltu
             return InstructionStatistics.CATEGORY_OTHER;
         }
         if (opCode == 0x01) {
-            if (0x00 <= funct && funct <= 0x07)
+            if (funct <= 0x07)
                 return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
             if (0x10 <= funct && funct <= 0x13)
                 return InstructionStatistics.CATEGORY_BRANCH; // bltzal, bgezal, bltzall, bgczall
@@ -236,9 +237,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
         }
         if (opCode == 0x02 || opCode == 0x03)
             return InstructionStatistics.CATEGORY_JUMP; // j, jal
-        if (0x04 <= opCode && opCode <= 0x07)
+        if (opCode <= 0x07)
             return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
-        if (0x08 <= opCode && opCode <= 0x0F)
+        if (opCode <= 0x0F)
             return InstructionStatistics.CATEGORY_ALU; // addi, addiu, slti, sltiu, andi, ori, xori, lui
         if (0x14 <= opCode && opCode <= 0x17)
             return InstructionStatistics.CATEGORY_BRANCH; // beql, bnel, blezl, bgtzl
@@ -286,8 +287,8 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
                 if (stmt != null) {
                     int category = getInstructionCategory(stmt);
 
-                    m_totalCounter++;
-                    m_counters[category]++;
+                    totalCounter++;
+                    counters[category]++;
                     updateDisplay();
                 }
             } catch (AddressErrorException e) {
@@ -301,10 +302,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * performs initialization tasks of the counters before the GUI is created.
      */
     protected void initializePreGUI() {
-        m_totalCounter = 0;
+        totalCounter = 0;
         lastAddress = -1; // from Felipe Lessa's instruction counter tool
-        for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++)
-            m_counters[i] = 0;
+        Arrays.fill(counters, 0);
     }
 
 
@@ -312,10 +312,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * resets the counter values of the tool and updates the display.
      */
     protected void reset() {
-        m_totalCounter = 0;
+        totalCounter = 0;
         lastAddress = -1; // from Felipe Lessa's instruction counter tool
-        for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++)
-            m_counters[i] = 0;
+        Arrays.fill(counters, 0);
         updateDisplay();
     }
 
@@ -324,12 +323,12 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * updates the text fields and progress bars according to the current counter values.
      */
     protected void updateDisplay() {
-        m_tfTotalCounter.setText(String.valueOf(m_totalCounter));
+        totalCounterField.setText(String.valueOf(totalCounter));
 
         for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
-            m_tfCounters[i].setText(String.valueOf(m_counters[i]));
-            m_pbCounters[i].setMaximum(m_totalCounter);
-            m_pbCounters[i].setValue(m_counters[i]);
+            instructionCounterFields[i].setText(String.valueOf(counters[i]));
+            instructionProgressBars[i].setMaximum(totalCounter);
+            instructionProgressBars[i].setValue(counters[i]);
         }
     }
 }

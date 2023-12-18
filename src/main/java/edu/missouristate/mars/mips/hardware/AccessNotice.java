@@ -20,8 +20,8 @@ public abstract class AccessNotice {
      */
     public static final int WRITE = 1;
 
-    private int accessType;
-    private Thread thread;
+    private final int accessType;
+    private final Thread thread;
 
     protected AccessNotice(int type) {
         if (type != READ && type != WRITE) {
@@ -34,14 +34,14 @@ public abstract class AccessNotice {
     /**
      * Get the access type: READ or WRITE.
      *
-     * @return Access type, either AccessNotice.READ or AccessNotice.WRITE
+     * @return Access type, either {@code AccessNotice.READ} or {@code AccessNotice.WRITE}
      */
     public int getAccessType() {
         return accessType;
     }
 
     /**
-     * Get reference to thread that created this notice
+     * Get reference to the thread that created this notice
      *
      * @return Return reference to the thread that created this notice.
      */

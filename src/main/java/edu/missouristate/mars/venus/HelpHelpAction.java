@@ -27,7 +27,7 @@ public class HelpHelpAction extends GuiAction {
     }
 
     // Light gray background color for alternating lines of the instruction lists
-    static Color altBackgroundColor = new Color(0xEE, 0xEE, 0xEE);
+    static final Color altBackgroundColor = new Color(0xEE, 0xEE, 0xEE);
 
     /**
      * Separates Instruction name descriptor from detailed (operation) description
@@ -96,7 +96,7 @@ public class HelpHelpAction extends GuiAction {
             String line;
             StringBuilder text = new StringBuilder();
             while ((line = in.readLine()) != null) {
-                text.append(line + "\n");
+                text.append(line).append("\n");
             }
             in.close();
             helpDisplay = new JEditorPane("text/html", text.toString());
@@ -125,7 +125,7 @@ public class HelpHelpAction extends GuiAction {
             String line;
             StringBuilder text = new StringBuilder("<pre>");
             while ((line = in.readLine()) != null) {
-                text.append(line + "\n");
+                text.append(line).append("\n");
             }
             in.close();
             text.append("</pre>");
@@ -296,7 +296,7 @@ public class HelpHelpAction extends GuiAction {
     }
 
 
-    private class MyCellRenderer extends JLabel implements ListCellRenderer<String> {
+    private static class MyCellRenderer extends JLabel implements ListCellRenderer<String> {
         // This is the only method defined by ListCellRenderer.
         // We just reconfigure the JLabel each time we're called.
         public Component getListCellRendererComponent(
@@ -353,8 +353,7 @@ public class HelpHelpAction extends GuiAction {
                             e12 -> {
                                 if (e12.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                                     JEditorPane pane1 = (JEditorPane) e12.getSource();
-                                    if (e12 instanceof HTMLFrameHyperlinkEvent) {
-                                        HTMLFrameHyperlinkEvent evt = (HTMLFrameHyperlinkEvent) e12;
+                                    if (e12 instanceof HTMLFrameHyperlinkEvent evt) {
                                         HTMLDocument doc = (HTMLDocument) pane1.getDocument();
                                         doc.processHTMLFrameHyperlinkEvent(evt);
                                     } else {

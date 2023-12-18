@@ -1,13 +1,9 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.*;
 
-import java.util.*;
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.io.*;
 
 /**
  * Action class for the Settings menu item to determine whether assemble operation applies

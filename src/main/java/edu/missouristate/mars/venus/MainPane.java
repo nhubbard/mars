@@ -17,10 +17,8 @@ import java.awt.*;
 
 public class MainPane extends JTabbedPane {
     EditPane editTab;
-    ExecutePane executeTab;
-    EditTabbedPane editTabbedPane;
-
-    private VenusUI mainUI;
+    final ExecutePane executeTab;
+    final EditTabbedPane editTabbedPane;
 
     /**
      * Constructor for the MainPane class.
@@ -29,20 +27,16 @@ public class MainPane extends JTabbedPane {
     public MainPane(VenusUI appFrame, Editor editor, RegistersWindow regs,
                     Coprocessor1Window cop1Regs, Coprocessor0Window cop0Regs) {
         super();
-        this.mainUI = appFrame;
         this.setTabPlacement(JTabbedPane.TOP); //LEFT);
-        if (this.getUI() instanceof BasicTabbedPaneUI ui) {
-        }
+        this.getUI();
         editTabbedPane = new EditTabbedPane(appFrame, editor, this);
         executeTab = new ExecutePane(appFrame, regs, cop1Regs, cop0Regs);
         String editTabTitle = "Edit";
         String executeTabTitle = "Execute";
-        Icon editTabIcon = null;
-        Icon executeTabIcon = null;
 
         this.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-        this.addTab(editTabTitle, editTabIcon, editTabbedPane);
-        this.addTab(executeTabTitle, executeTabIcon, executeTab);
+        this.addTab(editTabTitle, null, editTabbedPane);
+        this.addTab(executeTabTitle, null, executeTab);
 
         this.setToolTipTextAt(0, "Text editor for composing MIPS programs.");
         this.setToolTipTextAt(1, "View and control assembly language program execution.  Enabled upon successful assemble.");

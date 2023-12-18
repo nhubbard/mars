@@ -18,7 +18,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1;
 public class Macro {
     private String name;
     private MIPSProgram program;
-    private ArrayList<String> labels;
+    private final ArrayList<String> labels;
 
     /**
      * first and last line number of macro definition. first line starts with
@@ -118,13 +118,10 @@ public class Macro {
      * Also appends "_M#" to all labels defined inside macro body where # is value of <code>counter</code>
      *
      * @param line    source line number in macro definition to be substituted
-     * @param args
      * @param counter unique macro expansion id
-     * @param errors
      * @return <code>line</code>-th line of source code, with substituted
      * arguments
      */
-
     public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
         TokenList tokens = (TokenList) program.getTokenList().get(line - 1);
         String s = program.getSourceLine(line);
@@ -157,10 +154,7 @@ public class Macro {
 
 
     /**
-     * returns true if <code>value</code> is name of a label defined in this macro's body.
-     *
-     * @param value
-     * @return
+     * @return true if <code>value</code> is name of a label defined in this macro's body.
      */
     private boolean tokenIsMacroLabel(String value) {
         return (Collections.binarySearch(labels, value) >= 0);
@@ -168,11 +162,6 @@ public class Macro {
 
     /**
      * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with <code>substitute</code>.
-     *
-     * @param source
-     * @param tokenToBeReplaced
-     * @param substitute
-     * @return
      */
 // Initially the position of the substitute was based on token position but that proved problematic
 // in that the source string does not always match the token list from which the token comes. The
@@ -188,9 +177,7 @@ public class Macro {
     /**
      * returns whether <code>tokenValue</code> is macro parameter or not
      *
-     * @param tokenValue
      * @param acceptSpimStyleParameters accepts SPIM-style parameters which begin with '$' if true
-     * @return
      */
     public static boolean tokenIsMacroParameter(String tokenValue, boolean acceptSpimStyleParameters) {
         if (acceptSpimStyleParameters) {
@@ -199,7 +186,7 @@ public class Macro {
             // should filter out register names.  Originally filtered those from regular set but not
             // from Coprocessor0 or Coprocessor1 register sets.  Expanded the condition.
             // DPS  7-July-2014.
-            if (tokenValue.length() > 0 && tokenValue.charAt(0) == '$' &&
+            if (!tokenValue.isEmpty() && tokenValue.charAt(0) == '$' &&
                     RegisterFile.getUserRegister(tokenValue) == null &&
                     Coprocessor0.getRegister(tokenValue) == null &&  // added 7-July-2014
                     Coprocessor1.getRegister(tokenValue) == null)    // added 7-July-2014

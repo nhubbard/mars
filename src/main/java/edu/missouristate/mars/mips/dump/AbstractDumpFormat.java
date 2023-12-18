@@ -22,13 +22,13 @@ public abstract class AbstractDumpFormat implements DumpFormat {
     private final String extension;
 
     /**
-     * Typical constructor.  Note you cannot create objects from this
-     * class but subclass constructor can call this one.
+     * Typical constructor.
+     * Note you cannot create objects from this class, but the subclass constructor can call this one.
      *
      * @param name              Brief descriptive name to be displayed in selection list.
      * @param commandDescriptor One-word descriptive name to be used by MARS command mode parser and user.
      *                          Any spaces in this string will be removed.
-     * @param description       Description to go with standard file extension for
+     * @param description       Description to go with the standard file extension for
      *                          display in file save dialog or to be used as tool tip.
      * @param extension         Standard file extension for this format.  Null if none.
      */

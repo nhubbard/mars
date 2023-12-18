@@ -19,6 +19,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Objects;
 import java.util.Vector;
 
 /**
@@ -57,7 +58,7 @@ public class JEditTextArea extends JComponent {
      * them left of the horizontal scroll bar. In jEdit, the status
      * bar is added this way.
      */
-    public static String LEFT_OF_SCROLLBAR = "los";
+    public static final String LEFT_OF_SCROLLBAR = "los";
     public static Color POPUP_HELP_TEXT_COLOR = Color.BLACK;  // DPS 11-July-2014
 
     // Number of text lines moved for each click of the vertical scrollbar buttons.
@@ -72,15 +73,13 @@ public class JEditTextArea extends JComponent {
         this(TextAreaDefaults.getDefaults(), lineNumbers);
     }
 
+    private final JScrollBar lineNumbersVertical;//************************************
+
     /**
      * Creates a new JEditTextArea with the specified settings.
      *
      * @param defaults The default settings
      */
-
-    private JScrollBar lineNumbersVertical;//************************************
-
-
     public JEditTextArea(TextAreaDefaults defaults, JComponent lineNumbers) {
         // Enable the necessary events
         enableEvents(AWTEvent.KEY_EVENT_MASK);
@@ -152,12 +151,6 @@ public class JEditTextArea extends JComponent {
         // We don't seem to get the initial focus event?
         focusedComponent = this;
     }
-
-
-/**
- * Returns if this component can be traversed by pressing
- * the Tab key. This returns false.
- */
 
     /**
      * Returns the object responsible for painting this text area.
@@ -1100,7 +1093,7 @@ public class JEditTextArea extends JComponent {
                 Element lineElement = map.getElement(i);
                 int lineStart = lineElement.getStartOffset();
                 int lineEnd = lineElement.getEndOffset() - 1;
-                int lineLen = lineEnd - lineStart;
+                int lineLen;
 
                 lineStart = Math.min(lineStart + start, lineEnd);
                 lineLen = Math.min(end - start, lineEnd - lineStart);
@@ -1390,10 +1383,8 @@ public class JEditTextArea extends JComponent {
             String selection = getSelectedText();
 
             int repeatCount = inputHandler.getRepeatCount();
-            StringBuilder buf = new StringBuilder();
-            buf.append(String.valueOf(selection).repeat(Math.max(0, repeatCount)));
 
-            clipboard.setContents(new StringSelection(buf.toString()), null);
+            clipboard.setContents(new StringSelection(String.valueOf(selection).repeat(Math.max(0, repeatCount))), null);
         }
     }
 
@@ -1412,9 +1403,7 @@ public class JEditTextArea extends JComponent {
                         .replace('\r', '\n');
 
                 int repeatCount = inputHandler.getRepeatCount();
-                StringBuilder buf = new StringBuilder();
-                buf.append(selection.repeat(Math.max(0, repeatCount)));
-                selection = buf.toString();
+                selection = selection.repeat(Math.max(0, repeatCount));
                 setSelectedText(selection);
             } catch (Exception e) {
                 getToolkit().beep();
@@ -1459,12 +1448,12 @@ public class JEditTextArea extends JComponent {
     }
 
     // protected members
-    protected static String CENTER = "center";
-    protected static String RIGHT = "right";
-    protected static String BOTTOM = "bottom";
+    protected static final String CENTER = "center";
+    protected static final String RIGHT = "right";
+    protected static final String BOTTOM = "bottom";
 
     protected static JEditTextArea focusedComponent;
-    protected static Timer caretTimer;
+    protected static final Timer caretTimer;
 
     protected TextAreaPainter painter;
 
@@ -1510,7 +1499,7 @@ public class JEditTextArea extends JComponent {
     protected boolean rectSelect;
     // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
     // to pleasingly select the text and location of the undo.   DPS 3-May-2010
-    protected boolean unredoing = false;
+    protected boolean unredoing;
 
 
     protected void fireCaretEvent() {
@@ -1571,14 +1560,12 @@ public class JEditTextArea extends JComponent {
 
     class ScrollLayout implements LayoutManager {
         public void addLayoutComponent(String name, Component comp) {
-            if (name.equals(CENTER))
-                center = comp;
-            else if (name.equals(RIGHT))
-                right = comp;
-            else if (name.equals(BOTTOM))
-                bottom = comp;
-            else if (name.equals(LEFT_OF_SCROLLBAR))
-                leftOfScrollBar.addElement(comp);
+            switch (name) {
+                case CENTER -> center = comp;
+                case RIGHT -> right = comp;
+                case BOTTOM -> bottom = comp;
+                case LEFT_OF_SCROLLBAR -> leftOfScrollBar.addElement(comp);
+            }
         }
 
         public void removeLayoutComponent(Component comp) {
@@ -1652,9 +1639,9 @@ public class JEditTextArea extends JComponent {
                     centerHeight);
 
             // Lay out all status components, in order
-            Enumeration status = leftOfScrollBar.elements();
+            Enumeration<Component> status = leftOfScrollBar.elements();
             while (status.hasMoreElements()) {
-                Component comp = (Component) status.nextElement();
+                Component comp = status.nextElement();
                 Dimension dim = comp.getPreferredSize();
                 comp.setBounds(ileft,
                         itop + centerHeight,
@@ -1674,7 +1661,7 @@ public class JEditTextArea extends JComponent {
         private Component center;
         private Component right;
         private Component bottom;
-        private Vector leftOfScrollBar = new Vector();
+        private final Vector<Component> leftOfScrollBar = new Vector<>();
     }
 
     static class CaretBlinker implements ActionListener {
@@ -1685,7 +1672,7 @@ public class JEditTextArea extends JComponent {
         }
     }
 
-    class MutableCaretEvent extends CaretEvent {
+    protected class MutableCaretEvent extends CaretEvent {
         MutableCaretEvent() {
             super(JEditTextArea.this);
         }
@@ -1699,7 +1686,7 @@ public class JEditTextArea extends JComponent {
         }
     }
 
-    class AdjustHandler implements AdjustmentListener {
+    protected class AdjustHandler implements AdjustmentListener {
         public void adjustmentValueChanged(final AdjustmentEvent evt) {
             if (!scrollBarsInitialized)
                 return;
@@ -1717,7 +1704,7 @@ public class JEditTextArea extends JComponent {
         }
     }
 
-    class ComponentHandler extends ComponentAdapter {
+    protected class ComponentHandler extends ComponentAdapter {
         public void componentResized(ComponentEvent evt) {
             recalculateVisibleLines();
             scrollBarsInitialized = true;
@@ -1725,7 +1712,7 @@ public class JEditTextArea extends JComponent {
     }
 
 
-    class DocumentHandler implements DocumentListener {
+    protected class DocumentHandler implements DocumentListener {
         public void insertUpdate(DocumentEvent evt) {
             documentChanged(evt);
 
@@ -2003,17 +1990,17 @@ public class JEditTextArea extends JComponent {
      */
     // Is used for tool tip only (not popup menu)
     public String getSyntaxSensitiveToolTipText(int x, int y) {
-        String result = null;
+        StringBuilder result;
         int line = this.yToLine(y);
-        ArrayList matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
+        ArrayList<PopupHelpItem> matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
         if (matches == null) {
             return null;
         }
         int length = PopupHelpItem.maxExampleLength(matches) + 2;
-        result = "<html>";
+        result = new StringBuilder("<html>");
         for (int i = 0; i < matches.size(); i++) {
-            PopupHelpItem match = (PopupHelpItem) matches.get(i);
-            result += ((i == 0) ? "" : "<br>") + "<tt>" + match.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;") + "</tt>" + match.getDescription();
+            PopupHelpItem match = matches.get(i);
+            result.append((i == 0) ? "" : "<br>").append("<tt>").append(match.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;")).append("</tt>").append(match.getDescription());
         }
         return result + "</html>";
     }
@@ -2043,7 +2030,7 @@ public class JEditTextArea extends JComponent {
         String indent = "";
         if (lineLength > 0) {
             String text = getText(getLineStartOffset(line), lineLength);
-            for (int position = 0; position < text.length(); position++) {
+            for (int position = 0; position < Objects.requireNonNull(text).length(); position++) {
                 char character = text.charAt(position);
                 if (character == '\t' || character == ' ') {
                     indent += character;
@@ -2064,8 +2051,8 @@ public class JEditTextArea extends JComponent {
     // if exact is false.  The former is helpful for mouse-movement-based tool
     // tips (this is what you have).  The latter is helpful for caret-based tool
     // tips (this is what you can do).
-    private ArrayList getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
-        ArrayList matches = null;
+    private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
+        ArrayList<PopupHelpItem> matches = null;
         TokenMarker tokenMarker = this.getTokenMarker();
         if (tokenMarker != null) {
             Segment lineSegment = new Segment();
@@ -2077,10 +2064,8 @@ public class JEditTextArea extends JComponent {
             // cool for following the tokens...
             //System.out.print("(JEditTextArea.java) Token Stream:");
             Token toke = tokens;
-            for (; ; ) {
+            while (toke.id != Token.END) {
                 //System.out.print(" "+toke.id+"("+toke.length+")");
-                if (toke.id == Token.END)
-                    break;
                 toke = toke.next;
             }
             //System.out.println();
@@ -2121,7 +2106,7 @@ public class JEditTextArea extends JComponent {
         int lineStart = getLineStartOffset(line);
         int offset = Math.max(1, Math.min(getLineLength(line),
                 getCaretPosition() - lineStart));
-        ArrayList helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false);
+        ArrayList<PopupHelpItem> helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false);
         if (helpItems == null && popupMenu != null) {
             popupMenu.setVisible(false);
             popupMenu = null;
@@ -2129,10 +2114,9 @@ public class JEditTextArea extends JComponent {
         if (helpItems != null) {
             popupMenu = new JPopupMenu();
             int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
-            for (Object helpItem : helpItems) {
-                PopupHelpItem item = (PopupHelpItem) helpItem;
-                JMenuItem menuItem = new JMenuItem("<html><tt>" + item.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;") + "</tt>" + item.getDescription() + "</html>");
-                if (item.getExact()) {
+            for (PopupHelpItem helpItem : helpItems) {
+                JMenuItem menuItem = new JMenuItem("<html><tt>" + helpItem.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;") + "</tt>" + helpItem.getDescription() + "</html>");
+                if (helpItem.getExact()) {
                     // The instruction name is completed so the role of the popup changes
                     // to that of floating help to assist in operand specification.
                     menuItem.setSelected(false);
@@ -2153,7 +2137,7 @@ public class JEditTextArea extends JComponent {
                 } else {
                     // Typing of instruction/directive name is still in progress; the action listener
                     // will complete it when its menu item is selected.
-                    menuItem.addActionListener(new PopupHelpActionListener(item.getTokenText(), item.getExample()));
+                    menuItem.addActionListener(new PopupHelpActionListener(helpItem.getTokenText(), helpItem.getExample()));
                 }
                 popupMenu.add(menuItem);
             }
@@ -2179,7 +2163,8 @@ public class JEditTextArea extends JComponent {
     // Carries out the instruction/directive completion when popup menu
     // item is selected.
     private class PopupHelpActionListener implements ActionListener {
-        private String tokenText, text;
+        private final String tokenText;
+        private final String text;
 
         public PopupHelpActionListener(String tokenText, String text) {
             this.tokenText = tokenText;
@@ -2210,7 +2195,7 @@ public class JEditTextArea extends JComponent {
                 return;
             String previous = getText(getLineStartOffset(previousLine), previousLineLength);
             String indent = "";
-            for (int position = 0; position < previous.length(); position++) {
+            for (int position = 0; position < Objects.requireNonNull(previous).length(); position++) {
                 char character = previous.charAt(position);
                 if (character == '\t' || character == ' ') {
                     indent += character;

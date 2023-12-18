@@ -1,17 +1,11 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
 
-import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.text.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
-import java.io.*;
 
 /**
  * Action class for the Settings menu item for text editor settings.
@@ -368,7 +362,7 @@ public class SettingsHighlightingAction extends GuiAction {
     //  Class that handles click on the background selection button
     //
     private class BackgroundChanger implements ActionListener {
-        private int position;
+        private final int position;
 
         public BackgroundChanger(int pos) {
             position = pos;
@@ -390,7 +384,7 @@ public class SettingsHighlightingAction extends GuiAction {
     //  Class that handles click on the foreground selection button
     //
     private class ForegroundChanger implements ActionListener {
-        private int position;
+        private final int position;
 
         public ForegroundChanger(int pos) {
             position = pos;
@@ -413,7 +407,7 @@ public class SettingsHighlightingAction extends GuiAction {
     //  Class that handles click on the font select button
     //
     private class FontChanger implements ActionListener {
-        private int position;
+        private final int position;
 
         public FontChanger(int pos) {
             position = pos;
@@ -436,7 +430,7 @@ public class SettingsHighlightingAction extends GuiAction {
     // Class that handles action (check, uncheck) on the Default checkbox.
     //
     private class DefaultChanger implements ItemListener {
-        private int position;
+        private final int position;
 
         public DefaultChanger(int pos) {
             position = pos;
@@ -445,9 +439,9 @@ public class SettingsHighlightingAction extends GuiAction {
         public void itemStateChanged(ItemEvent e) {
             // If selected: disable buttons, set their bg values from default setting, set sample bg & fg
             // If deselected: enable buttons, set their bg values from current setting, set sample bg & bg
-            Color newBackground = null;
-            Color newForeground = null;
-            Font newFont = null;
+            Color newBackground;
+            Color newForeground;
+            Font newFont;
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 backgroundButtons[position].setEnabled(false);
                 foregroundButtons[position].setEnabled(false);
@@ -479,7 +473,7 @@ public class SettingsHighlightingAction extends GuiAction {
     //
     // Modal dialog to set a font.
     //
-    private class FontSettingDialog extends AbstractFontSettingDialog {
+    private static class FontSettingDialog extends AbstractFontSettingDialog {
         private boolean resultOK;
 
         public FontSettingDialog(Frame owner, String title, Font currentFont) {

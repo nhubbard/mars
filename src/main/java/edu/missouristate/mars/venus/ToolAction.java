@@ -15,7 +15,7 @@ import java.awt.event.*;
  */
 
 public class ToolAction extends AbstractAction {
-    private Class toolClass; //MarsTool tool;
+    private final Class<? super MarsTool> toolClass; //MarsTool tool;
 
     /**
      * Simple constructor.
@@ -23,7 +23,7 @@ public class ToolAction extends AbstractAction {
      * @param toolClass Class object for the associated MarsTool subclass
      * @param toolName  Name of this tool, for the menu.
      */
-    public ToolAction(Class toolClass, String toolName) {
+    public ToolAction(Class<? super MarsTool> toolClass, String toolName) {
         super(toolName, null);
         this.toolClass = toolClass;
     }
@@ -40,7 +40,7 @@ public class ToolAction extends AbstractAction {
             // already successfully creating an instance from the same Class object
             // in ToolLoader's loadMarsTools() method.
             ((MarsTool) this.toolClass.getDeclaredConstructor().newInstance()).action();
-        } catch (Exception ex) {
+        } catch (Exception ignored) {
         }
     }
 }

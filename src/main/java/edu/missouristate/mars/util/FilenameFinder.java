@@ -24,7 +24,7 @@ public class FilenameFinder {
     private static final String FILE_URL = "file:";
     private static final String JAR_URI_PREFIX = "jar:";
     private static final boolean NO_DIRECTORIES = false;
-    public static String MATCH_ALL_EXTENSIONS = "*";
+    public static final String MATCH_ALL_EXTENSIONS = "*";
 
     /**
      * Locate files and return list of file names.  Given a known relative directory path,

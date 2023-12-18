@@ -7,9 +7,6 @@ import java.awt.event.*;
 import java.awt.Toolkit;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
-import java.util.Properties;
-
-// TODO: Fix this class. It's got some weird invariant typing issues.
 
 /**
  * The default input handler. It maps sequences of keystrokes into actions
@@ -18,12 +15,13 @@ import java.util.Properties;
  * @author Slava Pestov
  * @version $Id: DefaultInputHandler.java,v 1.18 1999/12/13 03:40:30 sp Exp $
  */
+@SuppressWarnings("unchecked")
 public class DefaultInputHandler extends InputHandler {
     /**
      * Creates a new input handler with no key bindings defined.
      */
     public DefaultInputHandler() {
-        bindings = currentBindings = new Hashtable();
+        bindings = currentBindings = new Hashtable<>();
     }
 
     /**
@@ -88,7 +86,7 @@ public class DefaultInputHandler extends InputHandler {
      * @param action     The action
      */
     public void addKeyBinding(String keyBinding, ActionListener action) {
-        Hashtable current = bindings;
+        Hashtable<KeyStroke, Object> current = bindings;
 
         StringTokenizer st = new StringTokenizer(keyBinding);
         while (st.hasMoreTokens()) {
@@ -98,13 +96,11 @@ public class DefaultInputHandler extends InputHandler {
 
             if (st.hasMoreTokens()) {
                 Object o = current.get(keyStroke);
-                if (o instanceof Hashtable)
-                    current = (Hashtable) o;
-                else {
+                if (!(o instanceof Hashtable)) {
                     o = new Hashtable<>();
                     current.put(keyStroke, o);
-                    current = (Hashtable) o;
                 }
+                current = (Hashtable<KeyStroke, Object>) o;
             } else
                 current.put(keyStroke, action);
         }
@@ -138,7 +134,7 @@ public class DefaultInputHandler extends InputHandler {
 
     /**
      * Handle a key pressed event. This will look up the binding for
-     * the key stroke and execute it.
+     * the keystroke and execute it.
      */
     public void keyPressed(KeyEvent evt) {
         int keyCode = evt.getKeyCode();
@@ -166,10 +162,10 @@ public class DefaultInputHandler extends InputHandler {
 
             switch (o) {
                 case null -> {
-                    // Don't beep if the user presses some
                     // key we don't know about unless a
-                    // prefix is active. Otherwise it will
-                    // beep when caps lock is pressed, etc.
+                    // prefix is active.
+                    // Otherwise, it will
+                    // beep when capslock is pressed, etc.
                     if (currentBindings != bindings) {
                         Toolkit.getDefaultToolkit().beep();
                         // F10 should be passed on, but C+e F10
@@ -182,8 +178,7 @@ public class DefaultInputHandler extends InputHandler {
                     // No binding for this keyStroke, pass it to menu
                     // (mnemonic, accelerator).  DPS 4-may-2010
                     Globals.getGui().dispatchEventToMenu(evt);
-                    evt.consume();
-                    return;
+                    evt.consume();// Don't beep if the user presses some
                 }
                 case ActionListener actionListener -> {
                     currentBindings = bindings;
@@ -191,12 +186,10 @@ public class DefaultInputHandler extends InputHandler {
                             evt.getSource(), null);
 
                     evt.consume();
-                    return;
                 }
-                case Hashtable hashtable -> {
-                    currentBindings = hashtable;
+                case Hashtable<?, ?> hashtable -> {
+                    currentBindings = (Hashtable<KeyStroke, Object>) hashtable;
                     evt.consume();
-                    return;
                 }
                 default -> {
                 }
@@ -261,7 +254,7 @@ public class DefaultInputHandler extends InputHandler {
                 Object o = currentBindings.get(keyStroke);
 
                 if (o instanceof Hashtable) {
-                    currentBindings = (Hashtable) o;
+                    currentBindings = (Hashtable<KeyStroke, Object>) o;
                     return;
                 } else if (o instanceof ActionListener) {
                     currentBindings = bindings;
@@ -333,7 +326,7 @@ public class DefaultInputHandler extends InputHandler {
                 return KeyStroke.getKeyStroke(ch);
             else
                 return KeyStroke.getKeyStroke(ch, modifiers);
-        } else if (key.length() == 0) {
+        } else if (key.isEmpty()) {
             System.err.println("Invalid key stroke: " + keyStroke);
             return null;
         } else {
@@ -353,8 +346,8 @@ public class DefaultInputHandler extends InputHandler {
     }
 
     // private members
-    private Hashtable bindings;
-    private Hashtable currentBindings;
+    private final Hashtable<KeyStroke, Object> bindings;
+    private Hashtable<KeyStroke, Object> currentBindings;
 
     private DefaultInputHandler(DefaultInputHandler copy) {
         bindings = currentBindings = copy.bindings;

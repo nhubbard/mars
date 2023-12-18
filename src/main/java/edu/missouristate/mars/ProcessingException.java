@@ -13,7 +13,7 @@ import edu.missouristate.mars.simulator.*;
  **/
 
 public class ProcessingException extends Exception {
-    private ErrorList errs;
+    private final ErrorList errs;
 
     /**
      * Constructor for ProcessingException.

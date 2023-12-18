@@ -107,7 +107,7 @@ public class EditorFont {
      * as String) or greater than MAX_SIZE (returns MAX_SIZE as String).
      */
     public static String sizeIntToSizeString(int size) {
-        int result = (size < MIN_SIZE) ? MIN_SIZE : ((size > MAX_SIZE) ? MAX_SIZE : size);
+        int result = (size < MIN_SIZE) ? MIN_SIZE : Math.min(size, MAX_SIZE);
         return String.valueOf(result);
     }
 
@@ -123,9 +123,9 @@ public class EditorFont {
         int result = DEFAULT_SIZE;
         try {
             result = Integer.parseInt(size);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException ignored) {
         }
-        return (result < MIN_SIZE) ? MIN_SIZE : ((result > MAX_SIZE) ? MAX_SIZE : result);
+        return (result < MIN_SIZE) ? MIN_SIZE : Math.min(result, MAX_SIZE);
     }
 
     /**
@@ -144,6 +144,10 @@ public class EditorFont {
         return new Font(family, styleStringToStyleInt(style), sizeStringToSizeInt(size));
     }
 
+    private static final String TAB_STRING = "\t";
+    private static final char TAB_CHAR = '\t';
+    private static final String SPACES = "                                                  ";
+
     /**
      * Handy utility to produce a string that substitutes spaces for all tab characters
      * in the given string.  The number of spaces generated is based on the position of
@@ -153,10 +157,6 @@ public class EditorFont {
      * @return New string in which spaces are substituted for tabs
      * @throws NullPointerException if string is null
      */
-    private static final String TAB_STRING = "\t";
-    private static final char TAB_CHAR = '\t';
-    private static final String SPACES = "                                                  ";
-
     public static String substituteSpacesForTabs(String string) {
         return substituteSpacesForTabs(string, Globals.getSettings().getEditorTabSize());
     }

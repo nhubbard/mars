@@ -15,7 +15,7 @@ import javax.swing.SwingUtilities;
  * perform GUI-related work in a dedicated thread.  For
  * instructions on and examples of using this class, see:
  * <p>
- * http://java.sun.com/docs/books/tutorial/uiswing/misc/threads.html
+ * <a href="http://java.sun.com/docs/books/tutorial/uiswing/misc/threads.html">...</a>
  * <p>
  * Note that the API changed slightly in the 3rd version:
  * You must now invoke start() on the SwingWorker after
@@ -115,7 +115,7 @@ public abstract class SwingWorker {
      * @param useSwing Set true if MARS is running from GUI, false otherwise.
      */
     public SwingWorker(final boolean useSwing) {
-        final Runnable doFinished = () -> finished();
+        final Runnable doFinished = this::finished;
 
         Runnable doConstruct = () -> {
             try {

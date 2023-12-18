@@ -12,16 +12,11 @@ public class MemoryDump {
     /**
      * A list of segmentname/dumpformat/filename triples which should be dumped
      */
-    public static ArrayList dumpTriples = null;
-
-    /**
-     * A mapping from segments names (like ".text") to the base and limit for that segment.
-     */
-    private static final HashMap segmentBoundMap = new HashMap();
+    public static ArrayList<String[]> dumpTriples = null;
 
     private static final String[] segmentNames = {".text", ".data"};
-    private static int[] baseAddresses = new int[2];
-    private static int[] limitAddresses = new int[2];
+    private static final int[] baseAddresses = new int[2];
+    private static final int[] limitAddresses = new int[2];
 
 
     /**

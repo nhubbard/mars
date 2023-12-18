@@ -5,12 +5,12 @@ import javax.swing.*;
 
 /**
  * Produces MARS splash screen.<br>
- * Adapted from http://www.java-tips.org/content/view/1267/2/<br>
+ * Adapted from <a href="http://www.java-tips.org/content/view/1267/2/">...</a><br>
  */
 
 public class MarsSplashScreen extends JWindow {
 
-    private int duration;
+    private final int duration;
 
     public MarsSplashScreen(int d) {
         duration = d;
@@ -61,12 +61,12 @@ public class MarsSplashScreen extends JWindow {
         // Wait a little while, maybe while loading resources
         try {
             Thread.sleep(duration);
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         setVisible(false);
     }
 
-    class ImageBackgroundPanel extends JPanel {
+    static class ImageBackgroundPanel extends JPanel {
         Image image;
 
         public ImageBackgroundPanel() {

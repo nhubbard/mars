@@ -9,14 +9,13 @@ import edu.missouristate.mars.venus.AbstractFontSettingDialog;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.CaretEvent;
-import javax.swing.event.CaretListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Observable;
 import java.util.Random;
 
@@ -46,13 +45,13 @@ import java.util.Random;
 
 public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication {
 
-    private static String version = "Version 1.4";
-    private static String heading = "Keyboard and Display MMIO Simulator";
+    private static final String version = "Version 1.4";
+    private static final String heading = "Keyboard and Display MMIO Simulator";
     private static String displayPanelTitle, keyboardPanelTitle;
-    private static char VT_FILL = ' ';  // fill character for virtual terminal (random access mode)
+    private static final char VT_FILL = ' ';  // fill character for virtual terminal (random access mode)
 
-    public static Dimension preferredTextAreaDimension = new Dimension(400, 200);
-    private static Insets textAreaInsets = new Insets(4, 4, 4, 4);
+    public static final Dimension preferredTextAreaDimension = new Dimension(400, 200);
+    private static final Insets textAreaInsets = new Insets(4, 4, 4, 4);
 
     // Time delay to process Transmitter Data is simulated by counting instruction executions.
     // After this many executions, the Transmitter Controller Ready bit set to 1.
@@ -81,22 +80,15 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     private boolean displayRandomAccessMode = false;
     private int rows, columns;
     private DisplayResizeAdapter updateDisplayBorder;
-    private KeyboardAndDisplaySimulator simulator;
+    private final KeyboardAndDisplaySimulator simulator;
 
-    // Major GUI components
-    private JPanel keyboardAndDisplay;
-    private JScrollPane displayScrollPane;
     private JTextArea display;
-    private JPanel displayPanel, displayOptions;
-    private JComboBox delayTechniqueChooser;
+    private JPanel displayPanel;
+    private JComboBox<TransmitterDelayTechnique> delayTechniqueChooser;
     private DelayLengthPanel delayLengthPanel;
-    private JSlider delayLengthSlider;
     private JCheckBox displayAfterDelayCheckBox;
-    private JPanel keyboardPanel;
-    private JScrollPane keyAccepterScrollPane;
     private JTextArea keyEventAccepter;
-    private JButton fontButton;
-    private Font defaultFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    private final Font defaultFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
     /**
      * Simple constructor, likely used to run a stand-alone keyboard/display simulator.
@@ -197,7 +189,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         // display positioning feature.  Previously, both the display and the keyboard
         // text areas were equal in size and there was no way for the user to change that.
         // DPS 17-July-2014
-        keyboardAndDisplay = new JPanel(new BorderLayout());
+        // Major GUI components
+        JPanel keyboardAndDisplay = new JPanel(new BorderLayout());
         JSplitPane both = new JSplitPane(JSplitPane.VERTICAL_SPLIT, buildDisplay(), buildKeyboard());
         both.setResizeWeight(0.5);
         keyboardAndDisplay.add(both);
@@ -287,7 +280,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             // displays will replace, not append, in the text.
             if (!displayRandomAccessMode) {
                 displayRandomAccessMode = true;
-                initializeDisplay(displayRandomAccessMode);
+                initializeDisplay(true);
             }
             // For SET_CURSOR_X_Y, we need data from the rest of the word.
             // High order 3 bytes are split in half to store (X,Y) value.
@@ -295,9 +288,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             int x = (intWithCharacterToDisplay & 0xFFF00000) >>> 20;
             int y = (intWithCharacterToDisplay & 0x000FFF00) >>> 8;
             // If X or Y values are outside current range, set to range limit.
-            if (x < 0) x = 0;
             if (x >= columns) x = columns - 1;
-            if (y < 0) y = 0;
             if (y >= rows) y = rows - 1;
             // display is a JTextArea whose character positioning in the text is linear.
             // Converting (row,column) to linear position requires knowing how many columns
@@ -368,9 +359,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             char[] charArray = new char[columns];
             Arrays.fill(charArray, VT_FILL);
             String row = new String(charArray);
-            StringBuilder str = new StringBuilder(row);
-            str.append(("\n" + row).repeat(Math.max(0, rows - 1)));
-            initialText = str.toString();
+            initialText = row + ("\n" + row).repeat(Math.max(0, rows - 1));
         }
         display.setText(initialText);
         display.setCaretPosition(0);
@@ -383,7 +372,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         int cols = (int) size.getWidth();
         int rows = (int) size.getHeight();
         int caretPosition = display.getCaretPosition();
-        String stringCaretPosition = "";
+        String stringCaretPosition;
         // display position as stream or 2D depending on random access
         if (displayRandomAccessMode) {
             if (((caretPosition + 1) % (columns + 1) != 0)) {
@@ -549,9 +538,6 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
                     //       JDialog theDialog = theStuff.createDialog(theWindow, "Simulating the Keyboard and Display");
                     //       theDialog.setModal(false);
                     //       theDialog.setVisible(true);
-                    // The original code. Cannot be made modeless.
-                    //       JOptionPane.showMessageDialog(theWindow, new JScrollPane(ja),
-                    //           "Simulating the Keyboard and Display", JOptionPane.INFORMATION_MESSAGE);
                 });
         return help;
     }
@@ -587,12 +573,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
         // end added autoscrolling
 
-        displayScrollPane = new JScrollPane(display);
+        JScrollPane displayScrollPane = new JScrollPane(display);
         displayScrollPane.setPreferredSize(preferredTextAreaDimension);
 
         displayPanel.add(displayScrollPane);
-        displayOptions = new JPanel();
-        delayTechniqueChooser = new JComboBox(delayTechniques);
+        JPanel displayOptions = new JPanel();
+        delayTechniqueChooser = new JComboBox<>(delayTechniques);
         delayTechniqueChooser.setToolTipText("Technique for determining simulated transmitter device processing delay");
         delayTechniqueChooser.addActionListener(
                 e -> transmitDelayInstructionCountLimit = generateDelay());
@@ -603,7 +589,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
                 e -> displayAfterDelay = displayAfterDelayCheckBox.isSelected());
 
         //font button to display font
-        fontButton = new JButton("Font");
+        JButton fontButton = new JButton("Font");
         fontButton.setToolTipText("Select the font for the display panel");
         fontButton.addActionListener(new FontChanger());
         displayOptions.add(fontButton);
@@ -618,12 +604,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     //////////////////////////////////////////////////////////////////////////////////////
     // UI components and layout for lower part of GUI, where simulated keyboard is located.
     private JComponent buildKeyboard() {
-        keyboardPanel = new JPanel(new BorderLayout());
+        JPanel keyboardPanel = new JPanel(new BorderLayout());
         keyEventAccepter = new JTextArea();
         keyEventAccepter.setEditable(true);
         keyEventAccepter.setFont(defaultFont);
         keyEventAccepter.setMargin(textAreaInsets);
-        keyAccepterScrollPane = new JScrollPane(keyEventAccepter);
+        JScrollPane keyAccepterScrollPane = new JScrollPane(keyEventAccepter);
         keyAccepterScrollPane.setPreferredSize(preferredTextAreaDimension);
         keyEventAccepter.addKeyListener(new KeyboardKeyListener());
         keyboardPanel.add(keyAccepterScrollPane);
@@ -651,7 +637,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // This one does the work: update the MMIO Control and optionally the Data register as well
     // NOTE: last argument TRUE means update only the MMIO Control register; FALSE means update both Control and Data.
     private synchronized void updateMMIOControlAndData(int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
-        if (!this.isBeingUsedAsAMarsTool || (this.isBeingUsedAsAMarsTool && connectButton.isConnected())) {
+        if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
             synchronized (Globals.memoryAndRegistersLock) {
                 try {
                     Globals.memory.setRawWord(controlAddr, controlValue);
@@ -730,7 +716,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     private int generateDelay() {
         double sliderValue = delayLengthPanel.getDelayLength();
         TransmitterDelayTechnique technique = (TransmitterDelayTechnique) delayTechniqueChooser.getSelectedItem();
-        return technique.generateDelay(sliderValue);
+        return Objects.requireNonNull(technique).generateDelay(sliderValue);
     }
 
 
@@ -772,7 +758,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         private final static int DELAY_INDEX_MIN = 0;
         private final static int DELAY_INDEX_MAX = 40;
         private final static int DELAY_INDEX_INIT = 4;
-        private double[] delayTable = {
+        private final double[] delayTable = {
                 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 100,  // 0-10
                 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000,  //11-20
                 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000,  //21-30
@@ -783,7 +769,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
 
         public DelayLengthPanel() {
             super(new BorderLayout());
-            delayLengthSlider = new JSlider(JSlider.HORIZONTAL, DELAY_INDEX_MIN, DELAY_INDEX_MAX, DELAY_INDEX_INIT);
+            JSlider delayLengthSlider = new JSlider(JSlider.HORIZONTAL, DELAY_INDEX_MIN, DELAY_INDEX_MAX, DELAY_INDEX_INIT);
             delayLengthSlider.setSize(new Dimension(100, (int) delayLengthSlider.getSize().getHeight()));
             delayLengthSlider.setMaximumSize(delayLengthSlider.getSize());
             delayLengthSlider.addChangeListener(new DelayLengthListener());
@@ -812,7 +798,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             public void stateChanged(ChangeEvent e) {
                 JSlider source = (JSlider) e.getSource();
                 if (!source.getValueIsAdjusting()) {
-                    delayLengthIndex = (int) source.getValue();
+                    delayLengthIndex = source.getValue();
                     transmitDelayInstructionCountLimit = generateDelay();
                 } else {
                     sliderLabel.setText(setLabel(source.getValue()));
@@ -827,11 +813,11 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     //
 
     private interface TransmitterDelayTechnique {
-        public int generateDelay(double parameter);
+        int generateDelay(double parameter);
     }
 
     // Delay value is fixed, and equal to slider value.
-    private class FixedLengthDelay implements TransmitterDelayTechnique {
+    private static class FixedLengthDelay implements TransmitterDelayTechnique {
         public String toString() {
             return "Fixed transmitter delay, select using slider";
         }
@@ -843,8 +829,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
 
     // Randomly pick value from range 1 to slider setting, uniform distribution
     // (each value has equal probability of being chosen).
-    private class UniformlyDistributedDelay implements TransmitterDelayTechnique {
-        Random randu;
+    private static class UniformlyDistributedDelay implements TransmitterDelayTechnique {
+        final Random randu;
 
         public UniformlyDistributedDelay() {
             randu = new Random();
@@ -863,8 +849,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // Get sample from Normal(0,1) -- mean=0, s.d.=1 -- multiply it by slider
     // value, take absolute value to make sure we don't get negative,
     // add 1 to make sure we don't get 0.
-    private class NormallyDistributedDelay implements TransmitterDelayTechnique {
-        Random randn;
+    private static class NormallyDistributedDelay implements TransmitterDelayTechnique {
+        final Random randn;
 
         public NormallyDistributedDelay() {
             randn = new Random();

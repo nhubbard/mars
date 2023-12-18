@@ -2,15 +2,17 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.HelpHelpAction;
 
+import java.util.ArrayList;
+
 /**
  * Handly little class to contain help information for a popupMenu or
  * tool tip item.
  */
 public class PopupHelpItem {
-    private String tokenText;
+    private final String tokenText;
     private String example;
     private String description;
-    private boolean exact;        // from exact match?
+    private final boolean exact;        // from exact match?
     private int exampleLength;
     private static final String spaces = "                                        "; // 40 spaces
 
@@ -80,7 +82,7 @@ public class PopupHelpItem {
 
     // for performance purposes, length limited to example length + 40
     public String getExamplePaddedToLength(int length) {
-        String result = null;
+        String result;
         if (length > this.exampleLength) {
             int numSpaces = length - this.exampleLength;
             if (numSpaces > spaces.length()) {
@@ -106,12 +108,12 @@ public class PopupHelpItem {
 
     // Utility method.  Traverse ArrayList of PopupHelpItem objects
     // and return String length of longest example.
-    public static int maxExampleLength(java.util.ArrayList matches) {
+    public static int maxExampleLength(ArrayList<PopupHelpItem> matches) {
         int length = 0;
         if (matches != null) {
-            for (Object match : matches) {
-                if (match instanceof PopupHelpItem) {
-                    length = Math.max(length, ((PopupHelpItem) match).getExampleLength());
+            for (PopupHelpItem match : matches) {
+                if (match != null) {
+                    length = Math.max(length, match.getExampleLength());
                 }
             }
         }

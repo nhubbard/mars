@@ -17,6 +17,7 @@ import java.io.IOException;
 // NOT READY FOR PRIME TIME.  WHEN IT IS, UNCOMMENT THE "extends" CLAUSE
 // AND THE SUPERCLASS CONSTRUCTOR CALL SO THE FORMAT LOADER WILL ACCEPT IT 
 // AND IT WILL BE ADDED TO THE LIST.
+@SuppressWarnings("EmptyMethod")
 public class MIFDumpFormat { //extends AbstractDumpFormat {
 
     /**

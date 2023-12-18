@@ -43,7 +43,7 @@ public final class TokenTypes {
     public static final TokenTypes ERROR = new TokenTypes("ERROR");
     public static final TokenTypes MACRO_PARAMETER = new TokenTypes("MACRO_PARAMETER");
 
-    private String descriptor;
+    private final String descriptor;
 
     private TokenTypes() {
         // private ctor assures no objects can be created other than those above.
@@ -126,9 +126,9 @@ public final class TokenTypes {
 
             int i = Binary.stringToInt(value);   // KENV 1/6/05
 
-            /***************************************************************************
+            /* **************************************************************************
              *  MODIFICATION AND COMMENT, DPS 3-July-2008
-             *
+             * <p>
              * The modifications of January 2005 documented below are being rescinded.
              * All hexadecimal immediate values are considered 32 bits in length and
              * their classification as INTEGER_5, INTEGER_16, INTEGER_16U (new)
@@ -137,10 +137,10 @@ public final class TokenTypes {
              * the introduction of INTEGER_16U (adopted from Greg Gibeling of Berkeley),
              * required extensive changes to instruction templates especially for
              * pseudo-instructions.
-             *
+             * <p>
              * This modification also appears inbuildBasicStatementFromBasicInstruction()
              * in edu.missouristate.mars.ProgramStatement.
-             *
+             * <p>
              *  ///// Begin modification 1/4/05 KENV   ///////////////////////////////////////////
              *  // We have decided to interpret non-signed (no + or -) 16-bit hexadecimal immediate
              *  // operands as signed values in the range -32768 to 32767. So 0xffff will represent
@@ -152,7 +152,7 @@ public final class TokenTypes {
              *  // not affected by this tweak.  32-bit immediates in data segment directives
              *  // are also processed elsewhere so are not affected either.
              *  ////////////////////////////////////////////////////////////////////////////////
-             *
+             * <p>
              *     if ( Binary.isHex(value) &&
              *         (i >= 32768) &&
              *         (i <= 65535) )  // Range 0x8000 ... 0xffff
@@ -163,7 +163,7 @@ public final class TokenTypes {
              *        i = i - 65536;
              *     }
              *    // ------------- END    KENV 1/4/05   MODIFICATIONS --------------
-             *
+             * <p>
              **************************  END DPS 3-July-2008 COMMENTS *******************************/
             // shift operands must be in range 0-31
             if (i >= 0 && i <= 31) {

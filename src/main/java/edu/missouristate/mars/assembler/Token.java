@@ -13,9 +13,10 @@ import edu.missouristate.mars.*;
 public class Token {
 
     private TokenTypes type;
-    private String value;
-    private MIPSProgram sourceMIPSProgram;
-    private int sourceLine, sourcePos;
+    private final String value;
+    private final MIPSProgram sourceMIPSProgram;
+    private final int sourceLine;
+    private final int sourcePos;
     // original program and line will differ from the above if token was defined in an included file
     private MIPSProgram originalMIPSProgram;
     private int originalSourceLine;

@@ -1,15 +1,6 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-
 import javax.swing.*;
-import javax.swing.event.*;
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.undo.*;
-import java.text.*;
-import java.util.*;
-import java.io.*;
 
 /**
  * Contains tabbed areas in the UI to display register contents
@@ -19,11 +10,9 @@ import java.io.*;
  **/
 
 public class RegistersPane extends JTabbedPane {
-    RegistersWindow regsTab;
-    Coprocessor1Window cop1Tab;
-    Coprocessor0Window cop0Tab;
-
-    private VenusUI mainUI;
+    final RegistersWindow regsTab;
+    final Coprocessor1Window cop1Tab;
+    final Coprocessor0Window cop0Tab;
 
     /**
      * Constructor for the RegistersPane class.
@@ -32,7 +21,6 @@ public class RegistersPane extends JTabbedPane {
     public RegistersPane(VenusUI appFrame, RegistersWindow regs, Coprocessor1Window cop1,
                          Coprocessor0Window cop0) {
         super();
-        this.mainUI = appFrame;
         regsTab = regs;
         cop1Tab = cop1;
         cop0Tab = cop0;

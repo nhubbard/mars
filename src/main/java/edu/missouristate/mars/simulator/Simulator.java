@@ -8,7 +8,6 @@ import edu.missouristate.mars.mips.instructions.*;
 
 import java.util.*;
 import javax.swing.*;
-import java.awt.event.*;
 
 /**
  * Used to simulate the execution of an assembled MIPS program.
@@ -135,7 +134,7 @@ public class Simulator extends Observable {
         void stopped(Simulator s);
     }
 
-    private ArrayList<StopListener> stopListeners = new ArrayList<>(1);
+    private final ArrayList<StopListener> stopListeners = new ArrayList<>(1);
 
     public void addStopListener(StopListener l) {
         stopListeners.add(l);
@@ -175,15 +174,15 @@ public class Simulator extends Observable {
      * provided by Sun Microsystems for download and is not part of the Swing library.
      */
 
-    class SimThread extends SwingWorker {
-        private MIPSProgram p;
-        private int pc, maxSteps;
+    static class SimThread extends SwingWorker {
+        private final int pc;
+        private final int maxSteps;
         private int[] breakPoints;
         private boolean done;
         private ProcessingException pe;
         private volatile boolean stop = false;
         private volatile AbstractAction stopper;
-        private AbstractAction starter;
+        private final AbstractAction starter;
         private int constructReturnReason;
 
 
@@ -198,7 +197,6 @@ public class Simulator extends Observable {
          */
         SimThread(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
             super(Globals.getGui() != null);
-            this.p = p;
             this.pc = pc;
             this.maxSteps = maxSteps;
             this.breakPoints = breakPoints;
@@ -224,9 +222,7 @@ public class Simulator extends Observable {
         /**
          * This is comparable to the Runnable "run" method (it is called by
          * SwingWorker's "run" method).  It simulates the program
-         * execution in the backgorund.
-         *
-         * @return boolean value true if execution done, false otherwise
+         * execution in the background.
          */
 
         public Object construct() {
@@ -246,7 +242,7 @@ public class Simulator extends Observable {
             Simulator.getInstance().notifyObserversOfExecutionStart(maxSteps, pc);
 
             RegisterFile.initializeProgramCounter(pc);
-            ProgramStatement statement = null;
+            ProgramStatement statement;
             try {
                 statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
             } catch (AddressErrorException e) {
@@ -341,7 +337,7 @@ public class Simulator extends Observable {
                             ProgramStatement exceptionHandler = null;
                             try {
                                 exceptionHandler = Globals.memory.getStatement(Memory.exceptionHandlerAddress);
-                            } catch (AddressErrorException aee) {
+                            } catch (AddressErrorException ignored) {
                             } // will not occur with this well-known addres
                             if (exceptionHandler != null) {
                                 RegisterFile.setProgramCounter(Memory.exceptionHandlerAddress);
@@ -367,7 +363,7 @@ public class Simulator extends Observable {
 
                 // Volatile variable initialized false but can be set true by the main thread.
                 // Used to stop or pause a running MIPS program.  See stopSimulation() above.
-                if (stop == true) {
+                if (stop) {
                     this.constructReturnReason = PAUSE_OR_STOP;
                     this.done = false;
                     Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
@@ -405,7 +401,7 @@ public class Simulator extends Observable {
                             RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
                         try {
                             Thread.sleep((int) (1000 / RunSpeedPanel.getInstance().getRunSpeed())); // make sure it's never zero!
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException ignored) {
                         }
                     }
                 }
@@ -482,12 +478,11 @@ public class Simulator extends Observable {
                     }
                 }
             }
-            return;
         }
 
     }
 
-    private class UpdateGUI implements Runnable {
+    private static class UpdateGUI implements Runnable {
         public void run() {
             if (Globals.getGui().getRegistersPane().getSelectedComponent() ==
                     Globals.getGui().getMainPane().getExecutePane().getRegistersWindow()) {

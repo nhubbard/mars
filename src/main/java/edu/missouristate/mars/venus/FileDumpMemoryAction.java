@@ -1,17 +1,23 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.dump.*;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.mips.dump.DumpFormat;
+import edu.missouristate.mars.mips.dump.DumpFormatLoader;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.MemoryDump;
 
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.border.*;
-import java.io.*;
-import java.util.*;
-import javax.swing.plaf.basic.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Action  for the File -> Save For Dump Memory menu item
@@ -27,8 +33,7 @@ public class FileDumpMemoryAction extends GuiAction {
     private JComboBox<String> segmentListSelector;
     private JComboBox<DumpFormat> formatListSelector;
 
-    public FileDumpMemoryAction(String name, Icon icon, String descrip,
-                                Integer mnemonic, KeyStroke accel, VenusUI gui) {
+    public FileDumpMemoryAction(String name, Icon icon, String descrip, Integer mnemonic, KeyStroke accel, VenusUI gui) {
         super(name, icon, descrip, mnemonic, accel, gui);
 
     }
@@ -54,14 +59,12 @@ public class FileDumpMemoryAction extends GuiAction {
     private JDialog createDumpDialog() {
         JDialog dumpDialog = new JDialog(Globals.getGui(), title, true);
         dumpDialog.setContentPane(buildDialogPanel());
-        dumpDialog.setDefaultCloseOperation(
-                JDialog.DO_NOTHING_ON_CLOSE);
-        dumpDialog.addWindowListener(
-                new WindowAdapter() {
-                    public void windowClosing(WindowEvent we) {
-                        closeDialog();
-                    }
-                });
+        dumpDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dumpDialog.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent we) {
+                closeDialog();
+            }
+        });
         return dumpDialog;
     }
 
@@ -103,9 +106,7 @@ public class FileDumpMemoryAction extends GuiAction {
             if (highAddressArray[i] >= baseAddressArray[i]) {
                 segmentListBaseArray[segmentCount] = baseAddressArray[i];
                 segmentListHighArray[segmentCount] = highAddressArray[i];
-                segmentListArray[segmentCount] =
-                        segmentArray[i] + " (" + Binary.intToHexString(baseAddressArray[i]) +
-                                " - " + Binary.intToHexString(highAddressArray[i]) + ")";
+                segmentListArray[segmentCount] = segmentArray[i] + " (" + Binary.intToHexString(baseAddressArray[i]) + " - " + Binary.intToHexString(highAddressArray[i]) + ")";
                 segmentCount++;
             }
         }
@@ -116,8 +117,7 @@ public class FileDumpMemoryAction extends GuiAction {
         if (segmentCount == 0) {
             contents.add(new Label("There is nothing to dump!"), BorderLayout.NORTH);
             JButton OKButton = new JButton("OK");
-            OKButton.addActionListener(
-                    e -> closeDialog());
+            OKButton.addActionListener(e -> closeDialog());
             contents.add(OKButton, BorderLayout.SOUTH);
             return contents;
         }
@@ -152,17 +152,13 @@ public class FileDumpMemoryAction extends GuiAction {
         // Bottom row - the control buttons for Dump and Cancel
         Box controlPanel = Box.createHorizontalBox();
         JButton dumpButton = new JButton("Dump To File...");
-        dumpButton.addActionListener(
-                e -> {
-                    if (performDump(segmentListBaseArray[segmentListSelector.getSelectedIndex()],
-                            segmentListHighArray[segmentListSelector.getSelectedIndex()],
-                            (DumpFormat) formatListSelector.getSelectedItem())) {
-                        closeDialog();
-                    }
-                });
+        dumpButton.addActionListener(e -> {
+            if (performDump(segmentListBaseArray[segmentListSelector.getSelectedIndex()], segmentListHighArray[segmentListSelector.getSelectedIndex()], (DumpFormat) formatListSelector.getSelectedItem())) {
+                closeDialog();
+            }
+        });
         JButton cancelButton = new JButton("Cancel");
-        cancelButton.addActionListener(
-                e -> closeDialog());
+        cancelButton.addActionListener(e -> closeDialog());
         controlPanel.add(Box.createHorizontalGlue());
         controlPanel.add(dumpButton);
         controlPanel.add(Box.createHorizontalGlue());
@@ -175,8 +171,8 @@ public class FileDumpMemoryAction extends GuiAction {
     // User has clicked "Dump" button, so launch a file chooser then get
     // segment (memory range) and format selections and save to the file.
     private boolean performDump(int firstAddress, int lastAddress, DumpFormat format) {
-        File theFile = null;
-        JFileChooser saveDialog = null;
+        File theFile;
+        JFileChooser saveDialog;
         boolean operationOK = false;
 
         saveDialog = new JFileChooser(mainUI.getEditor().getCurrentSaveDirectory());
@@ -189,13 +185,9 @@ public class FileDumpMemoryAction extends GuiAction {
             theFile = saveDialog.getSelectedFile();
             operationOK = true;
             if (theFile.exists()) {
-                int overwrite = JOptionPane.showConfirmDialog(mainUI,
-                        "File " + theFile.getName() + " already exists.  Do you wish to overwrite it?",
-                        "Overwrite existing file?",
-                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+                int overwrite = JOptionPane.showConfirmDialog(mainUI, "File " + theFile.getName() + " already exists.  Do you wish to overwrite it?", "Overwrite existing file?", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
                 switch (overwrite) {
                     case JOptionPane.YES_OPTION:
-                        operationOK = true;
                         break;
                     case JOptionPane.NO_OPTION:
                         operationOK = false;
@@ -209,7 +201,7 @@ public class FileDumpMemoryAction extends GuiAction {
             if (operationOK) {
                 try {
                     format.dumpMemoryRange(theFile, firstAddress, lastAddress);
-                } catch (AddressErrorException | IOException aee) {
+                } catch (AddressErrorException | IOException ignored) {
 
                 }
             }
@@ -227,7 +219,7 @@ public class FileDumpMemoryAction extends GuiAction {
     // Display tool tip for dump format list items.  Got the technique from
     // http://forum.java.sun.com/thread.jspa?threadID=488762&messageID=2292482
 
-    private class DumpFormatComboBoxRenderer extends BasicComboBoxRenderer {
+    private static class DumpFormatComboBoxRenderer extends BasicComboBoxRenderer {
         private final JComboBox<DumpFormat> myMaster;
 
         public DumpFormatComboBoxRenderer(JComboBox<DumpFormat> myMaster) {
@@ -235,8 +227,7 @@ public class FileDumpMemoryAction extends GuiAction {
             this.myMaster = myMaster;
         }
 
-        public Component getListCellRendererComponent(JList list, Object value, int index,
-                                                      boolean isSelected, boolean cellHasFocus) {
+        public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             setToolTipText(value.toString());
             if (index >= 0 && myMaster.getItemAt(index).getDescription() != null) {

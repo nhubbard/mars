@@ -21,7 +21,6 @@ import javax.swing.event.*;
 public class RegistersWindow extends JPanel implements Observer {
     private static JTable table;
     private static Register[] registers;
-    private Object[][] tableData;
     private boolean highlighting;
     private int highlightRow;
     private ExecutePane executePane;
@@ -59,7 +58,7 @@ public class RegistersWindow extends JPanel implements Observer {
 
     public Object[][] setupWindow() {
         int valueBase = NumberDisplayBaseChooser.getBase(settings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX));
-        tableData = new Object[35][3];
+        Object[][] tableData = new Object[35][3];
         registers = RegisterFile.getRegisters();
         for (int i = 0; i < registers.length; i++) {
             tableData[i][0] = registers[i].getName();
@@ -205,8 +204,8 @@ public class RegistersWindow extends JPanel implements Observer {
      * all columns.
      */
     private class RegisterCellRenderer extends DefaultTableCellRenderer {
-        private Font font;
-        private int alignment;
+        private final Font font;
+        private final int alignment;
 
         public RegisterCellRenderer(Font font, int alignment) {
             super();
@@ -240,9 +239,9 @@ public class RegistersWindow extends JPanel implements Observer {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    class RegTableModel extends AbstractTableModel {
+    static class RegTableModel extends AbstractTableModel {
         final String[] columnNames = {"Name", "Number", "Value"};
-        Object[][] data;
+        final Object[][] data;
 
         public RegTableModel(Object[][] d) {
             data = d;
@@ -268,7 +267,7 @@ public class RegistersWindow extends JPanel implements Observer {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class getColumnClass(int c) {
+        public Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -280,11 +279,7 @@ public class RegistersWindow extends JPanel implements Observer {
             //Note that the data/cell address is constant,
             //no matter where the cell appears onscreen.
             // these registers are not editable: $zero (0), $pc (32), $ra (31)
-            if (col == VALUE_COLUMN && row != 0 && row != 32 && row != 31) {
-                return true;
-            } else {
-                return false;
-            }
+            return col == VALUE_COLUMN && row != 0 && row != 32 && row != 31;
         }
 
 
@@ -294,7 +289,7 @@ public class RegistersWindow extends JPanel implements Observer {
          * value is valid, MIPS register is updated.
          */
         public void setValueAt(Object value, int row, int col) {
-            int val = 0;
+            int val;
             try {
                 val = Binary.stringToInt((String) value);
             } catch (NumberFormatException nfe) {
@@ -310,7 +305,6 @@ public class RegistersWindow extends JPanel implements Observer {
             int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
             data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
             fireTableCellUpdated(row, col);
-            return;
         }
 
 
@@ -346,14 +340,14 @@ public class RegistersWindow extends JPanel implements Observer {
     // the first column. From Sun's JTable tutorial.
     // http://java.sun.com/docs/books/tutorial/uiswing/components/table.html
     //
-    private class MyTippedJTable extends JTable {
+    private static class MyTippedJTable extends JTable {
         MyTippedJTable(RegTableModel m) {
             super(m);
             this.setRowSelectionAllowed(true); // highlights background color of entire row
             this.setSelectionBackground(Color.GREEN);
         }
 
-        private String[] regToolTips = {
+        private final String[] regToolTips = {
                 /* $zero */  "constant 0",
                 /* $at   */  "reserved for assembler",
                 /* $v0   */  "expression evaluation and results of a function",
@@ -393,7 +387,7 @@ public class RegistersWindow extends JPanel implements Observer {
 
         //Implement table cell tool tips.
         public String getToolTipText(MouseEvent e) {
-            String tip = null;
+            String tip;
             java.awt.Point p = e.getPoint();
             int rowIndex = rowAtPoint(p);
             int colIndex = columnAtPoint(p);
@@ -413,7 +407,7 @@ public class RegistersWindow extends JPanel implements Observer {
             return tip;
         }
 
-        private String[] columnToolTips = {
+        private final String[] columnToolTips = {
                 /* name */   "Each register has a tool tip describing its usage convention",
                 /* number */ "Corresponding register number",
                 /* value */  "Current 32 bit value"

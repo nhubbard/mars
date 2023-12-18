@@ -48,7 +48,7 @@ class ToneGenerator {
      */
     public final static byte DEFAULT_VOLUME = 100;
 
-    private static Executor threadPool = Executors.newCachedThreadPool();
+    private static final Executor threadPool = Executors.newCachedThreadPool();
 
     /**
      * Produces a Tone with the specified pitch, duration, and instrument,
@@ -112,10 +112,10 @@ class Tone implements Runnable {
      */
     public final static int DEFAULT_CHANNEL = 0;
 
-    private byte pitch;
-    private int duration;
-    private byte instrument;
-    private byte volume;
+    private final byte pitch;
+    private final int duration;
+    private final byte instrument;
+    private final byte volume;
 
     /**
      * Instantiates a new Tone object, initializing the tone's pitch,
@@ -163,12 +163,12 @@ class Tone implements Runnable {
      * cause other, less severe, problems), so that case should be
      * double covered. */
 
-    private static Lock openLock = new ReentrantLock();
+    private static final Lock openLock = new ReentrantLock();
 
     private void playTone() {
 
         try {
-            Sequencer player = null;
+            Sequencer player;
             openLock.lock();
             try {
                 player = MidiSystem.getSequencer();
@@ -212,7 +212,7 @@ class Tone implements Runnable {
 
             try {
                 eot.awaitEndOfTrack();
-            } catch (InterruptedException ex) {
+            } catch (InterruptedException ignored) {
             } finally {
                 player.close();
             }

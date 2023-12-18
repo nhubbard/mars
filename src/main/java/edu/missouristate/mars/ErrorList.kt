@@ -19,6 +19,8 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package edu.missouristate.mars
 
 import java.io.File

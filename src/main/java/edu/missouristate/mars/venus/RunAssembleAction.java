@@ -15,7 +15,7 @@ import javax.swing.*;
  */
 public class RunAssembleAction extends GuiAction {
 
-    private static ArrayList MIPSProgramsToAssemble;
+    private static ArrayList<MIPSProgram> MIPSProgramsToAssemble;
     private static boolean extendedAssemblerEnabled;
     private static boolean warningsAreErrors;
     // Threshold for adding filename to printed message of files being assembled.
@@ -27,7 +27,7 @@ public class RunAssembleAction extends GuiAction {
     }
 
     // These are both used by RunResetAction to re-assemble under identical conditions.
-    static ArrayList getMIPSProgramsToAssemble() {
+    static ArrayList<MIPSProgram> getMIPSProgramsToAssemble() {
         return MIPSProgramsToAssemble;
     }
 
@@ -52,18 +52,18 @@ public class RunAssembleAction extends GuiAction {
             }
             try {
                 Globals.program = new MIPSProgram();
-                ArrayList filesToAssemble;
+                ArrayList<String> filesToAssemble;
                 if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {// setting calls for multiple file assembly
                     filesToAssemble = FilenameFinder.getFilenameList(
                             new File(FileStatus.getName()).getParent(), Globals.fileExtensions);
                 } else {
-                    filesToAssemble = new ArrayList();
+                    filesToAssemble = new ArrayList<>();
                     filesToAssemble.add(FileStatus.getName());
                 }
                 String exceptionHandler = null;
                 if (Globals.getSettings().getBooleanSetting(Settings.EXCEPTION_HANDLER_ENABLED) &&
                         Globals.getSettings().getExceptionHandler() != null &&
-                        Globals.getSettings().getExceptionHandler().length() > 0) {
+                        !Globals.getSettings().getExceptionHandler().isEmpty()) {
                     exceptionHandler = Globals.getSettings().getExceptionHandler();
                 }
                 MIPSProgramsToAssemble = Globals.program.prepareFilesForAssembly(filesToAssemble, FileStatus.getFile().getPath(), exceptionHandler);
@@ -91,8 +91,8 @@ public class RunAssembleAction extends GuiAction {
                 registersPane.getRegistersWindow().clearWindow();
                 registersPane.getCoprocessor1Window().clearWindow();
                 registersPane.getCoprocessor0Window().clearWindow();
-                mainUI.setReset(true);
-                mainUI.setStarted(false);
+                VenusUI.setReset(true);
+                VenusUI.setStarted(false);
                 mainUI.getMainPane().setSelectedComponent(executePane);
 
                 // Aug. 24, 2005 Ken Vollmar
@@ -105,8 +105,8 @@ public class RunAssembleAction extends GuiAction {
                         name + ": operation completed with errors.\n\n");
                 // Select editor line containing first error, and corresponding error message.
                 ArrayList<ErrorMessage> errorMessages = pe.errors().getMessages();
-                for (Object errorMessage : errorMessages) {
-                    ErrorMessage em = (ErrorMessage) errorMessage;
+                for (ErrorMessage errorMessage : errorMessages) {
+                    ErrorMessage em = errorMessage;
                     // No line or position may mean File Not Found (e.g. exception file). Don't try to open. DPS 3-Oct-2010
                     if (em.getLine() == 0 && em.getPosition() == 0) {
                         continue;
@@ -132,15 +132,15 @@ public class RunAssembleAction extends GuiAction {
 
     // Handy little utility for building comma-separated list of filenames
     // while not letting line length get out of hand.
-    private String buildFileNameList(String preamble, ArrayList programList) {
-        String result = preamble;
+    private String buildFileNameList(String preamble, ArrayList<MIPSProgram> programList) {
+        StringBuilder result = new StringBuilder(preamble);
         int lineLength = result.length();
         for (int i = 0; i < programList.size(); i++) {
-            String filename = ((MIPSProgram) programList.get(i)).getFilename();
-            result += filename + ((i < programList.size() - 1) ? ", " : "");
+            String filename = programList.get(i).getFilename();
+            result.append(filename).append((i < programList.size() - 1) ? ", " : "");
             lineLength += filename.length();
             if (lineLength > LINE_LENGTH_LIMIT) {
-                result += "\n";
+                result.append("\n");
                 lineLength = 0;
             }
         }

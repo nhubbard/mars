@@ -8,6 +8,7 @@ import edu.missouristate.mars.util.Binary;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.Objects;
 import java.util.Observable;
 
 /**
@@ -399,7 +400,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     // The selection must be a String that parses to an int.
     private int getIntComboBoxSelection(JComboBox<String> comboBox) {
         try {
-            return Integer.parseInt((String) comboBox.getSelectedItem());
+            return Integer.parseInt((String) Objects.requireNonNull(comboBox.getSelectedItem()));
         } catch (NumberFormatException nfe) {
             // Can occur only if initialization list contains badly formatted numbers.  This
             // is a developer's error, not a user error, and better be caught before release.
@@ -468,10 +469,11 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
     ////////////////////////////////////////////////////////////////////////
     // Represents grid of colors
-    private class Grid {
+    private static class Grid {
 
-        Color[][] grid;
-        int rows, columns;
+        final Color[][] grid;
+        final int rows;
+        final int columns;
 
         private Grid(int rows, int columns) {
             grid = new Color[rows][columns];

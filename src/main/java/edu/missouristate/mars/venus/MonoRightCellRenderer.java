@@ -1,7 +1,5 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-
 import javax.swing.table.*;
 import javax.swing.*;
 import java.awt.*;

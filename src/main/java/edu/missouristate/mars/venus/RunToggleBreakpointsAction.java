@@ -4,7 +4,6 @@ import edu.missouristate.mars.*;
 
 import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.event.*;
 
 /**
  * Action class for the Run menu item to clear execution breakpoints that have been set.

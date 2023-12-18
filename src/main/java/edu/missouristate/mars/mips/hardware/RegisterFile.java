@@ -20,7 +20,7 @@ public class RegisterFile {
     public static final int GLOBAL_POINTER_REGISTER = 28;
     public static final int STACK_POINTER_REGISTER = 29;
 
-    private static Register[] regFile =
+    private static final Register[] regFile =
             {new Register("$zero", 0, 0), new Register("$at", 1, 0),
                     new Register("$v0", 2, 0), new Register("$v1", 3, 0),
                     new Register("$a0", 4, 0), new Register("$a1", 5, 0),
@@ -40,9 +40,9 @@ public class RegisterFile {
                     new Register("$fp", 30, 0), new Register("$ra", 31, 0)
             };
 
-    private static Register programCounter = new Register("pc", 32, Memory.textBaseAddress);
-    private static Register hi = new Register("hi", 33, 0);//this is an internal register with arbitrary number
-    private static Register lo = new Register("lo", 34, 0);// this is an internal register with arbitrary number
+    private static final Register programCounter = new Register("pc", 32, Memory.textBaseAddress);
+    private static final Register hi = new Register("hi", 33, 0);//this is an internal register with arbitrary number
+    private static final Register lo = new Register("lo", 34, 0);// this is an internal register with arbitrary number
 
 
     /**
@@ -54,7 +54,7 @@ public class RegisterFile {
             System.out.println("Name: " + register.getName());
             System.out.println("Number: " + register.getNumber());
             System.out.println("Value: " + register.getValue());
-            System.out.println("");
+            System.out.println();
         }
     }
 
@@ -174,7 +174,7 @@ public class RegisterFile {
             } catch (Exception e) {
                 // handles both NumberFormat and ArrayIndexOutOfBounds
                 // check for register mnemonic $zero thru $ra
-                reg = null; // just to be sure
+                // just to be sure
                 // just do linear search; there aren't that many registers
                 for (Register register : regFile) {
                     if (Rname.equals(register.getName())) {

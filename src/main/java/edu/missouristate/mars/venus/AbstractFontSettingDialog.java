@@ -5,8 +5,6 @@ import edu.missouristate.mars.util.EditorFont;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -23,7 +21,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     JSlider fontSizeSelector;
     JSpinner fontSizeSpinSelector;
     JLabel fontSample;
-    protected Font currentFont;
+    protected final Font currentFont;
 
     // Used to determine upon OK, whether anything has changed.
     String initialFontFamily, initialFontStyle, initialFontSize;
@@ -162,16 +160,16 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     //
     // Method and two classes to permit one or more horizontal separators
     // within a combo box list.  I obtained this code on 13 July 2007
-    // from http://www.codeguru.com/java/articles/164.shtml.  Author
+    // from http://www.codeguru.com/java/articles/164.shtml. Author
     // is listed: Nobuo Tamemasa.  Code is old, 1999, but fine for this.
     // I will use it to separate the short list of "common" font
     // families from the very long list of all font families.  No attempt
-    // to keep a list of recently-used fonts like Word does.  The list
+    // to keep a list of recently used fonts like Word does.  The list
     // of common font families is static.
     //
     /////////////////////////////////////////////////////////////////////
 
-    private static String SEPARATOR = "___SEPARATOR____";
+    private static final String SEPARATOR = "___SEPARATOR____";
 
     // Given an array of string arrays, will produce a Vector contenating
     // the arrays with a separator between each.
@@ -192,7 +190,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     // Required renderer for handling the separator bar.
     private static class ComboBoxRenderer extends JLabel implements ListCellRenderer<String> {
-        JSeparator separator;
+        final JSeparator separator;
 
         public ComboBoxRenderer() {
             setOpaque(true);
@@ -220,7 +218,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     // Required listener to handle the separator bar.
     private static class BlockComboListener implements ActionListener {
-        JComboBox<String> combo;
+        final JComboBox<String> combo;
         Object currentItem;
 
         BlockComboListener(JComboBox<String> combo) {

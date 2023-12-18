@@ -32,9 +32,9 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
         //   $f12 = double value to display in string form after the first message
         // Output: none
 
-        String message = new String(); // = "";
+        String message = ""; // = "";
         int byteAddress = RegisterFile.getValue(4);
-        char ch[] = {' '}; // Need an array to convert to String
+        char[] ch = {' '}; // Need an array to convert to String
         try {
             ch[0] = (char) Globals.memory.getByte(byteAddress);
             while (ch[0] != 0) // only uses single location ch[0]
@@ -51,7 +51,7 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
         // Display the dialog.
         try {
             JOptionPane.showMessageDialog(null,
-                    message + Double.toString(Coprocessor1.getDoubleFromRegisterPair("$f12")),
+                    message + Coprocessor1.getDoubleFromRegisterPair("$f12"),
                     null,
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (InvalidRegisterAccessException e)   // register ID error in this method

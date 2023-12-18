@@ -1,7 +1,6 @@
 package edu.missouristate.mars.assembler;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 
 import edu.missouristate.mars.*;
@@ -36,8 +35,7 @@ public class Assembler {
     private TokenList globalDeclarationList;
     private UserKernelAddressSpace textAddress;
     private UserKernelAddressSpace dataAddress;
-    private DataSegmentForwardReferences currentFileDataSegmentForwardReferences,
-            accumulatedDataSegmentForwardReferences;
+    private DataSegmentForwardReferences currentFileDataSegmentForwardReferences;
 
     /**
      * Parse and generate machine code for the given MIPS program. It must have
@@ -143,22 +141,22 @@ public class Assembler {
                 Memory.kernelDataBaseAddress);
         externAddress = Memory.externBaseAddress;
         currentFileDataSegmentForwardReferences = new DataSegmentForwardReferences();
-        accumulatedDataSegmentForwardReferences = new DataSegmentForwardReferences();
+        DataSegmentForwardReferences accumulatedDataSegmentForwardReferences = new DataSegmentForwardReferences();
         Globals.symbolTable.clear();
         Globals.memory.clear();
         ArrayList<ProgramStatement> machineList = new ArrayList<>();
         this.errors = new ErrorList();
         if (Globals.debug)
             System.out.println("Assembler first pass begins:");
-        // PROCESS THE FIRST ASSEMBLY PASS FOR ALL SOURCE FILES BEFORE PROCEEDING
-        // TO SECOND PASS. THIS ASSURES ALL SYMBOL TABLES ARE CORRECTLY BUILT.
-        // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
-        // ONE LOCAL SYMBOL TABLE FOR EACH SOURCE FILE.
+        // Process the first assembly pass for all source files before proceeding to the second pass.
+        // This assures all symbol tables are correctly built.
+        // There is one global symbol table (for identifiers declared .global), plus one local symbol table for each
+        // source file.
         for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
             if (errors.isErrorLimitExceeded())
                 break;
             this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
-            // List of labels declared ".globl". new list for each file assembled
+            // List of labels declared ".global". new list for each file assembled
             this.globalDeclarationList = new TokenList();
             // Parser begins by default in text segment until directed otherwise.
             this.inDataSegment = false;
@@ -207,10 +205,11 @@ public class Assembler {
             // move ".globl" symbols from local symtab to global
             this.transferGlobals();
             // Attempt to resolve forward label references that were discovered in operand fields
-            // of data segment directives in current file. Those that are not resolved after this
-            // call are either references to global labels not seen yet, or are undefined.
+            // of data segment directives in the current file.
+            // Those that are not resolved after this call are either references to global labels not seen yet,
+            // or are undefined.
             // Cannot determine which until all files are parsed, so copy unresolved entries
-            // into accumulated list and clear out this one for re-use with the next source file.
+            // into an accumulated list and clear out this one for re-use with the next source file.
             currentFileDataSegmentForwardReferences.resolve(fileCurrentlyBeingAssembled
                     .getLocalSymbolTable());
             accumulatedDataSegmentForwardReferences.add(currentFileDataSegmentForwardReferences);
@@ -224,7 +223,7 @@ public class Assembler {
         accumulatedDataSegmentForwardReferences.resolve(Globals.symbolTable);
         accumulatedDataSegmentForwardReferences.generateErrorMessages(errors);
 
-        // Throw collection of errors accumulated through the first pass.
+        // Throw the collection of errors accumulated through the first pass.
         if (errors.hasErrors()) {
             throw new ProcessingException(errors);
         }
@@ -289,21 +288,20 @@ public class Assembler {
                     for (int instrNumber = 0; instrNumber < templateList.size(); instrNumber++) {
                         String instruction = ExtendedInstruction.makeTemplateSubstitutions(
                                 this.fileCurrentlyBeingAssembled,
-                                (String) templateList.get(instrNumber), theTokenList);
+                                templateList.get(instrNumber), theTokenList);
                         // 23 Jan 2008 by DPS. Template substitution may result in no instruction.
                         // If this is the case, skip remainder of loop iteration. This should only
                         // happen if template substitution was for "nop" instruction but delayed branching
                         // is disabled so the "nop" is not generated.
-                        if (instruction == null || instruction == "") {
+                        if (instruction == null || instruction.equals("")) {
                             continue;
                         }
 
-                        // All substitutions have been made so we have generated
+                        // All substitutions have been made, so we have generated
                         // a valid basic instruction!
                         if (Globals.debug)
                             System.out.println("PSEUDO generated: " + instruction);
-                        // For generated instruction: tokenize, build program
-                        // statement, add to list.
+                        // For generated instruction: tokenize, build the program statement, and add to the list.
                         TokenList newTokenList = new Tokenizer().tokenizeLine(sourceLine,
                                 instruction, errors, false);
                         ArrayList<Instruction> instrMatches = this.matchInstruction(newTokenList.get(0));
@@ -331,7 +329,7 @@ public class Assembler {
         for (ProgramStatement programStatement : machineList) {
             if (errors.isErrorLimitExceeded())
                 break;
-            statement = (ProgramStatement) programStatement;
+            statement = programStatement;
             statement.buildMachineStatementFromBasicStatement(errors);
             if (Globals.debug)
                 System.out.println(statement);
@@ -391,10 +389,6 @@ public class Assembler {
      * directives, which includes initializing the data segment. This method is
      * invoked in the assembler first pass.
      *
-     * @param tokenList
-     * @param source
-     * @param sourceLineNumber
-     * @param extendedAssemblerEnabled
      * @return ArrayList of ProgramStatements because parsing a macro expansion
      * request will return a list of ProgramStatements expanded
      */
@@ -456,7 +450,7 @@ public class Assembler {
 
                     // If token list getProcessedLine() is not empty, then .eqv was performed and it contains the modified source.
                     // Put it into the line to be parsed, so it will be displayed properly in text segment display. DPS 23 Jan 2013
-                    if (tokenList2.getProcessedLine().length() > 0)
+                    if (!tokenList2.getProcessedLine().isEmpty())
                         substituted = tokenList2.getProcessedLine();
 
                     // recursively parse lines of expanded macro
@@ -631,7 +625,6 @@ public class Assembler {
             errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token
                     .getStartPos(), "\"" + token.getValue()
                     + "\" directive is invalid or not implemented in MARS"));
-            return;
         } else if (direct == Directives.EQV) { /* EQV added by DPS 11 July 2012 */
             // Do nothing.  This was vetted and processed during tokenizing.
         } else if (direct == Directives.MACRO) {
@@ -682,7 +675,6 @@ public class Assembler {
             fileCurrentlyBeingAssembled.getLocalMacroPool().commitMacro(token);
         } else if (inMacroSegment) {
             // should not parse lines even directives in macro segment
-            return;
         } else if (direct == Directives.DATA || direct == Directives.KDATA) {
             this.inDataSegment = true;
             this.autoAlign = true;
@@ -802,7 +794,6 @@ public class Assembler {
             errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token
                     .getStartPos(), "\"" + token.getValue()
                     + "\" directive recognized but not yet implemented."));
-            return;
         }
     } // executeDirective()
 
@@ -840,7 +831,7 @@ public class Assembler {
         Directives direct = this.dataDirective;
         if (direct == Directives.WORD || direct == Directives.HALF || direct == Directives.BYTE
                 || direct == Directives.FLOAT || direct == Directives.DOUBLE) {
-            if (tokens.size() > 0) {
+            if (!tokens.isEmpty()) {
                 storeNumeric(tokens, direct, errors);
             }
         } else if (direct == Directives.ASCII || direct == Directives.ASCIIZ) {
@@ -934,26 +925,26 @@ public class Assembler {
                     }
                 }
             } // WHAT ABOUT .KDATA SEGMENT?
-            /***************************************************************************
-             * /****** NOTE of 11/20/06. Below will always throw exception b/c
-             * you cannot use Memory.set() with text segment addresses and the
-             * "not valid address" produced here is misleading. Added data
-             * segment check prior to this point, so this "else" will never be
-             * executed. I'm leaving it in just in case MARS in the future adds
-             * capability of writing to the text segment (e.g. ability to
-             * de-assemble a binary value into its corresponding MIPS
-             * instruction)
-             *
-             * else { // not in data segment...which we assume to mean in text
-             * segment. try { for (int i=0; i < repetitions; i++) {
-             * Globals.memory.set(this.textAddress.get(),
-             * Binary.stringToInt(valueToken.getValue()), lengthInBytes);
-             * this.textAddress.increment(lengthInBytes); } } catch
-             * (AddressErrorException e) { errors.add(new
-             * ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(),
-             * token.getStartPos(), "\""+this.textAddress.get()+
-             * "\" is not a valid text segment address")); } }
-             ************************************************************************/
+            /* ************************************************************************
+             /****** NOTE of 11/20/06. Below will always throw exception b/c
+             you cannot use Memory.set() with text segment addresses and the
+             "not valid address" produced here is misleading. Added data
+             segment check prior to this point, so this "else" will never be
+             executed. I'm leaving it in just in case MARS in the future adds
+             capability of writing to the text segment (e.g. ability to
+             de-assemble a binary value into its corresponding MIPS
+             instruction)
+             <p>
+             else { // not in data segment...which we assume to mean in text
+             segment. try { for (int i=0; i < repetitions; i++) {
+             Globals.memory.set(this.textAddress.get(),
+             Binary.stringToInt(valueToken.getValue()), lengthInBytes);
+             this.textAddress.increment(lengthInBytes); } } catch
+             (AddressErrorException e) { errors.add(new
+             ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(),
+             token.getStartPos(), "\""+this.textAddress.get()+
+             "\" is not a valid text segment address")); } }
+             */
             return;
         }
 
@@ -967,7 +958,6 @@ public class Assembler {
                 storeRealNumber(token, directive, errors);
             }
         }
-        return;
     } // storeNumeric()
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -998,16 +988,16 @@ public class Assembler {
             if (this.inDataSegment) {
                 writeToDataSegment(value, lengthInBytes, token, errors);
             }
-            /******
-             * NOTE of 11/20/06. "try" below will always throw exception b/c you
-             * cannot use Memory.set() with text segment addresses and the
-             * "not valid address" produced here is misleading. Added data
-             * segment check prior to this point, so this "else" will never be
-             * executed. I'm leaving it in just in case MARS in the future adds
-             * capability of writing to the text segment (e.g. ability to
-             * de-assemble a binary value into its corresponding MIPS
-             * instruction)
-             ********/
+            /* ****
+             NOTE of 11/20/06. "try" below will always throw exception b/c you
+             cannot use Memory.set() with text segment addresses and the
+             "not valid address" produced here is misleading. Added data
+             segment check prior to this point, so this "else" will never be
+             executed. I'm leaving it in just in case MARS in the future adds
+             capability of writing to the text segment (e.g. ability to
+             de-assemble a binary value into its corresponding MIPS
+             instruction)
+             */
             else {
                 try {
                     Globals.memory.set(this.textAddress.get(), value, lengthInBytes);
@@ -1122,14 +1112,7 @@ public class Assembler {
                             case 'r':
                                 theChar = '\r';
                                 break;
-                            case '\\':
-                                theChar = '\\';
-                                break;
-                            case '\'':
-                                theChar = '\'';
-                                break;
-                            case '"':
-                                theChar = '"';
+                            case '\\', '\'', '"':
                                 break;
                             case 'b':
                                 theChar = '\b';
@@ -1148,7 +1131,7 @@ public class Assembler {
                         }
                     }
                     try {
-                        Globals.memory.set(this.dataAddress.get(), (int) theChar,
+                        Globals.memory.set(this.dataAddress.get(), theChar,
                                 DataTypes.CHAR_SIZE);
                     } catch (AddressErrorException e) {
                         errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token
@@ -1248,7 +1231,7 @@ public class Assembler {
     // ProgramStatements.
     // Sorting is based on unsigned integer value of
     // ProgramStatement.getAddress()
-    private class ProgramStatementComparator implements Comparator<ProgramStatement> {
+    private static class ProgramStatementComparator implements Comparator<ProgramStatement> {
         // Will be used to sort the collection. Unsigned int compare, because
         // all kernel 32-bit
         // addresses have 1 in high order bit, which makes the int negative.
@@ -1274,8 +1257,8 @@ public class Assembler {
     // Private class to simultaneously track addresses in both user and kernel
     // address spaces.
     // Instantiate one for data segment and one for text segment.
-    private class UserKernelAddressSpace {
-        int[] address;
+    private static class UserKernelAddressSpace {
+        final int[] address;
         int currentAddressSpace;
         private final int USER = 0, KERNEL = 1;
 
@@ -1373,8 +1356,7 @@ public class Assembler {
                     // patch address has to be valid b/c we already stored there...
                     try {
                         Globals.memory.set(entry.patchAddress, labelAddress, entry.length);
-                    } catch (AddressErrorException aee) {
-                    }
+                    } catch (AddressErrorException ignored) {}
                     forwardReferenceList.remove(i);
                     i--; // needed because removal shifted the remaining list indices down
                     count++;
@@ -1388,7 +1370,7 @@ public class Assembler {
         private void generateErrorMessages(ErrorList errors) {
             DataSegmentForwardReference entry;
             for (DataSegmentForwardReference dataSegmentForwardReference : forwardReferenceList) {
-                entry = (DataSegmentForwardReference) dataSegmentForwardReference;
+                entry = dataSegmentForwardReference;
                 errors.add(new ErrorMessage(entry.token.getSourceMIPSProgram(), entry.token
                         .getSourceLine(), entry.token.getStartPos(), "Symbol \""
                         + entry.token.getValue() + "\" not found in symbol table."));
@@ -1396,10 +1378,10 @@ public class Assembler {
         }
 
         // inner-inner class to hold each entry of the forward reference list.
-        private class DataSegmentForwardReference {
-            int patchAddress;
-            int length;
-            Token token;
+        private static class DataSegmentForwardReference {
+            final int patchAddress;
+            final int length;
+            final Token token;
 
             DataSegmentForwardReference(int patchAddress, int length, Token token) {
                 this.patchAddress = patchAddress;

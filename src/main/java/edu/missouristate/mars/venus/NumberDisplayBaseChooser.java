@@ -3,7 +3,6 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -26,7 +25,7 @@ public class NumberDisplayBaseChooser extends JCheckBox {
      * so that a checked box means hexadecimal!
      *
      * @param text        Text to accompany the check box.
-     * @param defaultBase Currently either DECIMAL or HEXADECIMAL
+     * @param displayInHex Currently either DECIMAL or HEXADECIMAL
      */
     public NumberDisplayBaseChooser(String text, boolean displayInHex) {
         super(text, displayInHex);
@@ -107,13 +106,11 @@ public class NumberDisplayBaseChooser extends JCheckBox {
      * @return a String equivalent of the value rendered appropriately.
      */
     public static String formatNumber(int value, int base) {
-        String result = switch (base) {
+        return switch (base) {
             case HEXADECIMAL -> Binary.intToHexString(value);
-            case DECIMAL -> Integer.toString(value);
             case ASCII -> Binary.intToAscii(value);
             default -> Integer.toString(value);
         };
-        return result;
     }
 
 

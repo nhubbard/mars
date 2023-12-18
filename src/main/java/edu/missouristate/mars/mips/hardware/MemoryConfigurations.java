@@ -17,7 +17,7 @@ import java.util.Iterator;
 
 public class MemoryConfigurations {
 
-    private static ArrayList configurations = null;
+    private static ArrayList<MemoryConfiguration> configurations = null;
     private static MemoryConfiguration defaultConfiguration;
     private static MemoryConfiguration currentConfiguration;
 
@@ -51,7 +51,7 @@ public class MemoryConfigurations {
     };
 
     // Default configuration comes from SPIM
-    private static int[] defaultConfigurationItemValues = {
+    private static final int[] defaultConfigurationItemValues = {
             0x00400000, // .text Base Address
             0x10000000, // Data Segment base address
             0x10000000, // .extern Base Address
@@ -76,7 +76,7 @@ public class MemoryConfigurations {
     };
 
     // Compact allows 16 bit addressing, data segment starts at 0
-    private static int[] dataBasedCompactConfigurationItemValues = {
+    private static final int[] dataBasedCompactConfigurationItemValues = {
             0x00003000, // .text Base Address
             0x00000000, // Data Segment base address
             0x00001000, // .extern Base Address
@@ -101,7 +101,7 @@ public class MemoryConfigurations {
     };
 
     // Compact allows 16 bit addressing, text segment starts at 0
-    private static int[] textBasedCompactConfigurationItemValues = {
+    private static final int[] textBasedCompactConfigurationItemValues = {
             0x00000000, // .text Base Address
             0x00001000, // Data Segment base address
             0x00001000, // .extern Base Address
@@ -133,18 +133,18 @@ public class MemoryConfigurations {
 
     public static void buildConfigurationCollection() {
         if (configurations == null) {
-            configurations = new ArrayList();
+            configurations = new ArrayList<>();
             configurations.add(new MemoryConfiguration("Default", "Default", configurationItemNames, defaultConfigurationItemValues));
             configurations.add(new MemoryConfiguration("CompactDataAtZero", "Compact, Data at Address 0", configurationItemNames, dataBasedCompactConfigurationItemValues));
             configurations.add(new MemoryConfiguration("CompactTextAtZero", "Compact, Text at Address 0", configurationItemNames, textBasedCompactConfigurationItemValues));
-            defaultConfiguration = (MemoryConfiguration) configurations.get(0);
+            defaultConfiguration = configurations.get(0);
             currentConfiguration = defaultConfiguration;
             // Get current config from settings
             setCurrentConfiguration(getConfigurationByName(Globals.getSettings().getMemoryConfiguration()));
         }
     }
 
-    public static Iterator getConfigurationsIterator() {
+    public static Iterator<MemoryConfiguration> getConfigurationsIterator() {
         if (configurations == null) {
             buildConfigurationCollection();
         }
@@ -153,9 +153,9 @@ public class MemoryConfigurations {
     }
 
     public static MemoryConfiguration getConfigurationByName(String name) {
-        Iterator configurationsIterator = getConfigurationsIterator();
+        Iterator<MemoryConfiguration> configurationsIterator = getConfigurationsIterator();
         while (configurationsIterator.hasNext()) {
-            MemoryConfiguration config = (MemoryConfiguration) configurationsIterator.next();
+            MemoryConfiguration config = configurationsIterator.next();
             if (name.equals(config.getConfigurationIdentifier())) {
                 return config;
             }
@@ -196,7 +196,7 @@ public class MemoryConfigurations {
     }
 
 
-    ////  Use these to intialize Memory static variables at launch
+    ////  Use these to initialize Memory static variables at launch
 
     public static int getDefaultTextBaseAddress() {
         return defaultConfigurationItemValues[0];

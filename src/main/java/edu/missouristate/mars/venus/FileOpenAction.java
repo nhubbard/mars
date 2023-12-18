@@ -1,10 +1,6 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-
 import java.util.ArrayList;
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;

@@ -1,27 +1,20 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
 
-import java.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
-import java.io.*;
 
 /**
  * Action class for the Settings menu item for text editor settings.
  */
 public class SettingsEditorAction extends GuiAction {
-
     JDialog editorDialog;
-    JComboBox fontFamilySelector, fontStyleSelector;
     JSlider tabSizeSelector;
     JTextField fontSizeDisplay;
 
@@ -72,7 +65,7 @@ public class SettingsEditorAction extends GuiAction {
     };
 
     // Concrete font chooser class.
-    private class EditorFontDialog extends AbstractFontSettingDialog {
+    private static class EditorFontDialog extends AbstractFontSettingDialog {
 
         private JButton[] foregroundButtons;
         private JLabel[] samples;
@@ -83,14 +76,14 @@ public class SettingsEditorAction extends GuiAction {
         private SyntaxStyle[] defaultStyles, initialStyles, currentStyles;
         private Font previewFont;
 
-        private JPanel dialogPanel, syntaxStylePanel, otherSettingsPanel; /////4 Aug 2010
+        private JPanel syntaxStylePanel;
+        private JPanel otherSettingsPanel; /////4 Aug 2010
 
         private JSlider tabSizeSelector;
         private JSpinner tabSizeSpinSelector, blinkRateSpinSelector, popupPrefixLengthSpinSelector;
         private JCheckBox lineHighlightCheck, genericEditorCheck, autoIndentCheck;
         private Caret blinkCaret;
         private JTextField blinkSample;
-        private ButtonGroup popupGuidanceButtons;
         private JRadioButton[] popupGuidanceOptions;
         // Flag to indicate whether any syntax style buttons have been clicked
         // since dialog created or most recent "apply".
@@ -119,7 +112,6 @@ public class SettingsEditorAction extends GuiAction {
             dialog.add(fontDialogPanel, BorderLayout.WEST);
             dialog.add(syntaxStylePanel, BorderLayout.CENTER);
             dialog.add(otherSettingsPanel, BorderLayout.SOUTH);
-            this.dialogPanel = dialog; /////4 Aug 2010
             this.syntaxStylePanel = syntaxStylePanel; /////4 Aug 2010
             this.otherSettingsPanel = otherSettingsPanel; /////4 Aug 2010
             return dialog;
@@ -299,7 +291,7 @@ public class SettingsEditorAction extends GuiAction {
 
             // Combine instruction guide off/on and instruction prefix length into radio buttons
             JPanel rightColumnSettingsPanel = new JPanel(new GridLayout(4, 1));
-            popupGuidanceButtons = new ButtonGroup();
+            ButtonGroup popupGuidanceButtons = new ButtonGroup();
             popupGuidanceOptions = new JRadioButton[3];
             popupGuidanceOptions[0] = new JRadioButton("No popup instruction or directive guide");
             popupGuidanceOptions[1] = new JRadioButton("Display instruction guide after 1 letter typed");
@@ -466,7 +458,7 @@ public class SettingsEditorAction extends GuiAction {
         ///////////////////////////////////////////////////////////////////////////
         // Toggle bold or italic style on preview button when B or I button clicked
         private class BoldItalicChanger implements ActionListener {
-            private int row;
+            private final int row;
 
             public BoldItalicChanger(int row) {
                 this.row = row;
@@ -474,7 +466,7 @@ public class SettingsEditorAction extends GuiAction {
 
             public void actionPerformed(ActionEvent e) {
                 Font f = samples[row].getFont();
-                if (e.getActionCommand() == BOLD_BUTTON_TOOL_TIP_TEXT) {
+                if (e.getActionCommand().equals(BOLD_BUTTON_TOOL_TIP_TEXT)) {
                     if (bold[row].isSelected()) {
                         samples[row].setFont(f.deriveFont(f.getStyle() | Font.BOLD));
                     } else {
@@ -499,7 +491,7 @@ public class SettingsEditorAction extends GuiAction {
         //  Class that handles click on the foreground selection button
         //
         private class ForegroundChanger implements ActionListener {
-            private int row;
+            private final int row;
 
             public ForegroundChanger(int pos) {
                 row = pos;
@@ -523,7 +515,7 @@ public class SettingsEditorAction extends GuiAction {
         // Class that handles action (check, uncheck) on the Default checkbox.
         //
         private class DefaultChanger implements ItemListener {
-            private int row;
+            private final int row;
 
             public DefaultChanger(int pos) {
                 row = pos;

@@ -38,11 +38,11 @@ public class DumpFormatLoader {
                 try {
                     // grab the class, make sure it implements DumpFormat, instantiate, add to list
                     String formatClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
-                    Class<DumpFormat> clas = (Class<DumpFormat>) Class.forName(formatClassName);
+                    Class<?> clas = Class.forName(formatClassName);
                     if (DumpFormat.class.isAssignableFrom(clas) &&
                             !Modifier.isAbstract(clas.getModifiers()) &&
                             !Modifier.isInterface(clas.getModifiers())) {
-                        formatList.add(clas.getDeclaredConstructor().newInstance());
+                        formatList.add((DumpFormat) clas.getDeclaredConstructor().newInstance());
                     }
                 } catch (Exception e) {
                     System.out.println("Error instantiating DumpFormat from file " + file + ": " + e);

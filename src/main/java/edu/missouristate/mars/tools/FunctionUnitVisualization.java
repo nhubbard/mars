@@ -6,18 +6,9 @@ import java.awt.*;
 
 public class FunctionUnitVisualization extends JFrame {
 
-    private JPanel contentPane;
-    private String instruction;
-    private int register = 1;
-    private int control = 2;
-    private int aluControl = 3;
-    private int alu = 4;
+    private final String instruction;
+    private final int alu = 4;
     private int currentUnit;
-
-    /**
-     * Launch the application.
-     */
-
 
     /**
      * Create the frame.
@@ -26,10 +17,13 @@ public class FunctionUnitVisualization extends JFrame {
         this.instruction = instruction;
         //setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(100, 100, 840, 575);
-        contentPane = new JPanel();
+        JPanel contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         contentPane.setLayout(new BorderLayout(0, 0));
         setContentPane(contentPane);
+        int aluControl = 3;
+        int control = 2;
+        int register = 1;
         if (functionalUnit == register) {
             currentUnit = register;
             UnitAnimation reg = new UnitAnimation(instruction, register);
@@ -49,6 +43,9 @@ public class FunctionUnitVisualization extends JFrame {
 
     }
 
+    /**
+     * Launch the application.
+     */
     public void run() {
         try {
             FunctionUnitVisualization frame = new FunctionUnitVisualization(instruction, currentUnit);

@@ -79,8 +79,8 @@ public class SyntaxStyle {
             return lastStyledFont;
         lastFont = font;
         lastStyledFont = new Font(font.getFamily(),
-                (bold ? Font.BOLD : 0)
-                        | (italic ? Font.ITALIC : 0),
+                (bold ? Font.BOLD : Font.PLAIN)
+                        | (italic ? Font.ITALIC : Font.PLAIN),
                 font.getSize());
         return lastStyledFont;
     }
@@ -128,9 +128,9 @@ public class SyntaxStyle {
     }
 
     // private members
-    private Color color;
-    private boolean italic;
-    private boolean bold;
+    private final Color color;
+    private final boolean italic;
+    private final boolean bold;
     private Font lastFont;
     private Font lastStyledFont;
     private FontMetrics fontMetrics;

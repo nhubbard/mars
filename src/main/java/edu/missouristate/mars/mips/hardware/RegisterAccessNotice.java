@@ -9,7 +9,7 @@ package edu.missouristate.mars.mips.hardware;
  */
 
 public class RegisterAccessNotice extends AccessNotice {
-    private String registerName;
+    private final String registerName;
 
     /**
      * Constructor will be called only within this package, so assume

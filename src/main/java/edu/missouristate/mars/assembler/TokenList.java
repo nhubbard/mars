@@ -12,14 +12,14 @@ import java.util.ArrayList;
 
 public class TokenList implements Cloneable {
 
-    private ArrayList tokenList;
+    private ArrayList<Token> tokenList;
     private String processedLine;// DPS 03-Jan-2013
 
     /**
      * Constructor for objects of class TokenList
      */
     public TokenList() {
-        tokenList = new ArrayList();
+        tokenList = new ArrayList<>();
         processedLine = ""; // DPS 03-Jan-2013
     }
 
@@ -54,7 +54,7 @@ public class TokenList implements Cloneable {
      * @return the requested token, or ArrayIndexOutOfBounds exception
      */
     public Token get(int pos) {
-        return (Token) tokenList.get(pos);
+        return tokenList.get(pos);
     }
 
     /**
@@ -113,11 +113,9 @@ public class TokenList implements Cloneable {
      */
 
     public String toString() {
-        String stringified = "";
-        for (Object o : tokenList) {
-            stringified += o.toString() + " ";
-        }
-        return stringified;
+        StringBuilder stringified = new StringBuilder();
+        for (Object o : tokenList) stringified.append(o.toString()).append(" ");
+        return stringified.toString();
     }
 
 
@@ -129,11 +127,11 @@ public class TokenList implements Cloneable {
      */
 
     public String toTypeString() {
-        String stringified = "";
-        for (Object o : tokenList) {
-            stringified += ((Token) o).getType().toString() + " ";
+        StringBuilder stringified = new StringBuilder();
+        for (Token o : tokenList) {
+            stringified.append(o.getType().toString()).append(" ");
         }
-        return stringified;
+        return stringified.toString();
     }
 
     /**
@@ -144,10 +142,11 @@ public class TokenList implements Cloneable {
     // Clones are a bit tricky.  super.clone() handles primitives (e.g. values) correctly
     // but the ArrayList itself has to be cloned separately -- otherwise clone will have
     // alias to original token list!!
+    @SuppressWarnings("unchecked")
     public Object clone() {
         try {
             TokenList t = (TokenList) super.clone();
-            t.tokenList = (ArrayList) tokenList.clone();
+            t.tokenList = (ArrayList<Token>) tokenList.clone();
             return t;
         } catch (CloneNotSupportedException e) {
             return null;

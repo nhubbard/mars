@@ -10,8 +10,9 @@ import java.util.Observable;
  **/
 
 public class Register extends Observable {
-    private String name;
-    private int number, resetValue;
+    private final String name;
+    private final int number;
+    private int resetValue;
     // volatile should be enough to allow safe multi-threaded access
     // w/o the use of synchronized methods.  getValue and setValue
     // are the only methods here used by the register collection

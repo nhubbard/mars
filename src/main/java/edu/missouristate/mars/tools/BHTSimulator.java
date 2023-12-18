@@ -60,22 +60,22 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     /**
      * the GUI of the BHT simulator
      */
-    private BHTSimGUI m_gui;
+    private BHTSimGUI gui;
 
     /**
      * the model of the BHT
      */
-    private BHTableModel m_bhtModel;
+    private BHTableModel bhTableModel;
 
     /**
      * state variable that indicates that the last instruction was a branch instruction (if address != 0) or not (address == 0)
      */
-    private int m_pendingBranchInstAddress;
+    private int pendingBranchInstAddress;
 
     /**
      * state variable that signals if the last branch was taken
      */
-    private boolean m_lastBranchTaken;
+    private boolean lastBranchTaken;
 
 
     /**
@@ -100,18 +100,18 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      */
     protected JComponent buildMainDisplayArea() {
 
-        m_gui = new BHTSimGUI();
-        m_bhtModel = new BHTableModel(BHTSimulator.BHT_DEFAULT_SIZE, BHTSimulator.BHT_DEFAULT_HISTORY, BHT_DEFAULT_INITVAL);
+        gui = new BHTSimGUI();
+        bhTableModel = new BHTableModel(BHTSimulator.BHT_DEFAULT_SIZE, BHTSimulator.BHT_DEFAULT_HISTORY, BHT_DEFAULT_INITVAL);
 
-        m_gui.getTabBHT().setModel(m_bhtModel);
-        m_gui.getCbBHThistory().setSelectedItem(BHTSimulator.BHT_DEFAULT_HISTORY);
-        m_gui.getCbBHTentries().setSelectedItem(BHTSimulator.BHT_DEFAULT_SIZE);
+        gui.getTabBHT().setModel(bhTableModel);
+        gui.getCbBHThistory().setSelectedItem(BHTSimulator.BHT_DEFAULT_HISTORY);
+        gui.getCbBHTentries().setSelectedItem(BHTSimulator.BHT_DEFAULT_SIZE);
 
-        m_gui.getCbBHTentries().addActionListener(this);
-        m_gui.getCbBHThistory().addActionListener(this);
-        m_gui.getCbBHTinitVal().addActionListener(this);
+        gui.getCbBHTentries().addActionListener(this);
+        gui.getCbBHThistory().addActionListener(this);
+        gui.getCbBHTinitVal().addActionListener(this);
 
-        return m_gui;
+        return gui;
     }
 
 
@@ -141,7 +141,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     public void actionPerformed(ActionEvent event) {
         // change of the BHT size or BHT bit configuration
         // resets the simulator
-        if (event.getSource() == m_gui.getCbBHTentries() || event.getSource() == m_gui.getCbBHThistory() || event.getSource() == m_gui.getCbBHTinitVal()) {
+        if (event.getSource() == gui.getCbBHTentries() || event.getSource() == gui.getCbBHThistory() || event.getSource() == gui.getCbBHTinitVal()) {
             resetSimulator();
         }
     }
@@ -151,16 +151,16 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * Resets the simulator by clearing the GUI elements and resetting the BHT.
      */
     protected void resetSimulator() {
-        m_gui.getTfInstruction().setText("");
-        m_gui.getTfAddress().setText("");
-        m_gui.getTfIndex().setText("");
-        m_gui.getTaLog().setText("");
-        m_bhtModel.initBHT((Integer) m_gui.getCbBHTentries().getSelectedItem(),
-                (Integer) m_gui.getCbBHThistory().getSelectedItem(),
-                ((String) m_gui.getCbBHTinitVal().getSelectedItem()).equals(BHTSimGUI.BHT_TAKE_BRANCH));
+        gui.getTfInstruction().setText("");
+        gui.getTfAddress().setText("");
+        gui.getTfIndex().setText("");
+        gui.getTaLog().setText("");
+        bhTableModel.initBHT((Integer) gui.getCbBHTentries().getSelectedItem(),
+                (Integer) gui.getCbBHThistory().getSelectedItem(),
+                gui.getCbBHTinitVal().getSelectedItem().equals(BHTSimGUI.BHT_TAKE_BRANCH));
 
-        m_pendingBranchInstAddress = 0;
-        m_lastBranchTaken = false;
+        pendingBranchInstAddress = 0;
+        lastBranchTaken = false;
     }
 
 
@@ -176,22 +176,22 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
 
         String strStmt = stmt.getBasicAssemblyStatement();
         int address = stmt.getAddress();
-        int idx = m_bhtModel.getIdxForAddress(address);
+        int idx = bhTableModel.getIdxForAddress(address);
 
         // update the GUI
-        m_gui.getTfInstruction().setText(strStmt);
-        m_gui.getTfAddress().setText("0x" + Integer.toHexString(address));
-        m_gui.getTfIndex().setText("" + idx);
+        gui.getTfInstruction().setText(strStmt);
+        gui.getTfAddress().setText("0x" + Integer.toHexString(address));
+        gui.getTfIndex().setText("" + idx);
 
         // mark the affected BHT row
-        m_gui.getTabBHT().setSelectionBackground(BHTSimGUI.COLOR_PRE_PREDICTION);
-        m_gui.getTabBHT().addRowSelectionInterval(idx, idx);
+        gui.getTabBHT().setSelectionBackground(BHTSimGUI.COLOR_PRE_PREDICTION);
+        gui.getTabBHT().addRowSelectionInterval(idx, idx);
 
         // add output to log
-        m_gui.getTaLog().append("instruction " + strStmt + " at address 0x" + Integer.toHexString(address) + ", maps to index " + idx + "\n");
-        m_gui.getTaLog().append("branches to address 0x" + BHTSimulator.extractBranchAddress(stmt) + "\n");
-        m_gui.getTaLog().append("prediction is: " + (m_bhtModel.getPredictionAtIdx(idx) ? "take" : "do not take") + "...\n");
-        m_gui.getTaLog().setCaretPosition(m_gui.getTaLog().getDocument().getLength());
+        gui.getTaLog().append("instruction " + strStmt + " at address 0x" + Integer.toHexString(address) + ", maps to index " + idx + "\n");
+        gui.getTaLog().append("branches to address 0x" + BHTSimulator.extractBranchAddress(stmt) + "\n");
+        gui.getTaLog().append("prediction is: " + (bhTableModel.getPredictionAtIdx(idx) ? "take" : "do not take") + "...\n");
+        gui.getTaLog().setCaretPosition(gui.getTaLog().getDocument().getLength());
 
     }
 
@@ -207,19 +207,19 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     protected void handleExecBranchInst(int branchInstAddr, boolean branchTaken) {
 
         // determine the index in the BHT for the branch instruction
-        int idx = m_bhtModel.getIdxForAddress(branchInstAddr);
+        int idx = bhTableModel.getIdxForAddress(branchInstAddr);
 
         // check if the prediction is correct
-        boolean correctPrediction = m_bhtModel.getPredictionAtIdx(idx) == branchTaken;
+        boolean correctPrediction = bhTableModel.getPredictionAtIdx(idx) == branchTaken;
 
-        m_gui.getTabBHT().setSelectionBackground(correctPrediction ? BHTSimGUI.COLOR_PREDICTION_CORRECT : BHTSimGUI.COLOR_PREDICTION_INCORRECT);
+        gui.getTabBHT().setSelectionBackground(correctPrediction ? BHTSimGUI.COLOR_PREDICTION_CORRECT : BHTSimGUI.COLOR_PREDICTION_INCORRECT);
 
         // add some output at the log
-        m_gui.getTaLog().append("branch " + (branchTaken ? "taken" : "not taken") + ", prediction was " + (correctPrediction ? "correct" : "incorrect") + "\n\n");
-        m_gui.getTaLog().setCaretPosition(m_gui.getTaLog().getDocument().getLength());
+        gui.getTaLog().append("branch " + (branchTaken ? "taken" : "not taken") + ", prediction was " + (correctPrediction ? "correct" : "incorrect") + "\n\n");
+        gui.getTaLog().setCaretPosition(gui.getTaLog().getDocument().getLength());
 
         // update the BHT -> causes refresh of the table
-        m_bhtModel.updatePredictionAtIdx(idx, branchTaken);
+        bhTableModel.updatePredictionAtIdx(idx, branchTaken);
     }
 
 
@@ -235,14 +235,12 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         int funct = stmt.getBinaryStatement() & 0x1F;
 
         if (opCode == 0x01) {
-            if (0x00 <= funct && funct <= 0x07) return true; //  bltz, bgez, bltzl, bgezl
+            if (funct <= 0x07) return true; //  bltz, bgez, bltzl, bgezl
             if (0x10 <= funct && funct <= 0x13) return true; // bltzal, bgezal, bltzall, bgczall
         }
 
         if (0x04 <= opCode && opCode <= 0x07) return true; // beq, bne, blez, bgtz
-        if (0x14 <= opCode && opCode <= 0x17) return true; // beql, bnel, blezl, bgtzl
-
-        return false;
+        return 0x14 <= opCode && opCode <= 0x17; // beql, bnel, blezl, bgtzl
     }
 
 
@@ -276,14 +274,10 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         }
 
         return switch (opCode) {
-            case 0x04 -> valRS == valRT;
-            case 0x05 -> valRS != valRT;
-            case 0x06 -> valRS <= 0;
-            case 0x07 -> valRS >= 0;
-            case 0x14 -> valRS == valRT;
-            case 0x15 -> valRS != valRT;
-            case 0x16 -> valRS <= 0;
-            case 0x17 -> valRS >= 0;
+            case 0x04, 0x14 -> valRS == valRT;
+            case 0x05, 0x15 -> valRS != valRT;
+            case 0x06, 0x16 -> valRS <= 0;
+            case 0x07, 0x17 -> valRS >= 0;
             default -> true;
         };
 
@@ -335,34 +329,34 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
                     boolean clearTextFields = true;
 
                     // first, check if there's a pending branch to handle
-                    if (m_pendingBranchInstAddress != 0) {
-                        handleExecBranchInst(m_pendingBranchInstAddress, m_lastBranchTaken);
+                    if (pendingBranchInstAddress != 0) {
+                        handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
                         clearTextFields = false;
-                        m_pendingBranchInstAddress = 0;
+                        pendingBranchInstAddress = 0;
                     }
 
 
                     // if current instruction is branch instruction
                     if (BHTSimulator.isBranchInstruction(stmt)) {
                         handlePreBranchInst(stmt);
-                        m_lastBranchTaken = willBranch(stmt);
-                        m_pendingBranchInstAddress = stmt.getAddress();
+                        lastBranchTaken = willBranch(stmt);
+                        pendingBranchInstAddress = stmt.getAddress();
                         clearTextFields = false;
                     }
 
 
                     // clear text fields and selection
                     if (clearTextFields) {
-                        m_gui.getTfInstruction().setText("");
-                        m_gui.getTfAddress().setText("");
-                        m_gui.getTfIndex().setText("");
-                        m_gui.getTabBHT().clearSelection();
+                        gui.getTfInstruction().setText("");
+                        gui.getTfAddress().setText("");
+                        gui.getTfIndex().setText("");
+                        gui.getTabBHT().clearSelection();
                     }
                 } else {
                     // check if there's a pending branch to handle
-                    if (m_pendingBranchInstAddress != 0) {
-                        handleExecBranchInst(m_pendingBranchInstAddress, m_lastBranchTaken);
-                        m_pendingBranchInstAddress = 0;
+                    if (pendingBranchInstAddress != 0) {
+                        handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
+                        pendingBranchInstAddress = 0;
                     }
                 }
             } catch (AddressErrorException e) {

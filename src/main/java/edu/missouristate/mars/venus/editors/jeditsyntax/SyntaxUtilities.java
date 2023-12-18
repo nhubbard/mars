@@ -209,7 +209,7 @@ public class SyntaxUtilities {
 }
 
 class InstructionMouseEvent extends MouseEvent {
-    private Segment line;
+    private final Segment line;
 
     public InstructionMouseEvent(Component component, int x, int y, Segment line) {
         super(component, MouseEvent.MOUSE_MOVED, new java.util.Date().getTime(), 0, x, y, 0, false);

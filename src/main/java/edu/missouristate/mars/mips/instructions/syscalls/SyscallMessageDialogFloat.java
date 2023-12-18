@@ -30,9 +30,9 @@ public class SyscallMessageDialogFloat extends AbstractSyscall {
         //   $f12 = float value to display in string form after the first message
         // Output: none
 
-        String message = new String(); // = "";
+        String message = ""; // = "";
         int byteAddress = RegisterFile.getValue(4);
-        char ch[] = {' '}; // Need an array to convert to String
+        char[] ch = {' '}; // Need an array to convert to String
         try {
             ch[0] = (char) Globals.memory.getByte(byteAddress);
             while (ch[0] != 0) // only uses single location ch[0]
@@ -48,7 +48,7 @@ public class SyscallMessageDialogFloat extends AbstractSyscall {
 
         // Display the dialog.
         JOptionPane.showMessageDialog(null,
-                message + Float.toString(Coprocessor1.getFloatFromRegister("$f12")),
+                message + Coprocessor1.getFloatFromRegister("$f12"),
                 null,
                 JOptionPane.INFORMATION_MESSAGE);
 

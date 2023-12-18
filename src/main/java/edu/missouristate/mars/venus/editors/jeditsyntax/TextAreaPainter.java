@@ -468,10 +468,10 @@ public class TextAreaPainter extends JComponent implements TabExpander {
     // package-private members
     int currentLineIndex;
     Token currentLineTokens;
-    Segment currentLine;
+    final Segment currentLine;
 
     // protected members
-    protected JEditTextArea textArea;
+    protected final JEditTextArea textArea;
 
     protected SyntaxStyle[] styles;
     protected Color caretColor;
@@ -485,8 +485,8 @@ public class TextAreaPainter extends JComponent implements TabExpander {
     protected boolean bracketHighlight;
     protected boolean paintInvalid;
     protected boolean eolMarkers;
-    protected int cols;
-    protected int rows;
+    protected final int cols;
+    protected final int rows;
 
     protected int tabSize, tabSizeChars;
     protected FontMetrics fm;
@@ -616,7 +616,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
             }
 
             // "inlined" min/max()
-            gfx.fillRect(x1 > x2 ? x2 : x1, y, x1 > x2 ?
+            gfx.fillRect(Math.min(x1, x2), y, x1 > x2 ?
                     (x1 - x2) : (x2 - x1), height);
         }
 

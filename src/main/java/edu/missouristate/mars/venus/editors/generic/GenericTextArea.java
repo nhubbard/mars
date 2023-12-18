@@ -5,9 +5,6 @@ import edu.missouristate.mars.venus.EditPane;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
@@ -18,11 +15,11 @@ import java.awt.*;
 public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
 
 
-    private EditPane editPane;
-    private UndoManager undoManager;
-    private UndoableEditListener undoableEditListener;
-    private JTextArea sourceCode;
-    private JScrollPane editAreaScrollPane;
+    private final EditPane editPane;
+    private final UndoManager undoManager;
+    private final UndoableEditListener undoableEditListener;
+    private final JTextArea sourceCode;
+    private final JScrollPane editAreaScrollPane;
 
     private boolean isCompoundEdit = false;
     private CompoundEdit compoundEdit;
@@ -207,7 +204,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      */
     public int doFindText(String find, boolean caseSensitive) {
         int findPosn = sourceCode.getCaretPosition();
-        int nextPosn = 0;
+        int nextPosn;
         nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
         if (nextPosn >= 0) {
             sourceCode.requestFocus(); // guarantees visibility of the blue highlight 
@@ -269,7 +266,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      * successful and there is at least one additional match.
      */
     public int doReplace(String find, String replace, boolean caseSensitive) {
-        int nextPosn = 0;
+        int nextPosn;
         int posn;
         // Will perform a "find" and return, unless positioned at the end of
         // a selected "find" result.

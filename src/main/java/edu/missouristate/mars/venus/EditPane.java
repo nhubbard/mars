@@ -8,9 +8,7 @@ import edu.missouristate.mars.venus.editors.jeditsyntax.JEditBasedTextArea;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.*;
-import java.awt.event.*;
 import javax.swing.undo.*;
-import java.text.*;
 import java.util.*;
 import java.io.*;
 
@@ -25,16 +23,15 @@ import java.io.*;
 
 public class EditPane extends JPanel implements Observer {
 
-    private MARSTextEditingArea sourceCode;
-    private VenusUI mainUI;
-    private String currentDirectoryPath;
-    private JLabel caretPositionLabel;
-    private JCheckBox showLineNumbers;
-    private JLabel lineNumbers;
-    private static int count = 0;
-    private boolean isCompoundEdit = false;
+    private final MARSTextEditingArea sourceCode;
+    private final VenusUI mainUI;
+    private final JLabel caretPositionLabel;
+    private final JCheckBox showLineNumbers;
+    private final JLabel lineNumbers;
+    private static final int count = 0;
+    private final boolean isCompoundEdit = false;
     private CompoundEdit compoundEdit;
-    private FileStatus fileStatus;
+    private final FileStatus fileStatus;
 
     /**
      * Constructor for the EditPane class.
@@ -44,7 +41,7 @@ public class EditPane extends JPanel implements Observer {
         super(new BorderLayout());
         this.mainUI = appFrame;
         // user.dir, user's current working directory, is guaranteed to have a value
-        currentDirectoryPath = System.getProperty("user.dir");
+        String currentDirectoryPath = System.getProperty("user.dir");
         // mainUI.editor = new Editor(mainUI);
         // We want to be notified of editor font changes! See update() below.
         Globals.getSettings().addObserver(this);
@@ -194,9 +191,9 @@ public class EditPane extends JPanel implements Observer {
             String lineStr = Integer.toString(i);
             int leadingSpaces = digits - lineStr.length();
             if (leadingSpaces == 0) {
-                lineNumberList.append(lineStr + "&nbsp;<br>");
+                lineNumberList.append(lineStr).append("&nbsp;<br>");
             } else {
-                lineNumberList.append(spaces.substring(0, leadingSpaces * 6) + lineStr + "&nbsp;<br>");
+                lineNumberList.append(spaces, 0, leadingSpaces * 6).append(lineStr).append("&nbsp;<br>");
             }
         }
         lineNumberList.append("<br></html>");
@@ -222,7 +219,7 @@ public class EditPane extends JPanel implements Observer {
             while (bufStringReader.readLine() != null) {
                 lineNums++;
             }
-        } catch (IOException e) {
+        } catch (IOException ignored) {
         }
         return lineNums;
     }
@@ -406,7 +403,7 @@ public class EditPane extends JPanel implements Observer {
     /**
      * enable or disable checkbox that controls display of line numbers
      *
-     * @param enable True to enable box, false to disable.
+     * @param enabled True to enable box, false to disable.
      */
     public void setShowLineNumbersEnabled(boolean enabled) {
         showLineNumbers.setEnabled(enabled);
@@ -433,15 +430,15 @@ public class EditPane extends JPanel implements Observer {
         caretPositionLabel.setText("Line: " + p.y + " Column: " + p.x);
     }
 
+    private static final char newline = '\n';
+
     /**
      * Given byte stream position in text being edited, calculate its column and line
      * number coordinates.
      *
-     * @param stream position of character
+     * @param position position of character
      * @return position Its column and line number coordinate as a Point.
      */
-    private static final char newline = '\n';
-
     public Point convertStreamPositionToLineColumn(int position) {
         String textStream = sourceCode.getText();
         int line = 1;

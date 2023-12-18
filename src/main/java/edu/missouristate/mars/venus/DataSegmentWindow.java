@@ -32,10 +32,9 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
     private static JTable dataTable;
     private JScrollPane dataTableScroller;
-    private Container contentPane;
-    private JPanel tablePanel;
+    private final Container contentPane;
+    private final JPanel tablePanel;
     private JButton dataButton, nextButton, prevButton, stakButton, globButton, heapButton, kernButton, extnButton, mmioButton, textButton;
-    private JCheckBox asciiDisplayCheckBox;
 
     static final int VALUES_PER_ROW = 8;
     static final int NUMBER_OF_ROWS = 16;  // with 8 value columns, this shows 512 bytes;
@@ -53,8 +52,9 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
     private boolean addressHighlighting = false;
     private boolean asciiDisplay = false;
-    private int addressRow, addressColumn, addressRowFirstAddress;
-    private Settings settings;
+    private int addressColumn;
+    private int addressRowFirstAddress;
+    private final Settings settings;
 
     int firstAddress;
     int homeAddress;
@@ -63,7 +63,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // The combo box replaced the row of buttons when number of buttons expanded to 7!
     // We'll keep the button objects however and manually invoke their action listeners
     // when the corresponding combo box item is selected.  DPS 22-Nov-2006
-    JComboBox<String> baseAddressSelector;
+    final JComboBox<String> baseAddressSelector;
 
     // The next bunch are initialized dynamically in initializeBaseAddressChoices()
     private String[] displayBaseAddressChoices;
@@ -84,7 +84,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         settings = Globals.getSettings();
         settings.addObserver(this);
 
-        homeAddress = Globals.memory.dataBaseAddress;  // address for Home button
+        homeAddress = Memory.dataBaseAddress;  // address for Home button
         firstAddress = homeAddress;  // first address to display at any given time
         userOrKernelMode = USER_MODE;
         addressHighlighting = false;
@@ -130,7 +130,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         for (NumberDisplayBaseChooser chooser : choosers) {
             features.add(chooser);
         }
-        asciiDisplayCheckBox = new JCheckBox("ASCII", asciiDisplay);
+        JCheckBox asciiDisplayCheckBox = new JCheckBox("ASCII", asciiDisplay);
         asciiDisplayCheckBox.setToolTipText("Display data segment values in ASCII (overrides Hexadecimal Values setting)");
         asciiDisplayCheckBox.addItemListener(e -> {
             asciiDisplay = (e.getStateChange() == ItemEvent.SELECTED);
@@ -194,9 +194,9 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         if (rowColumn == null || rowColumn.x < 0 || rowColumn.y < 0) {
             return;
         }
-        this.addressRow = rowColumn.x;
+        int addressRow = rowColumn.x;
         this.addressColumn = rowColumn.y;
-        this.addressRowFirstAddress = Binary.stringToInt(dataTable.getValueAt(this.addressRow, ADDRESS_COLUMN).toString());
+        this.addressRowFirstAddress = Binary.stringToInt(dataTable.getValueAt(addressRow, ADDRESS_COLUMN).toString());
         //System.out.println("Address "+Binary.intToHexString(address)+" becomes row "+ addressRow + " column "+addressColumn+
         //" starting addr "+dataTable.getValueAt(this.addressRow,ADDRESS_COLUMN));
         // Tell the system that table contents have changed.  This will trigger re-rendering
@@ -284,9 +284,9 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     private static final int KERNEL_DATA_BASE_ADDRESS_INDEX = 6;
     private static final int MMIO_BASE_ADDRESS_INDEX = 7;
     // Must agree with previous code in name and order...
-    private int[] displayBaseAddressArray = {Memory.externBaseAddress, Memory.dataBaseAddress, Memory.heapBaseAddress, -1 /*Memory.globalPointer*/, -1 /*Memory.stackPointer*/, Memory.textBaseAddress, Memory.kernelDataBaseAddress, Memory.memoryMapBaseAddress,};
+    private final int[] displayBaseAddressArray = {Memory.externBaseAddress, Memory.dataBaseAddress, Memory.heapBaseAddress, -1 /*Memory.globalPointer*/, -1 /*Memory.stackPointer*/, Memory.textBaseAddress, Memory.kernelDataBaseAddress, Memory.memoryMapBaseAddress,};
     // Must agree with previous code in number and order...
-    String[] descriptions = {" (.extern)", " (.data)", " (heap)", "current $gp", "current $sp", " (.text)", " (.kdata)", " (MMIO)"};
+    final String[] descriptions = {" (.extern)", " (.data)", " (heap)", "current $gp", "current $sp", " (.text)", " (.kdata)", " (MMIO)"};
 
     private void initializeBaseAddressChoices() {
         // Also must agree in number and order.  Upon combo box item selection, will invoke
@@ -358,7 +358,6 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         // Check distance from stack pointer.  Can be on either side of it...
         thisDistance = Math.abs(address - RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
         if (thisDistance < shortDistance) {
-            shortDistance = thisDistance;
             desiredComboBoxIndex = STACK_POINTER_BASE_ADDRESS_INDEX;
         }
         return desiredComboBoxIndex;
@@ -612,14 +611,14 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         // NOTE: For buttons that are now combo box items, the tool tips are not displayed w/o custom renderer.
         globButton.setToolTipText("View range around global pointer");
         stakButton.setToolTipText("View range around stack pointer");
-        heapButton.setToolTipText("View range around heap base address " + Binary.intToHexString(Globals.memory.heapBaseAddress));
-        kernButton.setToolTipText("View range around kernel data base address " + Binary.intToHexString(Globals.memory.kernelDataBaseAddress));
-        extnButton.setToolTipText("View range around static global base address " + Binary.intToHexString(Globals.memory.externBaseAddress));
-        mmioButton.setToolTipText("View range around MMIO base address " + Binary.intToHexString(Globals.memory.memoryMapBaseAddress));
-        textButton.setToolTipText("View range around program code " + Binary.intToHexString(Globals.memory.textBaseAddress));
+        heapButton.setToolTipText("View range around heap base address " + Binary.intToHexString(Memory.heapBaseAddress));
+        kernButton.setToolTipText("View range around kernel data base address " + Binary.intToHexString(Memory.kernelDataBaseAddress));
+        extnButton.setToolTipText("View range around static global base address " + Binary.intToHexString(Memory.externBaseAddress));
+        mmioButton.setToolTipText("View range around MMIO base address " + Binary.intToHexString(Memory.memoryMapBaseAddress));
+        textButton.setToolTipText("View range around program code " + Binary.intToHexString(Memory.textBaseAddress));
         prevButton.setToolTipText("View next lower address range; hold down for rapid fire");
         nextButton.setToolTipText("View next higher address range; hold down for rapid fire");
-        dataButton.setToolTipText("View range around static data segment base address " + Binary.intToHexString(Globals.memory.dataBaseAddress));
+        dataButton.setToolTipText("View range around static data segment base address " + Binary.intToHexString(Memory.dataBaseAddress));
 
         // add the action listeners to maintain button state and table contents
         // Currently there is no memory upper bound so next button always enabled.
@@ -627,7 +626,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         globButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
             // get $gp global pointer, but guard against it having value below data segment
-            firstAddress = Math.max(Globals.memory.dataSegmentBaseAddress, RegisterFile.getValue(RegisterFile.GLOBAL_POINTER_REGISTER));
+            firstAddress = Math.max(Memory.dataSegmentBaseAddress, RegisterFile.getValue(RegisterFile.GLOBAL_POINTER_REGISTER));
             // updateModelForMemoryRange requires argument to be multiple of 4
             // but for cleaner display we'll make it multiple of 32 (last nibble is 0).
             // This makes it easier to mentally calculate address from row address + column offset.
@@ -640,31 +639,31 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         stakButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
             // get $sp stack pointer, but guard against it having value below data segment
-            firstAddress = Math.max(Globals.memory.dataSegmentBaseAddress, RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
+            firstAddress = Math.max(Memory.dataSegmentBaseAddress, RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
             // See comment above for gloButton...
             firstAddress = firstAddress - (firstAddress % BYTES_PER_ROW);
-            homeAddress = Globals.memory.stackBaseAddress;
+            homeAddress = Memory.stackBaseAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
         });
 
         heapButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
-            homeAddress = Globals.memory.heapBaseAddress;
+            homeAddress = Memory.heapBaseAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(homeAddress);
             updateModelForMemoryRange(firstAddress);
         });
 
         extnButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
-            homeAddress = Globals.memory.externBaseAddress;
+            homeAddress = Memory.externBaseAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(homeAddress);
             updateModelForMemoryRange(firstAddress);
         });
 
         kernButton.addActionListener(ae -> {
             userOrKernelMode = KERNEL_MODE;
-            homeAddress = Globals.memory.kernelDataBaseAddress;
+            homeAddress = Memory.kernelDataBaseAddress;
             firstAddress = homeAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
@@ -672,7 +671,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
         mmioButton.addActionListener(ae -> {
             userOrKernelMode = KERNEL_MODE;
-            homeAddress = Globals.memory.memoryMapBaseAddress;
+            homeAddress = Memory.memoryMapBaseAddress;
             firstAddress = homeAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
@@ -680,7 +679,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
         textButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
-            homeAddress = Globals.memory.textBaseAddress;
+            homeAddress = Memory.textBaseAddress;
             firstAddress = homeAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
@@ -688,7 +687,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
         dataButton.addActionListener(ae -> {
             userOrKernelMode = USER_MODE;
-            homeAddress = Globals.memory.dataBaseAddress;
+            homeAddress = Memory.dataBaseAddress;
             firstAddress = homeAddress;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
@@ -712,8 +711,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // PrevButton and NextButton are enabled/disabled appropriately.
     //
     private int setFirstAddressAndPrevNextButtonEnableStatus(int lowAddress) {
-        int lowLimit = (userOrKernelMode == USER_MODE) ? Math.min(Math.min(Globals.memory.textBaseAddress, Globals.memory.dataSegmentBaseAddress), Globals.memory.dataBaseAddress) : Globals.memory.kernelDataBaseAddress;
-        int highLimit = (userOrKernelMode == USER_MODE) ? Globals.memory.userHighAddress : Globals.memory.kernelHighAddress;
+        int lowLimit = (userOrKernelMode == USER_MODE) ? Math.min(Math.min(Memory.textBaseAddress, Memory.dataSegmentBaseAddress), Memory.dataBaseAddress) : Memory.kernelDataBaseAddress;
+        int highLimit = (userOrKernelMode == USER_MODE) ? Memory.userHighAddress : Memory.kernelHighAddress;
         if (lowAddress <= lowLimit) {
             lowAddress = lowLimit;
             prevButton.setEnabled(false);
@@ -782,7 +781,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // setSelectedIndex to also call selectedItemChanged() did not help.  Only this
     // solution to extend the model class to call the protected
     // "fireContentsChanged()" method worked. DPS 25-Jan-2009
-    private class CustomComboBoxModel extends DefaultComboBoxModel<String> {
+    private static class CustomComboBoxModel extends DefaultComboBoxModel<String> {
         public CustomComboBoxModel(String[] list) {
             super(list);
         }
@@ -797,8 +796,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // Class representing memory data table data
 
     class DataTableModel extends AbstractTableModel {
-        String[] columnNames;
-        Object[][] data;
+        final String[] columnNames;
+        final Object[][] data;
 
         public DataTableModel(Object[][] d, String[] n) {
             data = d;
@@ -832,11 +831,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         public boolean isCellEditable(int row, int col) {
             //Note that the data/cell address is constant,
             //no matter where the cell appears onscreen.
-            if (col != ADDRESS_COLUMN && !asciiDisplay) {
-                return true;
-            } else {
-                return false;
-            }
+            return col != ADDRESS_COLUMN && !asciiDisplay;
         }
 
 
@@ -855,7 +850,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
          * value is valid, MIPS memory is updated.
          */
         public void setValueAt(Object value, int row, int col) {
-            int val = 0;
+            int val;
             int address = 0;
             try {
                 val = Binary.stringToInt((String) value);
@@ -953,7 +948,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
             super(m);
         }
 
-        private String[] columnToolTips = {
+        private final String[] columnToolTips = {
                 /* address  */ "Base MIPS memory address for this row of the table.",
                 /* value +0 */ "32-bit value stored at base address for its row.",
                 /* value +n */ "32-bit value stored ",

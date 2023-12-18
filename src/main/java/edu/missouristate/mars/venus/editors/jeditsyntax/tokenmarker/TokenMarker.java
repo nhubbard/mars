@@ -1,5 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
+import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+
 import javax.swing.text.Segment;
 import java.util.ArrayList;
 
@@ -112,6 +114,7 @@ public abstract class TokenMarker {
      * The default implementation returns true; it should be overridden
      * to return false on simpler token markers for increased speed.
      */
+    @SuppressWarnings("SameReturnValue")
     public boolean supportsMultilineTokens() {
         return true;
     }
@@ -176,7 +179,7 @@ public abstract class TokenMarker {
      * @param tokenText the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
-    public ArrayList getTokenExactMatchHelp(Token token, String tokenText) {
+    public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
         return null;
     }
 
@@ -192,7 +195,7 @@ public abstract class TokenMarker {
      * @param tokenText     the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
-    public ArrayList getTokenPrefixMatchHelp(String line, Token tokenList, Token tokenAtOffset, String tokenText) {
+    public ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(String line, Token tokenList, Token tokenAtOffset, String tokenText) {
         return null;
     }
 
@@ -293,7 +296,7 @@ public abstract class TokenMarker {
     /**
      * Inner class for storing information about tokenized lines.
      */
-    public class LineInfo {
+    public static class LineInfo {
         /**
          * Creates a new LineInfo object with token = Token.NULL
          * and obj = null.

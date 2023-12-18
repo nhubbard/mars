@@ -5,18 +5,15 @@ import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
-import java.util.*;
-import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import java.io.*;
 
 /**
  * Action class for the Run -> Go menu item (and toolbar icon)
  */
 public class RunGoAction extends GuiAction {
 
-    public static int defaultMaxSteps = -1; // "forever", formerly 10000000; // 10 million
+    public static final int defaultMaxSteps = -1; // "forever", formerly 10000000; // 10 million
     public static int maxSteps = defaultMaxSteps;
     private String name;
     private ExecutePane executePane;
@@ -33,12 +30,12 @@ public class RunGoAction extends GuiAction {
         name = this.getValue(Action.NAME).toString();
         executePane = mainUI.getMainPane().getExecutePane();
         if (FileStatus.isAssembled()) {
-            if (!mainUI.getStarted()) {
+            if (!VenusUI.getStarted()) {
                 processProgramArgumentsIfAny();  // DPS 17-July-2008
             }
-            if (mainUI.getReset() || mainUI.getStarted()) {
+            if (VenusUI.getReset() || VenusUI.getStarted()) {
 
-                mainUI.setStarted(true);  // added 8/27/05
+                VenusUI.setStarted(true);  // added 8/27/05
 
                 mainUI.messagesPane.postMarsMessage(
                         name + ": running " + FileStatus.getFile().getName() + "\n\n");
@@ -50,11 +47,11 @@ public class RunGoAction extends GuiAction {
                 try {
                     int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
                     boolean done = Globals.program.simulateFromPC(breakPoints, maxSteps, this);
-                } catch (ProcessingException pe) {
+                } catch (ProcessingException ignored) {
                 }
             } else {
                 // This should never occur because at termination the Go and Step buttons are disabled.
-                JOptionPane.showMessageDialog(mainUI, "reset " + mainUI.getReset() + " started " + mainUI.getStarted());//"You must reset before you can execute the program again.");
+                JOptionPane.showMessageDialog(mainUI, "reset " + VenusUI.getReset() + " started " + VenusUI.getStarted());//"You must reset before you can execute the program again.");
             }
         } else {
             // note: this should never occur since "Go" is only enabled after successful assembly.
@@ -90,7 +87,7 @@ public class RunGoAction extends GuiAction {
         executePane.getCoprocessor0Window().updateRegisters();
         executePane.getDataSegmentWindow().updateValues();
         FileStatus.set(FileStatus.RUNNABLE);
-        mainUI.setReset(false);
+        VenusUI.setReset(false);
     }
 
     /**
@@ -132,7 +129,7 @@ public class RunGoAction extends GuiAction {
                 break;
             case Simulator.EXCEPTION:
                 mainUI.getMessagesPane().postMarsMessage(
-                        pe.errors().generateReport());
+                        Objects.requireNonNull(pe).errors().generateReport());
                 mainUI.getMessagesPane().postMarsMessage(
                         "\n" + name + ": execution terminated with errors.\n\n");
                 break;
@@ -150,7 +147,7 @@ public class RunGoAction extends GuiAction {
                 break;
         }
         RunGoAction.resetMaxSteps();
-        mainUI.setReset(false);
+        VenusUI.setReset(false);
     }
 
     /**
@@ -168,7 +165,7 @@ public class RunGoAction extends GuiAction {
     // $a0 gets argument count (argc), $a1 gets stack address of first arg pointer (argv).
     private void processProgramArgumentsIfAny() {
         String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
-        if (programArguments == null || programArguments.length() == 0 ||
+        if (programArguments == null || programArguments.isEmpty() ||
                 !Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
             return;
         }

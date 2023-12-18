@@ -1,14 +1,13 @@
 package edu.missouristate.mars;
 
-import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.*;
 
-import java.io.*;
 import java.util.*;
 import java.util.prefs.*;
 import java.awt.Color;
 import java.awt.Font;
+import java.util.stream.IntStream;
 
 /**
  * Contains various IDE settings.  Persistent settings are maintained for the
@@ -30,7 +29,7 @@ import java.awt.Font;
 
 public class Settings extends Observable {
     /* Properties file used to hold default settings. */
-    private static String settingsFile = "Settings";
+    private static final String settingsFile = "Settings";
     /////////////////////////////  PROPERTY ARRAY INDEXES /////////////////////////////
     // Because MARS is programmed to Java 1.4, we cannot use an enumerated type.
 
@@ -129,7 +128,7 @@ public class Settings extends Observable {
     public static final int SELF_MODIFYING_CODE_ENABLED = 20;
 
     // NOTE: key sequence must match up with labels above which are used for array indexes!
-    private static String[] booleanSettingsKeys = {"ExtendedAssembler", "BareMachine", "AssembleOnOpen", "AssembleAll",
+    private static final String[] booleanSettingsKeys = {"ExtendedAssembler", "BareMachine", "AssembleOnOpen", "AssembleAll",
             "LabelWindowVisibility", "DisplayAddressesInHex", "DisplayValuesInHex",
             "LoadExceptionHandler", "DelayedBranching", "EditorLineNumbersDisplayed",
             "WarningsAreErrors", "ProgramArguments", "DataSegmentHighlighting",
@@ -143,7 +142,7 @@ public class Settings extends Observable {
      * do so before instantiating the Settings object.
      * Values are matched to keys by list position.
      */
-    public static boolean[] defaultBooleanSettingsValues = { // match the above list by position
+    public static final boolean[] defaultBooleanSettingsValues = { // match the above list by position
             true, false, false, false, false, true, true, false, false,
             true, false, false, true, true, false, true, true, false, false, true, false};
 
@@ -185,7 +184,7 @@ public class Settings extends Observable {
      * If you wish to change, do so before instantiating the Settings object.
      * Must match key by list position.
      */
-    private static String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
+    private static final String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
 
 
     // FONT SETTINGS.  Each array position has associated name.
@@ -315,18 +314,18 @@ public class Settings extends Observable {
      * If you wish to change, do so before instantiating the Settings object.
      * Must match key by list position.
      */
-    private static String[] defaultColorSettingsValues = {
+    private static final String[] defaultColorSettingsValues = {
             "0x00e0e0e0", "0", "0x00ffffff", "0", "0x00ffff99", "0", "0x0033ff00", "0", "0x0099ccff", "0", "0x0099cc55", "0"};
 
 
-    private boolean[] booleanSettingsValues;
-    private String[] stringSettingsValues;
-    private String[] fontFamilySettingsValues;
-    private String[] fontStyleSettingsValues;
-    private String[] fontSizeSettingsValues;
-    private String[] colorSettingsValues;
+    private final boolean[] booleanSettingsValues;
+    private final String[] stringSettingsValues;
+    private final String[] fontFamilySettingsValues;
+    private final String[] fontStyleSettingsValues;
+    private final String[] fontSizeSettingsValues;
+    private final String[] colorSettingsValues;
 
-    private Preferences preferences;
+    private final Preferences preferences;
 
     /**
      * Create Settings object and set to saved values.  If saved values not found, will set
@@ -456,7 +455,7 @@ public class Settings extends Observable {
     // to be created!  It is possible but a real pain in the rear to avoid using 
     // Color objects totally.  Requires new methods for the SyntaxUtilities class.
     private void initializeEditorSyntaxStyles() {
-        SyntaxStyle syntaxStyle[] = SyntaxUtilities.getDefaultSyntaxStyles();
+        SyntaxStyle[] syntaxStyle = SyntaxUtilities.getDefaultSyntaxStyles();
         int tokens = syntaxStyle.length;
         syntaxStyleColorSettingsKeys = new String[tokens];
         syntaxStyleBoldSettingsKeys = new String[tokens];
@@ -775,7 +774,7 @@ public class Settings extends Observable {
      */
 
     public int getCaretBlinkRate() {
-        int rate = 500;
+        int rate;
         try {
             rate = Integer.parseInt(stringSettingsValues[CARET_BLINK_RATE]);
         } catch (NumberFormatException nfe) {
@@ -791,7 +790,7 @@ public class Settings extends Observable {
      * @return tab size in characters.
      */
     public int getEditorTabSize() {
-        int size = 8;
+        int size;
         try {
             size = Integer.parseInt(stringSettingsValues[EDITOR_TAB_SIZE]);
         } catch (NumberFormatException nfe) {
@@ -812,7 +811,7 @@ public class Settings extends Observable {
         int length = 2;
         try {
             length = Integer.parseInt(stringSettingsValues[EDITOR_POPUP_PREFIX_LENGTH]);
-        } catch (NumberFormatException nfe) {
+        } catch (NumberFormatException ignored) {
 
         }
         return length;
@@ -1185,7 +1184,7 @@ public class Settings extends Observable {
      * Store a Font setting
      *
      * @param fontSettingPosition Constant that identifies the item the font goes with
-     * @font The font to set that item to
+     * @param font The font to set that item to
      */
     public void setFontByPosition(int fontSettingPosition, Font font) {
         if (fontSettingPosition >= 0 && fontSettingPosition < fontFamilySettingsValues.length) {
@@ -1211,11 +1210,9 @@ public class Settings extends Observable {
      */
 
     public void setTextColumnOrder(int[] columnOrder) {
-        String stringifiedOrder = new String();
-        for (int j : columnOrder) {
-            stringifiedOrder += Integer.toString(j) + " ";
-        }
-        setStringSetting(TEXT_COLUMN_ORDER, stringifiedOrder);
+        StringBuilder stringifiedOrder = new StringBuilder();
+        for (int j : columnOrder) stringifiedOrder.append(j).append(" ");
+        setStringSetting(TEXT_COLUMN_ORDER, stringifiedOrder.toString());
     }
 
     /**
@@ -1278,20 +1275,14 @@ public class Settings extends Observable {
 
     // Default values.  Will be replaced if available from property file or Preferences object.
     private void applyDefaultSettings() {
-        for (int i = 0; i < booleanSettingsValues.length; i++) {
-            booleanSettingsValues[i] = defaultBooleanSettingsValues[i];
-        }
-        for (int i = 0; i < stringSettingsValues.length; i++) {
-            stringSettingsValues[i] = defaultStringSettingsValues[i];
-        }
-        for (int i = 0; i < fontFamilySettingsValues.length; i++) {
+        System.arraycopy(defaultBooleanSettingsValues, 0, booleanSettingsValues, 0, booleanSettingsValues.length);
+        System.arraycopy(defaultStringSettingsValues, 0, stringSettingsValues, 0, stringSettingsValues.length);
+        IntStream.range(0, fontFamilySettingsValues.length).forEach(i -> {
             fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i];
             fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i];
             fontSizeSettingsValues[i] = defaultFontSizeSettingsValues[i];
-        }
-        for (int i = 0; i < colorSettingsValues.length; i++) {
-            colorSettingsValues[i] = defaultColorSettingsValues[i];
-        }
+        });
+        System.arraycopy(defaultColorSettingsValues, 0, colorSettingsValues, 0, colorSettingsValues.length);
         initializeEditorSyntaxStyles();
     }
 
@@ -1336,9 +1327,7 @@ public class Settings extends Observable {
         if (position >= 0 && position < colorSettingsKeys.length) {
             try {
                 color = Color.decode(values[position]);
-            } catch (NumberFormatException nfe) {
-                color = null;
-            }
+            } catch (NumberFormatException ignored) {}
         }
         return color;
     }
@@ -1379,7 +1368,7 @@ public class Settings extends Observable {
             for (int i = 0; i < booleanSettingsKeys.length; i++) {
                 settingValue = Globals.getPropertyEntry(filename, booleanSettingsKeys[i]);
                 if (settingValue != null) {
-                    booleanSettingsValues[i] = defaultBooleanSettingsValues[i] = Boolean.valueOf(settingValue);
+                    booleanSettingsValues[i] = defaultBooleanSettingsValues[i] = Boolean.parseBoolean(settingValue);
                 }
             }
             for (int i = 0; i < stringSettingsKeys.length; i++) {

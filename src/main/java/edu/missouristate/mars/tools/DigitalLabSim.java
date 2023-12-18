@@ -9,15 +9,13 @@ import edu.missouristate.mars.simulator.Simulator;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.Observable;
 
 public class DigitalLabSim extends AbstractMarsToolAndApplication {
-    private static String heading = "Digital Lab Sim";
-    private static String version = " Version 1.0 (Didier Teifreto)";
+    private static final String heading = "Digital Lab Sim";
+    private static final String version = " Version 1.0 (Didier Teifreto)";
     private static final int IN_ADRESS_DISPLAY_1 = Memory.memoryMapBaseAddress + 0x10;
     private static final int IN_ADRESS_DISPLAY_2 = Memory.memoryMapBaseAddress + 0x11;
     private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x12;
@@ -27,8 +25,6 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; //Add for digital Lab Sim
     public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200;// Add for digital Lab Sim
 
-    // GUI Interface.
-    private static JPanel panelTools;
     // Seven Segment display
     private SevenSegmentPanel sevenSegPanel;
     // Keyboard
@@ -36,7 +32,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     private HexaKeyboard hexaKeyPanel;
     private static boolean KeyboardInterruptOnOff = false;
     // Counter
-    private static int CounterValueMax = 30;
+    private static final int CounterValueMax = 30;
     private static int CounterValue = CounterValueMax;
     private static boolean CounterInterruptOnOff = false;
     private static OneSecondCounter SecondCounter;
@@ -66,23 +62,18 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
         int address = notice.getAddress();
         char value = (char) notice.getValue();
-        if (address == IN_ADRESS_DISPLAY_1)
-            updateSevenSegment(1, value);
-        else if (address == IN_ADRESS_DISPLAY_2)
-            updateSevenSegment(0, value);
-        else if (address == IN_ADRESS_HEXA_KEYBOARD)
-            updateHexaKeyboard(value);
-        else if (address == IN_ADRESS_COUNTER)
-            updateOneSecondCounter(value);
-        if (CounterInterruptOnOff)
-            if (CounterValue > 0) {
-                CounterValue--;
-            } else {
-                CounterValue = CounterValueMax;
-                if ((Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
-                    Simulator.externalInterruptingDevice = /*Exceptions.*/EXTERNAL_INTERRUPT_TIMER;
-                }
+        if (address == IN_ADRESS_DISPLAY_1) updateSevenSegment(1, value);
+        else if (address == IN_ADRESS_DISPLAY_2) updateSevenSegment(0, value);
+        else if (address == IN_ADRESS_HEXA_KEYBOARD) updateHexaKeyboard(value);
+        else if (address == IN_ADRESS_COUNTER) updateOneSecondCounter(value);
+        if (CounterInterruptOnOff) if (CounterValue > 0) {
+            CounterValue--;
+        } else {
+            CounterValue = CounterValueMax;
+            if ((Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
+                Simulator.externalInterruptingDevice = /*Exceptions.*/EXTERNAL_INTERRUPT_TIMER;
             }
+        }
     }
 
     protected void reset() {
@@ -92,7 +83,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     protected JComponent buildMainDisplayArea() {
-        panelTools = new JPanel(new GridLayout(1, 2));
+        // GUI Interface.
+        JPanel panelTools = new JPanel(new GridLayout(1, 2));
         sevenSegPanel = new SevenSegmentPanel();
         panelTools.add(sevenSegPanel);
         hexaKeyPanel = new HexaKeyboard();
@@ -102,7 +94,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
-        if (!this.isBeingUsedAsAMarsTool || (this.isBeingUsedAsAMarsTool && connectButton.isConnected())) {
+        if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
             synchronized (Globals.memoryAndRegistersLock) {
                 try {
                     Globals.memory.setByte(dataAddr, dataValue);
@@ -118,36 +110,33 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     protected JComponent getHelpComponent() {
-        final String helpContent =
-                """
-                         This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
-                        Seven segment display
-                         Byte value at address 0xFFFF0010 : command right seven segment display\s
-                          Byte value at address 0xFFFF0011 : command left seven segment display\s
-                          Each bit of these two bytes are connected to segments (bit 0 for a segment, 1 for b segment and 7 for point\s
-                        \s
-                        Hexadecimal keyboard
-                         Byte value at address 0xFFFF0012 : command row number of hexadecimal keyboard (bit 0 to 3) and enable keyboard interrupt (bit 7)\s
-                         Byte value at address 0xFFFF0014 : receive row and column of the key pressed, 0 if not key pressed\s
-                         The mips program have to scan, one by one, each row (send 1,2,4,8...) and then observe if a key is pressed (that mean byte value at adresse 0xFFFF0014 is different from zero).  This byte value is composed of row number (4 left bits) and column number (4 right bits) Here you'll find the code for each key : 0x11,0x21,0x41,0x81,0x12,0x22,0x42,0x82,0x14,0x24,0x44,0x84,0x18,0x28,0x48,0x88.\s
-                         For exemple key number 2 return 0x41, that mean the key is on column 3 and row 1.\s
-                         If keyboard interruption is enable, an exception is started, with cause register bit number 11 set.
-                        \s
-                        Counter
-                         Byte value at address 0xFFFF0013 : If one bit of this byte is set, the counter interruption is enable.
-                         If counter interruption is enable, every 30 instructions, an exception is started with cause register bit number 10.
-                           (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)""";
+        final String helpContent = """
+                 This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
+                Seven segment display
+                 Byte value at address 0xFFFF0010 : command right seven segment display\s
+                  Byte value at address 0xFFFF0011 : command left seven segment display\s
+                  Each bit of these two bytes are connected to segments (bit 0 for a segment, 1 for b segment and 7 for point\s
+                \s
+                Hexadecimal keyboard
+                 Byte value at address 0xFFFF0012 : command row number of hexadecimal keyboard (bit 0 to 3) and enable keyboard interrupt (bit 7)\s
+                 Byte value at address 0xFFFF0014 : receive row and column of the key pressed, 0 if not key pressed\s
+                 The mips program have to scan, one by one, each row (send 1,2,4,8...) and then observe if a key is pressed (that mean byte value at adresse 0xFFFF0014 is different from zero).  This byte value is composed of row number (4 left bits) and column number (4 right bits) Here you'll find the code for each key : 0x11,0x21,0x41,0x81,0x12,0x22,0x42,0x82,0x14,0x24,0x44,0x84,0x18,0x28,0x48,0x88.\s
+                 For exemple key number 2 return 0x41, that mean the key is on column 3 and row 1.\s
+                 If keyboard interruption is enable, an exception is started, with cause register bit number 11 set.
+                \s
+                Counter
+                 Byte value at address 0xFFFF0013 : If one bit of this byte is set, the counter interruption is enable.
+                 If counter interruption is enable, every 30 instructions, an exception is started with cause register bit number 10.
+                   (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)""";
         JButton help = new JButton("Help");
-        help.addActionListener(
-                e -> {
-                    JTextArea ja = new JTextArea(helpContent);
-                    ja.setRows(20);
-                    ja.setColumns(60);
-                    ja.setLineWrap(true);
-                    ja.setWrapStyleWord(true);
-                    JOptionPane.showMessageDialog(theWindow, new JScrollPane(ja),
-                            "Simulating the Hexa Keyboard and Seven segment display", JOptionPane.INFORMATION_MESSAGE);
-                });
+        help.addActionListener(e -> {
+            JTextArea ja = new JTextArea(helpContent);
+            ja.setRows(20);
+            ja.setColumns(60);
+            ja.setLineWrap(true);
+            ja.setWrapStyleWord(true);
+            JOptionPane.showMessageDialog(theWindow, new JScrollPane(ja), "Simulating the Hexa Keyboard and Seven segment display", JOptionPane.INFORMATION_MESSAGE);
+        });
         return help;
     }/* ....................Seven Segment display start here................................... */
 
@@ -156,7 +145,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         sevenSegPanel.display[number].modifyDisplay(value);
     }
 
-    public class SevenSegmentDisplay extends JComponent {
+    public static class SevenSegmentDisplay extends JComponent {
         public char aff;
 
         public SevenSegmentDisplay(char aff) {
@@ -236,10 +225,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         public void paint(Graphics g) {
             char c = 'a';
             while (c <= 'h') {
-                if ((aff & 0x1) == 1)
-                    g.setColor(Color.RED);
-                else
-                    g.setColor(Color.LIGHT_GRAY);
+                if ((aff & 0x1) == 1) g.setColor(Color.RED);
+                else g.setColor(Color.LIGHT_GRAY);
                 SwitchSegment(g, c);
                 aff = (char) (aff >>> 1);
                 c++;
@@ -247,8 +234,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
     }
 
-    public class SevenSegmentPanel extends JPanel {
-        public SevenSegmentDisplay[] display;
+    public static class SevenSegmentPanel extends JPanel {
+        public final SevenSegmentDisplay[] display;
 
         public SevenSegmentPanel() {
             int i;
@@ -278,19 +265,15 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     public void updateHexaKeyboard(char row) {
         int key = KeyBoardValueButtonClick;
         if ((key != -1) && ((1 << (key / 4)) == (row & 0xF))) {
-            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD,
-                    (char) (1 << (key / 4)) | (1 << (4 + (key % 4))));
+            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, (char) (1 << (key / 4)) | (1 << (4 + (key % 4))));
         } else {
             updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
         }
-        if ((row & 0xF0) != 0)
-            KeyboardInterruptOnOff = true;
-        else
-            KeyboardInterruptOnOff = false;
+        KeyboardInterruptOnOff = (row & 0xF0) != 0;
     }
 
     public class HexaKeyboard extends JPanel {
-        public JButton[] button;
+        public final JButton[] button;
 
         public HexaKeyboard() {
             int i;
@@ -315,7 +298,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
 
         public class EcouteurClick implements MouseListener {
-            private int buttonValue;
+            private final int buttonValue;
 
             public EcouteurClick(int val) {
                 buttonValue = val;
@@ -362,7 +345,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
     }
 
-    public class OneSecondCounter {
+    public static class OneSecondCounter {
         public OneSecondCounter() {
             CounterInterruptOnOff = false;
         }

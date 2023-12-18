@@ -4,7 +4,6 @@ import edu.missouristate.mars.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.*;
 
 /**
  * Container for the execution-related windows.  Currently displayed as a tabbed pane.
@@ -13,15 +12,15 @@ import java.util.*;
  **/
 
 public class ExecutePane extends JDesktopPane {
-    private RegistersWindow registerValues;
-    private Coprocessor1Window coprocessor1Values;
-    private Coprocessor0Window coprocessor0Values;
-    private DataSegmentWindow dataSegment;
-    private TextSegmentWindow textSegment;
-    private LabelsWindow labelValues;
-    private VenusUI mainUI;
-    private NumberDisplayBaseChooser valueDisplayBase;
-    private NumberDisplayBaseChooser addressDisplayBase;
+    private final RegistersWindow registerValues;
+    private final Coprocessor1Window coprocessor1Values;
+    private final Coprocessor0Window coprocessor0Values;
+    private final DataSegmentWindow dataSegment;
+    private final TextSegmentWindow textSegment;
+    private final LabelsWindow labelValues;
+    private final VenusUI mainUI;
+    private final NumberDisplayBaseChooser valueDisplayBase;
+    private final NumberDisplayBaseChooser addressDisplayBase;
     private boolean labelWindowVisible;
 
     /**
@@ -82,9 +81,9 @@ public class ExecutePane extends JDesktopPane {
         int fullHeight = this.getSize().height - this.getInsets().top - this.getInsets().bottom;
         int halfHeight = fullHeight / 2;
         Dimension textDim = new Dimension((int) (fullWidth * .75), halfHeight);
-        Dimension dataDim = new Dimension((int) (fullWidth), halfHeight);
+        Dimension dataDim = new Dimension(fullWidth, halfHeight);
         Dimension lablDim = new Dimension((int) (fullWidth * .25), halfHeight);
-        Dimension textFullDim = new Dimension((int) (fullWidth), halfHeight);
+        Dimension textFullDim = new Dimension(fullWidth, halfHeight);
         dataSegment.setBounds(0, textDim.height + 1, dataDim.width, dataDim.height);
         if (labelWindowVisible) {
             textSegment.setBounds(0, 0, textDim.width, textDim.height);

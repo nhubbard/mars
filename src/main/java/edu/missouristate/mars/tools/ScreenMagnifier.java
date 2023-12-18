@@ -4,8 +4,6 @@ import edu.missouristate.mars.Globals;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Line2D;
@@ -54,13 +52,15 @@ public class ScreenMagnifier implements MarsTool {
 
 class Magnifier extends JFrame implements ComponentListener {
     static Robot robot;
-    JButton close, capture, settings;
-    JSpinner scaleAdjuster;
-    JScrollPane view;
+    final JButton close;
+    final JButton capture;
+    final JButton settings;
+    final JSpinner scaleAdjuster;
+    final JScrollPane view;
     Dimension frameSize;
-    Dimension viewSize;
-    MagnifierImage magnifierImage;
-    ActionListener captureActionListener;
+    final Dimension viewSize;
+    final MagnifierImage magnifierImage;
+    final ActionListener captureActionListener;
     CaptureModel captureResize, captureMove, captureRescale;
     CaptureModel captureDisplayCenter, captureDisplayUpperleft;
     CaptureModel dialogDisplayCenter;
@@ -71,8 +71,8 @@ class Magnifier extends JFrame implements ComponentListener {
     static final double SCALE_DEFAULT = 2.0;
     double scale = SCALE_DEFAULT;
     CaptureDisplayAlignmentStrategy alignment;
-    CaptureRectangleStrategy captureLocationSize = new CaptureMagnifierRectangle();
-    JFrame frame;
+    final CaptureRectangleStrategy captureLocationSize = new CaptureMagnifierRectangle();
+    final JFrame frame;
     static final String CAPTURE_TOOLTIP_TEXT = "Capture, scale, and display pixels that lay beneath the Magnifier.";
     static final String SETTINGS_TOOLTIP_TEXT = "Show dialog for changing tool settings.";
     static final String SCALE_TOOLTIP_TEXT = "Magnification scale for captured image.";
@@ -85,14 +85,14 @@ class Magnifier extends JFrame implements ComponentListener {
         // If running withint MARS, set to its icon image; if not fuggetit.
         try {
             this.setIconImage(Globals.getGui().getIconImage());
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         getContentPane().setLayout(new BorderLayout());
         // Will capture an image each time frame is moved/resized.
         addComponentListener(this);
         try {
             robot = new Robot();
-        } catch (AWTException | SecurityException e) {
+        } catch (AWTException | SecurityException ignored) {
         }
 
         close = new JButton("Close");
@@ -238,7 +238,7 @@ class Magnifier extends JFrame implements ComponentListener {
         // are no alternatives so just let what would happen, happen.
         try {
             Globals.getGui().update(Globals.getGui().getGraphics());
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
         // Perform the screen capture.
         BufferedImage imageOfSection;
@@ -343,11 +343,11 @@ class SettingsDialog extends JDialog {
     JButton applyButton, cancelButton;
     JCheckBox captureResizeCheckBox, captureMoveCheckBox, captureRescaleCheckBox;
     JRadioButton captureDisplayCenteredButton, captureDisplayUpperleftButton;
-    Integer[] scribblerLineWidthSettings = {1, 2, 3, 4, 5, 6, 7, 8};
-    JComboBox lineWidthSetting;
+    final Integer[] scribblerLineWidthSettings = {1, 2, 3, 4, 5, 6, 7, 8};
+    JComboBox<Integer> lineWidthSetting;
     JButton lineColorSetting;
     JCheckBox dialogCentered; // Whether or not dialog appears centered over the magnfier frame.
-    JDialog dialog;
+    final JDialog dialog;
     // temporary storage until committed with "Apply".  Needed because it is returned
     // by same call that shows the color selection dialog, so cannot be retrieved
     // later from the model (as you can with buttons, checkboxes, etc).
@@ -471,7 +471,7 @@ class SettingsDialog extends JDialog {
         scribblerSettings.setBorder(new TitledBorder("Scribbler"));
         Box scribblerSettingsBox = Box.createHorizontalBox();
         scribblerSettings.add(scribblerSettingsBox);
-        lineWidthSetting = new JComboBox(scribblerLineWidthSettings);
+        lineWidthSetting = new JComboBox<>(scribblerLineWidthSettings);
         lineWidthSetting.setToolTipText(SETTINGS_SCRIBBLER_WIDTH_TOOLTIP_TEXT);
         lineWidthSetting.setSelectedIndex(((Magnifier) getOwner()).scribblerSettings.getLineWidth() - 1);
         lineColorSetting = new JButton("   ");
@@ -540,8 +540,6 @@ class CaptureModel {
 
 class MagnifierImage extends JPanel {
 
-    // Enclosing JFrame for this panel -- the Screen Magnifier itself.
-    private Magnifier frame;
     // Rectangle representing screen pixels to be magnified.
     private Rectangle screenRectangle;
     // Robot used to perform the screen capture.
@@ -549,7 +547,7 @@ class MagnifierImage extends JPanel {
     // Displayed image's Image object, which is actually a BufferedImage.
     private Image image;
     // Scribbler for highlighting image using mouse.
-    private Scribbler scribbler;
+    private final Scribbler scribbler;
 
 
     /**
@@ -557,7 +555,7 @@ class MagnifierImage extends JPanel {
      */
 
     public MagnifierImage(Magnifier frame) {
-        this.frame = frame;
+        // Enclosing JFrame for this panel -- the Screen Magnifier itself.
         this.scribbler = new Scribbler(frame.scribblerSettings);
 
         addMouseListener(new MouseAdapter() {
@@ -647,8 +645,8 @@ class MagnifierImage extends JPanel {
      *  mouse.  The scribble is ephemeral; it is drawn but specifications
      *  are not saved.
      */
-    private class Scribbler {
-        private ScribblerSettings scribblerSettings;
+    private static class Scribbler {
+        private final ScribblerSettings scribblerSettings;
         private BasicStroke drawingStroke;
         // coordinates of previous mouse position
         protected int last_x, last_y;
@@ -775,7 +773,7 @@ class ScribblerSettings {
  * of the screen rectangle to capture.
  */
 interface CaptureRectangleStrategy {
-    public Rectangle getCaptureRectangle(Rectangle magnifierRectangle);
+    Rectangle getCaptureRectangle(Rectangle magnifierRectangle);
 }
 
 /**
@@ -810,7 +808,7 @@ class CaptureScaledRectangle implements CaptureRectangleStrategy {
  * when displaying captured and scaled image.
  */
 interface CaptureDisplayAlignmentStrategy {
-    public void setScrollBarValue(JScrollBar scrollBar);
+    void setScrollBarValue(JScrollBar scrollBar);
 }
 
 /**
