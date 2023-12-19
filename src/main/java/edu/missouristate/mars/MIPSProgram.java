@@ -16,12 +16,9 @@ import javax.swing.*;
  * @author Pete Sanderson
  * @version August 2003
  **/
-
 public class MIPSProgram {
-
     // See explanation of method inSteppedExecution() below.
     private boolean steppedExecution = false;
-
     private String filename;
     private ArrayList<String> sourceList;
     private ArrayList<TokenList> tokenList;
@@ -38,7 +35,6 @@ public class MIPSProgram {
      *
      * @return ArrayList of String.  Each String is one line of MIPS source code.
      **/
-
     public ArrayList<String> getSourceList() {
         return sourceList;
     }
@@ -49,7 +45,6 @@ public class MIPSProgram {
      * @param sourceLineList ArrayList of SourceLine.
      *                       Each SourceLine represents one line of MIPS source code.
      **/
-
     public void setSourceLineList(ArrayList<SourceLine> sourceLineList) {
         this.sourceLineList = sourceLineList;
         sourceList = new ArrayList<>();
@@ -64,7 +59,6 @@ public class MIPSProgram {
      * @return ArrayList of SourceLine.
      * Each SourceLine represents one line of MIPS source cod
      **/
-
     public ArrayList<SourceLine> getSourceLineList() {
         return this.sourceLineList;
     }
@@ -74,7 +68,6 @@ public class MIPSProgram {
      *
      * @return File name as String.
      **/
-
     public String getFilename() {
         return filename;
     }
@@ -86,7 +79,6 @@ public class MIPSProgram {
      * corresponding line of MIPS source code.
      * @see TokenList
      **/
-
     public ArrayList<TokenList> getTokenList() {
         return tokenList;
     }
@@ -96,7 +88,6 @@ public class MIPSProgram {
      *
      * @return Tokenizer
      **/
-
     public Tokenizer getTokenizer() {
         return tokenizer;
     }
@@ -108,7 +99,6 @@ public class MIPSProgram {
      * MIPS statement.
      * @see ProgramStatement
      **/
-
     public ArrayList<ProgramStatement> createParsedList() {
         parsedList = new ArrayList<>();
         return parsedList;
@@ -121,7 +111,6 @@ public class MIPSProgram {
      * MIPS statement.
      * @see ProgramStatement
      **/
-
     public ArrayList<ProgramStatement> getParsedList() {
         return parsedList;
     }
@@ -133,18 +122,15 @@ public class MIPSProgram {
      * basic MIPS instruction.
      * @see ProgramStatement
      **/
-
     public ArrayList<ProgramStatement> getMachineList() {
         return machineList;
     }
-
 
     /**
      * Returns BackStepper associated with this program.  It is created upon successful assembly.
      *
      * @return BackStepper object, null if there is none.
      **/
-
     public BackStepper getBackStepper() {
         return backStepper;
     }
@@ -153,7 +139,6 @@ public class MIPSProgram {
      * Returns SymbolTable associated with this program.  It is created at assembly time,
      * and stores local labels (those not declared using .globl directive).
      **/
-
     public SymbolTable getLocalSymbolTable() {
         return localSymbolTable;
     }
@@ -163,7 +148,6 @@ public class MIPSProgram {
      *
      * @return true if enabled, false if disabled or non-existant.
      **/
-
     public boolean backSteppingEnabled() {
         return (backStepper != null && backStepper.enabled());
     }
@@ -175,14 +159,12 @@ public class MIPSProgram {
      * @return Returns specified line of MIPS source.  If outside the line range,
      * it returns null.  Line 1 is first line.
      **/
-
     public String getSourceLine(int i) {
         if ((i >= 1) && (i <= sourceList.size()))
             return sourceList.get(i - 1);
         else
             return null;
     }
-
 
     /**
      * Reads MIPS source code from file into structure.  Will always read from file.
@@ -192,7 +174,6 @@ public class MIPSProgram {
      * @param file String containing name of MIPS source code file.
      * @throws ProcessingException Will throw exception if there is any problem reading the file.
      **/
-
     public void readSource(String file) throws ProcessingException {
         this.filename = file;
         this.sourceList = new ArrayList<>();
@@ -219,7 +200,6 @@ public class MIPSProgram {
      *
      * @throws ProcessingException Will throw exception if errors occured while tokenizing.
      **/
-
     public void tokenize() throws ProcessingException {
         this.tokenizer = new Tokenizer();
         this.tokenList = tokenizer.tokenize(this);
@@ -241,7 +221,6 @@ public class MIPSProgram {
      * objects for any additional files (send ArrayList to assembler)
      * @throws ProcessingException Will throw exception if errors occured while reading or tokenizing.
      **/
-
     public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
         ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
         int leadFilePosition = 0;
@@ -273,7 +252,6 @@ public class MIPSProgram {
      * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
-
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled)
             throws ProcessingException {
         return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, false);
@@ -291,7 +269,6 @@ public class MIPSProgram {
      * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
-
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors) throws ProcessingException {
         this.backStepper = null;
@@ -301,7 +278,6 @@ public class MIPSProgram {
         return asm.getErrorList();
     }
 
-
     /**
      * Simulates execution of the MIPS program. Program must have already been assembled.
      * Begins simulation at beginning of text segment and continues to completion.
@@ -310,11 +286,9 @@ public class MIPSProgram {
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occured while simulating.
      **/
-
     public boolean simulate(int[] breakPoints) throws ProcessingException {
         return this.simulateFromPC(breakPoints, -1, null);
     }
-
 
     /**
      * Simulates execution of the MIPS program. Program must have already been assembled.
@@ -325,7 +299,6 @@ public class MIPSProgram {
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occured while simulating.
      **/
-
     public boolean simulate(int maxSteps) throws ProcessingException {
         return this.simulateFromPC(null, maxSteps, null);
     }
@@ -346,7 +319,6 @@ public class MIPSProgram {
         Simulator sim = Simulator.getInstance();
         return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a);
     }
-
 
     /**
      * Simulates execution of the MIPS program. Program must have already been assembled.
@@ -404,5 +376,4 @@ public class MIPSProgram {
     public void setLocalMacroPool(MacroPool macroPool) {
         this.macroPool = macroPool;
     }
-
-}  // MIPSProgram
+}

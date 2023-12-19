@@ -1,7 +1,7 @@
 package edu.missouristate.mars;
 
-import java.awt.*;
 import javax.swing.*;
+import java.awt.*;
 
 /**
  * Produces MARS splash screen.<br>
@@ -9,7 +9,6 @@ import javax.swing.*;
  */
 
 public class MarsSplashScreen extends JWindow {
-
     private final int duration;
 
     public MarsSplashScreen(int d) {
@@ -41,10 +40,8 @@ public class MarsSplashScreen extends JWindow {
 
         // Build the splash screen
         JLabel title = new JLabel("MARS: Mips Assembler and Runtime Simulator", JLabel.CENTER);
-        JLabel copyrt1 = new JLabel
-                ("<html><br><br>Version " + Globals.version + " Copyright (c) " + Globals.copyrightYears + "</html>", JLabel.CENTER);
-        JLabel copyrt2 = new JLabel
-                ("<html><br><br>" + Globals.copyrightHolders + "</html>", JLabel.CENTER);
+        JLabel copyrt1 = new JLabel("<html><br><br>Version " + Globals.version + " Copyright (c) " + Globals.copyrightYears + "</html>", JLabel.CENTER);
+        JLabel copyrt2 = new JLabel("<html><br><br>" + Globals.copyrightHolders + "</html>", JLabel.CENTER);
         title.setFont(new Font("Sans-Serif", Font.BOLD, 16));
         title.setForeground(Color.black);
         copyrt1.setFont(new Font("Sans-Serif", Font.BOLD, 14));
@@ -61,11 +58,11 @@ public class MarsSplashScreen extends JWindow {
         // Wait a little while, maybe while loading resources
         try {
             Thread.sleep(duration);
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
         setVisible(false);
     }
 
+    @SuppressWarnings("ThrowablePrintedToSystemOut")
     static class ImageBackgroundPanel extends JPanel {
         Image image;
 
@@ -80,10 +77,7 @@ public class MarsSplashScreen extends JWindow {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
-            if (image != null)
-                g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), this);
+            if (image != null) g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), this);
         }
     }
-
-
 }

@@ -1,12 +1,18 @@
 package edu.missouristate.mars;
 
-import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.assembler.SymbolTable;
+import edu.missouristate.mars.assembler.Token;
+import edu.missouristate.mars.assembler.TokenList;
+import edu.missouristate.mars.assembler.TokenTypes;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.instructions.BasicInstruction;
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
 
-import java.util.*;
+import java.util.ArrayList;
 
 /**
  * Represents one assembly/machine statement.  This represents the "bare machine" level.
@@ -16,8 +22,6 @@ import java.util.*;
  * @author Pete Sanderson and Jason Bumgarner
  * @version August 2003
  */
-
-
 public class ProgramStatement {
     private final MIPSProgram sourceMIPSProgram;
     private String source, basicAssemblyStatement, machineStatement;
@@ -33,8 +37,6 @@ public class ProgramStatement {
     private final boolean altered;
     private static final String invalidOperator = "<INVALID>";
 
-    //////////////////////////////////////////////////////////////////////////////////
-
     /**
      * Constructor for ProgramStatement when there are links back to all source and token
      * information.  These can be used by a debugger later on.
@@ -47,8 +49,7 @@ public class ProgramStatement {
      * @param textAddress       The Text Segment address in memory where the binary machine code for this statement
      *                          is stored.
      **/
-    public ProgramStatement(MIPSProgram sourceMIPSProgram, String source, TokenList origTokenList, TokenList strippedTokenList,
-                            Instruction inst, int textAddress, int sourceLine) {
+    public ProgramStatement(MIPSProgram sourceMIPSProgram, String source, TokenList origTokenList, TokenList strippedTokenList, Instruction inst, int textAddress, int sourceLine) {
         this.sourceMIPSProgram = sourceMIPSProgram;
         this.source = source;
         this.originalTokenList = origTokenList;
@@ -64,9 +65,6 @@ public class ProgramStatement {
         this.binaryStatement = 0;  // nop, or sll $0, $0, 0  (32 bits of 0's)
         this.altered = false;
     }
-
-
-    //////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Constructor for ProgramStatement used only for writing a binary machine
@@ -91,8 +89,7 @@ public class ProgramStatement {
             this.operands = null;
             this.numOperands = 0;
             this.instruction = (binaryStatement == 0) // this is a "nop" statement
-                    ? Globals.instructionSet.matchOperator("nop").get(0)
-                    : null;
+                    ? Globals.instructionSet.matchOperator("nop").get(0) : null;
         } else {
             this.operands = new int[4];
             this.numOperands = 0;
@@ -123,9 +120,6 @@ public class ProgramStatement {
         this.altered = false;
         this.basicStatementList = buildBasicStatementListFromBinaryCode(binaryStatement, instr, operands, numOperands);
     }
-
-
-    /////////////////////////////////////////////////////////////////////////////
 
     /**
      * Given specification of BasicInstruction for this operator, build the
@@ -184,8 +178,7 @@ public class ProgramStatement {
             } else if (tokenType == TokenTypes.IDENTIFIER) {
                 int address = this.sourceMIPSProgram.getLocalSymbolTable().getAddressLocalOrGlobal(tokenValue);
                 if (address == SymbolTable.NOT_FOUND) { // symbol used without being defined
-                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(),
-                            "Symbol \"" + tokenValue + "\" not found in symbol table."));
+                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "Symbol \"" + tokenValue + "\" not found in symbol table."));
                     return;
                 }
                 boolean absoluteAddress = true; // (used below)
@@ -223,8 +216,7 @@ public class ProgramStatement {
                     basicStatementList.addValue(address);
                 }
                 this.operands[this.numOperands++] = address;
-            } else if (tokenType == TokenTypes.INTEGER_5 || tokenType == TokenTypes.INTEGER_16 ||
-                    tokenType == TokenTypes.INTEGER_16U || tokenType == TokenTypes.INTEGER_32) {
+            } else if (tokenType == TokenTypes.INTEGER_5 || tokenType == TokenTypes.INTEGER_16 || tokenType == TokenTypes.INTEGER_16U || tokenType == TokenTypes.INTEGER_32) {
 
                 int tempNumeric = Binary.stringToInt(tokenValue);
 
@@ -244,18 +236,18 @@ public class ProgramStatement {
                  * in ProgramStatement.
                  * <p>
                  *  ///// Begin modification 1/4/05 KENV   ///////////////////////////////////////////
-                 *  // We have decided to interpret non-signed (no + or -) 16-bit hexadecimal immediate  
+                 *  // We have decided to interpret non-signed (no + or -) 16-bit hexadecimal immediate
                  *  // operands as signed values in the range -32768 to 32767. So 0xffff will represent
                  *  // -1, not 65535 (bit 15 as sign bit), 0x8000 will represent -32768 not 32768.
                  *  // NOTE: 32-bit hexadecimal immediate operands whose values fall into this range
                  *  // will be likewise affected, but they are used only in pseudo-instructions.  The
-                 *  // code in ExtendedInstruction.java to split this number into upper 16 bits for "lui" 
-                 *  // and lower 16 bits for "ori" works with the original source code token, so it is 
+                 *  // code in ExtendedInstruction.java to split this number into upper 16 bits for "lui"
+                 *  // and lower 16 bits for "ori" works with the original source code token, so it is
                  *  // not affected by this tweak.  32-bit immediates in data segment directives
                  *  // are also processed elsewhere so are not affected either.
                  *  ////////////////////////////////////////////////////////////////////////////////
                  * <p>
-                 *        if (tokenType != TokenTypes.INTEGER_16U) { // part of the Berkeley mod...         
+                 *        if (tokenType != TokenTypes.INTEGER_16U) { // part of the Berkeley mod...
                  *           if ( Binary.isHex(tokenValue) &&
                  *             (tempNumeric >= 32768) &&
                  *             (tempNumeric <= 65535) )  // Range 0x8000 ... 0xffff
@@ -282,8 +274,7 @@ public class ProgramStatement {
             // next token is a parenthesis
             if ((i < strippedTokenList.size() - 1)) {
                 nextTokenType = strippedTokenList.get(i + 1).getType();
-                if (tokenType != TokenTypes.LEFT_PAREN && tokenType != TokenTypes.RIGHT_PAREN &&
-                        nextTokenType != TokenTypes.LEFT_PAREN && nextTokenType != TokenTypes.RIGHT_PAREN) {
+                if (tokenType != TokenTypes.LEFT_PAREN && tokenType != TokenTypes.RIGHT_PAREN && nextTokenType != TokenTypes.LEFT_PAREN && nextTokenType != TokenTypes.RIGHT_PAREN) {
                     basicStatementElement = ",";
                     basic.append(basicStatementElement);
                     basicStatementList.addString(basicStatementElement);
@@ -292,9 +283,6 @@ public class ProgramStatement {
         }
         this.basicAssemblyStatement = basic.toString();
     } //buildBasicStatementFromBasicInstruction()
-
-
-    /////////////////////////////////////////////////////////////////////////////
 
     /**
      * Given the current statement in Basic Assembly format (see above), build the
@@ -311,8 +299,7 @@ public class ProgramStatement {
         // pseudo-instruction (expansion must be to all basic instructions).
         // This is an error on the part of the pseudo-instruction author.
         catch (ClassCastException cce) {
-            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0,
-                    "INTERNAL ERROR: pseudo-instruction expansion contained a pseudo-instruction"));
+            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "INTERNAL ERROR: pseudo-instruction expansion contained a pseudo-instruction"));
             return;
         }
         BasicInstructionFormat format = ((BasicInstruction) instruction).getInstructionFormat();
@@ -321,8 +308,7 @@ public class ProgramStatement {
             if ((this.textAddress & 0xF0000000) != (this.operands[0] & 0xF0000000)) {
                 // attempt to jump beyond 28-bit byte (26-bit word) address range. 
                 // SPIM flags as warning, I'll flag as error b/c MARS text segment not long enough for it to be OK.
-                errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0,
-                        "Jump target word address beyond 26-bit range"));
+                errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "Jump target word address beyond 26-bit range"));
                 return;
             }
             // Note the  bit shift to make this a word address.
@@ -340,15 +326,11 @@ public class ProgramStatement {
         this.binaryStatement = Binary.binaryStringToInt(this.machineStatement);
     } // buildMachineStatementFromBasicStatement(
 
-
-    /////////////////////////////////////////////////////////////////////////////
-
     /**
      * Crude attempt at building String representation of this complex structure.
      *
      * @return A String representing the ProgramStatement.
      **/
-
     public String toString() {
         // a crude attempt at string formatting.  Where's C when you need it?
         String blanks = "                               ";
@@ -378,7 +360,6 @@ public class ProgramStatement {
      *
      * @param statement A String containing equivalent Basic Assembly statement.
      **/
-
     public void setBasicAssemblyStatement(String statement) {
         basicAssemblyStatement = statement;
     }
@@ -389,7 +370,6 @@ public class ProgramStatement {
      *
      * @param statement A String containing equivalent machine code.
      **/
-
     public void setMachineStatement(String statement) {
         machineStatement = statement;
     }
@@ -399,11 +379,9 @@ public class ProgramStatement {
      *
      * @param binaryCode An int containing equivalent binary machine code.
      **/
-
     public void setBinaryStatement(int binaryCode) {
         binaryStatement = binaryCode;
     }
-
 
     /**
      * associates MIPS source statement.  Used by assembler when generating basic
@@ -411,11 +389,9 @@ public class ProgramStatement {
      *
      * @param src a MIPS source statement.
      **/
-
     public void setSource(String src) {
         source = src;
     }
-
 
     /**
      * Produces MIPSProgram object representing the source file containing this statement.
@@ -435,13 +411,11 @@ public class ProgramStatement {
         return (sourceMIPSProgram == null) ? "" : sourceMIPSProgram.getFilename();
     }
 
-
     /**
      * Produces MIPS source statement.
      *
      * @return The MIPS source statement.
      **/
-
     public String getSource() {
         return source;
     }
@@ -451,7 +425,6 @@ public class ProgramStatement {
      *
      * @return The MIPS source statement line number.
      **/
-
     public int getSourceLine() {
         return sourceLine;
     }
@@ -462,7 +435,6 @@ public class ProgramStatement {
      *
      * @return The Basic Assembly statement.
      **/
-
     public String getBasicAssemblyStatement() {
         return basicAssemblyStatement;
     }
@@ -484,7 +456,6 @@ public class ProgramStatement {
      *
      * @return The String version of 32-bit binary machine code.
      **/
-
     public String getMachineStatement() {
         return machineStatement;
     }
@@ -558,32 +529,28 @@ public class ProgramStatement {
         }
     }
 
-
-    //////////////////////////////////////////////////////////////////////////////
-    //  Given operand (register or integer) and mask character ('f', 's', or 't'),
-    //  generate the correct sequence of bits and replace the mask with them.
+    /**
+     * Given operand (register or integer) and mask character ('f', 's', or 't'),
+     * generate the correct sequence of bits and replace the mask with them.
+     */
     private void insertBinaryCode(int value, char mask, ErrorList errors) {
         int startPos = this.machineStatement.indexOf(mask);
         int endPos = this.machineStatement.lastIndexOf(mask);
         if (startPos == -1 || endPos == -1) { // should NEVER occur
-            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0,
-                    "INTERNAL ERROR: mismatch in number of operands in statement vs mask"));
+            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "INTERNAL ERROR: mismatch in number of operands in statement vs mask"));
             return;
         }
         String bitString = Binary.intToBinaryString(value, endPos - startPos + 1);
         String state = this.machineStatement.substring(0, startPos) + bitString;
-        if (endPos < this.machineStatement.length() - 1)
-            state = state + this.machineStatement.substring(endPos + 1);
+        if (endPos < this.machineStatement.length() - 1) state = state + this.machineStatement.substring(endPos + 1);
         this.machineStatement = state;
     } // insertBinaryCode()
 
-
-    //////////////////////////////////////////////////////////////////////////////
-    /*
-     *   Given a model BasicInstruction and the assembled (not source) operand array for a statement,
-     *   this method will construct the corresponding basic instruction list.  This method is
-     *   used by the constructor that is given only the int address and binary code.  It is not
-     *   intended to be used when source code is available.  DPS 11-July-2013
+    /**
+     * Given a model BasicInstruction and the assembled (not source) operand array for a statement,
+     * this method will construct the corresponding basic instruction list.  This method is
+     * used by the constructor that is given only the int address and binary code.  It is not
+     * intended to be used when source code is available.  DPS 11-July-2013
      */
     private BasicStatementList buildBasicStatementListFromBinaryCode(int binary, BasicInstruction instr, int[] operands, int numOperands) {
         BasicStatementList statementList = new BasicStatementList();
@@ -633,22 +600,17 @@ public class ProgramStatement {
         return statementList;
     } // buildBasicStatementListFromBinaryCode()
 
-
-    //////////////////////////////////////////////////////////
-    //
-    //  Little class to represent basic statement as list
-    //  of elements.  Each element is either a string, an
-    //  address or a value.  The toString() method will
-    //  return a string representation of the basic statement
-    //  in which any addresses or values are rendered in the 
-    //  current number format (e.g. decimal or hex).
-    //
-    //  NOTE: Address operands on Branch instructions are
-    //  considered values instead of addresses because they
-    //  are relative to the PC.
-    //
-    //  DPS 29-July-2010
-
+    /**
+     * Little class to represent basic statement as list
+     * of elements.  Each element is either a string, an
+     * address or a value.  The toString() method will
+     * return a string representation of the basic statement
+     * in which any addresses or values are rendered in the
+     * current number format (e.g. decimal or hex).
+     * NOTE: Address operands on Branch instructions are
+     * considered values instead of addresses because they
+     * are relative to the PC.
+     */
     private static class BasicStatementList {
 
         private final ArrayList<ListElement> list;

@@ -11,7 +11,6 @@ import edu.missouristate.mars.simulator.*;
  * @author Pete Sanderson
  * @version August 2003
  **/
-
 public class ProcessingException extends Exception {
     private final ErrorList errs;
 
@@ -55,7 +54,6 @@ public class ProcessingException extends Exception {
         // been incremented).
     }
 
-
     /**
      * Constructor for ProcessingException to handle runtime exceptions
      *
@@ -68,14 +66,12 @@ public class ProcessingException extends Exception {
         Exceptions.setRegisters(cause);
     }
 
-
     /**
      * Constructor for ProcessingException to handle address runtime exceptions
      *
      * @param ps  a ProgramStatement of statement causing runtime exception
      * @param aee AddressErrorException object containing specialized error message, cause, address
      **/
-
     public ProcessingException(ProgramStatement ps, AddressErrorException aee) {
         this(ps, aee.getMessage());
         Exceptions.setRegisters(aee.getType(), aee.getAddress());
@@ -98,9 +94,7 @@ public class ProcessingException extends Exception {
      * @see ErrorList
      * @see ErrorMessage
      **/
-
     public ErrorList errors() {
         return errs;
     }
-
 }
