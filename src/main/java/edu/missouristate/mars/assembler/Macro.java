@@ -102,9 +102,7 @@ public class Macro {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Macro macro) {
-            return macro.getName().equals(name) && (macro.args.size() == args.size());
-        }
+        if (obj instanceof Macro macro) return macro.getName().equals(name) && (macro.args.size() == args.size());
         return super.equals(obj);
     }
 
@@ -123,7 +121,7 @@ public class Macro {
      * arguments
      */
     public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
-        TokenList tokens = (TokenList) program.getTokenList().get(line - 1);
+        TokenList tokens = program.getTokenList().get(line - 1);
         String s = program.getSourceLine(line);
 
         for (int i = tokens.size() - 1; i >= 0; i--) {
@@ -137,12 +135,13 @@ public class Macro {
                     }
                 }
                 String substitute = token.getValue();
-                if (repl != -1)
-                    substitute = args.get(repl + 1).toString();
-                else {
-                    errors.add(new ErrorMessage(program, token.getSourceLine(),
-                            token.getStartPos(), "Unknown macro parameter"));
-                }
+                if (repl != -1) substitute = args.get(repl + 1).toString();
+                else errors.add(new ErrorMessage(
+                    program,
+                    token.getSourceLine(),
+                    token.getStartPos(),
+                    "Unknown macro parameter"
+                ));
                 s = replaceToken(s, token, substitute);
             } else if (tokenIsMacroLabel(token.getValue())) {
                 String substitute = token.getValue() + "_M" + counter;
@@ -151,7 +150,6 @@ public class Macro {
         }
         return s;
     }
-
 
     /**
      * @return true if <code>value</code> is name of a label defined in this macro's body.
@@ -163,15 +161,19 @@ public class Macro {
     /**
      * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with <code>substitute</code>.
      */
-// Initially the position of the substitute was based on token position but that proved problematic
-// in that the source string does not always match the token list from which the token comes. The
-// token list has already had .eqv equivalences applied whereas the source may not.  This is because
-// the source comes from a macro definition?  That has proven to be a tough question to answer. 
-// DPS 12-feb-2013
     private String replaceToken(String source, Token tokenToBeReplaced, String substitute) {
+        /*
+         Initially, the position of the substitute was based on token position but that proved problematic
+         in that the source string does not always match the token list from which the token comes. The
+         token list has already had .eqv equivalences applied whereas the source may not.  This is because
+         the source comes from a macro definition?  That has proven to be a tough question to answer.
+         DPS 12-feb-2013
+        */
         String stringToBeReplaced = tokenToBeReplaced.getValue();
         int pos = source.indexOf(stringToBeReplaced);
-        return (pos < 0) ? source : source.substring(0, pos) + substitute + source.substring(pos + stringToBeReplaced.length());
+        return (pos < 0)
+                ? source
+                : source.substring(0, pos) + substitute + source.substring(pos + stringToBeReplaced.length());
     }
 
     /**
@@ -181,16 +183,17 @@ public class Macro {
      */
     public static boolean tokenIsMacroParameter(String tokenValue, boolean acceptSpimStyleParameters) {
         if (acceptSpimStyleParameters) {
-            // Bug fix: SPIM accepts parameter names that start with $ instead of %.  This can
-            // lead to problems since register names also start with $.  This IF condition
-            // should filter out register names.  Originally filtered those from regular set but not
-            // from Coprocessor0 or Coprocessor1 register sets.  Expanded the condition.
-            // DPS  7-July-2014.
+            /*
+             Bug fix: SPIM accepts parameter names that start with $ instead of %.  This can
+             lead to problems since register names also start with $.  This IF condition
+             should filter out register names.  Originally filtered those from regular set but not
+             from Coprocessor0 or Coprocessor1 register sets.  Expanded the condition.
+             DPS 7-July-2014.
+            */
             if (!tokenValue.isEmpty() && tokenValue.charAt(0) == '$' &&
                     RegisterFile.getUserRegister(tokenValue) == null &&
                     Coprocessor0.getRegister(tokenValue) == null &&  // added 7-July-2014
-                    Coprocessor1.getRegister(tokenValue) == null)    // added 7-July-2014
-            {
+                    Coprocessor1.getRegister(tokenValue) == null) {  // added 7-July-2014
                 return true;
             }
         }
@@ -207,6 +210,4 @@ public class Macro {
     public void readyForCommit() {
         Collections.sort(labels);
     }
-
-
 }

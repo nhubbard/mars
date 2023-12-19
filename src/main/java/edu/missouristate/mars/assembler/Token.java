@@ -11,7 +11,6 @@ import edu.missouristate.mars.*;
  **/
 
 public class Token {
-
     private TokenTypes type;
     private final String value;
     private final MIPSProgram sourceMIPSProgram;
@@ -31,7 +30,6 @@ public class Token {
      * @param start             The starting position in that line number of this token's source value.
      * @see TokenTypes
      **/
-
     public Token(TokenTypes type, String value, MIPSProgram sourceMIPSProgram, int line, int start) {
         this.type = type;
         this.value = value;
@@ -41,7 +39,6 @@ public class Token {
         this.originalMIPSProgram = sourceMIPSProgram;
         this.originalSourceLine = line;
     }
-
 
     /**
      * Set original program and line number for this token.
@@ -101,7 +98,6 @@ public class Token {
      *
      * @return String containing source code of this token.
      **/
-
     public String getValue() {
         return value;
     }
@@ -112,7 +108,6 @@ public class Token {
      *
      * @return String version of the token.
      */
-
     public String toString() {
         return value;
     }
@@ -122,7 +117,6 @@ public class Token {
      *
      * @return MIPSProgram object associated with this token.
      **/
-
     public MIPSProgram getSourceMIPSProgram() {
         return sourceMIPSProgram;
     }
@@ -132,7 +126,6 @@ public class Token {
      *
      * @return line number in source program of this token.
      **/
-
     public int getSourceLine() {
         return sourceLine;
     }
@@ -142,10 +135,7 @@ public class Token {
      *
      * @return first character position within source program line of this token.
      **/
-
     public int getStartPos() {
         return sourcePos;
     }
-
 }
-

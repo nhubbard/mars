@@ -21,21 +21,25 @@ import java.util.ArrayList;
  */
 public class MacroPool {
     private final MIPSProgram program;
+
     /**
      * List of macros defined by now
      */
     private final ArrayList<Macro> macroList;
+
     /**
      * @see MacroPool#beginMacro
      */
     private Macro current;
+
     private final ArrayList<Integer> callStack;
+
     private final ArrayList<Integer> callStackOrigLines;
+
     /**
      * @see #getNextCounter()
      */
     private int counter;
-
 
     /**
      * Create an empty MacroPool for given program
@@ -60,7 +64,6 @@ public class MacroPool {
      *
      * @param nameToken Token containing name of macro after <code>.macro</code> directive
      */
-
     public void beginMacro(Token nameToken) {
         current = new Macro();
         current.setName(nameToken.getValue());
@@ -76,7 +79,6 @@ public class MacroPool {
      *
      * @param endToken Token containing <code>.end_macro</code> directive in source code
      */
-
     public void commitMacro(Token endToken) {
         current.setToLine(endToken.getSourceLine());
         current.setOriginalToLine(endToken.getOriginalSourceLine());
@@ -93,14 +95,14 @@ public class MacroPool {
      * tokens passed
      */
     public Macro getMatchingMacro(TokenList tokens, int callerLine) {
-        if (tokens.isEmpty())
-            return null;
+        if (tokens.isEmpty()) return null;
         Macro ret = null;
         Token firstToken = tokens.get(0);
         for (Macro macro : macroList) {
             if (macro.getName().equals(firstToken.getValue())
                     && macro.getArgs().size() + 1 == tokens.size()
-                    //&& macro.getToLine() < callerLine  // condition removed; doesn't work nicely in conjunction with .include, and does not seem necessary.  DPS 8-MAR-2013
+                    //&& macro.getToLine() < callerLine
+                    // condition removed; doesn't work nicely in conjunction with .include, and does not seem necessary.  DPS 8-MAR-2013
                     && (ret == null || ret.getFromLine() < macro.getFromLine()))
                 ret = macro;
         }
@@ -113,11 +115,9 @@ public class MacroPool {
      */
     public boolean matchesAnyMacroName(String value) {
         for (Macro macro : macroList)
-            if (macro.getName().equals(value))
-                return true;
+            if (macro.getName().equals(value)) return true;
         return false;
     }
-
 
     public Macro getCurrent() {
         return current;
@@ -138,11 +138,9 @@ public class MacroPool {
         return counter++;
     }
 
-
     public ArrayList<Integer> getCallStack() {
         return callStack;
     }
-
 
     public boolean pushOnCallStack(Token token) { //returns true if detected expansion loop
         int sourceLine = token.getSourceLine();
@@ -159,12 +157,10 @@ public class MacroPool {
         callStackOrigLines.remove(callStackOrigLines.size() - 1);
     }
 
-
     public String getExpansionHistory() {
         StringBuilder ret = new StringBuilder();
         for (int i = 0; i < callStackOrigLines.size(); i++) {
-            if (i > 0)
-                ret.append("->");
+            if (i > 0) ret.append("->");
             ret.append(callStackOrigLines.get(i).toString());
         }
         return ret.toString();

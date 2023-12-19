@@ -9,7 +9,6 @@ package edu.missouristate.mars.assembler;
  * @author Pete Sanderson
  * @version August 2003
  */
-
 public interface TranslationCode {
     /**
      * This is a callback method defined in anonymous class specified as

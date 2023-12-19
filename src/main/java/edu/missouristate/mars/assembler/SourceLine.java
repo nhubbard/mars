@@ -45,7 +45,6 @@ public class SourceLine {
      *
      * @return File name as String
      */
-
     public String getFilename() {
         return filename;
     }
@@ -55,7 +54,6 @@ public class SourceLine {
      *
      * @return Line number of source statement
      */
-
     public int getLineNumber() {
         return lineNumber;
     }
@@ -65,7 +63,6 @@ public class SourceLine {
      *
      * @return program as MIPSProgram object
      */
-
     public MIPSProgram getMIPSProgram() {
         return mipsProgram;
     }

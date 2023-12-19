@@ -13,7 +13,6 @@ import edu.missouristate.mars.mips.hardware.*;
  **/
 
 public final class TokenTypes {
-
     public static final String TOKEN_DELIMITERS = "\t ,()";
     public static final TokenTypes COMMENT = new TokenTypes("COMMENT");
     public static final TokenTypes DIRECTIVE = new TokenTypes("DIRECTIVE");
@@ -70,7 +69,6 @@ public final class TokenTypes {
      * @return Returns the corresponding TokenTypes object if the parameter matches a
      * defined MIPS token type, else returns <tt>null</tt>.
      **/
-
     public static TokenTypes matchTokenType(String value) {
 
         TokenTypes type = null;
@@ -118,10 +116,12 @@ public final class TokenTypes {
         if (reg != null)
             return TokenTypes.FP_REGISTER_NAME;
 
-        // See if it is an immediate (constant) integer value
-        // Classify based on # bits needed to represent in binary
-        // This is needed because most immediate operands limited to 16 bits
-        // others limited to 5 bits unsigned (shift amounts) others 32 bits.
+        /*
+         See if it is an immediate (constant) integer value
+         Classify based on # bits needed to represent in binary
+         This is needed because most immediate operands limited to 16 bits
+         others limited to 5 bits unsigned (shift amounts) others 32 bits.
+        */
         try {
 
             int i = Binary.stringToInt(value);   // KENV 1/6/05
@@ -224,7 +224,6 @@ public final class TokenTypes {
                 type == TokenTypes.INTEGER_16U || type == TokenTypes.INTEGER_32;
     }
 
-
     /**
      * Lets you know if given tokentype is for floating point numbers (REAL_NUMBER).
      *
@@ -236,14 +235,16 @@ public final class TokenTypes {
     }
 
 
-    // COD2, A-51:  "Identifiers are a sequence of alphanumeric characters,
-    //               underbars (_), and dots (.) that do not begin with a number."
-    // Ideally this would be in a separate Identifier class but I did not see an immediate
-    // need beyond this method (refactoring effort would probably identify other uses
-    // related to symbol table).
-    //
-    // DPS 14-Jul-2008: added '$' as valid symbol.  Permits labels to include $.
-    //                  MIPS-target GCC will produce labels that start with $.
+    /*
+     COD2, A-51:  "Identifiers are a sequence of alphanumeric characters,
+                   underbars (_), and dots (.) that do not begin with a number."
+     Ideally this would be in a separate Identifier class but I did not see an immediate
+     need beyond this method (refactoring effort would probably identify other uses
+     related to symbol table).
+
+     DPS 14-Jul-2008: added '$' as valid symbol.  Permits labels to include $.
+                      MIPS-target GCC will produce labels that start with $.
+    */
     public static boolean isValidIdentifier(String value) {
         boolean result =
                 (Character.isLetter(value.charAt(0)) || value.charAt(0) == '_' || value.charAt(0) == '.' || value.charAt(0) == '$');
@@ -255,5 +256,4 @@ public final class TokenTypes {
         }
         return result;
     }
-
 }
