@@ -2015,7 +2015,7 @@ public class JEditTextArea extends JComponent {
      * @return String containing auto-indent characters to be inserted into text
      */
     public String getAutoIndent() {
-        return (Globals.getSettings().getBooleanSetting(Settings.AUTO_INDENT)) ? getLeadingWhiteSpace() : "";
+        return (Globals.getSettings().getBooleanSetting(Settings.ENABLE_AUTO_INDENT)) ? getLeadingWhiteSpace() : "";
     }
 
     /**

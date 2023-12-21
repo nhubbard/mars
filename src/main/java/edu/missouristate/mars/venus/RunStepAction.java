@@ -93,7 +93,7 @@ public class RunStepAction extends GuiAction {
     private void processProgramArgumentsIfAny() {
         String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
         if (programArguments == null || programArguments.isEmpty() ||
-                !Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
+                !Globals.getSettings().getBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS)) {
             return;
         }
         new ProgramArgumentList(programArguments).storeProgramArguments();

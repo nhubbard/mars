@@ -40,16 +40,13 @@ public class ToolLoader {
      */
     public JMenu buildToolsMenu() {
         JMenu menu = null;
-        ArrayList<MarsTool> marsToolList = loadMarsTools();
+        ArrayList<MarsToolClassAndInstance> marsToolList = loadMarsTools();
         if (!marsToolList.isEmpty()) {
             menu = new JMenu(TOOLS_MENU_NAME);
             menu.setMnemonic(KeyEvent.VK_T);
             // traverse array list and build menu
-            MarsToolClassAndInstance listItem;
-            for (Object o : marsToolList) {
-                listItem = (MarsToolClassAndInstance) o;
+            for (MarsToolClassAndInstance listItem : marsToolList)
                 menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
-            }
         }
         return menu;
     }

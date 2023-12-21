@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
 import java.awt.event.*;
+import java.util.Objects;
 import javax.swing.*;
 
 /**
@@ -166,7 +167,7 @@ public class RunGoAction extends GuiAction {
     private void processProgramArgumentsIfAny() {
         String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
         if (programArguments == null || programArguments.isEmpty() ||
-                !Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
+                !Globals.getSettings().getBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS)) {
             return;
         }
         new ProgramArgumentList(programArguments).storeProgramArguments();

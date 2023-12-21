@@ -157,7 +157,7 @@ public class Globals {
             instructionSet = new InstructionSet();
             instructionSet.populate();
             symbolTable = new SymbolTable("global");
-            settings = new Settings(gui);
+            settings = new Settings();
             initialized = true;
             debug = false;
             memory.clear(); // will establish memory configuration from setting

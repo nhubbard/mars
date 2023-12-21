@@ -409,7 +409,7 @@ public class MarsLaunch {
         if (filenameList.isEmpty()) return false;
         try {
             Globals.getSettings().setBooleanSettingNonPersistent(Settings.DELAYED_BRANCHING_ENABLED, delayedBranching);
-            Globals.getSettings().setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
+            Globals.getSettings().setBooleanSettingNonPersistent(Settings.ENABLE_SELF_MODIFYING_CODE, selfModifyingCode);
             File mainFile = new File(filenameList.get(0)).getAbsoluteFile();// The first file is "main" file
             ArrayList<String> filesToAssemble;
             if (assembleProject) {

@@ -172,7 +172,7 @@ public class SettingsEditorAction extends GuiAction {
         protected void apply(Font font) {
             Globals.getSettings().setBooleanSetting(Settings.GENERIC_TEXT_EDITOR, genericEditorCheck.isSelected());
             Globals.getSettings().setBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING, lineHighlightCheck.isSelected());
-            Globals.getSettings().setBooleanSetting(Settings.AUTO_INDENT, autoIndentCheck.isSelected());
+            Globals.getSettings().setBooleanSetting(Settings.ENABLE_AUTO_INDENT, autoIndentCheck.isSelected());
             Globals.getSettings().setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
             Globals.getSettings().setEditorTabSize(tabSizeSelector.getValue());
             if (syntaxStylesAction) {
@@ -247,7 +247,7 @@ public class SettingsEditorAction extends GuiAction {
             lineHighlightCheck.setToolTipText(CURRENT_LINE_HIGHLIGHT_TOOL_TIP_TEXT);
 
             // auto-indent
-            initialAutoIndent = Globals.getSettings().getBooleanSetting(Settings.AUTO_INDENT);
+            initialAutoIndent = Globals.getSettings().getBooleanSetting(Settings.ENABLE_AUTO_INDENT);
             autoIndentCheck = new JCheckBox("Auto-Indent");
             autoIndentCheck.setSelected(initialAutoIndent);
             autoIndentCheck.setToolTipText(AUTO_INDENT_TOOL_TIP_TEXT);

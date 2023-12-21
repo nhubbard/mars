@@ -23,6 +23,7 @@ import java.util.Random;
  * animating the block of initial access (first block of set).  Now it animates the block
  * of final access (where address found or stored).  Also added log display to GUI (previously System.out).</p>
  */
+@SuppressWarnings("FieldCanBeLocal")
 public class CacheSimulator extends AbstractMarsToolAndApplication {
     private static boolean debug = false; // controls display of debugging info
     private static final String version = "Version 1.2";
@@ -51,8 +52,11 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     private final String[] cacheBlockCountChoices = {"1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "1024", "2048"};
     private final String[] placementPolicyChoices = {"Direct Mapping", "Fully Associative", "N-way Set Associative"};
     private final int DIRECT = 0;
+    private final int SET = 2;
+    private final int FULL = 1;
     private final String[] replacementPolicyChoices = {"LRU", "Random"};
     private final int LRU = 0;
+    private final int RANDOM = 1;
     private String[] cacheSetSizeChoices; // will change dynamically based on the other selections
     private final int defaultCacheBlockCountIndex = 3;
     private final int defaultPlacementPolicyIndex = DIRECT;
@@ -447,8 +451,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         String[] choices;
         int firstBlockCountIndex = 0;
         // NOTE: these have to match placementPolicyChoices order!
-        int SET = 2;
-        int FULL = 1;
+
         switch (placementPolicyIndex) {
             case DIRECT:
                 choices = new String[1];
@@ -751,7 +754,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
             int replaceBlock = first;
             if (first != last) {
                 // NOTE: these have to match replacementPolicyChoices order!
-                int RANDOM = 1;
+
                 switch (cacheReplacementSelector.getSelectedIndex()) {
                     case RANDOM:
                         replaceBlock = first + randu.nextInt(last - first + 1);

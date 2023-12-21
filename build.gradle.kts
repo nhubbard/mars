@@ -61,8 +61,8 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_20
-    targetCompatibility = JavaVersion.VERSION_20
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 tasks {
@@ -96,9 +96,9 @@ tasks {
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_20)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
 
-        jvmToolchain(20)
+        jvmToolchain(21)
     }
 }

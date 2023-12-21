@@ -162,12 +162,12 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         tableScroller = new JScrollPane(table, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
         contentPane.add(tableScroller);
-        if (Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS)) {
+        if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS)) {
             addProgramArgumentsPanel();
         }
 
         deleteAsTextSegmentObserver();
-        if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+        if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
             addAsTextSegmentObserver();
         }
     }
@@ -284,13 +284,13 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
                 // Seems reasonable for text segment display to be accurate in cases where existing code is overwritten
                 // even when running at unlimited speed.  DPS 10-July-2013
                 deleteAsTextSegmentObserver();
-                if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) { // && (notice.getRunSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.getMaxSteps()==1)) {
+                if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) { // && (notice.getRunSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.getMaxSteps()==1)) {
                     addAsTextSegmentObserver();
                 }
             }
         } else if (observable == Globals.getSettings()) {
             deleteAsTextSegmentObserver();
-            if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
                 addAsTextSegmentObserver();
             }
         } else if (obj instanceof MemoryAccessNotice access) {
@@ -692,7 +692,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         public boolean isCellEditable(int row, int col) {
             //Note that the data/cell address is constant,
             //no matter where the cell appears onscreen.
-            return col == BREAK_COLUMN || (col == CODE_COLUMN && Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
+            return col == BREAK_COLUMN || (col == CODE_COLUMN && Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE));
         }
 
         /**
@@ -802,11 +802,11 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
                 if (Simulator.inDelaySlot() || textSegment.inDelaySlot) {
                     cell.setBackground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_BACKGROUND));
                     cell.setForeground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_FOREGROUND));
-                    cell.setFont(settings.getFontByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_FONT));
+                    cell.setFont(settings.getFontByPosition(Settings.TEXT_SEGMENT_DELAY_SLOT_HIGHLIGHT_FONT));
                 } else {
                     cell.setBackground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_HIGHLIGHT_BACKGROUND));
                     cell.setForeground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_HIGHLIGHT_FOREGROUND));
-                    cell.setFont(settings.getFontByPosition(Settings.TEXTSEGMENT_HIGHLIGHT_FONT));
+                    cell.setFont(settings.getFontByPosition(Settings.TEXT_SEGMENT_HIGHLIGHT_FONT));
                 }
             } else if (row % 2 == 0) {
                 cell.setBackground(settings.getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));

@@ -347,7 +347,7 @@ public class Binary {
 
     public static int stringToInt(String s) throws NumberFormatException {
         String work = s;
-        int result;
+        int result = 0;
         // First, use Integer.decode().  This will validate most, but it flags
         // valid hex two's complement values as exceptions.  We'll catch those and
         // do our own validation.

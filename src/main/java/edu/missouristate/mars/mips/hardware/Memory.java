@@ -381,7 +381,7 @@ public class Memory extends Observable {
             // Burch Mod (Jan 2013): replace throw with call to setStatement
             // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
 
-            if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
                 ProgramStatement oldStatement = getStatementNoNotify(address);
                 if (oldStatement != null) {
                     oldValue = oldStatement.getBinaryStatement();
@@ -444,7 +444,7 @@ public class Memory extends Observable {
         } else if (inTextSegment(address)) {
             // Burch Mod (Jan 2013): replace throw with call to setStatement
             // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
                 ProgramStatement oldStatement = getStatementNoNotify(address);
                 if (oldStatement != null) {
                     oldValue = oldStatement.getBinaryStatement();
@@ -624,7 +624,7 @@ public class Memory extends Observable {
         } else if (inTextSegment(address)) {
             // Burch Mod (Jan 2013): replace throw with calls to getStatementNoNotify & getBinaryStatement
             // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
                 ProgramStatement stmt = getStatementNoNotify(address);
                 value = stmt == null ? 0 : stmt.getBinaryStatement();
             } else {
@@ -690,7 +690,7 @@ public class Memory extends Observable {
         } else if (inTextSegment(address)) {
             // Burch Mod (Jan 2013): replace throw with calls to getStatementNoNotify & getBinaryStatement
             // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
                 ProgramStatement stmt = getStatementNoNotify(address);
                 value = stmt == null ? 0 : stmt.getBinaryStatement();
             } else {
@@ -899,7 +899,7 @@ public class Memory extends Observable {
                     "fetch address for text segment not aligned to word boundary ",
                     Exceptions.ADDRESS_EXCEPTION_LOAD, address);
         }
-        if (!Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)
+        if (!Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)
                 && !(inTextSegment(address) || inKernelTextSegment(address))) {
             throw new AddressErrorException(
                     "fetch address for text segment out of range ",

@@ -474,14 +474,14 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
                     // temporarily enabling the setting as "non persistent" so it won't write through to the registry.
                     if (Memory.inTextSegment(address)) {
                         int displayValue = 0;
-                        if (!Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
-                            Globals.getSettings().setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, true);
+                        if (!Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
+                            Globals.getSettings().setBooleanSettingNonPersistent(Settings.ENABLE_SELF_MODIFYING_CODE, true);
                             try {
                                 displayValue = Globals.memory.getWordNoNotify(address);
                             } catch (AddressErrorException e) {
                                 // Still got an exception?  Doesn't seem possible but if we drop through it will write default value 0.
                             }
-                            Globals.getSettings().setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, false);
+                            Globals.getSettings().setBooleanSettingNonPersistent(Settings.ENABLE_SELF_MODIFYING_CODE, false);
                         }
                         ((DataTableModel) dataModel).setDisplayAndModelValueAt(NumberDisplayBaseChooser.formatNumber(displayValue, valueBase), row, column);
                     }
@@ -593,7 +593,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         heapButton.setEnabled(true);
         extnButton.setEnabled(true);
         mmioButton.setEnabled(true);
-        textButton.setEnabled(settings.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
+        textButton.setEnabled(settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE));
         kernButton.setEnabled(true);
         prevButton.setEnabled(true);
         nextButton.setEnabled(true);
@@ -922,7 +922,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
             if (settings.getBooleanSetting(Settings.DATA_SEGMENT_HIGHLIGHTING) && addressHighlighting && rowFirstAddress == addressRowFirstAddress && column == addressColumn) {
                 cell.setBackground(settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_BACKGROUND));
                 cell.setForeground(settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_FOREGROUND));
-                cell.setFont(settings.getFontByPosition(Settings.DATASEGMENT_HIGHLIGHT_FONT));
+                cell.setFont(settings.getFontByPosition(Settings.DATA_SEGMENT_HIGHLIGHT_FONT));
             } else if (row % 2 == 0) {
                 cell.setBackground(settings.getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
                 cell.setForeground(settings.getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));

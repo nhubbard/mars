@@ -546,7 +546,7 @@ public class VenusUI extends JFrame {
         JCheckBoxMenuItem settingsDelayedBranching = new JCheckBoxMenuItem(settingsDelayedBranchingAction);
         settingsDelayedBranching.setSelected(Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED));
         JCheckBoxMenuItem settingsSelfModifyingCode = new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
-        settingsSelfModifyingCode.setSelected(Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
+        settingsSelfModifyingCode.setSelected(Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE));
         JCheckBoxMenuItem settingsAssembleOnOpen = new JCheckBoxMenuItem(settingsAssembleOnOpenAction);
         settingsAssembleOnOpen.setSelected(Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ON_OPEN_ENABLED));
         JCheckBoxMenuItem settingsAssembleAll = new JCheckBoxMenuItem(settingsAssembleAllAction);
@@ -556,7 +556,7 @@ public class VenusUI extends JFrame {
         JCheckBoxMenuItem settingsStartAtMain = new JCheckBoxMenuItem(settingsStartAtMainAction);
         settingsStartAtMain.setSelected(Globals.getSettings().getBooleanSetting(Settings.START_AT_MAIN));
         JCheckBoxMenuItem settingsProgramArguments = new JCheckBoxMenuItem(settingsProgramArgumentsAction);
-        settingsProgramArguments.setSelected(Globals.getSettings().getBooleanSetting(Settings.PROGRAM_ARGUMENTS));
+        settingsProgramArguments.setSelected(Globals.getSettings().getBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS));
         JMenuItem settingsEditor = new JMenuItem(settingsEditorAction);
         JMenuItem settingsHighlighting = new JMenuItem(settingsHighlightingAction);
         JMenuItem settingsExceptionHandler = new JMenuItem(settingsExceptionHandlerAction);

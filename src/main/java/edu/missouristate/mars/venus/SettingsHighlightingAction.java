@@ -35,9 +35,9 @@ public class SettingsHighlightingAction extends GuiAction {
     };
 
     private static final int[] fontSettingPositions = {
-            Settings.TEXTSEGMENT_HIGHLIGHT_FONT,
-            Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_FONT,
-            Settings.DATASEGMENT_HIGHLIGHT_FONT,
+            Settings.TEXT_SEGMENT_HIGHLIGHT_FONT,
+            Settings.TEXT_SEGMENT_DELAY_SLOT_HIGHLIGHT_FONT,
+            Settings.DATA_SEGMENT_HIGHLIGHT_FONT,
             Settings.REGISTER_HIGHLIGHT_FONT,
             Settings.EVEN_ROW_FONT,
             Settings.ODD_ROW_FONT

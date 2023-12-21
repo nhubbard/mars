@@ -636,19 +636,19 @@ public class ProgramStatement {
             int valueBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
 
             StringBuilder result = new StringBuilder();
-            for (ListElement(int type, String sValue, int iValue) : list) {
-                switch (type) {
+            for (ListElement element : list) {
+                switch (element.type) {
                     case 0:
-                        result.append(sValue);
+                        result.append(element.sValue);
                         break;
                     case 1:
-                        result.append(NumberDisplayBaseChooser.formatNumber(iValue, addressBase));
+                        result.append(NumberDisplayBaseChooser.formatNumber(element.iValue, addressBase));
                         break;
                     case 2:
                         if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
-                            result.append(Binary.intToHexString(iValue)); // 13-July-2011, was: intToHalfHexString()
+                            result.append(Binary.intToHexString(element.iValue)); // 13-July-2011, was: intToHalfHexString()
                         } else {
-                            result.append(NumberDisplayBaseChooser.formatNumber(iValue, valueBase));
+                            result.append(NumberDisplayBaseChooser.formatNumber(element.iValue, valueBase));
                         }
                     default:
                         break;

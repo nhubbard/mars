@@ -21,7 +21,7 @@ public class SettingsSelfModifyingCodeAction extends GuiAction {
     }
 
     public void actionPerformed(ActionEvent e) {
-        Globals.getSettings().setBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED,
+        Globals.getSettings().setBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE,
                 ((JCheckBoxMenuItem) e.getSource()).isSelected());
     }
 
