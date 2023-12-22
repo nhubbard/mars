@@ -140,7 +140,6 @@ public class MarsBot implements Observer, MarsTool {
     /* ------------------------------------------------------------------------- */
     private class MarsBotDisplay extends JPanel {
 
-
         public MarsBotDisplay(int tw, int th) {
 
         }
@@ -180,7 +179,6 @@ public class MarsBot implements Observer, MarsTool {
     } // end private inner class MarsBotDisplay
 
     /* ------------------------------------------------------------------------- */
-
 
     public String getName() {
         return "Mars Bot";

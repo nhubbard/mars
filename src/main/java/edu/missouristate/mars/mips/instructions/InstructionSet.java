@@ -206,7 +206,7 @@ public class InstructionSet {
                             long product = (long) RegisterFile.getValue(operands[0])
                                     * (long) RegisterFile.getValue(operands[1]);
                             // Register 33 is HIGH and 34 is LOW.
-                            long contentsHiLo = Binary.twoIntsToLong(
+                            long contentsHiLo = Binary.twoIntegersToLong(
                                     RegisterFile.getValue(33), RegisterFile.getValue(34));
                             long sum = contentsHiLo + product;
                             RegisterFile.updateRegister(33, Binary.highOrderLongToInt(sum));
@@ -222,7 +222,7 @@ public class InstructionSet {
                             long product = (((long) RegisterFile.getValue(operands[0])) << 32 >>> 32)
                                     * (((long) RegisterFile.getValue(operands[1])) << 32 >>> 32);
                             // Register 33 is HIGH and 34 is LOW.
-                            long contentsHiLo = Binary.twoIntsToLong(
+                            long contentsHiLo = Binary.twoIntegersToLong(
                                     RegisterFile.getValue(33), RegisterFile.getValue(34));
                             long sum = contentsHiLo + product;
                             RegisterFile.updateRegister(33, Binary.highOrderLongToInt(sum));
@@ -238,7 +238,7 @@ public class InstructionSet {
                             long product = (long) RegisterFile.getValue(operands[0])
                                     * (long) RegisterFile.getValue(operands[1]);
                             // Register 33 is HIGH and 34 is LOW.
-                            long contentsHiLo = Binary.twoIntsToLong(
+                            long contentsHiLo = Binary.twoIntegersToLong(
                                     RegisterFile.getValue(33), RegisterFile.getValue(34));
                             long diff = contentsHiLo - product;
                             RegisterFile.updateRegister(33, Binary.highOrderLongToInt(diff));
@@ -254,7 +254,7 @@ public class InstructionSet {
                             long product = (((long) RegisterFile.getValue(operands[0])) << 32 >>> 32)
                                     * (((long) RegisterFile.getValue(operands[1])) << 32 >>> 32);
                             // Register 33 is HIGH and 34 is LOW.
-                            long contentsHiLo = Binary.twoIntsToLong(
+                            long contentsHiLo = Binary.twoIntegersToLong(
                                     RegisterFile.getValue(33), RegisterFile.getValue(34));
                             long diff = contentsHiLo - product;
                             RegisterFile.updateRegister(33, Binary.highOrderLongToInt(diff));
@@ -1286,9 +1286,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "all registers must be even-numbered");
                             }
-                            double add1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double add1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double add2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double add2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             double sum = add1 + add2;
                             long longSum = Double.doubleToLongBits(sum);
@@ -1305,9 +1305,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "all registers must be even-numbered");
                             }
-                            double sub1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double sub1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double sub2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double sub2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             double diff = sub1 - sub2;
                             long longDiff = Double.doubleToLongBits(diff);
@@ -1324,9 +1324,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "all registers must be even-numbered");
                             }
-                            double mul1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double mul1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double mul2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double mul2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             double prod = mul1 * mul2;
                             long longProd = Double.doubleToLongBits(prod);
@@ -1343,9 +1343,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "all registers must be even-numbered");
                             }
-                            double div1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double div1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double div2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double div2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             double quot = div1 / div2;
                             long longQuot = Double.doubleToLongBits(quot);
@@ -1362,7 +1362,7 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double value = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double value = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             long longSqrt;
                             if (value < 0.0) {
@@ -1389,7 +1389,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double doubleValue = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double doubleValue = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             // DPS 27-July-2010: Since MARS does not simulate the FSCR, I will take the default
                             // action of setting the result to 2^31-1, if the value is outside the 32 bit range.
@@ -1412,7 +1412,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double doubleValue = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double doubleValue = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             // DPS 27-July-2010: Since MARS does not simulate the FSCR, I will take the default
                             // action of setting the result to 2^31-1, if the value is outside the 32 bit range.
@@ -1438,7 +1438,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double doubleValue = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double doubleValue = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             int below, above;
                             int round = (int) Math.round(doubleValue);
@@ -1475,7 +1475,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double doubleValue = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double doubleValue = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             // DPS 27-July-2010: Since MARS does not simulate the FSCR, I will take the default
                             // action of setting the result to 2^31-1, if the value is outside the 32 bit range.
@@ -1628,9 +1628,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[0] + 1), Coprocessor1.getValue(operands[0])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             if (op1 == op2)
                                 Coprocessor1.setConditionFlag(0);
@@ -1647,9 +1647,9 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             if (op1 == op2)
                                 Coprocessor1.setConditionFlag(operands[0]);
@@ -1666,9 +1666,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[0] + 1), Coprocessor1.getValue(operands[0])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             if (op1 <= op2)
                                 Coprocessor1.setConditionFlag(0);
@@ -1685,9 +1685,9 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             if (op1 <= op2)
                                 Coprocessor1.setConditionFlag(operands[0]);
@@ -1704,9 +1704,9 @@ public class InstructionSet {
                             if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[0] + 1), Coprocessor1.getValue(operands[0])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             if (op1 < op2)
                                 Coprocessor1.setConditionFlag(0);
@@ -1723,9 +1723,9 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1 || operands[2] % 2 == 1) {
                                 throw new ProcessingException(statement, "both registers must be even-numbered");
                             }
-                            double op1 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op1 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-                            double op2 = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double op2 = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[2] + 1), Coprocessor1.getValue(operands[2])));
                             if (op1 < op2)
                                 Coprocessor1.setConditionFlag(operands[0]);
@@ -1802,7 +1802,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double val = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double val = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             Coprocessor1.updateRegister(operands[0], Float.floatToIntBits((float) val));
                         }));
@@ -1828,7 +1828,7 @@ public class InstructionSet {
                             if (operands[1] % 2 == 1) {
                                 throw new ProcessingException(statement, "second register must be even-numbered");
                             }
-                            double val = Double.longBitsToDouble(Binary.twoIntsToLong(
+                            double val = Double.longBitsToDouble(Binary.twoIntegersToLong(
                                     Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
                             Coprocessor1.updateRegister(operands[0], (int) val);
                         }));

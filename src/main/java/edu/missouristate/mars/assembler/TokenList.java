@@ -110,7 +110,7 @@ public class TokenList implements Cloneable {
      */
     public String toString() {
         StringBuilder stringified = new StringBuilder();
-        for (Object o : tokenList) stringified.append(o.toString()).append(" ");
+        for (Token o : tokenList) stringified.append(o.toString()).append(" ");
         return stringified.toString();
     }
 

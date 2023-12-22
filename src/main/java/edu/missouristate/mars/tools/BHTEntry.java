@@ -16,7 +16,6 @@ package edu.missouristate.mars.tools;//.bhtsim;
  *
  * @author ingo.kofler@itec.uni-klu.ac.at
  */
-
 public class BHTEntry {
 
     /**
@@ -39,7 +38,6 @@ public class BHTEntry {
      */
     private int correct;
 
-
     /**
      * Constructs a BHT entry with a given history size.
      * <p>
@@ -58,7 +56,6 @@ public class BHTEntry {
         correct = incorrect = 0;
     }
 
-
     /**
      * Returns the branch prediction based on the history.
      *
@@ -67,7 +64,6 @@ public class BHTEntry {
     public boolean getPrediction() {
         return prediction;
     }
-
 
     /**
      * Updates the entry's history and prediction.
@@ -85,7 +81,6 @@ public class BHTEntry {
         }
         history[history.length - 1] = branchTaken;
 
-
         // if the prediction was correct, update stats and keep prediction
         if (branchTaken == prediction) {
             correct++;
@@ -102,12 +97,10 @@ public class BHTEntry {
                 }
             }
 
-            if (changePrediction)
-                prediction = !prediction;
+            if (changePrediction) prediction = !prediction;
 
         }
     }
-
 
     /**
      * Get the absolute number of mispredictions.
@@ -118,7 +111,6 @@ public class BHTEntry {
         return incorrect;
     }
 
-
     /**
      * Get the absolute number of correct predictions.
      *
@@ -127,7 +119,6 @@ public class BHTEntry {
     public int getStatsPredCorrect() {
         return correct;
     }
-
 
     /**
      * Get the percentage of correct predictions.
@@ -138,7 +129,6 @@ public class BHTEntry {
         int sum = incorrect + correct;
         return (sum == 0) ? 0 : correct * 100.0 / sum;
     }
-
 
     /***
      * Builds a string representation of the BHT entry's history.
@@ -155,7 +145,6 @@ public class BHTEntry {
         }
         return result.toString();
     }
-
 
     /***
      * Returns a string representation of the BHT entry's current prediction.

@@ -63,8 +63,7 @@ public class SystemIO {
             }
         } else {
             if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString(
-                        "Enter an integer value (syscall " + serviceNumber + ")");
+                input = Globals.getGui().getMessagesPane().getInputString("Enter an integer value (syscall " + serviceNumber + ")");
             } else {
                 input = Globals.getGui().getMessagesPane().getInputString(-1);
             }
@@ -73,7 +72,6 @@ public class SystemIO {
         // Client is responsible for catching NumberFormatException
         return Integer.parseInt(input.trim());
     }
-
 
     /**
      * Implements syscall to read a float value.
@@ -92,8 +90,7 @@ public class SystemIO {
             }
         } else {
             if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString(
-                        "Enter a float value (syscall " + serviceNumber + ")");
+                input = Globals.getGui().getMessagesPane().getInputString("Enter a float value (syscall " + serviceNumber + ")");
             } else {
                 input = Globals.getGui().getMessagesPane().getInputString(-1);
             }
@@ -101,7 +98,6 @@ public class SystemIO {
         return Float.parseFloat(input.trim());
 
     }
-
 
     /**
      * Implements syscall to read a double value.
@@ -120,8 +116,7 @@ public class SystemIO {
             }
         } else {
             if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString(
-                        "Enter a double value (syscall " + serviceNumber + ")");
+                input = Globals.getGui().getMessagesPane().getInputString("Enter a double value (syscall " + serviceNumber + ")");
             } else {
                 input = Globals.getGui().getMessagesPane().getInputString(-1);
             }
@@ -129,7 +124,6 @@ public class SystemIO {
         return Double.parseDouble(input.trim());
 
     }
-
 
     /**
      * Implements syscall having 4 in $v0, to print a string.
@@ -142,7 +136,6 @@ public class SystemIO {
         }
 
     }
-
 
     /**
      * Implements syscall to read a string.
@@ -160,9 +153,7 @@ public class SystemIO {
             }
         } else {
             if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString(
-                        "Enter a string of maximum length " + maxLength
-                                + " (syscall " + serviceNumber + ")");
+                input = Globals.getGui().getMessagesPane().getInputString("Enter a string of maximum length " + maxLength + " (syscall " + serviceNumber + ")");
             } else {
                 input = Globals.getGui().getMessagesPane().getInputString(maxLength);
                 if (input.endsWith("\n")) {
@@ -178,7 +169,6 @@ public class SystemIO {
             return input;
         }
     }
-
 
     /**
      * Implements syscall having 12 in $v0, to read a char value.
@@ -196,8 +186,7 @@ public class SystemIO {
             }
         } else {
             if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString(
-                        "Enter a character value (syscall " + serviceNumber + ")");
+                input = Globals.getGui().getMessagesPane().getInputString("Enter a character value (syscall " + serviceNumber + ")");
             } else {
                 input = Globals.getGui().getMessagesPane().getInputString(1);
             }
@@ -210,7 +199,6 @@ public class SystemIO {
         return returnValue;
 
     }
-
 
     /**
      * Write bytes to file.
@@ -232,7 +220,7 @@ public class SystemIO {
         ///////////////////////////////////////////////////////////////////////////////////
         //// When running in command mode, code below works for either regular file or STDOUT/STDERR
 
-        if (!FileIOData.fdInUse(fd, 1)) // Check the existence of the "write" fd
+        if (FileIOData.fdNotInUse(fd, 1)) // Check the existence of the "write" fd
         {
             fileErrorString = "File descriptor " + fd + " is not open for writing";
             return -1;
@@ -268,7 +256,6 @@ public class SystemIO {
 
     } // end writeToFile
 
-
     /**
      * Read bytes from file.
      *
@@ -292,7 +279,7 @@ public class SystemIO {
         ////////////////////////////////////////////////////////////////////////////////////
         //// When running in command mode, code below works for either regular file or STDIN
 
-        if (!FileIOData.fdInUse(fd, 0)) // Check the existence of the "read" fd
+        if (FileIOData.fdNotInUse(fd, 0)) // Check the existence of the "read" fd
         {
             fileErrorString = "File descriptor " + fd + " is not open for reading";
             return -1;
@@ -317,7 +304,6 @@ public class SystemIO {
         return retValue;
 
     } // end readFromFile
-
 
     /**
      * Open a file for either reading or writing. Note that read/write flag is NOT
@@ -345,7 +331,6 @@ public class SystemIO {
         if (fdToUse < 0) {
             return -1;
         }   // fileErrorString would have been set
-
 
         if (flags == O_RDONLY) // Open for reading only
         {
@@ -410,7 +395,6 @@ public class SystemIO {
         return inputReader;
     }
 
-
     // //////////////////////////////////////////////////////////////////////////////
     // Maintain information on files in use. The index to the arrays is the "file descriptor."
     // Ken Vollmar, August 2005
@@ -458,8 +442,7 @@ public class SystemIO {
         // Determine whether a given filename is already in use.
         private static boolean filenameInUse(String requestedFilename) {
             for (int i = 0; i < SYSCALL_MAXFILES; i++) {
-                if (fileNames[i] != null
-                        && fileNames[i].equals(requestedFilename)) {
+                if (fileNames[i] != null && fileNames[i].equals(requestedFilename)) {
                     // System.out.println("Mars.SystemIO.FileIOData.filenameInUse: rtng TRUE for " + requestedFilename);
                     return true;
                 }
@@ -471,13 +454,13 @@ public class SystemIO {
         }
 
         // Determine whether a given fd is already in use with the given flag.
-        private static boolean fdInUse(int fd, int flag) {
+        private static boolean fdNotInUse(int fd, int flag) {
             if (fd < 0 || fd >= SYSCALL_MAXFILES) {
-                return false;
+                return true;
             } else // O_WRONLY write-only
                 if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) {  // O_RDONLY read-only
-                return true;
-            } else return fileNames[fd] != null && ((fileFlags[fd] & flag & O_WRONLY) == O_WRONLY);
+                    return false;
+                } else return fileNames[fd] == null || ((fileFlags[fd] & flag & O_WRONLY) != O_WRONLY);
 
         }
 
@@ -485,8 +468,7 @@ public class SystemIO {
         // made an error in the call, it will come back to him.
         private static void close(int fd) {
             // Can't close STDIN, STDOUT, STDERR, or invalid fd
-            if (fd <= STDERR || fd >= SYSCALL_MAXFILES)
-                return;
+            if (fd <= STDERR || fd >= SYSCALL_MAXFILES) return;
 
             fileNames[fd] = null;
             // All this code will be executed only if the descriptor is open.
@@ -496,10 +478,8 @@ public class SystemIO {
                 fileFlags[fd] = -1;
                 streams[fd] = null;
                 try {
-                    if (keepFlag == O_RDONLY)
-                        ((FileInputStream) keepStream).close();
-                    else
-                        ((FileOutputStream) keepStream).close();
+                    if (keepFlag == O_RDONLY) ((FileInputStream) keepStream).close();
+                    else ((FileOutputStream) keepStream).close();
                 } catch (IOException ioe) {
                     // not concerned with this exception
                 }
@@ -514,14 +494,13 @@ public class SystemIO {
         private static int nowOpening(String filename, int flag) {
             int i = 0;
             if (filenameInUse(filename)) {
-                fileErrorString = "File name " + filename + " is already open.";
+                fileErrorString = STR."File name \{filename} is already open.";
                 return -1;
             }
 
             if (flag != O_RDONLY && flag != O_WRONLY && flag != (O_WRONLY | O_APPEND)) // Only read and write are implemented
             {
-                fileErrorString = "File name " + filename
-                        + " has unknown requested opening flag";
+                fileErrorString = STR."File name \{filename} has unknown requested opening flag";
                 return -1;
             }
 
@@ -531,9 +510,7 @@ public class SystemIO {
 
             if (i >= SYSCALL_MAXFILES) // no available file descriptors
             {
-                fileErrorString = "File name " + filename
-                        + " exceeds maximum open file limit of "
-                        + SYSCALL_MAXFILES;
+                fileErrorString = STR."File name \{filename} exceeds maximum open file limit of \{SYSCALL_MAXFILES}";
                 return -1;
             }
 
@@ -547,7 +524,6 @@ public class SystemIO {
 
     } // end private class FileIOData
     ////////////////////////////////////////////////////////////////////////////////
-
 
 }
 

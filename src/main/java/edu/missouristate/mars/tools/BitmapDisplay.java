@@ -54,7 +54,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     private int displayAreaWidthInPixels = Integer.parseInt(displayAreaPixelWidthChoices[defaultDisplayWidthIndex]);
     private int displayAreaHeightInPixels = Integer.parseInt(displayAreaPixelHeightChoices[defaultDisplayHeightIndex]);
 
-
     // The next four are initialized dynamically in initializeDisplayBaseChoices()
     private String[] displayBaseAddressChoices;
     private int[] displayBaseAddresses;
@@ -80,7 +79,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         super("Bitmap Display, " + version, heading);
     }
 
-
     /**
      * Main provided for pure stand-alone use.  Recommended stand-alone use is to write a
      * driver program that instantiates a Bitmap object then invokes its go() method.
@@ -91,7 +89,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         new BitmapDisplay("Bitmap Display stand-alone, " + version, heading).go();
     }
 
-
     /**
      * Required MarsTool method to return Tool name.
      *
@@ -100,7 +97,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     public String getName() {
         return "Bitmap Display";
     }
-
 
     /**
      * Override the inherited method, which registers us as an Observer over the static data segment
@@ -124,7 +120,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         addAsObserver(baseAddress, highAddress);
     }
 
-
     /**
      * Method that constructs the main display area.  It is organized vertically
      * into two major components: the display configuration which an be modified
@@ -139,7 +134,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         results.add(buildVisualizationArea());
         return results;
     }
-
 
     //////////////////////////////////////////////////////////////////////////////////////
     //  Rest of the protected methods.  These override do-nothing methods inherited from
@@ -158,7 +152,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         }
     }
 
-
     /**
      * Initialize all JComboBox choice structures not already initialized at declaration.
      * Overrides inherited method that does nothing.
@@ -171,7 +164,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         theGrid = new Grid(displayAreaHeightInPixels / unitPixelHeight, displayAreaWidthInPixels / unitPixelWidth);
     }
 
-
     /**
      * The only post-GUI initialization is to create the initial Grid object based on the default settings
      * of the various combo boxes. Overrides inherited method that does nothing.
@@ -181,7 +173,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         theGrid = createNewGrid();
         updateBaseAddress();
     }
-
 
     /**
      * Method to reset counters and display when the Reset button selected.
@@ -200,7 +191,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     protected void updateDisplay() {
         canvas.repaint();
     }
-
 
     /**
      * Overrides default method, to provide a Help button for this tool/app.
@@ -337,7 +327,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         baseAddressRow.add(new JLabel("Base address for display "), BorderLayout.WEST);
         baseAddressRow.add(displayBaseAddressSelector, BorderLayout.EAST);
 
-
         // Lay 'em out in the grid...
         organization.add(unitWidthInPixelRow);
         organization.add(unitHeightInPixelRow);
@@ -433,11 +422,9 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         }
     }
 
-
     //////////////////////////////////////////////////////////////////////////////////////
     //  Specialized inner classes for modeling and animation.
     //////////////////////////////////////////////////////////////////////////////////////
-
 
     /////////////////////////////////////////////////////////////////////////////
     //  Class that represents the panel for visualizing and animating memory reference

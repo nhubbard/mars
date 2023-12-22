@@ -248,7 +248,7 @@ public class Tokenizer {
         int tokenPos = 0;
         int tokenStartPos = 1;
         boolean insideQuotedString = false;
-        if (Globals.debug) System.out.println("source line --->" + theLine + "<---");
+        if (Globals.getDebug()) System.out.println("source line --->" + theLine + "<---");
         // Each iteration of this loop processes one character in the source line.
         while (linePos < line.length) {
             c = line[linePos];

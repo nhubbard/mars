@@ -299,7 +299,7 @@ public class RegistersWindow extends JPanel implements Observer {
             }
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
+            synchronized (Globals.getMemoryAndRegistersLock()) {
                 RegisterFile.updateRegister(row, val);
             }
             int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();

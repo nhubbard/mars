@@ -501,7 +501,7 @@ public class EditTabbedPane extends JTabbedPane {
             // Note: add sequence is significant - last one added becomes default.
             fileFilterList = new ArrayList<>();
             fileFilterList.add(fileChooser.getAcceptAllFileFilter());
-            fileFilterList.add(FilenameFinder.getFileFilter(Globals.fileExtensions, "Assembler Files", true));
+            fileFilterList.add(FilenameFinder.getFileFilter(Globals.getFileExtensions(), "Assembler Files", true));
             fileFilterCount = 0; // this will trigger fileChooser file filter load in next line
             setChoosableFileFilters();
         }

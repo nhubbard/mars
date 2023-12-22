@@ -86,7 +86,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         super("Data Cache Simulation Tool, " + version, heading);
     }
 
-
     /**
      * Main provided for pure stand-alone use.  Recommended stand-alone use is to write a
      * driver program that instantiates a CacheSimulator object then invokes its go() method.
@@ -97,7 +96,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         new CacheSimulator("Data Cache Simulator stand-alone, " + version, heading).go();
     }
 
-
     /**
      * Required MarsTool method to return Tool name.
      *
@@ -106,7 +104,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     public String getName() {
         return "Data Cache Simulator";
     }
-
 
     /**
      * Method that constructs the main cache simulator display area.  It is organized vertically
@@ -149,7 +146,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         logPanel.add(logScroll);
         return logPanel;
     }
-
 
     ////////////////////////////////////////////////////////////////////////////
     private JComponent buildOrganizationArea() {

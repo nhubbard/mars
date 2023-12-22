@@ -1,13 +1,34 @@
-package edu.missouristate.mars;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.mips.instructions.syscalls.*;
-import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.venus.*;
-import edu.missouristate.mars.util.*;
+package edu.missouristate.mars
 
-import java.util.*;
+import edu.missouristate.mars.assembler.SymbolTable
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.instructions.InstructionSet
+import edu.missouristate.mars.mips.instructions.syscalls.SyscallNumberOverride
+import edu.missouristate.mars.util.PropertiesFile
+import edu.missouristate.mars.venus.VenusUI
+import java.util.*
+import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Collection of globally-available data structures.
@@ -15,276 +36,200 @@ import java.util.*;
  * @author Pete Sanderson
  * @version August 2003
  */
-public class Globals {
-    // List these first because they are referenced by methods called at initialization.
-    private static final String configPropertiesFile = "Config";
-    private static final String syscallPropertiesFile = "Syscall";
+object Globals {
+    private const val configPropertiesFile = "Config"
+    private const val syscallPropertiesFile = "Syscall"
+
+    /** The set of implemented MIPS instructions. */
+    @JvmStatic
+    lateinit var instructionSet: InstructionSet
+
+    /** The program currently being worked on. Used by GUI only, not the command line. */
+    @JvmStatic
+    lateinit var program: MIPSProgram
+
+    /** The symbol table for the file currently being assembled. */
+    @JvmStatic
+    lateinit var symbolTable: SymbolTable
+
+    /** The simulated MIPS memory component. */
+    @JvmStatic
+    lateinit var memory: Memory
+
+    /** Lock variable used at the head of the synchronized block to guard MIPS memory and registers. */
+    @JvmStatic
+    val memoryAndRegistersLock: ReentrantLock = ReentrantLock()
+
+    /** Flag to determine whether to produce internal debugging information. */
+    @JvmStatic
+    var debug: Boolean = false
+
+    /** Instance of Settings that can be accessed and modified internally. */
+    @JvmStatic
+    lateinit var settings: Settings
+        private set
+
+    /** String to GUI's RunI/O text area when echoing user input from the pop-up dialog. */
+    const val userInputAlert = "**** user input : "
+
+    /** Path to folder that contains images */
+    const val imagesPath = "/images/"
+
+    /** Path to folder that contains help */
+    const val helpPath = "/help/"
+
+    /** Flag that indicates whether [instructionSet] has been initialized */
+    @JvmStatic
+    private var initialized: Boolean = false
+
+    /** The GUI being used (if any) with the simulator. */
+    @JvmStatic
+    var gui: VenusUI? = null
+
+    /** The current MARS version number; cannot wait until `initialize` is called to set it. */
+    const val version = "4.5"
+
+    /** List of accepted file extensions for MIPS assembly source files. */
+    @JvmStatic
+    val fileExtensions: ArrayList<String> = getFileExtensions()
+
+    /** Maximum length of the scrolled message window (MARS Messages and Run I/O). */
+    @JvmStatic
+    val maximumMessageCharacters: Int = getIntegerProperty("MessageLimit", 1000000)
+
+    /** Maximum number of assembler errors produced by one assemble operation. */
+    @JvmStatic
+    val maximumErrorMessages: Int = getIntegerProperty("ErrorLimit", 200)
+
+    /** Maximum number of back-step operations to buffer. */
+    @JvmStatic
+    val maximumBacksteps: Int = getIntegerProperty("BackstepLimit", 1000)
+
+    /** MARS copyright years. */
+    @JvmStatic
+    val copyrightYears: String = "2003 - 2023"
+
+    /** MARS copyright holders. */
+    @JvmStatic
+    val copyrightHolders: String = "Pete Sanderson, Kenneth Vollmar, and Nicholas Hubbard"
+
+    /** Placeholder for non-printable ASCII codes. */
+    @JvmStatic
+    val ASCII_NON_PRINT: String = getAsciiNonPrint()
+
+    /** Array of strings to display for ASCII codes in ASCII data segment. Codes 0-255 is array index. */
+    @JvmStatic
+    val ASCII_TABLE: Array<String> = getAsciiStrings()
+
+    /** MARS exit code; useful with SYSCALL 17 when running from command line (not GUI) */
+    @JvmStatic
+    var exitCode: Int = 0
+
+    @JvmStatic
+    var runSpeedPanelExists: Boolean = false
 
     /**
-     * The set of implemented MIPS instructions.
-     **/
-    public static InstructionSet instructionSet;
-
-    /**
-     * the program currently being worked with.  Used by GUI only, not command line.
-     **/
-    public static MIPSProgram program;
-
-    /**
-     * Symbol table for file currently being assembled.
-     **/
-    public static SymbolTable symbolTable;
-
-    /**
-     * Simulated MIPS memory component.
-     **/
-    public static Memory memory;
-
-    /**
-     * Lock variable used at head of synchronized block to guard MIPS memory and registers
-     **/
-    public static final Object memoryAndRegistersLock = new Object();
-
-    /**
-     * Flag to determine whether or not to produce internal debugging information.
-     **/
-    public static boolean debug = false;
-
-    /**
-     * Object that contains various settings that can be accessed modified internally.
-     **/
-    static Settings settings;
-
-    /**
-     * String to GUI's RunI/O text area when echoing user input from pop-up dialog.
+     * Function called once upon system initialization to create the global data structures.
+     *
+     * @note `gui` argument has been removed. It did nothing.
      */
-    public static final String userInputAlert = "**** user input : ";
-
-    /**
-     * Path to folder that contains images
-     */
-    public static final String imagesPath = "/images/";
-
-    /**
-     * Path to folder that contains help text
-     */
-    public static final String helpPath = "/help/";
-
-    /** Flag that indicates whether or not instructionSet has been initialized. */
-    private static boolean initialized = false;
-
-    /** The GUI being used (if any) with this simulator. */
-    static VenusUI gui = null;
-
-    /**
-     * The current MARS version number. Can't wait for "initialize()" call to get it.
-     */
-    public static final String version = "4.5";
-
-    /**
-     * List of accepted file extensions for MIPS assembly source files.
-     */
-    public static final ArrayList<String> fileExtensions = getFileExtensions();
-
-    /**
-     * Maximum length of scrolled message window (MARS Messages and Run I/O)
-     */
-    public static final int maximumMessageCharacters = getMessageLimit();
-
-    /**
-     * Maximum number of assembler errors produced by one assemble operation
-     */
-    public static final int maximumErrorMessages = getErrorLimit();
-
-    /**
-     * Maximum number of back-step operations to buffer
-     */
-    public static final int maximumBacksteps = getBackstepLimit();
-
-    /**
-     * MARS copyright years
-     */
-    public static final String copyrightYears = getCopyrightYears();
-
-    /**
-     * MARS copyright holders
-     */
-    public static final String copyrightHolders = getCopyrightHolders();
-
-    /**
-     * Placeholder for non-printable ASCII codes
-     */
-    public static final String ASCII_NON_PRINT = getAsciiNonPrint();
-
-    /**
-     * Array of strings to display for ASCII codes in ASCII display of data segment. ASCII code 0-255 is array index.
-     */
-    public static final String[] ASCII_TABLE = getAsciiStrings();
-
-    /**
-     * MARS exit code -- useful with SYSCALL 17 when running from command line (not GUI)
-     */
-    public static int exitCode = 0;
-
-    public static boolean runSpeedPanelExists = false;
-
-    private static String getCopyrightYears() {
-        return "2003-2023";
-    }
-
-    private static String getCopyrightHolders() {
-        return "Pete Sanderson and Kenneth Vollmar";
-    }
-
-    public static void setGui(VenusUI g) {
-        gui = g;
-    }
-
-    public static VenusUI getGui() {
-        return gui;
-    }
-
-    public static Settings getSettings() {
-        return settings;
-    }
-
-    /**
-     * Method called once upon system initialization to create the global data structures.
-     **/
-    public static void initialize(boolean gui) {
+    @JvmStatic
+    fun initialize() {
         if (!initialized) {
-            memory = Memory.getInstance();  //clients can use Memory.getInstance instead of Globals.memory
-            instructionSet = new InstructionSet();
-            instructionSet.populate();
-            symbolTable = new SymbolTable("global");
-            settings = new Settings();
-            initialized = true;
-            debug = false;
-            memory.clear(); // will establish memory configuration from setting
+            // Clients can use Memory.getInstance() instead of Globals.memory
+            memory = Memory.getInstance()
+            instructionSet = InstructionSet()
+            instructionSet.populate()
+            symbolTable = SymbolTable("global")
+            settings = Settings()
+            initialized = true
+            debug = false
+            // Will establish memory configuration from settings
+            memory.clear()
         }
     }
 
     /**
-     * Read byte limit of Run I/O or MARS Messages text to buffer.
+     * Read the ASCII default display character for non-printable characters from the properties file.
      */
-    private static int getMessageLimit() {
-        return getIntegerProperty(configPropertiesFile, "MessageLimit", 1000000);
+    @JvmStatic
+    private fun getAsciiNonPrint(): String {
+        val anp = getPropertyEntry(configPropertiesFile, "AsciiNonPrint")
+        return if (anp == null) "." else (if (anp == "space") " " else anp)
     }
 
     /**
-     * Read limit on number of error messages produced by one assemble operation.
+     * Read ASCII strings for codes 0 to 255 from the properties file.
+     * If string value is "null," substitute value of `ASCII_NON_PRINT`.
+     * If string is "space", substitute string containing one space character.
      */
-    private static int getErrorLimit() {
-        return getIntegerProperty(configPropertiesFile, "ErrorLimit", 200);
-    }
-
-    /**
-     * Read backstep limit (number of operations to buffer) from properties file.
-     */
-    private static int getBackstepLimit() {
-        return getIntegerProperty(configPropertiesFile, "BackstepLimit", 1000);
-    }
-
-    /**
-     * Read ASCII default display character for non-printing characters, from properties file.
-     */
-    public static String getAsciiNonPrint() {
-        String anp = getPropertyEntry(configPropertiesFile, "AsciiNonPrint");
-        return (anp == null) ? "." : ((anp.equals("space")) ? " " : anp);
-    }
-
-    /**
-     * Read ASCII strings for codes 0-255, from properties file. If string
-     * value is "null", substitute value of ASCII_NON_PRINT.  If string is
-     * "space", substitute string containing one space character.
-     */
-    public static String[] getAsciiStrings() {
-        String let = getPropertyEntry(configPropertiesFile, "AsciiTable");
-        String placeHolder = getAsciiNonPrint();
-        String[] lets = let.split(" +");
-        int maxLength = 0;
-        for (int i = 0; i < lets.length; i++) {
-            if (lets[i].equals("null")) lets[i] = placeHolder;
-            if (lets[i].equals("space")) lets[i] = " ";
-            if (lets[i].length() > maxLength) maxLength = lets[i].length();
+    @JvmStatic
+    private fun getAsciiStrings(): Array<String> {
+        val let = getPropertyEntry(configPropertiesFile, "AsciiTable")
+        val placeHolder = getAsciiNonPrint()
+        val lets = let!!.split(" +").toMutableList()
+        var maxLength = 0
+        for (i in lets.indices) {
+            if (lets[i] == "null") lets[i] = placeHolder
+            if (lets[i] == "space") lets[i] = " "
+            if (lets[i].length > maxLength) maxLength = lets[i].length
         }
-        String padding = "        ";
-        maxLength++;
-        for (int i = 0; i < lets.length; i++) lets[i] = padding.substring(0, maxLength - lets[i].length()) + lets[i];
-        return lets;
+        val padding = "        "
+        maxLength++
+        for (i in 0..<lets.size)
+            lets[i] = padding.substring(0, maxLength - lets[i].length) + lets[i]
+        return lets.toTypedArray()
+    }
+
+    /**
+     * Read assembly language file extensions from the properties file.
+     * The resulting string is tokenized into an ArrayList (assume StringTokenizer default delimiters).
+     */
+    @JvmStatic
+    @JvmName("internalGetFileExtensions")
+    private fun getFileExtensions(): ArrayList<String> {
+        val extensionList = arrayListOf<String>()
+        getPropertyEntry(configPropertiesFile, "Extensions")?.let {
+            val st = StringTokenizer(it)
+            while (st.hasMoreTokens()) extensionList.add(st.nextToken())
+        }
+        return extensionList
     }
 
     /**
      * Read and return integer property value for given file and property name.
-     * Default value is returned if property file or name not found.
+     * The default value is returned if the property file or the key is not found.
      */
-    private static int getIntegerProperty(String propertiesFile, String propertyName, int defaultValue) {
-        int limit = defaultValue;  // just in case no entry is found
-        Properties properties = PropertiesFile.loadPropertiesFromFile(propertiesFile);
-        try {
-            limit = Integer.parseInt(properties.getProperty(propertyName, Integer.toString(defaultValue)));
-        } catch (NumberFormatException ignored) {} // do nothing, I already have a default
-        return limit;
+    @JvmStatic
+    private fun getIntegerProperty(propertyName: String, defaultValue: Int): Int {
+        val properties = PropertiesFile.loadPropertiesFromFile(configPropertiesFile)
+        return properties.getProperty(propertyName, defaultValue.toString()).toIntOrNull() ?: defaultValue
     }
 
     /**
-     * Read assembly language file extensions from properties file.  Resulting
-     * string is tokenized into array list (assume StringTokenizer default delimiters).
-     */
-    private static ArrayList<String> getFileExtensions() {
-        ArrayList<String> extensionList = new ArrayList<>();
-        String extensions = getPropertyEntry(configPropertiesFile, "Extensions");
-        if (extensions != null) {
-            StringTokenizer st = new StringTokenizer(extensions);
-            while (st.hasMoreTokens()) extensionList.add(st.nextToken());
-        }
-        return extensionList;
-    }
-
-    /**
-     * Get list of MarsTools that reside outside the MARS distribution.
-     * Currently this is done by adding the tool's path name to the list
-     * of values for the external_tools property. Use ";" as delimiter!
+     * Read and return a property file value (if any) for the requested property.
      *
-     * @return ArrayList.  Each item is file path to .class file
-     * of a class that implements MarsTool.  If none, returns empty list.
+     * @param propertiesFile Name of the properties file (don't include an extension)
+     * @param propertyName The property key name
+     * @return The associated value, or null if the property isn't found
      */
-    public static ArrayList<String> getExternalTools() {
-        ArrayList<String> toolsList = new ArrayList<>();
-        String delimiter = ";";
-        String tools = getPropertyEntry(configPropertiesFile, "ExternalTools");
-        if (tools != null) {
-            StringTokenizer st = new StringTokenizer(tools, delimiter);
-            while (st.hasMoreTokens()) toolsList.add(st.nextToken());
-        }
-        return toolsList;
-    }
+    @JvmStatic
+    fun getPropertyEntry(propertiesFile: String, propertyName: String): String? =
+        PropertiesFile.loadPropertiesFromFile(propertiesFile).getProperty(propertyName)
 
     /**
-     * Read and return property file value (if any) for requested property.
-     *
-     * @param propertiesFile name of properties file (do NOT include filename extension,
-     *                       which is assumed to be ".properties")
-     * @param propertyName   String containing desired property name
-     * @return String containing associated value; null if property not found
-     */
-    public static String getPropertyEntry(String propertiesFile, String propertyName) {
-        return PropertiesFile.loadPropertiesFromFile(propertiesFile).getProperty(propertyName);
-    }
-
-    /**
-     * Read any syscall number assignment overrides from config file.
+     * Read any syscall number assignment overrides from the config file.
      *
      * @return ArrayList of SyscallNumberOverride objects
      */
-    public ArrayList<SyscallNumberOverride> getSyscallOverrides() {
-        ArrayList<SyscallNumberOverride> overrides = new ArrayList<>();
-        Properties properties = PropertiesFile.loadPropertiesFromFile(syscallPropertiesFile);
-        Iterator<Object> keys = properties.keys().asIterator();
-        while (keys.hasNext()) {
-            String key = (String) keys.next();
-            overrides.add(new SyscallNumberOverride(key, properties.getProperty(key)));
+    fun getSyscallOverrides(): ArrayList<SyscallNumberOverride> {
+        val overrides = arrayListOf<SyscallNumberOverride>()
+        val properties = PropertiesFile.loadPropertiesFromFile(syscallPropertiesFile)
+        val keys = properties.keys()
+        for (key in keys) {
+            key as String
+            overrides.add(SyscallNumberOverride(key, properties.getProperty(key)))
         }
-        return overrides;
+        return overrides
     }
 }

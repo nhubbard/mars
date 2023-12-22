@@ -301,7 +301,7 @@ public class Simulator extends Observable {
                 // to access MIPS memory and registers only through synchronized blocks on same
                 // lock variable, then full (albeit heavy-handed) protection of MIPS memory and
                 // registers is assured.  Not as critical for reading from those resources.
-                synchronized (Globals.memoryAndRegistersLock) {
+                synchronized (Globals.getMemoryAndRegistersLock()) {
                     try {
                         if (Simulator.externalInterruptingDevice != NO_DEVICE) {
                             int deviceInterruptCode = externalInterruptingDevice;
@@ -396,7 +396,7 @@ public class Simulator extends Observable {
                         RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
                     SwingUtilities.invokeLater(interactiveGUIUpdater);
                 }
-                if (Globals.getGui() != null || Globals.runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
+                if (Globals.getGui() != null || Globals.getRunSpeedPanelExists()) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
                     if (maxSteps != 1 &&
                             RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
                         try {

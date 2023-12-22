@@ -131,7 +131,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
         theWindow = this;
         this.isBeingUsedAsAMarsTool = false;
         thisMarsApp.setTitle(this.title);
-        Globals.initialize(true);
+        Globals.initialize();
         // assure the dialog goes away if the user clicks the X
         thisMarsApp.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
@@ -313,7 +313,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
                 fileChooser.setSelectedFile(mostRecentlyOpenedFile);
             }
             // DPS 13 June 2007.  The next 4 lines add file filter to file chooser.
-            FileFilter defaultFileFilter = FilenameFinder.getFileFilter(Globals.fileExtensions, "Assembler Files", true);
+            FileFilter defaultFileFilter = FilenameFinder.getFileFilter(Globals.getFileExtensions(), "Assembler Files", true);
             fileChooser.addChoosableFileFilter(defaultFileFilter);
             fileChooser.addChoosableFileFilter(fileChooser.getAcceptAllFileFilter());
             fileChooser.setFileFilter(defaultFileFilter);
@@ -598,14 +598,14 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
         public void connect() {
             observing = true;
-            synchronized (Globals.memoryAndRegistersLock) {// DPS 23 July 2008
+            synchronized (Globals.getMemoryAndRegistersLock()) {// DPS 23 July 2008
                 addAsObserver();
             }
             setText(disconnectText);
         }
 
         public void disconnect() {
-            synchronized (Globals.memoryAndRegistersLock) {// DPS 23 July 2008
+            synchronized (Globals.getMemoryAndRegistersLock()) {// DPS 23 July 2008
                 deleteAsObserver();
             }
             observing = false;
@@ -662,7 +662,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
             String fileToAssemble = mostRecentlyOpenedFile.getPath();
             ArrayList<String> filesToAssemble;
             if (multiFileAssemble) {// setting (check box in file open dialog) calls for multiple file assembly 
-                filesToAssemble = FilenameFinder.getFilenameList(new File(fileToAssemble).getParent(), Globals.fileExtensions);
+                filesToAssemble = FilenameFinder.getFilenameList(new File(fileToAssemble).getParent(), Globals.getFileExtensions());
             } else {
                 filesToAssemble = new ArrayList<>();
                 filesToAssemble.add(fileToAssemble);

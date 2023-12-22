@@ -74,9 +74,9 @@ public class FileDumpMemoryAction extends GuiAction {
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // A series of parallel arrays representing the memory segments that can be dumped.
-        String[] segmentArray = MemoryDump.getSegmentNames();
-        int[] baseAddressArray = MemoryDump.getBaseAddresses(segmentArray);
-        int[] limitAddressArray = MemoryDump.getLimitAddresses(segmentArray);
+        String[] segmentArray = MemoryDump.segmentNames;
+        int[] baseAddressArray = MemoryDump.getBaseAddresses();
+        int[] limitAddressArray = MemoryDump.getLimitAddresses();
         int[] highAddressArray = new int[segmentArray.length];
 
 

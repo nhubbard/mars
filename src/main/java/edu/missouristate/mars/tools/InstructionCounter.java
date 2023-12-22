@@ -52,7 +52,6 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     private JTextField counterJField;
     private JProgressBar progressbarJ;
 
-
     /**
      * The last address we saw. We ignore it because the only way for a
      * program to execute twice the same instruction is to enter an infinite

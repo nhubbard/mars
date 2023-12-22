@@ -12,13 +12,13 @@ import java.util.Arrays;
  * @author Pete Sanderson
  * @version July 2007
  */
+@SuppressWarnings("MagicConstant")
 public class EditorFont {
-
     // Note: These are parallel arrays so corresponding elements must match up.
     private static final String[] styleStrings = {"Plain", "Bold", "Italic", "Bold + Italic"};
-    private static final int[] styleInts = {Font.PLAIN, Font.BOLD, Font.ITALIC, Font.BOLD | Font.ITALIC};
+    private static final int[] styleConstants = {Font.PLAIN, Font.BOLD, Font.ITALIC, Font.BOLD | Font.ITALIC};
     public static final String DEFAULT_STYLE_STRING = styleStrings[0];
-    public static final int DEFAULT_STYLE_INT = styleInts[0];
+    public static final int DEFAULT_STYLE_INT = styleConstants[0];
     public static final int MIN_SIZE = 6;
     public static final int MAX_SIZE = 72;
     public static final int DEFAULT_SIZE = 12;
@@ -28,9 +28,7 @@ public class EditorFont {
      *    Sans Serif: Ariel, Verdana
      * This is according to lists published by www.codestyle.org.
      */
-    private static final String[] allCommonFamilies = {"Arial", "Courier New", "Georgia",
-            "Lucida Sans Typewriter", "Times New Roman", "Verdana"};
-
+    private static final String[] allCommonFamilies = {"Arial", "Courier New", "Georgia", "Lucida Sans Typewriter", "Times New Roman", "Verdana"};
 
     /**
      * Obtain an array of common font family names.  These are guaranteed to
@@ -39,7 +37,6 @@ public class EditorFont {
      *
      * @return Array of strings, each is a common and available font family name.
      */
-
     public static String[] getCommonFamilies() {
         return commonFamilies;
     }
@@ -50,18 +47,16 @@ public class EditorFont {
      *
      * @return Array of strings, each is an available font family name.
      */
-
     public static String[] getAllFamilies() {
         return GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
     }
 
     /**
-     * Get array containing String values for font style names.
+     * Get the array containing String values for font style names.
      */
     public static String[] getFontStyleStrings() {
         return styleStrings;
     }
-
 
     /**
      * Given a string that represents a font style, returns the
@@ -76,7 +71,7 @@ public class EditorFont {
         String styleLower = style.toLowerCase();
         for (int i = 0; i < styleStrings.length; i++) {
             if (styleLower.equals(styleStrings[i].toLowerCase())) {
-                return styleInts[i];
+                return styleConstants[i];
             }
         }
         return DEFAULT_STYLE_INT;
@@ -86,13 +81,13 @@ public class EditorFont {
      * Given an int that represents a font style from the Font class,
      * returns the corresponding String.
      *
-     * @param style Must be one of Font.PLAIN, Font.BOLD, Font.ITALIC.
-     * @return The String representation of that style.  If the parameter
-     * is not one of the above, returns "Plain".
+     * @param style Must be one of {@code Font.PLAIN}, {@code Font.BOLD}, or {@code Font.ITALIC}.
+     * @return The String representation of that style.
+     * If the parameter is not one of the above, returns "Plain".
      */
     public static String styleIntToStyleString(int style) {
-        for (int i = 0; i < styleInts.length; i++) {
-            if (style == styleInts[i]) {
+        for (int i = 0; i < styleConstants.length; i++) {
+            if (style == styleConstants[i]) {
                 return styleStrings[i];
             }
         }
@@ -100,7 +95,7 @@ public class EditorFont {
     }
 
     /**
-     * Given an int representing font size, returns corresponding string.
+     * Given an int representing the font size, returns corresponding string.
      *
      * @param size Int representing size.
      * @return String value of parameter, unless it is less than MIN_SIZE (returns MIN_SIZE
@@ -130,7 +125,7 @@ public class EditorFont {
 
     /**
      * Creates a new Font object based on the given String specifications.  This
-     * is different than Font's constructor, which requires ints for style and size.
+     * is not the same as {@link java.awt.Font}'s constructor, which requires integer values for style and size.
      * It assures that defaults and size limits are applied when necessary.
      *
      * @param family String containing font family.
@@ -172,8 +167,7 @@ public class EditorFont {
      * @throws NullPointerException if string is null
      */
     public static String substituteSpacesForTabs(String string, int tabSize) {
-        if (!string.contains(TAB_STRING))
-            return string;
+        if (!string.contains(TAB_STRING)) return string;
         StringBuilder result = new StringBuilder(string);
         for (int i = 0; i < result.length(); i++) {
             if (result.charAt(i) == TAB_CHAR) {
@@ -184,7 +178,7 @@ public class EditorFont {
     }
 
     /*
-     * We want to vett the above list against the actual available families and give
+     * We want to vet the above list against the actual available families and give
      * our client only those that are actually available.
      */
     private static final String[] commonFamilies = actualCommonFamilies();
@@ -208,4 +202,3 @@ public class EditorFont {
         return result;
     }
 }
-

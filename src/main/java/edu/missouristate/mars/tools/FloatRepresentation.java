@@ -357,7 +357,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // If display is attached to a register then update the register value.
     private synchronized void updateAnyAttachedRegister(int intValue) {
         if (attachedRegister != null) {
-            synchronized (Globals.memoryAndRegistersLock) {
+            synchronized (Globals.getMemoryAndRegistersLock()) {
                 attachedRegister.setValue(intValue);
             }
             // HERE'S A HACK!!  Want to immediately display the updated register value in MARS

@@ -28,7 +28,6 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
         super(heading + ", " + version, heading);
     }
 
-
     /**
      * Main provided for pure stand-alone use.  Recommended stand-alone use is to write a
      * driver program that instantiates a MemoryReferenceVisualization object then invokes its go() method.
@@ -38,7 +37,6 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
     public static void main(String[] args) {
         new IntroToTools(heading + ", " + version, heading).go();
     }
-
 
     /**
      * Required method to return Tool name.

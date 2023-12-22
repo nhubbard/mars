@@ -42,7 +42,6 @@ public class ScreenMagnifier implements MarsTool {
         new Thread(() -> new ScreenMagnifier().action()).start();
     }
 
-
 }
 /* Technique comes from the Javaworld article "Capture the Screen: Build a 
    screen-capture utility based on Java's Robot class".  By Jeff Friesen, 
@@ -218,7 +217,6 @@ class Magnifier extends JFrame implements ComponentListener {
         help.addActionListener(e -> JOptionPane.showMessageDialog(frame, helpContent));
         return help;
     }
-
 
     /**
      * Capture the pixels of the specified screen rectangle into an ImageBuffer.

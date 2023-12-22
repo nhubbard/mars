@@ -8,7 +8,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Observable;
 
-
 /**
  * A MARS tool for simulating branch prediction with a Branch History Table (BHT)
  * <p>
@@ -25,7 +24,6 @@ import java.util.Observable;
  * @author ingo.kofler@itec.uni-klu.ac.at
  */
 public class BHTSimulator extends AbstractMarsToolAndApplication implements ActionListener {
-
 
     /**
      * constant for the default size of the BHT
@@ -77,14 +75,12 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      */
     private boolean lastBranchTaken;
 
-
     /**
      * Creates a BHT Simulator with given name and heading.
      */
     public BHTSimulator() {
         super(BHTSimulator.BHT_NAME + ", " + BHTSimulator.BHT_VERSION, BHTSimulator.BHT_HEADING);
     }
-
 
     /**
      * Adds BHTSimulator as observer of the text segment.
@@ -93,7 +89,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
         addAsObserver(RegisterFile.getProgramCounterRegister());
     }
-
 
     /**
      * Creates a GUI and initialize the GUI with the default values.
@@ -114,7 +109,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         return gui;
     }
 
-
     /**
      * Returns the name of the tool.
      *
@@ -124,7 +118,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         return BHTSimulator.BHT_NAME;
     }
 
-
     /**
      * Performs a reset of the simulator.
      * This causes the BHT to be reseted and the log messages to be cleared.
@@ -132,7 +125,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     protected void reset() {
         resetSimulator();
     }
-
 
     /**
      * Handles the actions when selecting another value in one of the two combo boxes.
@@ -145,7 +137,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
             resetSimulator();
         }
     }
-
 
     /**
      * Resets the simulator by clearing the GUI elements and resetting the BHT.
@@ -162,7 +153,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         pendingBranchInstAddress = 0;
         lastBranchTaken = false;
     }
-
 
     /**
      * Handles the execution branch instruction.
@@ -194,7 +184,6 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
         gui.getTaLog().setCaretPosition(gui.getTaLog().getDocument().getLength());
 
     }
-
 
     /**
      * Handles the execution of the branch instruction.

@@ -35,7 +35,6 @@ class UnitAnimation extends JPanel implements ActionListener {
     private int counter;            //verify then remove.
     private boolean justStarted;    //flag to start movement
 
-
     private int indexX;    //counter of screen position
     private int indexY;
     private boolean xIsMoving, yIsMoving;        //flag for mouse movement.
@@ -118,7 +117,6 @@ class UnitAnimation extends JPanel implements ActionListener {
         public boolean isText() {
             return this.isText;
         }
-
 
         public ArrayList<Integer> getTargetVertex() {
             return targetVertex;
@@ -235,7 +233,6 @@ class UnitAnimation extends JPanel implements ActionListener {
         int countALULabel = 380;
         int countPCLabel = 380;
         loadHashMapValues();
-
 
     } // end of ImagesTests()
 

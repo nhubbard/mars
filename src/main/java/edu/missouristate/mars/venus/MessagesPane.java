@@ -32,8 +32,8 @@ public class MessagesPane extends JTabbedPane {
     // reaches MAXIMUM_SCROLLED_CHARACTERS in length then cut off
     // the first NUMBER_OF_CHARACTERS_TO_CUT characters.  The latter
     // must obviously be smaller than the former.
-    public static final int MAXIMUM_SCROLLED_CHARACTERS = Globals.maximumMessageCharacters;
-    public static final int NUMBER_OF_CHARACTERS_TO_CUT = Globals.maximumMessageCharacters / 10; // 10%
+    public static final int MAXIMUM_SCROLLED_CHARACTERS = Globals.getMaximumMessageCharacters();
+    public static final int NUMBER_OF_CHARACTERS_TO_CUT = Globals.getMaximumMessageCharacters() / 10; // 10%
 
     /**
      * Constructor for the class, sets up two fresh tabbed text areas for program feedback.

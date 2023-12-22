@@ -55,7 +55,7 @@ public class RunAssembleAction extends GuiAction {
                 ArrayList<String> filesToAssemble;
                 if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {// setting calls for multiple file assembly
                     filesToAssemble = FilenameFinder.getFilenameList(
-                            new File(FileStatus.getName()).getParent(), Globals.fileExtensions);
+                            new File(FileStatus.getName()).getParent(), Globals.getFileExtensions());
                 } else {
                     filesToAssemble = new ArrayList<>();
                     filesToAssemble.add(FileStatus.getName());

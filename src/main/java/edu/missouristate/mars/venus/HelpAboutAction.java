@@ -44,8 +44,8 @@ public class HelpAboutAction extends GuiAction {
 
     public void actionPerformed(ActionEvent e) {
         JOptionPane.showMessageDialog(mainUI,
-                "MARS " + Globals.version + "    Copyright " + Globals.copyrightYears + "\n" +
-                        Globals.copyrightHolders + "\n" +
+                "MARS " + Globals.version + "    Copyright " + Globals.getCopyrightYears() + "\n" +
+                        Globals.getCopyrightHolders() + "\n" +
                         "MARS is the Mips Assembler and Runtime Simulator.\n\n" +
                         "Mars image courtesy of NASA/JPL.\n" +
                         "Toolbar and menu icons are from:\n" +

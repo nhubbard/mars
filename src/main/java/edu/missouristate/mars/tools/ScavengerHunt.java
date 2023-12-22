@@ -39,7 +39,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     private static final int START_AND_END_LOCATION = 255; // Start and end location of the ScavengerHunt
     private static final int ADMINISTRATOR_ID = 999;  // Special ID for administrator
 
-
     // MIPS addresses of administrative memory space.
     // The administrator MIPS program writes a value to the Authentication field prior to writing a new
     // value to the PlayerID field. The value of the Authentication field is not itself verified until
@@ -53,7 +52,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     private static final int ADDR_PLAYER_ID = 0xffffe004;  // MIPS byte address of PlayerID field
     private static final int ADDR_GAME_ON = 0xffffe008;  // MIPS byte address of signal that administration has initialized data
     private static final int ADDR_NUM_TURNS = 0xffffe00c;  // MIPS byte address of number of turns remaining in the game
-
 
     // MIPS addresses of various data in each player's memory space.
     // Each player's assigned memory is the MEM_PER_PLAYER bytes which begin at
@@ -81,7 +79,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     private static final int accessCounter = 0;
     private static int playerID = ADMINISTRATOR_ID;   // Range 0...(NUM_PLAYERS-1), plus ADMINISTRATOR_ID
     private final boolean KENVDEBUG = false;
-
 
     // Used to define (X,Y) coordinate of a location to which ScavengerHunt players
     // will travel.
@@ -175,7 +172,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     private Random randomStream;
     private long startTime;
 
-
     // private inner class
     private class ScavengerHuntRunnable implements Runnable {
         final JPanel panel;
@@ -204,7 +200,6 @@ public class ScavengerHunt implements Observer, MarsTool {
 
                     });
             buttonPanel.add(resetButton);
-
 
             panel.add(graphicArea, BorderLayout.CENTER);
             panel.add(buttonPanel, BorderLayout.SOUTH);

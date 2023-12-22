@@ -54,7 +54,7 @@ public class SymbolTable {
         } else {
             Symbol s = new Symbol(label, address, b);
             table.add(s);
-            if (Globals.debug)
+            if (Globals.getDebug())
                 System.out.println("The symbol " + label + " with address " + address + " has been added to the " + this.filename + " symbol table.");
         }
     }
@@ -71,7 +71,7 @@ public class SymbolTable {
         for (int i = 0; i < table.size(); i++) {
             if (table.get(i).getName().equals(label)) {
                 table.remove(i);
-                if (Globals.debug)
+                if (Globals.getDebug())
                     System.out.println("The symbol " + label + " has been removed from the " + this.filename + " symbol table.");
                 break;
             }

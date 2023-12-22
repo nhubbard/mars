@@ -352,7 +352,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
                         int iVal = Binary.stringToInt(sVal);
                         //  Assures that if changed during MIPS program execution, the update will
                         //  occur only between MIPS instructions.
-                        synchronized (Globals.memoryAndRegistersLock) {
+                        synchronized (Globals.getMemoryAndRegistersLock()) {
                             Coprocessor1.updateRegister(row, iVal);
                         }
                         data[row][col] = NumberDisplayBaseChooser.formatFloatNumber(iVal, valueBase);
@@ -361,7 +361,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
                         fVal = Float.parseFloat(sVal);
                         //  Assures that if changed during MIPS program execution, the update will
                         //  occur only between MIPS instructions.
-                        synchronized (Globals.memoryAndRegistersLock) {
+                        synchronized (Globals.getMemoryAndRegistersLock()) {
                             Coprocessor1.setRegisterToFloat(row, fVal);
                         }
                         data[row][col] = NumberDisplayBaseChooser.formatNumber(fVal, valueBase);
@@ -375,7 +375,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
                         long lVal = Binary.stringToLong(sVal);
                         //  Assures that if changed during MIPS program execution, the update will
                         //  occur only between MIPS instructions.
-                        synchronized (Globals.memoryAndRegistersLock) {
+                        synchronized (Globals.getMemoryAndRegistersLock()) {
                             Coprocessor1.setRegisterPairToLong(row, lVal);
                         }
                         setDisplayAndModelValueAt(
@@ -384,7 +384,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
                         dVal = Double.parseDouble(sVal);
                         //  Assures that if changed during MIPS program execution, the update will
                         //  occur only between MIPS instructions.
-                        synchronized (Globals.memoryAndRegistersLock) {
+                        synchronized (Globals.getMemoryAndRegistersLock()) {
                             Coprocessor1.setRegisterPairToDouble(row, dVal);
                         }
                         setDisplayAndModelValueAt(

@@ -74,7 +74,7 @@ class SyscallLoader {
     // Will get any syscall number override specifications from MARS config file and
     // process them.  This will alter syscallList entry for affected names.
     private ArrayList<Syscall> processSyscallNumberOverrides(ArrayList<Syscall> syscallList) {
-        ArrayList<SyscallNumberOverride> overrides = new Globals().getSyscallOverrides();
+        ArrayList<SyscallNumberOverride> overrides = Globals.INSTANCE.getSyscallOverrides();
         SyscallNumberOverride override;
         Syscall syscall;
         for (SyscallNumberOverride object : overrides) {
@@ -107,8 +107,7 @@ class SyscallLoader {
             for (int j = i + 1; j < syscallList.size(); j++) {
                 syscallB = syscallList.get(j);
                 if (syscallA.getNumber() == syscallB.getNumber()) {
-                    System.out.println("Error: syscalls " + syscallA.getName() + " and " +
-                            syscallB.getName() + " are both assigned same number " + syscallA.getNumber());
+                    System.out.println(STR."Error: syscalls \{syscallA.getName()} and \{syscallB.getName()} are both assigned same number \{syscallA.getNumber()}");
                     duplicates = true;
                 }
             }
@@ -129,8 +128,8 @@ class SyscallLoader {
         if (syscallList == null) {
             loadSyscalls();
         }
-        for (Object o : syscallList) {
-            service = (Syscall) o;
+        for (Syscall o : syscallList) {
+            service = o;
             if (service.getNumber() == number) {
                 match = service;
             }

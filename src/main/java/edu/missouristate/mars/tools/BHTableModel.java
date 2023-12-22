@@ -51,7 +51,6 @@ public class BHTableModel extends AbstractTableModel {
     //@SuppressWarnings("unchecked")
     private final Class<?>[] columnClasses = {Integer.class, String.class, String.class, Integer.class, Integer.class, Double.class};
 
-
     /**
      * Constructs a new BHT with given number of entries and history size.
      *
@@ -61,7 +60,6 @@ public class BHTableModel extends AbstractTableModel {
     public BHTableModel(int numEntries, int historySize, boolean initVal) {
         initBHT(numEntries, historySize, initVal);
     }
-
 
     /**
      * Returns the i-th name column of the table.
@@ -77,7 +75,6 @@ public class BHTableModel extends AbstractTableModel {
         return columnNames[i];
     }
 
-
     /**
      * Returns the i-th column class/type of the table.
      * Required by the TableModel interface.
@@ -92,7 +89,6 @@ public class BHTableModel extends AbstractTableModel {
         return columnClasses[i];
     }
 
-
     /**
      * Returns the number of columns.
      * Required by the TableModel interface.
@@ -103,7 +99,6 @@ public class BHTableModel extends AbstractTableModel {
         return 6;
     }
 
-
     /**
      * Returns the number of entries in the BHT.
      * Required by the TableModel interface.
@@ -113,7 +108,6 @@ public class BHTableModel extends AbstractTableModel {
     public int getRowCount() {
         return entryCount;
     }
-
 
     /**
      * Returns the value of the cell at the given row and column
@@ -137,7 +131,6 @@ public class BHTableModel extends AbstractTableModel {
 
         return "";
     }
-
 
     /**
      * Initializes the BHT with the given size and history.
@@ -170,7 +163,6 @@ public class BHTableModel extends AbstractTableModel {
         fireTableStructureChanged();
     }
 
-
     /**
      * Returns the index into the BHT for a given branch instruction address.
      * A simple direct mapping is used.
@@ -185,7 +177,6 @@ public class BHTableModel extends AbstractTableModel {
         return (address >> 2) % entryCount;
     }
 
-
     /**
      * Retrieve the prediction for the i-th BHT entry.
      *
@@ -198,7 +189,6 @@ public class BHTableModel extends AbstractTableModel {
 
         return entries.elementAt(index).getPrediction();
     }
-
 
     /**
      * Updates the BHT entry with the outcome of the branch instruction.

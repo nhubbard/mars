@@ -342,7 +342,6 @@ class Settings : Observable() {
             arrayOf("Plain", "Plain", "Plain", "Plain", "Plain", "Plain", "Plain")
         private val defaultFontSizeSettingsValues = arrayOf("12", "12", "12", "12", "12", "12", "12")
 
-
         // COLOR SETTINGS.  Each array position has an associated name.
         /**
          * RGB color for table even row background (text, data, register displays)
@@ -466,7 +465,7 @@ class Settings : Observable() {
      * @return true if backstepping is permitted, false otherwise.
      */
     fun getBackSteppingEnabled(): Boolean {
-        return (Globals.program != null && Globals.program.backStepper != null && Globals.program.backStepper.enabled())
+        return (Globals.program.backStepper != null && Globals.program.backStepper.enabled())
     }
 
     /**
@@ -579,7 +578,6 @@ class Settings : Observable() {
             )
         }
     }
-
 
     // *********************************************************************************
     ////////////////////////////////////////////////////////////////////////
@@ -944,7 +942,6 @@ class Settings : Observable() {
     fun getDefaultColorSettingByPosition(position: Int): Color? {
         return getColorValueByPosition(position, defaultColorSettingsValues)
     }
-
 
     ////////////////////////////////////////////////////////////////////////
     //  Setting Setters
@@ -1593,9 +1590,8 @@ class Settings : Observable() {
             }
             list[index++] = value
         }
-        if (!valuesOK && stringOfColumnIndexes != defaultStringSettingsValues[TEXT_COLUMN_ORDER]) return getTextSegmentColumnOrder(
-            defaultStringSettingsValues[TEXT_COLUMN_ORDER]
-        )
+        if (!valuesOK && stringOfColumnIndexes != defaultStringSettingsValues[TEXT_COLUMN_ORDER])
+            return getTextSegmentColumnOrder(defaultStringSettingsValues[TEXT_COLUMN_ORDER])
         return list
     }
 }

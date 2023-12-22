@@ -255,7 +255,7 @@ public class Coprocessor1 {
         if (reg % 2 != 0) {
             throw new InvalidRegisterAccessException();
         }
-        long bits = Binary.twoIntsToLong(registers[reg + 1].getValue(), registers[reg].getValue());
+        long bits = Binary.twoIntegersToLong(registers[reg + 1].getValue(), registers[reg].getValue());
         return Double.longBitsToDouble(bits);
     }
 
@@ -289,7 +289,7 @@ public class Coprocessor1 {
         if (reg % 2 != 0) {
             throw new InvalidRegisterAccessException();
         }
-        return Binary.twoIntsToLong(registers[reg + 1].getValue(), registers[reg].getValue());
+        return Binary.twoIntegersToLong(registers[reg + 1].getValue(), registers[reg].getValue());
     }
 
 

@@ -137,7 +137,7 @@ public class Assembler {
         Globals.memory.clear();
         ArrayList<ProgramStatement> machineList = new ArrayList<>();
         this.errors = new ErrorList();
-        if (Globals.debug) System.out.println("Assembler first pass begins:");
+        if (Globals.getDebug()) System.out.println("Assembler first pass begins:");
         /*
          Process the first assembly pass for all source files before proceeding to the second pass.
          This assures all symbol tables are correctly built.
@@ -207,7 +207,7 @@ public class Assembler {
 
         // Throw the collection of errors accumulated through the first pass.
         if (errors.hasErrors()) throw new ProcessingException(errors);
-        if (Globals.debug) System.out.println("Assembler second pass begins");
+        if (Globals.getDebug()) System.out.println("Assembler second pass begins");
         // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
         // Generates basic assembler statements...
         for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
@@ -268,7 +268,7 @@ public class Assembler {
 
                         // All substitutions have been made, so we have generated
                         // a valid basic instruction!
-                        if (Globals.debug) System.out.println("PSEUDO generated: " + instruction);
+                        if (Globals.getDebug()) System.out.println("PSEUDO generated: " + instruction);
                         // For generated instruction: tokenize, build the program statement, and add to the list.
                         TokenList newTokenList = new Tokenizer().tokenizeLine(sourceLine, instruction, errors, false);
                         ArrayList<Instruction> instrMatches = this.matchInstruction(newTokenList.get(0));
@@ -283,7 +283,7 @@ public class Assembler {
 
             } // end of assembler second pass.
         }
-        if (Globals.debug) System.out.println("Code generation begins");
+        if (Globals.getDebug()) System.out.println("Code generation begins");
         /*
          Generates machine code statements from the list of basic assembler statements
          and writes the statement to memory.
@@ -293,7 +293,7 @@ public class Assembler {
             if (errors.isErrorLimitExceeded()) break;
             statement = programStatement;
             statement.buildMachineStatementFromBasicStatement(errors);
-            if (Globals.debug) System.out.println(statement);
+            if (Globals.getDebug()) System.out.println(statement);
             try {
                 Globals.memory.setStatement(statement.getAddress(), statement);
             } catch (AddressErrorException e) {
@@ -542,7 +542,7 @@ public class Assembler {
     private void executeDirective(TokenList tokens) {
         Token token = tokens.get(0);
         Directives direct = Directives.matchDirective(token.getValue());
-        if (Globals.debug) System.out.println("line " + token.getSourceLine() + " is directive " + direct);
+        if (Globals.getDebug()) System.out.println("line " + token.getSourceLine() + " is directive " + direct);
         if (direct == null) {
             errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" directive is invalid or not implemented in MARS"));
         } else if (direct == Directives.EQV) { /* EQV added by DPS 11 July 2012 */

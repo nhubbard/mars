@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -366,7 +367,7 @@ public class Memory extends Observable {
     // Allocates blocks if necessary.
     public int set(int address, int value, int length) throws AddressErrorException {
         int oldValue = 0;
-        if (Globals.debug) System.out.println("memory[" + address + "] set to " + value + "(" + length + " bytes)");
+        if (Globals.getDebug()) System.out.println("memory[" + address + "] set to " + value + "(" + length + " bytes)");
         int relativeByteAddress;
         if (inDataSegment(address)) {
             // in data segment.  Will write one byte at a time, w/o regard to boundaries.
@@ -556,7 +557,7 @@ public class Memory extends Observable {
         long longValue = Double.doubleToLongBits(value);
         oldHighOrder = set(address + 4, Binary.highOrderLongToInt(longValue), 4);
         oldLowOrder = set(address, Binary.lowOrderLongToInt(longValue), 4);
-        return Double.longBitsToDouble(Binary.twoIntsToLong(oldHighOrder, oldLowOrder));
+        return Double.longBitsToDouble(Binary.twoIntegersToLong(oldHighOrder, oldLowOrder));
     }
 
 
@@ -578,7 +579,7 @@ public class Memory extends Observable {
                     "store address to text segment out of range or not aligned to word boundary ",
                     Exceptions.ADDRESS_EXCEPTION_STORE, address);
         }
-        if (Globals.debug) System.out.println("memory[" + address + "] set to " + statement.getBinaryStatement());
+        if (Globals.getDebug()) System.out.println("memory[" + address + "] set to " + statement.getBinaryStatement());
         if (inTextSegment(address)) {
             storeProgramStatement(address, statement, textBaseAddress, textBlockTable);
         } else {
@@ -738,6 +739,7 @@ public class Memory extends Observable {
      **/
 
     // See note above, with getRawWord(), concerning duplicated logic.
+    @Nullable
     public Integer getRawWordOrNull(int address) throws AddressErrorException {
         Integer value = null;
         int relative;
@@ -1102,8 +1104,8 @@ public class Memory extends Observable {
      * @param obs Observer to be removed
      */
     public void deleteObserver(Observer obs) {
-        for (Object observable : observables) {
-            ((MemoryObservable) observable).deleteObserver(obs);
+        for (MemoryObservable observable : observables) {
+            observable.deleteObserver(obs);
         }
     }
 

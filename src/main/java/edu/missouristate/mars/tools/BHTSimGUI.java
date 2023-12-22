@@ -88,7 +88,6 @@ public class BHTSimGUI extends JPanel {
      */
     public final static String BHT_DO_NOT_TAKE_BRANCH = "NOT TAKE";
 
-
     /**
      * Creates the GUI components of the BHT Simulator
      * The GUI is a subclass of JPanel which is integrated in the GUI of the MARS tool
@@ -141,7 +140,6 @@ public class BHTSimGUI extends JPanel {
 
     }
 
-
     /**
      * Creates and initializes the panel holding the instruction, address and index text fields.
      *
@@ -191,7 +189,6 @@ public class BHTSimGUI extends JPanel {
         return outerPanel;
     }
 
-
     /**
      * Creates and initializes the panel for the configuration of the tool
      * The panel contains two combo boxes for selecting the number of BHT entries and the history size.
@@ -228,7 +225,6 @@ public class BHTSimGUI extends JPanel {
         return panel;
     }
 
-
     /**
      * Creates and initializes the panel containing the log text area.
      *
@@ -247,7 +243,6 @@ public class BHTSimGUI extends JPanel {
         return panel;
     }
 
-
     /***
      * Returns the combo box for selecting the number of BHT entries.
      *
@@ -257,7 +252,6 @@ public class BHTSimGUI extends JPanel {
         return bhtEntriesBox;
     }
 
-
     /***
      * Returns the combo box for selecting the size of the BHT history.
      *
@@ -266,7 +260,6 @@ public class BHTSimGUI extends JPanel {
     public JComboBox<Integer> getCbBHThistory() {
         return historySizeBox;
     }
-
 
     /***
      * Returns the combo box for selecting the initial value of the BHT
@@ -286,7 +279,6 @@ public class BHTSimGUI extends JPanel {
         return bhtTable;
     }
 
-
     /***
      * Returns the text area for log purposes.
      *
@@ -295,7 +287,6 @@ public class BHTSimGUI extends JPanel {
     public JTextArea getTaLog() {
         return logArea;
     }
-
 
     /***
      * Returns the text field for displaying the most recent branch instruction
@@ -306,7 +297,6 @@ public class BHTSimGUI extends JPanel {
         return instructionField;
     }
 
-
     /***
      * Returns the text field for displaying the address of the most recent branch instruction
      *
@@ -316,7 +306,6 @@ public class BHTSimGUI extends JPanel {
         return addressField;
     }
 
-
     /***
      * Returns the text field for displaying the corresponding index into the BHT
      *
@@ -325,6 +314,5 @@ public class BHTSimGUI extends JPanel {
     public JTextField getTfIndex() {
         return indexField;
     }
-
 
 }

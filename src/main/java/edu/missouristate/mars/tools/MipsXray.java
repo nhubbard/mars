@@ -62,7 +62,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         super(heading + ", " + version, heading);
     }
 
-
     /**
      * Required method to return Tool name.
      *
@@ -225,7 +224,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             e.printStackTrace();
         }
 
-
     }
 
     public void updateDisplay() {
@@ -276,7 +274,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             System.exit(0);
         }
     }
-
 
     static class Vertex {
         private int numIndex;
@@ -339,7 +336,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         public boolean isText() {
             return this.isText;
         }
-
 
         public ArrayList<Integer> getTargetVertex() {
             return targetVertex;
@@ -426,7 +422,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
     }
 
-
     //Internal class that set the parameters value, control the basic behavior of the animation , and execute the animation of the
 //selected instruction in memory.
     class DatapathAnimation extends JPanel
@@ -444,11 +439,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         private int counter;            //verify then remove.
         private boolean justStarted;    //flag to start movement
 
-
         private int indexX;    //counter of screen position
         private int indexY;
         private boolean xIsMoving, yIsMoving;        //flag for mouse movement.
-
 
         //	 private Vertex[][] inputGraph;
         private Vector<Vector<Vertex>> outputGraph;
@@ -473,7 +466,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         private final int alu = 4;
         private int currentUnit;
         private Graphics2D g2d;
-
 
         private BufferedImage datapath;
 
@@ -511,7 +503,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             int countPCLabel = 380;
             loadHashMapValues();
             addMouseListener(this);
-
 
         } // end of ImagesTests()
 
@@ -697,7 +688,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                 textVariable = new TextLayout(instructionCode.substring(26, 32), font, frc);
                 g2d.setColor(orange1);
                 textVariable.draw(g2d, 330, 550);
-
 
                 //instruction mnemonic
                 textVariable = new TextLayout("Instruction", fontTitle, frc);

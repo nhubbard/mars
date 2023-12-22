@@ -869,7 +869,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
             }
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
+            synchronized (Globals.getMemoryAndRegistersLock()) {
                 try {
                     Globals.memory.setRawWord(address, val);
                 }
