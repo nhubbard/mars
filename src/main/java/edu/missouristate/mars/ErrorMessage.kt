@@ -33,7 +33,7 @@ class ErrorMessage {
     companion object {
         @JvmStatic
         private fun getExpansionHistory(sourceProgram: MIPSProgram?): String =
-            sourceProgram?.getLocalMacroPool()?.expansionHistory ?: ""
+            sourceProgram?.getLocalMacroPool()?.getExpansionHistory() ?: ""
     }
 
     var isWarning: Boolean = false
@@ -100,7 +100,7 @@ class ErrorMessage {
         sourceProgram?.let { program ->
             program.getSourceLineList().let {
                 val sourceLine = it[line - 1]
-                filename = sourceLine.filename
+                filename = sourceLine.filename ?: ""
                 this.line = sourceLine.lineNumber
             }
         } ?: run {

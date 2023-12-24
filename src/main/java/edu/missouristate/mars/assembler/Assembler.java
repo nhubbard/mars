@@ -141,13 +141,13 @@ public class Assembler {
         /*
          Process the first assembly pass for all source files before proceeding to the second pass.
          This assures all symbol tables are correctly built.
-         There is one global symbol table (for identifiers declared .global), plus one local symbol table for each
+         There is one global symbol table (for identifiers declared .globl), plus one local symbol table for each
          source file.
         */
         for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
             if (errors.isErrorLimitExceeded()) break;
             this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
-            // List of labels declared ".global". new list for each file assembled
+            // List of labels declared ".globl". new list for each file assembled
             this.globalDeclarationList = new TokenList();
             // Parser begins by default in text segment until directed otherwise.
             this.inDataSegment = false;
@@ -177,7 +177,7 @@ public class Assembler {
                 for (int z = 0; z < tokenList.get(i).size(); z++) {
                     Token t = tokenList.get(i).get(z);
                     // record this token's original source program and line #. Differs from final, if .include used
-                    t.setOriginal(sourceLineList.get(i).getMIPSProgram(), sourceLineList.get(i).getLineNumber());
+                    t.setOriginal(sourceLineList.get(i).getMipsProgram(), sourceLineList.get(i).getLineNumber());
                 }
                 statements = this.parseLine(tokenList.get(i), sourceLineList.get(i).getSource(), sourceLineList.get(i).getLineNumber(), extendedAssemblerEnabled);
                 if (statements != null) parsedList.addAll(statements);
@@ -375,7 +375,7 @@ public class Assembler {
             parenFreeTokens.remove(tokens.size() - 1);
             parenFreeTokens.remove(1);
         }
-        Macro macro = macroPool.getMatchingMacro(parenFreeTokens, sourceLineNumber);//parenFreeTokens.get(0).getSourceLine());
+        Macro macro = macroPool.getMatchingMacro(parenFreeTokens);//parenFreeTokens.get(0).getSourceLine());
 
         // expand macro if this line is a macro expansion call
         if (macro != null) {

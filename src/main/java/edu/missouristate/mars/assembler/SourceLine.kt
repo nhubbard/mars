@@ -1,69 +1,44 @@
-package edu.missouristate.mars.assembler;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.MIPSProgram;
+package edu.missouristate.mars.assembler
+
+import edu.missouristate.mars.MIPSProgram
 
 /**
- * Handy class to represent, for a given line of source code, the code
- * itself, the program containing it, and its line number within that program.
- * This is used to separately keep track of the original file/position of
- * a given line of code.  When .include is used, it will migrate to a different
- * line and possibly different program but the migration should not be visible
- * to the user.
+ * Handy class to represent, for a given line of source code:
+ * - The code itself
+ * - The program containing it
+ * - Its line number within that program
+ * This is used to separately keep track of the original file/position for a line of code.
+ * When the `.include` directive is used, it will migrate to a different line and possibly different program,
+ * but the migration should not be visible to the user.
  */
-public class SourceLine {
-    private final String source;
-    private String filename;
-    private final MIPSProgram mipsProgram;
-    private final int lineNumber;
-
-    /**
-     * SourceLine constructor
-     *
-     * @param source      The source code itself
-     * @param mipsProgram The program (object representing source file) containing that line
-     * @param lineNumber  The line number within that program where source appears.
-     */
-    public SourceLine(String source, MIPSProgram mipsProgram, int lineNumber) {
-        this.source = source;
-        this.mipsProgram = mipsProgram;
-        if (mipsProgram != null)
-            this.filename = mipsProgram.getFilename();
-        this.lineNumber = lineNumber;
-    }
-
-    /**
-     * Retrieve source statement itself
-     *
-     * @return Source statement as String
-     */
-    public String getSource() {
-        return source;
-    }
-
-    /**
-     * Retrieve name of file containing source statement
-     *
-     * @return File name as String
-     */
-    public String getFilename() {
-        return filename;
-    }
-
-    /**
-     * Retrieve line number of source statement
-     *
-     * @return Line number of source statement
-     */
-    public int getLineNumber() {
-        return lineNumber;
-    }
-
-    /**
-     * Retrieve MIPSProgram object containing source statement
-     *
-     * @return program as MIPSProgram object
-     */
-    public MIPSProgram getMIPSProgram() {
-        return mipsProgram;
+data class SourceLine @JvmOverloads constructor(
+    val source: String,
+    val mipsProgram: MIPSProgram?,
+    val lineNumber: Int,
+    var filename: String? = null
+) {
+    init {
+        filename = mipsProgram?.getFilename()
     }
 }

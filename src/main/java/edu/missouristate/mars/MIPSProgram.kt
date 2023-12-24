@@ -65,7 +65,7 @@ class MIPSProgram {
     fun setSourceLineList(sourceLineList: ArrayList<SourceLine>) {
         this.sourceLineList = sourceLineList
         sourceList = arrayListOf()
-        sourceList.addAll(sourceLineList.map(SourceLine::getSource))
+        sourceList.addAll(sourceLineList.map(SourceLine::source))
     }
 
     /**

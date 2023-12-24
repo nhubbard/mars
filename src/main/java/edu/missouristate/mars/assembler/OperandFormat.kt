@@ -1,152 +1,158 @@
-package edu.missouristate.mars.assembler;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.mips.instructions.*;
+package edu.missouristate.mars.assembler
 
-import java.util.*;
+import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.ErrorMessage
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.util.Binary.stringToInt
 
 /**
- * Provides utility method related to MIPS operand formats.
- *
- * @author Pete Sanderson
- * @version August 2003
+ * Utility methods related to MIPS operand formats.
  */
-public class OperandFormat {
-    private OperandFormat() {}
-
+object OperandFormat {
     /**
      * Syntax test for correct match in both numbers and types of operands.
      *
      * @param candidateList List of tokens generated from programmer's MIPS statement.
-     * @param inst The (resumably best matched) MIPS instruction.
-     * @param errors ErrorList into which any error messages generated here will be added.
-     *
-     * @return Returns <tt>true</tt> if the programmer's statement matches the MIPS
-     * specification, else returns <tt>false</tt>.
+     * @param inst The (presumably best matched) MIPS instruction.
+     * @param errors The ErrorList into which any error messages generated here will be added.
+     * @return `true` if the programmer's statement matches the MIPS specification, `false` otherwise.
      */
-    static boolean tokenOperandMatch(TokenList candidateList, Instruction inst, ErrorList errors) {
-        if (!numOperandsCheck(candidateList, inst, errors)) return false;
-        return operandTypeCheck(candidateList, inst, errors);
+    @JvmStatic
+    fun tokenOperandMatch(candidateList: TokenList, inst: Instruction, errors: ErrorList): Boolean {
+        if (!numOperandsCheck(candidateList, inst, errors)) return false
+        return operandTypeCheck(candidateList, inst, errors)
     }
 
     /**
-     * If the candidate operator token matches more than one instruction mnemonic, then select
-     * first such Instruction that has an exact operand match.  If none match,
-     * return the first Instruction and let the client deal with operand mismatches.
+     * If the candidate operator token matches more than one instruction mnemonic,
+     * then select the first mnemonic such that [Instruction] has an exact operand match.
+     * If none match, return the first instruction and let the client deal with operand mismatches.
      */
-    static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
-        if (instrMatches == null) return null;
-        if (instrMatches.size() == 1) return instrMatches.get(0);
-        for (Instruction instruction : instrMatches)
-            if (tokenOperandMatch(tokenList, instruction, new ErrorList())) return instruction;
-        return instrMatches.get(0);
+    @JvmStatic
+    fun bestOperandMatch(tokenList: TokenList, instrMatches: ArrayList<Instruction>?): Instruction? {
+        if (instrMatches == null) return null
+        if (instrMatches.size == 1) return instrMatches[0]
+        return instrMatches.firstOrNull { tokenOperandMatch(tokenList, it, ErrorList()) } ?: instrMatches.first()
     }
 
     /**
-     * Check to see if numbers of operands are correct and generate an error message if not.
+     * Check to see if the numbers of operands are correct, and generate an error message if not.
      */
-    private static boolean numOperandsCheck(TokenList cand, Instruction spec, ErrorList errors) {
-        int numOperands = cand.size() - 1;
-        int reqNumOperands = spec.getTokenList().size() - 1;
-        Token operator = cand.get(0);
-        if (numOperands == reqNumOperands) {
-            return true;
-        } else if (numOperands < reqNumOperands) {
-            String mess = "Too few or incorrectly formatted operands. Expected: " + spec.getExampleFormat();
-            generateMessage(operator, mess, errors);
-        } else {
-            String mess = "Too many or incorrectly formatted operands. Expected: " + spec.getExampleFormat();
-            generateMessage(operator, mess, errors);
-        }
-        return false;
+    @JvmStatic
+    private fun numOperandsCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
+        val numOperands = candidate.size() - 1
+        val reqNumOperands = spec.tokenList.size() - 1
+        val operator = candidate.get(0)
+        if (numOperands == reqNumOperands) return true
+        else if (numOperands < reqNumOperands) generateMessage(operator, "Too few or incorrectly formatted operands. Expected: ${spec.exampleFormat}", errors)
+        else generateMessage(operator, "Too many or incorrectly formatted operands. Expected: ${spec.exampleFormat}", errors)
+        return false
     }
 
     /**
-     * Generate an error message if operand is not of the correct type for this operation & operand position
+     * Generate an error message if the operand is not of the correct type for this operation and operand position.
      */
-    private static boolean operandTypeCheck(TokenList cand, Instruction spec, ErrorList errors) {
-        Token candToken, specToken;
-        TokenTypes candType, specType;
-        for (int i = 1; i < spec.getTokenList().size(); i++) {
-            candToken = cand.get(i);
-            specToken = spec.getTokenList().get(i);
-            candType = candToken.getType();
-            specType = specToken.getType();
+    @JvmStatic
+    private fun operandTypeCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
+        var candidateToken: Token
+        var specToken: Token
+        var candidateType: TokenTypes
+        var specType: TokenTypes
+        for (i in 1..<spec.tokenList.size()) {
+            candidateToken = candidate[i]
+            specToken = spec.tokenList[i]
+            candidateType = candidateToken.type
+            specType = specToken.type
             /*
-             Type mismatch is error EXCEPT when (1) spec calls for register name and candidate is
-             register number, (2) spec calls for register number, candidate is register name and
-             names are permitted, (3)spec calls for integer of specified max bit length and
-             candidate is integer of smaller bit length.
-             Type match is error when spec calls for register name, candidate is register name, and
-             names are not permitted.
-             added 2-July-2010 DPS
-             Not an error if spec calls for identifier and candidate is operator, since operator names can be used as labels.
+            * A type mismatch is an error, unless:
+            * (a) The spec calls for a register name, but the candidate provides a register number
+            * (b) The spec calls for a register number, but the candidate provides a register name where permitted
+            * (c) The spec calls for an integer of a specified maximum bit length, but the candidate is an integer of a
+            * smaller bit length
+            * (d) The spec calls for an identifier, but the candidate provides an operator, since operator names can be
+            * used as labels
+*
+            * A type match is an error when the spec calls for a register name, but the candidate provides a register
+            * name where names are not permitted.
             */
-            if (specType == TokenTypes.IDENTIFIER && candType == TokenTypes.OPERATOR) {
-                Token replacement = new Token(
+            if (specType == TokenTypes.IDENTIFIER && candidateType == TokenTypes.OPERATOR) {
+                val replacement = Token(
                     TokenTypes.IDENTIFIER,
-                    candToken.getValue(),
-                    candToken.getSourceMIPSProgram(),
-                    candToken.getSourceLine(),
-                    candToken.getStartPos()
-                );
-                cand.set(i, replacement);
-                continue;
+                    candidateToken.value,
+                    candidateToken.sourceMIPSProgram,
+                    candidateToken.sourceLine,
+                    candidateToken.startPos
+                )
+                candidate.set(i, replacement)
+                continue
             }
-            // end 2-July-2010 addition
-
-            if ((specType == TokenTypes.REGISTER_NAME || specType == TokenTypes.REGISTER_NUMBER) &&
-                    candType == TokenTypes.REGISTER_NAME) {
-                if (Globals.getSettings().getBooleanSetting(Settings.BARE_MACHINE_ENABLED)) {
-                    /*
-                     On 10-Aug-2010, I noticed this cannot happen since the IDE provides no access
-                     to this setting, whose default value is false.
-                    */
-                    generateMessage(candToken, "Use register number instead of name.  See Settings.", errors);
-                    return false;
-                } else continue;
+            if ((specType == TokenTypes.REGISTER_NAME || specType == TokenTypes.REGISTER_NUMBER) && candidateType == TokenTypes.REGISTER_NAME) {
+                if (Globals.settings.getBooleanSetting(Settings.BARE_MACHINE_ENABLED)) {
+                    generateMessage(candidateToken, "Bare machine mode is enabled. You must use a register number instead of a name. Check the settings panel for more information.", errors)
+                    return false
+                } else continue
             }
-            if (specType == TokenTypes.REGISTER_NAME && candType == TokenTypes.REGISTER_NUMBER) continue;
-            if ((specType == TokenTypes.INTEGER_16 && candType == TokenTypes.INTEGER_5)   ||
-                (specType == TokenTypes.INTEGER_16U && candType == TokenTypes.INTEGER_5)  ||
-                (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_5)   ||
-                (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_16U) ||
-                (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_16)) continue;
-            if (candType == TokenTypes.INTEGER_16U || candType == TokenTypes.INTEGER_16) {
-                int temp = Binary.stringToInt(candToken.getValue());
-                if (specType == TokenTypes.INTEGER_16 && candType == TokenTypes.INTEGER_16U &&
-                    temp >= DataTypes.MIN_HALF_VALUE && temp <= DataTypes.MAX_HALF_VALUE) continue;
-                if (specType == TokenTypes.INTEGER_16U && candType == TokenTypes.INTEGER_16 &&
-                    temp >= DataTypes.MIN_UHALF_VALUE && temp <= DataTypes.MAX_UHALF_VALUE) continue;
+            if (specType == TokenTypes.REGISTER_NAME && candidateType == TokenTypes.REGISTER_NUMBER) continue
+            if ((specType == TokenTypes.INTEGER_16 && candidateType == TokenTypes.INTEGER_5) ||
+                (specType == TokenTypes.INTEGER_16U && candidateType == TokenTypes.INTEGER_5) ||
+                (specType == TokenTypes.INTEGER_32 && candidateType == TokenTypes.INTEGER_5) ||
+                (specType == TokenTypes.INTEGER_32 && candidateType == TokenTypes.INTEGER_16U) ||
+                (specType == TokenTypes.INTEGER_32 && candidateType == TokenTypes.INTEGER_16)
+            ) continue
+            if (candidateType == TokenTypes.INTEGER_16U || candidateType == TokenTypes.INTEGER_16) {
+                val temp = stringToInt(candidateToken.value)
+                if (specType == TokenTypes.INTEGER_16 && candidateType == TokenTypes.INTEGER_16U &&
+                    temp >= DataTypes.MIN_HALF_VALUE && temp <= DataTypes.MAX_HALF_VALUE) continue
+                if (specType == TokenTypes.INTEGER_16U && candidateType == TokenTypes.INTEGER_16 &&
+                    temp >= DataTypes.MIN_UHALF_VALUE && temp <= DataTypes.MAX_UHALF_VALUE) continue
             }
-            if ((specType == TokenTypes.INTEGER_5 && candType == TokenTypes.INTEGER_16)       ||
-                    (specType == TokenTypes.INTEGER_5 && candType == TokenTypes.INTEGER_16U)  ||
-                    (specType == TokenTypes.INTEGER_5 && candType == TokenTypes.INTEGER_32)   ||
-                    (specType == TokenTypes.INTEGER_16 && candType == TokenTypes.INTEGER_16U) ||
-                    (specType == TokenTypes.INTEGER_16U && candType == TokenTypes.INTEGER_16) ||
-                    (specType == TokenTypes.INTEGER_16U && candType == TokenTypes.INTEGER_32) ||
-                    (specType == TokenTypes.INTEGER_16 && candType == TokenTypes.INTEGER_32)) {
-                generateMessage(candToken, "operand is out of range", errors);
-                return false;
+            if ((specType == TokenTypes.INTEGER_5 && candidateType == TokenTypes.INTEGER_16) ||
+                (specType == TokenTypes.INTEGER_5 && candidateType == TokenTypes.INTEGER_16U) ||
+                (specType == TokenTypes.INTEGER_5 && candidateType == TokenTypes.INTEGER_32) ||
+                (specType == TokenTypes.INTEGER_16 && candidateType == TokenTypes.INTEGER_16U) ||
+                (specType == TokenTypes.INTEGER_16U && candidateType == TokenTypes.INTEGER_16) ||
+                (specType == TokenTypes.INTEGER_16U && candidateType == TokenTypes.INTEGER_32) ||
+                (specType == TokenTypes.INTEGER_16 && candidateType == TokenTypes.INTEGER_32)
+            ) {
+                generateMessage(candidateToken, "operand is out of range", errors)
+                return false
             }
-            if (candType != specType) {
-                generateMessage(candToken, "operand is of incorrect type", errors);
-                return false;
+            if (candidateType != specType) {
+                generateMessage(candidateToken, "operand is of incorrect type", errors)
+                return false
             }
         }
-        return true;
+        return true
     }
 
     /**
-     * Handy utility for all parse errors.
+     * Handy utility for dealing with parsing errors.
      */
-    private static void generateMessage(Token token, String mess, ErrorList errors) {
-        errors.add(new ErrorMessage(
-            token.getSourceMIPSProgram(),
-            token.getSourceLine(),
-            token.getStartPos(),
-            "\"" + token.getValue() + "\": " + mess
-        ));
+    @JvmStatic
+    private fun generateMessage(token: Token, message: String, errors: ErrorList) {
+        errors.add(ErrorMessage(token.sourceMIPSProgram, token.sourceLine, token.startPos, "\"${token.value}\": $message"))
     }
 }
