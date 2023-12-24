@@ -5,51 +5,51 @@ package edu.missouristate.mars.assembler;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
+ */
 public final class DataTypes {
     /**
      * Number of bytes occupied by MIPS double is 8.
-     **/
+     */
     public static final int DOUBLE_SIZE = 8;
 
     /**
      * Number of bytes occupied by MIPS float is 4.
-     **/
+     */
     public static final int FLOAT_SIZE = 4;
 
     /**
      * Number of bytes occupied by MIPS word is 4.
-     **/
+     */
     public static final int WORD_SIZE = 4;
 
     /**
      * Number of bytes occupied by MIPS halfword is 2.
-     **/
+     */
     public static final int HALF_SIZE = 2;
 
     /**
      * Number of bytes occupied by MIPS byte is 1.
-     **/
+     */
     public static final int BYTE_SIZE = 1;
 
     /**
      * Number of bytes occupied by MIPS character is 1.
-     **/
+     */
     public static final int CHAR_SIZE = 1;
 
     /**
      * Maximum value that can be stored in a MIPS word is 2<sup>31</sup>-1
-     **/
+     */
     public static final int MAX_WORD_VALUE = Integer.MAX_VALUE;
 
     /**
      * Lowest value that can be stored in a MIPS word is -2<sup>31</sup>
-     **/
+     */
     public static final int MIN_WORD_VALUE = Integer.MIN_VALUE;
 
     /**
      * Maximum value that can be stored in a MIPS halfword is 2<sup>15</sup>-1
-     **/
+     */
     public static final int MAX_HALF_VALUE = 32767; //(int)Math.pow(2,15) - 1;
 
     /**

@@ -10,7 +10,7 @@ import edu.missouristate.mars.mips.hardware.*;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
+ */
 
 public final class TokenTypes {
     public static final String TOKEN_DELIMITERS = "\t ,()";
@@ -22,7 +22,7 @@ public final class TokenTypes {
      * note: REGISTER_NAME is token of form $zero whereas REGISTER_NUMBER is token
      * of form $0.  The former is part of extended assembler, and latter is part
      * of basic assembler.
-     **/
+     */
     public static final TokenTypes REGISTER_NAME = new TokenTypes("REGISTER_NAME"); // mnemonic
     public static final TokenTypes REGISTER_NUMBER = new TokenTypes("REGISTER_NUMBER");
     public static final TokenTypes FP_REGISTER_NAME = new TokenTypes("FP_REGISTER_NAME");

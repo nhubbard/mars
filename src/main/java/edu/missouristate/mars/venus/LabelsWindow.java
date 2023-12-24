@@ -24,7 +24,7 @@ import java.util.List;
  * can view MIPS program labels.
  *
  * @author Sanderson and Team JSpim
- **/
+ */
 
 public class LabelsWindow extends JInternalFrame {
     private final JPanel labelPanel;      // holds J
@@ -95,7 +95,7 @@ public class LabelsWindow extends JInternalFrame {
 
     /**
      * Constructor for the Labels (symbol table) window.
-     **/
+     */
 
     public LabelsWindow() {
         super("Labels", true, false, true, true);

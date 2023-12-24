@@ -10,7 +10,7 @@ import java.util.ArrayList;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
+ */
 public final class Directives {
     private static final ArrayList<Directives> directiveList = new ArrayList<>();
     public static final Directives DATA = new Directives(
@@ -118,7 +118,7 @@ public final class Directives {
      *
      * @param str A String containing candidate directive name (e.g. ".ascii")
      * @return If match is found, returns matching Directives object, else returns <tt>null</tt>.
-     **/
+     */
     public static Directives matchDirective(String str) {
         Directives match;
         for (Directives directives : directiveList) {

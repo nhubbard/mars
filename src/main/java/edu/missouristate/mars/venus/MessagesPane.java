@@ -19,7 +19,7 @@ import javax.swing.text.Position.Bias;
  * Creates the message window at the bottom of the UI.
  *
  * @author Team JSpim
- **/
+ */
 
 public class MessagesPane extends JTabbedPane {
     final JTextArea assemble;
@@ -37,7 +37,7 @@ public class MessagesPane extends JTabbedPane {
 
     /**
      * Constructor for the class, sets up two fresh tabbed text areas for program feedback.
-     **/
+     */
 
     public MessagesPane() {
         super();

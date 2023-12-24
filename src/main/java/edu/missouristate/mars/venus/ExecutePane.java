@@ -9,7 +9,7 @@ import java.awt.*;
  * Container for the execution-related windows.  Currently displayed as a tabbed pane.
  *
  * @author Sanderson and Team JSpim
- **/
+ */
 
 public class ExecutePane extends JDesktopPane {
     private final RegistersWindow registerValues;

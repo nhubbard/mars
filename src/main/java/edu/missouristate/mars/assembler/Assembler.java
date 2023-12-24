@@ -20,7 +20,7 @@ import java.util.Comparator;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
+ */
 public class Assembler {
     private ErrorList errors;
     private boolean inDataSegment; // status maintained by parser
@@ -49,7 +49,7 @@ public class Assembler {
      * intermediate, and machine binary representations of a program
      * statement.
      * @see ProgramStatement
-     **/
+     */
     public ArrayList<ProgramStatement> assemble(MIPSProgram p, boolean extendedAssemblerEnabled) throws ProcessingException {
         return assemble(p, extendedAssemblerEnabled, false);
     }
@@ -71,7 +71,7 @@ public class Assembler {
      * intermediate, and machine binary representations of a program
      * statement.
      * @see ProgramStatement
-     **/
+     */
     public ArrayList<ProgramStatement> assemble(MIPSProgram p, boolean extendedAssemblerEnabled, boolean warningsAreErrors) throws ProcessingException {
         ArrayList<MIPSProgram> programFiles = new ArrayList<>();
         programFiles.add(p);

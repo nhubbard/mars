@@ -23,7 +23,7 @@ import java.util.Observer;
  * Represents the Data Segment window, which is a type of JInternalFrame.
  *
  * @author Sanderson and Bumgarner
- **/
+ */
 
 public class DataSegmentWindow extends JInternalFrame implements Observer {
 

@@ -16,7 +16,7 @@ import javax.swing.event.*;
  * Sets up a window to display registers in the UI.
  *
  * @author Sanderson, Bumgarner
- **/
+ */
 
 public class Coprocessor0Window extends JPanel implements Observer {
     private static JTable table;
@@ -32,7 +32,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
 
     /**
      * Constructor which sets up a fresh window with a table that contains the register values.
-     **/
+     */
 
     public Coprocessor0Window() {
         Simulator.getInstance().addObserver(this);
@@ -55,7 +55,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
      * Sets up the data for the window.
      *
      * @return The array object with the data for the window.
-     **/
+     */
 
     public Object[][] setupWindow() {
         registers = Coprocessor0.getRegisters();
@@ -123,7 +123,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
      *
      * @param number The number of the register to update.
      * @param val    New value.
-     **/
+     */
 
     public void updateRegisterValue(int number, int val, int base) {
         ((RegTableModel) table.getModel()).setDisplayAndModelValueAt(

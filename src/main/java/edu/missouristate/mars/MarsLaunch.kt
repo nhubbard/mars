@@ -458,7 +458,7 @@ class MarsLaunch(args: Array<String>) {
             val mipsProgramsToAssemble = code.prepareFilesForAssembly(filesToAssemble, mainFile.absolutePath, null)
             if (Globals.debug) out.println("Assembling")
             val warnings = code.assemble(mipsProgramsToAssemble, pseudo, warningsAreErrors)
-            if (warnings != null && warnings.hasWarnings) out.println(warnings.generateReport(true))
+            if (warnings.hasWarnings) out.println(warnings.generateReport(true))
             RegisterFile.initializeProgramCounter(startAtMain)
             if (simulate) {
                 // Store program arguments in MIPS memory

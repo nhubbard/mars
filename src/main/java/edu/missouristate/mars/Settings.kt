@@ -465,7 +465,7 @@ class Settings : Observable() {
      * @return true if backstepping is permitted, false otherwise.
      */
     fun getBackSteppingEnabled(): Boolean {
-        return (Globals.program.backStepper != null && Globals.program.backStepper.enabled())
+        return (Globals.program.getBackStepper() != null && Globals.program.getBackStepper()!!.enabled())
     }
 
     /**

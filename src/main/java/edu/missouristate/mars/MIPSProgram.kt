@@ -1,12 +1,32 @@
-package edu.missouristate.mars;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.mips.hardware.*;
+package edu.missouristate.mars
 
-import java.util.*;
-import java.io.*;
-import javax.swing.*;
+import edu.missouristate.mars.assembler.*
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.simulator.BackStepper
+import edu.missouristate.mars.simulator.Simulator
+import java.io.File
+import javax.swing.AbstractAction
 
 /**
  * Internal representations of MIPS program.
@@ -16,93 +36,75 @@ import javax.swing.*;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
-public class MIPSProgram {
-    // See explanation of method inSteppedExecution() below.
-    private boolean steppedExecution = false;
-    private String filename;
-    private ArrayList<String> sourceList;
-    private ArrayList<TokenList> tokenList;
-    private ArrayList<ProgramStatement> parsedList;
-    private ArrayList<ProgramStatement> machineList;
-    private BackStepper backStepper;
-    private SymbolTable localSymbolTable;
-    private MacroPool macroPool;
-    private ArrayList<SourceLine> sourceLineList;
-    private Tokenizer tokenizer;
+ */
+class MIPSProgram {
+    private var steppedExecution = false
+    private lateinit var filename: String
+    private lateinit var sourceList: ArrayList<String>
+    private lateinit var tokenList: ArrayList<TokenList>
+    private lateinit var parsedList: ArrayList<ProgramStatement>
+    private lateinit var machineList: ArrayList<ProgramStatement>
+    private var backStepper: BackStepper? = null
+    private lateinit var localSymbolTable: SymbolTable
+    private lateinit var macroPool: MacroPool
+    private lateinit var sourceLineList: ArrayList<SourceLine>
+    private lateinit var tokenizer: Tokenizer
 
     /**
-     * Produces a list of source statements that comprise the program.
+     * Produce a list of source statements that comprise the program.
      *
-     * @return ArrayList of String.  Each String is one line of MIPS source code.
-     **/
-    public ArrayList<String> getSourceList() {
-        return sourceList;
-    }
+     * @return ArrayList of String representing lines of MIPS source code.
+     */
+    fun getSourceList() = sourceList
 
     /**
      * Set a list of source statements that comprise the program.
      *
-     * @param sourceLineList ArrayList of SourceLine.
-     *                       Each SourceLine represents one line of MIPS source code.
-     **/
-    public void setSourceLineList(ArrayList<SourceLine> sourceLineList) {
-        this.sourceLineList = sourceLineList;
-        sourceList = new ArrayList<>();
-        for (SourceLine sl : sourceLineList) {
-            sourceList.add(sl.getSource());
-        }
+     * @param sourceLineList ArrayList of SourceLine objects. Each object represents one line of MIPS source code.
+     */
+    fun setSourceLineList(sourceLineList: ArrayList<SourceLine>) {
+        this.sourceLineList = sourceLineList
+        sourceList = arrayListOf()
+        sourceList.addAll(sourceLineList.map(SourceLine::getSource))
     }
 
     /**
      * Retrieve a list of source statements that comprise the program.
      *
-     * @return ArrayList of SourceLine.
-     * Each SourceLine represents one line of MIPS source cod
-     **/
-    public ArrayList<SourceLine> getSourceLineList() {
-        return this.sourceLineList;
-    }
+     * @return ArrayList of SourceLine. Each SourceLine represents one line of MIPS source code.
+     */
+    fun getSourceLineList() = sourceLineList
 
     /**
-     * Produces name of associated source code file.
+     * Produces the name of the associated source code file.
      *
-     * @return File name as String.
-     **/
-    public String getFilename() {
-        return filename;
-    }
+     * @return File name as String
+     */
+    fun getFilename() = filename
 
     /**
      * Produces a list of tokens that comprise the program.
      *
-     * @return ArrayList of TokenList.
-     * Each TokenList is a list of tokens generated by the corresponding line of MIPS source code.
+     * @return ArrayList of TokenList. Each TokenList is a list of tokens generated by the corresponding line of MIPS
+     * source code.
      * @see TokenList
-     **/
-    public ArrayList<TokenList> getTokenList() {
-        return tokenList;
-    }
+     */
+    fun getTokenList() = tokenList
 
     /**
-     * Retrieves Tokenizer for this program
-     *
-     * @return Tokenizer
-     **/
-    public Tokenizer getTokenizer() {
-        return tokenizer;
-    }
+     * @return The Tokenizer for the program.
+     */
+    fun getTokenizer() = tokenizer
 
     /**
      * Produces a new empty list to hold parsed source code statements.
      *
-     * @return ArrayList of ProgramStatement.  Each ProgramStatement represents a parsed
-     * MIPS statement.
+     * @return ArrayList of ProgramStatement. Each ProgramStatement represents a parsed MIPS statement.
      * @see ProgramStatement
-     **/
-    public ArrayList<ProgramStatement> createParsedList() {
-        parsedList = new ArrayList<>();
-        return parsedList;
+     */
+    fun createParsedList(): ArrayList<ProgramStatement> {
+        parsedList = arrayListOf()
+        return parsedList
     }
 
     /**
@@ -111,10 +113,8 @@ public class MIPSProgram {
      * @return ArrayList of ProgramStatement.  Each ProgramStatement represents a parsed
      * MIPS statement.
      * @see ProgramStatement
-     **/
-    public ArrayList<ProgramStatement> getParsedList() {
-        return parsedList;
-    }
+     */
+    fun getParsedList() = parsedList
 
     /**
      * Produces a list of machine statements that are assembled from the program.
@@ -122,36 +122,28 @@ public class MIPSProgram {
      * @return ArrayList of ProgramStatement.  Each ProgramStatement represents an assembled
      * basic MIPS instruction.
      * @see ProgramStatement
-     **/
-    public ArrayList<ProgramStatement> getMachineList() {
-        return machineList;
-    }
+     */
+    fun getMachineList() = machineList
 
     /**
      * Returns BackStepper associated with this program.  It is created upon successful assembly.
      *
      * @return BackStepper object, null if there is none.
-     **/
-    public BackStepper getBackStepper() {
-        return backStepper;
-    }
+     */
+    fun getBackStepper(): BackStepper? = backStepper
 
     /**
-     * Returns SymbolTable associated with this program.  It is created at assembly time,
+     * @return The SymbolTable associated with this program.  It is created at assembly time,
      * and stores local labels (those not declared using .globl directive).
-     **/
-    public SymbolTable getLocalSymbolTable() {
-        return localSymbolTable;
-    }
+     */
+    fun getLocalSymbolTable() = localSymbolTable
 
     /**
      * Returns status of BackStepper associated with this program.
      *
      * @return true if enabled, false if disabled or non-existent.
-     **/
-    public boolean backSteppingEnabled() {
-        return (backStepper != null && backStepper.enabled());
-    }
+     */
+    fun backSteppingEnabled(): Boolean = backStepper?.enabled() ?: false
 
     /**
      * Produces specified line of MIPS source program.
@@ -160,13 +152,8 @@ public class MIPSProgram {
      * @return Returns specified line of MIPS source.  If outside the line range,
      * it returns null.
      * Line 1 is the first line.
-     **/
-    public String getSourceLine(int i) {
-        if ((i >= 1) && (i <= sourceList.size()))
-            return sourceList.get(i - 1);
-        else
-            return null;
-    }
+     */
+    fun getSourceLine(i: Int): String? = sourceList.getOrNull(i - 1)
 
     /**
      * Reads MIPS source code from file into structure.  Will always read from file.
@@ -175,25 +162,18 @@ public class MIPSProgram {
      *
      * @param file String containing the name of MIPS source code file.
      * @throws ProcessingException Will throw exception if there is any problem reading the file.
-     **/
-    public void readSource(String file) throws ProcessingException {
-        this.filename = file;
-        this.sourceList = new ArrayList<>();
-        ErrorList errors;
-        BufferedReader inputFile;
-        String line;
-        int lengthSoFar = 0;
+     */
+    @Throws(ProcessingException::class)
+    fun readSource(file: String) {
+        this.filename = file
+        this.sourceList = arrayListOf()
+        val errors: ErrorList
         try {
-            inputFile = new BufferedReader(new FileReader(file));
-            line = inputFile.readLine();
-            while (line != null) {
-                sourceList.add(line);
-                line = inputFile.readLine();
-            }
-        } catch (Exception e) {
-            errors = new ErrorList();
-            errors.add(new ErrorMessage((MIPSProgram) null, 0, 0, e.toString()));
-            throw new ProcessingException(errors);
+            sourceList.addAll(File(file).readLines())
+        } catch (e: Exception) {
+            errors = ErrorList()
+            errors.add(ErrorMessage(null, 0, 0, e.toString()))
+            throw ProcessingException(errors)
         }
     }
 
@@ -201,11 +181,12 @@ public class MIPSProgram {
      * Tokenizes the MIPS source program. The program must have already been read from the file.
      *
      * @throws ProcessingException Will throw exception if errors occur while tokenizing.
-     **/
-    public void tokenize() throws ProcessingException {
-        this.tokenizer = new Tokenizer();
-        this.tokenList = tokenizer.tokenize(this);
-        this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
+     */
+    @Throws(ProcessingException::class)
+    fun tokenize() {
+        this.tokenizer = Tokenizer()
+        this.tokenList = tokenizer.tokenize(this)
+        this.localSymbolTable = SymbolTable(this.filename)
     }
 
     /**
@@ -222,48 +203,34 @@ public class MIPSProgram {
      * @return ArrayList containing one MIPSProgram object for each file to assemble.
      * objects for any additional files (send ArrayList to assembler)
      * @throws ProcessingException Will throw exception if any errors occur while reading or tokenizing.
-     **/
-    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
-        ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
-        int leadFilePosition = 0;
-        if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
-            filenames.addFirst(exceptionHandler);
-            leadFilePosition = 1;
+     */
+    @Throws(ProcessingException::class)
+    fun prepareFilesForAssembly(filenames: ArrayList<String>, leadFilename: String, exceptionHandler: String?): ArrayList<MIPSProgram> {
+        val mipsProgramsToAssemble = arrayListOf<MIPSProgram>()
+        var leadFilePosition = 0
+        if (!exceptionHandler.isNullOrEmpty()) {
+            filenames.addFirst(exceptionHandler)
+            leadFilePosition = 1
         }
-        for (String s : filenames) {
-            MIPSProgram currentProgram = (s.equals(leadFilename)) ? this : new MIPSProgram();
-            currentProgram.readSource(s);
-            currentProgram.tokenize();
-            // I want "this" MIPSProgram to be the first in the list...except for exception handler
-            if (currentProgram == this && !MIPSProgramsToAssemble.isEmpty()) {
-                MIPSProgramsToAssemble.add(leadFilePosition, currentProgram);
+        for (filename in filenames) {
+            val currentProgram = if (filename == leadFilename) this else MIPSProgram()
+            currentProgram.readSource(filename)
+            currentProgram.tokenize()
+            // I want "this" KMIPSProgram to be the first in the list, not the exception handler (if present)
+            if (currentProgram == this && mipsProgramsToAssemble.isNotEmpty()) {
+                mipsProgramsToAssemble.add(leadFilePosition, currentProgram)
             } else {
-                MIPSProgramsToAssemble.add(currentProgram);
+                mipsProgramsToAssemble.add(currentProgram)
             }
         }
-        return MIPSProgramsToAssemble;
-    }
-
-    /**
-     * Assembles the MIPS source program. All files comprising the program must have
-     * already been tokenized.  Assembler warnings are not considered errors.
-     *
-     * @param MIPSProgramsToAssemble   ArrayList of MIPSProgram objects, each representing a tokenized source file.
-     * @param extendedAssemblerEnabled A boolean value - true means extended (pseudo) instructions
-     *                                 are permitted in source code and false means they are to be flagged as errors.
-     * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
-     * @throws ProcessingException Will throw exception if errors occur while assembling.
-     **/
-    public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled)
-            throws ProcessingException {
-        return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, false);
+        return mipsProgramsToAssemble
     }
 
     /**
      * Assembles the MIPS source program. All files comprising the program must have
      * already been tokenized.
      *
-     * @param MIPSProgramsToAssemble   ArrayList of MIPSProgram objects, each representing a tokenized source file.
+     * @param mipsProgramsToAssemble   ArrayList of MIPSProgram objects, each representing a tokenized source file.
      * @param extendedAssemblerEnabled True means extended (pseudo) instructions
      *                                 are permitted in source code and false means they are to be flagged as errors
      * @param warningsAreErrors        True means assembler warnings will be considered errors and terminate
@@ -272,14 +239,19 @@ public class MIPSProgram {
      *                                 warnings.
      * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
      * @throws ProcessingException Will throw exception if errors occur while assembling.
-     **/
-    public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
-                              boolean warningsAreErrors) throws ProcessingException {
-        this.backStepper = null;
-        Assembler asm = new Assembler();
-        this.machineList = asm.assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
-        this.backStepper = new BackStepper();
-        return asm.getErrorList();
+     */
+    @Throws(ProcessingException::class)
+    @JvmOverloads
+    fun assemble(
+        mipsProgramsToAssemble: ArrayList<MIPSProgram>,
+        extendedAssemblerEnabled: Boolean,
+        warningsAreErrors: Boolean = false
+    ): ErrorList {
+        this.backStepper = null
+        val asm = Assembler()
+        this.machineList = asm.assemble(mipsProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors)
+        this.backStepper = BackStepper()
+        return asm.errorList
     }
 
     /**
@@ -290,10 +262,9 @@ public class MIPSProgram {
      * @param breakPoints int array of breakpoints (PC addresses).  Can be null.
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occur while simulating.
-     **/
-    public boolean simulate(int[] breakPoints) throws ProcessingException {
-        return this.simulateFromPC(breakPoints, -1, null);
-    }
+     */
+    @Throws(ProcessingException::class)
+    fun simulate(breakPoints: IntArray): Boolean = simulateFromPC(breakPoints, -1, null)
 
     /**
      * Simulates execution of the MIPS program.
@@ -304,10 +275,9 @@ public class MIPSProgram {
      * @param maxSteps maximum number of steps to simulate.
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occur while simulating.
-     **/
-    public boolean simulate(int maxSteps) throws ProcessingException {
-        return this.simulateFromPC(null, maxSteps, null);
-    }
+     */
+    @Throws(ProcessingException::class)
+    fun simulate(maxSteps: Int): Boolean = simulateFromPC(null, maxSteps, null)
 
     /**
      * Simulates execution of the MIPS program.
@@ -320,11 +290,12 @@ public class MIPSProgram {
      * @param a           the GUI component responsible for this call (GO normally).  set to null if none.
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw an exception if errors occur while simulating.
-     **/
-    public boolean simulateFromPC(int[] breakPoints, int maxSteps, AbstractAction a) throws ProcessingException {
-        steppedExecution = false;
-        Simulator sim = Simulator.getInstance();
-        return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a);
+     */
+    @Throws(ProcessingException::class)
+    fun simulateFromPC(breakPoints: IntArray?, maxSteps: Int, a: AbstractAction?): Boolean {
+        steppedExecution = false
+        val sim = Simulator.getInstance()
+        return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a)
     }
 
     /**
@@ -335,12 +306,12 @@ public class MIPSProgram {
      * @param a the GUI component responsible for this call (STEP normally). Set to null if none.
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occur while simulating.
-     **/
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
-        steppedExecution = true;
-        Simulator sim = Simulator.getInstance();
-        return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
+     */
+    @Throws(ProcessingException::class)
+    fun simulateStepAtPC(a: AbstractAction?): Boolean {
+        steppedExecution = true
+        val sim = Simulator.getInstance()
+        return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a)
     }
 
     /**
@@ -350,39 +321,31 @@ public class MIPSProgram {
      * to observers at other times (e.g., while updating the data and register
      * displays, while assembling the program data segment, etc.).
      */
-    public boolean inSteppedExecution() {
-        return steppedExecution;
+    fun inSteppedExecution() = steppedExecution
+
+    /**
+     * Instantiates a new [MacroPool] and sends reference of this [MIPSProgram] to it.
+     *
+     * @return The created instance of [MacroPool]
+     */
+    fun createMacroPool(): MacroPool {
+        macroPool = MacroPool(this)
+        return macroPool
     }
 
     /**
-     * Instantiates a new {@link MacroPool} and sends reference of this
-     * {@link MIPSProgram} to it
+     * Get the local [MacroPool] for this program.
      *
-     * @return The created instance of MacroPool
-     * @author M.H.Sekhavat <sekhavat17@gmail.com>
+     * @return The current [MacroPool]
      */
-    public MacroPool createMacroPool() {
-        macroPool = new MacroPool(this);
-        return macroPool;
-    }
+    fun getLocalMacroPool() = macroPool
 
     /**
-     * Gets local macro pool {@link MacroPool} for this program
+     * Set the local [MacroPool] for this program
      *
-     * @return MacroPool
-     * @author M.H.Sekhavat <sekhavat17@gmail.com>
+     * @param macroPool The reference to the new [MacroPool]
      */
-    public MacroPool getLocalMacroPool() {
-        return macroPool;
-    }
-
-    /**
-     * Sets local macro pool {@link MacroPool} for this program
-     *
-     * @param macroPool reference to MacroPool
-     * @author M.H.Sekhavat <sekhavat17@gmail.com>
-     */
-    public void setLocalMacroPool(MacroPool macroPool) {
-        this.macroPool = macroPool;
+    fun setLocalMacroPool(macroPool: MacroPool) {
+        this.macroPool = macroPool
     }
 }

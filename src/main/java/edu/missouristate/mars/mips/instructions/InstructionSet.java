@@ -10,6 +10,7 @@ import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -2349,6 +2350,7 @@ public class InstructionSet {
         this.opcodeMatchMaps = matchMaps;
     }
 
+    @Nullable
     public BasicInstruction findByBinaryCode(int binaryInstr) {
         ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
         for (MatchMap matchMap : matchMaps) {

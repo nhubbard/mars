@@ -9,7 +9,7 @@ import java.io.*;
  * is being edited in the program.
  *
  * @author Team JSpim
- **/
+ */
 
 public class FileStatus {
     /**

@@ -17,7 +17,7 @@ import javax.swing.event.*;
  * Creates the Text Segment window in the Execute tab of the UI
  *
  * @author Team JSpim
- **/
+ */
 
 public class TextSegmentWindow extends JInternalFrame implements Observer {
     private final JPanel programArgumentsPanel;  // DPS 17-July-2008
@@ -58,7 +58,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
 
     /**
      * Constructor, sets up a new JInternalFrame.
-     **/
+     */
 
     public TextSegmentWindow() {
         super("Text Segment", true, false, true, true);
@@ -78,7 +78,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     /**
      * Method to be called once the user compiles the program.
      * Should convert the lines of code over to the table rows and columns.
-     **/
+     */
     public void setupTable() {
         int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
         codeHighlighting = true;
@@ -890,7 +890,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
              the user clicks on a breakpoint checkbox!  Using this approach, the SimThread registers
              similarly.  A "GUI guard" is not needed in SimThread because it extends SwingWorker and
              thus is only invoked when the IDE is present (never when running MARS in command mode).
-             *****************************************************/
+             ****************************************************/
         }
 
         public Component getTableCellRendererComponent(JTable table, Object value,

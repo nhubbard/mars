@@ -41,7 +41,7 @@ import java.util.*;
  *
  * A character output stream that sends output to a printer.  I made only
  * a couple minor changes -- Pete Sanderson
- **/
+ */
 public class HardcopyWriter extends Writer {
     // These are the instance variables for the class
     protected final PrintJob job; // The PrintJob object in use
@@ -76,7 +76,7 @@ public class HardcopyWriter extends Writer {
      * The jobname appears left justified at the top of each printed page.
      * The font size is specified in points, as on-screen font sizes are.
      * The margins are specified in inches (or fractions of inches).
-     **/
+     */
     public HardcopyWriter(Frame frame, String jobname, int fontsize,
                           double leftmargin, double rightmargin,
                           double topmargin, double bottommargin)
@@ -163,7 +163,7 @@ public class HardcopyWriter extends Writer {
     /**
      * This is the write( ) method of the stream. All Writer subclasses
      * implement this. All other versions of write( ) are variants of this one
-     **/
+     */
     public void write(char @NotNull [] buffer, int index, int len) {
         synchronized (this) { // For thread safety
             // Loop through all the characters passed to us
@@ -214,7 +214,7 @@ public class HardcopyWriter extends Writer {
      * This is the flush( ) method that all Writer subclasses must implement.
      * There is no way to flush a PrintJob without prematurely printing the
      * page, so we don't do anything.
-     **/
+     */
     public void flush() { /* do nothing */ }
 
     /**
@@ -233,7 +233,7 @@ public class HardcopyWriter extends Writer {
      * constants defined by the java.awt.Font class. All subsequent output
      * will be in that style. This method relies on all styles of the
      * Monospaced font having the same metrics.
-     **/
+     */
     public void setFontStyle(int style) {
         synchronized (this) {
             // Try to set a new font, but restore current one if it fails
@@ -306,7 +306,7 @@ public class HardcopyWriter extends Writer {
     /**
      * This is the exception class that the HardcopyWriter constructor
      * throws when the user clicks "Cancel" in the print dialog box.
-     **/
+     */
     public static class PrintCanceledException extends Exception {
         public PrintCanceledException(String msg) {
             super(msg);
@@ -316,7 +316,7 @@ public class HardcopyWriter extends Writer {
 
     /**
      * A program that prints the specified file using HardcopyWriter
-     **/
+     */
 
     public static void main(String[] args) {
         try {

@@ -16,7 +16,7 @@ import javax.swing.event.*;
  * Sets up a window to display registers in the UI.
  *
  * @author Sanderson, Bumgarner
- **/
+ */
 
 public class RegistersWindow extends JPanel implements Observer {
     private static JTable table;
@@ -31,7 +31,7 @@ public class RegistersWindow extends JPanel implements Observer {
 
     /**
      * Constructor which sets up a fresh window with a table that contains the register values.
-     **/
+     */
 
     public RegistersWindow() {
         Simulator.getInstance().addObserver(this);
@@ -54,7 +54,7 @@ public class RegistersWindow extends JPanel implements Observer {
      * Sets up the data for the window.
      *
      * @return The array object with the data for the window.
-     **/
+     */
 
     public Object[][] setupWindow() {
         int valueBase = NumberDisplayBaseChooser.getBase(settings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX));
@@ -136,7 +136,7 @@ public class RegistersWindow extends JPanel implements Observer {
      *
      * @param number The number of the register to update.
      * @param val    New value.
-     **/
+     */
 
     public void updateRegisterValue(int number, int val, int base) {
         ((RegTableModel) table.getModel()).setDisplayAndModelValueAt(NumberDisplayBaseChooser.formatNumber(val, base), number, 2);

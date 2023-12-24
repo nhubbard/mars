@@ -1,19 +1,38 @@
-package edu.missouristate.mars;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.assembler.SymbolTable;
-import edu.missouristate.mars.assembler.Token;
-import edu.missouristate.mars.assembler.TokenList;
-import edu.missouristate.mars.assembler.TokenTypes;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-import edu.missouristate.mars.mips.instructions.BasicInstruction;
-import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
-import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
-import org.jetbrains.annotations.Nullable;
+@file:Suppress("MemberVisibilityCanBePrivate")
 
-import java.util.ArrayList;
+package edu.missouristate.mars
+
+import edu.missouristate.mars.assembler.SymbolTable
+import edu.missouristate.mars.assembler.TokenList
+import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.venus.NumberDisplayBaseChooser
 
 /**
  * Represents one assembly/machine statement.  This represents the "bare machine" level.
@@ -23,49 +42,57 @@ import java.util.ArrayList;
  * @author Pete Sanderson and Jason Bumgarner
  * @version August 2003
  */
-public class ProgramStatement {
-    private final MIPSProgram sourceMIPSProgram;
-    private String source, basicAssemblyStatement, machineStatement;
-    private final TokenList originalTokenList;
-    private final TokenList strippedTokenList;
-    private final BasicStatementList basicStatementList;
-    private final int[] operands;
-    private int numOperands;
-    private final Instruction instruction;
-    private final int textAddress;
-    private int sourceLine;
-    private int binaryStatement;
-    private final boolean altered;
-    private static final String invalidOperator = "<INVALID>";
+class ProgramStatement {
+    companion object {
+        private const val invalidOperator = "<INVALID>"
+    }
+
+    private val sourceMipsProgram: MIPSProgram?
+    private var source: String
+    private var basicAssemblyStatement: String?
+    private var machineStatement: String?
+    private val originalTokenList: TokenList?
+    private val strippedTokenList: TokenList?
+    private val basicStatementList: BasicStatementList
+    private val operands: IntArray?
+    private var numOperands: Int
+    private val instruction: Instruction?
+    private val textAddress: Int
+    private var sourceLine: Int = 0
+    private var binaryStatement: Int
+    private val altered: Boolean
 
     /**
      * Constructor for ProgramStatement when there are links back to all source code and token
      * information.
      * A debugger uses these later on.
      *
-     * @param sourceMIPSProgram The MIPSProgram object that contains this statement
+     * @param sourceMipsProgram The MIPSProgram object that contains this statement
      * @param source            The corresponding MIPS source statement.
      * @param origTokenList     Complete list of Token objects (includes labels, comments, parentheses, etc)
      * @param strippedTokenList List of Token objects with all but operators and operands removed.
      * @param inst              The Instruction object for this statement's operator.
      * @param textAddress       The Text Segment address in memory where the binary machine code for this statement
      *                          is stored.
-     **/
-    public ProgramStatement(MIPSProgram sourceMIPSProgram, String source, TokenList origTokenList, TokenList strippedTokenList, Instruction inst, int textAddress, int sourceLine) {
-        this.sourceMIPSProgram = sourceMIPSProgram;
-        this.source = source;
-        this.originalTokenList = origTokenList;
-        this.strippedTokenList = strippedTokenList;
-        this.operands = new int[4];
-        this.numOperands = 0;
-        this.instruction = inst;
-        this.textAddress = textAddress;
-        this.sourceLine = sourceLine;
-        this.basicAssemblyStatement = null;
-        this.basicStatementList = new BasicStatementList();
-        this.machineStatement = null;
-        this.binaryStatement = 0;  // nop, or sll $0, $0, 0 (32 bits of 0's)
-        this.altered = false;
+     */
+    constructor(
+        sourceMipsProgram: MIPSProgram, source: String, origTokenList: TokenList, strippedTokenList: TokenList,
+        inst: Instruction, textAddress: Int, sourceLine: Int
+    ) {
+        this.sourceMipsProgram = sourceMipsProgram
+        this.source = source
+        this.originalTokenList = origTokenList
+        this.strippedTokenList = strippedTokenList
+        this.operands = IntArray(4)
+        this.numOperands = 0
+        this.instruction = inst
+        this.textAddress = textAddress
+        this.sourceLine = sourceLine
+        this.basicAssemblyStatement = null
+        this.basicStatementList = BasicStatementList()
+        this.machineStatement = null
+        this.binaryStatement = 0
+        this.altered = false
     }
 
     /**
@@ -78,49 +105,50 @@ public class ProgramStatement {
      * @param binaryStatement The 32-bit machine code.
      * @param textAddress     The Text Segment address in memory where the binary machine code for this statement
      *                        is stored.
-     **/
-    public ProgramStatement(int binaryStatement, int textAddress) {
-        this.sourceMIPSProgram = null;
-        this.binaryStatement = binaryStatement;
-        this.textAddress = textAddress;
-        this.originalTokenList = this.strippedTokenList = null;
-        this.source = "";
-        this.machineStatement = this.basicAssemblyStatement = null;
-        BasicInstruction instr = Globals.instructionSet.findByBinaryCode(binaryStatement);
+     */
+    constructor(binaryStatement: Int, textAddress: Int) {
+        sourceMipsProgram = null
+        this.binaryStatement = binaryStatement
+        this.textAddress = textAddress
+        originalTokenList = null
+        strippedTokenList = null
+        source = ""
+        machineStatement = null
+        basicAssemblyStatement = null
+        val instr = Globals.instructionSet.findByBinaryCode(binaryStatement)
         if (instr == null) {
-            this.operands = null;
-            this.numOperands = 0;
-            this.instruction = (binaryStatement == 0) // this is a "nop" statement
-                    ? Globals.instructionSet.matchOperator("nop").getFirst() : null;
+            operands = null
+            numOperands = 0
+            instruction =
+                if (binaryStatement == 0) Globals.instructionSet.matchOperator("nop").first() else null
         } else {
-            this.operands = new int[4];
-            this.numOperands = 0;
-            this.instruction = instr;
-
-            String operandCodes = "fst";
-            String fmt = instr.getOperationMask();
-            BasicInstructionFormat instrFormat = instr.getInstructionFormat();
-            int numOps = 0;
-            for (int i = 0; i < operandCodes.length(); i++) {
-                int code = operandCodes.charAt(i);
-                int j = fmt.indexOf(code);
+            operands = IntArray(4)
+            numOperands = 0
+            instruction = instr
+            val operandCodes = "fst"
+            val fmt = instr.operationMask
+            val instrFormat = instr.instructionFormat
+            var numOps = 0
+            for (i in operandCodes.indices) {
+                val code = operandCodes[i]
+                val j = fmt.indexOf(code)
                 if (j >= 0) {
-                    int k0 = 31 - fmt.lastIndexOf(code);
-                    int k1 = 31 - j;
-                    int operand = (binaryStatement >> k0) & ((1 << (k1 - k0 + 1)) - 1);
-                    if (instrFormat.equals(BasicInstructionFormat.I_BRANCH_FORMAT) && numOps == 2) {
-                        operand = operand << 16 >> 16;
-                    } else if (instrFormat.equals(BasicInstructionFormat.J_FORMAT) && numOps == 0) {
-                        operand |= (textAddress >> 2) & 0x3C000000;
+                    val k0 = 31 - fmt.lastIndexOf(code)
+                    val k1 = 31 - j
+                    var operand = (binaryStatement shr 0) and ((1 shl (k1 - k0 + 1)) - 1)
+                    if (instrFormat == BasicInstructionFormat.I_BRANCH_FORMAT && numOps == 2) {
+                        operand = operand shl 16 shr 16
+                    } else if (instrFormat == BasicInstructionFormat.J_FORMAT && numOps == 0) {
+                        operand = operand or (textAddress shr 2) and 0x3C000000
                     }
-                    this.operands[numOps] = operand;
-                    numOps++;
+                    operands[numOps] = operand
+                    numOps++
                 }
             }
-            this.numOperands = numOps;
+            numOperands = numOps
         }
-        this.altered = false;
-        this.basicStatementList = buildBasicStatementListFromBinaryCode(binaryStatement, instr, operands, numOperands);
+        altered = false
+        basicStatementList = buildBasicStatementListFromBinaryCode(instr, operands, numOperands)
     }
 
     /**
@@ -129,546 +157,443 @@ public class ProgramStatement {
      * register numbers for register names, replacing labels by values).
      *
      * @param errors The list of assembly errors encountered so far.  May add to it here.
-     **/
-    public void buildBasicStatementFromBasicInstruction(ErrorList errors) {
-        Token token = strippedTokenList.get(0);
-        String basicStatementElement = STR."\{token.getValue()} ";
-        StringBuilder basic = new StringBuilder(basicStatementElement);
-        basicStatementList.addString(basicStatementElement); // the operator
-        TokenTypes tokenType, nextTokenType;
-        String tokenValue;
-        int registerNumber;
-        this.numOperands = 0;
-        for (int i = 1; i < strippedTokenList.size(); i++) {
-            token = strippedTokenList.get(i);
-            tokenType = token.getType();
-            tokenValue = token.getValue();
-            if (tokenType == TokenTypes.REGISTER_NUMBER) {
-                basicStatementElement = tokenValue;
-                basic.append(basicStatementElement);
-                basicStatementList.addString(basicStatementElement);
-                try {
-                    registerNumber = RegisterFile.getUserRegister(tokenValue).getNumber();
-                } catch (Exception e) {
-                    // should never happen; should be caught before now...
-                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid register name"));
-                    return;
-                }
-                this.operands[this.numOperands++] = registerNumber;
-            } else if (tokenType == TokenTypes.REGISTER_NAME) {
-                registerNumber = RegisterFile.getNumber(tokenValue);
-                basicStatementElement = STR."$\{registerNumber}";
-                basic.append(basicStatementElement);
-                basicStatementList.addString(basicStatementElement);
-                if (registerNumber < 0) {
-                    // should never happen; should be caught before now...
-                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid register name"));
-                    return;
-                }
-                this.operands[this.numOperands++] = registerNumber;
-            } else if (tokenType == TokenTypes.FP_REGISTER_NAME) {
-                registerNumber = Coprocessor1.getRegisterNumber(tokenValue);
-                basicStatementElement = STR."$f\{registerNumber}";
-                basic.append(basicStatementElement);
-                basicStatementList.addString(basicStatementElement);
-                if (registerNumber < 0) {
-                    // should never happen; should be caught before now...
-                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid FPU register name"));
-                    return;
-                }
-                this.operands[this.numOperands++] = registerNumber;
-            } else if (tokenType == TokenTypes.IDENTIFIER) {
-                int address = this.sourceMIPSProgram.getLocalSymbolTable().getAddressLocalOrGlobal(tokenValue);
-                if (address == SymbolTable.NOT_FOUND) { // symbol used without being defined
-                    errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), STR."Symbol \"\{tokenValue}\" not found in symbol table."));
-                    return;
-                }
-                boolean absoluteAddress = true; // (used below)
-                //////////////////////////////////////////////////////////////////////
-                // added code 12-20-2004. If basic instruction with I_BRANCH format, then translate
-                // address from absolute to relative and shift left 2. 
-                //
-                // DPS 14 June 2007: Apply delayed branching if enabled.  This adds 4 bytes to the
-                // address used to calculate branch distance in relative words.
-                //
-                // DPS 4 January 2008: Apply the delayed branching 4-byte (instruction length) addition
-                // regardless of whether delayed branching is enabled or not.  This was in response to 
-                // several people complaining about machine code not matching that from the COD3 example
-                // on p 98-99.  In that example, the branch offset reflects delayed branching because
-                // all MIPS machines implement delayed branching.  But the topic of delayed branching
-                // is not yet introduced at that point, and instructors want to avoid the messiness
-                // that comes along with it.  Our original strategy was to do it like SPIM does, which
-                // the June 2007 mod (shown below as commented-out assignment to address) does.
-                // This mod must be made in conjunction with InstructionSet.java's processBranch()
-                // method.  There are some comments there as well.
-
-                if (instruction instanceof BasicInstruction) {
-                    BasicInstructionFormat format = ((BasicInstruction) instruction).getInstructionFormat();
-                    if (format == BasicInstructionFormat.I_BRANCH_FORMAT) {
-                        //address = (address - (this.textAddress+((Globals.getSettings().getDelayedBranchingEnabled())? Instruction.INSTRUCTION_LENGTH : 0))) >> 2;
-                        address = (address - (this.textAddress + Instruction.INSTRUCTION_LENGTH)) >> 2;
-                        absoluteAddress = false;
+     */
+    fun buildBasicStatementFromBasicInstruction(errors: ErrorList) {
+        var token = strippedTokenList!![0]
+        var basicStatementElement = "${token.value} "
+        val basic = StringBuilder(basicStatementElement)
+        basicStatementList.addString(basicStatementElement)
+        var tokenType: TokenTypes
+        var nextTokenType: TokenTypes
+        var tokenValue: String
+        var registerNumber: Int
+        numOperands = 0
+        for (i in 1..<strippedTokenList.size()) {
+            token = strippedTokenList[i]
+            tokenType = token.type
+            tokenValue = token.value
+            when (tokenType) {
+                TokenTypes.REGISTER_NUMBER -> {
+                    basicStatementElement = tokenValue
+                    basic.append(basicStatementElement)
+                    basicStatementList.addString(basicStatementElement)
+                    try {
+                        registerNumber = RegisterFile.getUserRegister(tokenValue).number
+                    } catch (e: Exception) {
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid register number $tokenValue."))
+                        return
                     }
+                    operands!![numOperands++] = registerNumber
                 }
-                //////////////////////////////////////////////////////////////////////
-                basic.append(address);
-                if (absoluteAddress) { // record as address if absolute, value if relative
-                    basicStatementList.addAddress(address);
-                } else {
-                    basicStatementList.addValue(address);
+                TokenTypes.REGISTER_NAME -> {
+                    registerNumber = RegisterFile.getNumber(tokenValue)
+                    basicStatementElement = "$${registerNumber}"
+                    basic.append(basicStatementElement)
+                    basicStatementList.addString(basicStatementElement)
+                    if (registerNumber < 0) {
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid register name $$tokenValue."))
+                        return
+                    }
+                    operands!![numOperands++] = registerNumber
                 }
-                this.operands[this.numOperands++] = address;
-            } else if (tokenType == TokenTypes.INTEGER_5 || tokenType == TokenTypes.INTEGER_16 || tokenType == TokenTypes.INTEGER_16U || tokenType == TokenTypes.INTEGER_32) {
-
-                int tempNumeric = Binary.stringToInt(tokenValue);
-
-                /* **************************************************************************
-                 *  MODIFICATION AND COMMENT, DPS 3-July-2008
-                 * <p>
-                 * The modifications of January 2005 documented below are being rescinded.
-                 * All hexadecimal immediate values are considered 32 bits in length, and
-                 * their classification as INTEGER_5, INTEGER_16, INTEGER_16U (new)
-                 * or INTEGER_32 depends on their 32-bit value.
-                 * So 0xFFFF will be
-                 * equivalent to 0x0000FFFF instead of 0xFFFFFFFF.
-                 * This change, along with
-                 * the introduction of INTEGER_16U (adopted from Greg Gibeling of Berkeley),
-                 * required extensive changes to instruction templates, especially for
-                 * pseudo-instructions.
-                 * <p>
-                 * This modification also appears inbuildBasicStatementFromBasicInstruction()
-                 * in ProgramStatement.
-                 * <p>
-                 *  ///// Begin modification 1/4/05 KENV   ///////////////////////////////////////////
-                 *  // We have decided to interpret non-signed
-                 * (no + or -) 16-bit hexadecimal immediate
-                 *  // operands as signed values in the range -32768 to 32767.
-                 * So 0xffff will represent
-                 *  // -1, not 65535 (bit 15 as sign bit), 0x8000 will represent -32768 not 32768.
-                 *  // NOTE: 32-bit hexadecimal immediate operands whose values fall into this range
-                 *  // will be likewise affected, but they are used only in pseudo-instructions.
-                 * The
-                 *  // code in ExtendedInstruction.java
-                 * to split this number into upper 16 bits for "lui"
-                 *  // and lower 16 bits for "ori" works with the original source code token,
-                 * so it is
-                 *  // not affected by this tweak.
-                 * 32-bit immediates in data segment directives
-                 *  // are also processed elsewhere so are not affected either.
-                 *  ////////////////////////////////////////////////////////////////////////////////
-                 * <p>
-                 *        if (tokenType != TokenTypes.INTEGER_16U) { // part of the Berkeley mod...
-                 *           if ( Binary.isHex(tokenValue) &&
-                 *             (tempNumeric >= 32768) &&
-                 *             (tempNumeric <= 65535) )  // Range 0x8000 ... 0xffff
-                 *           {
-                 *              // Subtract the 0xffff bias, because strings in the
-                 *              // range "0x8000" ... "0xffff" are used to represent
-                 *              // 16-bit negative numbers, not positive numbers.
-                 *              tempNumeric = tempNumeric - 65536;
-                 *              // Note: no action needed for range 0xffff8000 ... 0xffffffff
-                 *           }
-                 *        }
-                 **************************  END DPS 3-July-2008 COMMENTS *******************************/
-
-                basic.append(tempNumeric);
-                basicStatementList.addValue(tempNumeric);
-                this.operands[this.numOperands++] = tempNumeric;
-                ///// End modification 1/7/05 KENV   ///////////////////////////////////////////
-            } else {
-                basicStatementElement = tokenValue;
-                basic.append(basicStatementElement);
-                basicStatementList.addString(basicStatementElement);
+                TokenTypes.FP_REGISTER_NAME -> {
+                    registerNumber = Coprocessor1.getRegisterNumber(tokenValue)
+                    basicStatementElement = "\$f$registerNumber"
+                    basic.append(basicStatementElement)
+                    basicStatementList.addString(basicStatementElement)
+                    if (registerNumber < 0) {
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid FPU register name $tokenValue."))
+                        return
+                    }
+                    operands!![numOperands++] = registerNumber
+                }
+                TokenTypes.IDENTIFIER -> {
+                    var address = sourceMipsProgram?.getLocalSymbolTable()?.getAddressLocalOrGlobal(tokenValue) ?: SymbolTable.NOT_FOUND
+                    if (address == SymbolTable.NOT_FOUND) {
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Symbol \"$tokenValue\" not found in symbol table."))
+                        return
+                    }
+                    var absoluteAddress = true
+                    /*
+                     * Notes from the original developers:
+                     * - 20 Dec 2004: If basic instruction with I_BRANCH format, then translate
+                     *   address from absolute to relative and shift left 2.
+                     * - 14 Jun 2007: Apply delayed branching if enabled. This adds 4 bytes to the
+                     *   address used to calculate branch distance in relative words.
+                     * - 04 Jan 2008: Apply the delayed branching 4-byte (instruction length) addition
+                     *   regardless of whether delayed branching is enabled or not. This was in response to
+                     *   several people complaining about machine code not matching that from the COD3 example
+                     *   on p 98-99. In that example, the branch offset reflects delayed branching because
+                     *   all MIPS machines implement delayed branching. But the topic of delayed branching
+                     *   is not yet introduced at that point, and instructors want to avoid the messiness
+                     *   that comes along with it. Our original strategy was to do it like SPIM does, which
+                     *   the June 2007 mod (shown below as commented-out assignment to address) does.
+                     *   This mod must be made in conjunction with InstructionSet.java's processBranch()
+                     *   method. There are some comments there as well.
+                     */
+                    if (instruction is BasicInstruction) {
+                        val format = instruction.instructionFormat
+                        if (format == BasicInstructionFormat.I_BRANCH_FORMAT) {
+                            address = (address - (textAddress + Instruction.INSTRUCTION_LENGTH)) shr 2
+                            absoluteAddress = false
+                        }
+                    }
+                    basic.append(address)
+                    if (absoluteAddress) {
+                        basicStatementList.addAddress(address)
+                    } else {
+                        basicStatementList.addValue(address)
+                    }
+                    operands!![numOperands++] = address
+                }
+                TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U, TokenTypes.INTEGER_32 -> {
+                    val tempNumeric = Binary.stringToInt(tokenValue)
+                    // A large comment here about past modifications has been omitted because it talked about removing
+                    // previous functionality that didn't work as expected.
+                    basic.append(tempNumeric)
+                    basicStatementList.addValue(tempNumeric)
+                    operands!![numOperands++] = tempNumeric
+                }
+                else -> {
+                    basicStatementElement = tokenValue
+                    basic.append(basicStatementElement)
+                    basicStatementList.addString(basicStatementElement)
+                }
             }
-            // add separator if not at the end of the token list AND neither current nor
-            // next token is a parenthesis
-            if ((i < strippedTokenList.size() - 1)) {
-                nextTokenType = strippedTokenList.get(i + 1).getType();
-                if (tokenType != TokenTypes.LEFT_PAREN && tokenType != TokenTypes.RIGHT_PAREN && nextTokenType != TokenTypes.LEFT_PAREN && nextTokenType != TokenTypes.RIGHT_PAREN) {
-                    basicStatementElement = ",";
-                    basic.append(basicStatementElement);
-                    basicStatementList.addString(basicStatementElement);
+            // Add separator if not at the end of the token list and neither current nor next token is a parenthesis
+            if (i < strippedTokenList.size() - 1) {
+                nextTokenType = strippedTokenList.get(i + 1).type
+                val badTypes = listOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
+                if (tokenType !in badTypes && nextTokenType !in badTypes) {
+                    basicStatementElement = ","
+                    basic.append(basicStatementElement)
+                    basicStatementList.addString(basicStatementElement)
                 }
             }
         }
-        this.basicAssemblyStatement = basic.toString();
-    } //buildBasicStatementFromBasicInstruction()
+        basicAssemblyStatement = basic.toString()
+    }
 
     /**
      * Given the current statement in Basic Assembly format (see above), build the
      * 32-bit binary machine code statement.
      *
      * @param errors The list of assembly errors encountered so far.  May add to it here.
-     **/
-    public void buildMachineStatementFromBasicStatement(ErrorList errors) {
-
+     */
+    fun buildMachineStatementFromBasicStatement(errors: ErrorList) {
         try {
-            //mask indicates bit positions for 'f'irst, 's'econd, 't'hird operand
-            this.machineStatement = ((BasicInstruction) instruction).getOperationMask();
-        }   // This means the pseudo-instruction expansion generated another
-        // pseudo-instruction (expansion must be to all basic instructions).
-        // This is an error on the part of the pseudo-instruction author.
-        catch (ClassCastException cce) {
-            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "INTERNAL ERROR: pseudo-instruction expansion contained a pseudo-instruction"));
-            return;
+            // Mask indicates the bit position for 'f'irst, 's'econd, and 't'hird operand
+            machineStatement = (instruction as BasicInstruction).operationMask
+        } catch (cce: ClassCastException) {
+            // This means the pseudo-instruction expansion generated another pseudo-instruction.
+            // Expansion must always result in a basic instruction.
+            // This is an error on the part of the pseudo-instruction author.
+            errors.add(ErrorMessage(sourceMipsProgram, sourceLine, 0, "Internal error: pseudo-instruction expansion contained a pseudo-instruction!"))
+            return
         }
-        BasicInstructionFormat format = ((BasicInstruction) instruction).getInstructionFormat();
-
-        if (format == BasicInstructionFormat.J_FORMAT) {
-            if ((this.textAddress & 0xF0000000) != (this.operands[0] & 0xF0000000)) {
-                // attempt to jump beyond the 28-bit byte (26-bit word) address range.
-                // SPIM flags as warning, I'll flag as error b/c MARS text segment not long enough for it to be OK.
-                errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "Jump target word address beyond 26-bit range"));
-                return;
+        val format = instruction.instructionFormat
+        when (format) {
+            BasicInstructionFormat.J_FORMAT -> {
+                if ((textAddress and -0x10000000) != (operands!![0] and -0x10000000)) {
+                    // This is an attempt to jump beyond the 28-bit byte (26-bit word) address range.
+                    // SPIM would flag this as a warning,
+                    // but we'll flag it as an error, because MARS' text segment is not long enough for it to fit.
+                    errors.add(ErrorMessage(sourceMipsProgram, sourceLine, 0, "Jump target word address beyond 26-bit range!"))
+                    return
+                }
+                // Note the bit shift to make this a word address.
+                operands[0] = operands[0] ushr 2
+                insertBinaryCode(operands[0], Instruction.operandMask[0], errors)
             }
-            // Note the bit shift to make this a word address.
-            this.operands[0] = this.operands[0] >>> 2;
-            this.insertBinaryCode(this.operands[0], Instruction.operandMask[0], errors);
-        } else if (format == BasicInstructionFormat.I_BRANCH_FORMAT) {
-            for (int i = 0; i < this.numOperands - 1; i++) {
-                this.insertBinaryCode(this.operands[i], Instruction.operandMask[i], errors);
+            BasicInstructionFormat.I_BRANCH_FORMAT -> {
+                for (i in 0..<(numOperands - 1))
+                    insertBinaryCode(operands!![i], Instruction.operandMask[i], errors)
+                insertBinaryCode(operands!![numOperands - 1], Instruction.operandMask[numOperands - 1], errors)
             }
-            this.insertBinaryCode(operands[this.numOperands - 1], Instruction.operandMask[this.numOperands - 1], errors);
-        } else {  // R_FORMAT or I_FORMAT
-            for (int i = 0; i < this.numOperands; i++)
-                this.insertBinaryCode(this.operands[i], Instruction.operandMask[i], errors);
+            // R_FORMAT or I_FORMAT
+            else -> {
+                for (i in 0..<numOperands)
+                    insertBinaryCode(operands!![i], Instruction.operandMask[i], errors)
+            }
         }
-        this.binaryStatement = Binary.binaryStringToInt(this.machineStatement);
-    } // buildMachineStatementFromBasicStatement(
+        binaryStatement = Binary.binaryStringToInt(machineStatement!!)
+    }
 
     /**
      * Crude attempt at building String representation of this complex structure.
      *
      * @return A String representing the ProgramStatement.
-     **/
-    public String toString() {
-        // a crude attempt at string formatting.  Where's C when you need it?
-        String blanks = "                               ";
-        StringBuilder result = new StringBuilder(STR."[\{this.textAddress}]");
-        if (this.basicAssemblyStatement != null) {
-            int firstSpace = this.basicAssemblyStatement.indexOf(" ");
-            result.append(blanks, 0, 16 - result.length()).append(this.basicAssemblyStatement, 0, firstSpace);
-            result.append(blanks, 0, 24 - result.length()).append(this.basicAssemblyStatement.substring(firstSpace + 1));
-        } else {
-            result.append(blanks, 0, 16 - result.length()).append("0x").append(Integer.toString(this.binaryStatement, 16));
+     */
+    override fun toString(): String {
+        val blanks = "                               "
+        return buildString {
+            append("[$textAddress]")
+            basicAssemblyStatement?.let {
+                val firstSpace = it.indexOf(" ")
+                    append(blanks, 0, 16 - length)
+                    append(it, 0, firstSpace)
+                    append(blanks, 0, 24 - length)
+                    append(it.substring(firstSpace + 1))
+            } ?: run {
+                append(blanks, 0, 16 - length)
+                append("0x")
+                append(binaryStatement.toString(16))
+            }
+            append(blanks, 0, 16 - length)
+            append(";  ")
+            operands?.let {
+                for (i in 0..<numOperands) {
+                    append(it[i].toString(16))
+                    append(" ")
+                }
+            }
+            machineStatement?.let {
+                append("[${Binary.binaryStringToHexString(it)}]  ")
+                val groups = listOf(0 to 6, 6 to 11, 11 to 16, 16 to 21, 21 to 26, 26 to 32)
+                for ((index, group) in groups.withIndex()) {
+                    val (start, end) = group
+                    append(it, start, end)
+                    if (index != groups.lastIndex) append("|")
+                }
+            }
         }
-        result.append(blanks, 0, 40 - result.length()).append(";  "); // this.source;
-        if (operands != null) {
-            for (int i = 0; i < this.numOperands; i++)
-                // result += operands[i] + " ";
-                result.append(Integer.toString(operands[i], 16)).append(" ");
-        }
-        if (this.machineStatement != null) {
-            result.append("[").append(Binary.binaryStringToHexString(this.machineStatement)).append("]");
-            result.append("  ").append(this.machineStatement, 0, 6).append("|").append(this.machineStatement, 6, 11).append("|").append(this.machineStatement, 11, 16).append("|").append(this.machineStatement, 16, 21).append("|").append(this.machineStatement, 21, 26).append("|").append(this.machineStatement, 26, 32);
-        }
-        return result.toString();
-    } // toString()
-
-    /**
-     * Assigns given String to be Basic Assembly statement equivalent to this source line.
-     *
-     * @param statement A String containing equivalent Basic Assembly statement.
-     **/
-    public void setBasicAssemblyStatement(String statement) {
-        basicAssemblyStatement = statement;
     }
 
     /**
-     * Assigns given String to be binary machine code (32 characters, all of them 0 or 1)
-     * equivalent to this source line.
+     * Assigns given String to be the basic assembly statement equivalent to this source line.
+     *
+     * @param statement A string containing the equivalent basic assembly statement.
+     */
+    fun setBasicAssemblyStatement(statement: String) {
+        basicAssemblyStatement = statement
+    }
+
+    /**
+     * Assigns the given String to be the binary machine code
+     * (32 characters, all of them either 0 or 1) equivalent to this source line.
      *
      * @param statement A String containing equivalent machine code.
-     **/
-    public void setMachineStatement(String statement) {
-        machineStatement = statement;
+     */
+    fun setMachineStatement(statement: String) {
+        machineStatement = statement
     }
 
     /**
-     * Assigns given int to be binary machine code equivalent to this source line.
+     * Assigns the given integer to be the binary machine code equivalent to this source line.
      *
-     * @param binaryCode An int containing equivalent binary machine code.
-     **/
-    public void setBinaryStatement(int binaryCode) {
-        binaryStatement = binaryCode;
+     * @param binaryCode An integer containing the equivalent binary machine code.
+     */
+    fun setBinaryStatement(binaryCode: Int) {
+        binaryStatement = binaryCode
     }
 
     /**
-     * associates MIPS source statement.  Used by assembler when generating basic
-     * statements during macro expansion of an extended statement.
+     * Associates the MIPS source code statement with the given String value.
+     * Used by the assembler when generating basic statements during macro expression of an extended statement.
      *
-     * @param src a MIPS source statement.
-     **/
-    public void setSource(String src) {
-        source = src;
+     * @param src A MIPS source statement.
+     */
+    fun setSource(src: String) {
+        source = src
     }
 
     /**
-     * Produces MIPSProgram object representing the source file containing this statement.
-     *
-     * @return The MIPSProgram object. Can be null.
-     **/
-    @Nullable
-    public MIPSProgram getSourceMIPSProgram() {
-        return sourceMIPSProgram;
-    }
+     * @return The MIPSProgram object; can be null.
+     */
+    fun getSourceMipsProgram(): MIPSProgram? = sourceMipsProgram
+
+    @Deprecated("Use lowercase version instead.", ReplaceWith("getSourceMipsProgram()"))
+    fun getSourceMIPSProgram(): MIPSProgram? = getSourceMipsProgram()
 
     /**
-     * Produces String name of the source file containing this statement.
-     *
      * @return The file name.
-     **/
-    public String getSourceFile() {
-        return (sourceMIPSProgram == null) ? "" : sourceMIPSProgram.getFilename();
-    }
+     */
+    fun getSourceFile(): String = sourceMipsProgram?.getFilename() ?: ""
 
     /**
-     * Produces MIPS source statement.
-     *
      * @return The MIPS source statement.
-     **/
-    public String getSource() {
-        return source;
-    }
+     */
+    fun getSource(): String = source
 
     /**
-     * Produces line number of MIPS source statement.
-     *
      * @return The MIPS source statement line number.
-     **/
-    public int getSourceLine() {
-        return sourceLine;
-    }
+     */
+    fun getSourceLine(): Int = sourceLine
 
     /**
-     * Produces a basic assembly statement for this MIPS source statement.
-     * All numeric values are in decimal.
-     *
-     * @return The Basic Assembly statement.
-     **/
-    public String getBasicAssemblyStatement() {
-        return basicAssemblyStatement;
-    }
+     * @return Produces a basic assembly statement for this MIPS source statement.
+     * All numeric values are in decimal. Can be null.
+     */
+    fun getBasicAssemblyStatement(): String? = basicAssemblyStatement
 
     /**
-     * Produces a printable Basic Assembly statement for this MIPS source
-     * statement.
-     * This is generated dynamically and any addresses and
-     * values will be rendered in hex or decimal depending on the current
-     * setting.
+     * Produces a printable basic assembly statement for this MIPS source statement.
+     * This is generated dynamically,
+     * and any addresses or values will be rendered in hex or decimal depending on the current settings.
      *
-     * @return The Basic Assembly statement.
-     **/
-    public String getPrintableBasicAssemblyStatement() {
-        return basicStatementList.toString();
-    }
+     * @return The basic assembly statement.
+     */
+    fun getPrintableBasicAssemblyStatement(): String = basicStatementList.toString()
 
     /**
-     * Produces a binary machine statement as a 32 character string, all '0' and '1' chars.
-     *
-     * @return The String version of 32-bit binary machine code.
-     **/
-    public String getMachineStatement() {
-        return machineStatement;
-    }
+     * @return The binary machine statement as a 32-character string of all ones and zeroes. Can be null.
+     */
+    fun getMachineStatement(): String? = machineStatement
 
     /**
-     * Produces 32-bit binary machine statement as int.
-     *
      * @return The int version of 32-bit binary machine code.
-     **/
-    public int getBinaryStatement() {
-        return binaryStatement;
-    }
+     */
+    fun getBinaryStatement(): Int = binaryStatement
 
     /**
-     * Produces a token list generated from the original source statement.
-     *
      * @return The TokenList of Token objects generated from the original source.
-     **/
-    public TokenList getOriginalTokenList() {
-        return originalTokenList;
-    }
+     */
+    fun getOriginalTokenList(): TokenList? = originalTokenList
 
     /**
-     * Produces a token list stripped of all but operator and operand tokens.
-     *
      * @return The TokenList of Token objects generated by stripping the original list of all items,
      * except for the operator and operand tokens.
-     **/
-    public TokenList getStrippedTokenList() {
-        return strippedTokenList;
-    }
+     */
+    fun getStrippedTokenList(): TokenList? = strippedTokenList
 
     /**
-     * Produces the Instruction object corresponding to this statement's operator.
-     *
      * @return The Instruction that matches the operator used in this statement.
-     **/
-    public Instruction getInstruction() {
-        return instruction;
-    }
+     */
+    fun getInstruction(): Instruction = instruction!!
 
     /**
-     * Produces Text Segment address where the binary machine statement is stored.
-     *
      * @return address in the Text Segment of this binary machine statement.
-     **/
-    public int getAddress() {
-        return textAddress;
-    }
+     */
+    fun getAddress(): Int = textAddress
 
     /**
-     * Produces an int array of operand values for this statement.
-     *
      * @return int array of operand values (if any) required by this statement's operator.
-     **/
-    public int[] getOperands() {
-        return operands;
-    }
+     */
+    fun getOperands(): IntArray? = operands
 
     /**
-     * Produces operand value from given array position (first operand is position 0).
-     *
      * @param i Operand position in the array (first operand is position 0).
      * @return Operand value at given operand array position.  If < 0 or >= numOperands, it returns -1.
-     **/
-    public int getOperand(int i) {
-        if (i >= 0 && i < this.numOperands) {
-            return operands[i];
-        } else {
-            return -1;
-        }
-    }
+     */
+    fun getOperand(i: Int): Int =
+        (if (i >= 0 && i < this.numOperands) operands?.getOrNull(i) else -1) ?: -1
 
     /**
      * Given operand (register or integer) and mask character ('f', 's', or 't'),
      * generate the correct sequence of bits and replace the mask with them.
      */
-    private void insertBinaryCode(int value, char mask, ErrorList errors) {
-        int startPos = this.machineStatement.indexOf(mask);
-        int endPos = this.machineStatement.lastIndexOf(mask);
-        if (startPos == -1 || endPos == -1) { // should NEVER occur
-            errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "INTERNAL ERROR: mismatch in number of operands in statement vs mask"));
-            return;
+    private fun insertBinaryCode(value: Int, mask: Char, errors: ErrorList) {
+        val startPos = machineStatement?.indexOf(mask) ?: -1
+        val endPos = machineStatement?.lastIndexOf(mask) ?: -1
+        if (startPos == -1 || endPos == -1) {
+            // This should never occur.
+            errors.add(ErrorMessage(sourceMipsProgram, sourceLine, 0, "Internal error: mismatch in number of operands in statement versus mask, or machineStatement is null!"))
+            return
         }
-        String bitString = Binary.intToBinaryString(value, endPos - startPos + 1);
-        String state = this.machineStatement.substring(0, startPos) + bitString;
-        if (endPos < this.machineStatement.length() - 1) state = state + this.machineStatement.substring(endPos + 1);
-        this.machineStatement = state;
-    } // insertBinaryCode()
+        val bitString = Binary.intToBinaryString(value, endPos - startPos + 1)
+        var state = machineStatement!!.substring(0, startPos) + bitString
+        if (endPos < machineStatement!!.length - 1) state += machineStatement!!.substring(endPos + 1)
+        machineStatement = state
+    }
 
     /**
      * Given a model BasicInstruction and the assembled (not source) operand array for a statement,
-     * this method will construct the corresponding basic instruction list.  This method is
-     * used by the constructor that is given only the int address and binary code.  It is not
-     * intended to be used when source code is available.  DPS 11-July-2013
+     * this method will construct the corresponding basic instruction list. This method is
+     * used by the constructor that is given only the int address and binary code. It is not
+     * intended to be used when source code is available.
      */
-    private BasicStatementList buildBasicStatementListFromBinaryCode(int binary, BasicInstruction instr, int[] operands, int numOperands) {
-        BasicStatementList statementList = new BasicStatementList();
-        int tokenListCounter = 1;  // index 0 is operator; operands start at index 1
+    private fun buildBasicStatementListFromBinaryCode(
+        instr: BasicInstruction?,
+        operands: IntArray?,
+        numOperands: Int
+    ): BasicStatementList {
+        val statementList = BasicStatementList()
+        var tokenListCounter = 1
         if (instr == null) {
-            statementList.addString(invalidOperator);
-            return statementList;
-        } else {
-            statementList.addString(STR."\{instr.getName()} ");
-        }
-        for (int i = 0; i < numOperands; i++) {
-            // add separator if not at the end of token list AND neither current nor
-            // next token is a parenthesis
-            if (tokenListCounter > 1 && tokenListCounter < instr.getTokenList().size()) {
-                TokenTypes thisTokenType = instr.getTokenList().get(tokenListCounter).getType();
-                if (thisTokenType != TokenTypes.LEFT_PAREN && thisTokenType != TokenTypes.RIGHT_PAREN) {
-                    statementList.addString(",");
+            statementList.addString(invalidOperator)
+            return statementList
+        } else statementList.addString("${instr.name} ")
+        for (i in 0..<numOperands) {
+            // Add separator if not at the end of the token list, AND neither current nor next token is a parenthesis.
+            if (tokenListCounter > 1 && tokenListCounter < instr.tokenList.size()) {
+                val thisTokenType = instr.tokenList.get(tokenListCounter).type
+                if (thisTokenType != TokenTypes.LEFT_PAREN && thisTokenType != TokenTypes.RIGHT_PAREN)
+                    statementList.addString(",")
+            }
+            var notOperand = true
+            while (notOperand && tokenListCounter < instr.tokenList.size()) {
+                val tokenType = instr.tokenList.get(tokenListCounter).type
+                when {
+                    tokenType == TokenTypes.LEFT_PAREN -> statementList.addString("(")
+                    tokenType == TokenTypes.RIGHT_PAREN -> statementList.addString(")")
+                    tokenType.toString().contains("REGISTER") -> {
+                        val marker = if (tokenType.toString().contains("FP_REGISTER")) "\$f" else "$"
+                        statementList.addString(marker + operands!![i])
+                        notOperand = false
+                    }
+                    else -> {
+                        statementList.addValue(operands!![i])
+                        notOperand = false
+                    }
                 }
-            }
-            boolean notOperand = true;
-            while (notOperand && tokenListCounter < instr.getTokenList().size()) {
-                TokenTypes tokenType = instr.getTokenList().get(tokenListCounter).getType();
-                if (tokenType.equals(TokenTypes.LEFT_PAREN)) {
-                    statementList.addString("(");
-                } else if (tokenType.equals(TokenTypes.RIGHT_PAREN)) {
-                    statementList.addString(")");
-                } else if (tokenType.toString().contains("REGISTER")) {
-                    String marker = (tokenType.toString().contains("FP_REGISTER")) ? "$f" : "$";
-                    statementList.addString(marker + operands[i]);
-                    notOperand = false;
-                } else {
-                    statementList.addValue(operands[i]);
-                    notOperand = false;
-                }
-                tokenListCounter++;
+                tokenListCounter++
             }
         }
-        while (tokenListCounter < instr.getTokenList().size()) {
-            TokenTypes tokenType = instr.getTokenList().get(tokenListCounter).getType();
-            if (tokenType.equals(TokenTypes.LEFT_PAREN)) {
-                statementList.addString("(");
-            } else if (tokenType.equals(TokenTypes.RIGHT_PAREN)) {
-                statementList.addString(")");
+        while (tokenListCounter < instr.tokenList.size()) {
+            val tokenType = instr.tokenList.get(tokenListCounter).type
+            when (tokenType) {
+                TokenTypes.LEFT_PAREN -> statementList.addString("(")
+                TokenTypes.RIGHT_PAREN -> statementList.addString(")")
             }
-            tokenListCounter++;
+            tokenListCounter++
         }
-        return statementList;
-    } // buildBasicStatementListFromBinaryCode()
+        return statementList
+    }
 
     /**
-     * Little class to represent a basic statement as a list
-     * of elements.  Each element is either a string, an
-     * address or a value.  The toString() method will
-     * return a string representation of the basic statement
-     * in which any addresses or values are rendered in the
-     * current number format (e.g., decimal or hex).
-     * NOTE: Address operands on Branch instructions are
-     * considered values instead of addresses because they
-     * are relative to the PC.
+     * An inside class to represent a basic statement as a list of elements.
+     * Each element is either a string, an address, or a value.
+     * The toString() method will return a string representation of the basic statement in which any addresses or values
+     * are rendered in the current number format (e.g., decimal or hex).
+     * Address operands on branch instructions are considered values instead of addresses because they are relative to
+     * the PC.
      */
-    private static class BasicStatementList {
+    private class BasicStatementList {
+        private val list: ArrayList<ListElement> = arrayListOf()
 
-        private final ArrayList<ListElement> list;
-
-        BasicStatementList() {
-            list = new ArrayList<>();
+        fun addString(string: String) {
+            list.add(ListElement(0, string, 0))
         }
 
-        void addString(String string) {
-            list.add(new ListElement(0, string, 0));
+        fun addAddress(address: Int) {
+            list.add(ListElement(1, null, address))
         }
 
-        void addAddress(int address) {
-            list.add(new ListElement(1, null, address));
+        fun addValue(value: Int) {
+            list.add(ListElement(2, null, value))
         }
 
-        void addValue(int value) {
-            list.add(new ListElement(2, null, value));
-        }
-
-        public String toString() {
-            int addressBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
-            int valueBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
-
-            StringBuilder result = new StringBuilder();
-            for (ListElement element : list) {
-                switch (element.type) {
-                    case 0:
-                        result.append(element.sValue);
-                        break;
-                    case 1:
-                        result.append(NumberDisplayBaseChooser.formatNumber(element.iValue, addressBase));
-                        break;
-                    case 2:
-                        if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
-                            result.append(Binary.intToHexString(element.iValue)); // 13-July-2011, was: intToHalfHexString()
+        override fun toString(): String {
+            val addressBase = if (Globals.settings.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX))
+                NumberDisplayBaseChooser.HEXADECIMAL else NumberDisplayBaseChooser.DECIMAL
+            val valueBase = if (Globals.settings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX))
+                NumberDisplayBaseChooser.HEXADECIMAL else NumberDisplayBaseChooser.DECIMAL
+            return buildString {
+                for (element in list) {
+                    when (element.type) {
+                        0 -> append(element.sValue)
+                        1 -> append(NumberDisplayBaseChooser.formatNumber(element.iValue, addressBase))
+                        2 -> if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
+                            append(Binary.intToHexString(element.iValue))
                         } else {
-                            result.append(NumberDisplayBaseChooser.formatNumber(element.iValue, valueBase));
+                            append(NumberDisplayBaseChooser.formatNumber(element.iValue, valueBase))
                         }
-                    default:
-                        break;
+                        else -> break
+                    }
                 }
             }
-            return result.toString();
         }
 
-        private record ListElement(int type, String sValue, int iValue) {}
+        private data class ListElement(val type: Int, val sValue: String?, val iValue: Int)
     }
 }

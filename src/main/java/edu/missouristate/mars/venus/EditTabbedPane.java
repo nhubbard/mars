@@ -15,7 +15,7 @@ import javax.swing.filechooser.FileFilter;
  * Tabbed pane for the editor.  Each of its tabs represents an open file.
  *
  * @author Sanderson
- **/
+ */
 
 public class EditTabbedPane extends JTabbedPane {
     EditPane editTab;
@@ -27,7 +27,7 @@ public class EditTabbedPane extends JTabbedPane {
 
     /**
      * Constructor for the EditTabbedPane class.
-     **/
+     */
 
     public EditTabbedPane(VenusUI appFrame, Editor editor, MainPane mainPane) {
         super();

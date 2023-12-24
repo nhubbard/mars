@@ -7,7 +7,7 @@ import javax.swing.*;
  *
  * @author Sanderson
  * @version August 2005
- **/
+ */
 
 public class RegistersPane extends JTabbedPane {
     final RegistersWindow regsTab;
@@ -16,7 +16,7 @@ public class RegistersPane extends JTabbedPane {
 
     /**
      * Constructor for the RegistersPane class.
-     **/
+     */
 
     public RegistersPane(VenusUI appFrame, RegistersWindow regs, Coprocessor1Window cop1,
                          Coprocessor0Window cop0) {

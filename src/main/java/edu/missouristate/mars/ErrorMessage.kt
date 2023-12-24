@@ -33,7 +33,7 @@ class ErrorMessage {
     companion object {
         @JvmStatic
         private fun getExpansionHistory(sourceProgram: MIPSProgram?): String =
-            sourceProgram?.localMacroPool?.expansionHistory ?: ""
+            sourceProgram?.getLocalMacroPool()?.expansionHistory ?: ""
     }
 
     var isWarning: Boolean = false
@@ -98,13 +98,10 @@ class ErrorMessage {
         isWarning: Boolean = false
     ) {
         sourceProgram?.let { program ->
-            program.sourceLineList?.let {
+            program.getSourceLineList().let {
                 val sourceLine = it[line - 1]
                 filename = sourceLine.filename
                 this.line = sourceLine.lineNumber
-            } ?: run {
-                filename = sourceProgram.filename
-                this@ErrorMessage.line = line
             }
         } ?: run {
             filename = ""
@@ -124,16 +121,16 @@ class ErrorMessage {
      */
     constructor(statement: ProgramStatement, message: String) {
         this.isWarning = true
-        this.filename = statement.sourceMIPSProgram?.filename ?: ""
+        this.filename = statement.getSourceMipsProgram()?.getFilename() ?: ""
         this.position = 0
         this.message = message
-        val defineLine = parseMacroHistory(statement.source)
+        val defineLine = parseMacroHistory(statement.getSource())
         if (defineLine.isEmpty()) {
-            this.line = statement.sourceLine
+            this.line = statement.getSourceLine()
             this.macroExpansionHistory = ""
         } else {
             this.line = defineLine.first()
-            this.macroExpansionHistory = statement.sourceLine.toString()
+            this.macroExpansionHistory = statement.getSourceLine().toString()
         }
     }
 

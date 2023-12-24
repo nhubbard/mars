@@ -13,7 +13,7 @@ import java.awt.*;
  * exist in them.
  *
  * @author Sanderson and Bumgarner
- **/
+ */
 
 public class MainPane extends JTabbedPane {
     EditPane editTab;
@@ -22,7 +22,7 @@ public class MainPane extends JTabbedPane {
 
     /**
      * Constructor for the MainPane class.
-     **/
+     */
 
     public MainPane(VenusUI appFrame, Editor editor, RegistersWindow regs,
                     Coprocessor1Window cop1Regs, Coprocessor0Window cop0Regs) {

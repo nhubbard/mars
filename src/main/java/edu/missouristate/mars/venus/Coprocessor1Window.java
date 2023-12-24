@@ -16,7 +16,7 @@ import javax.swing.event.*;
  * Sets up a window to display Coprocessor 1 registers in the Registers pane of the UI.
  *
  * @author Pete Sanderson 2005
- **/
+ */
 
 public class Coprocessor1Window extends JPanel implements ActionListener, Observer {
     private static JTable table;
@@ -32,7 +32,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
 
     /**
      * Constructor which sets up a fresh window with a table that contains the register values.
-     **/
+     */
 
     public Coprocessor1Window() {
         Simulator.getInstance().addObserver(this);
@@ -89,7 +89,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      * Sets up the data for the window.
      *
      * @return The array object with the data for the window.
-     **/
+     */
 
     public Object[][] setupWindow() {
         registers = Coprocessor1.getRegisters();
@@ -178,7 +178,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      * @param number The number of the float register whose display to update.
      * @param val    New value.
      * @param base   the number base for display (e.g. 10, 16)
-     **/
+     */
 
     public void updateFloatRegisterValue(int number, int val, int base) {
         ((RegTableModel) table.getModel()).setDisplayAndModelValueAt(NumberDisplayBaseChooser.formatFloatNumber(val, base), number, FLOAT_COLUMN);
@@ -191,7 +191,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      *
      * @param number The number of the double register to update.
      * @param base   the number base for display (e.g. 10, 16)
-     **/
+     */
     public void updateDoubleRegisterValue(int number, int base) {
         long val = 0;
         try {

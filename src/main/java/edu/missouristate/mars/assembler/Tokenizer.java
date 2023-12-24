@@ -19,7 +19,7 @@ import java.io.*;
  *
  * @author Pete Sanderson
  * @version August 2003
- **/
+ */
 public class Tokenizer {
     private ErrorList errors;
     private MIPSProgram sourceMIPSProgram;
@@ -53,7 +53,7 @@ public class Tokenizer {
      * @param p The MIPSProgram to be tokenized.
      * @return An ArrayList representing the tokenized program.  Each list member is a TokenList
      * that represents a tokenized source statement from the MIPS program.
-     **/
+     */
     public ArrayList<TokenList> tokenize(MIPSProgram p) throws ProcessingException {
         sourceMIPSProgram = p;
         equivalents = new HashMap<>(); // DPS 11-July-2012
@@ -147,7 +147,7 @@ public class Tokenizer {
      * that represents one language element.
      * @throws ProcessingException This occurs only if the instruction specification itself
      *                             contains one or more lexical (i.e. token) errors.
-     **/
+     */
     public TokenList tokenizeExampleInstruction(String example) throws ProcessingException {
         TokenList result;
         result = tokenizeLine(sourceMIPSProgram, 0, example, false);
