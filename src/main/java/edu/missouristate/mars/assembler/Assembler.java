@@ -428,7 +428,7 @@ public class Assembler {
          the next, to sense the context of this continuation line. That state information
          is contained in this.dataDirective (the current data directive).
         */
-        if (this.inDataSegment && (tokenType == TokenTypes.PLUS || tokenType == TokenTypes.MINUS || tokenType == TokenTypes.QUOTED_STRING || tokenType == TokenTypes.IDENTIFIER || TokenTypes.isIntegerTokenType(tokenType) || TokenTypes.isFloatingTokenType(tokenType))) {
+        if (this.inDataSegment && (tokenType == TokenTypes.PLUS || tokenType == TokenTypes.MINUS || tokenType == TokenTypes.QUOTED_STRING || tokenType == TokenTypes.IDENTIFIER || tokenType.isIntegerTokenType() || tokenType.isFloatTokenType())) {
             this.executeDirectiveContinuation(tokens);
             return null;
         }
@@ -589,13 +589,13 @@ public class Assembler {
             this.inDataSegment = true;
             this.autoAlign = true;
             this.dataAddress.setAddressSpace((direct == Directives.DATA) ? this.dataAddress.USER : this.dataAddress.KERNEL);
-            if (tokens.size() > 1 && TokenTypes.isIntegerTokenType(tokens.get(1).getType())) {
+            if (tokens.size() > 1 && tokens.get(1).getType().isIntegerTokenType()) {
                 this.dataAddress.set(Binary.stringToInt(tokens.get(1).getValue())); // KENV 1/6/05
             }
         } else if (direct == Directives.TEXT || direct == Directives.KTEXT) {
             this.inDataSegment = false;
             this.textAddress.setAddressSpace((direct == Directives.TEXT) ? this.textAddress.USER : this.textAddress.KERNEL);
-            if (tokens.size() > 1 && TokenTypes.isIntegerTokenType(tokens.get(1).getType())) {
+            if (tokens.size() > 1 && tokens.get(1).getType().isIntegerTokenType()) {
                 this.textAddress.set(Binary.stringToInt(tokens.get(1).getValue())); // KENV 1/6/05
             }
         } else if (direct == Directives.WORD || direct == Directives.HALF || direct == Directives.BYTE || direct == Directives.FLOAT || direct == Directives.DOUBLE) {
@@ -615,7 +615,7 @@ public class Assembler {
                     errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" requires one operand"));
                     return;
                 }
-                if (!TokenTypes.isIntegerTokenType(tokens.get(1).getType()) || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
+                if (!tokens.get(1).getType().isIntegerTokenType() || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
                     errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" requires a non-negative integer"));
                     return;
                 }
@@ -632,7 +632,7 @@ public class Assembler {
                     errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" requires one operand"));
                     return;
                 }
-                if (!TokenTypes.isIntegerTokenType(tokens.get(1).getType()) || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
+                if (!tokens.get(1).getType().isIntegerTokenType() || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
                     errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" requires a non-negative integer"));
                     return;
                 }
@@ -644,7 +644,7 @@ public class Assembler {
                 errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" directive requires two operands (label and size)."));
                 return;
             }
-            if (!TokenTypes.isIntegerTokenType(tokens.get(2).getType()) || Binary.stringToInt(tokens.get(2).getValue()) < 0) {
+            if (!tokens.get(2).getType().isIntegerTokenType() || Binary.stringToInt(tokens.get(2).getValue()) < 0) {
                 errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" requires a non-negative integer size"));
                 return;
             }
@@ -786,7 +786,7 @@ public class Assembler {
              (integer value OR floating value))
              AND integer repetition value
             */
-            if (!(Directives.isIntegerDirective(directive) && TokenTypes.isIntegerTokenType(valueToken.getType()) || Directives.isFloatingDirective(directive) && (TokenTypes.isIntegerTokenType(valueToken.getType()) || TokenTypes.isFloatingTokenType(valueToken.getType()))) || !TokenTypes.isIntegerTokenType(repetitionsToken.getType())) {
+            if (!(Directives.isIntegerDirective(directive) && valueToken.getType().isIntegerTokenType() || Directives.isFloatingDirective(directive) && (valueToken.getType().isIntegerTokenType() || valueToken.getType().isFloatTokenType())) || !repetitionsToken.getType().isIntegerTokenType()) {
                 errors.add(new ErrorMessage(fileCurrentlyBeingAssembled, valueToken.getSourceLine(), valueToken.getStartPos(), "malformed expression"));
                 return;
             }
@@ -850,7 +850,7 @@ public class Assembler {
      */
     private void storeInteger(Token token, Directives directive, ErrorList errors) {
         int lengthInBytes = DataTypes.getLengthInBytes(directive);
-        if (TokenTypes.isIntegerTokenType(token.getType())) {
+        if (token.getType().isIntegerTokenType()) {
             int value = Binary.stringToInt(token.getValue());
             int fullValue = value;
             /*
@@ -941,7 +941,7 @@ public class Assembler {
         int lengthInBytes = DataTypes.getLengthInBytes(directive);
         double value;
 
-        if (TokenTypes.isIntegerTokenType(token.getType()) || TokenTypes.isFloatingTokenType(token.getType())) {
+        if (token.getType().isIntegerTokenType() || token.getType().isFloatTokenType()) {
             try {
                 value = Double.parseDouble(token.getValue());
             } catch (NumberFormatException nfe) {

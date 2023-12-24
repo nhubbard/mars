@@ -64,7 +64,7 @@ class Macro {
         requireNotNull(program)
         val tokens = program!!.getTokenList()[line - 1]
         var s = program!!.getSourceLine(line)!!
-        for (i in tokens.size() - 1 downTo 0) {
+        for (i in tokens.size - 1 downTo 0) {
             val token = tokens.get(i)
             if (tokenIsMacroParameter(token.value, true)) {
                 val repl = this.args.indices.firstOrNull { this.args[it] == token.value } ?: -1

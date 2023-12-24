@@ -83,12 +83,12 @@ class MacroPool(private val program: MIPSProgram) {
      * @return Nullable [Macro] object matching the name and argument count of tokens passed
      */
     fun getMatchingMacro(tokens: TokenList): Macro? {
-        if (tokens.isEmpty) return null
+        if (tokens.isEmpty()) return null
         var ret: Macro? = null
         val firstToken = tokens.get(0)
         for (macro in macroList) {
             if (macro.name == firstToken.value &&
-                macro.args.size + 1 == tokens.size() &&
+                macro.args.size + 1 == tokens.size &&
                 (ret == null || ret.fromLine < macro.fromLine)) ret = macro
         }
         return ret

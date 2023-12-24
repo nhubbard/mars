@@ -168,7 +168,7 @@ class ProgramStatement {
         var tokenValue: String
         var registerNumber: Int
         numOperands = 0
-        for (i in 1..<strippedTokenList.size()) {
+        for (i in 1..<strippedTokenList.size) {
             token = strippedTokenList[i]
             tokenType = token.type
             tokenValue = token.value
@@ -261,7 +261,7 @@ class ProgramStatement {
                 }
             }
             // Add separator if not at the end of the token list and neither current nor next token is a parenthesis
-            if (i < strippedTokenList.size() - 1) {
+            if (i < strippedTokenList.size - 1) {
                 nextTokenType = strippedTokenList.get(i + 1).type
                 val badTypes = listOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
                 if (tokenType !in badTypes && nextTokenType !in badTypes) {
@@ -515,13 +515,13 @@ class ProgramStatement {
         } else statementList.addString("${instr.name} ")
         for (i in 0..<numOperands) {
             // Add separator if not at the end of the token list, AND neither current nor next token is a parenthesis.
-            if (tokenListCounter > 1 && tokenListCounter < instr.tokenList.size()) {
+            if (tokenListCounter > 1 && tokenListCounter < instr.tokenList.size) {
                 val thisTokenType = instr.tokenList.get(tokenListCounter).type
                 if (thisTokenType != TokenTypes.LEFT_PAREN && thisTokenType != TokenTypes.RIGHT_PAREN)
                     statementList.addString(",")
             }
             var notOperand = true
-            while (notOperand && tokenListCounter < instr.tokenList.size()) {
+            while (notOperand && tokenListCounter < instr.tokenList.size) {
                 val tokenType = instr.tokenList.get(tokenListCounter).type
                 when {
                     tokenType == TokenTypes.LEFT_PAREN -> statementList.addString("(")
@@ -539,11 +539,12 @@ class ProgramStatement {
                 tokenListCounter++
             }
         }
-        while (tokenListCounter < instr.tokenList.size()) {
+        while (tokenListCounter < instr.tokenList.size) {
             val tokenType = instr.tokenList.get(tokenListCounter).type
             when (tokenType) {
                 TokenTypes.LEFT_PAREN -> statementList.addString("(")
                 TokenTypes.RIGHT_PAREN -> statementList.addString(")")
+                else -> {}
             }
             tokenListCounter++
         }

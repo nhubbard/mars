@@ -63,8 +63,8 @@ object OperandFormat {
      */
     @JvmStatic
     private fun numOperandsCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
-        val numOperands = candidate.size() - 1
-        val reqNumOperands = spec.tokenList.size() - 1
+        val numOperands = candidate.size - 1
+        val reqNumOperands = spec.tokenList.size - 1
         val operator = candidate.get(0)
         if (numOperands == reqNumOperands) return true
         else if (numOperands < reqNumOperands) generateMessage(operator, "Too few or incorrectly formatted operands. Expected: ${spec.exampleFormat}", errors)
@@ -81,7 +81,7 @@ object OperandFormat {
         var specToken: Token
         var candidateType: TokenTypes
         var specType: TokenTypes
-        for (i in 1..<spec.tokenList.size()) {
+        for (i in 1..<spec.tokenList.size) {
             candidateToken = candidate[i]
             specToken = spec.tokenList[i]
             candidateType = candidateToken.type

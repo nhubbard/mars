@@ -1,259 +1,136 @@
-package edu.missouristate.mars.assembler;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-
-/**
- * Constants to identify the types of tokens found in MIPS programs.  If Java had
- * enumerated types, that's how these would probably be implemented.
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
  *
- * @author Pete Sanderson
- * @version August 2003
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-public final class TokenTypes {
-    public static final String TOKEN_DELIMITERS = "\t ,()";
-    public static final TokenTypes COMMENT = new TokenTypes("COMMENT");
-    public static final TokenTypes DIRECTIVE = new TokenTypes("DIRECTIVE");
-    public static final TokenTypes OPERATOR = new TokenTypes("OPERATOR");
-    public static final TokenTypes DELIMITER = new TokenTypes("DELIMITER");
-    /**
-     * note: REGISTER_NAME is token of form $zero whereas REGISTER_NUMBER is token
-     * of form $0.  The former is part of extended assembler, and latter is part
-     * of basic assembler.
-     */
-    public static final TokenTypes REGISTER_NAME = new TokenTypes("REGISTER_NAME"); // mnemonic
-    public static final TokenTypes REGISTER_NUMBER = new TokenTypes("REGISTER_NUMBER");
-    public static final TokenTypes FP_REGISTER_NAME = new TokenTypes("FP_REGISTER_NAME");
-    public static final TokenTypes IDENTIFIER = new TokenTypes("IDENTIFIER");
-    public static final TokenTypes LEFT_PAREN = new TokenTypes("LEFT_PAREN");
-    public static final TokenTypes RIGHT_PAREN = new TokenTypes("RIGHT_PAREN");
-    //public static final TokenTypes INTEGER       = new TokenTypes("INTEGER");
-    public static final TokenTypes INTEGER_5 = new TokenTypes("INTEGER_5");
-    public static final TokenTypes INTEGER_16 = new TokenTypes("INTEGER_16");
-    public static final TokenTypes INTEGER_16U = new TokenTypes("INTEGER_16U");
-    public static final TokenTypes INTEGER_32 = new TokenTypes("INTEGER_32");
-    public static final TokenTypes REAL_NUMBER = new TokenTypes("REAL_NUMBER");
-    public static final TokenTypes QUOTED_STRING = new TokenTypes("QUOTED_STRING");
-    public static final TokenTypes PLUS = new TokenTypes("PLUS");
-    public static final TokenTypes MINUS = new TokenTypes("MINUS");
-    public static final TokenTypes COLON = new TokenTypes("COLON");
-    public static final TokenTypes ERROR = new TokenTypes("ERROR");
-    public static final TokenTypes MACRO_PARAMETER = new TokenTypes("MACRO_PARAMETER");
+package edu.missouristate.mars.assembler
 
-    private final String descriptor;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.util.Binary
 
-    private TokenTypes() {
-        // private ctor assures no objects can be created other than those above.
-        descriptor = "generic";
-    }
+enum class TokenTypes(private val descriptor: String) {
+    COMMENT("COMMENT"),
+    DIRECTIVE("DIRECTIVE"),
+    OPERATOR("OPERATOR"),
+    DELIMITER("DELIMITER"),
+    REGISTER_NAME("REGISTER_NAME"),
+    REGISTER_NUMBER("REGISTER_NUMBER"),
+    FP_REGISTER_NAME("FP_REGISTER_NAME"),
+    IDENTIFIER("IDENTIFIER"),
+    LEFT_PAREN("LEFT_PAREN"),
+    RIGHT_PAREN("RIGHT_PAREN"),
+    INTEGER_5("INTEGER_5"),
+    INTEGER_16("INTEGER_16"),
+    INTEGER_16U("INTEGER_16U"),
+    INTEGER_32("INTEGER_32"),
+    REAL_NUMBER("REAL_NUMBER"),
+    QUOTED_STRING("QUOTED_STRING"),
+    PLUS("PLUS"),
+    MINUS("MINUS"),
+    COLON("COLON"),
+    ERROR("ERROR"),
+    MACRO_PARAMETER("MACRO_PARAMETER");
 
-    private TokenTypes(String name) {
-        descriptor = name;
-    }
+    override fun toString(): String = descriptor
 
-    /**
-     * Produces String equivalent of this token type, which is its name.
-     *
-     * @return String containing descriptive name for token type.
-     **/
-    public String toString() {
-        return descriptor;
-    }
+    val isIntegerTokenType get() = this in listOf(INTEGER_5, INTEGER_16U, INTEGER_16, INTEGER_32)
+    val isFloatTokenType get() = this == REAL_NUMBER
 
-    /**
-     * Classifies the given token into one of the MIPS types.
-     *
-     * @param value String containing candidate language element, extracted from MIPS program.
-     * @return Returns the corresponding TokenTypes object if the parameter matches a
-     * defined MIPS token type, else returns <tt>null</tt>.
-     **/
-    public static TokenTypes matchTokenType(String value) {
+    companion object {
+        const val TOKEN_DELIMITERS = "\t ,()"
 
-        TokenTypes type = null;
-        // If it starts with single quote ('), it is a mal-formed character literal
-        // because a well-formed character literal was converted to string-ified
-        // integer before getting here...
-        if (value.charAt(0) == '\'')
-            return TokenTypes.ERROR;
-
-        // See if it is a comment
-        if (value.charAt(0) == '#')
-            return TokenTypes.COMMENT;
-
-        // See if it is one of the simple tokens
-        if (value.length() == 1) {
-            switch (value.charAt(0)) {
-                case '(':
-                    return TokenTypes.LEFT_PAREN;
-                case ')':
-                    return TokenTypes.RIGHT_PAREN;
-                case ':':
-                    return TokenTypes.COLON;
-                case '+':
-                    return TokenTypes.PLUS;
-                case '-':
-                    return TokenTypes.MINUS;
+        /**
+         * Classifies the given token into one of the MIPS types.
+         *
+         * @param value The String containing the language element, extracted from the MIPS program.
+         * @return The corresponding TokenTypes entry if the parameter matches a defined MIPS token type, or `null`.
+         */
+        @JvmStatic
+        fun matchTokenType(value: String): TokenTypes? {
+            // If it starts with a single quote, it is a malformed character literal
+            // because a well-formed character literal was converted to a stringified integer before getting here.
+            if (value[0] == '\'') return TokenTypes.ERROR
+            // Check if it's a comment.
+            if (value[0] == '#') return TokenTypes.COMMENT
+            // Check if it's one of the simple tokens.
+            if (value.length == 1) {
+                when (value[0]) {
+                    '(' -> return TokenTypes.LEFT_PAREN
+                    ')' -> return TokenTypes.RIGHT_PAREN
+                    ':' -> return TokenTypes.COLON
+                    '+' -> return TokenTypes.PLUS
+                    '-' -> return TokenTypes.MINUS
+                }
             }
-        }
-
-        // See if it is a macro parameter
-        if (Macro.tokenIsMacroParameter(value, false))
-            return TokenTypes.MACRO_PARAMETER;
-
-        // See if it is a register
-        Register reg = RegisterFile.getUserRegister(value);
-        if (reg != null)
-            if (reg.getName().equals(value))
-                return TokenTypes.REGISTER_NAME;
-            else
-                return TokenTypes.REGISTER_NUMBER;
-
-        // See if it is a floating point register
-
-        reg = Coprocessor1.getRegister(value);
-        if (reg != null)
-            return TokenTypes.FP_REGISTER_NAME;
-
-        /*
-         See if it is an immediate (constant) integer value
-         Classify based on # bits needed to represent in binary
-         This is needed because most immediate operands limited to 16 bits
-         others limited to 5 bits unsigned (shift amounts) others 32 bits.
-        */
-        try {
-
-            int i = Binary.stringToInt(value);   // KENV 1/6/05
-
-            /* **************************************************************************
-             *  MODIFICATION AND COMMENT, DPS 3-July-2008
-             * <p>
-             * The modifications of January 2005 documented below are being rescinded.
-             * All hexadecimal immediate values are considered 32 bits in length and
-             * their classification as INTEGER_5, INTEGER_16, INTEGER_16U (new)
-             * or INTEGER_32 depends on their 32 bit value.  So 0xFFFF will be
-             * equivalent to 0x0000FFFF instead of 0xFFFFFFFF.  This change, along with
-             * the introduction of INTEGER_16U (adopted from Greg Gibeling of Berkeley),
-             * required extensive changes to instruction templates especially for
-             * pseudo-instructions.
-             * <p>
-             * This modification also appears inbuildBasicStatementFromBasicInstruction()
-             * in edu.missouristate.mars.ProgramStatement.
-             * <p>
-             *  ///// Begin modification 1/4/05 KENV   ///////////////////////////////////////////
-             *  // We have decided to interpret non-signed (no + or -) 16-bit hexadecimal immediate
-             *  // operands as signed values in the range -32768 to 32767. So 0xffff will represent
-             *  // -1, not 65535 (bit 15 as sign bit), 0x8000 will represent -32768 not 32768.
-             *  // NOTE: 32-bit hexadecimal immediate operands whose values fall into this range
-             *  // will be likewise affected, but they are used only in pseudo-instructions.  The
-             *  // code in ExtendedInstruction.java to split this number into upper 16 bits for "lui"
-             *  // and lower 16 bits for "ori" works with the original source code token, so it is
-             *  // not affected by this tweak.  32-bit immediates in data segment directives
-             *  // are also processed elsewhere so are not affected either.
-             *  ////////////////////////////////////////////////////////////////////////////////
-             * <p>
-             *     if ( Binary.isHex(value) &&
-             *         (i >= 32768) &&
-             *         (i <= 65535) )  // Range 0x8000 ... 0xffff
-             *     {
-             *          // Subtract the 0xffff bias, because strings in the
-             *          // range "0x8000" ... "0xffff" are used to represent
-             *          // 16-bit negative numbers, not positive numbers.
-             *        i = i - 65536;
-             *     }
-             *    // ------------- END    KENV 1/4/05   MODIFICATIONS --------------
-             * <p>
-             **************************  END DPS 3-July-2008 COMMENTS *******************************/
-            // shift operands must be in range 0-31
-            if (i >= 0 && i <= 31) {
-                return TokenTypes.INTEGER_5;
+            // Check if it's a macro parameter.
+            if (Macro.tokenIsMacroParameter(value, false)) return TokenTypes.MACRO_PARAMETER
+            // Check if it's a register.
+            RegisterFile.getUserRegister(value)?.let {
+                return if (it.name == value) TokenTypes.REGISTER_NAME else TokenTypes.REGISTER_NUMBER
             }
-            if (i >= DataTypes.MIN_UHALF_VALUE && i <= DataTypes.MAX_UHALF_VALUE) {
-                return TokenTypes.INTEGER_16U;
+            // Check if it's a floating point register.
+            Coprocessor1.getRegister(value)?.let {
+                return TokenTypes.FP_REGISTER_NAME
             }
-            if (i >= DataTypes.MIN_HALF_VALUE && i <= DataTypes.MAX_HALF_VALUE) {
-                return TokenTypes.INTEGER_16;
+            // Check if it's an immediate/constant integer value.
+            // Classified based on the number of bits needed to represent the number in binary.
+            // This is necessary only because most immediate operands are limited to 16 bits, while others are limited
+            // to 5 bits unsigned (shift amounts), and still others 32 bits.
+            try {
+                val i = Binary.stringToInt(value)
+                // A large block comment detailing rescinded modifications dating back to 2008 has been removed.
+                if (i in 0..31) return TokenTypes.INTEGER_5
+                if (i in DataTypes.MIN_UHALF_VALUE..DataTypes.MAX_UHALF_VALUE) return TokenTypes.INTEGER_16U
+                if (i in DataTypes.MIN_HALF_VALUE..DataTypes.MAX_HALF_VALUE) return TokenTypes.INTEGER_16
+                // This is the default value if no other type is applicable.
+                return TokenTypes.INTEGER_32
+            } catch (ignored: NumberFormatException) {}
+            // See if the value is a real (fixed or floating point) number.
+            // Note that parseDouble() accepts integer values, but if it is an integer literal, this would not handle
+            // integer values.
+            value.toDoubleOrNull()?.let { return TokenTypes.REAL_NUMBER }
+            // See if it is an instruction operator.
+            if (Globals.instructionSet.matchOperator(value) != null) return TokenTypes.OPERATOR
+            // See if it is a directive.
+            if (value[0] == '.' && Directives.matchDirective(value) != null) return TokenTypes.DIRECTIVE
+            // See if it is a quoted string.
+            if (value[0] == '"') return TokenTypes.QUOTED_STRING
+            // Test for identifiers goes last, because there are tokens for various MIPS constructs, such as operators
+            // and directives, that could also fit the lexical specifications of an identifier, and those need to be
+            // recognized first.
+            if (value.isValidIdentifier()) return TokenTypes.IDENTIFIER
+            // There is no valid match.
+            return TokenTypes.ERROR
+        }
+
+        @JvmStatic
+        fun String.isValidIdentifier(): Boolean {
+            var result = this[0].isLetter() || this[0] == '_' || this[0] == '.' || this[0] == '$'
+            var index = 1
+            while (result && index < length) {
+                if (!(this[index].isLetterOrDigit() || this[index] == '_' || this[index] == '.' || this[index] == '$'))
+                    result = false
+                index++
             }
-            return TokenTypes.INTEGER_32;  // default when no other type is applicable
-        } catch (NumberFormatException e) {
-            // NO ACTION -- exception suppressed
+            return result
         }
-
-        // See if it is a real (fixed or floating point) number.  Note that parseDouble()
-        // accepts integer values but if it were an integer literal we wouldn't get this far.
-        try {
-            Double.parseDouble(value);
-            return TokenTypes.REAL_NUMBER;
-        } catch (NumberFormatException e) {
-            // NO ACTION -- exception suppressed
-        }
-
-        // See if it is an instruction operator
-        if (Globals.instructionSet.matchOperator(value) != null)
-            return TokenTypes.OPERATOR;
-
-        // See if it is a directive
-        if (value.charAt(0) == '.' && Directives.matchDirective(value) != null) {
-            return TokenTypes.DIRECTIVE;
-        }
-
-        // See if it is a quoted string
-        if (value.charAt(0) == '"')
-            return TokenTypes.QUOTED_STRING;
-
-        // Test for identifier goes last because I have defined tokens for various
-        // MIPS constructs (such as operators and directives) that also could fit
-        // the lexical specifications of an identifier, and those need to be
-        // recognized first.
-        if (isValidIdentifier(value))
-            return TokenTypes.IDENTIFIER;
-
-        // Matches no MIPS language token.
-        return TokenTypes.ERROR;
-    }
-
-    /**
-     * Lets you know if given tokentype is for integers (INTGER_5, INTEGER_16, INTEGER_32).
-     *
-     * @param type the TokenType of interest
-     * @return true if type is an integer type, false otherwise.
-     **/
-    public static boolean isIntegerTokenType(TokenTypes type) {
-        return type == TokenTypes.INTEGER_5 || type == TokenTypes.INTEGER_16 ||
-                type == TokenTypes.INTEGER_16U || type == TokenTypes.INTEGER_32;
-    }
-
-    /**
-     * Lets you know if given tokentype is for floating point numbers (REAL_NUMBER).
-     *
-     * @param type the TokenType of interest
-     * @return true if type is an floating point type, false otherwise.
-     **/
-    public static boolean isFloatingTokenType(TokenTypes type) {
-        return type == TokenTypes.REAL_NUMBER;
-    }
-
-
-    /*
-     COD2, A-51:  "Identifiers are a sequence of alphanumeric characters,
-                   underbars (_), and dots (.) that do not begin with a number."
-     Ideally this would be in a separate Identifier class but I did not see an immediate
-     need beyond this method (refactoring effort would probably identify other uses
-     related to symbol table).
-
-     DPS 14-Jul-2008: added '$' as valid symbol.  Permits labels to include $.
-                      MIPS-target GCC will produce labels that start with $.
-    */
-    public static boolean isValidIdentifier(String value) {
-        boolean result =
-                (Character.isLetter(value.charAt(0)) || value.charAt(0) == '_' || value.charAt(0) == '.' || value.charAt(0) == '$');
-        int index = 1;
-        while (result && index < value.length()) {
-            if (!(Character.isLetterOrDigit(value.charAt(index)) || value.charAt(index) == '_' || value.charAt(index) == '.' || value.charAt(index) == '$'))
-                result = false;
-            index++;
-        }
-        return result;
     }
 }
