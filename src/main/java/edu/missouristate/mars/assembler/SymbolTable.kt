@@ -1,226 +1,203 @@
-package edu.missouristate.mars.assembler;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.Binary;
+@file:Suppress("DEPRECATION", "MemberVisibilityCanBePrivate")
 
-import java.util.*;
+package edu.missouristate.mars.assembler
+
+import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.ErrorMessage
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.util.Binary
 
 /**
- * Creats a table of Symbol objects.
+ * Creates a table of Symbol objects.
  *
- * @author Jason Bumgarner, Jason Shrewsbury
- * @version June 2003
- **/
-public class SymbolTable {
-    private static final String startLabel = "main";
-    private final String filename;
-    private ArrayList<Symbol> table;
+ * @param filename The name of the file this symbol table is associated with.
+ * Will be used only for output/display, so it can be any descriptive string.
+ */
+class SymbolTable(private val filename: String) {
+    companion object {
+        const val startLabel = "main"
 
-    /*
-     Note -1 is a legal 32-bit address (0xFFFFFFFF) but it is the high address in
-     kernel address space so highly unlikely that any symbol will have this as
-     its associated address!
-    */
-    public static final int NOT_FOUND = -1;
+        /*
+         * Note that -1 is a legal 32-bit address (0xFFFFFFFF),
+         * but it is the high address in kernel space,
+         * so it's highly unlikely that any symbol will have this as its associated address!
+         */
+        @Deprecated("Use getAddressOrNull(String) instead.")
+        const val NOT_FOUND = -1
 
-    /**
-     * Create a new empty symbol table for given file
-     *
-     * @param filename name of file this symbol table is associated with.  Will be
-     *                 used only for output/display so it can be any descriptive string.
-     */
-    public SymbolTable(String filename) {
-        this.filename = filename;
-        this.table = new ArrayList<>();
+        @Deprecated("Use direct access instead.", ReplaceWith("startLabel"))
+        @JvmStatic
+        @JvmName("getStartLabel")
+        fun badGetStartLabel(): String = startLabel
     }
 
+    private var table: ArrayList<Symbol> = arrayListOf()
+
     /**
-     * Adds a Symbol object into the array of Symbols.
+     * Add a [Symbol] object into the array of [Symbol]s.
      *
-     * @param token   The token representing the Symbol.
-     * @param address The address of the Symbol.
-     * @param b       The type of Symbol, true for data, false for text.
-     * @param errors  List to which to add any processing errors that occur.
-     **/
-    public void addSymbol(Token token, int address, boolean b, ErrorList errors) {
-        String label = token.getValue();
+     * @param token The token representing the [Symbol].
+     * @param address The address of the token.
+     * @param isData `true` if the [Symbol] is for data, `false` for text.
+     * @param errors The ErrorList to add any processing errors to, should they occur.
+     */
+    fun addSymbol(token: Token, address: Int, isData: Boolean, errors: ErrorList) {
+        val label = token.value
         if (getSymbol(label) != null) {
-            errors.add(new ErrorMessage(
-                token.getSourceMIPSProgram(),
-                token.getSourceLine(),
-                token.getStartPos(),
-                "label \"" + label + "\" already defined"
-            ));
+            errors.add(ErrorMessage(token.sourceMIPSProgram, token.sourceLine, token.startPos, "Label \"$label\" already defined!"))
         } else {
-            Symbol s = new Symbol(label, address, b);
-            table.add(s);
-            if (Globals.getDebug())
-                System.out.println("The symbol " + label + " with address " + address + " has been added to the " + this.filename + " symbol table.");
+            val s = Symbol(label, address, isData)
+            table.add(s)
+            if (Globals.debug) println("The symbol $label with address $address has been added to the $filename symbol table.")
         }
     }
 
     /**
-     * Removes a symbol from the Symbol table.  If not found, it does nothing.
-     * This will rarely happen (only when variable is declared .globl after already
-     * being defined in the local symbol table).
+     * Removes a [Symbol] from the table.
+     * If the [Symbol] isn't found, no action is taken.
+     * This will rarely happen
+     * (only when a variable is declared with `.globl` after already being defined in the local symbol table).
      *
-     * @param token The token representing the Symbol.
-     **/
-    public void removeSymbol(Token token) {
-        String label = token.getValue();
-        for (int i = 0; i < table.size(); i++) {
-            if (table.get(i).getName().equals(label)) {
-                table.remove(i);
-                if (Globals.getDebug())
-                    System.out.println("The symbol " + label + " has been removed from the " + this.filename + " symbol table.");
-                break;
-            }
-        }
-    }
-
-    /**
-     * Method to return the address associated with the given label.
-     *
-     * @param s The label.
-     * @return The memory address of the label given, or NOT_FOUND if not found in symbol table.
-     **/
-    public int getAddress(String s) {
-        for (Symbol o : table) if (o.getName().equals(s)) return o.getAddress();
-        return NOT_FOUND;
-    }
-
-    /**
-     * Method to return the address associated with the given label.  Look first
-     * in this (local) symbol table then in symbol table of labels declared
-     * global (.globl directive).
-     *
-     * @param s The label.
-     * @return The memory address of the label given, or NOT_FOUND if not found in symbol table.
-     **/
-    public int getAddressLocalOrGlobal(String s) {
-        int address = this.getAddress(s);
-        return (address == NOT_FOUND) ? Globals.symbolTable.getAddress(s) : address;
-    }
-
-    /**
-     * Produce Symbol object from symbol table that corresponds to given String.
-     *
-     * @param s target String
-     * @return Symbol object for requested target, null if not found in symbol table.
-     **/
-    public Symbol getSymbol(String s) {
-        for (Symbol o : table) if (o.getName().equals(s)) return o;
-        return null;
-    }
-
-    /**
-     * Produce Symbol object from symbol table that has the given address.
-     *
-     * @param s String representing address
-     * @return Symbol object having requested address, null if address not found in symbol table.
-     **/
-    public Symbol getSymbolGivenAddress(String s) {
-        int address;
-        try {
-            address = Binary.stringToInt(s);// DPS 2-Aug-2010: was Integer.parseInt(s) but croaked on hex
-        } catch (NumberFormatException e) {
-            return null;
-        }
-        for (Symbol o : table) if (o.getAddress() == address) return o;
-        return null;
-    }
-
-    /**
-     * Produce Symbol object from either local or global symbol table that has the
-     * given address.
-     *
-     * @param s String representing address
-     * @return Symbol object having requested address, null if address not found in symbol table.
-     **/
-    public Symbol getSymbolGivenAddressLocalOrGlobal(String s) {
-        Symbol sym = this.getSymbolGivenAddress(s);
-        return (sym == null) ? Globals.symbolTable.getSymbolGivenAddress(s) : sym;
-    }
-
-    /**
-     * For obtaining the Data Symbols.
-     *
-     * @return An ArrayList of Symbol objects.
-     **/
-    public ArrayList<Symbol> getDataSymbols() {
-        ArrayList<Symbol> list = new ArrayList<>();
-        for (Symbol o : table) {
-            if (o.getType()) {
-                list.add(o);
-            }
-        }
-        return list;
-    }
-
-    /**
-     * For obtaining the Text Symbols.
-     *
-     * @return An ArrayList of Symbol objects.
-     **/
-    public ArrayList<Symbol> getTextSymbols() {
-        ArrayList<Symbol> list = new ArrayList<>();
-        for (Symbol o : table) {
-            if (!o.getType()) {
-                list.add(o);
-            }
-        }
-        return list;
-    }
-
-    /**
-     * For obtaining all the Symbols.
-     *
-     * @return An ArrayList of Symbol objects.
-     **/
-    public ArrayList<Symbol> getAllSymbols() {
-        return new ArrayList<>(table);
-    }
-
-    /**
-     * Get the count of entries currently in the table.
-     *
-     * @return Number of symbol table entries.
-     **/
-    public int getSize() {
-        return table.size();
-    }
-
-    /**
-     * Creates a fresh arrayList for a new table.
-     **/
-    public void clear() {
-        table = new ArrayList<>();
-    }
-
-    /**
-     * Fix address in symbol table entry.  Any and all entries that match the original
-     * address will be modified to contain the replacement address. There is no effect,
-     * if none of the addresses matches.
-     *
-     * @param originalAddress    Address associated with 0 or more symtab entries.
-     * @param replacementAddress Any entry that has originalAddress will have its
-     *                           address updated to this value.  Does nothing if none do.
+     * @param token The [Token] representing the [Symbol].
      */
-    public void fixSymbolTableAddress(int originalAddress, int replacementAddress) {
-        Symbol label = getSymbolGivenAddress(Integer.toString(originalAddress));
-        while (label != null) {
-            label.setAddress(replacementAddress);
-            label = getSymbolGivenAddress(Integer.toString(originalAddress));
-        }
+    fun removeSymbol(token: Token) {
+        table.removeIf { it.name == token.value }
     }
 
     /**
-     * Fetches the text segment label (symbol) which, if declared global, indicates
-     * the starting address for execution.
+     * Returns the address associated with the given label.
      *
-     * @return String containing global label whose text segment address is starting address for program execution.
-     **/
-    public static String getStartLabel() {
-        return startLabel;
+     * @param s The label.
+     * @return The memory address of the label, or `NOT_FOUND` if not found in the symbol table.
+     */
+    @Deprecated("Use getAddressOrNull with a null check instead.", ReplaceWith("getAddressOrNull(s)"))
+    fun getAddress(s: String) = getAddressOrNull(s) ?: NOT_FOUND
+
+    /**
+     * Returns the address associated with the given label, or `null` if the address is not found.
+     *
+     * @param s The label.
+     * @return The memory address of the label, or `null` if not found in the symbol table.
+     */
+    fun getAddressOrNull(s: String) = table.firstOrNull { it.name == s }?.address
+
+    /**
+     * Return the address associated with the given label.
+     * Checks both the local and global table, starting with the local table (this table) first.
+     *
+     * @param s The label.
+     * @return The memory of the given label, or `NOT_FOUND` if not found in either the local or global symbol tables.
+     */
+    @Deprecated("Use getLocalOrGlobalAddressOrNull(String) with a null check instead.", ReplaceWith("getLocalOrGlobalAddressOrNull(s)"))
+    fun getAddressLocalOrGlobal(s: String) = getLocalOrGlobalAddressOrNull(s) ?: NOT_FOUND
+
+    /**
+     * Return the address associated with the given label.
+     * Checks both the local and global tables, starting with the local table (this table) first.
+     *
+     * @param s The label.
+     * @return The memory of the given label, or `null` if not found in either the local or global symbol tables.
+     */
+    fun getLocalOrGlobalAddressOrNull(s: String) = getAddressOrNull(s) ?: Globals.symbolTable.getAddressOrNull(s)
+
+    /**
+     * Get the [Symbol] object from the symbol table by name.
+     *
+     * @param s The target symbol name.
+     * @return The Symbol object for the request target, or `null` if not found in the table.
+     */
+    fun getSymbol(s: String) = table.firstOrNull { it.name == s }
+
+    /**
+     * Get the [Symbol] object from the symbol table from its address.
+     *
+     * @param s The address.
+     * @return The Symbol object with the requested address, or `null` if not found in the table.
+     */
+    @JvmName("getSymbolGivenAddress")
+    fun getSymbolByAddress(s: String) = table.firstOrNull {
+        try {
+            it.address == Binary.stringToInt(s)
+        } catch (e: NumberFormatException) { return@firstOrNull false }
+    }
+
+    /**
+     * Get the [Symbol] object from the symbol table by its address.
+     * Checks both the local and global tables, starting with the local table (this table) first.
+     *
+     * @param s The address.
+     * @return The Symbol object with the requested address, or `null` if not found in either the local or global
+     * tables.
+     */
+    @JvmName("getSymbolGivenAddressLocalOrGlobal")
+    fun getLocalOrGlobalSymbolByAddress(s: String) =
+        getSymbolByAddress(s) ?: Globals.symbolTable.getSymbolByAddress(s)
+
+    /**
+     * Get all data symbols from the local table.
+     *
+     * @return An ArrayList of [Symbol] objects that contain data.
+     */
+    fun getDataSymbols() = arrayListOf(*table.filter { it.isData }.toTypedArray())
+
+    /**
+     * Get all text symbols from the local table.
+     *
+     * @return An ArrayList of [Symbol] objects that contain text.
+     */
+    fun getTextSymbols() = arrayListOf(*table.filter { !it.isData }.toTypedArray())
+
+    /**
+     * Get all symbols.
+     */
+    fun getAllSymbols() = arrayListOf(*table.toTypedArray())
+
+    /**
+     * Get the number of entries currently in the table.
+     *
+     * @return The number of symbol table entries.
+     */
+    fun getSize() = table.size
+
+    /**
+     * Clear the symbol table.
+     */
+    fun clear() = table.clear()
+
+    /**
+     * Fix an address in a symbol table entry.
+     * Any and all entries that match the original address will be modified to contain the replacement address.
+     * There is no effect if none of the addresses match.
+     *
+     * @param originalAddress The address associated with zero or more symbol table entries.
+     * @param replacementAddress The new address to be set for matching symbol table entries.
+     */
+    fun fixSymbolTableAddress(originalAddress: Int, replacementAddress: Int) {
+        var label = getSymbolByAddress(originalAddress.toString())
+        while (label != null) {
+            label.address = replacementAddress
+            label = getSymbolByAddress(originalAddress.toString())
+        }
     }
 }

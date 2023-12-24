@@ -651,7 +651,7 @@ public class Assembler {
             int size = Binary.stringToInt(tokens.get(2).getValue());
             // If label already in global symtab, do nothing. If not, add it right now.
             if (Globals.symbolTable.getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
-                Globals.symbolTable.addSymbol(tokens.get(1), this.externAddress, Symbol.DATA_SYMBOL, errors);
+                Globals.symbolTable.addSymbol(tokens.get(1), this.externAddress, true, errors);
                 this.externAddress += size;
             }
         } else if (direct == Directives.SET) {
