@@ -296,7 +296,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         } else if (obj instanceof MemoryAccessNotice access) {
             // NOTE: observable != Memory.getInstance() because Memory class delegates notification duty.
             // This will occur only if running program has written to text segment (self-modifying code)
-            if (access.getAccessType() == AccessNotice.WRITE) {
+            if (access.getAccessType() == AccessNotice.AccessType.WRITE) {
                 int address = access.getAddress();
                 int value = access.getValue();
                 String strValue = Binary.intToHexString(access.getValue());
@@ -356,7 +356,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
                 // for that.  So we'll pretend to be Memory observable and send it a fake memory write update.
                 try {
                     Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow()
-                            .update(Memory.getInstance(), new MemoryAccessNotice(AccessNotice.WRITE, address, value));
+                            .update(Memory.getInstance(), new MemoryAccessNotice(AccessNotice.AccessType.WRITE, address, value));
                 } catch (Exception e) {
                     // Not sure if anything bad can happen in this sequence, but if anything does we can let it go.
                 }

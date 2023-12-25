@@ -449,7 +449,7 @@ public class ScavengerHunt implements Observer, MarsTool {
         notice = (MemoryAccessNotice) arg;
         address = notice.getAddress();
         data = notice.getValue();
-        isWrite = (notice.getAccessType() == AccessNotice.WRITE);
+        isWrite = (notice.getAccessType() == AccessNotice.AccessType.WRITE);
         isRead = !isWrite;
 
 

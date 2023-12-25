@@ -147,7 +147,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
      * @param accessNotice information provided by memory in MemoryAccessNotice object
      */
     protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
-        if (accessNotice.getAccessType() == AccessNotice.WRITE) {
+        if (accessNotice.getAccessType() == AccessNotice.AccessType.WRITE) {
             updateColorForAddress((MemoryAccessNotice) accessNotice);
         }
     }

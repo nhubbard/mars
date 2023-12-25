@@ -174,7 +174,7 @@ public class RegistersWindow extends JPanel implements Observer {
             }
         } else if (obj instanceof RegisterAccessNotice access) {
             // NOTE: each register is a separate Observable
-            if (access.getAccessType() == AccessNotice.WRITE) {
+            if (access.getAccessType() == AccessNotice.AccessType.WRITE) {
                 // Uses the same highlighting technique as for Text Segment -- see
                 // AddressCellRenderer class in DataSegmentWindow.java.
                 this.highlighting = true;

@@ -210,7 +210,7 @@ public class MarsBot implements Observer, MarsTool {
         if (arg instanceof MemoryAccessNotice) {
             notice = (MemoryAccessNotice) arg;
             address = notice.getAddress();
-            if (address < 0 && notice.getAccessType() == AccessNotice.WRITE) {
+            if (address < 0 && notice.getAccessType() == AccessNotice.AccessType.WRITE) {
                 String message = "";
                 if (address == ADDR_HEADING) {
                     MarsBotHeading = notice.getValue();

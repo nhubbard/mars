@@ -411,7 +411,7 @@ public class Memory extends Observable {
             throw new AddressErrorException("address out of range ",
                     Exceptions.ADDRESS_EXCEPTION_STORE, address);
         }
-        notifyAnyObservers(AccessNotice.WRITE, address, length, value);
+        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, length, value);
         return oldValue;
     }
 
@@ -474,7 +474,7 @@ public class Memory extends Observable {
             throw new AddressErrorException("store address out of range ",
                     Exceptions.ADDRESS_EXCEPTION_STORE, address);
         }
-        notifyAnyObservers(AccessNotice.WRITE, address, WORD_LENGTH_BYTES, value);
+        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, WORD_LENGTH_BYTES, value);
         if (Globals.getSettings().getBackSteppingEnabled()) {
             Globals.program.getBackStepper().addMemoryRestoreRawWord(address, oldValue);
         }
@@ -647,7 +647,7 @@ public class Memory extends Observable {
             throw new AddressErrorException("address out of range ",
                     Exceptions.ADDRESS_EXCEPTION_LOAD, address);
         }
-        if (notify) notifyAnyObservers(AccessNotice.READ, address, length, value);
+        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, length, value);
         return value;
     }
 
@@ -713,7 +713,7 @@ public class Memory extends Observable {
             throw new AddressErrorException("address out of range ",
                     Exceptions.ADDRESS_EXCEPTION_LOAD, address);
         }
-        notifyAnyObservers(AccessNotice.READ, address, Memory.WORD_LENGTH_BYTES, value);
+        notifyAnyObservers(AccessNotice.AccessType.READ, address, Memory.WORD_LENGTH_BYTES, value);
         return value;
     }
 
@@ -1191,7 +1191,7 @@ public class Memory extends Observable {
     //
     // The "|| Globals.getGui()==null" is a hack added 19 July 2012 DPS.  IF MIPS simulation
     // is from command mode, Globals.program is null but still want ability to observe.
-    private void notifyAnyObservers(int type, int address, int length, int value) {
+    private void notifyAnyObservers(AccessNotice.AccessType type, int address, int length, int value) {
         if ((Globals.program != null || Globals.getGui() == null) && !this.observables.isEmpty()) {
             Iterator<MemoryObservable> it = this.observables.iterator();
             MemoryObservable mo;
@@ -1408,15 +1408,15 @@ public class Memory extends Observable {
         if (block < TEXT_BLOCK_TABLE_LENGTH) {
             if (blockTable[block] == null || blockTable[block][offset] == null) {
                 // No instructions are stored in this block or offset.
-                if (notify) notifyAnyObservers(AccessNotice.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
+                if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
                 return null;
             } else {
                 if (notify)
-                    notifyAnyObservers(AccessNotice.READ, address, Instruction.INSTRUCTION_LENGTH, blockTable[block][offset].getBinaryStatement());
+                    notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, blockTable[block][offset].getBinaryStatement());
                 return blockTable[block][offset];
             }
         }
-        if (notify) notifyAnyObservers(AccessNotice.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
+        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
         return null;
     }
 

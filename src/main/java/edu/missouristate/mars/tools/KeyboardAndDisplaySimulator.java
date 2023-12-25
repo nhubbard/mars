@@ -215,7 +215,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         // then clear the Ready bit to indicate there is no longer a keystroke available.
         // If Ready bit was initially clear, they'll get the old keystroke -- serves 'em right
         // for not checking!
-        if (notice.getAddress() == RECEIVER_DATA && notice.getAccessType() == AccessNotice.READ) {
+        if (notice.getAddress() == RECEIVER_DATA && notice.getAccessType() == AccessNotice.AccessType.READ) {
             updateMMIOControl(RECEIVER_CONTROL, readyBitCleared(RECEIVER_CONTROL));
         }
         // MIPS program has just written (stored) the transmitter (display) data register.  If transmitter
@@ -223,7 +223,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         // If transmitter Ready bit is set, then clear it to indicate the display device is processing the character.
         // Also start an intruction counter that will simulate the delay of the slower
         // display device processing the character.
-        if (isReadyBitSet(TRANSMITTER_CONTROL) && notice.getAddress() == TRANSMITTER_DATA && notice.getAccessType() == AccessNotice.WRITE) {
+        if (isReadyBitSet(TRANSMITTER_CONTROL) && notice.getAddress() == TRANSMITTER_DATA && notice.getAccessType() == AccessNotice.AccessType.WRITE) {
             updateMMIOControl(TRANSMITTER_CONTROL, readyBitCleared(TRANSMITTER_CONTROL));
             intWithCharacterToDisplay = notice.getValue();
             if (!displayAfterDelay) displayCharacter(intWithCharacterToDisplay);
@@ -237,7 +237,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         // can write another character to the transmitter data register.  If the Interrupt-Enabled
         // bit had been set by the MIPS program, generate an interrupt!
         if (this.countingInstructions &&
-                notice.getAccessType() == AccessNotice.READ &&
+                notice.getAccessType() == AccessNotice.AccessType.READ &&
                 (Memory.inTextSegment(notice.getAddress()) || Memory.inKernelTextSegment(notice.getAddress()))) {
             this.instructionCount++;
             if (this.instructionCount >= this.transmitDelayInstructionCountLimit) {

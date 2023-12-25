@@ -52,7 +52,7 @@ public class Register extends Observable {
      */
 
     public synchronized int getValue() {
-        notifyAnyObservers(AccessNotice.READ);
+        notifyAnyObservers(AccessNotice.AccessType.READ);
         return value;
     }
 
@@ -100,7 +100,7 @@ public class Register extends Observable {
     public synchronized int setValue(int val) {
         int old = value;
         value = val;
-        notifyAnyObservers(AccessNotice.WRITE);
+        notifyAnyObservers(AccessNotice.AccessType.WRITE);
         return old;
     }
 
@@ -125,12 +125,10 @@ public class Register extends Observable {
     //
     // Method to notify any observers of register operation that has just occurred.
     //
-    private void notifyAnyObservers(int type) {
+    private void notifyAnyObservers(AccessNotice.AccessType type) {
         if (this.countObservers() > 0) {// && Globals.program != null) && Globals.program.inSteppedExecution()) {
             this.setChanged();
             this.notifyObservers(new RegisterAccessNotice(type, this.name));
         }
     }
-
-
 }

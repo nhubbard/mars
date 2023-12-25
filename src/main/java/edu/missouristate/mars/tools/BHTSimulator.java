@@ -300,10 +300,10 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      */
     protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
 
-        if (!notice.accessIsFromMIPS()) return;
+        if (!notice.getAccessIsFromMIPS()) return;
 
 
-        if (notice.getAccessType() == AccessNotice.READ && notice instanceof MemoryAccessNotice memAccNotice) {
+        if (notice.getAccessType() == AccessNotice.AccessType.READ && notice instanceof MemoryAccessNotice memAccNotice) {
 
             // now it is safe to make a cast of the notice
 

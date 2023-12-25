@@ -142,7 +142,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      * @param accessNotice information provided by register in RegisterAccessNotice object
      */
     public void update(Observable register, Object accessNotice) {
-        if (((AccessNotice) accessNotice).getAccessType() == AccessNotice.WRITE) {
+        if (((AccessNotice) accessNotice).getAccessType() == AccessNotice.AccessType.WRITE) {
             updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
         }
     }

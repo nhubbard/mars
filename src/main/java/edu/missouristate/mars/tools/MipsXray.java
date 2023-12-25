@@ -191,8 +191,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     //Function that gets the current instruction in memory and start animation with the selected instruction.
     protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
 
-        if (!notice.accessIsFromMIPS()) return;
-        if (notice.getAccessType() != AccessNotice.READ) return;
+        if (!notice.getAccessIsFromMIPS()) return;
+        if (notice.getAccessType() != AccessNotice.AccessType.READ) return;
         MemoryAccessNotice man = (MemoryAccessNotice) notice;
         int currentAdress = man.getAddress();
 

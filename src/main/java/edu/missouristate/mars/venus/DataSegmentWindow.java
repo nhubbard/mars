@@ -761,7 +761,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
             //baseAddressSelector.getModel().getElementAt(TEXT_BASE_ADDRESS_INDEX)
             //*.setEnabled(settings.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
         } else if (obj instanceof MemoryAccessNotice access) {            // NOTE: observable != Memory.getInstance() because Memory class delegates notification duty.
-            if (access.getAccessType() == AccessNotice.WRITE) {
+            if (access.getAccessType() == AccessNotice.AccessType.WRITE) {
                 int address = access.getAddress();
                 // Use the same highlighting technique as for Text Segment -- see
                 // AddressCellRenderer class below.

@@ -515,8 +515,8 @@ class MarsLaunch(args: Array<String>) {
 
                 override fun update(o: Observable?, notice: Any?) {
                     if (notice is AccessNotice) {
-                        if (!notice.accessIsFromMIPS()) return
-                        if (notice.accessType != AccessNotice.READ) return
+                        if (!notice.accessIsFromMIPS) return
+                        if (notice.accessType != AccessNotice.AccessType.READ) return
                         notice as MemoryAccessNotice
                         val a = notice.address
                         if (a == lastAddress) return

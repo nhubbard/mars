@@ -167,8 +167,8 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
     //	@Override
     protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
-        if (!notice.accessIsFromMIPS()) return;
-        if (notice.getAccessType() != AccessNotice.READ) return;
+        if (!notice.getAccessIsFromMIPS()) return;
+        if (notice.getAccessType() != AccessNotice.AccessType.READ) return;
         MemoryAccessNotice m = (MemoryAccessNotice) notice;
         int a = m.getAddress();
         if (a == lastAddress) return;

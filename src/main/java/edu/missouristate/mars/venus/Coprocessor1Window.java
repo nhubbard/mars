@@ -228,7 +228,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
             }
         } else if (obj instanceof RegisterAccessNotice access) {
             // NOTE: each register is a separate Observable
-            if (access.getAccessType() == AccessNotice.WRITE) {
+            if (access.getAccessType() == AccessNotice.AccessType.WRITE) {
                 // For now, use highlighting technique used by Label Window feature to highlight
                 // memory cell corresponding to a selected label.  The highlighting is not
                 // as visually distinct as changing the background color, but will do for now.
