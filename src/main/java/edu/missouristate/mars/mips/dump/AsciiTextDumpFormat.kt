@@ -21,14 +21,10 @@
 
 package edu.missouristate.mars.mips.dump
 
-import edu.missouristate.mars.Globals
 import edu.missouristate.mars.mips.hardware.AddressErrorException
-import edu.missouristate.mars.mips.hardware.Memory
 import edu.missouristate.mars.util.Binary
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import java.io.PrintStream
 
 // Slight change in functionality: added "txt" extension.
 class AsciiTextDumpFormat : AbstractDumpFormat(
@@ -54,6 +50,8 @@ class AsciiTextDumpFormat : AbstractDumpFormat(
      */
     @Throws(AddressErrorException::class, IOException::class)
     override fun dumpMemoryRange(file: File?, firstAddress: Int, lastAddress: Int) {
+        /*
+        Implementation without helper function:
         file?.let {
             FileOutputStream(it).use {
                 PrintStream(it).use {
@@ -65,6 +63,10 @@ class AsciiTextDumpFormat : AbstractDumpFormat(
                     }
                 }
             }
+        }
+        */
+        file.dumpMemoryAs(firstAddress, lastAddress) { it, _ ->
+            println(Binary.intToAscii(it))
         }
     }
 }

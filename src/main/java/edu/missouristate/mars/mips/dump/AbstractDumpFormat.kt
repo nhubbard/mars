@@ -1,5 +1,11 @@
 package edu.missouristate.mars.mips.dump
 
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.mips.hardware.Memory
+import java.io.File
+import java.io.FileOutputStream
+import java.io.PrintStream
+
 /**
  * Abstract class for memory dump file formats.  Provides constructors and
  * defaults for everything except the dumpMemoryRange method itself.
@@ -25,4 +31,20 @@ abstract class AbstractDumpFormat(
         commandDescriptor?.replace(" ".toRegex(), "")
 
     override fun toString(): String = name
+
+    fun File?.dumpMemoryAs(firstAddress: Int, lastAddress: Int, lastLine: String = "", writer: PrintStream.(Int, Int) -> Unit) {
+        this?.let { file ->
+            FileOutputStream(file).use { out ->
+                PrintStream(out).use {
+                    var address = firstAddress
+                    while (address <= lastAddress) {
+                        val temp = Globals.memory.getRawWordOrNull(address) ?: break
+                        writer.invoke(it, temp, address)
+                        address += Memory.WORD_LENGTH_BYTES
+                    }
+                    if (lastLine.isNotEmpty()) it.println(lastLine)
+                }
+            }
+        }
+    }
 }

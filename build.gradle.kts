@@ -25,7 +25,7 @@ plugins {
     application
     java
     idea
-    kotlin("jvm") version "1.9.21"
+    kotlin("jvm") version "1.9.22"
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
@@ -41,6 +41,7 @@ dependencies {
     compileOnly("org.jetbrains:annotations:24.0.0")
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("reflect"))
     // Testing
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")

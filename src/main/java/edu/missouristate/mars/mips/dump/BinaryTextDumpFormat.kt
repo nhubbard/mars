@@ -21,11 +21,7 @@
 
 package edu.missouristate.mars.mips.dump
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.mips.hardware.Memory
 import java.io.File
-import java.io.FileOutputStream
-import java.io.PrintStream
 
 // Changed the file extension to "txt" from null.
 class BinaryTextDumpFormat: AbstractDumpFormat(
@@ -38,6 +34,8 @@ class BinaryTextDumpFormat: AbstractDumpFormat(
      * Write MIPS memory contents in binary text format.
      */
     override fun dumpMemoryRange(file: File?, firstAddress: Int, lastAddress: Int) {
+        /*
+        Implementation without helper:
         file?.let {
             FileOutputStream(it).use {
                 PrintStream(it).use {
@@ -52,6 +50,13 @@ class BinaryTextDumpFormat: AbstractDumpFormat(
                     }
                 }
             }
+        }
+        */
+        file.dumpMemoryAs(firstAddress, lastAddress) { it, _ ->
+            println(buildString {
+                append(Integer.toBinaryString(it))
+                while (length < 32) insert(0, '0')
+            })
         }
     }
 }
