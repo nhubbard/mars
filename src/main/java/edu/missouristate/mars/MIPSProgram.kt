@@ -249,9 +249,9 @@ class MIPSProgram {
     ): ErrorList {
         this.backStepper = null
         val asm = Assembler()
-        this.machineList = asm.assemble(mipsProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors)
+        this.machineList = asm.assemble(mipsProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors)!!
         this.backStepper = BackStepper()
-        return asm.errorList
+        return asm.errors
     }
 
     /**

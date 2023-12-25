@@ -658,7 +658,7 @@ class MarsLaunch(args: Array<String>) {
      */
     private fun displayHelp() {
         val segments = MemoryDump.segmentNames.joinToString(", ")
-        val formats = DumpFormatLoader().loadDumpFormats().joinToString(", ") { it.commandDescriptor }
+        val formats = DumpFormatLoader().loadDumpFormats().joinToString(", ") { it.commandDescriptor.toString() }
         out.printf(
             """
         Usage:  Mars  [options] filename [additional filenames]

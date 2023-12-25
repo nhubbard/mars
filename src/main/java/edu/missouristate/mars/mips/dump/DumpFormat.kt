@@ -1,9 +1,8 @@
-package edu.missouristate.mars.mips.dump;
+package edu.missouristate.mars.mips.dump
 
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-
-import java.io.File;
-import java.io.IOException;
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import java.io.File
+import java.io.IOException
 
 /**
  * Interface for memory dump file formats.  All MARS needs to be able
@@ -14,17 +13,14 @@ import java.io.IOException;
  * @author Pete Sanderson
  * @version December 2007
  */
-
-
-public interface DumpFormat {
-
+interface DumpFormat {
     /**
      * Get the file extension associated with this format.
      *
      * @return String containing file extension -- without the leading "." -- or
      * null if there is no standard extension.
      */
-    String getFileExtension();
+    val fileExtension: String
 
     /**
      * Get a short description of the format, suitable
@@ -35,21 +31,21 @@ public interface DumpFormat {
      * or as tool tip when mouse hovers over GUI component representing
      * this format.
      */
-    String getDescription();
+    val description: String
 
     /**
      * A short one-word descriptor that will be used by the MARS
      * command line parser (and the MARS command line user) to specify
      * that this format is to be used.
      */
-    String getCommandDescriptor();
+    val commandDescriptor: String?
 
     /**
      * Descriptive name for the format.
      *
      * @return Format name.
      */
-    String toString();
+    override fun toString(): String
 
     /**
      * Write MIPS memory contents according to the
@@ -57,13 +53,12 @@ public interface DumpFormat {
      *
      * @param file         File in which to store MIPS memory contents.
      * @param firstAddress first (lowest) memory address to dump.  In bytes but
-     *                     must be on word boundary.
+     * must be on word boundary.
      * @param lastAddress  last (highest) memory address to dump.  In bytes but
-     *                     must be on word boundary.  Will dump the word that starts at this address.
+     * must be on word boundary.  Will dump the word that starts at this address.
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException;
-
+    @Throws(AddressErrorException::class, IOException::class)
+    fun dumpMemoryRange(file: File?, firstAddress: Int, lastAddress: Int)
 }

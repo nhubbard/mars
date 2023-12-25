@@ -60,7 +60,7 @@ class Macro {
      * @param counter unique macro expansion id
      * @return `line`-th line of source code, with substituted arguments
      */
-    fun getSubstitutedLine(line: Int, args: TokenList, counter: Long, errors: ErrorList): String {
+    fun getSubstitutedLine(line: Int, args: TokenList, counter: Int, errors: ErrorList): String {
         requireNotNull(program)
         val tokens = program!!.getTokenList()[line - 1]
         var s = program!!.getSourceLine(line)!!

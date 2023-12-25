@@ -71,7 +71,7 @@ class TokenList: Cloneable, MutableList<Token> {
     }
 
     // Implement Cloneable interface requirement(s).
-    override fun clone(): Any {
+    public override fun clone(): Any {
         val t = super.clone() as TokenList
         t.tokenList = tokenList.clone() as ArrayList<Token>
         return t

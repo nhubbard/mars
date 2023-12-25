@@ -4,6 +4,7 @@ import edu.missouristate.mars.util.FilenameFinder;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /****************************************************************************/
 /* This class provides functionality to bring external memory dump format definitions
@@ -55,7 +56,7 @@ public class DumpFormatLoader {
     public static DumpFormat findDumpFormatGivenCommandDescriptor(ArrayList<DumpFormat> formatList, String formatCommandDescriptor) {
         DumpFormat match = null;
         for (DumpFormat dumpFormat : formatList) {
-            if (dumpFormat.getCommandDescriptor().equals(formatCommandDescriptor)) {
+            if (Objects.equals(dumpFormat.getCommandDescriptor(), formatCommandDescriptor)) {
                 match = dumpFormat;
                 break;
             }

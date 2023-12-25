@@ -230,9 +230,7 @@ public class FileDumpMemoryAction extends GuiAction {
         public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             setToolTipText(value.toString());
-            if (index >= 0 && myMaster.getItemAt(index).getDescription() != null) {
-                setToolTipText(myMaster.getItemAt(index).getDescription());
-            }
+            if (index >= 0) setToolTipText(myMaster.getItemAt(index).getDescription());
             return this;
         }
     }
