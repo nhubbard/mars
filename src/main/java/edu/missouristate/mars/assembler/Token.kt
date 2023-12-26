@@ -36,10 +36,10 @@ import edu.missouristate.mars.MIPSProgram
 data class Token @JvmOverloads constructor(
     var type: TokenTypes,
     val value: String,
-    val sourceMipsProgram: MIPSProgram,
+    val sourceMipsProgram: MIPSProgram?,
     val sourceLine: Int,
     val startPosition: Int,
-    private var originalProgramAndLine: Pair<MIPSProgram, Int> = sourceMipsProgram to sourceLine
+    private var originalProgramAndLine: Pair<MIPSProgram?, Int> = sourceMipsProgram to sourceLine
 ) {
     /**
      * Set the original program and line number for this token.
