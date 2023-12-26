@@ -59,7 +59,7 @@ object Coprocessor1 {
         for (register in registers) {
             println("Name: ${register.name}")
             println("Number: ${register.number}")
-            println("Value: ${register.value}")
+            println("Value: ${register.getValue()}")
             println()
         }
     }
@@ -188,7 +188,7 @@ object Coprocessor1 {
     @JvmStatic
     fun getFloatFromRegister(number: Int): Float {
         var result = 0F
-        if (number in registers.indices) result = java.lang.Float.intBitsToFloat(registers[number].value)
+        if (number in registers.indices) result = java.lang.Float.intBitsToFloat(registers[number].getValue())
         return result
     }
 
@@ -212,7 +212,7 @@ object Coprocessor1 {
     @JvmStatic
     fun getIntFromRegister(number: Int): Int {
         var result = 0
-        if (number in registers.indices) result = registers[number].value
+        if (number in registers.indices) result = registers[number].getValue()
         return result
     }
 
@@ -238,7 +238,7 @@ object Coprocessor1 {
     fun getDoubleFromRegisterPair(number: Int): Double {
         if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
             throw InvalidRegisterAccessException()
-        val bits = Binary.twoIntegersToLong(registers[number + 1].value, registers[number].value)
+        val bits = Binary.twoIntegersToLong(registers[number + 1].getValue(), registers[number].getValue())
         return java.lang.Double.longBitsToDouble(bits)
     }
 
@@ -266,7 +266,7 @@ object Coprocessor1 {
     fun getLongFromRegisterPair(number: Int): Long {
         if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
             throw InvalidRegisterAccessException()
-        return Binary.twoIntegersToLong(registers[number + 1].value, registers[number].value)
+        return Binary.twoIntegersToLong(registers[number + 1].getValue(), registers[number].getValue())
     }
 
     /**
@@ -312,7 +312,7 @@ object Coprocessor1 {
      * @return The raw integer value of the given register.
      */
     @JvmStatic
-    fun getValue(number: Int): Int = registers[number].value
+    fun getValue(number: Int): Int = registers[number].getValue()
 
     /**
      * Get the number of the register from its string name.

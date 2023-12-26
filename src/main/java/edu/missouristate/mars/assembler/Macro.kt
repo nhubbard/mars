@@ -70,7 +70,7 @@ class Macro {
                 val repl = this.args.indices.firstOrNull { this.args[it] == token.value } ?: -1
                 var substitute = token.value
                 if (repl != -1) substitute = args.get(repl + 1).toString()
-                else errors.add(ErrorMessage(program, token.sourceLine, token.startPos, "Unknown macro parameter!"))
+                else errors.add(ErrorMessage(program, token.sourceLine, token.startPosition, "Unknown macro parameter!"))
                 s = replaceToken(s, token, substitute)
             } else if (tokenIsMacroLabel(token.value)) {
                 val substitute = "${token.value}_M$counter"

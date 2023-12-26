@@ -56,7 +56,7 @@ object Coprocessor0 {
         for (register in registers) {
             println("Name: ${register.name}")
             println("Number: ${register.number}")
-            println("Value: ${register.value}")
+            println("Value: ${register.getValue()}")
             println()
         }
     }
@@ -73,8 +73,8 @@ object Coprocessor0 {
         registers.firstOrNull {
             "$${it.number}" == registerName || it.name == registerName
         }?.let {
-            val oldValue = it.value
-            it.value = newValue
+            val oldValue = it.getValue()
+            it.setValue(newValue)
             return oldValue
         } ?: 0
 
@@ -107,7 +107,7 @@ object Coprocessor0 {
     @JvmStatic
     fun getValue(registerNumber: Int): Int = registers.firstOrNull {
         it.number == registerNumber
-    }?.value ?: 0
+    }?.getValue() ?: 0
 
     /**
      * Return the value of the register named [registerName].
