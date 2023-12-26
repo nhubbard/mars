@@ -103,7 +103,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
         private Component buildConfigDisplay() {
             JPanel displayPanel = new JPanel();
             MemoryConfiguration config = MemoryConfigurations.getCurrentConfiguration();
-            String[] configurationItemNames = config.getConfigurationItemNames();
+            String[] configurationItemNames = config.configurationItemNames;
             int numItems = configurationItemNames.length;
             JPanel namesPanel = new JPanel(new GridLayout(numItems, 1));
             JPanel valuesPanel = new JPanel(new GridLayout(numItems, 1));
@@ -176,7 +176,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
         private void performApply() {
             if (MemoryConfigurations.setCurrentConfiguration(this.selectedConfigurationButton.getConfiguration())) {
-                Globals.getSettings().setMemoryConfiguration(this.selectedConfigurationButton.getConfiguration().getConfigurationIdentifier());
+                Globals.getSettings().setMemoryConfiguration(this.selectedConfigurationButton.getConfiguration().configurationIdentifier);
                 Globals.getGui().getRegistersPane().getRegistersWindow().clearHighlighting();
                 Globals.getGui().getRegistersPane().getRegistersWindow().updateRegisters();
                 Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateBaseAddressComboBox();
@@ -208,8 +208,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
         // Set name values in JLabels and address values in the JTextFields
         private void setConfigDisplay(MemoryConfiguration config) {
-            String[] configurationItemNames = config.getConfigurationItemNames();
-            int[] configurationItemValues = config.getConfigurationItemValues();
+            String[] configurationItemNames = config.configurationItemNames;
+            int[] configurationItemValues = config.configurationItemValues;
             // Will use TreeMap to extract list of address-name pairs sorted by
             // hex-stringified address. This will correctly handle kernel addresses,
             // whose int values are negative and thus normal sorting yields incorrect
@@ -237,7 +237,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
         private final MemoryConfiguration configuration;
 
         public ConfigurationButton(MemoryConfiguration config) {
-            super(config.getConfigurationName(), config == MemoryConfigurations.getCurrentConfiguration());
+            super(config.configurationName, config == MemoryConfigurations.getCurrentConfiguration());
             this.configuration = config;
         }
 

@@ -1,130 +1,35 @@
-package edu.missouristate.mars.mips.hardware;
+package edu.missouristate.mars.mips.hardware
 
 /**
  * Models the memory configuration for the simulated MIPS machine.
- * "configuration" refers to the starting memory addresses for
- * the various memory segments.
- * The default configuration is based on SPIM.  Starting with MARS 3.7,
- * the configuration can be changed.
- *
- * @author Pete Sanderson
- * @version August 2009
+ * "Configuration" refers to the starting memory addresses for the various memory segments.
+ * The default configuration is based on SPIM. Starting with MARS 3.7, the configuration can be changed.
  */
-
-
-public class MemoryConfiguration {
-    // Identifier is used for saving setting; name is used for display
-    private final String configurationIdentifier;
-    private final String configurationName;
-    private final String[] configurationItemNames;
-    private final int[] configurationItemValues;
-
-
-    public MemoryConfiguration(String ident, String name, String[] items, int[] values) {
-        this.configurationIdentifier = ident;
-        this.configurationName = name;
-        this.configurationItemNames = items;
-        this.configurationItemValues = values;
-    }
-
-    public String getConfigurationIdentifier() {
-        return configurationIdentifier;
-    }
-
-    public String getConfigurationName() {
-        return configurationName;
-    }
-
-    public int[] getConfigurationItemValues() {
-        return configurationItemValues;
-    }
-
-    public String[] getConfigurationItemNames() {
-        return configurationItemNames;
-    }
-
-    public int getTextBaseAddress() {
-        return configurationItemValues[0];
-    }
-
-    public int getDataSegmentBaseAddress() {
-        return configurationItemValues[1];
-    }
-
-    public int getExternBaseAddress() {
-        return configurationItemValues[2];
-    }
-
-    public int getGlobalPointer() {
-        return configurationItemValues[3];
-    }
-
-    public int getDataBaseAddress() {
-        return configurationItemValues[4];
-    }
-
-    public int getHeapBaseAddress() {
-        return configurationItemValues[5];
-    }
-
-    public int getStackPointer() {
-        return configurationItemValues[6];
-    }
-
-    public int getStackBaseAddress() {
-        return configurationItemValues[7];
-    }
-
-    public int getUserHighAddress() {
-        return configurationItemValues[8];
-    }
-
-    public int getKernelBaseAddress() {
-        return configurationItemValues[9];
-    }
-
-    public int getKernelTextBaseAddress() {
-        return configurationItemValues[10];
-    }
-
-    public int getExceptionHandlerAddress() {
-        return configurationItemValues[11];
-    }
-
-    public int getKernelDataBaseAddress() {
-        return configurationItemValues[12];
-    }
-
-    public int getMemoryMapBaseAddress() {
-        return configurationItemValues[13];
-    }
-
-    public int getKernelHighAddress() {
-        return configurationItemValues[14];
-    }
-
-    public int getDataSegmentLimitAddress() {
-        return configurationItemValues[15];
-    }
-
-    public int getTextLimitAddress() {
-        return configurationItemValues[16];
-    }
-
-    public int getKernelDataSegmentLimitAddress() {
-        return configurationItemValues[17];
-    }
-
-    public int getKernelTextLimitAddress() {
-        return configurationItemValues[18];
-    }
-
-    public int getStackLimitAddress() {
-        return configurationItemValues[19];
-    }
-
-    public int getMemoryMapLimitAddress() {
-        return configurationItemValues[20];
-    }
-
+class MemoryConfiguration(
+    @JvmField val configurationIdentifier: String,
+    @JvmField val configurationName: String,
+    @JvmField val configurationItemNames: Array<String>,
+    @JvmField val configurationItemValues: IntArray
+) {
+    val textBaseAddress: Int get() = configurationItemValues[0]
+    val dataSegmentBaseAddress: Int get() = configurationItemValues[1]
+    val externBaseAddress: Int get() = configurationItemValues[2]
+    val globalPointer: Int get() = configurationItemValues[3]
+    val dataBaseAddress: Int get() = configurationItemValues[4]
+    val heapBaseAddress: Int get() = configurationItemValues[5]
+    val stackPointer: Int get() = configurationItemValues[6]
+    val stackBaseAddress: Int get() = configurationItemValues[7]
+    val userHighAddress: Int get() = configurationItemValues[8]
+    val kernelBaseAddress: Int get() = configurationItemValues[9]
+    val kernelTextBaseAddress: Int get() = configurationItemValues[10]
+    val exceptionHandlerAddress: Int get() = configurationItemValues[11]
+    val kernelDataBaseAddress: Int get() = configurationItemValues[12]
+    val memoryMapBaseAddress: Int get() = configurationItemValues[13]
+    val kernelHighAddress: Int get() = configurationItemValues[14]
+    val dataSegmentLimitAddress: Int get() = configurationItemValues[15]
+    val textLimitAddress: Int get() = configurationItemValues[16]
+    val kernelDataSegmentLimitAddress: Int get() = configurationItemValues[17]
+    val kernelTextLimitAddress: Int get() = configurationItemValues[18]
+    val stackLimitAddress: Int get() = configurationItemValues[19]
+    val memoryMapLimitAddress: Int get() = configurationItemValues[20]
 }

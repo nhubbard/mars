@@ -9,8 +9,7 @@ import java.util.Observer;
  *
  * @author Pete Sanderson
  * @version August 2005
- **/
-
+ */
 public class Coprocessor0 {
     /**
      * Coprocessor register names

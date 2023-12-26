@@ -226,7 +226,7 @@ class Assembler {
                      translation correctly.
                     */
                     val inst = statement.getInstruction() as ExtendedInstruction
-                    val basicAssembly = statement.getBasicAssemblyStatement()
+                    val basicAssembly = statement.getBasicAssemblyStatement() ?: "nop"
                     val sourceLine = statement.getSourceLine()
                     val theTokenList = Tokenizer().tokenizeLine(sourceLine, basicAssembly, errors, false)
                     // If we are using compact memory config and there is a compact expansion, then use it
@@ -900,7 +900,7 @@ class Assembler {
      */
     private fun matchInstruction(token: Token): ArrayList<Instruction>? {
         if (token.type != TokenTypes.OPERATOR) {
-            if (token.sourceMipsProgram.getLocalMacroPool().matchesAnyMacroName(token.value)) {
+            if (token.sourceMipsProgram?.getLocalMacroPool()?.matchesAnyMacroName(token.value) == true) {
                 errors.add(ErrorMessage(
                     token.sourceMipsProgram,
                     token.sourceLine,
