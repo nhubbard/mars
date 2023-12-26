@@ -86,7 +86,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * Adds BHTSimulator as observer of the text segment.
      */
     protected void addAsObserver() {
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
         addAsObserver(RegisterFile.getProgramCounter());
     }
 
@@ -307,49 +307,45 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
 
             // now it is safe to make a cast of the notice
 
-            try {
-                // access the statement in the text segment without notifying other tools etc.
-                ProgramStatement stmt = Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
+            // access the statement in the text segment without notifying other tools etc.
+            ProgramStatement stmt = Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
 
-                // necessary to handle possible null pointers at the end of the program
-                // (e.g., if the simulator tries to execute the next instruction after the last instruction in the text segment)
-                if (stmt != null) {
+            // necessary to handle possible null pointers at the end of the program
+            // (e.g., if the simulator tries to execute the next instruction after the last instruction in the text segment)
+            if (stmt != null) {
 
-                    boolean clearTextFields = true;
+                boolean clearTextFields = true;
 
-                    // first, check if there's a pending branch to handle
-                    if (pendingBranchInstAddress != 0) {
-                        handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
-                        clearTextFields = false;
-                        pendingBranchInstAddress = 0;
-                    }
-
-
-                    // if current instruction is branch instruction
-                    if (BHTSimulator.isBranchInstruction(stmt)) {
-                        handlePreBranchInst(stmt);
-                        lastBranchTaken = willBranch(stmt);
-                        pendingBranchInstAddress = stmt.getAddress();
-                        clearTextFields = false;
-                    }
-
-
-                    // clear text fields and selection
-                    if (clearTextFields) {
-                        gui.getTfInstruction().setText("");
-                        gui.getTfAddress().setText("");
-                        gui.getTfIndex().setText("");
-                        gui.getTabBHT().clearSelection();
-                    }
-                } else {
-                    // check if there's a pending branch to handle
-                    if (pendingBranchInstAddress != 0) {
-                        handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
-                        pendingBranchInstAddress = 0;
-                    }
+                // first, check if there's a pending branch to handle
+                if (pendingBranchInstAddress != 0) {
+                    handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
+                    clearTextFields = false;
+                    pendingBranchInstAddress = 0;
                 }
-            } catch (AddressErrorException e) {
-                // silently ignore these exceptions
+
+
+                // if current instruction is branch instruction
+                if (BHTSimulator.isBranchInstruction(stmt)) {
+                    handlePreBranchInst(stmt);
+                    lastBranchTaken = willBranch(stmt);
+                    pendingBranchInstAddress = stmt.getAddress();
+                    clearTextFields = false;
+                }
+
+
+                // clear text fields and selection
+                if (clearTextFields) {
+                    gui.getTfInstruction().setText("");
+                    gui.getTfAddress().setText("");
+                    gui.getTfIndex().setText("");
+                    gui.getTabBHT().clearSelection();
+                }
+            } else {
+                // check if there's a pending branch to handle
+                if (pendingBranchInstAddress != 0) {
+                    handleExecBranchInst(pendingBranchInstAddress, lastBranchTaken);
+                    pendingBranchInstAddress = 0;
+                }
             }
 
         }

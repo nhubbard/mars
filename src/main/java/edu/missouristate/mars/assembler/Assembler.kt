@@ -441,7 +441,7 @@ class Assembler {
      * alternate compact translation.
      */
     private fun compactTranslationCanBeApplied(statement: ProgramStatement): Boolean =
-        Globals.memory.usingCompactMemoryConfiguration() &&
+        Globals.memory.usingCompactMemoryConfiguration &&
             (statement.getInstruction() as? ExtendedInstruction)?.hasCompactTranslation() ?: false
 
     /**

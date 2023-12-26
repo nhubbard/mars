@@ -16,11 +16,11 @@ import java.util.Observable;
 public class DigitalLabSim extends AbstractMarsToolAndApplication {
     private static final String heading = "Digital Lab Sim";
     private static final String version = " Version 1.0 (Didier Teifreto)";
-    private static final int IN_ADRESS_DISPLAY_1 = Memory.memoryMapBaseAddress + 0x10;
-    private static final int IN_ADRESS_DISPLAY_2 = Memory.memoryMapBaseAddress + 0x11;
-    private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x12;
-    private static final int IN_ADRESS_COUNTER = Memory.memoryMapBaseAddress + 0x13;
-    private static final int OUT_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x14;
+    private static final int IN_ADRESS_DISPLAY_1 = Memory.getMemoryMapBaseAddress() + 0x10;
+    private static final int IN_ADRESS_DISPLAY_2 = Memory.getMemoryMapBaseAddress() + 0x11;
+    private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.getMemoryMapBaseAddress() + 0x12;
+    private static final int IN_ADRESS_COUNTER = Memory.getMemoryMapBaseAddress() + 0x13;
+    private static final int OUT_ADRESS_HEXA_KEYBOARD = Memory.getMemoryMapBaseAddress() + 0x14;
 
     public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; //Add for digital Lab Sim
     public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200;// Add for digital Lab Sim
@@ -55,7 +55,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
     protected void addAsObserver() {
         addAsObserver(IN_ADRESS_DISPLAY_1, IN_ADRESS_DISPLAY_1);
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
     public void update(Observable ressource, Object accessNotice) {

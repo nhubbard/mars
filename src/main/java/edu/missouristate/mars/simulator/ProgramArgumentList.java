@@ -120,7 +120,7 @@ public class ProgramArgumentList {
         // Follow this pattern for all remaining arguments.
 
 
-        int highAddress = Memory.stackBaseAddress;  // highest non-kernel address, sits "under" stack
+        int highAddress = Memory.getStackBaseAddress();  // highest non-kernel address, sits "under" stack
         String programArgument;
         int[] argStartAddress = new int[programArgumentList.size()];
         try { // needed for all memory writes
@@ -135,8 +135,8 @@ public class ProgramArgumentList {
                 argStartAddress[i] = highAddress + 1;
             }
             // now place a null word, the arg starting addresses, and arg count onto stack.
-            int stackAddress = Memory.stackPointer;  // base address for runtime stack.
-            if (highAddress < Memory.stackPointer) {
+            int stackAddress = Memory.getStackPointer();  // base address for runtime stack.
+            if (highAddress < Memory.getStackPointer()) {
                 // Based on current values for stackBaseAddress and stackPointer, this will
                 // only happen if the combined lengths of program arguments is greater than
                 // 0x7ffffffc - 0x7fffeffc = 0x00001000 = 4096 bytes.  In this case, set

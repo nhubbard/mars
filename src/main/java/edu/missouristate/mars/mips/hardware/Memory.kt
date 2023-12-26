@@ -1,1423 +1,1221 @@
-package edu.missouristate.mars.mips.hardware;
-
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.simulator.Exceptions;
-import edu.missouristate.mars.util.Binary;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
-
-/**
- * Represents MIPS memory.  Different segments are represented by different data structs.
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
  *
- * @author Pete Sanderson
- * @version August 2003
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/////////////////////////////////////////////////////////////////////
-// NOTE: This implementation is purely big-endian.  MIPS can handle either one.
-/////////////////////////////////////////////////////////////////////
+@file:Suppress("DEPRECATION", "NAME_SHADOWING")
 
-public class Memory extends Observable {
+package edu.missouristate.mars.mips.hardware
 
-    /**
-     * base address for (user) text segment: 0x00400000
-     **/
-    public static int textBaseAddress = MemoryConfigurations.getDefaultTextBaseAddress(); //0x00400000;
-    /**
-     * base address for (user) data segment: 0x10000000
-     **/
-    public static int dataSegmentBaseAddress = MemoryConfigurations.getDefaultDataSegmentBaseAddress(); //0x10000000;
-    /**
-     * base address for .extern directive: 0x10000000
-     **/
-    public static int externBaseAddress = MemoryConfigurations.getDefaultExternBaseAddress(); //0x10000000;
-    /**
-     * base address for storing globals
-     **/
-    public static int globalPointer = MemoryConfigurations.getDefaultGlobalPointer(); //0x10008000;
-    /**
-     * base address for storage of non-global static data in data segment: 0x10010000 (from SPIM)
-     **/
-    public static int dataBaseAddress = MemoryConfigurations.getDefaultDataBaseAddress(); //0x10010000; // from SPIM not MIPS
-    /**
-     * base address for heap: 0x10040000 (I think from SPIM not MIPS)
-     **/
-    public static int heapBaseAddress = MemoryConfigurations.getDefaultHeapBaseAddress(); //0x10040000; // I think from SPIM not MIPS
-    /**
-     * starting address for stack: 0x7fffeffc (this is from SPIM not MIPS)
-     **/
-    public static int stackPointer = MemoryConfigurations.getDefaultStackPointer(); //0x7fffeffc;
-    /**
-     * base address for stack: 0x7ffffffc (this is mine - start of highest word below kernel space)
-     **/
-    public static int stackBaseAddress = MemoryConfigurations.getDefaultStackBaseAddress(); //0x7ffffffc;
-    /**
-     * highest address accessible in user (not kernel) mode.
-     **/
-    public static int userHighAddress = MemoryConfigurations.getDefaultUserHighAddress(); //0x7fffffff;
-    /**
-     * kernel boundary.  Only OS can access this or higher address
-     **/
-    public static int kernelBaseAddress = MemoryConfigurations.getDefaultKernelBaseAddress(); //0x80000000;
-    /**
-     * base address for kernel text segment: 0x80000000
-     **/
-    public static int kernelTextBaseAddress = MemoryConfigurations.getDefaultKernelTextBaseAddress(); //0x80000000;
-    /**
-     * starting address for exception handlers: 0x80000180
-     **/
-    public static int exceptionHandlerAddress = MemoryConfigurations.getDefaultExceptionHandlerAddress(); //0x80000180;
-    /**
-     * base address for kernel data segment: 0x90000000
-     **/
-    public static int kernelDataBaseAddress = MemoryConfigurations.getDefaultKernelDataBaseAddress(); //0x90000000;
-    /**
-     * starting address for memory mapped I/O: 0xffff0000 (-65536)
-     **/
-    public static int memoryMapBaseAddress = MemoryConfigurations.getDefaultMemoryMapBaseAddress(); //0xffff0000;
-    /**
-     * highest address acessible in kernel mode.
-     **/
-    public static int kernelHighAddress = MemoryConfigurations.getDefaultKernelHighAddress(); //0xffffffff;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataSegmentBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultExceptionHandlerAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultExternBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultGlobalPointer
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultHeapBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultKernelBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultKernelDataBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultKernelHighAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultKernelTextBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultMemoryMapBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultStackBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultStackPointer
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultTextBaseAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultUserHighAddress
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations.getCurrentConfiguration
+import edu.missouristate.mars.mips.instructions.Instruction
+import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.util.Binary
+import java.nio.ByteOrder
+import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
-    /**
-     * MIPS word length in bytes.
-     **/
-    // NOTE:  Much of the code is hardwired for 4 byte words.  Refactoring this is low priority.
-    public static final int WORD_LENGTH_BYTES = 4;
-    /**
-     * Constant representing byte order of each memory word.  Little-endian means lowest
-     * numbered byte is right most [3][2][1][0].
-     */
-    public static final boolean LITTLE_ENDIAN = true;
-    /**
-     * Constant representing byte order of each memory word.  Big-endian means lowest
-     * numbered byte is left most [0][1][2][3].
-     */
-    public static final boolean BIG_ENDIAN = false;
-    /**
-     * Current setting for endian (default LITTLE_ENDIAN)
-     **/
-    private static boolean byteOrder = LITTLE_ENDIAN;
+/**
+ * Represents MIPS memory. Different segments are represented by different data structures.
+ */
+class Memory private constructor() : Observable() {
+    companion object {
+        /** base address for (user) text segment: 0x00400000 */
+        @JvmStatic
+        var textBaseAddress: Int = defaultTextBaseAddress
 
-    public static int heapAddress;
+        /** base address for (user) data segment: 0x10000000 */
+        @JvmStatic
+        var dataSegmentBaseAddress: Int = defaultDataSegmentBaseAddress
 
-    // Memory will maintain a collection of observables.  Each one is associated
-    // with a specific memory address or address range, and each will have at least
-    // one observer registered with it.  When memory access is made, make sure only
-    // observables associated with that address send notices to their observers.
-    // This assures that observers are not bombarded with notices from memory
-    // addresses they do not care about.
-    //
-    // Would like a tree-like implementation, but that is complicated by this fact:
-    // key for insertion into the tree would be based on Comparable using both low 
-    // and high end of address range, but retrieval from the tree has to be based
-    // on target address being ANYWHERE IN THE RANGE (not an exact key match).
+        /** base address for .extern directive: 0x10000000 */
+        @JvmStatic
+        var externBaseAddress: Int = defaultExternBaseAddress
 
-    Collection<MemoryObservable> observables = getNewMemoryObserversCollection();
+        /** base address for storing globals */
+        @JvmStatic
+        var globalPointer: Int = defaultGlobalPointer
 
-    // The data segment is allocated in blocks of 1024 ints (4096 bytes).  Each block is
-    // referenced by a "block table" entry, and the table has 1024 entries.  The capacity
-    // is thus 1024 entries * 4096 bytes = 4 MB.  Should be enough to cover most
-    // programs!!  Beyond that it would go to an "indirect" block (similar to Unix i-nodes),
-    // which is not implemented.
-    //
-    // Although this scheme is an array of arrays, it is relatively space-efficient since
-    // only the table is created initially. A 4096-byte block is not allocated until a value 
-    // is written to an address within it.  Thus most small programs will use only 8K bytes 
-    // of space (the table plus one block).  The index into both arrays is easily computed 
-    // from the address; access time is constant.
-    //
-    // SPIM stores statically allocated data (following first .data directive) starting
-    // at location 0x10010000.  This is the first Data Segment word beyond the reach of $gp
-    // used in conjunction with signed 16 bit immediate offset.  $gp has value 0x10008000
-    // and with the signed 16 bit offset can reach from 0x10008000 - 0xFFFF = 0x10000000 
-    // (Data Segment base) to 0x10008000 + 0x7FFF = 0x1000FFFF (the byte preceding 0x10010000).
-    //
-    // Using my scheme, 0x10010000 falls at the beginning of the 17'th block -- table entry 16.
-    // SPIM uses a heap base address of 0x10040000 which is not part of the MIPS specification.
-    // (I don't have a reference for that offhand...)  Using my scheme, 0x10040000 falls at
-    // the start of the 65'th block -- table entry 64.  That leaves (1024-64) * 4096 = 3,932,160
-    // bytes of space available without going indirect.
+        /** base address for storage of non-global static data in data segment: 0x10010000 (from SPIM) */
+        @JvmStatic
+        var dataBaseAddress: Int = defaultDataBaseAddress
 
-    private static final int BLOCK_LENGTH_WORDS = 1024;  // allocated blocksize 1024 ints == 4K bytes
-    private static final int BLOCK_TABLE_LENGTH = 1024; // Each entry of table points to a block.
-    private int[][] dataBlockTable;
-    private int[][] kernelDataBlockTable;
+        /** base address for heap: 0x10040000 (I think from SPIM not MIPS) */
+        @JvmStatic
+        var heapBaseAddress: Int = defaultHeapBaseAddress
 
-    // The stack is modeled similarly to the data segment.  It cannot share the same
-    // data structure because the stack base address is very large.  To store it in the
-    // same data structure would require implementation of indirect blocks, which has not
-    // been realized.  So the stack gets its own table of blocks using the same dimensions 
-    // and allocation scheme used for data segment.
-    //
-    // The other major difference is the stack grows DOWNWARD from its base address, not
-    // upward.  I.e., the stack base is the largest stack address. This turns the whole 
-    // scheme for translating memory address to block-offset on its head!  The simplest
-    // solution is to calculate relative address (offset from base) by subtracting the 
-    // desired address from the stack base address (rather than subtracting base address 
-    // from desired address).  Thus as the address gets smaller the offset gets larger.
-    // Everything else works the same, so it shares some private helper methods with
-    // data segment algorithms.
+        /** starting address for stack: 0x7fffeffc (this is from SPIM not MIPS) */
+        @JvmStatic
+        var stackPointer: Int = defaultStackPointer
 
-    private int[][] stackBlockTable;
+        /** base address for stack: 0x7ffffffc (this is mine - the start of the highest word below kernel space) */
+        @JvmStatic
+        var stackBaseAddress: Int = defaultStackBaseAddress
 
-    // Memory mapped I/O is simulated with a separate table using the same structure and
-    // logic as data segment.  Memory is allocated in 4K byte blocks.  But since MMIO
-    // address range is limited to 0xffff0000 to 0xfffffffc, there are only 64K bytes 
-    // total.  Thus there will be a maximum of 16 blocks, and I suspect never more than
-    // one since only the first few addresses are typically used.  The only exception
-    // may be a rogue program generating such addresses in a loop.  Note that the
-    // MMIO addresses are interpreted by Java as negative numbers since it does not 
-    // have unsigned types.  As long as the absolute address is correctly translated
-    // into a table offset, this is of no concern.
+        /** highest address accessible in user (not kernel) mode. */
+        @JvmStatic
+        var userHighAddress: Int = defaultUserHighAddress
 
-    private static final int MMIO_TABLE_LENGTH = 16; // Each entry of table points to a 4K block.
-    private int[][] memoryMapBlockTable;
+        /** kernel boundary. Only OS can access this or higher address */
+        @JvmStatic
+        var kernelBaseAddress: Int = defaultKernelBaseAddress
 
-    // I use a similar scheme for storing instructions.  MIPS text segment ranges from
-    // 0x00400000 all the way to data segment (0x10000000) a range of about 250 MB!  So
-    // I'll provide table of blocks with similar capacity.  This differs from data segment
-    // somewhat in that the block entries do not contain int's, but instead contain
-    // references to ProgramStatement objects.  
+        /** base address for kernel text segment: 0x80000000 */
+        @JvmStatic
+        var kernelTextBaseAddress: Int = defaultKernelTextBaseAddress
 
-    private static final int TEXT_BLOCK_LENGTH_WORDS = 1024;  // allocated blocksize 1024 ints == 4K bytes
-    private static final int TEXT_BLOCK_TABLE_LENGTH = 1024; // Each entry of table points to a block.
-    private ProgramStatement[][] textBlockTable;
-    private ProgramStatement[][] kernelTextBlockTable;
+        /** starting address for exception handlers: 0x80000180 */
+        @JvmStatic
+        var exceptionHandlerAddress: Int = defaultExceptionHandlerAddress
 
-    // Set "top" address boundary to go with each "base" address.  This determines permissable
-    // address range for user program.  Currently limit is 4MB, or 1024 * 1024 * 4 bytes based
-    // on the table structures described above (except memory mapped IO, limited to 64KB by range).
+        /** base address for kernel data segment: 0x90000000 */
+        @JvmStatic
+        var kernelDataBaseAddress: Int = defaultKernelDataBaseAddress
 
-    public static int dataSegmentLimitAddress = dataSegmentBaseAddress +
-            BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    public static int textLimitAddress = textBaseAddress +
-            TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    public static int kernelDataSegmentLimitAddress = kernelDataBaseAddress +
-            BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    public static int kernelTextLimitAddress = kernelTextBaseAddress +
-            TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    public static int stackLimitAddress = stackBaseAddress -
-            BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    public static int memoryMapLimitAddress = memoryMapBaseAddress +
-            BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES;
-    // This will be a Singleton class, only one instance is ever created.  Since I know the 
-    // Memory object is always needed, I'll go ahead and create it at the time of class loading.
-    // (greedy rather than lazy instantiation).  The constructor is private and getInstance()
-    // always returns this instance.
+        /** starting address for memory mapped I/O: 0xffff0000 (-65536) */
+        @JvmStatic
+        var memoryMapBaseAddress: Int = defaultMemoryMapBaseAddress
 
-    private static final Memory uniqueMemoryInstance = new Memory();
+        /** highest address accessible in kernel mode. */
+        @JvmStatic
+        var kernelHighAddress: Int = defaultKernelHighAddress
+
+        /**
+         * MIPS word length in bytes.
+         */
+        // NOTE: Much of the code is hardwired for 4 byte words. Refactoring this is low priority.
+        const val WORD_LENGTH_BYTES = 4
+
+        /**
+         * Current setting for endianness (default LITTLE_ENDIAN)
+         */
+        private var byteOrder = ByteOrder.LITTLE_ENDIAN
+
+        @JvmStatic
+        var heapAddress: Int = 0
+
+        /**
+         * Memory will maintain a collection of observables. Each one is associated
+         * with a specific memory address or address range, and each will have at least
+         * one observer registered with it. When memory access is made, make sure only
+         * observables associated with that address send notices to their observers.
+         * This assures that observers are not bombarded with notices from memory
+         * addresses they do not care about.
+         *
+         * Would like a tree-like implementation, but that is complicated by this fact:
+         * key for insertion into the tree would be based on Comparable using both low
+         * and high end of address range, but retrieval from the tree has to be based
+         * on target address being ANYWHERE IN THE RANGE (not an exact key match).
+         */
+        @JvmStatic
+        var observables: Vector<MemoryObservable> = getNewMemoryObserversCollection()
+
+        /**
+         * The data segment is allocated in blocks of 1024 ints (4096 bytes). Each block is
+         * referenced by a "block table" entry, and the table has 1024 entries. The capacity
+         * is thus 1024 entries * 4096 bytes = 4 MB. Should be enough to cover most
+         * programs!! Beyond that, it would go to an "indirect" block (similar to Unix i-nodes),
+         * which is not implemented.
+
+         * Although this scheme is an array of arrays, it is relatively space-efficient since
+         * only the table is created initially. A 4096-byte block is not allocated until a value
+         * is written to an address within it. Thus, most small programs will use only 8K bytes
+         * of space (the table plus one block). The index into both arrays is easily computed
+         * from the address; access time is constant.
+
+         * SPIM stores statically allocated data (following first .data directive) starting
+         * at location 0x10010000. This is the first Data Segment word beyond the reach of $gp
+         * used in conjunction with signed 16-bit immediate offset. $gp has value 0x10008000
+         * and with the signed 16-bit offset can reach from 0x10008000 - 0xFFFF = 0x10000000
+         * (Data Segment base) to 0x10008000 + 0x7FFF = 0x1000FFFF (the byte preceding 0x10010000).
+
+         * Using my scheme, 0x10010000 falls at the beginning of the 17'th block -- table entry 16.
+         * SPIM uses a heap base address of 0x10040000 which is not part of the MIPS specification.
+         * (I don't have a reference for that offhand...) Using my scheme, 0x10040000 falls at
+         * the start of the 65'th block -- table entry 64. That leaves (1024-64) * 4096 = 3,932,160
+         * bytes of space available without going indirect.
+         */
+        private const val BLOCK_LENGTH_WORDS = 1024 // allocated block size 1024 ints == 4K bytes
+
+        private const val BLOCK_TABLE_LENGTH = 1024 // Each entry of the table points to a block.
+
+        @JvmStatic
+        private lateinit var dataBlockTable: Array<IntArray?>
+
+        @JvmStatic
+        private lateinit var kernelDataBlockTable: Array<IntArray?>
+
+        /**
+         * The stack is modeled similarly to the data segment. It cannot share the same
+         * data structure because the stack base address is very large. To store it in the
+         * same data structure would require implementation of indirect blocks, which has not
+         * been realized. So the stack gets its own table of blocks using the same dimensions
+         * and allocation scheme used for data segment.
+
+         * The other major difference is the stack grows DOWNWARD from its base address, not
+         * upward. I.e., the stack base is the largest stack address. This turns the whole
+         * scheme for translating memory address to block-offset on its head!  The simplest
+         * solution is to calculate relative address (offset from base) by subtracting the
+         * desired address from the stack base address (rather than subtracting base address
+         * from the desired address). Thus, as the address gets smaller, the offset gets larger.
+         * Everything else works the same, so it shares some private helper methods with
+         * data segment algorithms.
+         */
+        @JvmStatic
+        private lateinit var stackBlockTable: Array<IntArray?>
+
+        /**
+         * Memory mapped I/O is simulated with a separate table using the same structure and
+         * logic as data segment. Memory is allocated in 4K byte blocks. But since MMIO
+         * address range is limited to 0xffff0000 to 0xfffffffc, there is only 64K bytes
+         * total. Thus, there will be a maximum of 16 blocks, and I never suspect more than
+         * one since only the first few addresses are typically used. The only exception
+         * may be a rogue program generating such addresses in a loop. Note that Java interprets the
+         * MMIO addresses as negative numbers since it does not
+         * have unsigned types. As long as the absolute address is correctly translated
+         * into a table offset, this is of no concern.
+         */
+        private const val MMIO_TABLE_LENGTH = 16 // Each entry of the table points to a 4K block.
+
+        @JvmStatic
+        private lateinit var memoryMapBlockTable: Array<IntArray?>
 
 
-    /*
-     * Private constructor for Memory.  Separate data structures for text and data segments.
-     **/
-    private Memory() {
-        initialize();
+        /**
+         * I use a similar scheme for storing instructions. MIPS text segment ranges from
+         * 0x00400000 all the way to data segment (0x10000000) a range of about 250 MB!  So
+         * I'll provide a table of blocks with similar capacity. This differs from the data segment
+         * somewhat in that the block entries do not contain int's, but instead contain
+         * references to ProgramStatement objects.
+         */
+        private const val TEXT_BLOCK_LENGTH_WORDS = 1024 // allocated block size 1024 ints == 4K bytes
+
+        private const val TEXT_BLOCK_TABLE_LENGTH = 1024 // Each entry of the table points to a block.
+
+        @JvmStatic
+        private lateinit var textBlockTable: Array<Array<ProgramStatement?>?>
+
+        @JvmStatic
+        private lateinit var kernelTextBlockTable: Array<Array<ProgramStatement?>?>
+
+
+        /**
+         * Set "top" address boundary to go with each "base" address. This determines permissible
+         * address range for user program. Currently, the limit is 4MB, or 1024 * 1024 * four bytes based
+         * on the table structures described above (except memory-mapped IO, limited to 64KB by range).
+         */
+        @JvmStatic
+        var dataSegmentLimitAddress =
+            dataSegmentBaseAddress + BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        @JvmStatic
+        var textLimitAddress = textBaseAddress + TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        @JvmStatic
+        var kernelDataSegmentLimitAddress =
+            kernelDataBaseAddress + BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        @JvmStatic
+        var kernelTextLimitAddress =
+            kernelTextBaseAddress + TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        @JvmStatic
+        var stackLimitAddress = stackBaseAddress - BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        @JvmStatic
+        var memoryMapLimitAddress = memoryMapBaseAddress + BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES
+
+        /**
+         * The globally unique KMemory instance.
+         */
+        @JvmStatic
+        val instance = Memory()
+
+        /**
+         * Set the current memory configuration. Configuration is a collection of memory segment addresses.
+         * It can be modified starting with MARS 3.7.
+         */
+        @JvmStatic
+        fun setConfiguration() {
+            textBaseAddress = getCurrentConfiguration().textBaseAddress //0x00400000;
+            dataSegmentBaseAddress = getCurrentConfiguration().dataSegmentBaseAddress //0x10000000;
+            externBaseAddress = getCurrentConfiguration().externBaseAddress //0x10000000;
+            globalPointer = getCurrentConfiguration().globalPointer //0x10008000;
+            dataBaseAddress = getCurrentConfiguration().dataBaseAddress //0x10010000; // from SPIM not MIPS
+            heapBaseAddress = getCurrentConfiguration().heapBaseAddress //0x10040000; // I think from SPIM not MIPS
+            stackPointer = getCurrentConfiguration().stackPointer //0x7fffeffc;
+            stackBaseAddress = getCurrentConfiguration().stackBaseAddress //0x7ffffffc;
+            userHighAddress = getCurrentConfiguration().userHighAddress //0x7fffffff;
+            kernelBaseAddress = getCurrentConfiguration().kernelBaseAddress //0x80000000;
+            kernelTextBaseAddress = getCurrentConfiguration().kernelTextBaseAddress //0x80000000;
+            exceptionHandlerAddress = getCurrentConfiguration().exceptionHandlerAddress //0x80000180;
+            kernelDataBaseAddress = getCurrentConfiguration().kernelDataBaseAddress //0x90000000;
+            memoryMapBaseAddress = getCurrentConfiguration().memoryMapBaseAddress //0xffff0000;
+            kernelHighAddress = getCurrentConfiguration().kernelHighAddress //0xffffffff;
+            dataSegmentLimitAddress = min(
+                getCurrentConfiguration().dataSegmentLimitAddress.toDouble(),
+                (dataSegmentBaseAddress + BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+            textLimitAddress = min(
+                getCurrentConfiguration().textLimitAddress.toDouble(),
+                (textBaseAddress + TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+            kernelDataSegmentLimitAddress = min(
+                getCurrentConfiguration().kernelDataSegmentLimitAddress.toDouble(),
+                (kernelDataBaseAddress + BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+            kernelTextLimitAddress = min(
+                getCurrentConfiguration().kernelTextLimitAddress.toDouble(),
+                (kernelTextBaseAddress + TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+            stackLimitAddress = max(
+                getCurrentConfiguration().stackLimitAddress.toDouble(),
+                (stackBaseAddress - BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+            memoryMapLimitAddress = min(
+                getCurrentConfiguration().memoryMapLimitAddress.toDouble(),
+                (memoryMapBaseAddress + BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES).toDouble()
+            ).toInt()
+        }
+
+        @JvmStatic
+        private fun getNewMemoryObserversCollection(): Vector<MemoryObservable> = Vector()
+
+        // MARK: Utilities
+
+        /** Determine if the given address is word-aligned. */
+        @JvmStatic
+        fun wordAligned(address: Int) = address % WORD_LENGTH_BYTES == 0
+
+        /** Determine if the given address is double-word aligned. */
+        @JvmStatic
+        fun doubleWordAligned(address: Int) = address % (2 * WORD_LENGTH_BYTES) == 0
+
+        /** Align the given address to the next full word boundary, if not already aligned. */
+        @JvmStatic
+        fun alignToWordBoundary(address: Int): Int {
+            var address = address
+            if (wordAligned(address)) return address
+            if (address > 0) address += 4 - (address % WORD_LENGTH_BYTES)
+            else address -= 4 - (address % WORD_LENGTH_BYTES)
+            return address
+        }
+
+        /** Determine if the given address is in the MARS text segment. */
+        @JvmStatic fun inTextSegment(address: Int) = address in textBaseAddress..<textLimitAddress
+
+        /** Determine if the given address is in the MARS kernel text segment. */
+        @JvmStatic fun inKernelTextSegment(address: Int) = address in kernelTextBaseAddress..<kernelTextLimitAddress
+
+        /** Determine if the given address is in the MARS data segment. */
+        @JvmStatic fun inDataSegment(address: Int) = address in dataSegmentBaseAddress..<dataSegmentLimitAddress
+
+        /** Determine if the given address is in the MARS kernel data segment. */
+        @JvmStatic fun inKernelDataSegment(address: Int) = address in kernelDataBaseAddress..<kernelDataSegmentLimitAddress
+
+        /** Determine if the given address is in the MARS MMIO segment. */
+        @JvmStatic fun inMemoryMapSegment(address: Int) = address in memoryMapBaseAddress..<kernelHighAddress
+
+        private const val STORE = true
+        private const val FETCH = false
+    }
+
+    init {
+        initialize()
     }
 
     /**
-     * Returns the unique Memory instance, which becomes in essence global.
+     * Explicitly clear the contents of memory, typically done when assembling a new file.
      */
-
-    public static Memory getInstance() {
-        return uniqueMemoryInstance;
+    fun clear() {
+        setConfiguration()
+        initialize()
     }
 
     /**
-     * Explicitly clear the contents of memory.  Typically done at start of assembly.
+     * Determine whether the current memory configuration has a maximum address that can be stored in 16 bits.
      */
+    val usingCompactMemoryConfiguration: Boolean get() = (kernelHighAddress and 0x00007fff) == kernelHighAddress
 
-    public void clear() {
-        setConfiguration();
-        initialize();
+    /**
+     * Initialize this instance of KMemory.
+     */
+    private fun initialize() {
+        heapAddress = heapBaseAddress
+        textBlockTable = Array(TEXT_BLOCK_TABLE_LENGTH) { arrayOf() }
+        dataBlockTable = Array(BLOCK_TABLE_LENGTH) { null }
+        kernelTextBlockTable = Array(TEXT_BLOCK_TABLE_LENGTH) { arrayOf() }
+        kernelDataBlockTable = Array(BLOCK_TABLE_LENGTH) { null }
+        stackBlockTable = Array(BLOCK_TABLE_LENGTH) { null }
+        memoryMapBlockTable = Array(MMIO_TABLE_LENGTH) { null }
+        // Call garbage collector on any table memory that was just deallocated.
+        System.gc()
     }
 
     /**
-     * Sets current memory configuration for simulated MIPS.  Configuration is
-     * collection of memory segment addresses. e.g. text segment starting at
-     * address 0x00400000.  Configuration can be modified starting with MARS 3.7.
-     */
-
-    public static void setConfiguration() {
-        textBaseAddress = MemoryConfigurations.getCurrentConfiguration().getTextBaseAddress(); //0x00400000;
-        dataSegmentBaseAddress = MemoryConfigurations.getCurrentConfiguration().getDataSegmentBaseAddress(); //0x10000000;
-        externBaseAddress = MemoryConfigurations.getCurrentConfiguration().getExternBaseAddress(); //0x10000000;
-        globalPointer = MemoryConfigurations.getCurrentConfiguration().getGlobalPointer(); //0x10008000;
-        dataBaseAddress = MemoryConfigurations.getCurrentConfiguration().getDataBaseAddress(); //0x10010000; // from SPIM not MIPS
-        heapBaseAddress = MemoryConfigurations.getCurrentConfiguration().getHeapBaseAddress(); //0x10040000; // I think from SPIM not MIPS
-        stackPointer = MemoryConfigurations.getCurrentConfiguration().getStackPointer(); //0x7fffeffc;
-        stackBaseAddress = MemoryConfigurations.getCurrentConfiguration().getStackBaseAddress(); //0x7ffffffc;
-        userHighAddress = MemoryConfigurations.getCurrentConfiguration().getUserHighAddress(); //0x7fffffff;
-        kernelBaseAddress = MemoryConfigurations.getCurrentConfiguration().getKernelBaseAddress(); //0x80000000;
-        kernelTextBaseAddress = MemoryConfigurations.getCurrentConfiguration().getKernelTextBaseAddress(); //0x80000000;
-        exceptionHandlerAddress = MemoryConfigurations.getCurrentConfiguration().getExceptionHandlerAddress(); //0x80000180;
-        kernelDataBaseAddress = MemoryConfigurations.getCurrentConfiguration().getKernelDataBaseAddress(); //0x90000000;
-        memoryMapBaseAddress = MemoryConfigurations.getCurrentConfiguration().getMemoryMapBaseAddress(); //0xffff0000;
-        kernelHighAddress = MemoryConfigurations.getCurrentConfiguration().getKernelHighAddress(); //0xffffffff;
-        dataSegmentLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getDataSegmentLimitAddress(),
-                dataSegmentBaseAddress +
-                        BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES);
-        textLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getTextLimitAddress(),
-                textBaseAddress +
-                        TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES);
-        kernelDataSegmentLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getKernelDataSegmentLimitAddress(),
-                kernelDataBaseAddress +
-                        BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES);
-        kernelTextLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getKernelTextLimitAddress(),
-                kernelTextBaseAddress +
-                        TEXT_BLOCK_LENGTH_WORDS * TEXT_BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES);
-        stackLimitAddress = Math.max(MemoryConfigurations.getCurrentConfiguration().getStackLimitAddress(),
-                stackBaseAddress -
-                        BLOCK_LENGTH_WORDS * BLOCK_TABLE_LENGTH * WORD_LENGTH_BYTES);
-        memoryMapLimitAddress = Math.min(MemoryConfigurations.getCurrentConfiguration().getMemoryMapLimitAddress(),
-                memoryMapBaseAddress +
-                        BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES);
-    }
-
-
-    /**
-     * Determine whether the current memory configuration has a maximum address that can be stored
-     * in 16 bits.
+     * Get the next available word-aligned heap address. There is no recycling and
+     * no heap management; however, there is nearly 4MB of heap space available in MARS.
      *
-     * @return true if maximum address can be stored in 16 bits or less, false otherwise
-     */
-    public boolean usingCompactMemoryConfiguration() {
-        return (kernelHighAddress & 0x00007fff) == kernelHighAddress;
-    }
-
-
-    private void initialize() {
-        heapAddress = heapBaseAddress;
-        textBlockTable = new ProgramStatement[TEXT_BLOCK_TABLE_LENGTH][];
-        dataBlockTable = new int[BLOCK_TABLE_LENGTH][]; // array of null int[] references
-        kernelTextBlockTable = new ProgramStatement[TEXT_BLOCK_TABLE_LENGTH][];
-        kernelDataBlockTable = new int[BLOCK_TABLE_LENGTH][];
-        stackBlockTable = new int[BLOCK_TABLE_LENGTH][];
-        memoryMapBlockTable = new int[MMIO_TABLE_LENGTH][];
-        System.gc(); // call garbage collector on any Table memory just deallocated.
-    }
-
-    /**
-     * Returns the next available word-aligned heap address.  There is no recycling and
-     * no heap management!  There is however nearly 4MB of heap space available in Mars.
-     *
-     * @param numBytes Number of bytes requested.  Should be multiple of 4, otherwise next higher multiple of 4 allocated.
+     * @param numBytes Number of bytes requested. Should be multiple of 4; otherwise, the next highest multiple of four
+     * will be allocated.
      * @return address of allocated heap storage.
-     * @throws IllegalArgumentException if number of requested bytes is negative or exceeds available heap storage
+     * @throws IllegalArgumentException if the number of requested bytes is negative or exceeds available heap storage
      */
-    public int allocateBytesFromHeap(int numBytes) throws IllegalArgumentException {
-        int result = heapAddress;
-        if (numBytes < 0) {
-            throw new IllegalArgumentException("request (" + numBytes + ") is negative heap amount");
-        }
-        int newHeapAddress = heapAddress + numBytes;
-        if (newHeapAddress % 4 != 0) {
-            newHeapAddress = newHeapAddress + (4 - newHeapAddress % 4); // next higher multiple of 4
-        }
-        if (newHeapAddress >= dataSegmentLimitAddress) {
-            throw new IllegalArgumentException("request (" + numBytes + ") exceeds available heap storage");
-        }
-        heapAddress = newHeapAddress;
-        return result;
+    @Throws(IllegalArgumentException::class)
+    fun allocateBytesFromHeap(numBytes: Int): Int {
+        val result = heapAddress
+        if (numBytes < 0)
+            throw IllegalArgumentException("Requested amount of heap memory ($numBytes) cannot be negative!")
+        var newHeapAddress = heapAddress + numBytes
+        // Next highest multiple of four
+        if (newHeapAddress % 4 != 0) newHeapAddress += 4 - newHeapAddress % 4
+        if (newHeapAddress >= dataSegmentLimitAddress)
+            throw IllegalArgumentException("Requested amount of heap memory ($numBytes) exceeds available heap storage!")
+        heapAddress = newHeapAddress
+        return result
     }
 
+    /**
+     * Set the byte order to either little endian or big endian. Default is little endian.
+     */
+    fun setByteOrder(order: ByteOrder) {
+        byteOrder = order
+    }
 
     /**
-     * Set byte order to either LITTLE_ENDIAN or BIG_ENDIAN.  Default is LITTLE_ENDIAN.
+     * Retrieve memory byte order. Default is [ByteOrder.LITTLE_ENDIAN] like most PCs.
      *
-     * @param order either LITTLE_ENDIAN or BIG_ENDIAN
+     * @return Either [ByteOrder.LITTLE_ENDIAN] or [ByteOrder.BIG_ENDIAN].
      */
-    public void setByteOrder(boolean order) {
-        byteOrder = order;
-    }
+    fun getByteOrder(): ByteOrder = byteOrder
+
+    // MARK: Setters
 
     /**
-     * Retrieve memory byte order.  Default is LITTLE_ENDIAN (like PCs).
-     *
-     * @return either LITTLE_ENDIAN or BIG_ENDIAN
-     */
-    public boolean getByteOrder() {
-        return byteOrder;
-    }
-
-
-    /*  *******************************  THE SETTER METHODS  ******************************/
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Starting at the given address, write the given value over the given number of bytes.
-     * This one does not check for word boundaries, and copies one byte at a time.
-     * If length == 1, takes value from low order byte.  If 2, takes from low order half-word.
+     * Starting at [address], write [value] up to a limit of [length] bytes.
+     * This one does not check for word boundaries and copies one byte at a time.
+     * If length == 1, takes value from low-order byte. If 2, takes from low-order half-word.
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored starting at that address.
      * @param length  Number of bytes to be written.
      * @return old value that was replaced by the set operation
-     **/
-
-    // Allocates blocks if necessary.
-    public int set(int address, int value, int length) throws AddressErrorException {
-        int oldValue = 0;
-        if (Globals.getDebug()) System.out.println("memory[" + address + "] set to " + value + "(" + length + " bytes)");
-        int relativeByteAddress;
+     */
+    @Throws(AddressErrorException::class)
+    fun set(address: Int, value: Int, length: Int): Int {
+        var oldValue = 0
+        if (Globals.debug) println("memory[$address] set to $value ($length bytes)")
+        val relativeByteAddress: Int
         if (inDataSegment(address)) {
-            // in data segment.  Will write one byte at a time, w/o regard to boundaries.
-            relativeByteAddress = address - dataSegmentBaseAddress; // relative to data segment start, in bytes
-            oldValue = storeBytesInTable(dataBlockTable, relativeByteAddress, length, value);
-        } else if (address > stackLimitAddress && address <= stackBaseAddress) {
-            // in stack.  Handle similarly to data segment write, except relative byte
-            // address calculated "backward" because stack addresses grow down from base.
-            relativeByteAddress = stackBaseAddress - address;
-            oldValue = storeBytesInTable(stackBlockTable, relativeByteAddress, length, value);
+            // The address is in the data segment. Write one byte at a time without considering boundaries.
+            relativeByteAddress = address - dataSegmentBaseAddress
+            oldValue = storeBytesInTable(dataBlockTable, relativeByteAddress, length, value)
+        } else if (address in (stackLimitAddress + 1)..stackBaseAddress) {
+            // The address is within the stack. Handle similarly to data segment write, but calculate the relative byte
+            // "backwards", because the stack addresses grow downward from the base.
+            relativeByteAddress = stackBaseAddress - address
+            oldValue = storeBytesInTable(stackBlockTable, relativeByteAddress, length, value)
         } else if (inTextSegment(address)) {
-            // Burch Mod (Jan 2013): replace throw with call to setStatement
-            // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-
-            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                ProgramStatement oldStatement = getStatementNoNotify(address);
-                if (oldStatement != null) {
-                    oldValue = oldStatement.getBinaryStatement();
-                }
-                setStatement(address, new ProgramStatement(value, address));
-            } else {
-                throw new AddressErrorException(
-                        "Cannot write directly to text segment!",
-                        Exceptions.ADDRESS_EXCEPTION_STORE, address);
-            }
-        } else if (address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
-            // memory mapped I/O.
-            relativeByteAddress = address - memoryMapBaseAddress;
-            oldValue = storeBytesInTable(memoryMapBlockTable, relativeByteAddress, length, value);
+            // We are in the text segment.
+            // Make sure that self-modifying code is enabled; otherwise, this operation is not permitted.
+            if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
+                val oldStatement = getStatementNoNotify(address)
+                if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
+                setStatement(address, ProgramStatement(value, address))
+            } else throw AddressErrorException(
+                "Cannot write directly to the text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE,
+                address
+            )
+        } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
+            // We are in the memory-mapped I/O segment.
+            relativeByteAddress = address - memoryMapBaseAddress
+            oldValue = storeBytesInTable(memoryMapBlockTable, relativeByteAddress, length, value)
         } else if (inKernelDataSegment(address)) {
-            // in kernel data segment.  Will write one byte at a time, w/o regard to boundaries.
-            relativeByteAddress = address - kernelDataBaseAddress; // relative to data segment start, in bytes
-            oldValue = storeBytesInTable(kernelDataBlockTable, relativeByteAddress, length, value);
+            // We are in the kernel data segment. Write one byte at a time, without regard to boundaries.
+            relativeByteAddress = address - kernelDataBaseAddress
+            oldValue = storeBytesInTable(kernelDataBlockTable, relativeByteAddress, length, value)
         } else if (inKernelTextSegment(address)) {
-            // DEVELOPER: PLEASE USE setStatement() TO WRITE TO KERNEL TEXT SEGMENT...
-            throw new AddressErrorException(
-                    "DEVELOPER: You must use setStatement() to write to kernel text segment!",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
+            // Developers must use setStatement() to write to the kernel text segment.
+            throw AddressErrorException(
+                "Developer: You MUST use setStatement() to write to the kernel text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE,
+                address
+            )
         } else {
-            // falls outside Mars addressing range
-            throw new AddressErrorException("address out of range ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
+            // The address falls outside the MARS addressing range.
+            throw AddressErrorException(
+                "The address is out of range! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE,
+                address
+            )
         }
-        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, length, value);
-        return oldValue;
+        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, length, value)
+        return oldValue
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Starting at the given word address, write the given value over 4 bytes (a word).
-     * It must be written as is, without adjusting for byte order (little vs big endian).
-     * Address must be word-aligned.
+     * Starting at the given word address, write the given value over four bytes (a word).
+     * It must be written as-is, without adjusting for byte order (little vs big endian).
+     * The address must be word-aligned.
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored starting at that address.
      * @return old value that was replaced by the set operation.
      * @throws AddressErrorException If address is not on word boundary.
-     **/
-    public int setRawWord(int address, int value) throws AddressErrorException {
-        int relative, oldValue = 0;
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("store address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
-        }
+     */
+    @Throws(AddressErrorException::class)
+    fun setRawWord(address: Int, value: Int): Int {
+        val relative: Int
+        var oldValue = 0
+        if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
+            "Store address not aligned on word boundary!",
+            Exceptions.ADDRESS_EXCEPTION_STORE, address
+        )
         if (inDataSegment(address)) {
-            // in data segment
-            relative = (address - dataSegmentBaseAddress) >> 2; // convert byte address to words
-            oldValue = storeWordInTable(dataBlockTable, relative, value);
-        } else if (address > stackLimitAddress && address <= stackBaseAddress) {
-            // in stack.  Handle similarly to data segment write, except relative
-            // address calculated "backward" because stack addresses grow down from base.
-            relative = (stackBaseAddress - address) >> 2; // convert byte address to words
-            oldValue = storeWordInTable(stackBlockTable, relative, value);
+            relative = (address - dataSegmentBaseAddress) shr 2
+            oldValue = storeWordInTable(dataBlockTable, relative, value)
+        } else if (address in (stackLimitAddress + 1)..stackBaseAddress) {
+            relative = (stackBaseAddress - address) shr 2
+            oldValue = storeWordInTable(stackBlockTable, relative, value)
         } else if (inTextSegment(address)) {
-            // Burch Mod (Jan 2013): replace throw with call to setStatement
-            // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                ProgramStatement oldStatement = getStatementNoNotify(address);
-                if (oldStatement != null) {
-                    oldValue = oldStatement.getBinaryStatement();
-                }
-                setStatement(address, new ProgramStatement(value, address));
-            } else {
-                throw new AddressErrorException(
-                        "Cannot write directly to text segment!",
-                        Exceptions.ADDRESS_EXCEPTION_STORE, address);
-            }
-        } else if (address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
-            // memory mapped I/O.
-            relative = (address - memoryMapBaseAddress) >> 2; // convert byte address to word
-            oldValue = storeWordInTable(memoryMapBlockTable, relative, value);
+            if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
+                val oldStatement = getStatementNoNotify(address)
+                if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
+                setStatement(address, ProgramStatement(value, address))
+            } else throw AddressErrorException(
+                "Cannot write directly to the text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE, address
+            )
+        } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
+            relative = (address - memoryMapBaseAddress) shr 2
+            oldValue = storeWordInTable(memoryMapBlockTable, relative, value)
         } else if (inKernelDataSegment(address)) {
-            // in data segment
-            relative = (address - kernelDataBaseAddress) >> 2; // convert byte address to words
-            oldValue = storeWordInTable(kernelDataBlockTable, relative, value);
+            relative = (address - kernelDataBaseAddress) shr 2
+            oldValue = storeWordInTable(kernelDataBlockTable, relative, value)
         } else if (inKernelTextSegment(address)) {
-            // DEVELOPER: PLEASE USE setStatement() TO WRITE TO KERNEL TEXT SEGMENT...
-            throw new AddressErrorException(
-                    "DEVELOPER: You must use setStatement() to write to kernel text segment!",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
+            throw AddressErrorException(
+                "Developer: You MUST use setStatement() to write to kernel text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE, address
+            )
         } else {
-            // falls outside Mars addressing range
-            throw new AddressErrorException("store address out of range ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
+            throw AddressErrorException(
+                "Cannot store address out of range! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE, address
+            )
         }
-        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, WORD_LENGTH_BYTES, value);
-        if (Globals.getSettings().getBackSteppingEnabled()) {
-            Globals.program.getBackStepper().addMemoryRestoreRawWord(address, oldValue);
-        }
-        return oldValue;
+        notifyAnyObservers(AccessNotice.AccessType.WRITE, address, WORD_LENGTH_BYTES, value)
+        if (settings.getBackSteppingEnabled())
+            Globals.program.getBackStepper()!!.addMemoryRestoreRawWord(address, oldValue)
+        return oldValue
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Starting at the given word address, write the given value over 4 bytes (a word).
+     * Starting at the given word address, write the given value over four bytes (a word).
      * The address must be word-aligned.
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored starting at that address.
      * @return old value that was replaced by setWord operation.
      * @throws AddressErrorException If address is not on word boundary.
-     **/
-    public int setWord(int address, int value) throws AddressErrorException {
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException(
-                    "store address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
-        }
-        return (Globals.getSettings().getBackSteppingEnabled())
-                ? Globals.program.getBackStepper().addMemoryRestoreWord(address, set(address, value, WORD_LENGTH_BYTES))
-                : set(address, value, WORD_LENGTH_BYTES);
+     */
+    @Throws(AddressErrorException::class)
+    fun setWord(address: Int, value: Int): Int {
+        if (address % WORD_LENGTH_BYTES != 0)
+            throw AddressErrorException(
+                "Store address not aligned on a word boundary! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE,
+                address
+            )
+        return if (settings.getBackSteppingEnabled())
+            Globals.program.getBackStepper()!!.addMemoryRestoreWord(address, set(address, value, WORD_LENGTH_BYTES))
+        else set(address, value, WORD_LENGTH_BYTES)
     }
 
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Starting at the given halfword address, write the lower 16 bits of given value
-     * into 2 bytes (a halfword).
+     * Starting at the given half-word address, write the lower 16 bits of given value into 2 bytes (a half-word).
      *
      * @param address Starting address of Memory address to be set.
-     * @param value   Value to be stored starting at that address.  Only low order 16 bits used.
+     * @param value   Value to be stored starting at that address. Only the low-order 16 bits are used.
      * @return old value that was replaced by setHalf operation.
-     * @throws AddressErrorException If address is not on halfword boundary.
-     **/
-    public int setHalf(int address, int value) throws AddressErrorException {
-        if (address % 2 != 0) {
-            throw new AddressErrorException("store address not aligned on halfword boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
-        }
-        return (Globals.getSettings().getBackSteppingEnabled())
-                ? Globals.program.getBackStepper().addMemoryRestoreHalf(address, set(address, value, 2))
-                : set(address, value, 2);
+     * @throws AddressErrorException If address is not on half-word boundary.
+     */
+    @Throws(AddressErrorException::class)
+    fun setHalf(address: Int, value: Int): Int {
+        if (address % 2 != 0) throw AddressErrorException(
+            "Store address not aligned on half-word boundary! ",
+            Exceptions.ADDRESS_EXCEPTION_STORE,
+            address
+        )
+        return if (settings.getBackSteppingEnabled())
+            Globals.program.getBackStepper()!!.addMemoryRestoreHalf(address, set(address, value, 2))
+        else set(address, value, 2)
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Writes low order 8 bits of given value into specified Memory byte.
+     * Writes the low-order eight bits of the given value into the specified Memory byte.
      *
      * @param address Address of Memory byte to be set.
-     * @param value   Value to be stored at that address.  Only low order 8 bits used.
+     * @param value   Value to be stored at that address. Only the low-order eight bits are used.
      * @return old value that was replaced by setByte operation.
-     **/
-
-    public int setByte(int address, int value) throws AddressErrorException {
-        return (Globals.getSettings().getBackSteppingEnabled())
-                ? Globals.program.getBackStepper().addMemoryRestoreByte(address, set(address, value, 1))
-                : set(address, value, 1);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////
+     */
+    @Throws(AddressErrorException::class)
+    fun setByte(address: Int, value: Int): Int =
+        if (settings.getBackSteppingEnabled())
+            Globals.program.getBackStepper()!!.addMemoryRestoreByte(address, set(address, value, 1))
+        else set(address, value, 1)
 
     /**
-     * Writes 64 bit double value starting at specified Memory address.  Note that
+     * Write a 64-bit double value starting at the specified Memory address. Note that
      * high-order 32 bits are stored in higher (second) memory word regardless
-     * of "endianness".
+     * of the selected endianness.
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored at that address.
      * @return old value that was replaced by setDouble operation.
-     **/
-    public double setDouble(int address, double value) throws AddressErrorException {
-        int oldHighOrder, oldLowOrder;
-        long longValue = Double.doubleToLongBits(value);
-        oldHighOrder = set(address + 4, Binary.highOrderLongToInt(longValue), 4);
-        oldLowOrder = set(address, Binary.lowOrderLongToInt(longValue), 4);
-        return Double.longBitsToDouble(Binary.twoIntegersToLong(oldHighOrder, oldLowOrder));
+     */
+    @Throws(AddressErrorException::class)
+    fun setDouble(address: Int, value: Double): Double {
+        val longValue = java.lang.Double.doubleToLongBits(value)
+        val oldHighOrder = set(address + 4, Binary.highOrderLongToInt(longValue), 4)
+        val oldLowOrder = set(address, Binary.lowOrderLongToInt(longValue), 4)
+        return java.lang.Double.longBitsToDouble(Binary.twoIntegersToLong(oldHighOrder, oldLowOrder))
     }
 
-
-    ////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Stores ProgramStatement in Text Segment.
+     * Store a ProgramStatement in the Text Segment.
      *
-     * @param address   Starting address of Memory address to be set.  Must be word boundary.
+     * @param address   Starting address of Memory address to be set. Must be word boundary.
      * @param statement Machine code to be stored starting at that address -- for simulation
      *                  purposes, actually stores reference to ProgramStatement instead of 32-bit machine code.
      * @throws AddressErrorException If address is not on word boundary or is outside Text Segment.
      * @see ProgramStatement
-     **/
-
-    public void setStatement(int address, ProgramStatement statement) throws AddressErrorException {
-        if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address))) {
-            throw new AddressErrorException(
-                    "store address to text segment out of range or not aligned to word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_STORE, address);
-        }
-        if (Globals.getDebug()) System.out.println("memory[" + address + "] set to " + statement.getBinaryStatement());
-        if (inTextSegment(address)) {
-            storeProgramStatement(address, statement, textBaseAddress, textBlockTable);
-        } else {
-            storeProgramStatement(address, statement, kernelTextBaseAddress, kernelTextBlockTable);
-        }
+     */
+    @Throws(AddressErrorException::class)
+    fun setStatement(address: Int, statement: ProgramStatement) {
+        if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address)))
+            throw AddressErrorException(
+                "Cannot store address to text segment that's out of range or not aligned to a word boundary! ",
+                Exceptions.ADDRESS_EXCEPTION_STORE,
+                address
+            )
+        if (Globals.debug) println("memory[$address] set to ${statement.getBinaryStatement()}")
+        val (baseAddress, blockTable) =
+            if (inTextSegment(address)) textBaseAddress to textBlockTable
+            else kernelTextBaseAddress to kernelTextBlockTable
+        storeProgramStatement(address, statement, baseAddress, blockTable)
     }
 
-
-    /* *******************************  THE GETTER METHODS  ******************************/
-
-    //////////////////////////////////////////////////////////////////////////////////////////
+    // MARK: Getters
 
     /**
      * Starting at the given word address, read the given number of bytes (max 4).
-     * This one does not check for word boundaries, and copies one byte at a time.
-     * If length == 1, puts value in low order byte.  If 2, puts into low order half-word.
+     * This method does not check for word boundaries and copies one byte at a time.
+     * If `length == 1`, it puts the value in the low-order byte.
+     * If `length == 2`, it puts the value in the low-order half-word.
      *
-     * @param address Starting address of Memory address to be read.
-     * @param length  Number of bytes to be read.
-     * @return Value stored starting at that address.
-     **/
-
-    public int get(int address, int length) throws AddressErrorException {
-        return get(address, length, true);
-    }
-
-    // Does the real work, but includes option to NOT notify observers.
-    private int get(int address, int length, boolean notify) throws AddressErrorException {
-        int value;
-        int relativeByteAddress;
+     * @param address Starting address of memory address to be read
+     * @param length The number of bytes to be read
+     * @param notify Whether to notify observers of the read. Defaults to true.
+     */
+    @JvmOverloads
+    @Throws(AddressErrorException::class)
+    fun get(address: Int, length: Int, notify: Boolean = true): Int {
+        val value: Int
+        val relativeByteAddress: Int
         if (inDataSegment(address)) {
-            // in data segment.  Will read one byte at a time, w/o regard to boundaries.
-            relativeByteAddress = address - dataSegmentBaseAddress; // relative to data segment start, in bytes
-            value = fetchBytesFromTable(dataBlockTable, relativeByteAddress, length);
-        } else if (address > stackLimitAddress && address <= stackBaseAddress) {
-            // in stack. Similar to data, except relative address computed "backward"
-            relativeByteAddress = stackBaseAddress - address;
-            value = fetchBytesFromTable(stackBlockTable, relativeByteAddress, length);
-        } else if (address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
-            // memory mapped I/O.
-            relativeByteAddress = address - memoryMapBaseAddress;
-            value = fetchBytesFromTable(memoryMapBlockTable, relativeByteAddress, length);
+            relativeByteAddress = address - dataSegmentBaseAddress
+            value = fetchBytesFromTable(dataBlockTable, relativeByteAddress, length)
+        } else if (address in (stackLimitAddress + 1)..stackBaseAddress) {
+            relativeByteAddress = stackBaseAddress - address
+            value = fetchBytesFromTable(stackBlockTable, relativeByteAddress, length)
+        } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
+            relativeByteAddress = address - memoryMapBaseAddress
+            value = fetchBytesFromTable(memoryMapBlockTable, relativeByteAddress, length)
         } else if (inTextSegment(address)) {
-            // Burch Mod (Jan 2013): replace throw with calls to getStatementNoNotify & getBinaryStatement
-            // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                ProgramStatement stmt = getStatementNoNotify(address);
-                value = stmt == null ? 0 : stmt.getBinaryStatement();
-            } else {
-                throw new AddressErrorException(
-                        "Cannot read directly from text segment!",
-                        Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-            }
+            if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
+                val stmt = getStatementNoNotify(address)
+                value = stmt?.getBinaryStatement() ?: 0
+            } else throw AddressErrorException(
+                "Cannot read directly from text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            )
         } else if (inKernelDataSegment(address)) {
-            // in kernel data segment.  Will read one byte at a time, w/o regard to boundaries.
-            relativeByteAddress = address - kernelDataBaseAddress; // relative to data segment start, in bytes
-            value = fetchBytesFromTable(kernelDataBlockTable, relativeByteAddress, length);
-        } else if (inKernelTextSegment(address)) {
-            // DEVELOPER: PLEASE USE getStatement() TO READ FROM KERNEL TEXT SEGMENT...
-            throw new AddressErrorException(
-                    "DEVELOPER: You must use getStatement() to read from kernel text segment!",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        } else {
-            // falls outside Mars addressing range
-            throw new AddressErrorException("address out of range ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, length, value);
-        return value;
+            relativeByteAddress = address - kernelDataBaseAddress
+            value = fetchBytesFromTable(kernelDataBlockTable, relativeByteAddress, length)
+        } else if (inKernelTextSegment(address)) throw AddressErrorException(
+            "DEVELOPER: You must use getStatement() to read from kernel text segment! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        ) else throw AddressErrorException(
+            "Address out of range! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
+        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, length, value)
+        return value
     }
-
-
-    /////////////////////////////////////////////////////////////////////////
 
     /**
-     * Starting at the given word address, read a 4 byte word as an int.
-     * It transfers the 32 bit value "raw" as stored in memory, and does not adjust
-     * for byte order (big or little endian).  Address must be word-aligned.
+     * Starting at the given word address, read a four-byte word as an integer.
+     * It transfers the 32-bit value "raw" as stored in memory, and does not adjust
+     * for byte order (big or little endian). Address must be word-aligned.
      *
      * @param address Starting address of word to be read.
      * @return Word (4-byte value) stored starting at that address.
      * @throws AddressErrorException If address is not on word boundary.
-     **/
-
-    // Note: the logic here is repeated in getRawWordOrNull() below.  Logic is
-    // simplified by having this method just call getRawWordOrNull() then 
-    // return either the int of its return value, or 0 if it returns null.
-    // Doing so would be detrimental to simulation runtime performance, so
-    // I decided to keep the duplicate logic.
-    public int getRawWord(int address) throws AddressErrorException {
-        int value;
-        int relative;
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("address for fetch not aligned on word boundary",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
+     */
+    @Throws(AddressErrorException::class)
+    fun getRawWord(address: Int): Int {
+        // Note: the logic here is repeated in getRawWordOrNull() below. Logic is
+        // simplified by having this method call getRawWordOrNull() and
+        // returning either the int of its return value, or 0 if it returns null.
+        // Doing so would be detrimental to simulation runtime performance, so
+        // I decided to keep the duplicate logic.
+        val value: Int
+        val relative: Int
+        if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
+            "The address being read is not aligned on a word boundary! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
         if (inDataSegment(address)) {
-            // in data segment
-            relative = (address - dataSegmentBaseAddress) >> 2; // convert byte address to words
-            value = fetchWordFromTable(dataBlockTable, relative);
-        } else if (address > stackLimitAddress && address <= stackBaseAddress) {
-            // in stack. Similar to data, except relative address computed "backward"
-            relative = (stackBaseAddress - address) >> 2; // convert byte address to words
-            value = fetchWordFromTable(stackBlockTable, relative);
-        } else if (address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
-            // memory mapped I/O.
-            relative = (address - memoryMapBaseAddress) >> 2;
-            value = fetchWordFromTable(memoryMapBlockTable, relative);
+            relative = (address - dataSegmentBaseAddress) shr 2
+            value = fetchWordFromTable(dataBlockTable, relative)
+        } else if (address in (stackLimitAddress + 1)..stackBaseAddress) {
+            relative = (stackBaseAddress - address) shr 2
+            value = fetchWordFromTable(stackBlockTable, relative)
+        } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
+            relative = (address - memoryMapBaseAddress) shr 2
+            value = fetchWordFromTable(memoryMapBlockTable, relative)
         } else if (inTextSegment(address)) {
-            // Burch Mod (Jan 2013): replace throw with calls to getStatementNoNotify & getBinaryStatement
-            // DPS adaptation 5-Jul-2013: either throw or call, depending on setting
-            if (Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                ProgramStatement stmt = getStatementNoNotify(address);
-                value = stmt == null ? 0 : stmt.getBinaryStatement();
-            } else {
-                throw new AddressErrorException(
-                        "Cannot read directly from text segment!",
-                        Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-            }
+            if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
+                val stmt = getStatementNoNotify(address)
+                value = stmt?.getBinaryStatement() ?: 0
+            } else throw AddressErrorException(
+                "Cannot read directly from text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            )
         } else if (inKernelDataSegment(address)) {
-            // in kernel data segment
-            relative = (address - kernelDataBaseAddress) >> 2; // convert byte address to words
-            value = fetchWordFromTable(kernelDataBlockTable, relative);
-        } else if (inKernelTextSegment(address)) {
-            // DEVELOPER: PLEASE USE getStatement() TO READ FROM KERNEL TEXT SEGMENT...
-            throw new AddressErrorException(
-                    "DEVELOPER: You must use getStatement() to read from kernel text segment!",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        } else {
-            // falls outside Mars addressing range
-            throw new AddressErrorException("address out of range ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        notifyAnyObservers(AccessNotice.AccessType.READ, address, Memory.WORD_LENGTH_BYTES, value);
-        return value;
+            relative = (address - kernelDataBaseAddress) shr 2
+            value = fetchWordFromTable(kernelDataBlockTable, relative)
+        } else if (inKernelTextSegment(address))
+            throw AddressErrorException(
+                "DEVELOPER: You must use getStatement() to read from kernel text segment! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            )
+        else
+            throw AddressErrorException(
+                "Address out of range! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            )
+        notifyAnyObservers(AccessNotice.AccessType.READ, address, WORD_LENGTH_BYTES, value)
+        return value
     }
 
-    /////////////////////////////////////////////////////////////////////////
-
     /**
-     * Starting at the given word address, read a 4 byte word as an int and return Integer.
-     * It transfers the 32 bit value "raw" as stored in memory, and does not adjust
-     * for byte order (big or little endian).  Address must be word-aligned.
-     * <p>
-     * Returns null if reading from text segment and there is no instruction at the
-     * requested address. Returns null if reading from data segment and this is the
+     * Starting at the given word address, read a four-byte word as an int and return Integer.
+     * It transfers the 32-bit value "raw" as stored in memory, and does not adjust
+     * for byte order (big or little endian). Address must be word-aligned.
+     *
+     * Returns null if reading from the text segment and there is no instruction at the
+     * requested address.
+     *
+     * Returns null if reading from the data segment, and this is the
      * first reference to the MARS 4K memory allocation block (i.e., an array to
      * hold the memory has not been allocated).
-     * <p>
+     *
      * This method was developed by Greg Giberling of UC Berkeley to support the memory
      * dump feature that he implemented in Fall 2007.
      *
      * @param address Starting address of word to be read.
-     * @return Word (4-byte value) stored starting at that address as an Integer.  Conditions
+     * @return Word (4-byte value) stored starting at that address as an Integer. Conditions
      * that cause return value null are described above.
      * @throws AddressErrorException If address is not on word boundary.
-     **/
-
-    // See note above, with getRawWord(), concerning duplicated logic.
-    @Nullable
-    public Integer getRawWordOrNull(int address) throws AddressErrorException {
-        Integer value = null;
-        int relative;
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("address for fetch not aligned on word boundary",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
+     */
+    @Throws(AddressErrorException::class)
+    fun getRawWordOrNull(address: Int): Int? {
+        var value: Int? = null
+        val relative: Int
+        if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
+            "The address for this fetch operation is not aligned on the word boundary! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
         if (inDataSegment(address)) {
-            // in data segment
-            relative = (address - dataSegmentBaseAddress) >> 2; // convert byte address to words
-            value = fetchWordOrNullFromTable(dataBlockTable, relative);
-        } else if (address > stackLimitAddress && address <= stackBaseAddress) {
-            // in stack. Similar to data, except relative address computed "backward"
-            relative = (stackBaseAddress - address) >> 2; // convert byte address to words
-            value = fetchWordOrNullFromTable(stackBlockTable, relative);
+            relative = (address - dataSegmentBaseAddress) shr 2
+            value = fetchWordOrNullFromTable(dataBlockTable, relative)
+        } else if (address in (stackLimitAddress + 1)..stackBaseAddress) {
+            relative = (stackBaseAddress - address) shr 2
+            value = fetchWordOrNullFromTable(stackBlockTable, relative)
         } else if (inTextSegment(address) || inKernelTextSegment(address)) {
             try {
-                value = (getStatementNoNotify(address) == null) ? null : getStatementNoNotify(address).getBinaryStatement();
-            } catch (AddressErrorException ignored) {}
+                value =
+                    if (getStatementNoNotify(address) == null) null
+                    else getStatementNoNotify(address)?.getBinaryStatement()
+            } catch (ignored: AddressErrorException) { }
         } else if (inKernelDataSegment(address)) {
-            // in kernel data segment
-            relative = (address - kernelDataBaseAddress) >> 2; // convert byte address to words
-            value = fetchWordOrNullFromTable(kernelDataBlockTable, relative);
-        } else {
-            // falls outside Mars addressing range
-            throw new AddressErrorException("address out of range ", Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        // Do not notify observers.  This read operation is initiated by the
+            relative = (address - kernelDataBaseAddress) shr 2
+            value = fetchWordOrNullFromTable(kernelDataBlockTable, relative)
+        } else throw AddressErrorException("Address out of range! ", Exceptions.ADDRESS_EXCEPTION_LOAD, address)
+        // Do not notify observers. This read operation is initiated by the
         // dump feature, not the executing MIPS program.
-        return value;
+        return value
     }
 
     /**
-     * Look for first "null" memory value in an address range.  For text segment (binary code), this
-     * represents a word that does not contain an instruction.  Normally use this to find the end of
-     * the program.  For data segment, this represents the first block of simulated memory (block length
+     * Look for the first "null" memory value in an address range.
+     * For text segment (binary code), this represents a word that does not contain an instruction.
+     * We normally use this to find the end of the program.
+     * For the data segment, this represents the first block of simulated memory (block length
      * currently 4K words) that has not been referenced by an assembled/executing program.
      *
      * @param baseAddress  lowest MIPS address to be searched; the starting point
      * @param limitAddress highest MIPS address to be searched
-     * @return lowest address within specified range that contains "null" value as described above.
+     * @return lowest address within the specified range that contains "null" value as described above.
      * @throws AddressErrorException if the base address is not on a word boundary
      */
-    public int getAddressOfFirstNull(int baseAddress, int limitAddress) throws AddressErrorException {
-        int address = baseAddress;
-        for (; address < limitAddress; address += Memory.WORD_LENGTH_BYTES) {
-            if (getRawWordOrNull(address) == null) {
-                break;
-            }
+    @Throws(AddressErrorException::class)
+    fun getAddressOfFirstNull(baseAddress: Int, limitAddress: Int): Int {
+        var address = baseAddress
+        while (address < limitAddress) {
+            if (getRawWordOrNull(address) == null) break
+            address += WORD_LENGTH_BYTES
         }
-        return address;
+        return address
     }
 
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
-     * Starting at the given word address, read a 4 byte word as an int.
+     * Starting at the given word address, read a four-byte word as an int.
      * Does not use "get()"; we can do it faster here knowing we're working only
      * with full words.
      *
      * @param address Starting address of word to be read.
+     * @param notify Whether to notify observers. Defaults to true.
      * @return Word (4-byte value) stored starting at that address.
      * @throws AddressErrorException If address is not on word boundary.
-     **/
-    public int getWord(int address) throws AddressErrorException {
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("fetch address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        return get(address, WORD_LENGTH_BYTES, true);
+     */
+    @JvmOverloads
+    @Throws(AddressErrorException::class)
+    fun getWord(address: Int, notify: Boolean = true): Int {
+        if (address % WORD_LENGTH_BYTES != 0)
+            throw AddressErrorException(
+                "Fetch address is not aligned on word boundary! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            )
+        return get(address, WORD_LENGTH_BYTES, notify)
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * Starting at the given word address, read a four-byte word as an int.
+     * Does not use `get()`; we can do it faster here knowing we're working only with full words.
+     * Observers are NOT notified.
+     */
+    @Deprecated("Use getWord(address, false) instead.", ReplaceWith("getWord(address, false)"))
+    @Throws(AddressErrorException::class)
+    fun getWordNoNotify(address: Int) = getWord(address, false)
 
     /**
-     * Starting at the given word address, read a 4 byte word as an int.
-     * Does not use "get()"; we can do it faster here knowing we're working only
-     * with full words.  Observers are NOT notified.
+     * Starting at the given word address, read a two-byte word into the lower 16 bits of an int.
      *
      * @param address Starting address of word to be read.
-     * @return Word (4-byte value) stored starting at that address.
-     * @throws AddressErrorException If address is not on word boundary.
-     **/
-    public int getWordNoNotify(int address) throws AddressErrorException {
-        if (address % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("fetch address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        return get(address, WORD_LENGTH_BYTES, false);
+     * @return Half-word (2-byte value) stored starting at that address, stored in lower 16 bits.
+     * @throws AddressErrorException If address is not on half-word boundary.
+     */
+    @Throws(AddressErrorException::class)
+    fun getHalf(address: Int): Int {
+        if (address % 2 != 0) throw AddressErrorException(
+            "Fetch address not aligned on half-word boundary! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
+        return get(address, 2)
     }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Starting at the given word address, read a 2 byte word into lower 16 bits of int.
+     * Reads specified memory byte into low-order eight bits of an integer.
      *
-     * @param address Starting address of word to be read.
-     * @return Halfword (2-byte value) stored starting at that address, stored in lower 16 bits.
-     * @throws AddressErrorException If address is not on halfword boundary.
-     **/
-    public int getHalf(int address) throws AddressErrorException {
-        if (address % 2 != 0) {
-            throw new AddressErrorException("fetch address not aligned on halfword boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        return get(address, 2);
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Reads specified Memory byte into low order 8 bits of int.
-     *
-     * @param address Address of Memory byte to be read.
-     * @return Value stored at that address.  Only low order 8 bits used.
-     **/
-    public int getByte(int address) throws AddressErrorException {
-        return get(address, 1);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
+     * @param address Address of memory byte to read.
+     * @return Value stored at that address. Only low-order eight bits used.
+     */
+    @Throws(AddressErrorException::class)
+    fun getByte(address: Int): Int = get(address, 1)
 
     /**
      * Gets ProgramStatement from Text Segment.
      *
-     * @param address Starting address of Memory address to be read.  Must be word boundary.
+     * @param address Starting address of Memory address to be read. Must be word boundary.
+     * @param notify Whether to notify observers. Defaults to true.
      * @return reference to ProgramStatement object associated with that address, or null if none.
      * @throws AddressErrorException If address is not on word boundary or is outside Text Segment.
      * @see ProgramStatement
-     **/
-
-    public ProgramStatement getStatement(int address) throws AddressErrorException {
-        return getStatement(address, true);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Gets ProgramStatement from Text Segment without notifying observers.
-     *
-     * @param address Starting address of Memory address to be read.  Must be word boundary.
-     * @return reference to ProgramStatement object associated with that address, or null if none.
-     * @throws AddressErrorException If address is not on word boundary or is outside Text Segment.
-     * @see ProgramStatement
-     **/
-
-    public ProgramStatement getStatementNoNotify(int address) throws AddressErrorException {
-        return getStatement(address, false);
-    }
-
-    //////////
-
-    private ProgramStatement getStatement(int address, boolean notify) throws AddressErrorException {
-        if (!wordAligned(address)) {
-            throw new AddressErrorException(
-                    "fetch address for text segment not aligned to word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        if (!Globals.getSettings().getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)
-                && !(inTextSegment(address) || inKernelTextSegment(address))) {
-            throw new AddressErrorException(
-                    "fetch address for text segment out of range ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, address);
-        }
-        if (inTextSegment(address))
-            return readProgramStatement(address, textBaseAddress, textBlockTable, notify);
+     */
+    @JvmOverloads
+    @Throws(AddressErrorException::class)
+    fun getStatement(address: Int, notify: Boolean = true): ProgramStatement? {
+        if (!wordAligned(address)) throw AddressErrorException(
+            "Fetch address for text segment not aligned to word boundary! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
+        if (!settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)
+            && !(inTextSegment(address) || inKernelTextSegment(address))
+        ) throw AddressErrorException(
+            "Fetch address for text segment out of range! ",
+            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+        )
+        return if (inTextSegment(address))
+            readProgramStatement(address, textBaseAddress, textBlockTable, notify)
         else if (inKernelTextSegment(address))
-            return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, notify);
-        else
-            return new ProgramStatement(get(address, WORD_LENGTH_BYTES), address);
-    }
-
-
-    /* ********************************  THE UTILITIES  *************************************/
-
-    /**
-     * Utility to determine if given address is word-aligned.
-     *
-     * @param address the address to check
-     * @return true if address is word-aligned, false otherwise
-     */
-    public static boolean wordAligned(int address) {
-        return (address % WORD_LENGTH_BYTES == 0);
+            readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, notify)
+        else ProgramStatement(get(address, WORD_LENGTH_BYTES), address)
     }
 
     /**
-     * Utility to determine if given address is doubleword-aligned.
-     *
-     * @param address the address to check
-     * @return true if address is doubleword-aligned, false otherwise
+     * Get ProgramStatement from Text Segment.
      */
-    public static boolean doublewordAligned(int address) {
-        return (address % (WORD_LENGTH_BYTES + WORD_LENGTH_BYTES) == 0);
-    }
+    @Deprecated("Use getStatement(address, false) instead.", ReplaceWith("getStatement(address, false)"))
+    fun getStatementNoNotify(address: Int): ProgramStatement? = getStatement(address, false)
 
     /**
-     * Utility method to align given address to next full word boundary, if not already
-     * aligned.
-     *
-     * @param address a memory address (any int value is potentially valid)
-     * @return address aligned to next word boundary (divisible by 4)
+     * Register an observer for all memory areas.
      */
-    public static int alignToWordBoundary(int address) {
-        if (!wordAligned(address)) {
-            if (address > 0)
-                address += (4 - (address % WORD_LENGTH_BYTES));
-            else
-                address -= (4 - (address % WORD_LENGTH_BYTES));
+    override fun addObserver(obs: Observer) {
+        try {
+            this.addObserver(obs, 0, 0x7ffffffc)
+            this.addObserver(obs, 0x80000000.toInt(), 0xfffffffc.toInt())
+        } catch (aee: AddressErrorException) {
+            println("Internal error in addObserver: $aee")
         }
-        return address;
     }
 
     /**
-     * Handy little utility to find out if given address is in MARS text
-     * segment (starts at Memory.textBaseAddress).
-     * Note that MARS does not implement the entire MIPS text segment space,
-     * but it does implement enough for hundreds of thousands of lines
-     * of code.
+     * Method to accept an observer for a single memory address.
      *
-     * @param address integer memory address
-     * @return true if that address is within MARS-defined text segment,
-     * false otherwise.
+     * @param obs Observer
+     * @param addr The memory address, which must be on a word boundary.
      */
-    public static boolean inTextSegment(int address) {
-        return address >= textBaseAddress && address < textLimitAddress;
-    }
+    @Throws(AddressErrorException::class)
+    fun addObserver(obs: Observer, addr: Int) = addObserver(obs, addr, addr)
 
     /**
-     * Handy little utility to find out if given address is in MARS kernel
-     * text segment (starts at Memory.kernelTextBaseAddress).
-     *
-     * @param address integer memory address
-     * @return true if that address is within MARS-defined kernel text segment,
-     * false otherwise.
-     */
-    public static boolean inKernelTextSegment(int address) {
-        return address >= kernelTextBaseAddress && address < kernelTextLimitAddress;
-    }
-
-    /**
-     * Handy little utility to find out if given address is in MARS data
-     * segment (starts at Memory.dataSegmentBaseAddress).
-     * Note that MARS does not implement the entire MIPS data segment space,
-     * but it does support at least 4MB.
-     *
-     * @param address integer memory address
-     * @return true if that address is within MARS-defined data segment,
-     * false otherwise.
-     */
-    public static boolean inDataSegment(int address) {
-        return address >= dataSegmentBaseAddress && address < dataSegmentLimitAddress;
-    }
-
-    /**
-     * Handy little utility to find out if given address is in MARS kernel data
-     * segment (starts at Memory.kernelDataSegmentBaseAddress).
-     *
-     * @param address integer memory address
-     * @return true if that address is within MARS-defined kernel data segment,
-     * false otherwise.
-     */
-    public static boolean inKernelDataSegment(int address) {
-        return address >= kernelDataBaseAddress && address < kernelDataSegmentLimitAddress;
-    }
-
-
-    /**
-     * Handy little utility to find out if given address is in the Memory Map area
-     * starts at Memory.memoryMapBaseAddress, range 0xffff0000 to 0xffffffff.
-     *
-     * @param address integer memory address
-     * @return true if that address is within MARS-defined memory map (MMIO) area,
-     * false otherwise.
-     */
-    public static boolean inMemoryMapSegment(int address) {
-        return address >= memoryMapBaseAddress && address < kernelHighAddress;
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    //  ALL THE OBSERVABLE STUFF GOES HERE.  FOR COMPATIBILITY, Memory IS STILL
-    //  EXTENDING OBSERVABLE, BUT WILL NOT USE INHERITED METHODS.  WILL INSTEAD
-    //  USE A COLLECTION OF MemoryObserver OBJECTS, EACH OF WHICH IS COMBINATION
-    //  OF AN OBSERVER WITH AN ADDRESS RANGE.
-
-    /**
-     * Method to accept registration from observer for any memory address.  Overrides
-     * inherited method.  Note to observers: this class delegates Observable operations
+     * Method to accept an observer for a memory address range. The last byte included in the address range is the last
+     * byte of the word specified by the ending address.
+     * Note to observers: this class delegates Observable operations,
      * so notices will come from the delegate, not the memory object.
      *
-     * @param obs the observer
+     * @param obs The observer
+     * @param startAddr The low end of the memory address range, which must be on a word boundary
+     * @param endAddr The high end of the memory address range, which must be on a word boundary
      */
-
-    public void addObserver(Observer obs) {
-        try {  // split so start address always >= end address
-            this.addObserver(obs, 0, 0x7ffffffc);
-            this.addObserver(obs, 0x80000000, 0xfffffffc);
-        } catch (AddressErrorException aee) {
-            System.out.println("Internal Error in Memory.addObserver: " + aee);
-        }
+    @Throws(AddressErrorException::class)
+    fun addObserver(obs: Observer, startAddr: Int, endAddr: Int) {
+        if (startAddr % WORD_LENGTH_BYTES != 0)
+            throw AddressErrorException("Address not aligned on word boundary! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+        if (endAddr != startAddr && endAddr % WORD_LENGTH_BYTES != 0)
+            throw AddressErrorException("Address not aligned on word boundary! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, endAddr)
+        // The upper half of the address space (above 0x7fffffff) has a sign bit of 1, and is seen as negative.
+        if (startAddr >= 0 && endAddr < 0)
+            throw AddressErrorException("Range cannot cross 0x80000000; you must split it up! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+        if (endAddr < startAddr)
+            throw AddressErrorException("End address of range < start address of range! ",
+                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+        observables.add(MemoryObservable(obs, startAddr, endAddr))
     }
 
+    /** Return number of observers. */
+    override fun countObservers(): Int = observables.size
+
     /**
-     * Method to accept registration from observer for specific address.  This includes
-     * the memory word starting at the given address. Note to observers: this class delegates Observable operations
-     * so notices will come from the delegate, not the memory object.
+     * Remove the specified observer.
      *
-     * @param obs  the observer
-     * @param addr the memory address which must be on word boundary
+     * @param obs Observer to be removed.
      */
-
-    public void addObserver(Observer obs, int addr) throws AddressErrorException {
-        this.addObserver(obs, addr, addr);
-    }
-
-
-    /**
-     * Method to accept registration from observer for specific address range.  The
-     * last byte included in the address range is the last byte of the word specified
-     * by the ending address. Note to observers: this class delegates Observable operations
-     * so notices will come from the delegate, not the memory object.
-     *
-     * @param obs       the observer
-     * @param startAddr the low end of memory address range, must be on word boundary
-     * @param endAddr   the high end of memory address range, must be on word boundary
-     */
-    public void addObserver(Observer obs, int startAddr, int endAddr) throws AddressErrorException {
-        if (startAddr % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
-        }
-        if (endAddr != startAddr && endAddr % WORD_LENGTH_BYTES != 0) {
-            throw new AddressErrorException("address not aligned on word boundary ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
-        }
-        // upper half of address space (above 0x7fffffff) has sign bit 1 thus is seen as
-        // negative.
-        if (startAddr >= 0 && endAddr < 0) {
-            throw new AddressErrorException("range cannot cross 0x8000000; please split it up",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
-        }
-        if (endAddr < startAddr) {
-            throw new AddressErrorException("end address of range < start address of range ",
-                    Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
-        }
-        observables.add(new MemoryObservable(obs, startAddr, endAddr));
+    override fun deleteObserver(obs: Observer) {
+        for (observable in observables) observable.deleteObserver(obs)
     }
 
     /**
-     * Return number of observers
+     * Remove all memory observers.
      */
-    public int countObservers() {
-        return observables.size();
+    override fun deleteObservers() {
+        observables = getNewMemoryObserversCollection()
     }
 
     /**
-     * Remove specified memory observers
-     *
-     * @param obs Observer to be removed
-     */
-    public void deleteObserver(Observer obs) {
-        for (MemoryObservable observable : observables) {
-            observable.deleteObserver(obs);
-        }
-    }
-
-    /**
-     * Remove all memory observers
-     */
-    public void deleteObservers() {
-        // just drop the collection
-        observables = getNewMemoryObserversCollection();
-    }
-
-    /**
-     * Overridden to be unavailable.  The notice that an Observer
+     * Overridden to be unavailable. The notice that an Observer
      * receives does not come from the memory object itself, but
      * instead from a delegate.
-     *
-     * @throws UnsupportedOperationException always
      */
-    public void notifyObservers() {
-        throw new UnsupportedOperationException();
+    override fun notifyObservers() = throw UnsupportedOperationException()
+
+    /**
+     * Overridden to be unavailable. The notice that an Observer
+     * receives does not come from the memory object itself, but
+     * instead from a delegate.
+     */
+    override fun notifyObservers(arg: Any?) = throw UnsupportedOperationException()
+
+    /**
+     * Private class whose objects will represent an observable-observer pair for a given memory address or range.
+     */
+    class MemoryObservable(
+        obs: Observer,
+        private val lowAddress: Int,
+        private val highAddress: Int
+    ) : Observable(), Comparable<MemoryObservable> {
+        init {
+            addObserver(obs)
+        }
+
+        fun match(address: Int) =
+            address >= lowAddress && address <= highAddress - 1 + WORD_LENGTH_BYTES
+
+        fun notifyObserver(notice: MemoryAccessNotice) {
+            setChanged()
+            notifyObservers(notice)
+        }
+
+        override fun compareTo(other: MemoryObservable): Int {
+            if (lowAddress < other.lowAddress || lowAddress == other.lowAddress && highAddress < other.highAddress)
+                return -1
+            // FIXME: Change the return for this branch back to -1 if it turns out to be important.
+            // FIXME: IntelliJ was reporting a "suspicious Comparable implementation".
+            if (lowAddress > other.lowAddress || highAddress > other.highAddress)
+                return 1
+            return 0
+        }
+    }
+
+    // MARK: Instance helper functions
+
+    /** Notify any observers of memory operations that an action has occurred. */
+    private fun notifyAnyObservers(type: AccessNotice.AccessType, address: Int, length: Int, value: Int) {
+        if (Globals.gui == null && observables.isNotEmpty())
+            for (it in observables)
+                if (it.match(address))
+                    it.notifyObserver(MemoryAccessNotice(type, address, length, value))
     }
 
     /**
-     * Overridden to be unavailable.  The notice that an Observer
-     * receives does not come from the memory object itself, but
-     * instead from a delegate.
-     *
-     * @throws UnsupportedOperationException always
+     * Helper method to store one, two or four-byte value in the table that represents MIPS
+     * memory. Originally used just for data segment, but now also used for stack.
+     * Both use different tables, but use the same storage method and table size
+     * and block size.
      */
-    public void notifyObservers(Object obj) {
-        throw new UnsupportedOperationException();
-    }
+    private fun storeBytesInTable(blockTable: Array<IntArray?>, relativeByteAddress: Int, length: Int, value: Int): Int =
+        storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, value, STORE)
 
+    /**
+     * Helper method to fetch one, two or four-byte value from the table that represents MIPS
+     * memory. Originally used just for data segment, but now also used for stack.
+     * Both use different tables, but use the same storage method and the same table size
+     * and block size.
+     */
+    private fun fetchBytesFromTable(blockTable: Array<IntArray?>, relativeByteAddress: Int, length: Int) =
+        storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, 0, FETCH)
 
-    private Collection<MemoryObservable> getNewMemoryObserversCollection() {
-        return new Vector<>();  // Vectors are thread-safe
-    }
-
-    /////////////////////////////////////////////////////////////////////////
-    // Private class whose objects will represent an observable-observer pair
-    // for a given memory address or range.
-    @SuppressWarnings("ComparatorMethodParameterNotUsed")
-    private static class MemoryObservable extends Observable implements Comparable<MemoryObservable> {
-        private final int lowAddress;
-        private final int highAddress;
-
-        public MemoryObservable(Observer obs, int startAddr, int endAddr) {
-            lowAddress = startAddr;
-            highAddress = endAddr;
-            this.addObserver(obs);
-        }
-
-        public boolean match(int address) {
-            return (address >= lowAddress && address <= highAddress - 1 + WORD_LENGTH_BYTES);
-        }
-
-        public void notifyObserver(MemoryAccessNotice notice) {
-            this.setChanged();
-            this.notifyObservers(notice);
-        }
-
-        // Useful to have for future refactoring, if it actually becomes worthwhile to sort
-        // these or put 'em in a tree (rather than sequential search through list).
-        @Override
-        public int compareTo(@NotNull MemoryObservable obj) {
-            if (this.lowAddress < obj.lowAddress || this.lowAddress == obj.lowAddress && this.highAddress < obj.highAddress) {
-                return -1;
-            }
-            if (this.lowAddress > obj.lowAddress || this.highAddress > obj.highAddress) {
-                return -1;
-            }
-            return 0;  // they have to be equal at this point.
-        }
-    }
-
-
-    /*********************************  THE HELPERS  *************************************/
-
-
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Method to notify any observers of memory operation that has just occurred.
-    //
-    // The "|| Globals.getGui()==null" is a hack added 19 July 2012 DPS.  IF MIPS simulation
-    // is from command mode, Globals.program is null but still want ability to observe.
-    private void notifyAnyObservers(AccessNotice.AccessType type, int address, int length, int value) {
-        if ((Globals.program != null || Globals.getGui() == null) && !this.observables.isEmpty()) {
-            Iterator<MemoryObservable> it = this.observables.iterator();
-            MemoryObservable mo;
-            while (it.hasNext()) {
-                mo = it.next();
-                if (mo.match(address)) {
-                    mo.notifyObserver(new MemoryAccessNotice(type, address, length, value));
-                }
-            }
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Helper method to store 1, 2 or 4 byte value in table that represents MIPS
-    // memory. Originally used just for data segment, but now also used for stack.
-    // Both use different tables but same storage method and same table size
-    // and block size.
-    // Modified 29 Dec 2005 to return old value of replaced bytes.
-    //
-    private static final boolean STORE = true;
-    private static final boolean FETCH = false;
-
-    private int storeBytesInTable(int[][] blockTable,
-                                  int relativeByteAddress, int length, int value) {
-        return storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, value, STORE);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Helper method to fetch 1, 2 or 4 byte value from table that represents MIPS
-    // memory.  Originally used just for data segment, but now also used for stack.
-    // Both use different tables but same storage method and same table size
-    // and block size.
-    //
-
-    private int fetchBytesFromTable(int[][] blockTable, int relativeByteAddress, int length) {
-        return storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, 0, FETCH);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // The helper's helper.  Works for either storing or fetching, little or big endian.
-    // When storing/fetching bytes, most of the work is calculating the correct array element(s)
-    // and element byte(s).  This method performs either store or fetch, as directed by its
-    // client using STORE or FETCH in last arg.
-    // Modified 29 Dec 2005 to return old value of replaced bytes, for STORE.
-    //
-    private synchronized int storeOrFetchBytesInTable(int[][] blockTable,
-                                                      int relativeByteAddress, int length, int value, boolean op) {
-        int relativeWordAddress, block, offset, bytePositionInMemory, bytePositionInValue;
-        int oldValue = 0; // for STORE, return old values of replaced bytes
-        int loopStopper = 3 - length;
-        // IF added DPS 22-Dec-2008. NOTE: has NOT been tested with Big-Endian.
-        // Fix provided by Saul Spatz; comments that follow are his.
-        // If address in stack segment is 4k + m, with 0 < m < 4, then the
-        // relativeByteAddress we want is stackBaseAddress - 4k + m, but the
-        // address actually passed in is stackBaseAddress - (4k + m), so we
-        // need to add 2m.  Because of the change in sign, we get the
-        // expression 4-delta below in place of m.
-        if (blockTable == stackBlockTable) {
-            int delta = relativeByteAddress % 4;
+    /**
+     * The helper's helper. Works for either storing or fetching, little or big endian.
+     * When storing/fetching bytes, most of the work is calculating the correct array element(s)
+     * and element byte(s). This method performs either store or fetch, as directed by its
+     * client using STORE or FETCH in last arg.
+     * Returns old value of replaced bytes for STORE.
+     */
+    @Synchronized
+    private fun storeOrFetchBytesInTable(blockTable: Array<IntArray?>, relativeByteAddress: Int, length: Int, value: Int, op: Boolean): Int {
+        var value = value
+        var relativeByteAddress = relativeByteAddress
+        var relativeWordAddress: Int
+        var block: Int
+        var offset: Int
+        var bytePositionInMemory: Int
+        val loopStopper = 3 - length
+        var oldValue = 0
+        if (blockTable.contentEquals(stackBlockTable)) {
+            val delta = relativeByteAddress % 4
             if (delta != 0) {
-                relativeByteAddress += (4 - delta) << 1;
+                relativeByteAddress += (4 - delta) shl 1
             }
         }
-        for (bytePositionInValue = 3; bytePositionInValue > loopStopper; bytePositionInValue--) {
-            bytePositionInMemory = relativeByteAddress % 4;
-            relativeWordAddress = relativeByteAddress >> 2;
-            block = relativeWordAddress / BLOCK_LENGTH_WORDS;  // Block number
-            offset = relativeWordAddress % BLOCK_LENGTH_WORDS; // Word within that block
+        var bytePositionInValue = 3
+        while (bytePositionInValue > loopStopper) {
+            bytePositionInMemory = relativeByteAddress % 4
+            relativeWordAddress = relativeByteAddress shr 2
+            block = relativeWordAddress / BLOCK_LENGTH_WORDS
+            offset = relativeWordAddress % BLOCK_LENGTH_WORDS
             if (blockTable[block] == null) {
-                if (op == STORE)
-                    blockTable[block] = new int[BLOCK_LENGTH_WORDS];
-                else
-                    return 0;
+                if (op == STORE) blockTable[block] = IntArray(BLOCK_LENGTH_WORDS)
+                else return 0
             }
-            if (byteOrder == LITTLE_ENDIAN) bytePositionInMemory = 3 - bytePositionInMemory;
+            if (byteOrder == ByteOrder.LITTLE_ENDIAN) bytePositionInMemory = 3 - bytePositionInMemory
             if (op == STORE) {
-                oldValue = replaceByte(blockTable[block][offset], bytePositionInMemory,
-                        oldValue, bytePositionInValue);
-                blockTable[block][offset] = replaceByte(value, bytePositionInValue,
-                        blockTable[block][offset], bytePositionInMemory);
-            } else {// op == FETCH
-                value = replaceByte(blockTable[block][offset], bytePositionInMemory,
-                        value, bytePositionInValue);
+                oldValue = replaceByte(
+                    blockTable[block]!![offset], bytePositionInMemory,
+                    oldValue, bytePositionInValue
+                )
+                blockTable[block]!![offset] = replaceByte(
+                    value, bytePositionInValue,
+                    blockTable[block]!![offset], bytePositionInMemory
+                )
+            } else { // op == FETCH
+                value = replaceByte(
+                    blockTable[block]!![offset], bytePositionInMemory,
+                    value, bytePositionInValue
+                )
             }
-            relativeByteAddress++;
+            relativeByteAddress++
+            bytePositionInValue--
         }
-        return (op == STORE) ? oldValue : value;
+        return if ((op == STORE)) oldValue else value
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Helper method to store 4 byte value in table that represents MIPS memory.
-    // Originally used just for data segment, but now also used for stack.
-    // Both use different tables but same storage method and same table size
-    // and block size.  Assumes address is word aligned, no endian processing.
-    // Modified 29 Dec 2005 to return overwritten value.
-
-    private synchronized int storeWordInTable(int[][] blockTable, int relative, int value) {
-        int block, offset, oldValue;
-        block = relative / BLOCK_LENGTH_WORDS;
-        offset = relative % BLOCK_LENGTH_WORDS;
+    /**
+     * Helper method to store a four-byte value in the table that represents MIPS memory.
+     * Originally used just for data segment, but now also used for stack.
+     * Both use different tables, but use the same storage method and the same table size
+     * and block size. Assumes address is word aligned, no endian processing.
+     */
+    @Synchronized
+    private fun storeWordInTable(blockTable: Array<IntArray?>, relative: Int, value: Int): Int {
+        val block = relative / BLOCK_LENGTH_WORDS
+        val offset = relative % BLOCK_LENGTH_WORDS
         if (blockTable[block] == null) {
             // First time writing to this block, so allocate the space.
-            blockTable[block] = new int[BLOCK_LENGTH_WORDS];
+            blockTable[block] = IntArray(BLOCK_LENGTH_WORDS)
         }
-        oldValue = blockTable[block][offset];
-        blockTable[block][offset] = value;
-        return oldValue;
+        val oldValue = blockTable[block]!![offset]
+        blockTable[block]!![offset] = value
+        return oldValue
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Helper method to fetch 4 byte value from table that represents MIPS memory.
-    // Originally used just for data segment, but now also used for stack.
-    // Both use different tables but same storage method and same table size
-    // and block size.  Assumes word alignment, no endian processing.
-    //
-
-    private synchronized int fetchWordFromTable(int[][] blockTable, int relative) {
-        int value;
-        int block, offset;
-        block = relative / BLOCK_LENGTH_WORDS;
-        offset = relative % BLOCK_LENGTH_WORDS;
-        if (blockTable[block] == null) {
-            // first reference to an address in this block.  Assume initialized to 0.
-            value = 0;
-        } else {
-            value = blockTable[block][offset];
-        }
-        return value;
+    /**
+     * Helper method to fetch a four-byte value from the table that represents MIPS memory.
+     * Originally used just for data segment, but now also used for stack.
+     * Both use different tables, but use the same storage method and the same table size
+     * and block size. Assumes address is word aligned, no endian processing.
+     */
+    @Synchronized
+    private fun fetchWordFromTable(blockTable: Array<IntArray?>, relative: Int): Int {
+        val block = relative / BLOCK_LENGTH_WORDS
+        val offset = relative % BLOCK_LENGTH_WORDS
+        // If null, it's the first reference to an address in this block. Assume it's initialized to zero.
+        return if (blockTable[block] == null) 0 else blockTable[block]!![offset]
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
-    //
-    // Helper method to fetch 4 byte value from table that represents MIPS memory.
-    // Originally used just for data segment, but now also used for stack.
-    // Both use different tables but same storage method and same table size
-    // and block size.  Assumes word alignment, no endian processing.
-    //
-    // This differs from "fetchWordFromTable()" in that it returns an Integer and
-    // returns null instead of 0 if the 4K table has not been allocated.  Developed
-    // by Greg Gibeling of UC Berkeley, fall 2007.
-    //
-
-    private synchronized Integer fetchWordOrNullFromTable(int[][] blockTable, int relative) {
-        int value;
-        int block, offset;
-        block = relative / BLOCK_LENGTH_WORDS;
-        offset = relative % BLOCK_LENGTH_WORDS;
-        if (blockTable[block] == null) {
-            // first reference to an address in this block.  Assume initialized to 0.
-            return null;
-        } else {
-            value = blockTable[block][offset];
-        }
-        return value;
+    /**
+     * Helper method to fetch a four-byte value from the table that represents MIPS memory.
+     * Originally used just for data segment, but now also used for stack.
+     * Both use different tables, but use the same storage method and the same table size
+     * and block size. Assumes word alignment, no endian processing.
+     *
+     * This differs from "fetchWordFromTable()" in that it returns an Integer and
+     * returns null instead of 0 if the 4K table has not been allocated.
+     */
+    @Synchronized
+    private fun fetchWordOrNullFromTable(blockTable: Array<IntArray?>, relative: Int): Int? {
+        val block = relative / BLOCK_LENGTH_WORDS
+        val offset = relative % BLOCK_LENGTH_WORDS
+        // First reference to an address in this block. Assume it's initialized to zero.
+        return blockTable[block]?.get(offset)
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Returns result of substituting specified byte of source value into specified byte
-    // of destination value. Byte positions are 0-1-2-3, listed from most to least
-    // significant.  No endian issues.  This is a private helper method used by get() & set().
-    private int replaceByte(int sourceValue, int bytePosInSource, int destValue, int bytePosInDest) {
-        return
-                // Set source byte value into destination byte position; set other 24 bits to 0's...
-                ((sourceValue >> (24 - (bytePosInSource << 3)) & 0xFF)
-                        << (24 - (bytePosInDest << 3)))
-                        // and bitwise-OR it with...
-                        |
-                        // Set 8 bits in destination byte position to 0's, other 24 bits are unchanged.
-                        (destValue & ~(0xFF << (24 - (bytePosInDest << 3))));
-    }
+    /**
+     * Returns result of substituting specified byte of source value into specified byte
+     * of destination value. Byte positions are 0-1-2-3, listed from most to least
+     * significant. No endian issues. This is a private helper method used by get() & set().
+     */
+    private fun replaceByte(sourceValue: Int, bytePosInSource: Int, destValue: Int, bytePosInDest: Int): Int =
+        ((sourceValue shr (24 - (bytePosInSource shl 3)) and 0xFF) shl (24 - (bytePosInDest shl 3))) or
+            (destValue and (0xFF shl (24 - (bytePosInDest shl 3))).inv())
 
-    ///////////////////////////////////////////////////////////////////////
-    // Reverses byte sequence of given value.  Can use to convert between big and
-    // little endian if needed.
-    private int reverseBytes(int source) {
-        return (source >> 24 & 0x000000FF) |
-                (source >> 8 & 0x0000FF00) |
-                (source << 8 & 0x00FF0000) |
-                (source << 24);
-    }
+    /**
+     * Reverse the endianness of the given value.
+     */
+    private fun reverseBytes(source: Int): Int =
+        (source shr 24 and 0x000000FF) or (source shr 8 and 0x0000FF00) or (source shl 8 and 0x00FF0000) or (source shl 24)
 
-    ///////////////////////////////////////////////////////////////////////
-    // Store a program statement at the given address.  Address has already been verified
-    // as valid.  It may be either in user or kernel text segment, as specified by arguments.
-    private void storeProgramStatement(int address, ProgramStatement statement,
-                                       int baseAddress, ProgramStatement[][] blockTable) {
-        int relative = (address - baseAddress) >> 2; // convert byte address to words
-        int block = relative / BLOCK_LENGTH_WORDS;
-        int offset = relative % BLOCK_LENGTH_WORDS;
+    /**
+     * Store a program statement at the given address.
+     * The address has already been verified as valid.
+     * It may be either in user or kernel text segment, as specified by arguments.
+     */
+    private fun storeProgramStatement(
+        address: Int,
+        statement: ProgramStatement,
+        baseAddress: Int,
+        blockTable: Array<Array<ProgramStatement?>?>
+    ) {
+        val relative = (address - baseAddress) shr 2
+        val block = relative / BLOCK_LENGTH_WORDS
+        val offset = relative % BLOCK_LENGTH_WORDS
         if (block < TEXT_BLOCK_TABLE_LENGTH) {
-            if (blockTable[block] == null) {
-                // No instructions are stored in this block, so allocate the block.
-                blockTable[block] = new ProgramStatement[BLOCK_LENGTH_WORDS];
-            }
-            blockTable[block][offset] = statement;
+            if (blockTable[block] == null)
+                blockTable[block] = arrayOfNulls(BLOCK_LENGTH_WORDS)
+            blockTable[block]!![offset] = statement
         }
     }
 
-
-    ///////////////////////////////////////////////////////////////////////
-    // Read a program statement from the given address.  Address has already been verified
-    // as valid.  It may be either in user or kernel text segment, as specified by arguments.
-    // Returns associated ProgramStatement or null if none.
-    // Last parameter controls whether or not observers will be notified.
-    private ProgramStatement readProgramStatement(int address, int baseAddress, ProgramStatement[][] blockTable, boolean notify) {
-        int relative = (address - baseAddress) >> 2; // convert byte address to words
-        int block = relative / TEXT_BLOCK_LENGTH_WORDS;
-        int offset = relative % TEXT_BLOCK_LENGTH_WORDS;
+    /**
+     * Read a program statement from the given address.
+     * The address has already been verified as valid.
+     * It may be either in user or kernel text segment, as specified by arguments.
+     * Returns associated ProgramStatement or null if none.
+     * The last parameter controls whether observers will be notified.
+     */
+    private fun readProgramStatement(
+        address: Int,
+        baseAddress: Int,
+        blockTable: Array<Array<ProgramStatement?>?>,
+        notify: Boolean
+    ): ProgramStatement? {
+        val relative = (address - baseAddress) shr 2
+        val block = relative / TEXT_BLOCK_LENGTH_WORDS
+        val offset = relative % TEXT_BLOCK_LENGTH_WORDS
         if (block < TEXT_BLOCK_TABLE_LENGTH) {
-            if (blockTable[block] == null || blockTable[block][offset] == null) {
+            if (blockTable[block] == null || blockTable[block]?.get(offset) == null) {
                 // No instructions are stored in this block or offset.
-                if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
-                return null;
+                if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0)
+                return null
             } else {
-                if (notify)
-                    notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, blockTable[block][offset].getBinaryStatement());
-                return blockTable[block][offset];
+                if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, blockTable[block]!![offset]!!.getBinaryStatement())
+                return blockTable[block]!![offset]!!
             }
         }
-        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
-        return null;
+        if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, Instruction.INSTRUCTION_LENGTH, 0)
+        return null
     }
-
 }

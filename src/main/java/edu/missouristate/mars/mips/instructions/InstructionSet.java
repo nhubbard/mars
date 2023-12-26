@@ -2088,7 +2088,7 @@ public class InstructionSet {
                                 throw new ProcessingException(statement, "first register must be even-numbered");
                             }
                             // IF statement added by DPS 13-July-2011.
-                            if (!Memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
+                            if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
                                 throw new ProcessingException(statement,
                                         new AddressErrorException("address not aligned on doubleword boundary ",
                                                 Exceptions.ADDRESS_EXCEPTION_LOAD, RegisterFile.getValue(operands[2]) + operands[1]));
@@ -2131,7 +2131,7 @@ public class InstructionSet {
                                 throw new ProcessingException(statement, "first register must be even-numbered");
                             }
                             // IF statement added by DPS 13-July-2011.
-                            if (!Memory.doublewordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
+                            if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
                                 throw new ProcessingException(statement,
                                         new AddressErrorException("address not aligned on doubleword boundary ",
                                                 Exceptions.ADDRESS_EXCEPTION_STORE, RegisterFile.getValue(operands[2]) + operands[1]));

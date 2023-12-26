@@ -134,10 +134,10 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // MIPS address space was final as well.  Now we will get MMIO base address
     // each time to reflect possible change in memory configuration. DPS 6-Aug-09
     protected void initializePreGUI() {
-        RECEIVER_CONTROL = Memory.memoryMapBaseAddress; //0xffff0000; // keyboard Ready in low-order bit
-        RECEIVER_DATA = Memory.memoryMapBaseAddress + 4; //0xffff0004; // keyboard character in low-order byte
-        TRANSMITTER_CONTROL = Memory.memoryMapBaseAddress + 8; //0xffff0008; // display Ready in low-order bit
-        TRANSMITTER_DATA = Memory.memoryMapBaseAddress + 12; //0xffff000c; // display character in low-order byte
+        RECEIVER_CONTROL = Memory.getMemoryMapBaseAddress(); //0xffff0000; // keyboard Ready in low-order bit
+        RECEIVER_DATA = Memory.getMemoryMapBaseAddress() + 4; //0xffff0004; // keyboard character in low-order byte
+        TRANSMITTER_CONTROL = Memory.getMemoryMapBaseAddress() + 8; //0xffff0008; // display Ready in low-order bit
+        TRANSMITTER_DATA = Memory.getMemoryMapBaseAddress() + 12; //0xffff000c; // display character in low-order byte
         displayPanelTitle = "DISPLAY: Store to Transmitter Data " + Binary.intToHexString(TRANSMITTER_DATA);
         keyboardPanelTitle = "KEYBOARD: Characters typed here are stored to Receiver Data " + Binary.intToHexString(RECEIVER_DATA);
 
@@ -167,8 +167,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         // basis for delay in re-setting (literally) the TRANSMITTER_CONTROL register.  SPIM does
         // this too.  This simulates the time required for the display unit to process the
         // TRANSMITTER_DATA.
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
-        addAsObserver(Memory.kernelTextBaseAddress, Memory.kernelTextLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
+        addAsObserver(Memory.getKernelTextBaseAddress(), Memory.getKernelTextLimitAddress());
     }
 
 

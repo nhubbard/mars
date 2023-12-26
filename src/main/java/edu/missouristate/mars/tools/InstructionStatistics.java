@@ -194,7 +194,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * registers the tool as observer for the text segment of the MIPS program
      */
     protected void addAsObserver() {
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
 
@@ -277,22 +277,17 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
                 return;
             lastAddress = a;
 
-            try {
+            // access the statement in the text segment without notifying other tools etc.
+            ProgramStatement stmt = Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
 
-                // access the statement in the text segment without notifying other tools etc.
-                ProgramStatement stmt = Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
+            // necessary to handle possible null pointers at the end of the program
+            // (e.g., if the simulator tries to execute the next instruction after the last instruction in the text segment)
+            if (stmt != null) {
+                int category = getInstructionCategory(stmt);
 
-                // necessary to handle possible null pointers at the end of the program
-                // (e.g., if the simulator tries to execute the next instruction after the last instruction in the text segment)
-                if (stmt != null) {
-                    int category = getInstructionCategory(stmt);
-
-                    totalCounter++;
-                    counters[category]++;
-                    updateDisplay();
-                }
-            } catch (AddressErrorException e) {
-                // silently ignore these exceptions
+                totalCounter++;
+                counters[category]++;
+                updateDisplay();
             }
         }
     }

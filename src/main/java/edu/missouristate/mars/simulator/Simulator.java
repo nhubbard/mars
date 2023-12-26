@@ -336,11 +336,11 @@ public class Simulator extends Observable {
                             // MIPS program with appropriate error message.
                             ProgramStatement exceptionHandler = null;
                             try {
-                                exceptionHandler = Globals.memory.getStatement(Memory.exceptionHandlerAddress);
+                                exceptionHandler = Globals.memory.getStatement(Memory.getExceptionHandlerAddress());
                             } catch (AddressErrorException ignored) {
                             } // will not occur with this well-known addres
                             if (exceptionHandler != null) {
-                                RegisterFile.setProgramCounter(Memory.exceptionHandlerAddress);
+                                RegisterFile.setProgramCounter(Memory.getExceptionHandlerAddress());
                             } else {
                                 this.constructReturnReason = EXCEPTION;
                                 this.pe = pe;

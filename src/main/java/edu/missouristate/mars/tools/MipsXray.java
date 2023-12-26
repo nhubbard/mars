@@ -185,7 +185,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
 
     protected void addAsObserver() {
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
     //Function that gets the current instruction in memory and start animation with the selected instruction.

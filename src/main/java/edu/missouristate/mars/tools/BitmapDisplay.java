@@ -350,7 +350,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     //dataSegmentBaseAddress=0x10000000, globalPointer=0x10008000
     //dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
     private void initializeDisplayBaseChoices() {
-        int[] displayBaseAddressArray = {Memory.dataSegmentBaseAddress, Memory.globalPointer, Memory.dataBaseAddress, Memory.heapBaseAddress, Memory.memoryMapBaseAddress};
+        int[] displayBaseAddressArray = {Memory.getDataSegmentBaseAddress(), Memory.getGlobalPointer(), Memory.getDataBaseAddress(), Memory.getHeapBaseAddress(), Memory.getMemoryMapBaseAddress()};
         // Must agree with previous conditions in number and order...
         String[] descriptions = {" (global data)", " ($gp)", " (static data)", " (heap)", " (memory map)"};
         displayBaseAddresses = displayBaseAddressArray;

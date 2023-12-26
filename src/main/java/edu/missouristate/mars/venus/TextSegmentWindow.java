@@ -603,7 +603,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      */
     private void addAsTextSegmentObserver() {
         try {
-            Memory.getInstance().addObserver(this, Memory.textBaseAddress, Memory.dataSegmentBaseAddress);
+            Memory.getInstance().addObserver(this, Memory.getTextBaseAddress(), Memory.getDataSegmentBaseAddress());
         } catch (AddressErrorException ignored) {
         }
     }

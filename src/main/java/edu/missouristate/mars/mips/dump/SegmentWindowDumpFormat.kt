@@ -68,9 +68,9 @@ class SegmentWindowDumpFormat : AbstractDumpFormat(
                         string += "${Binary.intToHexString(temp)}  "
                         try {
                             val ps = Globals.memory.getStatement(address)
-                            string += "${ps.getPrintableBasicAssemblyStatement()}                      ".substring(0, 22)
-                            string += ((if (ps.getSource() == "") "" else Integer.valueOf(ps.getSourceLine()).toString()) + "     ").substring(0, 5)
-                            string += ps.getSource()
+                            string += "${ps?.getPrintableBasicAssemblyStatement()}                      ".substring(0, 22)
+                            string += ((if (ps?.getSource() == "") "" else Integer.valueOf(ps?.getSourceLine() ?: 0).toString()) + "     ").substring(0, 5)
+                            string += ps?.getSource()
                         } catch (ignored: AddressErrorException) {}
                         it.println(string)
                     }

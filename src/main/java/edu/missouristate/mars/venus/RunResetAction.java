@@ -52,7 +52,7 @@ public class RunResetAction extends GuiAction {
         executePane.getCoprocessor1Window().updateRegisters();
         executePane.getCoprocessor0Window().clearHighlighting();
         executePane.getCoprocessor0Window().updateRegisters();
-        executePane.getDataSegmentWindow().highlightCellForAddress(Memory.dataBaseAddress);
+        executePane.getDataSegmentWindow().highlightCellForAddress(Memory.getDataBaseAddress());
         executePane.getDataSegmentWindow().clearHighlighting();
         executePane.getTextSegmentWindow().resetModifiedSourceCode();
         executePane.getTextSegmentWindow().setCodeHighlighting(true);

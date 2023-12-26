@@ -60,8 +60,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     private final Color backgroundColor = Color.WHITE;
 
 
-    private final int lowMemoryAddress = Memory.dataSegmentBaseAddress;
-    private final int highMemoryAddress = Memory.stackBaseAddress;
+    private final int lowMemoryAddress = Memory.getDataSegmentBaseAddress();
+    private final int highMemoryAddress = Memory.getStackBaseAddress();
     // For MarsTool, is set true when "Connect" clicked, false when "Disconnect" clicked.
     // For app, is set true when "Assemble and Run" clicked, false when program terminates.
     private volatile boolean observing = false;

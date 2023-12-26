@@ -162,7 +162,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
     //	@Override
     protected void addAsObserver() {
-        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
     //	@Override
