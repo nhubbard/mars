@@ -52,7 +52,7 @@ public class Exceptions {
         // identify devices for External Interrupt (8=keyboard,9=display).
         Coprocessor0.updateRegister(Coprocessor0.CAUSE, (Coprocessor0.getValue(Coprocessor0.CAUSE) & 0xFFFFFC83 | (cause << 2)));
         // When exception occurred, PC had already been incremented so need to subtract 4 here.
-        Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH);
+        Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter().getValue() - Instruction.INSTRUCTION_LENGTH);
         // Set EXL (Exception Level) bit, bit position 1, in STATUS register to 1.
         Coprocessor0.updateRegister(Coprocessor0.STATUS, Binary.setBit(Coprocessor0.getValue(Coprocessor0.STATUS), Coprocessor0.EXCEPTION_LEVEL));
     }

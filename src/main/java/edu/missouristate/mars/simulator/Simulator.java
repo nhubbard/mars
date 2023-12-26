@@ -244,16 +244,16 @@ public class Simulator extends Observable {
             RegisterFile.initializeProgramCounter(pc);
             ProgramStatement statement;
             try {
-                statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
+                statement = Globals.memory.getStatement(RegisterFile.getProgramCounter().getValue());
             } catch (AddressErrorException e) {
                 ErrorList el = new ErrorList();
-                el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter())));
+                el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter().getValue())));
                 this.pe = new ProcessingException(el, e);
                 // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
                 // because it assumes the bad address comes from an operand so the ProgramCounter has already been
                 // incremented.  In this case, bad address is the instruction fetch itself so Program Counter has
                 // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-                Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter());
+                Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter().getValue());
                 this.constructReturnReason = EXCEPTION;
                 this.done = true;
                 SystemIO.resetFiles(); // close any files opened in MIPS program
@@ -295,7 +295,7 @@ public class Simulator extends Observable {
             int pc = 0;  // added: 7/26/06 (explanation above)
 
             while (statement != null) {
-                pc = RegisterFile.getProgramCounter(); // added: 7/26/06 (explanation above)
+                pc = RegisterFile.getProgramCounter().getValue(); // added: 7/26/06 (explanation above)
                 RegisterFile.incrementPC();
                 // Perform the MIPS instruction in synchronized block.  If external threads agree
                 // to access MIPS memory and registers only through synchronized blocks on same
@@ -371,7 +371,7 @@ public class Simulator extends Observable {
                 }
                 //	Return if we've reached a breakpoint.
                 if ((breakPoints != null) &&
-                        (Arrays.binarySearch(breakPoints, RegisterFile.getProgramCounter()) >= 0)) {
+                        (Arrays.binarySearch(breakPoints, RegisterFile.getProgramCounter().getValue()) >= 0)) {
                     this.constructReturnReason = BREAKPOINT;
                     this.done = false;
                     Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
@@ -410,16 +410,16 @@ public class Simulator extends Observable {
                 // Get next instruction in preparation for next iteration.
 
                 try {
-                    statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
+                    statement = Globals.memory.getStatement(RegisterFile.getProgramCounter().getValue());
                 } catch (AddressErrorException e) {
                     ErrorList el = new ErrorList();
-                    el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter())));
+                    el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter().getValue())));
                     this.pe = new ProcessingException(el, e);
                     // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
                     // because it assumes the bad address comes from an operand so the ProgramCounter has already been
                     // incremented.  In this case, bad address is the instruction fetch itself so Program Counter has
                     // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-                    Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter());
+                    Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter().getValue());
                     this.constructReturnReason = EXCEPTION;
                     this.done = true;
                     SystemIO.resetFiles(); // close any files opened in MIPS program

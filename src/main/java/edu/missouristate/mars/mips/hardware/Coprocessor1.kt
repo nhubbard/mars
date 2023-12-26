@@ -371,13 +371,13 @@ object Coprocessor1 {
      * @param observer The Observer to remove from all FPU registers.
      */
     @JvmStatic
-    fun removeObserver(observer: Observer) {
+    fun deleteObserver(observer: Observer) {
         registers.forEach { it.deleteObserver(observer) }
     }
 
-    @Deprecated("Renamed to removeObserver.", ReplaceWith("removeObserver(observer)"))
+    @Deprecated("Renamed to deleteObserver.", ReplaceWith("removeObserver(observer)"))
     @JvmStatic
-    fun deleteRegisterObserver(observer: Observer) = removeObserver(observer)
+    fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 
     /**
      * Set a condition flag to 1 (true).

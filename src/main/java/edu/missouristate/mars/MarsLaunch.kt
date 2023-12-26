@@ -552,7 +552,7 @@ class MarsLaunch(args: Array<String>) {
             if (RegisterFile.getUserRegister(reg) != null) {
                 // Integer register
                 if (verbose) out.print("$reg\t")
-                value = RegisterFile.getUserRegister(reg).getValue()
+                value = RegisterFile.getUserRegister(reg)?.getValue() ?: 0
                 out.println(displayFormat.formatInt(value))
             } else {
                 // Floating point register

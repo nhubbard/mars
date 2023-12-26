@@ -87,7 +87,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      */
     protected void addAsObserver() {
         addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
-        addAsObserver(RegisterFile.getProgramCounterRegister());
+        addAsObserver(RegisterFile.getProgramCounter());
     }
 
     /**

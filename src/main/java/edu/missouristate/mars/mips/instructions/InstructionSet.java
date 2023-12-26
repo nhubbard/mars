@@ -890,7 +890,7 @@ public class InstructionSet {
                         statement -> {
                             int[] operands = statement.getOperands();
                             processJump(
-                                    ((RegisterFile.getProgramCounter() & 0xF0000000)
+                                    ((RegisterFile.getProgramCounter().getValue() & 0xF0000000)
                                             | (operands[0] << 2)));
                         }));
         instructionList.add(
@@ -911,7 +911,7 @@ public class InstructionSet {
                             int[] operands = statement.getOperands();
                             processReturnAddress(31);// RegisterFile.updateRegister(31, RegisterFile.getProgramCounter());
                             processJump(
-                                    (RegisterFile.getProgramCounter() & 0xF0000000)
+                                    (RegisterFile.getProgramCounter().getValue() & 0xF0000000)
                                             | (operands[0] << 2));
                         }));
         instructionList.add(
@@ -2511,11 +2511,11 @@ public class InstructionSet {
     private void processBranch(int displacement) {
         if (Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)) {
             // Register the branch target address (absolute byte address).
-            DelayedBranch.register(RegisterFile.getProgramCounter() + (displacement << 2));
+            DelayedBranch.register(RegisterFile.getProgramCounter().getValue() + (displacement << 2));
         } else {
             // Decrement needed because PC has already been incremented
             RegisterFile.setProgramCounter(
-                    RegisterFile.getProgramCounter()
+                    RegisterFile.getProgramCounter().getValue()
                             + (displacement << 2)); // - Instruction.INSTRUCTION_LENGTH);
         }
     }
@@ -2551,7 +2551,7 @@ public class InstructionSet {
      */
 
     private void processReturnAddress(int register) {
-        RegisterFile.updateRegister(register, RegisterFile.getProgramCounter() +
+        RegisterFile.updateRegister(register, RegisterFile.getProgramCounter().getValue() +
                 ((Globals.getSettings().getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)) ?
                         Instruction.INSTRUCTION_LENGTH : 0));
     }

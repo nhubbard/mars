@@ -455,7 +455,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      * execution and when reaching breakpoints.
      */
     public void highlightStepAtPC() {
-        highlightStepAtAddress(RegisterFile.getProgramCounter(), false);
+        highlightStepAtAddress(RegisterFile.getProgramCounter().getValue(), false);
     }
 
     /**
@@ -468,7 +468,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      *                    otherwise.
      */
     public void highlightStepAtPC(boolean inDelaySlot) {
-        highlightStepAtAddress(RegisterFile.getProgramCounter(), inDelaySlot);
+        highlightStepAtAddress(RegisterFile.getProgramCounter().getValue(), inDelaySlot);
     }
 
     /**

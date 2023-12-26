@@ -165,9 +165,9 @@ object Coprocessor0 {
      * This method deletes the given Observer from each register.
      */
     @JvmStatic
-    fun removeObserver(observer: Observer) = registers.forEach { it.deleteObserver(observer) }
+    fun deleteObserver(observer: Observer) = registers.forEach { it.deleteObserver(observer) }
 
-    @Deprecated("Renamed to removeObserver.", ReplaceWith("removeObserver(observer)"))
+    @Deprecated("Renamed to deleteObserver.", ReplaceWith("removeObserver(observer)"))
     @JvmStatic
-    fun deleteRegisterObserver(observer: Observer) = removeObserver(observer)
+    fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 }

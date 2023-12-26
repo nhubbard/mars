@@ -178,7 +178,7 @@ class ProgramStatement {
                     basic.append(basicStatementElement)
                     basicStatementList.addString(basicStatementElement)
                     try {
-                        registerNumber = RegisterFile.getUserRegister(tokenValue).number
+                        registerNumber = RegisterFile.getUserRegister(tokenValue)?.number ?: 0
                     } catch (e: Exception) {
                         errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid register number $tokenValue."))
                         return

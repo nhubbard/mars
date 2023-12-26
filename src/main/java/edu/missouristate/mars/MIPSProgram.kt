@@ -295,7 +295,7 @@ class MIPSProgram {
     fun simulateFromPC(breakPoints: IntArray?, maxSteps: Int, a: AbstractAction?): Boolean {
         steppedExecution = false
         val sim = Simulator.getInstance()
-        return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a)
+        return sim.simulate(this, RegisterFile.programCounter.getValue(), maxSteps, breakPoints, a)
     }
 
     /**
@@ -311,7 +311,7 @@ class MIPSProgram {
     fun simulateStepAtPC(a: AbstractAction?): Boolean {
         steppedExecution = true
         val sim = Simulator.getInstance()
-        return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a)
+        return sim.simulate(this, RegisterFile.programCounter.getValue(), 1, null, a)
     }
 
     /**

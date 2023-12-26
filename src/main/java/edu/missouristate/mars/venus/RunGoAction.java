@@ -111,7 +111,7 @@ public class RunGoAction extends GuiAction {
             mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
             executePane.getTextSegmentWindow().setCodeHighlighting(true);
             executePane.getTextSegmentWindow().unhighlightAllSteps();
-            executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter() - 4);
+            executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter().getValue() - 4);
         }
         switch (reason) {
             case Simulator.NORMAL_TERMINATION:

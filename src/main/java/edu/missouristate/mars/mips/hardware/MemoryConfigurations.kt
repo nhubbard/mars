@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.hardware
 
 import edu.missouristate.mars.Globals
 import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.mips.hardware.RegisterFile.programCounter
 
 /**
  * Models the collection of MIPS memory configurations.
@@ -164,9 +165,9 @@ object MemoryConfigurations {
         if (config != currentConfiguration) {
             currentConfiguration = config
             Globals.memory.clear()
-            RegisterFile.getUserRegister("\$gp").changeResetValue(config.globalPointer)
-            RegisterFile.getUserRegister("\$sp").changeResetValue(config.stackPointer)
-            RegisterFile.getProgramCounterRegister().changeResetValue(config.textBaseAddress)
+            RegisterFile.getUserRegister("\$gp")!!.setResetValue(config.globalPointer)
+            RegisterFile.getUserRegister("\$sp")!!.setResetValue(config.stackPointer)
+            programCounter.setResetValue(config.textBaseAddress)
             RegisterFile.initializeProgramCounter(config.textBaseAddress)
             RegisterFile.resetRegisters()
             return true

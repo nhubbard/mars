@@ -67,7 +67,7 @@ public class RegistersWindow extends JPanel implements Observer {
         }
         tableData[32][0] = "pc";
         tableData[32][1] = "";//Integer.valueOf32);
-        tableData[32][2] = NumberDisplayBaseChooser.formatUnsignedInteger(RegisterFile.getProgramCounter(), valueBase);
+        tableData[32][2] = NumberDisplayBaseChooser.formatUnsignedInteger(RegisterFile.getProgramCounter().getValue(), valueBase);
 
         tableData[33][0] = "hi";
         tableData[33][1] = "";//Integer.valueOf33);
@@ -126,7 +126,7 @@ public class RegistersWindow extends JPanel implements Observer {
         for (Register register : registers) {
             updateRegisterValue(register.getNumber(), register.getValue(), base);
         }
-        updateRegisterUnsignedValue(32, RegisterFile.getProgramCounter(), base);
+        updateRegisterUnsignedValue(32, RegisterFile.getProgramCounter().getValue(), base);
         updateRegisterValue(33, RegisterFile.getValue(33), base);
         updateRegisterValue(34, RegisterFile.getValue(34), base);
     }

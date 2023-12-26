@@ -161,7 +161,7 @@ public class BackStepper {
 
     private int pc() {
         // PC incremented prior to instruction simulation, so need to adjust for that.
-        return RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH;
+        return RegisterFile.getProgramCounter().getValue() - Instruction.INSTRUCTION_LENGTH;
     }
 
     /**

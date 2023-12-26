@@ -48,7 +48,7 @@ class ProcessingException : Exception {
         errs.add(
             ErrorMessage(
                 ps!!, "Runtime exception at " +
-                        Binary.intToHexString(RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH) +
+                        Binary.intToHexString(RegisterFile.programCounter.getValue() - Instruction.INSTRUCTION_LENGTH) +
                         ": " + m
             )
         )
