@@ -1,513 +1,461 @@
-package edu.missouristate.mars.mips.hardware;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.util.Binary;
+@file:Suppress("NAME_SHADOWING", "DEPRECATION", "MemberVisibilityCanBePrivate")
 
-import java.util.Observer;
+package edu.missouristate.mars.mips.hardware
+
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.util.Binary
+import java.util.*
 
 /**
- * Represents Coprocessor 1, the Floating Point Unit (FPU)
- *
- * @author Pete Sanderson
- * @version July 2005
- **/
+ * Represents MIPS coprocessor 1, the floating point unit.
+ */
+object Coprocessor1 {
+    /*
+     * Adapted from RegisterFile class developed by Bumgarner et al. in 2003.
+     * The FPU registers will be implemented by Register objects.  Such objects
+     * can only hold int values, but we can use Float.floatToIntBits() to translate
+     * a 32 bit float value into its equivalent 32-bit int representation, and
+     * Float.intBitsToFloat() to bring it back.  More importantly, there are
+     * similar methods Double.doubleToLongBits() and Double.LongBitsToDouble()
+     * which can be used to extend a double value over 2 registers.  The resulting
+     * long is split into 2 int values (high-order 32 bits, low-order 32 bits) for
+     * storing into registers, and reassembled upon retrieval.
+     */
 
-// Adapted from RegisterFile class developed by Bumgarner et al in 2003.
-// The FPU registers will be implemented by Register objects.  Such objects
-// can only hold int values, but we can use Float.floatToIntBits() to translate
-// a 32 bit float value into its equivalent 32-bit int representation, and
-// Float.intBitsToFloat() to bring it back.  More importantly, there are 
-// similar methods Double.doubleToLongBits() and Double.LongBitsToDouble()
-// which can be used to extend a double value over 2 registers.  The resulting
-// long is split into 2 int values (high order 32 bits, low order 32 bits) for
-// storing into registers, and reassembled upon retrieval.
+    @JvmStatic val registers = arrayOf(
+        *(0..<32).map { Register("\$f$it", it, 0) }.toTypedArray()
+    )
 
-public class Coprocessor1 {
-    private static final Register[] registers =
-            {new Register("$f0", 0, 0), new Register("$f1", 1, 0),
-                    new Register("$f2", 2, 0), new Register("$f3", 3, 0),
-                    new Register("$f4", 4, 0), new Register("$f5", 5, 0),
-                    new Register("$f6", 6, 0), new Register("$f7", 7, 0),
-                    new Register("$f8", 8, 0), new Register("$f9", 9, 0),
-                    new Register("$f10", 10, 0), new Register("$f11", 11, 0),
-                    new Register("$f12", 12, 0), new Register("$f13", 13, 0),
-                    new Register("$f14", 14, 0), new Register("$f15", 15, 0),
-                    new Register("$f16", 16, 0), new Register("$f17", 17, 0),
-                    new Register("$f18", 18, 0), new Register("$f19", 19, 0),
-                    new Register("$f20", 20, 0), new Register("$f21", 21, 0),
-                    new Register("$f22", 22, 0), new Register("$f23", 23, 0),
-                    new Register("$f24", 24, 0), new Register("$f25", 25, 0),
-                    new Register("$f26", 26, 0), new Register("$f27", 27, 0),
-                    new Register("$f28", 28, 0), new Register("$f29", 29, 0),
-                    new Register("$f30", 30, 0), new Register("$f31", 31, 0)
-            };
-    // The 8 condition flags will be stored in bits 0-7 for flags 0-7.
-    private static final Register condition = new Register("cf", 32, 0);
-    private static final int numConditionFlags = 8;
+    // The eight condition flags will be stored in bits 0-7 for flags 0-7.
+    @JvmStatic private val condition = Register("cf", 32, 0)
+    const val conditionFlagCount = 8
 
     /**
-     * Method for displaying the register values for debugging.
-     **/
-
-    public static void showRegisters() {
-        for (Register register : registers) {
-
-            System.out.println("Name: " + register.getName());
-            System.out.println("Number: " + register.getNumber());
-            System.out.println("Value: " + register.getValue());
-            System.out.println();
+     * Display Coprocessor1 register values for debugging.
+     */
+    @JvmStatic
+    fun showRegisters() {
+        for (register in registers) {
+            println("Name: ${register.name}")
+            println("Number: ${register.number}")
+            println("Value: ${register.value}")
+            println()
         }
     }
 
     /**
-     * Sets the value of the FPU register given to the value given.
+     * Set the value of the given FPU register name to the given new value.
      *
-     * @param reg Register to set the value of.
-     * @param val The desired float value for the register.
-     **/
-
-    public static void setRegisterToFloat(String reg, float val) {
-        setRegisterToFloat(getRegisterNumber(reg), val);
-    }
-
-
-    /**
-     * Sets the value of the FPU register given to the value given.
-     *
-     * @param reg Register to set the value of.
-     * @param val The desired float value for the register.
-     **/
-
-    public static void setRegisterToFloat(int reg, float val) {
-        if (reg >= 0 && reg < registers.length) {
-            registers[reg].setValue(Float.floatToRawIntBits(val));
-        }
+     * @param name The register name to set the value of.
+     * @param value The new float value for the register.
+     */
+    @JvmStatic
+    fun setRegisterToFloat(name: String, value: Float) {
+        setRegisterToFloat(getRegisterNumber(name), value)
     }
 
     /**
-     * Sets the value of the FPU register given to the 32-bit
-     * pattern given by the int parameter.
+     * Set the value of the given FPU register to the given new value.
      *
-     * @param reg Register to set the value of.
-     * @param val The desired int bit pattern for the register.
-     **/
-
-    public static void setRegisterToInt(String reg, int val) {
-        setRegisterToInt(getRegisterNumber(reg), val);
+     * @param number The register number to set the value of.
+     * @param value The new floating point value for the register.
+     */
+    @JvmStatic
+    fun setRegisterToFloat(number: Int, value: Float) {
+        if (number in registers.indices) registers[number].setValue(java.lang.Float.floatToRawIntBits(value))
     }
 
-
     /**
-     * Sets the value of the FPU register given to the 32-bit
-     * pattern given by the int parameter.
+     * Set the value of the given FPU register name to the given 32-bit integer pattern.
      *
-     * @param reg Register to set the value of.
-     * @param val The desired int bit pattern for the register.
-     **/
-
-    public static void setRegisterToInt(int reg, int val) {
-        if (reg >= 0 && reg < registers.length) {
-            registers[reg].setValue(val);
-        }
+     * @param name The register name to set the value of.
+     * @param value The desired new integer bit pattern value to set the register to.
+     */
+    @JvmStatic
+    fun setRegisterToInt(name: String, value: Int) {
+        setRegisterToInt(getRegisterNumber(name), value)
     }
 
-
     /**
-     * Sets the value of the FPU register given to the double value given.  The register
-     * must be even-numbered, and the low order 32 bits are placed in it.  The high order
-     * 32 bits are placed in the (odd numbered) register that follows it.
+     * Set the value of the given FPU register number to the given 32-bit integer pattern.
      *
-     * @param reg Register to set the value of.
-     * @param val The desired double value for the register.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-
-    public static void setRegisterPairToDouble(int reg, double val)
-            throws InvalidRegisterAccessException {
-        if (reg % 2 != 0) {
-            throw new InvalidRegisterAccessException();
-        }
-        long bits = Double.doubleToRawLongBits(val);
-        registers[reg + 1].setValue(Binary.highOrderLongToInt(bits));  // high order 32 bits
-        registers[reg].setValue(Binary.lowOrderLongToInt(bits)); // low order 32 bits
+     * @param number The register number to set the value of.
+     * @param value The desired new integer bit pattern value to set the register to.
+     */
+    @JvmStatic
+    fun setRegisterToInt(number: Int, value: Int) {
+        if (number in registers.indices) registers[number].setValue(value)
     }
 
-
     /**
-     * Sets the value of the FPU register given to the double value given.  The register
-     * must be even-numbered, and the low order 32 bits are placed in it.  The high order
-     * 32 bits are placed in the (odd numbered) register that follows it.
+     * Set the value of the given FPU register to the double value given.
+     * The register must be even-numbered, and the low-order 32 bits are placed in it.
+     * The high-order 32 bits are placed in the odd-numbered register that follows it.
      *
-     * @param reg Register to set the value of.
-     * @param val The desired double value for the register.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-    public static void setRegisterPairToDouble(String reg, double val)
-            throws InvalidRegisterAccessException {
-        setRegisterPairToDouble(getRegisterNumber(reg), val);
+     * @param number The register number to set the value of.
+     * @param value The desired double value for the register.
+     * @throws InvalidRegisterAccessException if the register [number] is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun setRegisterPairToDouble(number: Int, value: Double) {
+        if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
+            throw InvalidRegisterAccessException()
+        val bits = java.lang.Double.doubleToRawLongBits(value)
+        // Set high-order 32 bits in the odd register
+        registers[number + 1].setValue(Binary.highOrderLongToInt(bits))
+        // Set low-order 32 bits in the even register
+        registers[number].setValue(Binary.lowOrderLongToInt(bits))
     }
 
-
     /**
-     * Sets the value of the FPU register pair given to the long value containing 64 bit pattern
-     * given.  The register
-     * must be even-numbered, and the low order 32 bits from the long are placed in it.  The high order
-     * 32 bits from the long are placed in the (odd numbered) register that follows it.
+     * Set the value of the FPU register given to the double value given.
+     * The register must be even-numbered, and the low-order 32 bits are placed in it.
+     * The high-order 32 bits are placed in the odd-numbered register that follows it.
      *
-     * @param reg Register to set the value of.  Must be even register of even/odd pair.
-     * @param val The desired double value for the register.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-
-    public static void setRegisterPairToLong(int reg, long val)
-            throws InvalidRegisterAccessException {
-        if (reg % 2 != 0) {
-            throw new InvalidRegisterAccessException();
-        }
-        registers[reg + 1].setValue(Binary.highOrderLongToInt(val));  // high order 32 bits
-        registers[reg].setValue(Binary.lowOrderLongToInt(val)); // low order 32 bits
+     * @param name The register name to set the value of.
+     * @param value The desired double value for the register.
+     * @throws InvalidRegisterAccessException if the register [name] is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun setRegisterPairToDouble(name: String, value: Double) {
+        setRegisterPairToDouble(getRegisterNumber(name), value)
     }
 
-
     /**
-     * Sets the value of the FPU register pair given to the long value containing 64 bit pattern
-     * given.  The register
-     * must be even-numbered, and the low order 32 bits from the long are placed in it.  The high order
-     * 32 bits from the long are placed in the (odd numbered) register that follows it.
+     * Set the value of the FPU register given to the long value containing a given 64-bit pattern.
+     * The register must be even-numbered, and the low-order 32 bits from the long value are placed in it.
+     * The high-order 32 bits from the long are placed in the odd-numbered register that follows it.
      *
-     * @param reg Register to set the value of.  Must be even register of even/odd pair.
-     * @param val The desired long value containing the 64 bits for the register pair.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-    public static void setRegisterPairToLong(String reg, long val)
-            throws InvalidRegisterAccessException {
-        setRegisterPairToLong(getRegisterNumber(reg), val);
+     * @param number The register number to set the value of. Must be even.
+     * @param value The long value to set the register pair to.
+     * @throws InvalidRegisterAccessException if the register number is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun setRegisterPairToLong(number: Int, value: Long) {
+        if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
+            throw InvalidRegisterAccessException()
+        // Set high-order 32 bits
+        registers[number + 1].setValue(Binary.highOrderLongToInt(value))
+        // Set low-order 32 bits
+        registers[number].setValue(Binary.lowOrderLongToInt(value))
     }
 
-
     /**
-     * Gets the float value stored in the given FPU register.
+     * Set the value of the given FPU register pair to the given long value containing a 64-bit pattern.
+     * The register must be even-numbered, and the low-order 32 bits from the long are placed in it.
+     * The high-order 32 bits from the long are placed in the odd-numbered register that follows it.
      *
-     * @param reg Register to get the value of.
-     * @return The  float value stored by that register.
-     **/
-
-    public static float getFloatFromRegister(int reg) {
-        float result = 0F;
-        if (reg >= 0 && reg < registers.length) {
-            result = Float.intBitsToFloat(registers[reg].getValue());
-        }
-        return result;
+     * @param name The register name to set the value of.
+     * @param value The desired long value containing the 64 bits to store in the register pair.
+     * @throws InvalidRegisterAccessException if the register name is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun setRegisterPairToLong(name: String, value: Long) {
+        setRegisterPairToLong(getRegisterNumber(name), value)
     }
 
-
     /**
-     * Gets the float value stored in the given FPU register.
+     * Get the float value stored in the given numbered FPU register.
      *
-     * @param reg Register to get the value of.
-     * @return The  float value stored by that register.
-     **/
-
-    public static float getFloatFromRegister(String reg) {
-        return getFloatFromRegister(getRegisterNumber(reg));
+     * @param number The register number to get the value of.
+     * @return The float value stored in the given register.
+     */
+    @JvmStatic
+    fun getFloatFromRegister(number: Int): Float {
+        var result = 0F
+        if (number in registers.indices) result = java.lang.Float.intBitsToFloat(registers[number].value)
+        return result
     }
 
-
     /**
-     * Gets the 32-bit int bit pattern stored in the given FPU register.
+     * Get the float value stored in the given named FPU register.
      *
-     * @param reg Register to get the value of.
-     * @return The int bit pattern stored by that register.
-     **/
-
-    public static int getIntFromRegister(int reg) {
-        int result = 0;
-        if (reg >= 0 && reg < registers.length) {
-            result = registers[reg].getValue();
-        }
-        return result;
+     * @param name The register name to get the value of.
+     * @return The float value stored in the given named register.
+     */
+    @JvmStatic
+    fun getFloatFromRegister(name: String): Float {
+        return getFloatFromRegister(getRegisterNumber(name))
     }
 
-
     /**
-     * Gets the 32-bit int bit pattern stored in the given FPU register.
+     * Get the 32-bit integer bit pattern stored in the given numbered FPU register.
      *
-     * @param reg Register to get the value of.
-     * @return The int bit pattern stored by that register.
-     **/
-
-    public static int getIntFromRegister(String reg) {
-        return getIntFromRegister(getRegisterNumber(reg));
+     * @param number The register number to get the value of.
+     * @return The integer bit pattern stored in the given numbered register.
+     */
+    @JvmStatic
+    fun getIntFromRegister(number: Int): Int {
+        var result = 0
+        if (number in registers.indices) result = registers[number].value
+        return result
     }
 
-
     /**
-     * Gets the double value stored in the given FPU register.  The register
-     * must be even-numbered.
+     * Get the 32-bit integer pattern stored in the given named FPU register.
      *
-     * @param reg Register to get the value of. Must be even number of even/odd pair.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-
-    public static double getDoubleFromRegisterPair(int reg)
-            throws InvalidRegisterAccessException {
-        double result = 0.0;
-        if (reg % 2 != 0) {
-            throw new InvalidRegisterAccessException();
-        }
-        long bits = Binary.twoIntegersToLong(registers[reg + 1].getValue(), registers[reg].getValue());
-        return Double.longBitsToDouble(bits);
+     * @param name The register name to get the value of.
+     * @return The integer bit pattern stored in the given named register.
+     */
+    @JvmStatic
+    fun getIntFromRegister(name: String): Int {
+        return getIntFromRegister(getRegisterNumber(name))
     }
 
-
     /**
-     * Gets the double value stored in the given FPU register.  The register
-     * must be even-numbered.
+     * Get the double value stored in the given even-numbered FPU register.
      *
-     * @param reg Register to get the value of. Must be even number of even/odd pair.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
-
-    public static double getDoubleFromRegisterPair(String reg)
-            throws InvalidRegisterAccessException {
-        return getDoubleFromRegisterPair(getRegisterNumber(reg));
+     * @param number The register number to get the value of. Must be even.
+     * @throws InvalidRegisterAccessException if the register ID is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun getDoubleFromRegisterPair(number: Int): Double {
+        if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
+            throw InvalidRegisterAccessException()
+        val bits = Binary.twoIntegersToLong(registers[number + 1].value, registers[number].value)
+        return java.lang.Double.longBitsToDouble(bits)
     }
 
+    /**
+     * Gets the double value stored in the given even-numbered FPU register.
+     *
+     * @param name The register name to get the value of. Must be even.
+     * @throws InvalidRegisterAccessException if the register is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun getDoubleFromRegisterPair(name: String): Double {
+        return getDoubleFromRegisterPair(getRegisterNumber(name))
+    }
 
     /**
-     * Gets a long representing the double value stored in the given double
-     * precision FPU register.
+     * Get a long representing the double value stored in the given double-precision FPU register.
      * The register must be even-numbered.
      *
-     * @param reg Register to get the value of. Must be even number of even/odd pair.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
+     * @param number The register number to get the value of. Must be even-numbered.
+     * @throws InvalidRegisterAccessException if the register is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun getLongFromRegisterPair(number: Int): Long {
+        if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
+            throw InvalidRegisterAccessException()
+        return Binary.twoIntegersToLong(registers[number + 1].value, registers[number].value)
+    }
 
-    public static long getLongFromRegisterPair(int reg)
-            throws InvalidRegisterAccessException {
-        double result = 0.0;
-        if (reg % 2 != 0) {
-            throw new InvalidRegisterAccessException();
+    /**
+     * Get the double value stored in the given even-numbered FPU register.
+     *
+     * @param name The register name to get the value of. Must be even.
+     * @throws InvalidRegisterAccessException if the register is invalid or odd-numbered.
+     */
+    @JvmStatic
+    @Throws(InvalidRegisterAccessException::class)
+    fun getLongFromRegisterPair(name: String): Long {
+        return getLongFromRegisterPair(getRegisterNumber(name))
+    }
+
+    /**
+     * Update the value of a numbered FPU register.
+     * The registers hold int values only; use the helper methods to get or set an integer, long, float, or double.
+     *
+     * @param number The FPU register to set the value of.
+     * @param newValue The desired new integer value for the register.
+     * @return The old value of the register.
+     */
+    @JvmStatic
+    fun updateRegister(number: Int, newValue: Int): Int {
+        var oldValue = 0
+        registers.firstOrNull {
+            it.number == number
+        }?.let {
+            val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+            val backStepper = Globals.program.getBackStepper()
+            oldValue = if (isBackStepperEnabled)
+                backStepper!!.addCoprocessor1Restore(number, it.setValue(newValue))
+            else it.setValue(newValue)
         }
-        return Binary.twoIntegersToLong(registers[reg + 1].getValue(), registers[reg].getValue());
+        return oldValue
     }
 
+    /**
+     * Return the raw integer value of the numbered FPU register.
+     * If you need a float, use [java.lang.Float.intBitsToFloat] to get the equivalent float value.
+     *
+     * @param number The numbered FPU register to get.
+     * @return The raw integer value of the given register.
+     */
+    @JvmStatic
+    fun getValue(number: Int): Int = registers[number].value
 
     /**
-     * Gets the double value stored in the given FPU register.  The register
-     * must be even-numbered.
+     * Get the number of the register from its string name.
      *
-     * @param reg Register to get the value of. Must be even number of even/odd pair.
-     * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
-     **/
+     * @param name The name of the register to get the number for.
+     * @return The number of the named register.
+     */
+    @JvmStatic
+    fun getRegisterNumber(name: String): Int = registers.firstOrNull { it.name == name }?.number ?: -1
 
-    public static long getLongFromRegisterPair(String reg)
-            throws InvalidRegisterAccessException {
-        return getLongFromRegisterPair(getRegisterNumber(reg));
+    /**
+     * Get the Register object corresponding to the given name, or null if not found.
+     *
+     * @param name The FPU register name. Must be formatted as "$f(n)" where "(n)" is a number between 0 and 31.
+     * @return The register object, or null if not found.
+     */
+    @JvmStatic
+    fun getRegister(name: String): Register? {
+        // Validate register name
+        if (!name.startsWith("\$f") || name.length <= 3) return null
+        // Try to get the value
+        return try {
+            registers[Binary.stringToInt(name.substring(2))]
+        } catch (ignored: Exception) {
+            // Handles both NumberFormatException and ArrayIndexOutOfBoundsException
+            null
+        }
     }
 
+    /**
+     * Reset the values of the FPU registers.
+     */
+    @JvmStatic
+    fun resetRegisters() {
+        registers.forEach(Register::resetValue)
+        clearConditionFlags()
+    }
 
     /**
-     * This method updates the FPU register value who's number is num.  Note the
-     * registers themselves hold an int value.  There are helper methods available
-     * to which you can give a float or double to store.
+     * Add an Observer to all FPU registers.
      *
-     * @param num FPU register to set the value of.
-     * @param val The desired int value for the register.
-     **/
+     * @param observer The Observer to add to all FPU registers.
+     */
+    @JvmStatic
+    fun addObserver(observer: Observer) {
+        registers.forEach { it.addObserver(observer) }
+    }
 
-    public static int updateRegister(int num, int val) {
-        int old = 0;
-        for (Register register : registers) {
-            if (register.getNumber() == num) {
-                old = (Globals.getSettings().getBackSteppingEnabled())
-                        ? Globals.program.getBackStepper().addCoprocessor1Restore(num, register.setValue(val))
-                        : register.setValue(val);
-                break;
+    @Deprecated("Renamed to addObserver.", ReplaceWith("addObserver(observer)"))
+    @JvmStatic
+    fun addRegisterObserver(observer: Observer) = addObserver(observer)
+
+    /**
+     * Remove an Observer from all FPU registers.
+     *
+     * @param observer The Observer to remove from all FPU registers.
+     */
+    @JvmStatic
+    fun removeObserver(observer: Observer) {
+        registers.forEach { it.deleteObserver(observer) }
+    }
+
+    @Deprecated("Renamed to removeObserver.", ReplaceWith("removeObserver(observer)"))
+    @JvmStatic
+    fun deleteRegisterObserver(observer: Observer) = removeObserver(observer)
+
+    /**
+     * Set a condition flag to 1 (true).
+     *
+     * @param flag The condition flag number, in range from 0 to 7.
+     * @return The previous flag setting (0 or 1).
+     */
+    @JvmStatic
+    fun setConditionFlag(flag: Int): Int {
+        var oldValue = 0
+        if (flag in 0..<conditionFlagCount) {
+            val isBackSteppingEnabled = Globals.settings.getBackSteppingEnabled()
+            val backStepper = Globals.program.getBackStepper()
+            oldValue = getConditionFlag(flag)
+            condition.setValue(Binary.setBit(condition.getValue(), flag))
+            if (isBackSteppingEnabled) {
+                if (oldValue == 0) backStepper!!.addConditionFlagClear(flag)
+                else backStepper!!.addConditionFlagSet(flag)
             }
         }
-        return old;
+        return oldValue
     }
 
     /**
-     * Returns the value of the FPU register who's number is num.  Returns the
-     * raw int value actually stored there.  If you need a float, use
-     * Float.intBitsToFloat() to get the equivent float.
+     * Set a condition flag to 0 (false).
      *
-     * @param num The FPU register number.
-     * @return The int value of the given register.
-     **/
-
-    public static int getValue(int num) {
-        return registers[num].getValue();
-    }
-
-    /**
-     * For getting the number representation of the FPU register.
-     *
-     * @param n The string formatted register name to look for.
-     * @return The number of the register represented by the string.
-     **/
-
-    public static int getRegisterNumber(String n) {
-        int j = -1;
-        for (Register register : registers) {
-            if (register.getName().equals(n)) {
-                j = register.getNumber();
-                break;
+     * @param flag The condition flag number, in range from 0 to 7.
+     * @return The previous flag setting (0 or 1).
+     */
+    @JvmStatic
+    fun clearConditionFlag(flag: Int): Int {
+        var oldValue = 0
+        if (flag in 0..<conditionFlagCount) {
+            val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+            val backStepper = Globals.program.getBackStepper()
+            oldValue = getConditionFlag(flag)
+            condition.setValue(Binary.clearBit(condition.getValue(), flag))
+            if (isBackStepperEnabled) {
+                if (oldValue == 0) backStepper!!.addConditionFlagClear(flag)
+                else backStepper!!.addConditionFlagSet(flag)
             }
         }
-        return j;
+        return oldValue
     }
 
     /**
-     * For returning the set of registers.
+     * Get the value of the specified condition flag (in range 0 to 7).
      *
-     * @return The set of registers.
-     **/
-
-    public static Register[] getRegisters() {
-        return registers;
-    }
-
-    /**
-     * Get register object corresponding to given name.  If no match, return null.
-     *
-     * @param rName The FPU register name, must be "$f0" through "$f31".
-     * @return The register object,or null if not found.
-     **/
-
-    public static Register getRegister(String rName) {
-        Register reg = null;
-        if (rName.charAt(0) == '$' && rName.length() > 1 && rName.charAt(1) == 'f') {
-            try {
-                // check for register number 0-31.
-                reg = registers[Binary.stringToInt(rName.substring(2))];    // KENV 1/6/05
-            } catch (Exception ignored) {
-                // handles both NumberFormat and ArrayIndexOutOfBounds
-            }
-        }
-        return reg;
-    }
-
-
-    /**
-     * Method to reinitialize the values of the registers.
-     **/
-
-    public static void resetRegisters() {
-        for (Register register : registers) register.resetValue();
-        clearConditionFlags();
-    }
-
-
-    /**
-     * Each register is a separate object and Observable.  This handy method
-     * will add the given Observer to each one.
+     * @param flag The condition flag number, in range from 0 to 7.
+     * @return Zero if the condition flag is false, 1 if the condition flag is true. If the flag is out of range, it
+     * will instead return the value of flag 0.
      */
-    public static void addRegisterObserver(Observer observer) {
-        for (Register register : registers) {
-            register.addObserver(observer);
-        }
-    }
-
-
-    /**
-     * Each register is a separate object and Observable.  This handy method
-     * will delete the given Observer from each one.
-     */
-    public static void deleteRegisterObserver(Observer observer) {
-        for (Register register : registers) {
-            register.deleteObserver(observer);
-        }
+    @JvmStatic
+    fun getConditionFlag(flag: Int): Int {
+        var flag = flag
+        if (flag !in 0..<conditionFlagCount) flag = 0
+        return Binary.bitValue(condition.getValue(), flag)
     }
 
     /**
-     * Set condition flag to 1 (true).
-     *
-     * @param flag condition flag number (0-7)
-     * @return previous flag setting (0 or 1)
+     * Get the whole condition flag register value.
      */
-    public static int setConditionFlag(int flag) {
-        int old = 0;
-        if (flag >= 0 && flag < numConditionFlags) {
-            old = getConditionFlag(flag);
-            condition.setValue(Binary.setBit(condition.getValue(), flag));
-            if (Globals.getSettings().getBackSteppingEnabled())
-                if (old == 0) {
-                    Globals.program.getBackStepper().addConditionFlagClear(flag);
-                } else {
-                    Globals.program.getBackStepper().addConditionFlagSet(flag);
-                }
-        }
-        return old;
+    @JvmStatic
+    fun getConditionFlags(): Int = condition.getValue()
+
+    /**
+     * Clear all condition flags.
+     */
+    @JvmStatic
+    fun clearConditionFlags() {
+        condition.setValue(0)
     }
 
     /**
-     * Set condition flag to 0 (false).
-     *
-     * @param flag condition flag number (0-7)
-     * @return previous flag setting (0 or 1)
+     * Set all condition flags.
      */
-    public static int clearConditionFlag(int flag) {
-        int old = 0;
-        if (flag >= 0 && flag < numConditionFlags) {
-            old = getConditionFlag(flag);
-            condition.setValue(Binary.clearBit(condition.getValue(), flag));
-            if (Globals.getSettings().getBackSteppingEnabled())
-                if (old == 0) {
-                    Globals.program.getBackStepper().addConditionFlagClear(flag);
-                } else {
-                    Globals.program.getBackStepper().addConditionFlagSet(flag);
-                }
-        }
-        return old;
-    }
-
-
-    /**
-     * Get value of specified condition flag (0-7).
-     *
-     * @param flag condition flag number (0-7)
-     * @return Zero if condition is false, 1 if condition is true
-     */
-    public static int getConditionFlag(int flag) {
-        if (flag < 0 || flag >= numConditionFlags)
-            flag = 0;
-        return Binary.bitValue(condition.getValue(), flag);
-    }
-
-
-    /**
-     * Get array of condition flags (0-7).
-     *
-     * @return int condition flags
-     */
-    public static int getConditionFlags() {
-        return condition.getValue();
-    }
-
-
-    /**
-     * Clear all condition flags (0-7).
-     */
-    public static void clearConditionFlags() {
-        condition.setValue(0);  // sets all 32 bits to 0.
-    }
-
-    /**
-     * Set all condition flags (0-7).
-     */
-    public static void setConditionFlags() {
-        condition.setValue(-1);  // sets all 32 bits to 1.
-    }
-
-    /**
-     * Get count of condition flags.
-     *
-     * @return number of condition flags
-     */
-    public static int getConditionFlagCount() {
-        return numConditionFlags;
+    @JvmStatic
+    fun setConditionFlags() {
+        condition.setValue(-1)
     }
 }

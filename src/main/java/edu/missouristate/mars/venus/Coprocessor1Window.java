@@ -53,7 +53,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         flagsPane.setToolTipText(
                 "flags are used by certain floating point instructions, default flag is 0");
         flagsPane.add(new JLabel("Condition Flags", JLabel.CENTER), BorderLayout.NORTH);
-        int numFlags = Coprocessor1.getConditionFlagCount();
+        int numFlags = Coprocessor1.conditionFlagCount;
         conditionFlagCheckBox = new JCheckBox[numFlags];
         JPanel checksPane = new JPanel(new GridLayout(2, numFlags / 2));
         for (int i = 0; i < numFlags; i++) {
