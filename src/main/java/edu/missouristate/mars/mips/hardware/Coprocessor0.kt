@@ -1,196 +1,173 @@
-package edu.missouristate.mars.mips.hardware;
+/*
+ * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2023-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.Globals;
+@file:Suppress("DEPRECATION")
 
-import java.util.Observer;
+package edu.missouristate.mars.mips.hardware
+
+import edu.missouristate.mars.Globals
+import java.util.Observer
 
 /**
- * Represents Coprocessor 0.  We will use only its interrupt/exception registers.
- *
- * @author Pete Sanderson
- * @version August 2005
+ * Represents the first coprocessor. It is only used for interrupt and exception registers.
  */
-public class Coprocessor0 {
+object Coprocessor0 {
+    /* Coprocessor 0 register names */
+    const val VADDR = 8
+    const val STATUS = 12
+    const val CAUSE = 13
+    const val EPC = 14
+
+    // The bit position in the STATUS register.
+    // Bits 8-15 (mask for interrupt levels) are all set,
+    // bit 4 (user mode) is set, bit 1 (exception level) is not set, and bit 0 (interrupt enable) is set.
+    const val EXCEPTION_LEVEL = 1
+    const val DEFAULT_STATUS_VALUE = 0x0000FF11
+
+    @JvmStatic
+    val registers = arrayOf(
+        Register("$8 (vaddr)", 8, 0),
+        Register("$12 (status)", 12, DEFAULT_STATUS_VALUE),
+        Register("$13 (cause)", 13, 0),
+        Register("$14 (epc)", 14, 0)
+    )
+
+    /** Display the register values for debugging. */
+    @JvmStatic
+    fun showRegisters() {
+        for (register in registers) {
+            println("Name: ${register.name}")
+            println("Number: ${register.number}")
+            println("Value: ${register.value}")
+            println()
+        }
+    }
+
     /**
-     * Coprocessor register names
+     * Set the value of the given named register to the given new value.
+     *
+     * @param registerName The name of the register to set the value of (`$n`, where n is the register number).
+     * @param newValue The desired value for the register.
+     * @return The old value of the register prior to the update operation; 0 if the register is not found.
      */
-    public static final int VADDR = 8;
-    public static final int STATUS = 12;
-    public static final int CAUSE = 13;
-    public static final int EPC = 14;
-
-    public static final int EXCEPTION_LEVEL = 1;  // bit position in STATUS register
-    // bits 8-15 (mask for interrupt levels) all set, bit 4 (user mode) set,
-    // bit 1 (exception level) not set, bit 0 (interrupt enable) set.
-    public static final int DEFAULT_STATUS_VALUE = 0x0000FF11;
-
-    private static final Register[] registers =
-            {new Register("$8 (vaddr)", 8, 0),
-                    new Register("$12 (status)", 12, DEFAULT_STATUS_VALUE),
-                    new Register("$13 (cause)", 13, 0),
-                    new Register("$14 (epc)", 14, 0)
-            };
-
+    @JvmStatic
+    fun updateRegister(registerName: String, newValue: Int): Int =
+        registers.firstOrNull {
+            "$${it.number}" == registerName || it.name == registerName
+        }?.let {
+            val oldValue = it.value
+            it.value = newValue
+            return oldValue
+        } ?: 0
 
     /**
-     * Method for displaying the register values for debugging.
-     **/
-
-    public static void showRegisters() {
-        for (Register register : registers) {
-            System.out.println("Name: " + register.getName());
-            System.out.println("Number: " + register.getNumber());
-            System.out.println("Value: " + register.getValue());
-            System.out.println();
-        }
-    }
-
-    /**
-     * Sets the value of the register given to the value given.
+     * Set the value of the given register number to the given new value.
      *
-     * @param n   name of register to set the value of ($n, where n is reg number).
-     * @param val The desired value for the register.
-     * @return old value in register prior to update
-     **/
-
-    public static int updateRegister(String n, int val) {
-        int oldValue = 0;
-        for (Register register : registers) {
-            if (("$" + register.getNumber()).equals(n) || register.getName().equals(n)) {
-                oldValue = register.getValue();
-                register.setValue(val);
-                break;
-            }
-        }
-        return oldValue;
-    }
-
-    /**
-     * This method updates the register value who's number is num.
-     *
-     * @param num Number of register to set the value of.
-     * @param val The desired value for the register.
-     * @return old value in register prior to update
-     **/
-    public static int updateRegister(int num, int val) {
-        int old = 0;
-        for (Register register : registers) {
-            if (register.getNumber() == num) {
-                old = (Globals.getSettings().getBackSteppingEnabled())
-                        ? Globals.program.getBackStepper().addCoprocessor0Restore(num, register.setValue(val))
-                        : register.setValue(val);
-                break;
-            }
-        }
-        return old;
-    }
-
-
-    /**
-     * Returns the value of the register who's number is num.
-     *
-     * @param num The register number.
-     * @return The value of the given register. Zero for non-implemented registers
-     **/
-
-    public static int getValue(int num) {
-        for (Register register : registers) {
-            if (register.getNumber() == num) {
-                return register.getValue();
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * For getting the number representation of the register.
-     *
-     * @param n The string formatted register name to look for.
-     * @return The number of the register represented by the string. -1 if no match.
-     **/
-
-    public static int getNumber(String n) {
-        for (Register register : registers) {
-            if (("$" + register.getNumber()).equals(n) || register.getName().equals(n)) {
-                return register.getNumber();
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * For returning the set of registers.
-     *
-     * @return The set of registers.
-     **/
-
-    public static Register[] getRegisters() {
-        return registers;
-    }
-
-
-    /**
-     * Coprocessor0 implements only selected registers, so the register number
-     * (8, 12, 13, 14) does not correspond to its position in the list of registers
-     * (0, 1, 2, 3).
-     *
-     * @param r A coprocessor0 Register
-     * @return the list position of given register, -1 if not found.
-     **/
-
-    public static int getRegisterPosition(Register r) {
-        for (int i = 0; i < registers.length; i++) {
-            if (registers[i] == r) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Get register object corresponding to given name.  If no match, return null.
-     *
-     * @param rname The register name,  in $0 format.
-     * @return The register object,or null if not found.
-     **/
-
-    public static Register getRegister(String rname) {
-        for (Register register : registers) {
-            if (("$" + register.getNumber()).equals(rname) || register.getName().equals(rname)) {
-                return register;
-            }
-        }
-        return null;
-    }
-
-
-    /**
-     * Method to reinitialize the values of the registers.
-     **/
-
-    public static void resetRegisters() {
-        for (Register register : registers) {
-            register.resetValue();
-        }
-    }
-
-    /**
-     * Each register is a separate object and Observable.  This handy method
-     * will add the given Observer to each one.
+     * @param registerNumber The register number to set the value of.
+     * @param newValue The desired value for the register.
+     * @return The old value of the register prior to the update operation; 0 if the register is not found.
      */
-    public static void addRegisterObserver(Observer observer) {
-        for (Register register : registers) {
-            register.addObserver(observer);
-        }
+    @JvmStatic
+    fun updateRegister(registerNumber: Int, newValue: Int): Int {
+        val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+        val backStepper = Globals.program.getBackStepper()
+        return registers.firstOrNull { it.number == registerNumber }?.let {
+            val oldValue =
+                if (isBackStepperEnabled)
+                    backStepper!!.addCoprocessor0Restore(registerNumber, it.setValue(newValue))
+               else it.setValue(newValue)
+            return oldValue
+        } ?: 0
     }
 
     /**
-     * Each register is a separate object and Observable.  This handy method
-     * will delete the given Observer from each one.
+     * Return the value of the register numbered [registerNumber].
+     *
+     * @param registerNumber The register number.
+     * @return The value of the given register; 0 for non-implemented registers.
      */
-    public static void deleteRegisterObserver(Observer observer) {
-        for (Register register : registers) {
-            register.deleteObserver(observer);
-        }
-    }
+    @JvmStatic
+    fun getValue(registerNumber: Int): Int = registers.firstOrNull {
+        it.number == registerNumber
+    }?.value ?: 0
+
+    /**
+     * Return the value of the register named [registerName].
+     *
+     * @param registerName The String-formatted register name to look for.
+     * @return The number of the register represented by the string; -1 if no matching register was found.
+     */
+    @JvmStatic
+    fun getNumber(registerName: String): Int =
+        registers.firstOrNull {
+            "$${it.number}" == registerName || it.name == registerName
+        }?.number ?: -1
+
+    /**
+     * Coprocessor0 only implements some registers, so the register number (8, 12, 13, or 14) does not correspond to its
+     * position in the list of registers (0, 1, 2, or 3).
+     *
+     * @param register A Coprocessor0 register.
+     * @return The list position of the register; -1 if not found.
+     */
+    @JvmStatic
+    fun getRegisterPosition(register: Register) = registers.indexOf(register)
+
+    /**
+     * Get the Register corresponding to the given register name. If no match, returns null.
+     *
+     * @param registerName The register name, in $0 format.
+     * @return The Register object, or null if not found.
+     */
+    @JvmStatic
+    fun getRegister(registerName: String): Register? =
+        registers.firstOrNull { "$${it.number}" == registerName || it.name == registerName }
+
+    /**
+     * Reset the values of the Coprocessor0 registers.
+     */
+    @JvmStatic
+    fun resetRegisters() = registers.forEach { it.resetValue() }
+
+    /**
+     * Each register is a separate object and Observable.
+     * This method adds the given Observer to each register.
+     *
+     * @param observer The new Observer to add to all Coprocessor0 registers.
+     */
+    @JvmStatic
+    fun addObserver(observer: Observer) = registers.forEach { it.addObserver(observer) }
+
+    @Deprecated("Renamed to addObserver.", ReplaceWith("addObserver(observer)"))
+    @JvmStatic
+    fun addRegisterObserver(observer: Observer) = addObserver(observer)
+
+    /**
+     * Each register is a separate object and Observable.
+     * This method deletes the given Observer from each register.
+     */
+    @JvmStatic
+    fun removeObserver(observer: Observer) = registers.forEach { it.deleteObserver(observer) }
+
+    @Deprecated("Renamed to removeObserver.", ReplaceWith("removeObserver(observer)"))
+    @JvmStatic
+    fun deleteRegisterObserver(observer: Observer) = removeObserver(observer)
 }
