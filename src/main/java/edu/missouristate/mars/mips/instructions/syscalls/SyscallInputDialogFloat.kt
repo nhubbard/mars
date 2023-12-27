@@ -1,30 +1,23 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-
-import javax.swing.*;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.Coprocessor1.setRegisterToFloat
+import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
+import edu.missouristate.mars.mips.hardware.RegisterFile.updateRegister
+import javax.swing.JOptionPane
 
 /**
  * Service to input data.
  */
-
-public class SyscallInputDialogFloat extends AbstractSyscall {
-    /**
-     * Build an instance of the syscall with its default service number and name.
-     */
-    public SyscallInputDialogFloat() {
-        super(52, "InputDialogFloat");
-    }
-
+class SyscallInputDialogFloat : AbstractSyscall(52, "InputDialogFloat") {
     /**
      * System call to input data.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    @Throws(ProcessingException::class)
+    override fun simulate(statement: ProgramStatement) {
         // Input arguments: $a0 = address of null-terminated string that is the message to user
         // Outputs:
         //    $f0 contains value of float read
@@ -33,66 +26,43 @@ public class SyscallInputDialogFloat extends AbstractSyscall {
         //       -1: input data cannot be correctly parsed
         //       -2: Cancel was chosen
         //       -3: OK was chosen but no data had been input into field
-
-
-        String message = ""; // = "";
-        int byteAddress = RegisterFile.getValue(4);
-        char[] ch = {' '}; // Need an array to convert to String
+        var message = ""
+        var byteAddress = getValue(4)
+        val ch = charArrayOf(' ')
         try {
-            ch[0] = (char) Globals.memory.getByte(byteAddress);
-            while (ch[0] != 0) // only uses single location ch[0]
-            {
-                message = message.concat(new String(ch)); // parameter to String constructor is a char[] array
-                byteAddress++;
-                ch[0] = (char) Globals.memory.getByte(byteAddress);
+            ch[0] = Globals.memory.getByte(byteAddress).toChar()
+            while (ch[0].code != 0) {
+                message += String(ch)
+                byteAddress++
+                ch[0] = Globals.memory.getByte(byteAddress).toChar()
             }
-        } catch (AddressErrorException e) {
-            throw new ProcessingException(statement, e);
+        } catch (e: AddressErrorException) {
+            throw ProcessingException(statement, e)
         }
 
         // Values returned by Java's InputDialog:
         // A null return value means that "Cancel" was chosen rather than OK.
         // An empty string returned (that is, inputValue.length() of zero)
         // means that OK was chosen but no string was input.
-        String inputValue;
-        inputValue = JOptionPane.showInputDialog(message);
+        val inputValue = JOptionPane.showInputDialog(message)
 
         try {
-            Coprocessor1.setRegisterToFloat(0, (float) 0.0);  // set $f0 to zero
-            if (inputValue == null)  // Cancel was chosen
-            {
-                RegisterFile.updateRegister(5, -2);  // set $a1 to -2 flag
-            } else if (inputValue.isEmpty())  // OK was chosen but there was no input
-            {
-                RegisterFile.updateRegister(5, -3);  // set $a1 to -3 flag
+            setRegisterToFloat(0, 0.0.toFloat()) // set $f0 to zero
+            if (inputValue == null) {
+                // Cancel was chosen
+                updateRegister(5, -2) // set $a1 to -2 flag
+            } else if (inputValue.isEmpty()) {
+                // OK was chosen but there was no input
+                updateRegister(5, -3) // set $a1 to -3 flag
             } else {
-
-                float floatValue = Float.parseFloat(inputValue);
-
-                //System.out.println("SyscallInputDialogFloat: floatValue is " + floatValue);
-
+                val floatValue = inputValue.toFloat()
                 // Successful parse of valid input data
-                Coprocessor1.setRegisterToFloat(0, floatValue);  // set $f0 to input data
-                RegisterFile.updateRegister(5, 0);  // set $a1 to valid flag
-
+                setRegisterToFloat(0, floatValue) // set $f0 to input data
+                updateRegister(5, 0) // set $a1 to valid flag
             }
-
-        } // end try block
-
-
-        catch (NumberFormatException e)    // Unsuccessful parse of input data
-        {
-            RegisterFile.updateRegister(5, -1);  // set $a1 to -1 flag
-
-                   /*  Don't throw exception because returning a status flag
-                   throw new ProcessingException(statement,
-                      "invalid float input (syscall "+this.getNumber()+")",
-						          Exceptions.SYSCALL_EXCEPTION);
-                   */
-
+        } catch (e: NumberFormatException) {
+            // Unsuccessful parse of input data
+            updateRegister(5, -1) // set $a1 to -1 flag
         }
-
-
     }
-
 }

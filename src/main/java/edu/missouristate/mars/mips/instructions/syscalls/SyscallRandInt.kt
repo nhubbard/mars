@@ -1,38 +1,30 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-
-import java.util.Random;
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
+import edu.missouristate.mars.mips.hardware.RegisterFile.updateRegister
+import java.util.*
 
 /**
  * Service to return a random integer.
  */
-
-public class SyscallRandInt extends AbstractSyscall {
+class SyscallRandInt : AbstractSyscall(41, "RandInt") {
     /**
-     * Build an instance of the syscall with its default service number and name.
-     */
-    public SyscallRandInt() {
-        super(41, "RandInt");
-    }
-
-    /**
-     * System call to the random number generator.
+     * System call to get a random integer from the random number generator.
      * Return in $a0 the next pseudorandom, uniformly distributed int value from this random number generator's sequence.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    @Throws(ProcessingException::class)
+    override fun simulate(statement: ProgramStatement) {
         // Input arguments: $a0 = index of pseudorandom number generator
         // Return: $a0 = the next pseudorandom, uniformly distributed int value from this random number generator's sequence.
-        Integer index = RegisterFile.getValue(4);
-        Random stream = (Random) RandomStreams.randomStreams.get(index);
+        val index = getValue(4)
+        var stream = RandomStreams.randomStreams[index]
         if (stream == null) {
-            stream = new Random(); // create a non-seeded stream
-            RandomStreams.randomStreams.put(index, stream);
+            stream = Random() // create a non-seeded stream
+            RandomStreams.randomStreams[index] = stream
         }
-        RegisterFile.updateRegister(4, stream.nextInt());
+        updateRegister(4, stream.nextInt())
     }
-
 }
 

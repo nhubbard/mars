@@ -1,29 +1,23 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-
-import javax.swing.*;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
+import edu.missouristate.mars.mips.hardware.RegisterFile.updateRegister
+import javax.swing.JOptionPane
+import kotlin.math.min
 
 /**
  * Service to input data.
  */
-
-public class SyscallInputDialogString extends AbstractSyscall {
-    /**
-     * Build an instance of the syscall with its default service number and name.
-     */
-    public SyscallInputDialogString() {
-        super(54, "InputDialogString");
-    }
-
+class SyscallInputDialogString : AbstractSyscall(54, "InputDialogString") {
     /**
      * System call to input data.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    @Throws(ProcessingException::class)
+    override fun simulate(statement: ProgramStatement) {
         // Input arguments:
         //    $a0 = address of null-terminated string that is the message to user
         //    $a1 = address of input buffer for the input string
@@ -34,65 +28,64 @@ public class SyscallInputDialogString extends AbstractSyscall {
         //       -1: input data cannot be correctly parsed
         //       -2: Cancel was chosen
         //       -3: OK was chosen but no data had been input into field
-
-
-        String message = ""; // = "";
-        int byteAddress = RegisterFile.getValue(4); // byteAddress of string is in $a0
-        char[] ch = {' '}; // Need an array to convert to String
+        var message = ""
+        var byteAddress = getValue(4)
+        val ch = charArrayOf(' ')
         try {
-            ch[0] = (char) Globals.memory.getByte(byteAddress);
-            while (ch[0] != 0) // only uses single location ch[0]
-            {
-                message = message.concat(new String(ch)); // parameter to String constructor is a char[] array
-                byteAddress++;
-                ch[0] = (char) Globals.memory.getByte(byteAddress);
+            ch[0] = Globals.memory.getByte(byteAddress).toChar()
+            while (ch[0].code != 0) {
+                message += String(ch)
+                byteAddress++
+                ch[0] = Globals.memory.getByte(byteAddress).toChar()
             }
-        } catch (AddressErrorException e) {
-            throw new ProcessingException(statement, e);
+        } catch (e: AddressErrorException) {
+            throw ProcessingException(statement, e)
         }
 
         // Values returned by Java's InputDialog:
         // A null return value means that "Cancel" was chosen rather than OK.
         // An empty string returned (that is, inputString.length() of zero)
         // means that OK was chosen but no string was input.
-        String inputString;
-        inputString = JOptionPane.showInputDialog(message);
-        byteAddress = RegisterFile.getValue(5); // byteAddress of string is in $a1
-        int maxLength = RegisterFile.getValue(6); // input buffer size for input string is in $a2
+        val inputString = JOptionPane.showInputDialog(message)
+        byteAddress = getValue(5) // byteAddress of string is in $a1
+        val maxLength = getValue(6) // input buffer size for input string is in $a2
 
         try {
-            if (inputString == null)  // Cancel was chosen
-            {
-                RegisterFile.updateRegister(5, -2);  // set $a1 to -2 flag
-            } else if (inputString.isEmpty())  // OK was chosen but there was no input
-            {
-                RegisterFile.updateRegister(5, -3);  // set $a1 to -3 flag
+            if (inputString == null) {
+                // Cancel was chosen
+                updateRegister(5, -2) // set $a1 to -2 flag
+            } else if (inputString.isEmpty()) {
+                // OK was chosen but there was no input
+                updateRegister(5, -3) // set $a1 to -3 flag
             } else {
-                // The buffer will contain characters, a '\n' character, and the null character
-                // Copy the input data to buffer as space permits
-                for (int index = 0; (index < inputString.length()) && (index < maxLength - 1); index++) {
-                    Globals.memory.setByte(byteAddress + index,
-                            inputString.charAt(index));
+                // The buffer will contain characters, a '\n' character, and the null character.
+                // Copy the input data to the buffer as space permits.
+                var index = 0
+                while ((index < inputString.length) && (index < maxLength - 1)) {
+                    Globals.memory.setByte(byteAddress + index, inputString[index].code)
+                    index++
                 }
-                if (inputString.length() < maxLength - 1) {
-                    Globals.memory.setByte(byteAddress + Math.min(inputString.length(), maxLength - 2), '\n');  // newline at string end
+                if (inputString.length < maxLength - 1) {
+                    Globals.memory.setByte(
+                        (byteAddress + min(inputString.length.toDouble(),
+                        (maxLength - 2).toDouble())).toInt(),
+                        '\n'.code
+                    ) // newline at string end
                 }
-                Globals.memory.setByte(byteAddress + Math.min((inputString.length() + 1), maxLength - 1), 0);  // null char to end string
+                Globals.memory.setByte(
+                    (byteAddress + min((inputString.length + 1).toDouble(), (maxLength - 1).toDouble())).toInt(),
+                    0
+                ) // null char to end string
 
-                if (inputString.length() > maxLength - 1) {
+                if (inputString.length > maxLength - 1) {
                     //  length of the input string exceeded the specified maximum
-                    RegisterFile.updateRegister(5, -4);  // set $a1 to -4 flag
+                    updateRegister(5, -4) // set $a1 to -4 flag
                 } else {
-                    RegisterFile.updateRegister(5, 0);  // set $a1 to 0 flag
+                    updateRegister(5, 0) // set $a1 to 0 flag
                 }
-            } // end else
-
-        } // end try
-        catch (AddressErrorException e) {
-            throw new ProcessingException(statement, e);
+            }
+        } catch (e: AddressErrorException) {
+            throw ProcessingException(statement, e)
         }
-
-
     }
-
 }

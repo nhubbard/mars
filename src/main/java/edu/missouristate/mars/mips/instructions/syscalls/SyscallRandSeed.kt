@@ -1,39 +1,28 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-
-import java.util.Random;
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
+import java.util.*
 
 /**
  * Service to set seed for the underlying Java pseudorandom number generator. No values are returned.
  */
-
-public class SyscallRandSeed extends AbstractSyscall {
-    /**
-     * Build an instance of the syscall with its default service number and name.
-     */
-    public SyscallRandSeed() {
-        super(40, "RandSeed");
-    }
-
+class SyscallRandSeed : AbstractSyscall(40, "RandSeed") {
     /**
      * Set the seed of the underlying Java pseudorandom number generator.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    @Throws(ProcessingException::class)
+    override fun simulate(statement: ProgramStatement) {
         // Arguments: $a0 = index of pseudorandom number generator
         //   $a1 = seed for pseudorandom number generator.
-        // Result: No values are returned. Sets the seed of the underlying Java pseudorandom number generator.
-
-        Integer index = RegisterFile.getValue(4);
-        Random stream = (Random) RandomStreams.randomStreams.get(index);
+        // Result: No values are returned. Set the seed of the underlying Java pseudorandom number generator.
+        val index = getValue(4)
+        val stream = RandomStreams.randomStreams[index]
         if (stream == null) {
-            RandomStreams.randomStreams.put(index, new Random(RegisterFile.getValue(5)));
+            RandomStreams.randomStreams[index] = Random(getValue(5).toLong())
         } else {
-            stream.setSeed(RegisterFile.getValue(5));
+            stream.setSeed(getValue(5).toLong())
         }
     }
-
 }
-

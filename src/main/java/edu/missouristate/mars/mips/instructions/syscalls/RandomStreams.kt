@@ -1,19 +1,17 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import java.util.HashMap;
-import java.util.Random;
-
+import java.util.*
 
 /**
  * This small class serves only to hold a static HashMap for storing
  * random number generators for use by all the random number generator
  * syscalls.
  */
-
-public class RandomStreams {
+object RandomStreams {
     /**
      * Collection of pseudorandom number streams available for use in Rand-type syscalls.
-     * The streams are by default not seeded.
+     * The streams are not seeded by default.
      */
-    static final HashMap<Integer, Random> randomStreams = new HashMap<>();
+    @JvmField
+    val randomStreams: HashMap<Int, Random> = HashMap()
 }

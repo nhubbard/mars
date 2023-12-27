@@ -1,33 +1,23 @@
-package edu.missouristate.mars.mips.instructions.syscalls;
+package edu.missouristate.mars.mips.instructions.syscalls
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
-
+import edu.missouristate.mars.Globals.exitCode
+import edu.missouristate.mars.Globals.gui
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
 
 /**
  * Service to exit the MIPS program with return value given in $a0.  Ignored if running from GUI.
  */
-
-public class SyscallExit2 extends AbstractSyscall {
-    /**
-     * Build an instance of the Exit2 syscall.  Default service number
-     * is 17 and name is "Exit2".
-     */
-    public SyscallExit2() {
-        super(17, "Exit2");
-    }
-
+class SyscallExit2 : AbstractSyscall(17, "Exit2") {
     /**
      * Performs syscall function to exit the MIPS program with return value given in $a0.
      * If running in command mode, MARS will exit with that value.  If running under GUI,
      * return value is ignored.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
-        if (Globals.getGui() == null) {
-            Globals.setExitCode(RegisterFile.getValue(4));
-        }
-        throw new ProcessingException(); // empty error list
+    @Throws(ProcessingException::class)
+    override fun simulate(statement: ProgramStatement) {
+        if (gui == null) exitCode = getValue(4)
+        throw ProcessingException() // empty error list
     }
 }
