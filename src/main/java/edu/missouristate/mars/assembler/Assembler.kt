@@ -235,14 +235,14 @@ class Assembler {
                     // The subsequent ProgramStatement constructor needs the correct text segment address.
                     textAddress.set(statement.getAddress())
                     // Generate one basic instruction for each template in the list.
-                    for (instrNumber in templateList.indices) {
+                    for (instrNumber in templateList!!.indices) {
                         val instruction = ExtendedInstruction.makeTemplateSubstitutions(
                             fileCurrentlyBeingAssembled, templateList[instrNumber], theTokenList)
                         // Template substitution can result in no output. If this is the case, skip the rest of this
                         // iteration.
                         // This should only happen if template substitution was for "nop" instruction, but delayed
                         // branching is disabled, so the "nop" is not generated.
-                        if (instruction.isNullOrEmpty()) continue
+                        if (instruction.isEmpty()) continue
                         // All substitutions have been made, so we have generated a valid basic instruction.
                         if (Globals.debug) println("Generated pseudo-instruction: $instruction")
                         // For generated instruction: tokenize, build the program statement, and add to the list.
@@ -442,7 +442,7 @@ class Assembler {
      */
     private fun compactTranslationCanBeApplied(statement: ProgramStatement): Boolean =
         Globals.memory.usingCompactMemoryConfiguration &&
-            (statement.getInstruction() as? ExtendedInstruction)?.hasCompactTranslation() ?: false
+            (statement.getInstruction() as? ExtendedInstruction)?.hasCompactTranslation ?: false
 
     /**
      * Pre-process the token list for a statement by stripping off any comments.
