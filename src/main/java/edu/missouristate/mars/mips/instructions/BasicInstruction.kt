@@ -35,7 +35,7 @@ package edu.missouristate.mars.mips.instructions
  *                    interface.
  * @see SimulationCode
  */
-class BasicInstruction @JvmOverloads constructor(
+open class BasicInstruction @JvmOverloads constructor(
     example: String,
     /** A description of the instruction for the end-user. */
     override var description: String = "",

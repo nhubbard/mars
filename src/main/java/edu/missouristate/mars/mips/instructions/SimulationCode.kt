@@ -11,6 +11,7 @@ import edu.missouristate.mars.ProgramStatement
  * @author Pete Sanderson
  * @version August 2003
  */
+@FunctionalInterface
 interface SimulationCode {
     /**
      * Method to simulate the execution of a specific MIPS basic instruction.
@@ -21,3 +22,8 @@ interface SimulationCode {
     @Throws(ProcessingException::class)
     fun simulate(statement: ProgramStatement)
 }
+
+fun SimulationCode(block: (ProgramStatement) -> Unit): SimulationCode =
+    object : SimulationCode {
+        override fun simulate(statement: ProgramStatement) = block(statement)
+    }

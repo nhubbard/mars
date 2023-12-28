@@ -472,6 +472,13 @@ class ProgramStatement {
     fun getOperands(): IntArray? = operands
 
     /**
+     * @return int array of operand values (if any) required by this statement's operator. If null, throws
+     * ProcessingException.
+     */
+    fun getOperandsOrThrow(): IntArray =
+        operands ?: throw ProcessingException(this, "Failed to get operands for instruction!")
+
+    /**
      * @param i Operand position in the array (first operand is position 0).
      * @return Operand value at given operand array position.  If < 0 or >= numOperands, it returns -1.
      */
