@@ -19,28 +19,35 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
+package edu.missouristate.mars.mips.instructions.impl.math.doubleprecision
 
-import edu.missouristate.mars.bitsToFloat
-import edu.missouristate.mars.inIntRange
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import kotlin.math.floor
+import edu.missouristate.mars.toLongBits
+import edu.missouristate.mars.util.Binary
 
-class TruncateSinglePrecisionFloatToWord : BasicInstruction(
-    "trunc.w.s \$f0,\$f1",
-    "Truncate single-precision float to word: set \$f0 to single-precision float in \$f1 truncated to a 32-bit bit integer",
+class DoubleAdd : BasicInstruction(
+    "add.d \$f2,\$f4,\$f6",
+    "Floating-point addition, double precision: set \$f2 to double-precision floating point value of \$f4 plus \$f6",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 00000 sssss fffff 001101",
+    "010001 10001 ttttt sssss fffff 000000",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        // TODO: Check if this is identical to original implementation, which casts the float to an int
-        //       "because it rounds towards zero, the correct action".
-        var truncate = floor(floatValue).toInt()
-        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) truncate = Int.MAX_VALUE
-        Coprocessor1.updateRegister(operands[0], truncate)
+        if (operands.any { o -> o % 2 == 1 }) throw ProcessingException(it, "All registers must be even-numbered!")
+        val add1 = Binary.twoIntegersToLong(
+            Coprocessor1.getValue(operands[1] + 1),
+            Coprocessor1.getValue(operands[1])
+        ).bitsToDouble()
+        val add2 = Binary.twoIntegersToLong(
+            Coprocessor1.getValue(operands[2] + 1),
+            Coprocessor1.getValue(operands[2])
+        ).bitsToDouble()
+        val sum = (add1 + add2).toLongBits()
+        Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(sum))
+        Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(sum))
     }
 )

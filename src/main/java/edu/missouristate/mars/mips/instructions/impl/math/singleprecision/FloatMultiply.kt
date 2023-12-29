@@ -28,16 +28,16 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.toIntBits
 
-class FloatSubtractSinglePrecision : BasicInstruction(
-    "sub.s \$f0,\$f1,\$f3",
-    "Floating-point subtraction, single precision: set \$f0 to single-precision floating point value of \$f1 - \$f3",
+class FloatMultiply : BasicInstruction(
+    "mul.s \$f0,\$f1,\$f3",
+    "Floating-point multiplication, single precision: set \$f0 to single-precision floating point value of \$f1 times \$f3",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 ttttt sssss fffff 000001",
+    "010001 10000 ttttt sssss fffff 000010",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        val sub1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        val sub2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
-        val diff = sub1 - sub2
-        Coprocessor1.updateRegister(operands[0], diff.toIntBits())
+        val mul1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        val mul2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
+        val prod = mul1 * mul2
+        Coprocessor1.updateRegister(operands[0], prod.toIntBits())
     }
 )

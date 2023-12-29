@@ -19,23 +19,22 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.mips.instructions.impl.branches
 
-fun Boolean.toInt(): Int = if (this) 1 else 0
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.SimulationCode
 
-fun Int.signExtend(i: Int = 16): Int = this shl i shr i
-fun Int.bitsToFloat(): Float = java.lang.Float.intBitsToFloat(this)
-
-fun Long.bitsToDouble(): Double = java.lang.Double.longBitsToDouble(this)
-
-fun Float.toIntBits(): Int = java.lang.Float.floatToIntBits(this)
-fun Float.toRawIntBits(): Int = java.lang.Float.floatToRawIntBits(this)
-
-fun Float.inIntRange(): Boolean = this in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
-
-fun Double.toLongBits(): Long = java.lang.Double.doubleToLongBits(this)
-fun Double.toRawLongBits(): Long = java.lang.Double.doubleToRawLongBits(this)
-
-fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
-
-fun String.decodeToLong(): Long = java.lang.Long.decode(this)
+class BranchFPUZeroFlagFalse : BasicInstruction(
+    "bc1f label",
+    "Branch if FP condition flag 0 false (BC1F, not BCLF): if FPU condition flag 0 is false (0), then branch to statement at label's address",
+    BasicInstructionFormat.I_BRANCH_FORMAT,
+    "010001 01000 00000 ffffffffffffffff",
+    SimulationCode {
+        val operands = it.getOperandsOrThrow()
+        if (Coprocessor1.getConditionFlag(0) == 0)
+            KInstructionSet.processBranch(operands[0])
+    }
+)

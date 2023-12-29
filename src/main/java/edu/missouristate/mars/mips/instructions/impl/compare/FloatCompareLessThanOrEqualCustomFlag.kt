@@ -19,26 +19,20 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
+package edu.missouristate.mars.mips.instructions.impl.compare
 
-import edu.missouristate.mars.bitsToFloat
-import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet.floatCompare
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import edu.missouristate.mars.toIntBits
 
-class FloatAddSinglePrecision : BasicInstruction(
-    "add.s \$f0,\$f1,\$f3",
-    "Floating-point addition, single precision: set \$f0 to single-precision floating point value of \$f1 plus \$f3",
+class FloatCompareLessThanOrEqualCustomFlag : BasicInstruction(
+    "c.le.s 1,\$f0,\$f1",
+    "Compare less than or equal to, single precision: if \$f0 is less than or equal to \$f1, set FPU condition flag specified by immediate to 1; otherwise, set it to 0",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 ttttt sssss fffff 000000",
+    "010001 10000 ttttt sssss fff 00 111110",
     SimulationCode {
-        val operands = it.getOperandsOrThrow()
-        val add1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        val add2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
-        val sum = add1 + add2
-        // Overflow detected when sum is positive or negative infinity.
-        Coprocessor1.updateRegister(operands[0], sum.toIntBits())
+        val flag = it.getOperandsOrThrow().first()
+        it.floatCompare(flag) { op1, op2 -> op1 <= op2 }
     }
 )

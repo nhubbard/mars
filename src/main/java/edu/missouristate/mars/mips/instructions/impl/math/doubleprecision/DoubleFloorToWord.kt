@@ -19,26 +19,32 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
+package edu.missouristate.mars.mips.instructions.impl.math.doubleprecision
 
-import edu.missouristate.mars.bitsToFloat
+import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.inIntRange
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import kotlin.math.ceil
+import edu.missouristate.mars.util.Binary
+import kotlin.math.floor
 
-class CeilingSinglePrecisionFloatToWord : BasicInstruction(
-    "ceil.w.s \$f0,\$f1",
-    "Ceiling single precision float to word: set \$f0 to 32-bit integer ceiling of single-precision float in \$f1",
+class DoubleFloorToWord : BasicInstruction(
+    "floor.w.d \$f1,\$f2",
+    "Double-precision floor to word: set \$f1 to 32-bit integer floor of double-precision float in \$f2",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 00000 sssss fffff 001110",
+    "010001 10001 00000 sssss fffff 001111",
     SimulationCode {
-        val operands = it.getOperandsOrThrow()
-        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        var ceiling = ceil(floatValue).toInt()
-        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) ceiling = Int.MAX_VALUE
-        Coprocessor1.updateRegister(operands[0], ceiling)
+        val operands = KInstructionSet.getEvenOperand(it, 1, "Second register must be even-numbered!")
+        val doubleValue = Binary.twoIntegersToLong(
+            Coprocessor1.getValue(operands[1] + 1),
+            Coprocessor1.getValue(operands[1])
+        ).bitsToDouble()
+        var floor = floor(doubleValue).toInt()
+        if (doubleValue.isNaN() || doubleValue.isInfinite() || !doubleValue.inIntRange())
+            floor = Int.MAX_VALUE
+        Coprocessor1.updateRegister(operands[0], floor)
     }
 )

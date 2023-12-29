@@ -22,22 +22,25 @@
 package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
 
 import edu.missouristate.mars.bitsToFloat
+import edu.missouristate.mars.inIntRange
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import edu.missouristate.mars.toIntBits
+import kotlin.math.floor
 
-class FloatMultiplySinglePrecision : BasicInstruction(
-    "mul.s \$f0,\$f1,\$f3",
-    "Floating-point multiplication, single precision: set \$f0 to single-precision floating point value of \$f1 times \$f3",
+class FloatFloorToWord : BasicInstruction(
+    "floor.w.s \$f0,\$f1",
+    "Floor single precision to word: set \$f0 to 32-bit integer floor of single-precision float in \$f1",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 ttttt sssss fffff 000010",
+    "010001 10000 00000 sssss fffff 001111",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        val mul1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        val mul2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
-        val prod = mul1 * mul2
-        Coprocessor1.updateRegister(operands[0], prod.toIntBits())
+        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        var floor = floor(floatValue).toInt()
+        // Since MARS does not simulate the FCSR, I will take the default action of setting the result to 2^31-1, if the
+        // value is outside the 32-bit range.
+        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) floor = Int.MAX_VALUE
+        Coprocessor1.updateRegister(operands[0], floor)
     }
 )

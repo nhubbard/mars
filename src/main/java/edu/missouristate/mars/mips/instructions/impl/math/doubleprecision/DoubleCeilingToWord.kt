@@ -19,23 +19,31 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.mips.instructions.impl.math.doubleprecision
 
-fun Boolean.toInt(): Int = if (this) 1 else 0
+import edu.missouristate.mars.bitsToDouble
+import edu.missouristate.mars.inIntRange
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.SimulationCode
+import edu.missouristate.mars.util.Binary
+import kotlin.math.ceil
 
-fun Int.signExtend(i: Int = 16): Int = this shl i shr i
-fun Int.bitsToFloat(): Float = java.lang.Float.intBitsToFloat(this)
-
-fun Long.bitsToDouble(): Double = java.lang.Double.longBitsToDouble(this)
-
-fun Float.toIntBits(): Int = java.lang.Float.floatToIntBits(this)
-fun Float.toRawIntBits(): Int = java.lang.Float.floatToRawIntBits(this)
-
-fun Float.inIntRange(): Boolean = this in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
-
-fun Double.toLongBits(): Long = java.lang.Double.doubleToLongBits(this)
-fun Double.toRawLongBits(): Long = java.lang.Double.doubleToRawLongBits(this)
-
-fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
-
-fun String.decodeToLong(): Long = java.lang.Long.decode(this)
+class DoubleCeilingToWord : BasicInstruction(
+    "ceil.w.d \$f1,\$f2",
+    "Double-precision ceiling to word: set \$f1 to the 32-bit integer ceiling of the double-precision float in \$f2",
+    BasicInstructionFormat.R_FORMAT,
+    "010001 10001 00000 sssss fffff 001110",
+    SimulationCode {
+        val operands = KInstructionSet.getEvenOperand(it, 1, "Second register must be even-numbered!")
+        val doubleValue = Binary.twoIntegersToLong(
+            Coprocessor1.getValue(operands[1] + 1),
+            Coprocessor1.getValue(operands[1])
+        ).bitsToDouble()
+        val ceiling = if (doubleValue.isNaN() || doubleValue.isInfinite() || !doubleValue.inIntRange())
+            Int.MAX_VALUE else ceil(doubleValue).toInt()
+        Coprocessor1.updateRegister(operands[0], ceiling)
+    }
+)

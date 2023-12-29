@@ -19,23 +19,28 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
 
-fun Boolean.toInt(): Int = if (this) 1 else 0
+import edu.missouristate.mars.bitsToFloat
+import edu.missouristate.mars.inIntRange
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.SimulationCode
+import kotlin.math.floor
 
-fun Int.signExtend(i: Int = 16): Int = this shl i shr i
-fun Int.bitsToFloat(): Float = java.lang.Float.intBitsToFloat(this)
-
-fun Long.bitsToDouble(): Double = java.lang.Double.longBitsToDouble(this)
-
-fun Float.toIntBits(): Int = java.lang.Float.floatToIntBits(this)
-fun Float.toRawIntBits(): Int = java.lang.Float.floatToRawIntBits(this)
-
-fun Float.inIntRange(): Boolean = this in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
-
-fun Double.toLongBits(): Long = java.lang.Double.doubleToLongBits(this)
-fun Double.toRawLongBits(): Long = java.lang.Double.doubleToRawLongBits(this)
-
-fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
-
-fun String.decodeToLong(): Long = java.lang.Long.decode(this)
+class TruncateFloatToWord : BasicInstruction(
+    "trunc.w.s \$f0,\$f1",
+    "Truncate single-precision float to word: set \$f0 to single-precision float in \$f1 truncated to a 32-bit bit integer",
+    BasicInstructionFormat.R_FORMAT,
+    "010001 10000 00000 sssss fffff 001101",
+    SimulationCode {
+        val operands = it.getOperandsOrThrow()
+        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        // TODO: Check if this is identical to original implementation, which casts the float to an int
+        //       "because it rounds towards zero, the correct action".
+        var truncate = floor(floatValue).toInt()
+        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) truncate = Int.MAX_VALUE
+        Coprocessor1.updateRegister(operands[0], truncate)
+    }
+)

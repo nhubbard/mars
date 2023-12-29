@@ -28,7 +28,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.toIntBits
 
-class FloatDivideSinglePrecision : BasicInstruction(
+class FloatDivide : BasicInstruction(
     "div.s \$f0,\$f1,\$f3",
     "Floating-point division, single precision: set \$f0 to single-precision floating point value of \$f1 divided by \$f3",
     BasicInstructionFormat.R_FORMAT,

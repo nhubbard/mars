@@ -19,55 +19,47 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
+package edu.missouristate.mars.mips.instructions.impl.math.doubleprecision
 
-import edu.missouristate.mars.bitsToFloat
+import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.inIntRange
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
+import edu.missouristate.mars.util.Binary
 import kotlin.math.round
 
-class RoundSinglePrecisionFloatToWord : BasicInstruction(
-    "round.w.s \$f0,\$f1",
-    "Round single-precision float to word: set \$f0 to single-precision float in \$f1 rounded to nearest 32-bit integer",
+class RoundDoubleToWord : BasicInstruction(
+    "round.w.d \$f1,\$f2",
+    "Round double-precision float to word: set \$f1 to 32-bit integer round of double-precision float in \$f2",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 00000 sssss fffff 001100",
+    "010001 10001 00000 sssss fffff 001100",
     SimulationCode {
-        // MIPS32 documentation (and IEEE 754) states that round rounds to the nearest but when
-        // both are equally near it rounds to the even one!  SPIM rounds -4.5, -5.5,
-        // 4.5 and 5.5 to (-4, -5, 5, 6).  Curiously, it rounds -5.1 to -4 and -5.6 to -5.
-        // Until MARS 3.5, I used Math.round, which rounds to the nearest, but when both are
-        // equal it rounds toward positive infinity.  With Release 3.5, I painstakingly
-        // carry out the MIPS and IEEE 754 standard.
-        val operands = it.getOperandsOrThrow()
-        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        val operands = KInstructionSet.getEvenOperand(it, 1, "Second register must be even-numbered!")
+        val doubleValue = Binary.twoIntegersToLong(
+            Coprocessor1.getValue(operands[1] + 1),
+            Coprocessor1.getValue(operands[1])
+        ).bitsToDouble()
         val below: Int
         val above: Int
-        var round = round(floatValue).toInt()
-        // According to MIPS32 spec, if any of these conditions is true, set
-        // Invalid Operation in the FCSR (Floating point Control/Status Register) and
-        // sets the result to be 2^31-1.  MARS does not implement this register (as of release 3.4.1).
-        // It also mentions the "Invalid Operation Enable bit" in FCSR, that, if set, results
-        // in immediate exception instead of default value.
-        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) {
+        var round = round(doubleValue).toInt()
+        if (doubleValue.isNaN() || doubleValue.isInfinite() || !doubleValue.inIntRange()) {
             round = Int.MAX_VALUE
         } else {
             // If we are EXACTLY in the middle, then round to even!  To determine this,
             // find next higher integer and next lower integer, then see if distances
             // are exactly equal.
-            if (floatValue < 0f) {
-                // Truncating operation
-                above = floatValue.toInt()
+            if (doubleValue < 0.0) {
+                above = doubleValue.toInt()
                 below = above - 1
             } else {
-                // Truncating operation
-                below = floatValue.toInt()
+                below = doubleValue.toInt()
                 above = below + 1
             }
-            // Exactly in the middle?
-            if (floatValue - below == above - floatValue) {
+            // Are we exactly in the middle?
+            if (doubleValue - below == above - doubleValue) {
                 round = if (above % 2 == 0) above else below
             }
         }

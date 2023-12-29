@@ -19,23 +19,19 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.mips.instructions.impl.compare
 
-fun Boolean.toInt(): Int = if (this) 1 else 0
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet.floatCompare
+import edu.missouristate.mars.mips.instructions.SimulationCode
 
-fun Int.signExtend(i: Int = 16): Int = this shl i shr i
-fun Int.bitsToFloat(): Float = java.lang.Float.intBitsToFloat(this)
-
-fun Long.bitsToDouble(): Double = java.lang.Double.longBitsToDouble(this)
-
-fun Float.toIntBits(): Int = java.lang.Float.floatToIntBits(this)
-fun Float.toRawIntBits(): Int = java.lang.Float.floatToRawIntBits(this)
-
-fun Float.inIntRange(): Boolean = this in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
-
-fun Double.toLongBits(): Long = java.lang.Double.doubleToLongBits(this)
-fun Double.toRawLongBits(): Long = java.lang.Double.doubleToRawLongBits(this)
-
-fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
-
-fun String.decodeToLong(): Long = java.lang.Long.decode(this)
+class FloatCompareLess : BasicInstruction(
+    "c.lt.s \$f0,\$f1",
+    "Compare less than, single precision: if \$f0 is less than to \$f1, set FPU condition flag 0 to 1; otherwise, set it to 0",
+    BasicInstructionFormat.R_FORMAT,
+    "010001 10000 sssss fffff 00000 111100",
+    SimulationCode {
+        it.floatCompare { op1, op2 -> op1 < op2 }
+    }
+)

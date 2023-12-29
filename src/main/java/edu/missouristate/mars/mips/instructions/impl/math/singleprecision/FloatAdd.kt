@@ -22,25 +22,23 @@
 package edu.missouristate.mars.mips.instructions.impl.math.singleprecision
 
 import edu.missouristate.mars.bitsToFloat
-import edu.missouristate.mars.inIntRange
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import kotlin.math.floor
+import edu.missouristate.mars.toIntBits
 
-class FloorSinglePrecisionFloatToWord : BasicInstruction(
-    "floor.w.s \$f0,\$f1",
-    "Floor single precision to word: set \$f0 to 32-bit integer floor of single-precision float in \$f1",
+class FloatAdd : BasicInstruction(
+    "add.s \$f0,\$f1,\$f3",
+    "Floating-point addition, single precision: set \$f0 to single-precision floating point value of \$f1 plus \$f3",
     BasicInstructionFormat.R_FORMAT,
-    "010001 10000 00000 sssss fffff 001111",
+    "010001 10000 ttttt sssss fffff 000000",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        val floatValue = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        var floor = floor(floatValue).toInt()
-        // Since MARS does not simulate the FCSR, I will take the default action of setting the result to 2^31-1, if the
-        // value is outside the 32-bit range.
-        if (floatValue.isNaN() || floatValue.isInfinite() || !floatValue.inIntRange()) floor = Int.MAX_VALUE
-        Coprocessor1.updateRegister(operands[0], floor)
+        val add1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        val add2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
+        val sum = add1 + add2
+        // Overflow detected when sum is positive or negative infinity.
+        Coprocessor1.updateRegister(operands[0], sum.toIntBits())
     }
 )

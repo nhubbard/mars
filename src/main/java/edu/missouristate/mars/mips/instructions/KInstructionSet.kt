@@ -22,6 +22,7 @@
 package edu.missouristate.mars.mips.instructions
 
 import edu.missouristate.mars.*
+import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.simulator.DelayedBranch
 import edu.missouristate.mars.simulator.Exceptions
@@ -65,9 +66,9 @@ object KInstructionSet {
      */
     @JvmStatic
     @Throws(ProcessingException::class)
-    fun getInts(statement: ProgramStatement, x: Int, m: String): IntArray {
-        val operands = statement.getOperands() ?: throw ProcessingException(statement, m)
-        if (operands[x] % 2 == 1) throw ProcessingException(statement, m)
+    fun getEvenOperand(statement: ProgramStatement, index: Int, errorMessage: String): IntArray {
+        val operands = statement.getOperands() ?: throw ProcessingException(statement, errorMessage)
+        if (operands[index] % 2 == 1) throw ProcessingException(statement, errorMessage)
         return operands
     }
 
@@ -140,6 +141,15 @@ object KInstructionSet {
             if (ret != null) return ret
         }
         return null
+    }
+
+    @JvmStatic
+    fun ProgramStatement.floatCompare(conditionFlag: Int = 0, comparator: (Float, Float) -> Boolean) {
+        val operands = getOperandsOrThrow()
+        val op1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        val op2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
+        if (comparator(op1, op2)) Coprocessor1.setConditionFlag(conditionFlag)
+        else Coprocessor1.clearConditionFlag(conditionFlag)
     }
 
     /**
