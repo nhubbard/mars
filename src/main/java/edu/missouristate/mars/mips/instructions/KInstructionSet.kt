@@ -21,10 +21,7 @@
 
 package edu.missouristate.mars.mips.instructions
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.ProcessingException
-import edu.missouristate.mars.ProgramStatement
-import edu.missouristate.mars.Settings
+import edu.missouristate.mars.*
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.simulator.DelayedBranch
 import edu.missouristate.mars.simulator.Exceptions
@@ -42,41 +39,100 @@ import kotlin.system.exitProcess
  * The instruction may either be basic (translates into binary machine code) or
  * extended (translates into a sequence of one or more basic instructions).
  */
-class KInstructionSet {
+object KInstructionSet {
+    @JvmStatic
     val instructionList: ArrayList<Instruction> = arrayListOf()
+
+    @JvmStatic
     private lateinit var opcodeMatchMaps: ArrayList<MatchMap>
+
+    @JvmStatic
     private lateinit var syscallLoader: SyscallLoader
 
+    @JvmStatic
     private val isDelayedBranchingEnabled: Boolean
         get() = Globals.settings.getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)
 
-    companion object {
-        /**
-         * Get the square root of a long value.
-         */
-        @JvmStatic
-        private fun getLongSqrt(value: Double): Long =
-            if (value < 0.0) {
-                java.lang.Double.doubleToLongBits(Double.NaN)
-            } else {
-                java.lang.Double.doubleToLongBits(sqrt(value))
-            }
+    /**
+     * Get the square root of a long value.
+     */
+    @JvmStatic
+    fun getLongSqrt(value: Double): Long =
+        (if (value < 0.0) Double.NaN else sqrt(value)).toLongBits()
 
-        /**
-         * Get the ints from a program statement's operands.
-         */
-        @JvmStatic
-        @Throws(ProcessingException::class)
-        private fun getInts(statement: ProgramStatement, x: Int, m: String): IntArray {
-            val operands = statement.getOperands() ?: throw ProcessingException(statement, m)
-            if (operands[x] % 2 == 1) throw ProcessingException(statement, m)
-            return operands
+    /**
+     * Get the ints from a program statement's operands.
+     */
+    @JvmStatic
+    @Throws(ProcessingException::class)
+    fun getInts(statement: ProgramStatement, x: Int, m: String): IntArray {
+        val operands = statement.getOperands() ?: throw ProcessingException(statement, m)
+        if (operands[x] % 2 == 1) throw ProcessingException(statement, m)
+        return operands
+    }
+
+    /**
+     * Method to process a successful branch condition.
+     * **Do NOT use this with jump instructions!**
+     * The branch operand is a relative displacement in words, whereas the jump operand is an absolute address in bytes.
+     * Handles delayed branching if enabled.
+     *
+     * @param displacement The displacement operand from the instruction.
+     */
+    @JvmStatic
+    fun processBranch(displacement: Int) {
+        if (isDelayedBranchingEnabled) {
+            // Register the branch target's absolute byte address.
+            DelayedBranch.register(RegisterFile.programCounter.getValue() + (displacement shl 2))
+        } else {
+            // Decrement is necessary because the program counter has already been incremented
+            RegisterFile.setProgramCounter(RegisterFile.programCounter.getValue() + (displacement shl 2))
         }
+    }
+
+    /**
+     * Method to process a jump.
+     * **Do NOT use this with branch instructions!**
+     * The branch operand is a relative displacement in words,
+     * whereas the jump operand is an absolute address in bytes.
+     * This handles delayed branching if that setting is enabled.
+     *
+     * @param targetAddress The jump target's absolute byte address.
+     */
+    @JvmStatic
+    fun processJump(targetAddress: Int) {
+        if (isDelayedBranchingEnabled)
+            DelayedBranch.register(targetAddress)
+        else RegisterFile.setProgramCounter(targetAddress)
+    }
+
+    /**
+     * Method to process storing the return address of an instruction in the given register.
+     * This is used only by the "and link" instructions: `jal`, `jalr`, `bltzal`, and `bgezal`.
+     * If delayed branching is disabled, the return address is the address of the next instruction (e.g., the current
+     * PC value).
+     * If delayed branching is enabled, the return address is the instruction following that, to skip over the delay
+     * slot.
+     *
+     * @param register The register number to receive the return address.
+     */
+    @JvmStatic
+    fun processReturnAddress(register: Int) {
+        val extra = if (isDelayedBranchingEnabled) Instruction.INSTRUCTION_LENGTH else 0
+        RegisterFile.updateRegister(register, RegisterFile.programCounter.getValue() + extra)
+    }
+
+    @JvmStatic
+    fun compareUnsigned(operands: IntArray, first: Int, second: Int) {
+        val condition = if (first > 0 && second >= 0 || first < 0 && second < 0)
+            first < second else first >= 0
+        RegisterFile.updateRegister(operands[0], condition.toInt())
     }
 
     /**
      * Find an instruction by its binary code.
      */
+    @JvmStatic
     fun findByBinaryCode(binaryInstr: Int): BasicInstruction? {
         val matchMaps = opcodeMatchMaps
         for (matchMap in matchMaps) {
@@ -89,6 +145,7 @@ class KInstructionSet {
     /**
      * Add pseudo-instructions.
      */
+    @JvmStatic
     private fun addPseudoInstructions() {
         // Leading "/" prevents the package name from being prepended to the file path.
         javaClass.getResourceAsStream("/PseudoOps.txt")?.use { stream ->
@@ -155,6 +212,7 @@ class KInstructionSet {
      * @param name The operator name.
      * @return The list of corresponding Instruction object(s), or `null` if none are found.
      */
+    @JvmStatic
     fun matchOperator(name: String): ArrayList<Instruction>? =
         arrayListOf(*instructionList.filter {
             it.name.equals(name, true)
@@ -168,6 +226,7 @@ class KInstructionSet {
      * @param query The string to match against the instruction names.
      * @return An ArrayList of matching Instruction object(s), or null if none match.
      */
+    @JvmStatic
     fun prefixMatchOperator(query: String?): ArrayList<Instruction>? =
         query?.let { q ->
             arrayListOf(*instructionList.filter {
@@ -182,62 +241,15 @@ class KInstructionSet {
      * @param number The syscall number to locate.
      * @param statement The ProgramStatement where the syscall is being called from.
      */
+    @JvmStatic
     @Throws(ProcessingException::class)
-    private fun findAndSimulateSyscall(number: Int, statement: ProgramStatement) {
+    fun findAndSimulateSyscall(number: Int, statement: ProgramStatement) {
         syscallLoader.findSyscall(number)?.simulate(statement)
             ?: throw ProcessingException(
                 statement,
                 "Invalid or unimplemented syscall number $number!",
                 Exceptions.SYSCALL_EXCEPTION
             )
-    }
-
-    /**
-     * Method to process a successful branch condition.
-     * **Do NOT use this with jump instructions!**
-     * The branch operand is a relative displacement in words, whereas the jump operand is an absolute address in bytes.
-     * Handles delayed branching if enabled.
-     *
-     * @param displacement The displacement operand from the instruction.
-     */
-    private fun processBranch(displacement: Int) {
-        if (isDelayedBranchingEnabled) {
-            // Register the branch target's absolute byte address.
-            DelayedBranch.register(RegisterFile.programCounter.getValue() + (displacement shl 2))
-        } else {
-            // Decrement is necessary because the program counter has already been incremented
-            RegisterFile.setProgramCounter(RegisterFile.programCounter.getValue() + (displacement shl 2))
-        }
-    }
-
-    /**
-     * Method to process a jump.
-     * **Do NOT use this with branch instructions!**
-     * The branch operand is a relative displacement in words,
-     * whereas the jump operand is an absolute address in bytes.
-     * This handles delayed branching if that setting is enabled.
-     *
-     * @param targetAddress The jump target's absolute byte address.
-     */
-    private fun processJump(targetAddress: Int) {
-        if (isDelayedBranchingEnabled)
-            DelayedBranch.register(targetAddress)
-        else RegisterFile.setProgramCounter(targetAddress)
-    }
-
-    /**
-     * Method to process storing the return address of an instruction in the given register.
-     * This is used only by the "and link" instructions: `jal`, `jalr`, `bltzal`, and `bgezal`.
-     * If delayed branching is disabled, the return address is the address of the next instruction (e.g., the current
-     * PC value).
-     * If delayed branching is enabled, the return address is the instruction following that, to skip over the delay
-     * slot.
-     *
-     * @param register The register number to receive the return address.
-     */
-    private fun processReturnAddress(register: Int) {
-        val extra = if (isDelayedBranchingEnabled) Instruction.INSTRUCTION_LENGTH else 0
-        RegisterFile.updateRegister(register, RegisterFile.programCounter.getValue() + extra)
     }
 
     private class MatchMap(val mask: Int, val matchMap: HashMap<Int, Instruction>) : Comparable<MatchMap> {

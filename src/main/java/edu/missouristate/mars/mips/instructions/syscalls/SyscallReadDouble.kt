@@ -4,6 +4,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.mips.hardware.Coprocessor1.updateRegister
 import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.toRawLongBits
 import edu.missouristate.mars.util.Binary.highOrderLongToInt
 import edu.missouristate.mars.util.Binary.lowOrderLongToInt
 import edu.missouristate.mars.util.SystemIO
@@ -28,7 +29,7 @@ class SyscallReadDouble : AbstractSyscall(7, "ReadDouble") {
                 Exceptions.SYSCALL_EXCEPTION
             )
         }
-        val longValue = java.lang.Double.doubleToRawLongBits(doubleValue)
+        val longValue = doubleValue.toRawLongBits()
         updateRegister(1, highOrderLongToInt(longValue))
         updateRegister(0, lowOrderLongToInt(longValue))
     }

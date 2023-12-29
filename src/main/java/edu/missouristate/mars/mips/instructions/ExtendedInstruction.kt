@@ -28,6 +28,7 @@ import edu.missouristate.mars.MIPSProgram
 import edu.missouristate.mars.Settings
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.signExtend
 import edu.missouristate.mars.util.Binary.bitValue
 import edu.missouristate.mars.util.Binary.stringToInt
 
@@ -204,7 +205,7 @@ class ExtendedInstruction @JvmOverloads constructor(
                     val addr = try {
                         stringToInt(label) + add
                     } catch (e: Exception) { 0 }
-                    instruction = instruction.replace("LL${op}P$add", (addr shl 16 shr 16).toString())
+                    instruction = instruction.replace("LL${op}P$add", addr.signExtend().toString())
                 }
                 // Substitute the lower 16 bits of the label address.
                 // NOTE: Form LLnPm will not match here, since it is discovered and substituted above.
@@ -218,7 +219,7 @@ class ExtendedInstruction @JvmOverloads constructor(
                     instruction = if (instruction.length > index + 3 && instruction[index + 3] == 'U') {
                         instruction.replace("LL${op}U", (addr and 0xFFFF).toString())
                     } else {
-                        instruction.replace("LL$op", (addr shl 16 shr 16).toString())
+                        instruction.replace("LL$op", addr.signExtend().toString())
                     }
                 }
                 // Substitute the upper 16 bits of the value after adding any single digit.
@@ -284,7 +285,7 @@ class ExtendedInstruction @JvmOverloads constructor(
                     instruction = if (instruction.length > index + 3 && instruction[index + 3] == 'U') {
                         instruction.replace("VL${op}U", (newValue and 0xFFFF).toString())
                     } else {
-                        instruction.replace("VL$op", (newValue shl 16 shr 16).toString())
+                        instruction.replace("VL$op", newValue.signExtend().toString())
                     }
                 }
                 // Substitute the upper 16 bits of the 32-bit value.
@@ -361,7 +362,7 @@ class ExtendedInstruction @JvmOverloads constructor(
                 val addr = try {
                     stringToInt(label) + stringToInt(addend) + add
                 } catch (e: Exception) { 0 }
-                instruction = instruction.replace("LLPP$add", (addr shl 16 shr 16).toString())
+                instruction = instruction.replace("LLPP$add", addr.signExtend().toString())
             }
             // substitute lower 16 bits of label address after adding immediate value e.g., here+44($s0)
             // NOTE: format LLPPm is recognized and substituted by the code above
@@ -375,7 +376,7 @@ class ExtendedInstruction @JvmOverloads constructor(
                 instruction = if (instruction.length > index + 3 && instruction[index + 3] == 'U') {
                     instruction.replace("LLPU", (addr and 0xFFFF).toString())
                 } else {
-                    instruction.replace("LLP", (addr shl 16 shr 16).toString())
+                    instruction.replace("LLP", addr.signExtend().toString())
                 }
             }
             // Substitute correct constant branch offset depending on whether

@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions.syscalls
 
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.mips.hardware.Coprocessor1.getValue
 import edu.missouristate.mars.util.Binary.twoIntegersToLong
 import edu.missouristate.mars.util.SystemIO
@@ -18,7 +19,7 @@ class SyscallPrintDouble : AbstractSyscall(3, "PrintDouble") {
     override fun simulate(statement: ProgramStatement) {
         // Note: Higher-numbered register contains the high-order word, so concat 13-12.
         SystemIO.printString(
-            java.lang.Double.longBitsToDouble(twoIntegersToLong(getValue(13), getValue(12))).toString()
+            twoIntegersToLong(getValue(13), getValue(12)).bitsToDouble().toString()
         )
     }
 }

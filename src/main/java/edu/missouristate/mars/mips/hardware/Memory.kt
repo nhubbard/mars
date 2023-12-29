@@ -23,10 +23,8 @@
 
 package edu.missouristate.mars.mips.hardware
 
-import edu.missouristate.mars.Globals
+import edu.missouristate.mars.*
 import edu.missouristate.mars.Globals.settings
-import edu.missouristate.mars.ProgramStatement
-import edu.missouristate.mars.Settings
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataBaseAddress
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataSegmentBaseAddress
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultExceptionHandlerAddress
@@ -612,10 +610,10 @@ class Memory private constructor() : Observable() {
      */
     @Throws(AddressErrorException::class)
     fun setDouble(address: Int, value: Double): Double {
-        val longValue = java.lang.Double.doubleToLongBits(value)
+        val longValue = value.toLongBits()
         val oldHighOrder = set(address + 4, Binary.highOrderLongToInt(longValue), 4)
         val oldLowOrder = set(address, Binary.lowOrderLongToInt(longValue), 4)
-        return java.lang.Double.longBitsToDouble(Binary.twoIntegersToLong(oldHighOrder, oldLowOrder))
+        return Binary.twoIntegersToLong(oldHighOrder, oldLowOrder).bitsToDouble()
     }
 
     /**

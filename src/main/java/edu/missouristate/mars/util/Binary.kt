@@ -24,6 +24,7 @@
 package edu.missouristate.mars.util
 
 import edu.missouristate.mars.Globals
+import edu.missouristate.mars.decodeToLong
 import java.util.*
 
 object Binary {
@@ -304,7 +305,7 @@ object Binary {
             //   (3) last 8 characters are valid hex digits.
             work = work.lowercase(Locale.getDefault())
             if (work.length == 10 && work.startsWith("0x")) {
-                val bitString = java.lang.StringBuilder()
+                val bitString = StringBuilder()
                 var index: Int
                 // while testing characters, build bit string to set up for binaryStringToInt
                 var i = 2
@@ -354,7 +355,7 @@ object Binary {
         // valid hex two's complement values as exceptions.  We'll catch those and
         // do our own validation.
         try {
-            result = java.lang.Long.decode(s)
+            result = s.decodeToLong()
         } catch (nfe: NumberFormatException) {
             // Multistep process toward validation of hex two's complement. 3-step test:
             //   (1) exactly 18 characters long,
@@ -362,7 +363,7 @@ object Binary {
             //   (3) last 16 characters are valid hex digits.
             work = work.lowercase(Locale.getDefault())
             if (work.length == 18 && work.startsWith("0x")) {
-                val bitString = java.lang.StringBuilder()
+                val bitString = StringBuilder()
                 var index: Int
                 // while testing characters, build bit string to set up for binaryStringToInt
                 var i = 2

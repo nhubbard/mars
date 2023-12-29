@@ -5,12 +5,26 @@ import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.instructions.impl.Nop;
+import edu.missouristate.mars.mips.instructions.impl.branches.*;
+import edu.missouristate.mars.mips.instructions.impl.count.CountLeadingOnes;
+import edu.missouristate.mars.mips.instructions.impl.count.CountLeadingZeroes;
+import edu.missouristate.mars.mips.instructions.impl.jumps.*;
 import edu.missouristate.mars.mips.instructions.impl.logic.*;
-import edu.missouristate.mars.mips.instructions.impl.math.*;
-import edu.missouristate.mars.mips.instructions.impl.math.AddImmediateUnsignedNoOverflow;
-import edu.missouristate.mars.mips.instructions.impl.math.AddUnsignedNoOverflow;
-import edu.missouristate.mars.mips.instructions.impl.math.SubtractionUnsignedNoOverflow;
-import edu.missouristate.mars.mips.instructions.impl.util.*;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.AddImmediateUnsignedNoOverflow;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.AddUnsignedNoOverflow;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.SubtractionUnsignedNoOverflow;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.*;
+import edu.missouristate.mars.mips.instructions.impl.math.singleprecision.*;
+import edu.missouristate.mars.mips.instructions.impl.memory.*;
+import edu.missouristate.mars.mips.instructions.impl.move.*;
+import edu.missouristate.mars.mips.instructions.impl.set.SetLessThan;
+import edu.missouristate.mars.mips.instructions.impl.set.SetLessThanImmediate;
+import edu.missouristate.mars.mips.instructions.impl.set.SetLessThanImmediateUnsigned;
+import edu.missouristate.mars.mips.instructions.impl.set.SetLessThanUnsigned;
+import edu.missouristate.mars.mips.instructions.impl.system.BreakWithCode;
+import edu.missouristate.mars.mips.instructions.impl.system.BreakWithoutCode;
+import edu.missouristate.mars.mips.instructions.impl.system.RunSyscall;
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.Exceptions;
@@ -106,475 +120,78 @@ public class InstructionSet {
         instructionList.add(new ShiftRightLogicalVariable());
 
         // Load and store instructions
-        instructionList.add(new BasicInstruction("lw $t1,-100($t2)", "Load word : Set $t1 to contents of effective memory word address", BasicInstructionFormat.I_FORMAT, "100011 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                RegisterFile.updateRegister(operands[0], Globals.memory.getWord(RegisterFile.getValue(operands[2]) + operands[1]));
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("ll $t1,-100($t2)", "Load linked : Paired with Store Conditional (sc) to perform atomic read-modify-write.  Treated as equivalent to Load Word (lw) because MARS does not simulate multiple processors.", BasicInstructionFormat.I_FORMAT, "110000 ttttt fffff ssssssssssssssss",
-                // The ll (load link) command is supposed to be the front end of an atomic
-                // operation completed by sc (store conditional), with success or failure
-                // of the store depending on whether the memory block containing the
-                // loaded word is modified in the meantime by a different processor.
-                // Since MARS, like SPIM simulates only a single processor, the store
-                // conditional will always succeed, so there is no need to do anything
-                // special here.  In that case, ll is the same as lw.  And sc does the same
-                // thing as sw except in addition, it writes 1 into the source register.
-                statement -> {
-                    int[] operands = statement.getOperands();
-                    try {
-                        RegisterFile.updateRegister(operands[0], Globals.memory.getWord(RegisterFile.getValue(operands[2]) + operands[1]));
-                    } catch (AddressErrorException e) {
-                        throw new ProcessingException(statement, e);
-                    }
-                }));
-        instructionList.add(new BasicInstruction("lwl $t1,-100($t2)", "Load word left : Load from 1 to 4 bytes left-justified into $t1, starting with effective memory byte address and continuing through the low-order byte of its word", BasicInstructionFormat.I_FORMAT, "100010 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                int address = RegisterFile.getValue(operands[2]) + operands[1];
-                int result = RegisterFile.getValue(operands[0]);
-                for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
-                    result = Binary.setByte(result, 3 - i, Globals.memory.getByte(address - i));
-                }
-                RegisterFile.updateRegister(operands[0], result);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("lwr $t1,-100($t2)", "Load word right : Load from 1 to 4 bytes right-justified into $t1, starting with effective memory byte address and continuing through the high-order byte of its word", BasicInstructionFormat.I_FORMAT, "100110 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                int address = RegisterFile.getValue(operands[2]) + operands[1];
-                int result = RegisterFile.getValue(operands[0]);
-                for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
-                    result = Binary.setByte(result, i, Globals.memory.getByte(address + i));
-                }
-                RegisterFile.updateRegister(operands[0], result);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("lui $t1,100", "Load upper immediate : Set high-order 16 bits of $t1 to 16-bit immediate and low-order 16 bits to 0", BasicInstructionFormat.I_FORMAT, "001111 00000 fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            RegisterFile.updateRegister(operands[0], operands[1] << 16);
-        }));
-        instructionList.add(new BasicInstruction("sw $t1,-100($t2)", "Store word : Store contents of $t1 into effective memory word address", BasicInstructionFormat.I_FORMAT, "101011 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                Globals.memory.setWord(RegisterFile.getValue(operands[2]) + operands[1], RegisterFile.getValue(operands[0]));
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("sc $t1,-100($t2)", "Store conditional : Paired with Load Linked (ll) to perform atomic read-modify-write.  Stores $t1 value into effective address, then sets $t1 to 1 for success.  Always succeeds because MARS does not simulate multiple processors.", BasicInstructionFormat.I_FORMAT, "111000 ttttt fffff ssssssssssssssss",
-                // See comments with "ll" instruction above.  "sc" is implemented
-                // like "sw", except that 1 is placed in the source register.
-                statement -> {
-                    int[] operands = statement.getOperands();
-                    try {
-                        Globals.memory.setWord(RegisterFile.getValue(operands[2]) + operands[1], RegisterFile.getValue(operands[0]));
-                    } catch (AddressErrorException e) {
-                        throw new ProcessingException(statement, e);
-                    }
-                    RegisterFile.updateRegister(operands[0], 1); // always succeeds
-                }));
-        instructionList.add(new BasicInstruction("swl $t1,-100($t2)", "Store word left : Store high-order 1 to 4 bytes of $t1 into memory, starting with effective byte address and continuing through the low-order byte of its word", BasicInstructionFormat.I_FORMAT, "101010 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                int address = RegisterFile.getValue(operands[2]) + operands[1];
-                int source = RegisterFile.getValue(operands[0]);
-                for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
-                    Globals.memory.setByte(address - i, Binary.getByte(source, 3 - i));
-                }
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("swr $t1,-100($t2)", "Store word right : Store low-order 1 to 4 bytes of $t1 into memory, starting with high-order byte of word containing effective byte address and continuing through that byte address", BasicInstructionFormat.I_FORMAT, "101110 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                int address = RegisterFile.getValue(operands[2]) + operands[1];
-                int source = RegisterFile.getValue(operands[0]);
-                for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
-                    Globals.memory.setByte(address + i, Binary.getByte(source, i));
-                }
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
+        instructionList.add(new LoadWord());
+        instructionList.add(new LoadLink());
+        instructionList.add(new LoadWordLeft());
+        instructionList.add(new LoadWordRight());
+        instructionList.add(new LoadUpperImmediate());
+        instructionList.add(new StoreWord());
+        instructionList.add(new StoreConditional());
+        instructionList.add(new StoreWordLeft());
+        instructionList.add(new StoreWordRight());
+        instructionList.add(new LoadByte());
+        instructionList.add(new LoadHalfWord());
+        instructionList.add(new LoadHalfWordUnsigned());
+        instructionList.add(new LoadByteUnsigned());
+        instructionList.add(new StoreByte());
+        instructionList.add(new StoreHalfByte());
 
         // Branch instructions
-        instructionList.add(new BasicInstruction("beq $t1,$t2,label", "Branch if equal : Branch to statement at label's address if $t1 and $t2 are equal", BasicInstructionFormat.I_BRANCH_FORMAT, "000100 fffff sssss tttttttttttttttt", statement -> {
-            int[] operands = statement.getOperands();
-
-            if (RegisterFile.getValue(operands[0]) == RegisterFile.getValue(operands[1])) {
-                processBranch(operands[2]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bne $t1,$t2,label", "Branch if not equal : Branch to statement at label's address if $t1 and $t2 are not equal", BasicInstructionFormat.I_BRANCH_FORMAT, "000101 fffff sssss tttttttttttttttt", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) != RegisterFile.getValue(operands[1])) {
-                processBranch(operands[2]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bgez $t1,label", "Branch if greater than or equal to zero : Branch to statement at label's address if $t1 is greater than or equal to zero", BasicInstructionFormat.I_BRANCH_FORMAT, "000001 fffff 00001 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) >= 0) {
-                processBranch(operands[1]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bgezal $t1,label", "Branch if greater then or equal to zero and link : If $t1 is greater than or equal to zero, then set $ra to the Program Counter and branch to statement at label's address", BasicInstructionFormat.I_BRANCH_FORMAT, "000001 fffff 10001 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) >= 0) {  // the "and link" part
-                processReturnAddress(31);//RegisterFile.updateRegister("$ra",RegisterFile.getProgramCounter());
-                processBranch(operands[1]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bgtz $t1,label", "Branch if greater than zero : Branch to statement at label's address if $t1 is greater than zero", BasicInstructionFormat.I_BRANCH_FORMAT, "000111 fffff 00000 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) > 0) {
-                processBranch(operands[1]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("blez $t1,label", "Branch if less than or equal to zero : Branch to statement at label's address if $t1 is less than or equal to zero", BasicInstructionFormat.I_BRANCH_FORMAT, "000110 fffff 00000 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) <= 0) {
-                processBranch(operands[1]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bltz $t1,label", "Branch if less than zero : Branch to statement at label's address if $t1 is less than zero", BasicInstructionFormat.I_BRANCH_FORMAT, "000001 fffff 00000 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) < 0) {
-                processBranch(operands[1]);
-            }
-        }));
-        instructionList.add(new BasicInstruction("bltzal $t1,label", "Branch if less than zero and link : If $t1 is less than or equal to zero, then set $ra to the Program Counter and branch to statement at label's address", BasicInstructionFormat.I_BRANCH_FORMAT, "000001 fffff 10000 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) < 0) {  // the "and link" part
-                processReturnAddress(31);//RegisterFile.updateRegister("$ra",RegisterFile.getProgramCounter());
-                processBranch(operands[1]);
-            }
-        }));
+        instructionList.add(new BranchIfEqual());
+        instructionList.add(new BranchNotEqual());
+        instructionList.add(new BranchGreaterEqualZero());
+        instructionList.add(new BranchGreaterEqualZeroAndLink());
+        instructionList.add(new BranchGreaterThanZero());
+        instructionList.add(new BranchLessEqualZero());
+        instructionList.add(new BranchLessThanZero());
+        instructionList.add(new BranchLessThanZeroAndLink());
 
         // Set instructions
-        instructionList.add(new BasicInstruction("slt $t1,$t2,$t3", "Set less than : If $t2 is less than $t3, then set $t1 to 1 else set $t1 to 0", BasicInstructionFormat.R_FORMAT, "000000 sssss ttttt fffff 00000 101010", statement -> {
-            int[] operands = statement.getOperands();
-            RegisterFile.updateRegister(operands[0], (RegisterFile.getValue(operands[1]) < RegisterFile.getValue(operands[2])) ? 1 : 0);
-        }));
-        instructionList.add(new BasicInstruction("sltu $t1,$t2,$t3", "Set less than unsigned : If $t2 is less than $t3 using unsigned comparison, then set $t1 to 1 else set $t1 to 0", BasicInstructionFormat.R_FORMAT, "000000 sssss ttttt fffff 00000 101011", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[1]);
-            int second = RegisterFile.getValue(operands[2]);
-            if (first >= 0 && second >= 0 || first < 0 && second < 0) {
-                RegisterFile.updateRegister(operands[0], (first < second) ? 1 : 0);
-            } else {
-                RegisterFile.updateRegister(operands[0], (first >= 0) ? 1 : 0);
-            }
-        }));
-        instructionList.add(new BasicInstruction("slti $t1,$t2,-100", "Set less than immediate : If $t2 is less than sign-extended 16-bit immediate, then set $t1 to 1 else set $t1 to 0", BasicInstructionFormat.I_FORMAT, "001010 sssss fffff tttttttttttttttt", statement -> {
-            int[] operands = statement.getOperands();
-            // 16 bit immediate value in operands[2] is sign-extended
-            RegisterFile.updateRegister(operands[0], (RegisterFile.getValue(operands[1]) < (operands[2] << 16 >> 16)) ? 1 : 0);
-        }));
-        instructionList.add(new BasicInstruction("sltiu $t1,$t2,-100", "Set less than immediate unsigned : If $t2 is less than  sign-extended 16-bit immediate using unsigned comparison, then set $t1 to 1 else set $t1 to 0", BasicInstructionFormat.I_FORMAT, "001011 sssss fffff tttttttttttttttt", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[1]);
-            // 16 bit immediate value in operands[2] is sign-extended
-            int second = operands[2] << 16 >> 16;
-            if (first >= 0 && second >= 0 || first < 0 && second < 0) {
-                RegisterFile.updateRegister(operands[0], (first < second) ? 1 : 0);
-            } else {
-                RegisterFile.updateRegister(operands[0], (first >= 0) ? 1 : 0);
-            }
-        }));
+        instructionList.add(new SetLessThan());
+        instructionList.add(new SetLessThanUnsigned());
+        instructionList.add(new SetLessThanImmediate());
+        instructionList.add(new SetLessThanImmediateUnsigned());
 
         // Move instructions
-        instructionList.add(new BasicInstruction("movn $t1,$t2,$t3", "Move conditional not zero : Set $t1 to $t2 if $t3 is not zero", BasicInstructionFormat.R_FORMAT, "000000 sssss ttttt fffff 00000 001011", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[2]) != 0)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movz $t1,$t2,$t3", "Move conditional zero : Set $t1 to $t2 if $t3 is zero", BasicInstructionFormat.R_FORMAT, "000000 sssss ttttt fffff 00000 001010", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[2]) == 0)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movf $t1,$t2", "Move if FP condition flag 0 false : Set $t1 to $t2 if FPU (Coprocessor 1) condition flag 0 is false (zero)", BasicInstructionFormat.R_FORMAT, "000000 sssss 000 00 fffff 00000 000001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(0) == 0)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movf $t1,$t2,1", "Move if specified FP condition flag false : Set $t1 to $t2 if FPU (Coprocessor 1) condition flag specified by the immediate is false (zero)", BasicInstructionFormat.R_FORMAT, "000000 sssss ttt 00 fffff 00000 000001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(operands[2]) == 0)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movt $t1,$t2", "Move if FP condition flag 0 true : Set $t1 to $t2 if FPU (Coprocessor 1) condition flag 0 is true (one)", BasicInstructionFormat.R_FORMAT, "000000 sssss 000 01 fffff 00000 000001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(0) == 1)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movt $t1,$t2,1", "Move if specified FP condition flag true : Set $t1 to $t2 if FPU (Coprocessor 1) condition flag specified by the immediate is true (one)", BasicInstructionFormat.R_FORMAT, "000000 sssss ttt 01 fffff 00000 000001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(operands[2]) == 1)
-                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
-        }));
+        instructionList.add(new MoveConditionalNotZero());
+        instructionList.add(new MoveConditionalZero());
+        instructionList.add(new MoveIfFloatConditionFlagZeroFalse());
+        instructionList.add(new MoveIfFloatConditionFlagFalse());
+        instructionList.add(new MoveIfFloatConditionFlagZeroTrue());
+        instructionList.add(new MoveIfFloatConditionFlagTrue());
 
         // System instructions
-        instructionList.add(new BasicInstruction("break 100", "Break execution with code : Terminate program execution with specified exception code", BasicInstructionFormat.R_FORMAT, "000000 ffffffffffffffffffff 001101", statement -> {  // At this time, I don't have exception processing or trap handlers
-            // Halt execution with a message.
-            int[] operands = statement.getOperands();
-            throw new ProcessingException(statement, STR."break instruction executed; code = \{operands[0]}.", Exceptions.BREAKPOINT_EXCEPTION);
-        }));
-        instructionList.add(new BasicInstruction("break", "Break execution : Terminate program execution with exception", BasicInstructionFormat.R_FORMAT, "000000 00000 00000 00000 00000 001101", statement -> {  // At this time, I don't have exception processing or trap handlers
-            // Halt execution with a message.
-            throw new ProcessingException(statement, "break instruction executed; no code given.", Exceptions.BREAKPOINT_EXCEPTION);
-        }));
-        instructionList.add(new BasicInstruction("syscall", "Issue a system call : Execute the system call specified by value in $v0", BasicInstructionFormat.R_FORMAT, "000000 00000 00000 00000 00000 001100", statement -> findAndSimulateSyscall(RegisterFile.getValue(2), statement)));
+        instructionList.add(new BreakWithCode());
+        instructionList.add(new BreakWithoutCode());
+        instructionList.add(new RunSyscall());
 
         // Jump instructions
-        instructionList.add(new BasicInstruction("j target", "Jump unconditionally : Jump to statement at target address", BasicInstructionFormat.J_FORMAT, "000010 ffffffffffffffffffffffffff", statement -> {
-            int[] operands = statement.getOperands();
-            processJump(((RegisterFile.getProgramCounter().getValue() & 0xF0000000) | (operands[0] << 2)));
-        }));
-        instructionList.add(new BasicInstruction("jr $t1", "Jump register unconditionally : Jump to statement whose address is in $t1", BasicInstructionFormat.R_FORMAT, "000000 fffff 00000 00000 00000 001000", statement -> {
-            int[] operands = statement.getOperands();
-            processJump(RegisterFile.getValue(operands[0]));
-        }));
-        instructionList.add(new BasicInstruction("jal target", "Jump and link : Set $ra to Program Counter (return address) then jump to statement at target address", BasicInstructionFormat.J_FORMAT, "000011 ffffffffffffffffffffffffff", statement -> {
-            int[] operands = statement.getOperands();
-            processReturnAddress(31);// RegisterFile.updateRegister(31, RegisterFile.getProgramCounter());
-            processJump((RegisterFile.getProgramCounter().getValue() & 0xF0000000) | (operands[0] << 2));
-        }));
-        instructionList.add(new BasicInstruction("jalr $t1,$t2", "Jump and link register : Set $t1 to Program Counter (return address) then jump to statement whose address is in $t2", BasicInstructionFormat.R_FORMAT, "000000 sssss 00000 fffff 00000 001001", statement -> {
-            int[] operands = statement.getOperands();
-            processReturnAddress(operands[0]);//RegisterFile.updateRegister(operands[0], RegisterFile.getProgramCounter());
-            processJump(RegisterFile.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("jalr $t1", "Jump and link register : Set $ra to Program Counter (return address) then jump to statement whose address is in $t1", BasicInstructionFormat.R_FORMAT, "000000 fffff 00000 11111 00000 001001", statement -> {
-            int[] operands = statement.getOperands();
-            processReturnAddress(31);//RegisterFile.updateRegister(31, RegisterFile.getProgramCounter());
-            processJump(RegisterFile.getValue(operands[0]));
-        }));
-
-        // More load and store instructions
-        instructionList.add(new BasicInstruction("lb $t1,-100($t2)", "Load byte : Set $t1 to sign-extended 8-bit value from effective memory byte address", BasicInstructionFormat.I_FORMAT, "100000 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                RegisterFile.updateRegister(operands[0], Globals.memory.getByte(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16)) << 24 >> 24);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("lh $t1,-100($t2)", "Load half-word : Set $t1 to sign-extended 16-bit value from effective memory half-word address", BasicInstructionFormat.I_FORMAT, "100001 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                RegisterFile.updateRegister(operands[0], Globals.memory.getHalf(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16)) << 16 >> 16);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("lhu $t1,-100($t2)", "Load half-word unsigned : Set $t1 to zero-extended 16-bit value from effective memory half-word address", BasicInstructionFormat.I_FORMAT, "100101 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                // offset is sign-extended and loaded half-word value is zero-extended
-                RegisterFile.updateRegister(operands[0], Globals.memory.getHalf(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16)) & 0x0000ffff);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("lbu $t1,-100($t2)", "Load byte unsigned : Set $t1 to zero-extended 8-bit value from effective memory byte address", BasicInstructionFormat.I_FORMAT, "100100 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                RegisterFile.updateRegister(operands[0], Globals.memory.getByte(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16)) & 0x000000ff);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("sb $t1,-100($t2)", "Store byte : Store the low-order 8 bits of $t1 into the effective memory byte address", BasicInstructionFormat.I_FORMAT, "101000 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                Globals.memory.setByte(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16), RegisterFile.getValue(operands[0]) & 0x000000ff);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(new BasicInstruction("sh $t1,-100($t2)", "Store half-word : Store the low-order 16 bits of $t1 into the effective memory half-word address", BasicInstructionFormat.I_FORMAT, "101001 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                Globals.memory.setHalf(RegisterFile.getValue(operands[2]) + (operands[1] << 16 >> 16), RegisterFile.getValue(operands[0]) & 0x0000ffff);
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
+        instructionList.add(new Jump());
+        instructionList.add(new JumpRegister());
+        instructionList.add(new JumpAndLink());
+        instructionList.add(new JumpAndLinkRegister());
+        instructionList.add(new JumpAndLinkReturnAddress());
 
         // Count instructions
-        instructionList.add(new BasicInstruction("clo $t1,$t2", "Count number of leading ones : Set $t1 to the count of leading one bits in $t2 starting at most significant bit position", BasicInstructionFormat.R_FORMAT,
-                // MIPS32 requires rd (first) operand to appear twice in machine code.
-                // It has to be the same as rt (third) operand in machine code, but the
-                // source statement does not have or permit a third operand.
-                // In the machine code, rd and rt are adjacent, but my mask
-                // substitution cannot handle adjacent placement of the same source
-                // operand (e.g. "... sssss fffff fffff ...") because it would interpret
-                // the mask to be the total length of both (10 bits).  I could code it
-                // to have 3 operands then define a pseudo-instruction of two operands
-                // to translate into this, but then both would show up in the instruction set
-                // list and I don't want that.  So I will use the convention of Computer
-                // Organization and Design 3rd Edition, Appendix A, and code the rt bits
-                // as 0's.  The generated code does not match SPIM and would not run
-                // on a real MIPS machine, but since I am providing no means of storing
-                // the binary code that is not really an issue.
-                "011100 sssss 00000 fffff 00000 100001", statement -> {
-            int[] operands = statement.getOperands();
-            int value = RegisterFile.getValue(operands[1]);
-            int leadingOnes = 0;
-            int bitPosition = 31;
-            while (Binary.bitValue(value, bitPosition) == 1 && bitPosition >= 0) {
-                leadingOnes++;
-                bitPosition--;
-            }
-            RegisterFile.updateRegister(operands[0], leadingOnes);
-        }));
-        instructionList.add(new BasicInstruction("clz $t1,$t2", "Count number of leading zeroes : Set $t1 to the count of leading zero bits in $t2 starting at most significant bit position", BasicInstructionFormat.R_FORMAT,
-                // See comments for "clo" instruction above.  They apply here too.
-                "011100 sssss 00000 fffff 00000 100000", statement -> {
-            int[] operands = statement.getOperands();
-            int value = RegisterFile.getValue(operands[1]);
-            int leadingZeros = 0;
-            int bitPosition = 31;
-            while (Binary.bitValue(value, bitPosition) == 0 && bitPosition >= 0) {
-                leadingZeros++;
-                bitPosition--;
-            }
-            RegisterFile.updateRegister(operands[0], leadingZeros);
-        }));
+        instructionList.add(new CountLeadingOnes());
+        instructionList.add(new CountLeadingZeroes());
 
-        // Move instructions
-        instructionList.add(new BasicInstruction("mfc0 $t1,$8", "Move from Coprocessor 0 : Set $t1 to the value stored in Coprocessor 0 register $8", BasicInstructionFormat.R_FORMAT, "010000 00000 fffff sssss 00000 000000", statement -> {
-            int[] operands = statement.getOperands();
-            RegisterFile.updateRegister(operands[0], Coprocessor0.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("mtc0 $t1,$8", "Move to Coprocessor 0 : Set Coprocessor 0 register $8 to value stored in $t1", BasicInstructionFormat.R_FORMAT, "010000 00100 fffff sssss 00000 000000", statement -> {
-            int[] operands = statement.getOperands();
-            Coprocessor0.updateRegister(operands[1], RegisterFile.getValue(operands[0]));
-        }));
+        // Coprocessor 0 (interrupt/exception controller) move instructions
+        instructionList.add(new MoveFromCoprocessor0());
+        instructionList.add(new MoveToCoprocessor0());
 
-        // FPU math instructions
-        instructionList.add(new BasicInstruction("add.s $f0,$f1,$f3", "Floating point addition single precision : Set $f0 to single-precision floating point value of $f1 plus $f3", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 000000", statement -> {
-            int[] operands = statement.getOperands();
-            float add1 = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            float add2 = Float.intBitsToFloat(Coprocessor1.getValue(operands[2]));
-            float sum = add1 + add2;
-            // overflow detected when sum is positive or negative infinity.
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits(sum));
-        }));
-        instructionList.add(new BasicInstruction("sub.s $f0,$f1,$f3", "Floating point subtraction single precision : Set $f0 to single-precision floating point value of $f1  minus $f3", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 000001", statement -> {
-            int[] operands = statement.getOperands();
-            float sub1 = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            float sub2 = Float.intBitsToFloat(Coprocessor1.getValue(operands[2]));
-            float diff = sub1 - sub2;
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits(diff));
-        }));
-        instructionList.add(new BasicInstruction("mul.s $f0,$f1,$f3", "Floating point multiplication single precision : Set $f0 to single-precision floating point value of $f1 times $f3", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 000010", statement -> {
-            int[] operands = statement.getOperands();
-            float mul1 = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            float mul2 = Float.intBitsToFloat(Coprocessor1.getValue(operands[2]));
-            float prod = mul1 * mul2;
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits(prod));
-        }));
-        instructionList.add(new BasicInstruction("div.s $f0,$f1,$f3", "Floating point division single precision : Set $f0 to single-precision floating point value of $f1 divided by $f3", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 000011", statement -> {
-            int[] operands = statement.getOperands();
-            float div1 = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            float div2 = Float.intBitsToFloat(Coprocessor1.getValue(operands[2]));
-            float quot = div1 / div2;
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits(quot));
-        }));
-        instructionList.add(new BasicInstruction("sqrt.s $f0,$f1", "Square root single precision : Set $f0 to single-precision floating point square root of $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 000100", statement -> {
-            int[] operands = statement.getOperands();
-            float value = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            int floatSqrt;
-            if (value < 0.0f) {
-                // This is subject to refinement later.  Release 4.0 defines the floor, ceil, trunc, and round
-                // to act silently rather than raise Invalid Operation exception, so sqrt should do the
-                // same.  An intermediate step would be to define a setting for FCSR Invalid Operation
-                // flag, but the best solution is to simulate the FCSR register itself.
-                // FCSR = Floating point unit Control and Status Register.  DPS 10-Aug-2010
-                floatSqrt = Float.floatToIntBits(Float.NaN);
-                //throw new ProcessingException(statement, "Invalid Operation: sqrt of negative number");
-            } else {
-                floatSqrt = Float.floatToIntBits((float) Math.sqrt(value));
-            }
-            Coprocessor1.updateRegister(operands[0], floatSqrt);
-        }));
-        instructionList.add(new BasicInstruction("floor.w.s $f0,$f1", "Floor single precision to word : Set $f0 to 32-bit integer floor of single-precision float in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 001111", statement -> {
-            int[] operands = statement.getOperands();
-            float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            int floor = (int) Math.floor(floatValue);
-            // DPS 28-July-2010: Since MARS does not simulate the FCSR, I will take the default
-            // action of setting the result to 2^31-1, if the value is outside the 32-bit range.
-            if (Float.isNaN(floatValue) || Float.isInfinite(floatValue) || floatValue < (float) Integer.MIN_VALUE || floatValue > (float) Integer.MAX_VALUE) {
-                floor = Integer.MAX_VALUE;
-            }
-            Coprocessor1.updateRegister(operands[0], floor);
-        }));
-        instructionList.add(new BasicInstruction("ceil.w.s $f0,$f1", "Ceiling single precision to word : Set $f0 to 32-bit integer ceiling of single-precision float in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 001110", statement -> {
-            int[] operands = statement.getOperands();
-            float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            int ceiling = (int) Math.ceil(floatValue);
-            // DPS 28-July-2010: Since MARS does not simulate the FCSR, I will take the default
-            // action of setting the result to 2^31-1, if the value is outside the 32-bit range.
-            if (Float.isNaN(floatValue) || Float.isInfinite(floatValue) || floatValue < (float) Integer.MIN_VALUE || floatValue > (float) Integer.MAX_VALUE) {
-                ceiling = Integer.MAX_VALUE;
-            }
-            Coprocessor1.updateRegister(operands[0], ceiling);
-        }));
-        instructionList.add(new BasicInstruction("round.w.s $f0,$f1", "Round single precision to word : Set $f0 to 32-bit integer round of single-precision float in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 001100", statement -> { // MIPS32 documentation (and IEEE 754) states that round rounds to the nearest but when
-            // both are equally near it rounds to the even one!  SPIM rounds -4.5, -5.5,
-            // 4.5 and 5.5 to (-4, -5, 5, 6).  Curiously, it rounds -5.1 to -4 and -5.6 to -5.
-            // Until MARS 3.5, I used Math.round, which rounds to the nearest, but when both are
-            // equal it rounds toward positive infinity.  With Release 3.5, I painstakingly
-            // carry out the MIPS and IEEE 754 standard.
-            int[] operands = statement.getOperands();
-            float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            int below, above, round = Math.round(floatValue);
-            // According to MIPS32 spec, if any of these conditions is true, set
-            // Invalid Operation in the FCSR (Floating point Control/Status Register) and
-            // sets the result to be 2^31-1.  MARS does not implement this register (as of release 3.4.1).
-            // It also mentions the "Invalid Operation Enable bit" in FCSR, that, if set, results
-            // in immediate exception instead of default value.
-            if (Float.isNaN(floatValue) || Float.isInfinite(floatValue) || floatValue < (float) Integer.MIN_VALUE || floatValue > (float) Integer.MAX_VALUE) {
-                round = Integer.MAX_VALUE;
-            } else {
-                // If we are EXACTLY in the middle, then round to even!  To determine this,
-                // find next higher integer and next lower integer, then see if distances
-                // are exactly equal.
-                if (floatValue < 0.0F) {
-                    above = ((Float) floatValue).intValue(); // truncates
-                    below = above - 1;
-                } else {
-                    below = ((Float) floatValue).intValue(); // truncates
-                    above = below + 1;
-                }
-                if (floatValue - below == above - floatValue) { // exactly in the middle?
-                    round = (above % 2 == 0) ? above : below;
-                }
-            }
-            Coprocessor1.updateRegister(operands[0], round);
-        }));
-        instructionList.add(new BasicInstruction("trunc.w.s $f0,$f1", "Truncate single precision to word : Set $f0 to 32-bit integer truncation of single-precision float in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 001101", statement -> {
-            int[] operands = statement.getOperands();
-            float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-            int truncate = (int) floatValue;// Typecasting will round toward zero, the correct action
-            // DPS 28-July-2010: Since MARS does not simulate the FCSR, I will take the default
-            // action of setting the result to 2^31-1, if the value is outside the 32-bit range.
-            if (Float.isNaN(floatValue) || Float.isInfinite(floatValue) || floatValue < (float) Integer.MIN_VALUE || floatValue > (float) Integer.MAX_VALUE) {
-                truncate = Integer.MAX_VALUE;
-            }
-            Coprocessor1.updateRegister(operands[0], truncate);
-        }));
+        // Single-precision floating point math instructions
+        instructionList.add(new FloatAddSinglePrecision());
+        instructionList.add(new FloatSubtractSinglePrecision());
+        instructionList.add(new FloatMultiplySinglePrecision());
+        instructionList.add(new FloatDivideSinglePrecision());
+        instructionList.add(new FloatSquareRootSinglePrecision());
+        instructionList.add(new FloorSinglePrecisionFloatToWord());
+        instructionList.add(new CeilingSinglePrecisionFloatToWord());
+        instructionList.add(new RoundSinglePrecisionFloatToWord());
+        instructionList.add(new TruncateSinglePrecisionFloatToWord());
+
+        // Double-precision floating point math instructions
         instructionList.add(new BasicInstruction("add.d $f2,$f4,$f6", "Floating point addition double precision : Set $f2 to double-precision floating point value of $f4 plus $f6", BasicInstructionFormat.R_FORMAT, "010001 10001 ttttt sssss fffff 000000", statement -> {
             int[] operands = statement.getOperands();
             if (operands[0] % 2 == 1 || operands[1] % 2 == 1 || operands[2] % 2 == 1) {
@@ -1180,6 +797,14 @@ public class InstructionSet {
         }
         Collections.sort(matchMaps);
         this.opcodeMatchMaps = matchMaps;
+    }
+
+    private static void compareUnsigned(int[] operands, int first, int second) {
+        if (first >= 0 && second >= 0 || first < 0 && second < 0) {
+            RegisterFile.updateRegister(operands[0], (first < second) ? 1 : 0);
+        } else {
+            RegisterFile.updateRegister(operands[0], (first >= 0) ? 1 : 0);
+        }
     }
 
     private static int @NotNull [] getInts(ProgramStatement statement, int x, String m) throws ProcessingException {

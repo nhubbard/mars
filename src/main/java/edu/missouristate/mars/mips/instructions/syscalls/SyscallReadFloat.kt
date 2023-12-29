@@ -4,6 +4,7 @@ import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.mips.hardware.Coprocessor1.updateRegister
 import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.toRawIntBits
 import edu.missouristate.mars.util.SystemIO
 
 /**
@@ -24,6 +25,6 @@ class SyscallReadFloat : AbstractSyscall(6, "ReadFloat") {
                 Exceptions.SYSCALL_EXCEPTION
             )
         }
-        updateRegister(0, java.lang.Float.floatToRawIntBits(floatValue))
+        updateRegister(0, floatValue.toRawIntBits())
     }
 }

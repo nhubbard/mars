@@ -23,7 +23,7 @@
 
 package edu.missouristate.mars.mips.hardware
 
-import edu.missouristate.mars.Globals
+import edu.missouristate.mars.*
 import edu.missouristate.mars.util.Binary
 import java.util.*
 
@@ -83,7 +83,7 @@ object Coprocessor1 {
      */
     @JvmStatic
     fun setRegisterToFloat(number: Int, value: Float) {
-        if (number in registers.indices) registers[number].setValue(java.lang.Float.floatToRawIntBits(value))
+        if (number in registers.indices) registers[number].setValue(value.toRawIntBits())
     }
 
     /**
@@ -122,7 +122,7 @@ object Coprocessor1 {
     fun setRegisterPairToDouble(number: Int, value: Double) {
         if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
             throw InvalidRegisterAccessException()
-        val bits = java.lang.Double.doubleToRawLongBits(value)
+        val bits = value.toRawLongBits()
         // Set high-order 32 bits in the odd register
         registers[number + 1].setValue(Binary.highOrderLongToInt(bits))
         // Set low-order 32 bits in the even register
@@ -188,7 +188,7 @@ object Coprocessor1 {
     @JvmStatic
     fun getFloatFromRegister(number: Int): Float {
         var result = 0F
-        if (number in registers.indices) result = java.lang.Float.intBitsToFloat(registers[number].getValue())
+        if (number in registers.indices) result = registers[number].getValue().bitsToFloat()
         return result
     }
 
@@ -238,8 +238,8 @@ object Coprocessor1 {
     fun getDoubleFromRegisterPair(number: Int): Double {
         if (number % 2 != 0 || number !in registers.indices || number + 1 !in registers.indices)
             throw InvalidRegisterAccessException()
-        val bits = Binary.twoIntegersToLong(registers[number + 1].getValue(), registers[number].getValue())
-        return java.lang.Double.longBitsToDouble(bits)
+        val longBits = Binary.twoIntegersToLong(registers[number + 1].getValue(), registers[number].getValue())
+        return longBits.bitsToDouble()
     }
 
     /**
@@ -306,7 +306,7 @@ object Coprocessor1 {
 
     /**
      * Return the raw integer value of the numbered FPU register.
-     * If you need a float, use [java.lang.Float.intBitsToFloat] to get the equivalent float value.
+     * If you need a float, use [Int.bitsToFloat] to get the equivalent float value.
      *
      * @param number The numbered FPU register to get.
      * @return The raw integer value of the given register.

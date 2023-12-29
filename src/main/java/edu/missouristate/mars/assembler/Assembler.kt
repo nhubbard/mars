@@ -1096,7 +1096,7 @@ class Assembler {
         }
         // The value has been validated for storage in the provided directive.
         if (directive == Directives.FLOAT)
-            writeToDataSegment(java.lang.Float.floatToIntBits(value.toFloat()), lengthInBytes, token, errors)
+            writeToDataSegment(value.toFloat().toIntBits(), lengthInBytes, token, errors)
         if (directive == Directives.DOUBLE) writeDoubleToDataSegment(value, token, errors)
     }
 

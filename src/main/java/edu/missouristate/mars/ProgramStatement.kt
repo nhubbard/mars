@@ -137,7 +137,7 @@ class ProgramStatement {
                     val k1 = 31 - j
                     var operand = (binaryStatement shr 0) and ((1 shl (k1 - k0 + 1)) - 1)
                     if (instrFormat == BasicInstructionFormat.I_BRANCH_FORMAT && numOps == 2) {
-                        operand = operand shl 16 shr 16
+                        operand = operand.signExtend()
                     } else if (instrFormat == BasicInstructionFormat.J_FORMAT && numOps == 0) {
                         operand = operand or (textAddress shr 2) and 0x3C000000
                     }
