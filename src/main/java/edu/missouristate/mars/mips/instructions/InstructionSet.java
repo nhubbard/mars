@@ -234,134 +234,26 @@ public class InstructionSet {
         instructionList.add(new ConvertFloatToWord());
 
         // FPU move instructions
-        instructionList.add(new BasicInstruction("mov.d $f2,$f4", "Move floating point double precision : Set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 000110", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-            Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-        }));
-        instructionList.add(new BasicInstruction("movf.d $f2,$f4", "Move floating point double precision : If condition flag 0 false, set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 000 00 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (Coprocessor1.getConditionFlag(0) == 0) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("movf.d $f2,$f4,1", "Move floating point double precision : If condition flag specified by immediate is false, set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 ttt 00 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (Coprocessor1.getConditionFlag(operands[2]) == 0) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("movt.d $f2,$f4", "Move floating point double precision : If condition flag 0 true, set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 000 01 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (Coprocessor1.getConditionFlag(0) == 1) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("movt.d $f2,$f4,1", "Move floating point double precision : If condition flag specified by immediate is true, set double precision $f2 to double precision value in $f4e", BasicInstructionFormat.R_FORMAT, "010001 10001 ttt 01 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (Coprocessor1.getConditionFlag(operands[2]) == 1) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("movn.d $f2,$f4,$t3", "Move floating point double precision : If $t3 is not zero, set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 ttttt sssss fffff 010011", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (RegisterFile.getValue(operands[2]) != 0) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("movz.d $f2,$f4,$t3", "Move floating point double precision : If $t3 is zero, set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 ttttt sssss fffff 010010", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            if (RegisterFile.getValue(operands[2]) == 0) {
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-                Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1));
-            }
-        }));
-        instructionList.add(new BasicInstruction("mov.s $f0,$f1", "Move floating point single precision : Set single precision $f0 to single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 000110", statement -> {
-            int[] operands = statement.getOperands();
-            Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movf.s $f0,$f1", "Move floating point single precision : If condition flag 0 is false, set single precision $f0 to single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 000 00 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(0) == 0)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movf.s $f0,$f1,1", "Move floating point single precision : If condition flag specified by immediate is false, set single precision $f0 to single precision value in $f1e", BasicInstructionFormat.R_FORMAT, "010001 10000 ttt 00 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(operands[2]) == 0)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movt.s $f0,$f1", "Move floating point single precision : If condition flag 0 is true, set single precision $f0 to single precision value in $f1e", BasicInstructionFormat.R_FORMAT, "010001 10000 000 01 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(0) == 1)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movt.s $f0,$f1,1", "Move floating point single precision : If condition flag specified by immediate is true, set single precision $f0 to single precision value in $f1e", BasicInstructionFormat.R_FORMAT, "010001 10000 ttt 01 sssss fffff 010001", statement -> {
-            int[] operands = statement.getOperands();
-            if (Coprocessor1.getConditionFlag(operands[2]) == 1)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movn.s $f0,$f1,$t3", "Move floating point single precision : If $t3 is not zero, set single precision $f0 to single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 010011", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[2]) != 0)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("movz.s $f0,$f1,$t3", "Move floating point single precision : If $t3 is zero, set single precision $f0 to single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 ttttt sssss fffff 010010", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[2]) == 0)
-                Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("mfc1 $t1,$f1", "Move from Coprocessor 1 (FPU) : Set $t1 to value in Coprocessor 1 register $f1", BasicInstructionFormat.R_FORMAT, "010001 00000 fffff sssss 00000 000000", statement -> {
-            int[] operands = statement.getOperands();
-            RegisterFile.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("mtc1 $t1,$f1", "Move to Coprocessor 1 (FPU) : Set Coprocessor 1 register $f1 to value in $t1", BasicInstructionFormat.R_FORMAT, "010001 00100 fffff sssss 00000 000000", statement -> {
-            int[] operands = statement.getOperands();
-            Coprocessor1.updateRegister(operands[1], RegisterFile.getValue(operands[0]));
-        }));
+        instructionList.add(new MoveDouble());
+        instructionList.add(new MoveDoubleIfConditionFlagZeroFalse());
+        instructionList.add(new MoveDoubleIfConditionFlagFalse());
+        instructionList.add(new MoveDoubleIfConditionFlagZeroTrue());
+        instructionList.add(new MoveDoubleIfConditionFlagTrue());
+        instructionList.add(new MoveDoubleIfRegisterNotZero());
+        instructionList.add(new MoveDoubleIfRegisterZero());
+        instructionList.add(new MoveFloat());
+        instructionList.add(new MoveFloatIfConditionFlagZeroFalse());
+        instructionList.add(new MoveFloatIfConditionFlagFalse());
+        instructionList.add(new MoveFloatIfConditionFlagZeroTrue());
+        instructionList.add(new MoveFloatIfConditionFlagTrue());
+        instructionList.add(new MoveFloatIfRegisterNotZero());
+        instructionList.add(new MoveFloatIfRegisterZero());
+        instructionList.add(new MoveFromCoprocessor1());
+        instructionList.add(new MoveToCoprocessor1());
 
-        // More FPU utility instructions
-        instructionList.add(new BasicInstruction("neg.d $f2,$f4", "Floating point negate double precision : Set double precision $f2 to negation of double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 000111", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            // flip the sign bit of the second register (high-order word) of the pair
-            int value = Coprocessor1.getValue(operands[1] + 1);
-            Coprocessor1.updateRegister(operands[0] + 1, ((value < 0) ? (value & Integer.MAX_VALUE) : (value | Integer.MIN_VALUE)));
-            Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("neg.s $f0,$f1", "Floating point negate single precision : Set single precision $f0 to negation of single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 000111", statement -> {
-            int[] operands = statement.getOperands();
-            int value = Coprocessor1.getValue(operands[1]);
-            // flip the sign bit
-            Coprocessor1.updateRegister(operands[0], ((value < 0) ? (value & Integer.MAX_VALUE) : (value | Integer.MIN_VALUE)));
-        }));
+        // FPU negation instructions
+        instructionList.add(new NegateDouble());
+        instructionList.add(new NegateFloat());
 
         // FPU load instructions
         instructionList.add(new BasicInstruction("lwc1 $f1,-100($t2)", "Load word into Coprocessor 1 (FPU) : Set $f1 to 32-bit value from effective memory word address", BasicInstructionFormat.I_FORMAT, "110001 ttttt fffff ssssssssssssssss", statement -> {
