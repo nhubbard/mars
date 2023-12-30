@@ -19,23 +19,29 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+@file:Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+
 package edu.missouristate.mars
+
+private typealias JFloat = java.lang.Float
+private typealias JDouble = java.lang.Double
+private typealias JLong = java.lang.Long
 
 fun Boolean.toInt(): Int = if (this) 1 else 0
 
 fun Int.signExtend(i: Int = 16): Int = this shl i shr i
-fun Int.bitsToFloat(): Float = java.lang.Float.intBitsToFloat(this)
+fun Int.bitsToFloat(): Float = JFloat.intBitsToFloat(this)
 
-fun Long.bitsToDouble(): Double = java.lang.Double.longBitsToDouble(this)
+fun Long.bitsToDouble(): Double = JDouble.longBitsToDouble(this)
 
-fun Float.toIntBits(): Int = java.lang.Float.floatToIntBits(this)
-fun Float.toRawIntBits(): Int = java.lang.Float.floatToRawIntBits(this)
+fun Float.toIntBits(): Int = JFloat.floatToIntBits(this)
+fun Float.toRawIntBits(): Int = JFloat.floatToRawIntBits(this)
 
 fun Float.inIntRange(): Boolean = this in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
 
-fun Double.toLongBits(): Long = java.lang.Double.doubleToLongBits(this)
-fun Double.toRawLongBits(): Long = java.lang.Double.doubleToRawLongBits(this)
+fun Double.toLongBits(): Long = JDouble.doubleToLongBits(this)
+fun Double.toRawLongBits(): Long = JDouble.doubleToRawLongBits(this)
 
 fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
 
-fun String.decodeToLong(): Long = java.lang.Long.decode(this)
+fun String.decodeToLong(): Long = JLong.decode(this)

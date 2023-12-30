@@ -454,7 +454,7 @@ public class Simulator extends Observable {
          * Its action depends on what caused the return from construct() and what
          * action led to the call of construct() in the first place.
          */
-
+        @Override
         public void finished() {
             // If running from the command-line, then there is no GUI to update.
             if (Globals.getGui() == null) {
