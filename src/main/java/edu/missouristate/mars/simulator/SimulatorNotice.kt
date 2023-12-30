@@ -1,6 +1,6 @@
-package edu.missouristate.mars.simulator;
+package edu.missouristate.mars.simulator
 
-import edu.missouristate.mars.venus.RunSpeedPanel;
+import edu.missouristate.mars.venus.RunSpeedPanel
 
 /**
  * Object provided to Observers of the Simulator.
@@ -10,61 +10,32 @@ import edu.missouristate.mars.venus.RunSpeedPanel;
  * @author Pete Sanderson
  * @version January 2009
  */
-
-public class SimulatorNotice {
-    private final int action;
-    private final int maxSteps;
-    private final double runSpeed;
-    private final int programCounter;
-    public static final int SIMULATOR_START = 0;
-    public static final int SIMULATOR_STOP = 1;
-
-    /**
-     * Constructor will be called only within this package, so assume
-     * address and length are in valid ranges.
-     */
-    public SimulatorNotice(int action, int maxSteps, double runSpeed, int programCounter) {
-        this.action = action;
-        this.maxSteps = maxSteps;
-        this.runSpeed = runSpeed;
-        this.programCounter = programCounter;
-    }
-
+data class SimulatorNotice(
     /**
      * Fetch the memory address that was accessed.
      */
-    public int getAction() {
-        return this.action;
-    }
-
+    val action: Int,
     /**
      * Fetch the length in bytes of the access operation (4,2,1).
      */
-    public int getMaxSteps() {
-        return this.maxSteps;
-    }
-
+    val maxSteps: Int,
     /**
      * Fetch the value of the access operation (the value read or written).
      */
-    public double getRunSpeed() {
-        return this.runSpeed;
-    }
-
+    val runSpeed: Double,
     /**
      * Fetch the value of the access operation (the value read or written).
      */
-    public int getProgramCounter() {
-        return this.programCounter;
-    }
-
+    val programCounter: Int
+) {
     /**
-     * String representation indicates access type, address and length in bytes
+     * String representation indicates the access type, address and length in bytes
      */
-    public String toString() {
-        return ((this.getAction() == SIMULATOR_START) ? "START " : "STOP  ") +
-                "Max Steps " + this.maxSteps + " " +
-                "Speed " + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED) ? "unlimited " : this.runSpeed + " inst/sec") +
-                "Prog Ctr " + this.programCounter;
+    override fun toString(): String =
+        "${if ((this.action == SIMULATOR_START)) "START " else "STOP  "}Max Steps ${this.maxSteps} Speed ${if ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)) "unlimited " else "$runSpeed inst/sec"}Prog Ctr ${this.programCounter}"
+
+    companion object {
+        const val SIMULATOR_START: Int = 0
+        const val SIMULATOR_STOP: Int = 1
     }
 }

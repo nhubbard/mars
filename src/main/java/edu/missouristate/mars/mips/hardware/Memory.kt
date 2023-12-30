@@ -458,8 +458,8 @@ class Memory private constructor() : Observable() {
                 setStatement(address, ProgramStatement(value, address))
             } else throw AddressErrorException(
                 "Cannot write directly to the text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE,
-                address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_STORE
             )
         } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
             // We are in the memory-mapped I/O segment.
@@ -473,15 +473,15 @@ class Memory private constructor() : Observable() {
             // Developers must use setStatement() to write to the kernel text segment.
             throw AddressErrorException(
                 "Developer: You MUST use setStatement() to write to the kernel text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE,
-                address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_STORE
             )
         } else {
             // The address falls outside the MARS addressing range.
             throw AddressErrorException(
                 "The address is out of range! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE,
-                address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_STORE
             )
         }
         notifyAnyObservers(AccessNotice.AccessType.WRITE, address, length, value)
@@ -504,7 +504,8 @@ class Memory private constructor() : Observable() {
         var oldValue = 0
         if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
             "Store address not aligned on word boundary!",
-            Exceptions.ADDRESS_EXCEPTION_STORE, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_STORE
         )
         if (inDataSegment(address)) {
             relative = (address - dataSegmentBaseAddress) shr 2
@@ -519,7 +520,7 @@ class Memory private constructor() : Observable() {
                 setStatement(address, ProgramStatement(value, address))
             } else throw AddressErrorException(
                 "Cannot write directly to the text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE, address
+                address, Exceptions.ADDRESS_EXCEPTION_STORE
             )
         } else if (address in memoryMapBaseAddress..<memoryMapLimitAddress) {
             relative = (address - memoryMapBaseAddress) shr 2
@@ -530,12 +531,12 @@ class Memory private constructor() : Observable() {
         } else if (inKernelTextSegment(address)) {
             throw AddressErrorException(
                 "Developer: You MUST use setStatement() to write to kernel text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE, address
+                address, Exceptions.ADDRESS_EXCEPTION_STORE
             )
         } else {
             throw AddressErrorException(
                 "Cannot store address out of range! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE, address
+                address, Exceptions.ADDRESS_EXCEPTION_STORE
             )
         }
         notifyAnyObservers(AccessNotice.AccessType.WRITE, address, WORD_LENGTH_BYTES, value)

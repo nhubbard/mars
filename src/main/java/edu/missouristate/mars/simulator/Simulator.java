@@ -15,7 +15,6 @@ import javax.swing.*;
  * @author Pete Sanderson
  * @version August 2005
  **/
-
 public class Simulator extends Observable {
     private SimThread simulatorThread;
     private static Simulator simulator = null;  // Singleton object
@@ -25,7 +24,7 @@ public class Simulator extends Observable {
     // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
     // display 0xFFFF0008.  DPS 23 July 2008.
     public static final int NO_DEVICE = 0;
-    public static volatile int externalInterruptingDevice = NO_DEVICE;
+    public static volatile Exceptions externalInterruptingDevice = Exceptions.fromInt(NO_DEVICE);
     /**
      * various reasons for simulate to end...
      */
@@ -303,9 +302,9 @@ public class Simulator extends Observable {
                 // registers is assured.  Not as critical for reading from those resources.
                 synchronized (Globals.getMemoryAndRegistersLock()) {
                     try {
-                        if (Simulator.externalInterruptingDevice != NO_DEVICE) {
-                            int deviceInterruptCode = externalInterruptingDevice;
-                            Simulator.externalInterruptingDevice = NO_DEVICE;
+                        if (Simulator.externalInterruptingDevice != Exceptions.fromInt(NO_DEVICE)) {
+                            Exceptions deviceInterruptCode = externalInterruptingDevice;
+                            Simulator.externalInterruptingDevice = Exceptions.fromInt(NO_DEVICE);
                             throw new ProcessingException(statement, "External Interrupt", deviceInterruptCode);
                         }
                         BasicInstruction instruction = (BasicInstruction) statement.getInstruction();

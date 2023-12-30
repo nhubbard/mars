@@ -66,7 +66,7 @@ class ProcessingException : Exception {
      * @param m     a String containing specialized error message
      * @param cause exception cause (see Exceptions class for list)
      */
-    constructor(ps: ProgramStatement?, m: String?, cause: Int) : this(ps, m) {
+    constructor(ps: ProgramStatement?, m: String?, cause: Exceptions) : this(ps, m) {
         Exceptions.setRegisters(cause)
     }
 

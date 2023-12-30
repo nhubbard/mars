@@ -1,8 +1,11 @@
 package edu.missouristate.mars.simulator;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.mips.hardware.Coprocessor0;
+import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.instructions.Instruction;
 
 /**
  * Used to "step backward" through execution, undoing each instruction.

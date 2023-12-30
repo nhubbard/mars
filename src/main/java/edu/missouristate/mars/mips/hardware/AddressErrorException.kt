@@ -21,6 +21,7 @@
 
 package edu.missouristate.mars.mips.hardware
 
+import edu.missouristate.mars.simulator.Exceptions
 import edu.missouristate.mars.util.Binary
 
 /**
@@ -30,5 +31,8 @@ import edu.missouristate.mars.util.Binary
 data class AddressErrorException(
     private val localMessage: String,
     val address: Int,
-    val type: Int
-): Exception("$localMessage${Binary.intToHexString(address)}")
+    val type: Exceptions
+): Exception("$localMessage${Binary.intToHexString(address)}") {
+    @Deprecated("Incorrect order.", ReplaceWith("AddressErrorException(localMessage, address, type)"))
+    constructor(localMessage: String, type: Exceptions, address: Int) : this(localMessage, address, type)
+}
