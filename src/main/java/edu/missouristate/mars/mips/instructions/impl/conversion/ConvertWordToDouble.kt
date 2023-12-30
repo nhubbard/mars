@@ -19,29 +19,25 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.count
+package edu.missouristate.mars.mips.instructions.impl.conversion
 
-import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import edu.missouristate.mars.mips.instructions.KInstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
+import edu.missouristate.mars.toLongBits
 import edu.missouristate.mars.util.Binary
 
-class CountLeadingZeroes : BasicInstruction(
-    "clz \$t1,\$t2",
-    "Count number of leading zeroes: set \$t1 to the count of leading zero bits in \$t2 starting at the most significant bit position",
+class ConvertWordToDouble : BasicInstruction(
+    "cvt.d.w \$f2,\$f1",
+    "Convert from word to double precision: set \$f2 to double-precision equivalent of 32-bit integer value in \$f1",
     BasicInstructionFormat.R_FORMAT,
-    "011100 sssss 00000 fffff 00000 100000",
+    "010001 10100 00000 sssss fffff 100001",
     SimulationCode {
-        // The same comment in CountLeadingOnes also applies here.
-        val operands = it.getOperandsOrThrow()
-        val value = RegisterFile.getValue(operands[1])
-        var leadingZeroes = 0
-        var bitPosition = 31
-        while (Binary.bitValue(value, bitPosition) == 0 && bitPosition >= 0) {
-            leadingZeroes++
-            bitPosition--
-        }
-        RegisterFile.updateRegister(operands[0], leadingZeroes)
+        val operands = KInstructionSet.getEvenOperand(it, 0, "First register must be even-numbered")
+        val result = Coprocessor1.getValue(operands[1]).toDouble().toLongBits()
+        Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result))
+        Coprocessor1.updateRegister(operands[0], Binary.highOrderLongToInt(result))
     }
 )

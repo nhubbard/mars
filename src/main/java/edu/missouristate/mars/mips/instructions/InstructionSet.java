@@ -8,8 +8,9 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.impl.Nop;
 import edu.missouristate.mars.mips.instructions.impl.branches.*;
 import edu.missouristate.mars.mips.instructions.impl.compare.*;
-import edu.missouristate.mars.mips.instructions.impl.count.CountLeadingOnes;
-import edu.missouristate.mars.mips.instructions.impl.count.CountLeadingZeroes;
+import edu.missouristate.mars.mips.instructions.impl.conversion.*;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.CountLeadingOnes;
+import edu.missouristate.mars.mips.instructions.impl.math.integer.CountLeadingZeroes;
 import edu.missouristate.mars.mips.instructions.impl.jumps.*;
 import edu.missouristate.mars.mips.instructions.impl.logic.*;
 import edu.missouristate.mars.mips.instructions.impl.math.doubleprecision.*;
@@ -188,6 +189,7 @@ public class InstructionSet {
         instructionList.add(new FloatCeilingToWord());
         instructionList.add(new RoundFloatToWord());
         instructionList.add(new TruncateFloatToWord());
+        instructionList.add(new FloatAbsoluteValue());
 
         // Double-precision floating point math instructions
         instructionList.add(new DoubleAdd());
@@ -199,6 +201,7 @@ public class InstructionSet {
         instructionList.add(new DoubleCeilingToWord());
         instructionList.add(new RoundDoubleToWord());
         instructionList.add(new TruncateDoubleToWord());
+        instructionList.add(new DoubleAbsoluteValue());
 
         // FPU branch instructions
         instructionList.add(new BranchFPUZeroFlagTrue());
@@ -222,55 +225,13 @@ public class InstructionSet {
         instructionList.add(new DoubleCompareLess());
         instructionList.add(new DoubleCompareLessCustomFlag());
 
-        // FPU helper instructions
-        instructionList.add(new BasicInstruction("abs.s $f0,$f1", "Floating point absolute value single precision : Set $f0 to absolute value of $f1, single precision", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 000101", statement -> {
-            int[] operands = statement.getOperands();
-            // I need to only clear the high-order bit!
-            Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]) & Integer.MAX_VALUE);
-        }));
-        instructionList.add(new BasicInstruction("abs.d $f2,$f4", "Floating point absolute value double precision : Set $f2 to absolute value of $f4, double precision", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 000101", statement -> {
-            int[] operands = statement.getOperands();
-            if (operands[0] % 2 == 1 || operands[1] % 2 == 1) {
-                throw new ProcessingException(statement, "both registers must be even-numbered");
-            }
-            // I need only to clear the high-order bit of high-word register!
-            Coprocessor1.updateRegister(operands[0] + 1, Coprocessor1.getValue(operands[1] + 1) & Integer.MAX_VALUE);
-            Coprocessor1.updateRegister(operands[0], Coprocessor1.getValue(operands[1]));
-        }));
-        instructionList.add(new BasicInstruction("cvt.d.s $f2,$f1", "Convert from single precision to double precision : Set $f2 to double precision equivalent of single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 100001", statement -> {
-            int[] operands = getEvenOperand(statement, 0, "first register must be even-numbered");
-            // convert single precision in $f1 to double value stored in $f2
-            long result = Double.doubleToLongBits(Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
-            Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
-            Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
-        }));
-        instructionList.add(new BasicInstruction("cvt.d.w $f2,$f1", "Convert from word to double precision : Set $f2 to double precision equivalent of 32-bit integer value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10100 00000 sssss fffff 100001", statement -> {
-            int[] operands = getEvenOperand(statement, 0, "first register must be even-numbered");
-            // convert integer to double (interpret $f1 value as int?)
-            long result = Double.doubleToLongBits(Coprocessor1.getValue(operands[1]));
-            Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
-            Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
-        }));
-        instructionList.add(new BasicInstruction("cvt.s.d $f1,$f2", "Convert from double precision to single precision : Set $f1 to single precision equivalent of double precision value in $f2", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 100000", statement -> {
-            int[] operands = getEvenOperand(statement, 1, "second register must be even-numbered");
-            double val = Double.longBitsToDouble(Binary.twoIntegersToLong(Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits((float) val));
-        }));
-        instructionList.add(new BasicInstruction("cvt.s.w $f0,$f1", "Convert from word to single precision : Set $f0 to single precision equivalent of 32-bit integer value in $f2", BasicInstructionFormat.R_FORMAT, "010001 10100 00000 sssss fffff 100000", statement -> {
-            int[] operands = statement.getOperands();
-            // convert integer to single (interpret $f1 value as int?)
-            Coprocessor1.updateRegister(operands[0], Float.floatToIntBits((float) Coprocessor1.getValue(operands[1])));
-        }));
-        instructionList.add(new BasicInstruction("cvt.w.d $f1,$f2", "Convert from double precision to word : Set $f1 to 32-bit integer equivalent of double precision value in $f2", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 100100", statement -> {
-            int[] operands = getEvenOperand(statement, 1, "second register must be even-numbered");
-            double val = Double.longBitsToDouble(Binary.twoIntegersToLong(Coprocessor1.getValue(operands[1] + 1), Coprocessor1.getValue(operands[1])));
-            Coprocessor1.updateRegister(operands[0], (int) val);
-        }));
-        instructionList.add(new BasicInstruction("cvt.w.s $f0,$f1", "Convert from single precision to word : Set $f0 to 32-bit integer equivalent of single precision value in $f1", BasicInstructionFormat.R_FORMAT, "010001 10000 00000 sssss fffff 100100", statement -> {
-            int[] operands = statement.getOperands();
-            // convert single precision in $f1 to integer stored in $f0
-            Coprocessor1.updateRegister(operands[0], (int) Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
-        }));
+        // Floating-point conversion instructions
+        instructionList.add(new ConvertFloatToDouble());
+        instructionList.add(new ConvertWordToDouble());
+        instructionList.add(new ConvertDoubleToFloat());
+        instructionList.add(new ConvertWordToFloat());
+        instructionList.add(new ConvertDoubleToWord());
+        instructionList.add(new ConvertFloatToWord());
 
         // FPU move instructions
         instructionList.add(new BasicInstruction("mov.d $f2,$f4", "Move floating point double precision : Set double precision $f2 to double precision value in $f4", BasicInstructionFormat.R_FORMAT, "010001 10001 00000 sssss fffff 000110", statement -> {

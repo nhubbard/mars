@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.instructions.impl.count
+package edu.missouristate.mars.mips.instructions.impl.math.integer
 
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
