@@ -28,6 +28,7 @@ import edu.missouristate.mars.mips.instructions.impl.set.SetLessThanUnsigned;
 import edu.missouristate.mars.mips.instructions.impl.system.BreakWithCode;
 import edu.missouristate.mars.mips.instructions.impl.system.BreakWithoutCode;
 import edu.missouristate.mars.mips.instructions.impl.system.RunSyscall;
+import edu.missouristate.mars.mips.instructions.impl.traps.*;
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.Exceptions;
@@ -256,146 +257,27 @@ public class InstructionSet {
         instructionList.add(new NegateFloat());
 
         // FPU load instructions
-        instructionList.add(new BasicInstruction("lwc1 $f1,-100($t2)", "Load word into Coprocessor 1 (FPU) : Set $f1 to 32-bit value from effective memory word address", BasicInstructionFormat.I_FORMAT, "110001 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                Coprocessor1.updateRegister(operands[0], Globals.memory.getWord(RegisterFile.getValue(operands[2]) + operands[1]));
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add(// no printed reference, got opcode from SPIM
-                new BasicInstruction("ldc1 $f2,-100($t2)", "Load double word Coprocessor 1 (FPU)) : Set $f2 to 64-bit value from effective memory double-word address", BasicInstructionFormat.I_FORMAT, "110101 ttttt fffff ssssssssssssssss", statement -> {
-                    int[] operands = getEvenOperand(statement, 0, "first register must be even-numbered");
-                    // IF statement added by DPS 13-July-2011.
-                    if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
-                        throw new ProcessingException(statement, new AddressErrorException("address not aligned on double-word boundary ", Exceptions.ADDRESS_EXCEPTION_LOAD, RegisterFile.getValue(operands[2]) + operands[1]));
-                    }
-
-                    try {
-                        Coprocessor1.updateRegister(operands[0], Globals.memory.getWord(RegisterFile.getValue(operands[2]) + operands[1]));
-                        Coprocessor1.updateRegister(operands[0] + 1, Globals.memory.getWord(RegisterFile.getValue(operands[2]) + operands[1] + 4));
-                    } catch (AddressErrorException e) {
-                        throw new ProcessingException(statement, e);
-                    }
-                }));
+        instructionList.add(new LoadWordIntoFPU());
+        instructionList.add(new LoadDwordIntoFPU());
 
         // FPU store instructions
-        instructionList.add(new BasicInstruction("swc1 $f1,-100($t2)", "Store word from Coprocessor 1 (FPU) : Store 32 bit value in $f1 to effective memory word address", BasicInstructionFormat.I_FORMAT, "111001 ttttt fffff ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            try {
-                Globals.memory.setWord(RegisterFile.getValue(operands[2]) + operands[1], Coprocessor1.getValue(operands[0]));
-            } catch (AddressErrorException e) {
-                throw new ProcessingException(statement, e);
-            }
-        }));
-        instructionList.add( // no printed reference, got opcode from SPIM
-                new BasicInstruction("sdc1 $f2,-100($t2)", "Store double word from Coprocessor 1 (FPU)) : Store 64 bit value in $f2 to effective memory double-word address", BasicInstructionFormat.I_FORMAT, "111101 ttttt fffff ssssssssssssssss", statement -> {
-                    int[] operands = getEvenOperand(statement, 0, "first register must be even-numbered");
-                    // IF statement added by DPS 13-July-2011.
-                    if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1])) {
-                        throw new ProcessingException(statement, new AddressErrorException("address not aligned on double-word boundary ", Exceptions.ADDRESS_EXCEPTION_STORE, RegisterFile.getValue(operands[2]) + operands[1]));
-                    }
-                    try {
-                        Globals.memory.setWord(RegisterFile.getValue(operands[2]) + operands[1], Coprocessor1.getValue(operands[0]));
-                        Globals.memory.setWord(RegisterFile.getValue(operands[2]) + operands[1] + 4, Coprocessor1.getValue(operands[0] + 1));
-                    } catch (AddressErrorException e) {
-                        throw new ProcessingException(statement, e);
-                    }
-                }));
+        instructionList.add(new StoreWordFromFPU());
+        instructionList.add(new StoreDwordFromFPU());
 
         // Trap and exception return instructions
-        instructionList.add(new BasicInstruction("teq $t1,$t2", "Trap if equal : Trap if $t1 is equal to $t2", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110100", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) == RegisterFile.getValue(operands[1])) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("teqi $t1,-100", "Trap if equal to immediate : Trap if $t1 is equal to sign-extended 16 bit immediate", BasicInstructionFormat.I_FORMAT, "000001 fffff 01100 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) == (operands[1] << 16 >> 16)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tne $t1,$t2", "Trap if not equal : Trap if $t1 is not equal to $t2", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110110", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) != RegisterFile.getValue(operands[1])) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tnei $t1,-100", "Trap if not equal to immediate : Trap if $t1 is not equal to sign-extended 16 bit immediate", BasicInstructionFormat.I_FORMAT, "000001 fffff 01110 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) != (operands[1] << 16 >> 16)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tge $t1,$t2", "Trap if greater or equal : Trap if $t1 is greater than or equal to $t2", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110000", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) >= RegisterFile.getValue(operands[1])) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tgeu $t1,$t2", "Trap if greater or equal unsigned : Trap if $t1 is greater than or equal to $t2 using unsigned comparison", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110001", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[0]);
-            int second = RegisterFile.getValue(operands[1]);
-            // if signs are the same, do a straight compare; if signs differ & first negative then first greater else second
-            if ((first >= 0 && second >= 0 || first < 0 && second < 0) ? (first >= second) : (first < 0)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tgei $t1,-100", "Trap if greater than or equal to immediate : Trap if $t1 greater than or equal to sign-extended 16 bit immediate", BasicInstructionFormat.I_FORMAT, "000001 fffff 01000 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) >= (operands[1] << 16 >> 16)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tgeiu $t1,-100", "Trap if greater or equal to immediate unsigned : Trap if $t1 greater than or equal to sign-extended 16 bit immediate, unsigned comparison", BasicInstructionFormat.I_FORMAT, "000001 fffff 01001 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[0]);
-            // 16 bit immediate value in operands[1] is sign-extended
-            int second = operands[1] << 16 >> 16;
-            // if the signs are the same, do a straight comparison; if signs differ & first negative then first greater else second
-            if ((first >= 0 && second >= 0 || first < 0 && second < 0) ? (first >= second) : (first < 0)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tlt $t1,$t2", "Trap if less than: Trap if $t1 less than $t2", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110010", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) < RegisterFile.getValue(operands[1])) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tltu $t1,$t2", "Trap if less than unsigned : Trap if $t1 less than $t2, unsigned comparison", BasicInstructionFormat.R_FORMAT, "000000 fffff sssss 00000 00000 110011", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[0]);
-            int second = RegisterFile.getValue(operands[1]);
-            // if signs are the same, do a straight compare; if signs differ & first is positive, then first is less else second
-            if ((first >= 0 && second >= 0 || first < 0 && second < 0) ? (first < second) : (first >= 0)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tlti $t1,-100", "Trap if less than immediate : Trap if $t1 less than sign-extended 16-bit immediate", BasicInstructionFormat.I_FORMAT, "000001 fffff 01010 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            if (RegisterFile.getValue(operands[0]) < (operands[1] << 16 >> 16)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("tltiu $t1,-100", "Trap if less than immediate unsigned : Trap if $t1 less than sign-extended 16-bit immediate, unsigned comparison", BasicInstructionFormat.I_FORMAT, "000001 fffff 01011 ssssssssssssssss", statement -> {
-            int[] operands = statement.getOperands();
-            int first = RegisterFile.getValue(operands[0]);
-            // 16 bit immediate value in operands[1] is sign-extended
-            int second = operands[1] << 16 >> 16;
-            // if signs are the same, do a straight compare; if signs differ & first is positive, then first is less else second
-            if ((first >= 0 && second >= 0 || first < 0 && second < 0) ? (first < second) : (first >= 0)) {
-                throw new ProcessingException(statement, "trap", Exceptions.TRAP_EXCEPTION);
-            }
-        }));
-        instructionList.add(new BasicInstruction("eret", "Exception return : Set Program Counter to Coprocessor 0 EPC register value, set Coprocessor Status register bit 1 (exception level) to zero", BasicInstructionFormat.R_FORMAT, "010000 1 0000000000000000000 011000", statement -> {
-            // set EXL bit (bit 1) in Status register to 0 and set PC to EPC
-            Coprocessor0.updateRegister(Coprocessor0.STATUS, Binary.clearBit(Coprocessor0.getValue(Coprocessor0.STATUS), Coprocessor0.EXCEPTION_LEVEL));
-            RegisterFile.setProgramCounter(Coprocessor0.getValue(Coprocessor0.EPC));
-        }));
+        instructionList.add(new TrapIfEqual());
+        instructionList.add(new TrapIfEqualImmediate());
+        instructionList.add(new TrapNotEqual());
+        instructionList.add(new TrapNotEqualImmediate());
+        instructionList.add(new TrapIfGreaterOrEqual());
+        instructionList.add(new TrapIfGreaterOrEqualUnsigned());
+        instructionList.add(new TrapIfGreaterOrEqualImmediate());
+        instructionList.add(new TrapIfGreaterOrEqualImmediateUnsigned());
+        instructionList.add(new TrapLessThan());
+        instructionList.add(new TrapLessThanUnsigned());
+        instructionList.add(new TrapLessThanImmediate());
+        instructionList.add(new TrapLessThanImmediateUnsigned());
+        instructionList.add(new ExceptionReturn());
 
         ////////////// READ PSEUDO-INSTRUCTION SPECS FROM DATA FILE AND ADD //////////////////////
         addPseudoInstructions();
