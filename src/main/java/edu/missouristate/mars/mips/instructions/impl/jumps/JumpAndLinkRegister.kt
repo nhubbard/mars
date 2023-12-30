@@ -25,8 +25,8 @@ import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import edu.missouristate.mars.mips.instructions.KInstructionSet.processReturnAddress
-import edu.missouristate.mars.mips.instructions.KInstructionSet.processJump
+import edu.missouristate.mars.mips.instructions.InstructionSet.processReturnAddress
+import edu.missouristate.mars.mips.instructions.InstructionSet.processJump
 
 class JumpAndLinkRegister : BasicInstruction(
     "jalr \$t1,\$t2",

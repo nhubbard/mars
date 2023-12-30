@@ -138,7 +138,7 @@ object Globals {
         if (!initialized) {
             // Clients can use Memory.getInstance() instead of Globals.memory
             memory = Memory.instance
-            instructionSet = InstructionSet()
+            instructionSet = InstructionSet
             instructionSet.populate()
             symbolTable = SymbolTable("global")
             settings = Settings()

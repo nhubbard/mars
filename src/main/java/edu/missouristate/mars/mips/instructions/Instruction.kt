@@ -69,7 +69,7 @@ abstract class Instruction {
      * Build a token list from the example instruction provided as a constructor argument.
      * Parser uses this for syntax checking.
      */
-    protected fun createExampleTokenList() {
+    fun createExampleTokenList() {
         try {
             tokenList = Tokenizer().tokenizeExampleInstruction(exampleFormat)
         } catch (pe: ProcessingException) {

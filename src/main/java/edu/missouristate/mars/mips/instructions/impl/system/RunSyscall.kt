@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.system
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class RunSyscall : BasicInstruction(
@@ -33,6 +33,6 @@ class RunSyscall : BasicInstruction(
     BasicInstructionFormat.R_FORMAT,
     "000000 00000 00000 00000 00000 001100",
     SimulationCode {
-        KInstructionSet.findAndSimulateSyscall(RegisterFile.getValue(2), it)
+        InstructionSet.findAndSimulateSyscall(RegisterFile.getValue(2), it)
     }
 )

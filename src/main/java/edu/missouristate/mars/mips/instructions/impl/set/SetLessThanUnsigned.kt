@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.set
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class SetLessThanUnsigned : BasicInstruction(
@@ -36,6 +36,6 @@ class SetLessThanUnsigned : BasicInstruction(
         val operands = it.getOperandsOrThrow()
         val first = RegisterFile.getValue(operands[1])
         val second = RegisterFile.getValue(operands[2])
-        KInstructionSet.compareUnsigned(operands, first, second)
+        InstructionSet.compareUnsigned(operands, first, second)
     }
 )

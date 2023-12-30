@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.branches
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class BranchFPUZeroFlagFalse : BasicInstruction(
@@ -35,6 +35,6 @@ class BranchFPUZeroFlagFalse : BasicInstruction(
     SimulationCode {
         val operands = it.getOperandsOrThrow()
         if (Coprocessor1.getConditionFlag(0) == 0)
-            KInstructionSet.processBranch(operands[0])
+            InstructionSet.processBranch(operands[0])
     }
 )

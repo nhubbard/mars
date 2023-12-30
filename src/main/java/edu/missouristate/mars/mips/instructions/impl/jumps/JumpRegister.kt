@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.jumps
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class JumpRegister : BasicInstruction(
@@ -34,6 +34,6 @@ class JumpRegister : BasicInstruction(
     "000000 fffff 00000 00000 00000 001000",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        KInstructionSet.processJump(RegisterFile.getValue(operands[0]))
+        InstructionSet.processJump(RegisterFile.getValue(operands[0]))
     }
 )

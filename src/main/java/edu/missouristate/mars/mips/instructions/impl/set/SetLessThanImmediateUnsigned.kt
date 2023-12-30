@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.set
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.signExtend
 
@@ -38,6 +38,6 @@ class SetLessThanImmediateUnsigned : BasicInstruction(
         val first = RegisterFile.getValue(operands[1])
         // 16-bit immediate value in operands[2] is sign-extended
         val second = operands[2].signExtend()
-        KInstructionSet.compareUnsigned(operands, first, second)
+        InstructionSet.compareUnsigned(operands, first, second)
     }
 )

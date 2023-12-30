@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.conversion
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.toLongBits
 import edu.missouristate.mars.util.Binary
@@ -35,7 +35,7 @@ class ConvertWordToDouble : BasicInstruction(
     BasicInstructionFormat.R_FORMAT,
     "010001 10100 00000 sssss fffff 100001",
     SimulationCode {
-        val operands = KInstructionSet.getEvenOperand(it, 0, "First register must be even-numbered")
+        val operands = InstructionSet.getEvenOperand(it, 0, "First register must be even-numbered")
         val result = Coprocessor1.getValue(operands[1]).toDouble().toLongBits()
         Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result))
         Coprocessor1.updateRegister(operands[0], Binary.highOrderLongToInt(result))

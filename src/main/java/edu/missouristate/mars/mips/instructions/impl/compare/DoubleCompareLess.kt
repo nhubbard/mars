@@ -23,7 +23,7 @@ package edu.missouristate.mars.mips.instructions.impl.compare
 
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet.doubleCompare
+import edu.missouristate.mars.mips.instructions.InstructionSet.doubleCompare
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class DoubleCompareLess : BasicInstruction(

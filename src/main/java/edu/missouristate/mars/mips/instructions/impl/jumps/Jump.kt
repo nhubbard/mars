@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.jumps
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class Jump : BasicInstruction(
@@ -34,6 +34,6 @@ class Jump : BasicInstruction(
     "000010 ffffffffffffffffffffffffff",
     SimulationCode {
         val operands = it.getOperandsOrThrow()
-        KInstructionSet.processJump(((RegisterFile.programCounter.getValue() and 0xF0000000.toInt()) or (operands[0] shl 2)))
+        InstructionSet.processJump(((RegisterFile.programCounter.getValue() and 0xF0000000.toInt()) or (operands[0] shl 2)))
     }
 )

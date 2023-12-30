@@ -26,11 +26,9 @@ import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
-import edu.missouristate.mars.toLongBits
 import edu.missouristate.mars.util.Binary
-import kotlin.math.sqrt
 
 class DoubleSquareRoot : BasicInstruction(
     "sqrt.d \$f2,\$f4",
@@ -44,7 +42,7 @@ class DoubleSquareRoot : BasicInstruction(
             Coprocessor1.getValue(operands[1] + 1),
             Coprocessor1.getValue(operands[1])
         ).bitsToDouble()
-        val sqrt = KInstructionSet.getLongSqrt(value)
+        val sqrt = InstructionSet.getLongSqrt(value)
         Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(sqrt))
         Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(sqrt))
     }

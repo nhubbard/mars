@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.branches
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class BranchLessThanZeroAndLink : BasicInstruction(
@@ -36,8 +36,8 @@ class BranchLessThanZeroAndLink : BasicInstruction(
         val operands = it.getOperandsOrThrow()
         if (RegisterFile.getValue(operands[0]) < 0) {
             // Here's the "and link" part
-            KInstructionSet.processReturnAddress(31)
-            KInstructionSet.processBranch(operands[1])
+            InstructionSet.processReturnAddress(31)
+            InstructionSet.processBranch(operands[1])
         }
     }
 )

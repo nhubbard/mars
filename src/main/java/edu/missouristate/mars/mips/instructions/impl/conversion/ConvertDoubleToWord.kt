@@ -25,7 +25,7 @@ import edu.missouristate.mars.bitsToDouble
 import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.util.Binary
 import kotlin.math.roundToInt
@@ -36,7 +36,7 @@ class ConvertDoubleToWord : BasicInstruction(
     BasicInstructionFormat.R_FORMAT,
     "010001 10001 00000 sssss fffff 100100",
     SimulationCode {
-        val operands = KInstructionSet.getEvenOperand(it, 1, "Second register must be even-numbered!")
+        val operands = InstructionSet.getEvenOperand(it, 1, "Second register must be even-numbered!")
         val value = Binary.twoIntegersToLong(
             Coprocessor1.getValue(operands[1] + 1),
             Coprocessor1.getValue(operands[1])

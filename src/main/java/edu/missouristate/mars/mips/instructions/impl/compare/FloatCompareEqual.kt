@@ -23,7 +23,7 @@ package edu.missouristate.mars.mips.instructions.impl.compare
 
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet.floatCompare
+import edu.missouristate.mars.mips.instructions.InstructionSet.floatCompare
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class FloatCompareEqual : BasicInstruction(

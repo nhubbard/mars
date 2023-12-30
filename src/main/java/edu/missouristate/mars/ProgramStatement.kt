@@ -120,7 +120,7 @@ class ProgramStatement {
             operands = null
             numOperands = 0
             instruction =
-                if (binaryStatement == 0) Globals.instructionSet.matchOperator("nop").first() else null
+                if (binaryStatement == 0) Globals.instructionSet.matchOperator("nop")!!.first() else null
         } else {
             operands = IntArray(4)
             numOperands = 0

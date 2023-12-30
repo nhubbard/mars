@@ -29,7 +29,7 @@ import edu.missouristate.mars.mips.hardware.Memory
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 import edu.missouristate.mars.simulator.Exceptions.ADDRESS_EXCEPTION_LOAD
 
@@ -40,7 +40,7 @@ class LoadDwordIntoFPU : BasicInstruction(
     BasicInstructionFormat.I_FORMAT,
     "110101 ttttt fffff ssssssssssssssss",
     SimulationCode {
-        val operands = KInstructionSet.getEvenOperand(it, 0, "First register must be even-numbered!")
+        val operands = InstructionSet.getEvenOperand(it, 0, "First register must be even-numbered!")
         if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1]))
             throw ProcessingException(it, AddressErrorException(
                 "Address not aligned on double-word boundary! ",

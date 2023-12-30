@@ -24,7 +24,7 @@ package edu.missouristate.mars.mips.instructions.impl.branches
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
-import edu.missouristate.mars.mips.instructions.KInstructionSet
+import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class BranchIfEqual : BasicInstruction(
@@ -35,6 +35,6 @@ class BranchIfEqual : BasicInstruction(
     SimulationCode {
         val operands = it.getOperandsOrThrow()
         if (RegisterFile.getValue(operands[0]) == RegisterFile.getValue(operands[1]))
-            KInstructionSet.processBranch(operands[2])
+            InstructionSet.processBranch(operands[2])
     }
 )
