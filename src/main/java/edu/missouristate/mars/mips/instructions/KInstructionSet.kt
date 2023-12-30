@@ -26,6 +26,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1
 import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.simulator.DelayedBranch
 import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.util.Binary
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -146,9 +147,55 @@ object KInstructionSet {
     @JvmStatic
     fun ProgramStatement.floatCompare(conditionFlag: Int = 0, comparator: (Float, Float) -> Boolean) {
         val operands = getOperandsOrThrow()
-        val op1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
-        val op2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
+        val op1: Float
+        val op2: Float
+        if (conditionFlag == 0) {
+            op1 = Coprocessor1.getValue(operands[0]).bitsToFloat()
+            op2 = Coprocessor1.getValue(operands[1]).bitsToFloat()
+        } else {
+            op1 = Coprocessor1.getValue(operands[1]).bitsToFloat()
+            op2 = Coprocessor1.getValue(operands[2]).bitsToFloat()
+        }
         if (comparator(op1, op2)) Coprocessor1.setConditionFlag(conditionFlag)
+        else Coprocessor1.clearConditionFlag(conditionFlag)
+    }
+
+    @JvmStatic
+    fun ProgramStatement.doubleCompare(comparator: (Double, Double) -> Boolean) {
+        val operands = getOperandsOrThrow()
+        val conditionFlag: Int
+        val op1: Double
+        val op2: Double
+        if (operands.size == 2) {
+            conditionFlag = 0
+            if (operands.any { o -> o % 2 == 1 }) throw ProcessingException(
+                this,
+                "All registers must be even-numbered!"
+            )
+            op1 = Binary.twoIntegersToLong(
+                Coprocessor1.getValue(operands[0] + 1),
+                Coprocessor1.getValue(operands[0])
+            ).bitsToDouble()
+            op2 = Binary.twoIntegersToLong(
+                Coprocessor1.getValue(operands[1] + 1),
+                Coprocessor1.getValue(operands[1])
+            ).bitsToDouble()
+        } else {
+            conditionFlag = operands[0]
+            if (operands.any { o -> o % 2 == 1 }) throw ProcessingException(
+                this,
+                "All registers must be even-numbered!"
+            )
+            op1 = Binary.twoIntegersToLong(
+                Coprocessor1.getValue(operands[1] + 1),
+                Coprocessor1.getValue(operands[1])
+            ).bitsToDouble()
+            op2 = Binary.twoIntegersToLong(
+                Coprocessor1.getValue(operands[2] + 1),
+                Coprocessor1.getValue(operands[2])
+            ).bitsToDouble()
+        }
+        if (op1 == op2) Coprocessor1.setConditionFlag(conditionFlag)
         else Coprocessor1.clearConditionFlag(conditionFlag)
     }
 
