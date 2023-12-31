@@ -42,11 +42,13 @@ class LoadDwordIntoFPU : BasicInstruction(
     SimulationCode {
         val operands = InstructionSet.getEvenOperand(it, 0, "First register must be even-numbered!")
         if (!Memory.doubleWordAligned(RegisterFile.getValue(operands[2]) + operands[1]))
-            throw ProcessingException(it, AddressErrorException(
-                "Address not aligned on double-word boundary! ",
-                ADDRESS_EXCEPTION_LOAD,
-                RegisterFile.getValue(operands[2]) + operands[1]
-            ))
+            throw ProcessingException(
+                it, AddressErrorException(
+                    "Address not aligned on double-word boundary! ",
+                    RegisterFile.getValue(operands[2]) + operands[1],
+                    ADDRESS_EXCEPTION_LOAD
+                )
+            )
         try {
             Coprocessor1.updateRegister(
                 operands[0],

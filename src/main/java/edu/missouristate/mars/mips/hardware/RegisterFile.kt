@@ -232,19 +232,31 @@ object RegisterFile {
     /**
      * Return the value of the program counter.
      */
-    @Deprecated("Directly access the program counter instead.", ReplaceWith("programCounter.getValue()"))
+    @Deprecated(
+        "Directly access the program counter instead.",
+        ReplaceWith("programCounter.getValue()"),
+        DeprecationLevel.ERROR
+    )
     fun getProgramCounterValue() = programCounter.getValue()
 
     /**
      * Return the Register object for the program counter.
      */
-    @Deprecated("Directly access the program counter instead.", ReplaceWith("programCounter"))
+    @Deprecated(
+        "Directly access the program counter instead.",
+        ReplaceWith("programCounter"),
+        DeprecationLevel.ERROR
+    )
     fun getProgramCounterRegister() = programCounter
 
     /**
      * Return the reset value for the program counter.
      */
-    @Deprecated("Directly access the program counter instead.", ReplaceWith("programCounter.getResetValue()"))
+    @Deprecated(
+        "Directly access the program counter instead.",
+        ReplaceWith("programCounter.getResetValue()"),
+        DeprecationLevel.ERROR
+    )
     fun getInitialProgramCounter() = programCounter.getResetValue()
 
     /**
@@ -280,7 +292,11 @@ object RegisterFile {
         lo.addObserver(observer)
     }
 
-    @Deprecated("Renamed to addObserver.", ReplaceWith("addObserver(observer)"))
+    @Deprecated(
+        "Renamed to addObserver.",
+        ReplaceWith("addObserver(observer)"),
+        DeprecationLevel.ERROR
+    )
     @JvmStatic
     fun addRegisterObserver(observer: Observer) = addObserver(observer)
 
@@ -294,7 +310,11 @@ object RegisterFile {
         lo.deleteObserver(observer)
     }
 
-    @Deprecated("Renamed to deleteObserver.", ReplaceWith("deleteObserver(observer)"))
+    @Deprecated(
+        "Renamed to deleteObserver.",
+        ReplaceWith("deleteObserver(observer)"),
+        DeprecationLevel.ERROR
+    )
     @JvmStatic
     fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 }

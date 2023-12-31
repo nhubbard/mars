@@ -41,7 +41,11 @@ class Assembler {
     lateinit var errors: ErrorList
         private set
 
-    @Deprecated("Use errors accessor instead.", ReplaceWith("errors"))
+    @Deprecated(
+        "Use errors accessor instead.",
+        ReplaceWith("errors"),
+        DeprecationLevel.ERROR
+    )
     val errorList: ErrorList get() = errors
 
     private var inDataSegment: Boolean = false
@@ -1291,7 +1295,11 @@ class Assembler {
             address[currentAddressSpace] = address[currentAddressSpace]!! + by
         }
 
-        @Deprecated("Use currentAddressSpace setter instead.", ReplaceWith("currentAddressSpace = addressSpace"))
+        @Deprecated(
+            "Use currentAddressSpace setter instead.",
+            ReplaceWith("currentAddressSpace = addressSpace"),
+            DeprecationLevel.ERROR
+        )
         fun setAddressSpace(addressSpace: AddressSpace) {
             currentAddressSpace = addressSpace
         }

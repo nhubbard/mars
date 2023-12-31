@@ -143,7 +143,7 @@ class MIPSProgram {
      *
      * @return true if enabled, false if disabled or non-existent.
      */
-    fun backSteppingEnabled(): Boolean = backStepper?.enabled() ?: false
+    fun backSteppingEnabled(): Boolean = backStepper?.isEnabled ?: false
 
     /**
      * Produces specified line of MIPS source program.

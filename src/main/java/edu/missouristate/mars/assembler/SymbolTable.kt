@@ -46,7 +46,11 @@ class SymbolTable(private val filename: String) {
         @Deprecated("Use getAddressOrNull(String) instead.")
         const val NOT_FOUND = -1
 
-        @Deprecated("Use direct access instead.", ReplaceWith("startLabel"))
+        @Deprecated(
+            "Use direct access instead.",
+            ReplaceWith("startLabel"),
+            DeprecationLevel.ERROR
+        )
         @JvmStatic
         @JvmName("getStartLabel")
         fun badGetStartLabel(): String = startLabel
@@ -65,7 +69,7 @@ class SymbolTable(private val filename: String) {
     fun addSymbol(token: Token, address: Int, isData: Boolean, errors: ErrorList) {
         val label = token.value
         if (getSymbol(label) != null) {
-            errors.add(ErrorMessage(token.sourceMIPSProgram, token.sourceLine, token.startPos, "Label \"$label\" already defined!"))
+            errors.add(ErrorMessage(token.sourceMipsProgram, token.sourceLine, token.startPosition, "Label \"$label\" already defined!"))
         } else {
             val s = Symbol(label, address, isData)
             table.add(s)
@@ -109,7 +113,11 @@ class SymbolTable(private val filename: String) {
      * @param s The label.
      * @return The memory of the given label, or `NOT_FOUND` if not found in either the local or global symbol tables.
      */
-    @Deprecated("Use getLocalOrGlobalAddressOrNull(String) with a null check instead.", ReplaceWith("getLocalOrGlobalAddressOrNull(s)"))
+    @Deprecated(
+        "Use getLocalOrGlobalAddressOrNull(String) with a null check instead.",
+        ReplaceWith("getLocalOrGlobalAddressOrNull(s)"),
+        DeprecationLevel.ERROR
+    )
     fun getAddressLocalOrGlobal(s: String) = getLocalOrGlobalAddressOrNull(s) ?: NOT_FOUND
 
     /**

@@ -494,5 +494,4 @@ public class Simulator extends Observable {
             Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
         }
     }
-
 }

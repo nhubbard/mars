@@ -90,10 +90,7 @@ enum class Exceptions(val rawValue: Int) {
         }
 
         @JvmStatic
-        fun fromInt(rawValue: Int): Exceptions {
-            if (rawValue !in entries.map { it.rawValue })
-                throw IllegalArgumentException("No Exceptions entry with raw value $rawValue.")
-            return entries.first { it.rawValue == rawValue }
-        }
+        fun fromInt(rawValue: Int): Exceptions = entries.firstOrNull { it.rawValue == rawValue } ?:
+            throw IllegalArgumentException("No Exceptions entry with raw value $rawValue.")
     }
 }

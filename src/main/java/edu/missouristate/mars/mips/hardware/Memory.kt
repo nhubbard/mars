@@ -453,7 +453,7 @@ class Memory private constructor() : Observable() {
             // We are in the text segment.
             // Make sure that self-modifying code is enabled; otherwise, this operation is not permitted.
             if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                val oldStatement = getStatementNoNotify(address)
+                val oldStatement = getStatement(address, false)
                 if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
                 setStatement(address, ProgramStatement(value, address))
             } else throw AddressErrorException(
@@ -515,7 +515,7 @@ class Memory private constructor() : Observable() {
             oldValue = storeWordInTable(stackBlockTable, relative, value)
         } else if (inTextSegment(address)) {
             if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                val oldStatement = getStatementNoNotify(address)
+                val oldStatement = getStatement(address, false)
                 if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
                 setStatement(address, ProgramStatement(value, address))
             } else throw AddressErrorException(
@@ -559,8 +559,8 @@ class Memory private constructor() : Observable() {
         if (address % WORD_LENGTH_BYTES != 0)
             throw AddressErrorException(
                 "Store address not aligned on a word boundary! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE,
-                address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_STORE
             )
         return if (settings.getBackSteppingEnabled())
             Globals.program.getBackStepper()!!.addMemoryRestoreWord(address, set(address, value, WORD_LENGTH_BYTES))
@@ -579,8 +579,8 @@ class Memory private constructor() : Observable() {
     fun setHalf(address: Int, value: Int): Int {
         if (address % 2 != 0) throw AddressErrorException(
             "Store address not aligned on half-word boundary! ",
-            Exceptions.ADDRESS_EXCEPTION_STORE,
-            address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_STORE
         )
         return if (settings.getBackSteppingEnabled())
             Globals.program.getBackStepper()!!.addMemoryRestoreHalf(address, set(address, value, 2))
@@ -631,8 +631,8 @@ class Memory private constructor() : Observable() {
         if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address)))
             throw AddressErrorException(
                 "Cannot store address to text segment that's out of range or not aligned to a word boundary! ",
-                Exceptions.ADDRESS_EXCEPTION_STORE,
-                address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_STORE
             )
         if (Globals.debug) println("memory[$address] set to ${statement.getBinaryStatement()}")
         val (baseAddress, blockTable) =
@@ -669,21 +669,24 @@ class Memory private constructor() : Observable() {
             value = fetchBytesFromTable(memoryMapBlockTable, relativeByteAddress, length)
         } else if (inTextSegment(address)) {
             if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                val stmt = getStatementNoNotify(address)
+                val stmt = getStatement(address, false)
                 value = stmt?.getBinaryStatement() ?: 0
             } else throw AddressErrorException(
                 "Cannot read directly from text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_LOAD
             )
         } else if (inKernelDataSegment(address)) {
             relativeByteAddress = address - kernelDataBaseAddress
             value = fetchBytesFromTable(kernelDataBlockTable, relativeByteAddress, length)
         } else if (inKernelTextSegment(address)) throw AddressErrorException(
             "DEVELOPER: You must use getStatement() to read from kernel text segment! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         ) else throw AddressErrorException(
             "Address out of range! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         if (notify) notifyAnyObservers(AccessNotice.AccessType.READ, address, length, value)
         return value
@@ -709,7 +712,8 @@ class Memory private constructor() : Observable() {
         val relative: Int
         if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
             "The address being read is not aligned on a word boundary! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         if (inDataSegment(address)) {
             relative = (address - dataSegmentBaseAddress) shr 2
@@ -722,11 +726,12 @@ class Memory private constructor() : Observable() {
             value = fetchWordFromTable(memoryMapBlockTable, relative)
         } else if (inTextSegment(address)) {
             if (settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)) {
-                val stmt = getStatementNoNotify(address)
+                val stmt = getStatement(address, false)
                 value = stmt?.getBinaryStatement() ?: 0
             } else throw AddressErrorException(
                 "Cannot read directly from text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_LOAD
             )
         } else if (inKernelDataSegment(address)) {
             relative = (address - kernelDataBaseAddress) shr 2
@@ -734,12 +739,14 @@ class Memory private constructor() : Observable() {
         } else if (inKernelTextSegment(address))
             throw AddressErrorException(
                 "DEVELOPER: You must use getStatement() to read from kernel text segment! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_LOAD
             )
         else
             throw AddressErrorException(
                 "Address out of range! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_LOAD
             )
         notifyAnyObservers(AccessNotice.AccessType.READ, address, WORD_LENGTH_BYTES, value)
         return value
@@ -771,7 +778,8 @@ class Memory private constructor() : Observable() {
         val relative: Int
         if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
             "The address for this fetch operation is not aligned on the word boundary! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         if (inDataSegment(address)) {
             relative = (address - dataSegmentBaseAddress) shr 2
@@ -782,13 +790,13 @@ class Memory private constructor() : Observable() {
         } else if (inTextSegment(address) || inKernelTextSegment(address)) {
             try {
                 value =
-                    if (getStatementNoNotify(address) == null) null
-                    else getStatementNoNotify(address)?.getBinaryStatement()
+                    if (getStatement(address, false) == null) null
+                    else getStatement(address, false)?.getBinaryStatement()
             } catch (ignored: AddressErrorException) { }
         } else if (inKernelDataSegment(address)) {
             relative = (address - kernelDataBaseAddress) shr 2
             value = fetchWordOrNullFromTable(kernelDataBlockTable, relative)
-        } else throw AddressErrorException("Address out of range! ", Exceptions.ADDRESS_EXCEPTION_LOAD, address)
+        } else throw AddressErrorException("Address out of range! ", address, Exceptions.ADDRESS_EXCEPTION_LOAD)
         // Do not notify observers. This read operation is initiated by the
         // dump feature, not the executing MIPS program.
         return value
@@ -832,7 +840,8 @@ class Memory private constructor() : Observable() {
         if (address % WORD_LENGTH_BYTES != 0)
             throw AddressErrorException(
                 "Fetch address is not aligned on word boundary! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, address
+                address,
+                Exceptions.ADDRESS_EXCEPTION_LOAD
             )
         return get(address, WORD_LENGTH_BYTES, notify)
     }
@@ -842,7 +851,11 @@ class Memory private constructor() : Observable() {
      * Does not use `get()`; we can do it faster here knowing we're working only with full words.
      * Observers are NOT notified.
      */
-    @Deprecated("Use getWord(address, false) instead.", ReplaceWith("getWord(address, false)"))
+    @Deprecated(
+        "Use getWord(address, false) instead.",
+        ReplaceWith("getWord(address, false)"),
+        DeprecationLevel.ERROR
+    )
     @Throws(AddressErrorException::class)
     fun getWordNoNotify(address: Int) = getWord(address, false)
 
@@ -857,7 +870,8 @@ class Memory private constructor() : Observable() {
     fun getHalf(address: Int): Int {
         if (address % 2 != 0) throw AddressErrorException(
             "Fetch address not aligned on half-word boundary! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         return get(address, 2)
     }
@@ -885,13 +899,15 @@ class Memory private constructor() : Observable() {
     fun getStatement(address: Int, notify: Boolean = true): ProgramStatement? {
         if (!wordAligned(address)) throw AddressErrorException(
             "Fetch address for text segment not aligned to word boundary! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         if (!settings.getBooleanSetting(Settings.ENABLE_SELF_MODIFYING_CODE)
             && !(inTextSegment(address) || inKernelTextSegment(address))
         ) throw AddressErrorException(
             "Fetch address for text segment out of range! ",
-            Exceptions.ADDRESS_EXCEPTION_LOAD, address
+            address,
+            Exceptions.ADDRESS_EXCEPTION_LOAD
         )
         return if (inTextSegment(address))
             readProgramStatement(address, textBaseAddress, textBlockTable, notify)
@@ -903,7 +919,11 @@ class Memory private constructor() : Observable() {
     /**
      * Get ProgramStatement from Text Segment.
      */
-    @Deprecated("Use getStatement(address, false) instead.", ReplaceWith("getStatement(address, false)"))
+    @Deprecated(
+        "Use getStatement(address, false) instead.",
+        ReplaceWith("getStatement(address, false)"),
+        DeprecationLevel.ERROR
+    )
     fun getStatementNoNotify(address: Int): ProgramStatement? = getStatement(address, false)
 
     /**
@@ -940,18 +960,26 @@ class Memory private constructor() : Observable() {
     @Throws(AddressErrorException::class)
     fun addObserver(obs: Observer, startAddr: Int, endAddr: Int) {
         if (startAddr % WORD_LENGTH_BYTES != 0)
-            throw AddressErrorException("Address not aligned on word boundary! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+            throw AddressErrorException(
+                "Address not aligned on word boundary! ",
+                startAddr, Exceptions.ADDRESS_EXCEPTION_LOAD
+            )
         if (endAddr != startAddr && endAddr % WORD_LENGTH_BYTES != 0)
-            throw AddressErrorException("Address not aligned on word boundary! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, endAddr)
+            throw AddressErrorException(
+                "Address not aligned on word boundary! ",
+                endAddr, Exceptions.ADDRESS_EXCEPTION_LOAD
+            )
         // The upper half of the address space (above 0x7fffffff) has a sign bit of 1, and is seen as negative.
         if (startAddr >= 0 && endAddr < 0)
-            throw AddressErrorException("Range cannot cross 0x80000000; you must split it up! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+            throw AddressErrorException(
+                "Range cannot cross 0x80000000; you must split it up! ",
+                startAddr, Exceptions.ADDRESS_EXCEPTION_LOAD
+            )
         if (endAddr < startAddr)
-            throw AddressErrorException("End address of range < start address of range! ",
-                Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr)
+            throw AddressErrorException(
+                "End address of range < start address of range! ",
+                startAddr, Exceptions.ADDRESS_EXCEPTION_LOAD
+            )
         observables.add(MemoryObservable(obs, startAddr, endAddr))
     }
 

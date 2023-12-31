@@ -464,9 +464,7 @@ class Settings : Observable() {
      *
      * @return true if backstepping is permitted, false otherwise.
      */
-    fun getBackSteppingEnabled(): Boolean {
-        return (Globals.program.getBackStepper() != null && Globals.program.getBackStepper()!!.enabled())
-    }
+    fun getBackSteppingEnabled(): Boolean = Globals.program.getBackStepper()?.isEnabled ?: false
 
     /**
      * Reset settings to default values, as described in the constructor comments.
@@ -606,7 +604,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>KSettings.BARE_MACHINE_ENABLED</code>)"""
+      (e.g. <code>KSettings.BARE_MACHINE_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.BARE_MACHINE_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getBareMachineEnabled(): Boolean = booleanSettingsValues[BARE_MACHINE_ENABLED]
 
@@ -618,7 +618,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EXTENDED_ASSEMBLER_ENABLED</code>)"""
+      (e.g. <code>Settings.EXTENDED_ASSEMBLER_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getExtendedAssemblerEnabled(): Boolean = booleanSettingsValues[EXTENDED_ASSEMBLER_ENABLED]
 
@@ -630,7 +632,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.ASSEMBLE_ON_OPEN_ENABLED</code>)"""
+      (e.g. <code>Settings.ASSEMBLE_ON_OPEN_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.ASSEMBLE_ON_OPEN_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getAssembleOnOpenEnabled(): Boolean = booleanSettingsValues[ASSEMBLE_ON_OPEN_ENABLED]
 
@@ -641,7 +645,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DISPLAY_ADDRESSES_IN_HEX</code>)"""
+      (e.g. <code>Settings.DISPLAY_ADDRESSES_IN_HEX</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)"),
+        DeprecationLevel.ERROR
     )
     fun getDisplayAddressesInHex(): Boolean = booleanSettingsValues[DISPLAY_ADDRESSES_IN_HEX]
 
@@ -652,7 +658,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DISPLAY_VALUES_IN_HEX</code>)"""
+      (e.g. <code>Settings.DISPLAY_VALUES_IN_HEX</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)"),
+        DeprecationLevel.ERROR
     )
     fun getDisplayValuesInHex(): Boolean = booleanSettingsValues[DISPLAY_VALUES_IN_HEX]
 
@@ -666,7 +674,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.ASSEMBLE_ALL_ENABLED</code>)"""
+      (e.g. <code>Settings.ASSEMBLE_ALL_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getAssembleAllEnabled(): Boolean = booleanSettingsValues[ASSEMBLE_ALL_ENABLED]
 
@@ -679,7 +689,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EXCEPTION_HANDLER_ENABLED</code>)"""
+      (e.g. <code>Settings.EXCEPTION_HANDLER_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.EXCEPTION_HANDLER_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getExceptionHandlerEnabled(): Boolean = booleanSettingsValues[EXCEPTION_HANDLER_ENABLED]
 
@@ -695,7 +707,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)"""
+      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED)"),
+        DeprecationLevel.ERROR
     )
     fun getDelayedBranchingEnabled(): Boolean = booleanSettingsValues[DELAYED_BRANCHING_ENABLED]
 
@@ -706,7 +720,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.LABEL_WINDOW_VISIBILITY</code>)"""
+      (e.g. <code>Settings.LABEL_WINDOW_VISIBILITY</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.LABEL_WINDOW_VISIBILITY)"),
+        DeprecationLevel.ERROR
     )
     fun getLabelWindowVisibility(): Boolean = booleanSettingsValues[LABEL_WINDOW_VISIBILITY]
 
@@ -717,7 +733,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EDITOR_LINE_NUMBERS_DISPLAYED</code>)"""
+      (e.g. <code>Settings.EDITOR_LINE_NUMBERS_DISPLAYED</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED)"),
+        DeprecationLevel.ERROR
     )
     fun getEditorLineNumbersDisplayed(): Boolean = booleanSettingsValues[EDITOR_LINE_NUMBERS_DISPLAYED]
 
@@ -728,7 +746,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.WARNINGS_ARE_ERRORS</code>)"""
+      (e.g. <code>Settings.WARNINGS_ARE_ERRORS</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)"),
+        DeprecationLevel.ERROR
     )
     fun getWarningsAreErrors(): Boolean = booleanSettingsValues[WARNINGS_ARE_ERRORS]
 
@@ -739,7 +759,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.PROGRAM_ARGUMENTS</code>)"""
+      (e.g. <code>Settings.PROGRAM_ARGUMENTS</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.PROGRAM_ARGUMENTS)"),
+        DeprecationLevel.ERROR
     )
     fun getProgramArguments(): Boolean = booleanSettingsValues[ENABLE_PROGRAM_ARGUMENTS]
 
@@ -750,7 +772,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DATA_SEGMENT_HIGHLIGHTING</code>)"""
+      (e.g. <code>Settings.DATA_SEGMENT_HIGHLIGHTING</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.DATA_SEGMENT_HIGHLIGHTING)"),
+        DeprecationLevel.ERROR
     )
     fun getDataSegmentHighlighting(): Boolean = booleanSettingsValues[DATA_SEGMENT_HIGHLIGHTING]
 
@@ -762,7 +786,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.REGISTERS_HIGHLIGHTING</code>)"""
+      (e.g. <code>Settings.REGISTERS_HIGHLIGHTING</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.REGISTERS_HIGHLIGHTING)"),
+        DeprecationLevel.ERROR
     )
     fun getRegistersHighlighting(): Boolean = booleanSettingsValues[REGISTERS_HIGHLIGHTING]
 
@@ -774,7 +800,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>getBooleanSetting(int id)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.START_AT_MAIN</code>)"""
+      (e.g. <code>Settings.START_AT_MAIN</code>)""",
+        ReplaceWith("getBooleanSetting(Settings.START_AT_MAIN)"),
+        DeprecationLevel.ERROR
     )
     fun getStartAtMain(): Boolean = booleanSettingsValues[START_AT_MAIN]
 
@@ -970,7 +998,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EXTENDED_ASSEMBLER_ENABLED</code>)"""
+      (e.g. <code>Settings.EXTENDED_ASSEMBLER_ENABLED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setExtendedAssemblerEnabled(value: Boolean) {
         internalSetBooleanSetting(EXTENDED_ASSEMBLER_ENABLED, value)
@@ -985,7 +1015,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.ASSEMBLE_ON_OPEN_ENABLED</code>)"""
+      (e.g. <code>Settings.ASSEMBLE_ON_OPEN_ENABLED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.ASSEMBLE_ON_OPEN_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setAssembleOnOpenEnabled(value: Boolean) {
         internalSetBooleanSetting(ASSEMBLE_ON_OPEN_ENABLED, value)
@@ -1001,7 +1033,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.ASSEMBLE_ALL_ENABLED</code>)"""
+      (e.g. <code>Settings.ASSEMBLE_ALL_ENABLED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setAssembleAllEnabled(value: Boolean) {
         internalSetBooleanSetting(ASSEMBLE_ALL_ENABLED, value)
@@ -1015,7 +1049,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DISPLAY_ADDRESSES_IN_HEX</code>)"""
+      (e.g. <code>Settings.DISPLAY_ADDRESSES_IN_HEX</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX, value)"),
+        DeprecationLevel.ERROR
     )
     fun setDisplayAddressesInHex(value: Boolean) {
         internalSetBooleanSetting(DISPLAY_ADDRESSES_IN_HEX, value)
@@ -1029,7 +1065,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DISPLAY_VALUES_IN_HEX</code>)"""
+      (e.g. <code>Settings.DISPLAY_VALUES_IN_HEX</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, value)"),
+        DeprecationLevel.ERROR
     )
     fun setDisplayValuesInHex(value: Boolean) {
         internalSetBooleanSetting(DISPLAY_VALUES_IN_HEX, value)
@@ -1044,7 +1082,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.LABEL_WINDOW_VISIBILITY</code>)"""
+      (e.g. <code>Settings.LABEL_WINDOW_VISIBILITY</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.LABEL_WINDOW_VISIBILITY, value)"),
+        DeprecationLevel.ERROR
     )
     fun setLabelWindowVisibility(value: Boolean) {
         internalSetBooleanSetting(LABEL_WINDOW_VISIBILITY, value)
@@ -1060,7 +1100,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EXCEPTION_HANDLER_ENABLED</code>)"""
+      (e.g. <code>Settings.EXCEPTION_HANDLER_ENABLED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.EXCEPTION_HANDLER_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setExceptionHandlerEnabled(value: Boolean) {
         internalSetBooleanSetting(EXCEPTION_HANDLER_ENABLED, value)
@@ -1077,7 +1119,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)"""
+      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setDelayedBranchingEnabled(value: Boolean) {
         internalSetBooleanSetting(DELAYED_BRANCHING_ENABLED, value)
@@ -1091,7 +1135,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.EDITOR_LINE_NUMBERS_DISPLAYED</code>)"""
+      (e.g. <code>Settings.EDITOR_LINE_NUMBERS_DISPLAYED</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setEditorLineNumbersDisplayed(value: Boolean) {
         internalSetBooleanSetting(EDITOR_LINE_NUMBERS_DISPLAYED, value)
@@ -1104,7 +1150,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.WARNINGS_ARE_ERRORS</code>)"""
+      (e.g. <code>Settings.WARNINGS_ARE_ERRORS</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.WARNINGS_ARE_ERRORS, value)"),
+        DeprecationLevel.ERROR
     )
     fun setWarningsAreErrors(value: Boolean) {
         internalSetBooleanSetting(WARNINGS_ARE_ERRORS, value)
@@ -1117,7 +1165,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.PROGRAM_ARGUMENTS</code>)"""
+      (e.g. <code>Settings.PROGRAM_ARGUMENTS</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.PROGRAM_ARGUMENTS, value)"),
+        DeprecationLevel.ERROR
     )
     fun setProgramArguments(value: Boolean) {
         internalSetBooleanSetting(ENABLE_PROGRAM_ARGUMENTS, value)
@@ -1131,7 +1181,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DATA_SEGMENT_HIGHLIGHTING</code>)"""
+      (e.g. <code>Settings.DATA_SEGMENT_HIGHLIGHTING</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.DATA_SEGMENT_HIGHLIGHTING, value)"),
+        DeprecationLevel.ERROR
     )
     fun setDataSegmentHighlighting(value: Boolean) {
         internalSetBooleanSetting(DATA_SEGMENT_HIGHLIGHTING, value)
@@ -1145,7 +1197,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.REGISTERS_HIGHLIGHTING</code>)"""
+      (e.g. <code>Settings.REGISTERS_HIGHLIGHTING</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.REGISTERS_HIGHLIGHTING, value)"),
+        DeprecationLevel.ERROR
     )
     fun setRegistersHighlighting(value: Boolean) {
         internalSetBooleanSetting(REGISTERS_HIGHLIGHTING, value)
@@ -1159,7 +1213,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSetting(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.START_AT_MAIN</code>)"""
+      (e.g. <code>Settings.START_AT_MAIN</code>)""",
+        ReplaceWith("setBooleanSetting(Settings.START_AT_MAIN, value)"),
+        DeprecationLevel.ERROR
     )
     fun setStartAtMain(value: Boolean) {
         internalSetBooleanSetting(START_AT_MAIN, value)
@@ -1191,7 +1247,9 @@ class Settings : Observable() {
      */
     @Deprecated(
         """Use <code>setBooleanSettingNonPersistent(int id, boolean value)</code> with the appropriate boolean setting ID
-      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)"""
+      (e.g. <code>Settings.DELAYED_BRANCHING_ENABLED</code>)""",
+        ReplaceWith("setBooleanSettingNonPersistent(Settings.DELAYED_BRNACHING_ENABLED, value)"),
+        DeprecationLevel.ERROR
     )
     fun setDelayedBranchingEnabledNonPersistent(value: Boolean) {
         // Note: Doing assignment to array results in non-persistent

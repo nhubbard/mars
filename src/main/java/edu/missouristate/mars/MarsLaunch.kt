@@ -462,7 +462,7 @@ class MarsLaunch(args: Array<String>) {
             RegisterFile.initializeProgramCounter(startAtMain)
             if (simulate) {
                 // Store program arguments in MIPS memory
-                ProgramArgumentList(programArgumentList).storeProgramArguments()
+                ProgramArgumentList(programArgumentList!!).storeProgramArguments()
                 // Establish observer if specified
                 establishObserver()
                 if (Globals.debug) out.println("Simulating")

@@ -54,7 +54,11 @@ class ErrorList {
     val hasErrors: Boolean
         @JvmName("hasErrors") get() = errorCount > 0
 
-    @Deprecated("Use hasErrors property instead.", ReplaceWith("hasErrors"))
+    @Deprecated(
+        "Use hasErrors property instead.",
+        ReplaceWith("hasErrors"),
+        DeprecationLevel.ERROR
+    )
     fun errorsOccurred(): Boolean = hasErrors
 
     /**
@@ -64,7 +68,11 @@ class ErrorList {
     val hasWarnings: Boolean
         @JvmName("hasWarnings") get() = warningCount > 0
 
-    @Deprecated("Use hasWarnings property instead.", ReplaceWith("hasWarnings"))
+    @Deprecated(
+        "Use hasWarnings property instead.",
+        ReplaceWith("hasWarnings"),
+        DeprecationLevel.ERROR
+    )
     fun warningsOccurred(): Boolean = hasWarnings
 
     /**
@@ -96,7 +104,11 @@ class ErrorList {
         if (message.isWarning) warningCount++ else errorCount++
     }
 
-    @Deprecated("Use Globals accessor instead.", ReplaceWith("Globals.maximumErrorMessages"))
+    @Deprecated(
+        "Use Globals accessor instead.",
+        ReplaceWith("Globals.maximumErrorMessages"),
+        DeprecationLevel.ERROR
+    )
     fun getErrorLimit(): Int = Globals.maximumErrorMessages
 
     /**
@@ -119,10 +131,18 @@ class ErrorList {
         }
     }
 
-    @Deprecated("Use generateReport directly.", ReplaceWith("generateReport()"))
+    @Deprecated(
+        "Use generateReport directly.",
+        ReplaceWith("generateReport()"),
+        DeprecationLevel.ERROR
+    )
     fun generateErrorReport(): String = generateReport()
 
-    @Deprecated("Use generateReport directly.", ReplaceWith("generateReport(true)"))
+    @Deprecated(
+        "Use generateReport directly.",
+        ReplaceWith("generateReport(true)"),
+        DeprecationLevel.ERROR
+    )
     fun generateWarningReport(): String = generateReport(true)
 
     fun generateErrorAndWarningReport(): String = generateReport() + generateReport(false)

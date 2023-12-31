@@ -156,7 +156,11 @@ object Coprocessor0 {
     @JvmStatic
     fun addObserver(observer: Observer) = registers.forEach { it.addObserver(observer) }
 
-    @Deprecated("Renamed to addObserver.", ReplaceWith("addObserver(observer)"))
+    @Deprecated(
+        "Renamed to addObserver.",
+        ReplaceWith("addObserver(observer)"),
+        DeprecationLevel.ERROR
+    )
     @JvmStatic
     fun addRegisterObserver(observer: Observer) = addObserver(observer)
 
@@ -167,7 +171,11 @@ object Coprocessor0 {
     @JvmStatic
     fun deleteObserver(observer: Observer) = registers.forEach { it.deleteObserver(observer) }
 
-    @Deprecated("Renamed to deleteObserver.", ReplaceWith("removeObserver(observer)"))
+    @Deprecated(
+        "Renamed to deleteObserver.",
+        ReplaceWith("removeObserver(observer)"),
+        DeprecationLevel.ERROR
+    )
     @JvmStatic
     fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 }

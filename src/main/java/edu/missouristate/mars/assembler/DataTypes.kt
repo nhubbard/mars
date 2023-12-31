@@ -111,7 +111,11 @@ object DataTypes {
      */
     const val MIN_FLOAT_VALUE = -Float.MAX_VALUE
 
-    @Deprecated("Renamed to MIN_FLOAT_VALUE.", ReplaceWith("MIN_FLOAT_VALUE"))
+    @Deprecated(
+        "Renamed to MIN_FLOAT_VALUE.",
+        ReplaceWith("MIN_FLOAT_VALUE"),
+        DeprecationLevel.ERROR
+    )
     const val LOW_FLOAT_VALUE = MIN_FLOAT_VALUE
 
     /**
@@ -128,7 +132,11 @@ object DataTypes {
      */
     const val MIN_DOUBLE_VALUE = -Double.MAX_VALUE
 
-    @Deprecated("Renamed to MIN_DOUBLE_VALUE.", ReplaceWith("MIN_DOUBLE_VALUE"))
+    @Deprecated(
+        "Renamed to MIN_DOUBLE_VALUE.",
+        ReplaceWith("MIN_DOUBLE_VALUE"),
+        DeprecationLevel.ERROR
+    )
     const val LOW_DOUBLE_VALUE = MIN_DOUBLE_VALUE
 
     /**

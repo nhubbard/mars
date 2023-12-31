@@ -23,7 +23,6 @@
 
 package edu.missouristate.mars
 
-import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.hardware.Coprocessor1
@@ -180,7 +179,7 @@ class ProgramStatement {
                     try {
                         registerNumber = RegisterFile.getUserRegister(tokenValue)?.number ?: 0
                     } catch (e: Exception) {
-                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid register number $tokenValue."))
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPosition, "Invalid register number $tokenValue."))
                         return
                     }
                     operands!![numOperands++] = registerNumber
@@ -191,7 +190,7 @@ class ProgramStatement {
                     basic.append(basicStatementElement)
                     basicStatementList.addString(basicStatementElement)
                     if (registerNumber < 0) {
-                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid register name $$tokenValue."))
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPosition, "Invalid register name $$tokenValue."))
                         return
                     }
                     operands!![numOperands++] = registerNumber
@@ -202,15 +201,15 @@ class ProgramStatement {
                     basic.append(basicStatementElement)
                     basicStatementList.addString(basicStatementElement)
                     if (registerNumber < 0) {
-                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Invalid FPU register name $tokenValue."))
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPosition, "Invalid FPU register name $tokenValue."))
                         return
                     }
                     operands!![numOperands++] = registerNumber
                 }
                 TokenTypes.IDENTIFIER -> {
-                    var address = sourceMipsProgram?.getLocalSymbolTable()?.getAddressLocalOrGlobal(tokenValue) ?: SymbolTable.NOT_FOUND
-                    if (address == SymbolTable.NOT_FOUND) {
-                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPos, "Symbol \"$tokenValue\" not found in symbol table."))
+                    var address = sourceMipsProgram?.getLocalSymbolTable()?.getLocalOrGlobalAddressOrNull(tokenValue)
+                    if (address == null) {
+                        errors.add(ErrorMessage(sourceMipsProgram, token.sourceLine, token.startPosition, "Symbol \"$tokenValue\" not found in symbol table."))
                         return
                     }
                     var absoluteAddress = true
@@ -262,7 +261,7 @@ class ProgramStatement {
             }
             // Add separator if not at the end of the token list and neither current nor next token is a parenthesis
             if (i < strippedTokenList.size - 1) {
-                nextTokenType = strippedTokenList.get(i + 1).type
+                nextTokenType = strippedTokenList[i + 1].type
                 val badTypes = listOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
                 if (tokenType !in badTypes && nextTokenType !in badTypes) {
                     basicStatementElement = ","
@@ -402,7 +401,11 @@ class ProgramStatement {
      */
     fun getSourceMipsProgram(): MIPSProgram? = sourceMipsProgram
 
-    @Deprecated("Use lowercase version instead.", ReplaceWith("getSourceMipsProgram()"))
+    @Deprecated(
+        "Use lowercase version instead.",
+        ReplaceWith("getSourceMipsProgram()"),
+        DeprecationLevel.ERROR
+    )
     fun getSourceMIPSProgram(): MIPSProgram? = getSourceMipsProgram()
 
     /**
@@ -472,7 +475,7 @@ class ProgramStatement {
     fun getOperands(): IntArray? = operands
 
     /**
-     * @return int array of operand values (if any) required by this statement's operator. If null, throws
+     * @return int array of operand values (if any) required by this statement's operator. If null, throw
      * ProcessingException.
      */
     fun getOperandsOrThrow(): IntArray =
@@ -523,13 +526,13 @@ class ProgramStatement {
         for (i in 0..<numOperands) {
             // Add separator if not at the end of the token list, AND neither current nor next token is a parenthesis.
             if (tokenListCounter > 1 && tokenListCounter < instr.tokenList.size) {
-                val thisTokenType = instr.tokenList.get(tokenListCounter).type
+                val thisTokenType = instr.tokenList[tokenListCounter].type
                 if (thisTokenType != TokenTypes.LEFT_PAREN && thisTokenType != TokenTypes.RIGHT_PAREN)
                     statementList.addString(",")
             }
             var notOperand = true
             while (notOperand && tokenListCounter < instr.tokenList.size) {
-                val tokenType = instr.tokenList.get(tokenListCounter).type
+                val tokenType = instr.tokenList[tokenListCounter].type
                 when {
                     tokenType == TokenTypes.LEFT_PAREN -> statementList.addString("(")
                     tokenType == TokenTypes.RIGHT_PAREN -> statementList.addString(")")
@@ -547,7 +550,7 @@ class ProgramStatement {
             }
         }
         while (tokenListCounter < instr.tokenList.size) {
-            val tokenType = instr.tokenList.get(tokenListCounter).type
+            val tokenType = instr.tokenList[tokenListCounter].type
             when (tokenType) {
                 TokenTypes.LEFT_PAREN -> statementList.addString("(")
                 TokenTypes.RIGHT_PAREN -> statementList.addString(")")
