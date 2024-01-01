@@ -799,7 +799,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             boolean highlighting = textSegment.getCodeHighlighting();
 
             if (highlighting && textSegment.getIntCodeAddressAtRow(row) == highlightAddress) {
-                if (Simulator.inDelaySlot() || textSegment.inDelaySlot) {
+                if (Simulator.getInDelaySlot() || textSegment.inDelaySlot) {
                     cell.setBackground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_BACKGROUND));
                     cell.setForeground(settings.getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_FOREGROUND));
                     cell.setFont(settings.getFontByPosition(Settings.TEXT_SEGMENT_DELAY_SLOT_HIGHLIGHT_FONT));

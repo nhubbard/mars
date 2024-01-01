@@ -296,7 +296,7 @@ class BackStepper {
             }
             this.param1 = param1
             this.param2 = param2
-            inDelaySlot = Simulator.inDelaySlot()
+            inDelaySlot = Simulator.inDelaySlot
         }
 
         constructor() : this(UndoActions.EMPTY, NOT_PC_VALUE, -1, -1)

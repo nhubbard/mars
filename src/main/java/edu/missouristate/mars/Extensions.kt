@@ -23,6 +23,8 @@
 
 package edu.missouristate.mars
 
+import kotlin.contracts.contract
+
 private typealias JFloat = java.lang.Float
 private typealias JDouble = java.lang.Double
 private typealias JLong = java.lang.Long
@@ -45,3 +47,13 @@ fun Double.toRawLongBits(): Long = JDouble.doubleToRawLongBits(this)
 fun Double.inIntRange(): Boolean = this in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
 
 fun String.decodeToLong(): Long = JLong.decode(this)
+
+/**
+ * Extension to use the Array<T>.isNullOrEmpty function with a primitive IntArray.
+ */
+fun IntArray?.isNullOrEmpty(): Boolean {
+    contract {
+        returns(false) implies (this@isNullOrEmpty != null)
+    }
+    return this == null || this.isEmpty()
+}

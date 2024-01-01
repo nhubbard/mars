@@ -1,111 +1,132 @@
-package edu.missouristate.mars.simulator;
+/*
+ * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2024-present, Nicholas Hubbard
+ *
+ * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.*;
+@file:Suppress("DEPRECATION", "KotlinConstantConditions")
 
-import java.util.*;
-import javax.swing.*;
+package edu.missouristate.mars.simulator
+
+import edu.missouristate.mars.*
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.Coprocessor0
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.util.Binary
+import edu.missouristate.mars.util.SystemIO
+import edu.missouristate.mars.venus.RunGoAction
+import edu.missouristate.mars.venus.RunSpeedPanel
+import edu.missouristate.mars.venus.RunStepAction
+import java.util.*
+import javax.swing.AbstractAction
+import javax.swing.SwingUtilities
+import kotlin.collections.ArrayList
+import kotlin.concurrent.withLock
 
 /**
- * Used to simulate the execution of an assembled MIPS program.
- *
- * @author Pete Sanderson
- * @version August 2005
- **/
-public class Simulator extends Observable {
-    private SimThread simulatorThread;
-    private static Simulator simulator = null;  // Singleton object
-    private static Runnable interactiveGUIUpdater = null;
-    // Others can set this true to indicate external interrupt.  Initially used
-    // to simulate keyboard and display interrupts.  The device is identified
-    // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
-    // display 0xFFFF0008.  DPS 23 July 2008.
-    public static final int NO_DEVICE = 0;
-    public static volatile Exceptions externalInterruptingDevice = Exceptions.fromInt(NO_DEVICE);
-    /**
-     * various reasons for simulate to end...
-     */
-    public static final int BREAKPOINT = 1;
-    public static final int EXCEPTION = 2;
-    public static final int MAX_STEPS = 3;  // includes step mode (where maxSteps is 1)
-    public static final int NORMAL_TERMINATION = 4;
-    public static final int CLIFF_TERMINATION = 5; // run off bottom of program
-    public static final int PAUSE_OR_STOP = 6;
+ * Simulate the execution of an assembled MIPS program.
+ */
+class Simulator private constructor() : Observable() {
+    private var simulatorThread: SimThread? = null
+    private val stopListeners: ArrayList<StopListener> = ArrayList(1)
 
-    /**
-     * Returns the Simulator object
-     *
-     * @return the Simulator object in use
-     */
-    public static Simulator getInstance() {
-        // Do NOT change this to create the Simulator at load time (in declaration above)!
-        // Its constructor looks for the GUI, which at load time is not created yet,
-        // and incorrectly leaves interactiveGUIUpdater null!  This causes runtime
-        // exceptions while running in timed mode.
-        if (simulator == null) {
-            simulator = new Simulator();
+    companion object {
+        @JvmStatic
+        private var simulator: Simulator? = null
+        @JvmStatic
+        private var interactiveGUIUpdater: Runnable? = null
+
+        const val NO_DEVICE = 0
+
+        @Volatile
+        @JvmStatic
+        var externalInterruptingDevice: Exceptions = Exceptions.fromInt(NO_DEVICE)
+
+        /**
+         * Get the instance of the KSimulator object.
+         */
+        @JvmStatic
+        fun getInstance(): Simulator {
+            // Do NOT change this to create the Simulator at load time (in the declaration above)!
+            // Its constructor looks for the GUI, which at load time is not created yet,
+            // and incorrectly leaves interactiveGUIUpdater null!  This causes runtime
+            // exceptions while running in timed mode.
+            if (simulator == null) simulator = Simulator()
+            return simulator!!
         }
-        return simulator;
+
+        /**
+         * Determine whether the next instruction to be executed is in a
+         * "delay slot". This means delayed branching is enabled, the branch
+         * condition has evaluated true, and the next instruction executed will
+         * be the one following the branch. It is said to occupy the "delay slot."
+         * Normally programmers put a nop instruction here, but it can be anything.
+         *
+         * @return true if the next instruction is in delay slot, false otherwise.
+         */
+        @JvmStatic
+        val inDelaySlot: Boolean get() = DelayedBranch.isTriggered
     }
 
-    private Simulator() {
-        simulatorThread = null;
-        if (Globals.getGui() != null) {
-            interactiveGUIUpdater = new UpdateGUI();
-        }
+    enum class TerminationReason(val rawValue: Int) {
+        UNKNOWN(0),
+        BREAKPOINT(1),
+        EXCEPTION(2),
+        MAX_STEPS(3),
+        NORMAL_TERMINATION(4),
+        CLIFF_TERMINATION(5),
+        PAUSE_OR_STOP(6)
     }
 
-
-    /**
-     * Determine whether or not the next instruction to be executed is in a
-     * "delay slot".  This means delayed branching is enabled, the branch
-     * condition has evaluated true, and the next instruction executed will
-     * be the one following the branch.  It is said to occupy the "delay slot."
-     * Normally programmers put a nop instruction here but it can be anything.
-     *
-     * @return true if next instruction is in delay slot, false otherwise.
-     */
-
-    public static boolean inDelaySlot() {
-        return DelayedBranch.isTriggered();
+    init {
+        if (Globals.gui != null) interactiveGUIUpdater = UpdateGUI()
     }
-
 
     /**
      * Simulate execution of given MIPS program.  It must have already been assembled.
      *
      * @param p           The MIPSProgram to be simulated.
      * @param pc          address of first instruction to simulate; this goes into program counter
-     * @param maxSteps    maximum number of steps to perform before returning false (0 or less means no max)
+     * @param maxSteps    maximum number of steps to perform before returning false (0 or fewer means no max)
      * @param breakPoints array of breakpoint program counter values, use null if none
      * @param actor       the GUI component responsible for this call, usually GO or STEP.  null if none.
      * @return true if execution completed, false otherwise
      * @throws ProcessingException Throws exception if run-time exception occurs.
-     **/
-
-    public boolean simulate(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction actor) throws ProcessingException {
-        simulatorThread = new SimThread(p, pc, maxSteps, breakPoints, actor);
-        simulatorThread.start();
-
-        // Condition should only be true if run from command-line instead of GUI.
-        // If so, just stick around until execution thread is finished.
+     */
+    @Throws(ProcessingException::class)
+    fun simulate(p: MIPSProgram, pc: Int, maxSteps: Int, breakPoints: IntArray?, actor: AbstractAction?): Boolean {
+        simulatorThread = SimThread(p, pc, maxSteps, breakPoints, actor)
+        simulatorThread!!.start()
+        // This condition should only be true if run from command-line instead of GUI.
+        // If so, stick around until the execution thread is finished.
         if (actor == null) {
-            Object dun = simulatorThread.get(); // this should emulate join()
-            ProcessingException pe = simulatorThread.pe;
-            boolean done = simulatorThread.done;
-            if (done) SystemIO.resetFiles(); // close any files opened in MIPS progra
-            this.simulatorThread = null;
-            if (pe != null) {
-                throw pe;
-            }
-            return done;
+            simulatorThread!!.get()
+            val pe = simulatorThread!!.pe
+            val done = simulatorThread!!.done
+            if (done) SystemIO.resetFiles()
+            simulatorThread = null
+            if (pe != null) throw pe
+            return done
         }
-        return true;
+        return true
     }
-
 
     /**
      * Set the volatile stop boolean variable checked by the execution
@@ -114,384 +135,341 @@ public class Simulator extends Observable {
      * gracefully so the main thread handling the GUI can take over.
      * This is used by both STOP and PAUSE features.
      */
-    public void stopExecution(AbstractAction actor) {
-
-        if (simulatorThread != null) {
-            simulatorThread.setStop(actor);
-            for (StopListener l : stopListeners) {
-                l.stopped(this);
-            }
-            simulatorThread = null;
+    fun stopExecution(actor: AbstractAction?) {
+        simulatorThread?.let {
+            it.stopper = actor
+            for (l in stopListeners) l.stopped(this)
+            simulatorThread = null
         }
     }
 
-    /* This interface is required by the Asker class in MassagesPane
-     * to be notified about the fact that the user has requested to
-     * stop the execution. When that happens, it must unblock the
-     * simulator thread. */
-    public interface StopListener {
-        void stopped(Simulator s);
-    }
-
-    private final ArrayList<StopListener> stopListeners = new ArrayList<>(1);
-
-    public void addStopListener(StopListener l) {
-        stopListeners.add(l);
-    }
-
-    public void removeStopListener(StopListener l) {
-        stopListeners.remove(l);
-    }
-
-    // The Simthread object will call this method when it enters and returns from
-    // its construct() method.  These signal start and stop, respectively, of
-    // simulation execution.  The observer can then adjust its own state depending
-    // on the execution state.  Note that "stop" and "done" are not the same thing.
-    // "stop" just means it is leaving execution state; this could be triggered
-    // by Stop button, by Pause button, by Step button, by runtime exception, by
-    // instruction count limit, by breakpoint, or by end of simulation (truly done).
-    private void notifyObserversOfExecutionStart(int maxSteps, int programCounter) {
-        this.setChanged();
-        this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_START,
-                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));
-    }
-
-    private void notifyObserversOfExecutionStop(int maxSteps, int programCounter) {
-        this.setChanged();
-        this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_STOP,
-                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));
-    }
-
+    fun addStopListener(l: StopListener) { stopListeners.add(l) }
+    fun removeStopListener(l: StopListener) { stopListeners.remove(l) }
 
     /**
-     * SwingWorker subclass to perform the simulated execution in background thread.
-     * It is "interrupted" when main thread sets the "stop" variable to true.
-     * The variable is tested before the next MIPS instruction is simulated.  Thus
-     * interruption occurs in a tightly controlled fashion.
-     * <p>
-     * See SwingWorker.java for more details on its functionality and usage.  It is
-     * provided by Sun Microsystems for download and is not part of the Swing library.
+     * The SimThread object will call this method when it enters and returns from
+     * its construct() method.  These signal start and stop, respectively, of
+     * simulation execution.  The observer can then adjust its own state depending
+     * on the execution state.  Note that "stop" and "done" are not the same thing.
+     * "stop" just means it is leaving execution state; this could be triggered
+     * by Stop button, by Pause button, by Step button, by runtime exception, by
+     * instruction count limit, by breakpoint, or by end of simulation (truly done).
      */
+    private fun notifyObserversOfExecutionStart(maxSteps: Int, programCounter: Int) {
+        setChanged()
+        notifyObservers(SimulatorNotice(
+            SimulatorNotice.SIMULATOR_START,
+            maxSteps,
+            RunSpeedPanel.getInstance().runSpeed,
+            programCounter
+        ))
+    }
 
-    static class SimThread extends SwingWorker {
-        private final int pc;
-        private final int maxSteps;
-        private int[] breakPoints;
-        private boolean done;
-        private ProcessingException pe;
-        private volatile boolean stop = false;
-        private volatile AbstractAction stopper;
-        private final AbstractAction starter;
-        private int constructReturnReason;
+    private fun notifyObserversOfExecutionStop(maxSteps: Int, programCounter: Int) {
+        setChanged()
+        notifyObservers(SimulatorNotice(
+            SimulatorNotice.SIMULATOR_STOP,
+            maxSteps,
+            RunSpeedPanel.getInstance().runSpeed,
+            programCounter
+        ))
+    }
 
+    interface StopListener {
+        fun stopped(s: Simulator)
+    }
 
-        /**
-         * SimThread constructor.  Receives all the information it needs to simulate execution.
-         *
-         * @param p           the MIPSProgram to be simulated
-         * @param pc          address in text segment of first instruction to simulate
-         * @param maxSteps    maximum number of instruction steps to simulate.  Default of -1 means no maximum
-         * @param breakPoints array of breakpoints (instruction addresses) specified by user
-         * @param starter     the GUI component responsible for this call, usually GO or STEP.  null if none.
-         */
-        SimThread(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
-            super(Globals.getGui() != null);
-            this.pc = pc;
-            this.maxSteps = maxSteps;
-            this.breakPoints = breakPoints;
-            this.done = false;
-            this.pe = null;
-            this.starter = starter;
-            this.stopper = null;
-        }
+    class SimThread(
+        private val p: MIPSProgram,
+        private val pc: Int,
+        private val maxSteps: Int,
+        private var breakPoints: IntArray?,
+        private val starter: AbstractAction?
+    ): SwingWorker(Globals.gui != null) {
+        var done: Boolean = false
+        var pe: ProcessingException? = null
+        @Volatile
+        var stop = false
+        @Volatile
+        var stopper: AbstractAction? = null
+        private lateinit var constructReturnReason: TerminationReason
 
         /**
          * Sets to "true" the volatile boolean variable that is tested after each
-         * MIPS instruction is executed.  After calling this method, the next test
+         * MIPS instruction is executed. After calling this method, the next test
          * will yield "true" and "construct" will return.
          *
          * @param actor the Swing component responsible for this call.
          */
-        public void setStop(AbstractAction actor) {
-            stop = true;
-            stopper = actor;
+        private fun setStop(actor: AbstractAction) {
+            stop = true
+            stopper = actor
         }
-
 
         /**
          * This is comparable to the Runnable "run" method (it is called by
          * SwingWorker's "run" method).  It simulates the program
          * execution in the background.
          */
-
-        public Object construct() {
-            // The next two statements are necessary for GUI to be consistently updated
-            // before the simulation gets underway.  Without them, this happens only intermittently,
-            // with a consequence that some simulations are interruptable using PAUSE/STOP and others
+        override fun construct(): Any {
+            // The next two statements are necessary for the GUI to be consistently updated
+            // before the simulation gets underway. Without them, this happens only intermittently,
+            // with the consequence being that some simulations are interruptable using PAUSE/STOP and others
             // are not (because one or the other or both is not yet enabled).
-            Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
-            Thread.yield();  // let the main thread run a bit to finish updating the GUI
-
-            if (breakPoints == null || breakPoints.length == 0) {
-                breakPoints = null;
+            Thread.currentThread().priority = Thread.NORM_PRIORITY - 1
+            // Let the main thread run a bit to finish updating the GUI
+            Thread.yield()
+            if (breakPoints.isNullOrEmpty()) {
+                breakPoints = null
             } else {
-                Arrays.sort(breakPoints);  // must be pre-sorted for binary search
+                // Must be pre-sorted for binary search
+                breakPoints!!.sort()
             }
-
-            Simulator.getInstance().notifyObserversOfExecutionStart(maxSteps, pc);
-
-            RegisterFile.initializeProgramCounter(pc);
-            ProgramStatement statement;
+            getInstance().notifyObserversOfExecutionStart(maxSteps, pc)
+            RegisterFile.initializeProgramCounter(pc)
+            var statement: ProgramStatement?
             try {
-                statement = Globals.memory.getStatement(RegisterFile.getProgramCounter().getValue());
-            } catch (AddressErrorException e) {
-                ErrorList el = new ErrorList();
-                el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter().getValue())));
-                this.pe = new ProcessingException(el, e);
-                // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
+                statement = Globals.memory.getStatement(RegisterFile.programCounter.getValue())
+            } catch (e: AddressErrorException) {
+                val el = ErrorList()
+                el.add(ErrorMessage(
+                    null,
+                    0,
+                    0,
+                    "Invalid program counter value: ${Binary.intToHexString(RegisterFile.programCounter.getValue())}"
+                ))
+                this.pe = ProcessingException(el, e)
+                // The next statement is a hack. The previous statement sets EPC register to ProgramCounter-4
                 // because it assumes the bad address comes from an operand so the ProgramCounter has already been
-                // incremented.  In this case, bad address is the instruction fetch itself so Program Counter has
-                // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-                Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter().getValue());
-                this.constructReturnReason = EXCEPTION;
-                this.done = true;
-                SystemIO.resetFiles(); // close any files opened in MIPS program
-                Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                return done;
+                // incremented. In this case, the bad address is the instruction fetch itself so Program Counter has
+                // not yet been incremented. We'll set the EPC directly here.
+                Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.programCounter.getValue())
+                this.constructReturnReason = TerminationReason.EXCEPTION
+                this.done = true
+                SystemIO.resetFiles()
+                getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                return done
             }
-            int steps = 0;
-
-            // *******************  PS addition 26 July 2006  **********************
+            var steps = 0
             // A couple statements below were added for the purpose of assuring that when
             // "back stepping" is enabled, every instruction will have at least one entry
-            // on the back-stepping stack.  Most instructions will because they write either
-            // to a register or memory.  But "nop" and branches not taken do not.  When the
-            // user is stepping backward through the program, the stack is popped and if
-            // an instruction has no entry it will be skipped over in the process.  This has
-            // no effect on the correctness of the mechanism but the visual jerkiness when
-            // instruction highlighting skips such instrutions is disruptive.  Current solution
-            // is to add a "do nothing" stack entry for instructions that do no write anything.
+            // on the back-stepping stack. Most instructions will because they write either
+            // to a register or memory. But "nop" and branches not taken do not. When the
+            // user is stepping backward through the program, the stack is popped, and if
+            // an instruction has no entry, it will be skipped over in the process. This has
+            // no effect on the correctness of the mechanism, but the visual jerkiness when
+            // instruction highlighting skips such instructions is disruptive. The current solution
+            // is to add a "do nothing" stack entry for instructions that do not write anything.
             // To keep this invisible to the "simulate()" method writer, we
-            // will push such an entry onto the stack here if there is none for this instruction
-            // by the time it has completed simulating.  This is done by the IF statement
-            // just after the call to the simulate method itself.  The BackStepper method does
-            // the aforementioned check and decides whether to push or not.  The result
-            // is a a smoother interaction experience.  But it comes at the cost of slowing
+            // will push such an entry onto the stack here if there is not an entry for this
+            // instruction by the time it has completed simulating. This is done by the IF statement
+            // just after the call to the simulate method itself. The BackStepper method does
+            // the aforementioned check and decides whether to push or not. The result
+            // is a smoother interaction experience. But it comes at the cost of slowing
             // simulation speed for flat-out runs, for every MIPS instruction executed even
-            // though very few will require the "do nothing" stack entry.  For stepped or
-            // timed execution the slower execution speed is not noticeable.
+            // though very few will require the "do nothing" stack entry. For stepped or
+            // timed execution, the slower execution speed is not noticeable.
             //
-            // To avoid this cost I tried a different technique: back-fill with "do nothings"
-            // during the backstepping itself when this situation is recognized.  Problem
+            // To avoid this cost, I tried a different technique: back-fill with "do nothing" entries
+            // during the backstepping itself when this situation is recognized. The problem
             // was in recognizing all possible situations in which the stack contained such
-            // a "gap".  It became a morass of special cases and it seemed every weird test
-            // case revealed another one.  In addition, when a program
+            // a "gap". It became a morass of special cases, and it seemed every unique test
+            // case revealed another one. In addition, when a program
             // begins with one or more such instructions ("nop" and branches not taken),
             // the backstep button is not enabled until a "real" instruction is executed.
             // This is noticeable in stepped mode.
-            // *********************************************************************
-
-            int pc = 0;  // added: 7/26/06 (explanation above)
-
+            var pc = 0
             while (statement != null) {
-                pc = RegisterFile.getProgramCounter().getValue(); // added: 7/26/06 (explanation above)
-                RegisterFile.incrementPC();
-                // Perform the MIPS instruction in synchronized block.  If external threads agree
-                // to access MIPS memory and registers only through synchronized blocks on same
+                pc = RegisterFile.programCounter.getValue()
+                RegisterFile.incrementPC()
+                // Perform the MIPS instruction in synchronized block. If external threads agree
+                // to access MIPS memory and registers only through synchronized blocks on the same
                 // lock variable, then full (albeit heavy-handed) protection of MIPS memory and
-                // registers is assured.  Not as critical for reading from those resources.
-                synchronized (Globals.getMemoryAndRegistersLock()) {
+                // registers is assured. Not as critical for reading from those resources.
+                Globals.memoryAndRegistersLock.withLock {
                     try {
-                        if (Simulator.externalInterruptingDevice != Exceptions.fromInt(NO_DEVICE)) {
-                            Exceptions deviceInterruptCode = externalInterruptingDevice;
-                            Simulator.externalInterruptingDevice = Exceptions.fromInt(NO_DEVICE);
-                            throw new ProcessingException(statement, "External Interrupt", deviceInterruptCode);
+                        if (externalInterruptingDevice != Exceptions.fromInt(NO_DEVICE)) {
+                            val deviceInterruptCode = externalInterruptingDevice
+                            externalInterruptingDevice = Exceptions.fromInt(NO_DEVICE)
+                            throw ProcessingException(statement, "External interrupt!", deviceInterruptCode)
                         }
-                        BasicInstruction instruction = (BasicInstruction) statement.getInstruction();
-                        if (instruction == null) {
-                            throw new ProcessingException(statement,
-                                    "undefined instruction (" + Binary.intToHexString(statement.getBinaryStatement()) + ")",
-                                    Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
-                        }
-                        // THIS IS WHERE THE INSTRUCTION EXECUTION IS ACTUALLY SIMULATED!
-                        instruction.getSimulationCode().simulate(statement);
-
-                        // IF statement added 7/26/06 (explanation above)
-                        if (Globals.getSettings().getBackSteppingEnabled()) {
-                            Globals.program.getBackStepper().addDoNothing(pc);
-                        }
-                    } catch (ProcessingException pe) {
-                        if (pe.errors() == null) {
-                            this.constructReturnReason = NORMAL_TERMINATION;
-                            this.done = true;
-                            SystemIO.resetFiles(); // close any files opened in MIPS program
-                            Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                            return done; // execution completed without error.
+                        val instruction = statement!!.getInstruction() as? BasicInstruction
+                            ?: throw ProcessingException(
+                                statement,
+                                "Undefined instruction: ${Binary.intToHexString(statement!!.getBinaryStatement())}",
+                                Exceptions.RESERVED_INSTRUCTION_EXCEPTION
+                            )
+                        // Simulate the actual instruction
+                        instruction.simulationCode.simulate(statement!!)
+                        if (Globals.settings.getBackSteppingEnabled())
+                            Globals.program.getBackStepper()!!.addDoNothing(pc)
+                    } catch (e: ProcessingException) {
+                        if (pe?.errors() == null) {
+                            constructReturnReason = TerminationReason.NORMAL_TERMINATION
+                            done = true
+                            SystemIO.resetFiles()
+                            getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                            return done
                         } else {
-                            // See if an exception handler is present.  Assume this is the case
+                            // See if an exception handler is present. Assume this is the case
                             // if and only if memory location Memory.exceptionHandlerAddress
-                            // (e.g. 0x80000180) contains an instruction.  If so, then set the
-                            // program counter there and continue.  Otherwise terminate the
-                            // MIPS program with appropriate error message.
-                            ProgramStatement exceptionHandler = null;
-                            try {
-                                exceptionHandler = Globals.memory.getStatement(Memory.getExceptionHandlerAddress());
-                            } catch (AddressErrorException ignored) {
-                            } // will not occur with this well-known addres
+                            // (e.g., 0x80000180) contains an instruction. If so, then set the
+                            // program counter there and continue. Otherwise, terminate the
+                            // MIPS program with the appropriate error message.
+                            val exceptionHandler = try {
+                                Globals.memory.getStatement(Memory.exceptionHandlerAddress)
+                            } catch (ignored: AddressErrorException) { null }
                             if (exceptionHandler != null) {
-                                RegisterFile.setProgramCounter(Memory.getExceptionHandlerAddress());
+                                RegisterFile.setProgramCounter(Memory.exceptionHandlerAddress)
                             } else {
-                                this.constructReturnReason = EXCEPTION;
-                                this.pe = pe;
-                                this.done = true;
-                                SystemIO.resetFiles(); // close any files opened in MIPS program
-                                Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                                return done;
+                                constructReturnReason = TerminationReason.EXCEPTION
+                                pe = e
+                                done = true
+                                SystemIO.resetFiles()
+                                getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                                return@construct done
                             }
                         }
                     }
-                }// end synchronized block
+                    // For some reason, Kotlin insists I have this here, even though the "withLock" block doesn't
+                    // have an assigment statement attached to it.
+                    // Weird.
+                    Unit
+                }
 
-                ///////// DPS 15 June 2007.  Handle delayed branching if it occurs./////
-                if (DelayedBranch.isTriggered()) {
-                    RegisterFile.setProgramCounter(DelayedBranch.getBranchTargetAddress());
-                    DelayedBranch.clear();
-                } else if (DelayedBranch.isRegistered()) {
-                    DelayedBranch.trigger();
-                }//////////////////////////////////////////////////////////////////////
+                // Handle delayed branching if it occurs.
+                if (DelayedBranch.isTriggered) {
+                    RegisterFile.setProgramCounter(DelayedBranch.branchTargetAddress)
+                    DelayedBranch.clear()
+                } else if (DelayedBranch.isRegistered) {
+                    DelayedBranch.trigger()
+                }
 
                 // Volatile variable initialized false but can be set true by the main thread.
                 // Used to stop or pause a running MIPS program.  See stopSimulation() above.
                 if (stop) {
-                    this.constructReturnReason = PAUSE_OR_STOP;
-                    this.done = false;
-                    Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                    return done;
+                    constructReturnReason = TerminationReason.PAUSE_OR_STOP
+                    done = false
+                    getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                    return done
                 }
-                //	Return if we've reached a breakpoint.
-                if ((breakPoints != null) &&
-                        (Arrays.binarySearch(breakPoints, RegisterFile.getProgramCounter().getValue()) >= 0)) {
-                    this.constructReturnReason = BREAKPOINT;
-                    this.done = false;
-                    Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                    return done; // false;
+
+                // Return if we've reached a breakpoint.
+                if (breakPoints != null &&
+                    Arrays.binarySearch(breakPoints!!, RegisterFile.programCounter.getValue()) >= 0) {
+                    constructReturnReason = TerminationReason.BREAKPOINT
+                    done = false
+                    getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                    return done
                 }
-                // Check number of MIPS instructions executed.  Return if at limit (-1 is no limit).
+
+                // Check the number of MIPS instructions executed. Return if the limit is reached (-1 is no limit).
                 if (maxSteps > 0) {
-                    steps++;
+                    steps++
                     if (steps >= maxSteps) {
-                        this.constructReturnReason = MAX_STEPS;
-                        this.done = false;
-                        Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                        return done;// false;
+                        constructReturnReason = TerminationReason.MAX_STEPS
+                        done = false
+                        getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                        return done
                     }
                 }
 
-                // schedule GUI update only if: there is in fact a GUI! AND
-                //                              using Run,  not Step (maxSteps > 1) AND
-                //                              running slowly enough for GUI to keep up
-                //if (Globals.getGui() != null && maxSteps != 1 &&
+                // Schedule GUI update only if (a) there is a GUI, (b) the user chose to Run, not Step, and (c) the
+                // simulation is running slowly enough for the GUI to keep up.
                 if (interactiveGUIUpdater != null && maxSteps != 1 &&
-                        RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
-                    SwingUtilities.invokeLater(interactiveGUIUpdater);
-                }
-                if (Globals.getGui() != null || Globals.getRunSpeedPanelExists()) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
-                    if (maxSteps != 1 &&
-                            RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+                    RunSpeedPanel.getInstance().runSpeed < RunSpeedPanel.UNLIMITED_SPEED)
+                    SwingUtilities.invokeLater(interactiveGUIUpdater)
+
+                if (Globals.gui != null || Globals.runSpeedPanelExists) {
+                    if (maxSteps != 1 && RunSpeedPanel.getInstance().runSpeed < RunSpeedPanel.UNLIMITED_SPEED) {
                         try {
-                            Thread.sleep((int) (1000 / RunSpeedPanel.getInstance().getRunSpeed())); // make sure it's never zero!
-                        } catch (InterruptedException ignored) {
-                        }
+                            Thread.sleep((1000 / RunSpeedPanel.getInstance().runSpeed).toLong())
+                        } catch (ignored: InterruptedException) {}
                     }
                 }
 
-
-                // Get next instruction in preparation for next iteration.
-
+                // Get next instruction in preparation for the next iteration.
                 try {
-                    statement = Globals.memory.getStatement(RegisterFile.getProgramCounter().getValue());
-                } catch (AddressErrorException e) {
-                    ErrorList el = new ErrorList();
-                    el.add(new ErrorMessage((MIPSProgram) null, 0, 0, "invalid program counter value: " + Binary.intToHexString(RegisterFile.getProgramCounter().getValue())));
-                    this.pe = new ProcessingException(el, e);
-                    // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
-                    // because it assumes the bad address comes from an operand so the ProgramCounter has already been
-                    // incremented.  In this case, bad address is the instruction fetch itself so Program Counter has
-                    // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-                    Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter().getValue());
-                    this.constructReturnReason = EXCEPTION;
-                    this.done = true;
-                    SystemIO.resetFiles(); // close any files opened in MIPS program
-                    Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-                    return done;
+                    statement = Globals.memory.getStatement(RegisterFile.programCounter.getValue())
+                } catch (e: AddressErrorException) {
+                    val el = ErrorList()
+                    el.add(ErrorMessage(
+                        null,
+                        0,
+                        0,
+                        "Invalid program counter value: ${Binary.intToHexString(RegisterFile.programCounter.getValue())}"
+                    ))
+                    pe = ProcessingException(el, e)
+                    Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.programCounter.getValue())
+                    constructReturnReason = TerminationReason.EXCEPTION
+                    done = true
+                    SystemIO.resetFiles()
+                    getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+                    return done
                 }
             }
-            // DPS July 2007.  This "if" statement is needed for correct program
-            // termination if delayed branching on and last statement in
-            // program is a branch/jump.  Program will terminate rather than branch,
-            // because that's what MARS does when execution drops off the bottom.
-            if (DelayedBranch.isTriggered() || DelayedBranch.isRegistered()) {
-                DelayedBranch.clear();
-            }
-            // If we got here it was due to null statement, which means program
-            // counter "fell off the end" of the program.  NOTE: Assumes the
-            // "while" loop contains no "break;" statements.
-            this.constructReturnReason = CLIFF_TERMINATION;
-            this.done = true;
-            SystemIO.resetFiles(); // close any files opened in MIPS program
-            Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
-            return done; // true;  // execution completed
-        }
+            // This "if" statement is needed for correct program termination if delayed branching is on, and the last
+            // statement in the program is a branch/jump. The program will terminate rather than branch, because that's
+            // what MARS does when execution drops out of the bottom of the program.
+            if (DelayedBranch.isTriggered || DelayedBranch.isRegistered) DelayedBranch.clear()
 
+            // If we got here, it was due to a null statement, and the program counter "fell off the end" of the
+            // program. This assumes the "while" loop contains no "break" statements.
+            constructReturnReason = TerminationReason.CLIFF_TERMINATION
+            done = true
+            SystemIO.resetFiles()
+            getInstance().notifyObserversOfExecutionStop(maxSteps, pc)
+            return done
+        }
 
         /**
          * This method is invoked by the SwingWorker when the "construct" method returns.
-         * It will update the GUI appropriately.  According to Sun's documentation, it
-         * is run in the main thread so should work OK with Swing components (which are
+         * It will update the GUI appropriately. According to Sun's documentation, it
+         * is run in the main thread, so it should work OK with Swing components (which are
          * not thread-safe).
-         * <p>
+         *
          * Its action depends on what caused the return from construct() and what
          * action led to the call of construct() in the first place.
          */
-        @Override
-        public void finished() {
-            // If running from the command-line, then there is no GUI to update.
-            if (Globals.getGui() == null) {
-                return;
-            }
-            String starterName = (String) starter.getValue(AbstractAction.NAME);
-            if (starterName.equals("Step")) {
-                ((RunStepAction) starter).stepped(done, constructReturnReason, pe);
-            }
-            if (starterName.equals("Go")) {
+        override fun finished() {
+            // If running from the command-line, there is no GUI to update.
+            if (Globals.gui == null) return
+            requireNotNull(starter) { "Param `starter` cannot be null if the GUI is not null!" }
+            val starterName = starter.getValue(AbstractAction.NAME) as String
+            if (starterName == "Step") {
+                (starter as RunStepAction).stepped(done, constructReturnReason, pe)
+            } else if (starterName == "Go") {
+                starter as RunGoAction
                 if (done) {
-                    ((RunGoAction) starter).stopped(pe, constructReturnReason);
-                } else if (constructReturnReason == BREAKPOINT) {
-                    ((RunGoAction) starter).paused(done, constructReturnReason, pe);
+                    starter.stopped(pe, constructReturnReason)
+                } else if (constructReturnReason == TerminationReason.BREAKPOINT) {
+                    starter.paused(done, constructReturnReason, pe)
                 } else {
-                    String stopperName = (String) stopper.getValue(AbstractAction.NAME);
-                    if ("Pause".equals(stopperName)) {
-                        ((RunGoAction) starter).paused(done, constructReturnReason, pe);
-                    } else if ("Stop".equals(stopperName)) {
-                        ((RunGoAction) starter).stopped(pe, constructReturnReason);
+                    val stopperName = stopper?.getValue(AbstractAction.NAME)
+                    if (stopperName == "Pause") {
+                        starter.paused(done, constructReturnReason, pe)
+                    } else if (stopperName == "Stop") {
+                        starter.stopped(pe, constructReturnReason)
                     }
                 }
             }
         }
-
     }
 
-    private static class UpdateGUI implements Runnable {
-        public void run() {
-            if (Globals.getGui().getRegistersPane().getSelectedComponent() ==
-                    Globals.getGui().getMainPane().getExecutePane().getRegistersWindow()) {
-                Globals.getGui().getMainPane().getExecutePane().getRegistersWindow().updateRegisters();
-            } else {
-                Globals.getGui().getMainPane().getExecutePane().getCoprocessor1Window().updateRegisters();
+    private class UpdateGUI : Runnable {
+        override fun run() {
+            val g = Globals.gui
+            requireNotNull(g) { "GUI cannot be null for this action!" }
+            g.mainPane.executePane.let {
+                if (g.registersPane.selectedComponent == it.registersWindow) {
+                    it.registersWindow.updateRegisters()
+                } else {
+                    it.coprocessor1Window.updateRegisters()
+                }
+                it.dataSegmentWindow.updateValues()
+                it.textSegmentWindow.codeHighlighting = true
+                it.textSegmentWindow.highlightStepAtPC()
             }
-            Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
         }
     }
 }

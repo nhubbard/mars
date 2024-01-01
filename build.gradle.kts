@@ -98,6 +98,7 @@ tasks {
     kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
+            optIn.add("kotlin.contracts.ExperimentalContracts")
         }
 
         jvmToolchain(21)

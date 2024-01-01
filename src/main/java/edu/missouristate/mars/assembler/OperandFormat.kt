@@ -102,9 +102,9 @@ object OperandFormat {
                 val replacement = Token(
                     TokenTypes.IDENTIFIER,
                     candidateToken.value,
-                    candidateToken.sourceMIPSProgram,
+                    candidateToken.sourceMipsProgram,
                     candidateToken.sourceLine,
-                    candidateToken.startPos
+                    candidateToken.startPosition
                 )
                 candidate.set(i, replacement)
                 continue
@@ -153,6 +153,6 @@ object OperandFormat {
      */
     @JvmStatic
     private fun generateMessage(token: Token, message: String, errors: ErrorList) {
-        errors.add(ErrorMessage(token.sourceMIPSProgram, token.sourceLine, token.startPos, "\"${token.value}\": $message"))
+        errors.add(ErrorMessage(token.sourceMipsProgram, token.sourceLine, token.startPosition, "\"${token.value}\": $message"))
     }
 }

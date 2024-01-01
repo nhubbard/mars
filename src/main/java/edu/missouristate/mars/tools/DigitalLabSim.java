@@ -72,7 +72,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         } else {
             CounterValue = CounterValueMax;
             if ((Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
-                Simulator.externalInterruptingDevice = Exceptions.fromInt(EXTERNAL_INTERRUPT_TIMER);
+                Simulator.setExternalInterruptingDevice(Exceptions.fromInt(EXTERNAL_INTERRUPT_TIMER));
             }
         }
     }
@@ -328,7 +328,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
                     KeyBoardValueButtonClick = buttonValue;
                     button[KeyBoardValueButtonClick].setBackground(Color.GREEN);
                     if (KeyboardInterruptOnOff && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
-                        Simulator.externalInterruptingDevice = Exceptions.fromInt(EXTERNAL_INTERRUPT_HEXA_KEYBOARD);
+                        Simulator.setExternalInterruptingDevice(Exceptions.fromInt(EXTERNAL_INTERRUPT_HEXA_KEYBOARD));
                     }
                 }
             }

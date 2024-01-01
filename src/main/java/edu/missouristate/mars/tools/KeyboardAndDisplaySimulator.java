@@ -250,7 +250,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
                         && (Coprocessor0.getValue(Coprocessor0.STATUS) & 1) == 1) {
                     // interrupt-enabled bit is set in both Tranmitter Control and in
                     // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external interrupt.
-                    Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_DISPLAY;
+                    Simulator.setExternalInterruptingDevice(Exceptions.EXTERNAL_INTERRUPT_DISPLAY);
                 }
             }
         }
@@ -734,7 +734,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
                     && (Coprocessor0.getValue(Coprocessor0.STATUS) & 1) == 1) {
                 // interrupt-enabled bit is set in both Receiver Control and in
                 // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external interrupt.
-                Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_KEYBOARD;
+                Simulator.setExternalInterruptingDevice(Exceptions.EXTERNAL_INTERRUPT_KEYBOARD);
             }
         }
 
