@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
- * Copyright (c) 2023-present, Nicholas Hubbard
+ * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2024-present, Nicholas Hubbard
  *
  * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
  * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
