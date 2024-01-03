@@ -31,9 +31,9 @@ import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.util.SystemIO
-import edu.missouristate.mars.venus.RunGoAction
-import edu.missouristate.mars.venus.RunSpeedPanel
-import edu.missouristate.mars.venus.RunStepAction
+import edu.missouristate.mars.venus.actions.RunGoAction
+import edu.missouristate.mars.venus.actions.RunStepAction
+import edu.missouristate.mars.venus.panes.RunSpeedPanel
 import java.util.*
 import javax.swing.AbstractAction
 import javax.swing.SwingUtilities

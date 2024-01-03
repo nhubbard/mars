@@ -21,7 +21,7 @@
 
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.venus.HelpHelpAction;
+import edu.missouristate.mars.venus.actions.HelpHelpAction;
 
 import java.util.ArrayList;
 

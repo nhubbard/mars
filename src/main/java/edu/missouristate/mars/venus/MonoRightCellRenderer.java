@@ -31,7 +31,7 @@ import java.awt.*;
  * Strings containing either the decimal or hexidecimal version
  * of the integer value.
  */
-class MonoRightCellRenderer extends DefaultTableCellRenderer {
+public class MonoRightCellRenderer extends DefaultTableCellRenderer {
     public static final Font MONOSPACED_PLAIN_12POINT = new Font("Monospaced", Font.PLAIN, 12);
 
     public Component getTableCellRendererComponent(JTable table, Object value,

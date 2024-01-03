@@ -22,7 +22,7 @@
 package edu.missouristate.mars.venus.editors.generic;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.EditPane;
+import edu.missouristate.mars.venus.panes.EditPane;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
 
 import javax.swing.*;

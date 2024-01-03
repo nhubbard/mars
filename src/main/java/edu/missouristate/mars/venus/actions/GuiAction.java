@@ -19,44 +19,34 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.simulator
+package edu.missouristate.mars.venus.actions;
 
-import edu.missouristate.mars.venus.panes.RunSpeedPanel
+import edu.missouristate.mars.venus.VenusUI;
+
+import java.awt.event.*;
+import javax.swing.*;
 
 /**
- * Object provided to Observers of the Simulator.
- * They are notified at important phases of the runtime simulator,
- * such as start and stop of simulation.
- *
- * @author Pete Sanderson
- * @version January 2009
+ * parent class for Action subclasses to be defined for every menu/toolbar
+ * option.
  */
-data class SimulatorNotice(
-    /**
-     * Fetch the memory address that was accessed.
-     */
-    val action: Int,
-    /**
-     * Fetch the length in bytes of the access operation (4,2,1).
-     */
-    val maxSteps: Int,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val runSpeed: Double,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val programCounter: Int
-) {
-    /**
-     * String representation indicates the access type, address and length in bytes
-     */
-    override fun toString(): String =
-        "${if ((this.action == SIMULATOR_START)) "START " else "STOP  "}Max Steps ${this.maxSteps} Speed ${if ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)) "unlimited " else "$runSpeed inst/sec"}Prog Ctr ${this.programCounter}"
 
-    companion object {
-        const val SIMULATOR_START: Int = 0
-        const val SIMULATOR_STOP: Int = 1
+public class GuiAction extends AbstractAction {
+    protected final VenusUI mainUI;
+
+    protected GuiAction(String name, Icon icon, String descrip,
+                        Integer mnemonic, KeyStroke accel, VenusUI gui) {
+        super(name, icon);
+        putValue(SHORT_DESCRIPTION, descrip);
+        putValue(MNEMONIC_KEY, mnemonic);
+        putValue(ACCELERATOR_KEY, accel);
+        mainUI = gui;
+    }
+
+    /**
+     * does nothing by default.  Should be over-ridden by subclass
+     */
+    public void actionPerformed(ActionEvent e) {
+
     }
 }

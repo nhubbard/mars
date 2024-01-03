@@ -19,44 +19,37 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.simulator
+package edu.missouristate.mars.venus.actions;
 
-import edu.missouristate.mars.venus.panes.RunSpeedPanel
+import edu.missouristate.mars.*;
+import edu.missouristate.mars.venus.VenusUI;
+
+import java.awt.event.*;
+import javax.swing.*;
 
 /**
- * Object provided to Observers of the Simulator.
- * They are notified at important phases of the runtime simulator,
- * such as start and stop of simulation.
- *
- * @author Pete Sanderson
- * @version January 2009
+ * Action class for the Run menu item to clear execution breakpoints that have been set.
+ * It is a listener and is notified whenever a breakpoint is added or removed, thus will
+ * set its enabled status true or false depending on whether breakpoints remain after that action.
  */
-data class SimulatorNotice(
-    /**
-     * Fetch the memory address that was accessed.
-     */
-    val action: Int,
-    /**
-     * Fetch the length in bytes of the access operation (4,2,1).
-     */
-    val maxSteps: Int,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val runSpeed: Double,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val programCounter: Int
-) {
-    /**
-     * String representation indicates the access type, address and length in bytes
-     */
-    override fun toString(): String =
-        "${if ((this.action == SIMULATOR_START)) "START " else "STOP  "}Max Steps ${this.maxSteps} Speed ${if ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)) "unlimited " else "$runSpeed inst/sec"}Prog Ctr ${this.programCounter}"
+public class RunToggleBreakpointsAction extends GuiAction {
 
-    companion object {
-        const val SIMULATOR_START: Int = 0
-        const val SIMULATOR_STOP: Int = 1
+    /**
+     * Create the object and register with text segment window as a listener on its table model.
+     * The table model has not been created yet, so text segment window will hang onto this
+     * registration info and transfer it to the table model upon creation (which happens with
+     * each successful assembly).
+     */
+    public RunToggleBreakpointsAction(String name, Icon icon, String descrip,
+                                      Integer mnemonic, KeyStroke accel, VenusUI gui) {
+        super(name, icon, descrip, mnemonic, accel, gui);
     }
+
+    /**
+     * When this option is selected, tell text segment window to clear breakpoints in its table model.
+     */
+    public void actionPerformed(ActionEvent e) {
+        Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().toggleBreakpoints();
+    }
+
 }

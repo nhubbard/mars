@@ -21,6 +21,8 @@
 
 package edu.missouristate.mars.venus;
 
+import edu.missouristate.mars.venus.panes.EditTabbedPane;
+
 import java.io.*;
 
 /**
@@ -95,7 +97,7 @@ public class Editor {
      *                             it does not exist or is not a directory, the default (MARS launch directory) will be used.
      */
 
-    void setCurrentOpenDirectory(String currentOpenDirectory) {
+    public void setCurrentOpenDirectory(String currentOpenDirectory) {
         File file = new File(currentOpenDirectory);
         if (!file.exists() || !file.isDirectory()) {
             this.currentOpenDirectory = defaultOpenDirectory;
@@ -125,7 +127,7 @@ public class Editor {
      *                             it does not exist or is not a directory, the default (MARS launch directory) will be used.
      */
 
-    void setCurrentSaveDirectory(String currentSaveDirectory) {
+    public void setCurrentSaveDirectory(String currentSaveDirectory) {
         File file = new File(currentSaveDirectory);
         if (!file.exists() || !file.isDirectory()) {
             this.currentSaveDirectory = defaultSaveDirectory;

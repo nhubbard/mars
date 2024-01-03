@@ -19,44 +19,29 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.simulator
+package edu.missouristate.mars.venus.actions;
 
-import edu.missouristate.mars.venus.panes.RunSpeedPanel
+import edu.missouristate.mars.*;
+import edu.missouristate.mars.venus.VenusUI;
+
+import java.awt.event.*;
+import javax.swing.*;
 
 /**
- * Object provided to Observers of the Simulator.
- * They are notified at important phases of the runtime simulator,
- * such as start and stop of simulation.
- *
- * @author Pete Sanderson
- * @version January 2009
+ * Action class for the Settings menu item to determine whether assemble operation applies
+ * only to current file or to all files in its directory.
  */
-data class SimulatorNotice(
-    /**
-     * Fetch the memory address that was accessed.
-     */
-    val action: Int,
-    /**
-     * Fetch the length in bytes of the access operation (4,2,1).
-     */
-    val maxSteps: Int,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val runSpeed: Double,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val programCounter: Int
-) {
-    /**
-     * String representation indicates the access type, address and length in bytes
-     */
-    override fun toString(): String =
-        "${if ((this.action == SIMULATOR_START)) "START " else "STOP  "}Max Steps ${this.maxSteps} Speed ${if ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)) "unlimited " else "$runSpeed inst/sec"}Prog Ctr ${this.programCounter}"
+public class SettingsAssembleAllAction extends GuiAction {
 
-    companion object {
-        const val SIMULATOR_START: Int = 0
-        const val SIMULATOR_STOP: Int = 1
+
+    public SettingsAssembleAllAction(String name, Icon icon, String descrip,
+                                     Integer mnemonic, KeyStroke accel, VenusUI gui) {
+        super(name, icon, descrip, mnemonic, accel, gui);
     }
+
+    public void actionPerformed(ActionEvent e) {
+        Globals.getSettings().setBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED,
+                ((JCheckBoxMenuItem) e.getSource()).isSelected());
+    }
+
 }

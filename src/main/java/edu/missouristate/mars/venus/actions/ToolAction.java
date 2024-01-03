@@ -19,44 +19,49 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.simulator
+package edu.missouristate.mars.venus.actions;
 
-import edu.missouristate.mars.venus.panes.RunSpeedPanel
+import edu.missouristate.mars.tools.*;
+
+import javax.swing.*;
+import java.awt.event.*;
 
 /**
- * Object provided to Observers of the Simulator.
- * They are notified at important phases of the runtime simulator,
- * such as start and stop of simulation.
+ * Connects a MarsTool class (class that implements MarsTool interface) to
+ * the Mars menu system by supplying the response to that tool's menu item
+ * selection.
  *
  * @author Pete Sanderson
- * @version January 2009
+ * @version August 2005
  */
-data class SimulatorNotice(
-    /**
-     * Fetch the memory address that was accessed.
-     */
-    val action: Int,
-    /**
-     * Fetch the length in bytes of the access operation (4,2,1).
-     */
-    val maxSteps: Int,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val runSpeed: Double,
-    /**
-     * Fetch the value of the access operation (the value read or written).
-     */
-    val programCounter: Int
-) {
-    /**
-     * String representation indicates the access type, address and length in bytes
-     */
-    override fun toString(): String =
-        "${if ((this.action == SIMULATOR_START)) "START " else "STOP  "}Max Steps ${this.maxSteps} Speed ${if ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)) "unlimited " else "$runSpeed inst/sec"}Prog Ctr ${this.programCounter}"
 
-    companion object {
-        const val SIMULATOR_START: Int = 0
-        const val SIMULATOR_STOP: Int = 1
+public class ToolAction extends AbstractAction {
+    private final Class<? super MarsTool> toolClass; //MarsTool tool;
+
+    /**
+     * Simple constructor.
+     *
+     * @param toolClass Class object for the associated MarsTool subclass
+     * @param toolName  Name of this tool, for the menu.
+     */
+    public ToolAction(Class<? super MarsTool> toolClass, String toolName) {
+        super(toolName, null);
+        this.toolClass = toolClass;
+    }
+
+
+    /**
+     * Response when tool's item selected from menu.  Invokes tool's action() method.
+     *
+     * @param e the ActionEvent that triggered this call
+     */
+    public void actionPerformed(ActionEvent e) {
+        try {
+            // An exception should not occur here because we got here only after
+            // already successfully creating an instance from the same Class object
+            // in ToolLoader's loadMarsTools() method.
+            ((MarsTool) this.toolClass.getDeclaredConstructor().newInstance()).action();
+        } catch (Exception ignored) {
+        }
     }
 }

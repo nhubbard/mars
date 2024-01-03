@@ -28,7 +28,7 @@ import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.FilenameFinder;
-import edu.missouristate.mars.venus.RunSpeedPanel;
+import edu.missouristate.mars.venus.panes.RunSpeedPanel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

@@ -26,7 +26,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.venus.AbstractFontSettingDialog;
+import edu.missouristate.mars.venus.dialogs.AbstractFontSettingDialog;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;

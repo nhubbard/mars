@@ -23,6 +23,14 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.dump.*;
+import edu.missouristate.mars.venus.actions.*;
+import edu.missouristate.mars.venus.panes.MainPane;
+import edu.missouristate.mars.venus.panes.MessagesPane;
+import edu.missouristate.mars.venus.panes.RegistersPane;
+import edu.missouristate.mars.venus.panes.RunSpeedPanel;
+import edu.missouristate.mars.venus.windows.Coprocessor0Window;
+import edu.missouristate.mars.venus.windows.Coprocessor1Window;
+import edu.missouristate.mars.venus.windows.RegistersWindow;
 
 import javax.swing.*;
 import java.awt.*;
@@ -74,8 +82,8 @@ public class VenusUI extends JFrame {
 
     private Action fileNewAction, fileOpenAction, fileCloseAction, fileCloseAllAction, fileSaveAction;
     private Action fileSaveAsAction, fileSaveAllAction, fileDumpMemoryAction, filePrintAction, fileExitAction;
-    EditUndoAction editUndoAction;
-    EditRedoAction editRedoAction;
+    public EditUndoAction editUndoAction;
+    public EditRedoAction editRedoAction;
     private Action editCutAction, editCopyAction, editPasteAction, editFindReplaceAction, editSelectAllAction;
     private Action runAssembleAction, runGoAction, runStepAction, runBackstepAction, runResetAction,
             runStopAction, runPauseAction, runClearBreakpointsAction, runToggleBreakpointsAction;
@@ -720,7 +728,7 @@ public class VenusUI extends JFrame {
      * setMenuStateRunning: set upon Run->Go
      * setMenuStateTerminated: set upon completion of simulated execution
      */
-    void setMenuState(int status) {
+    public void setMenuState(int status) {
         menuState = status;
         switch (status) {
             case FileStatus.NO_FILE:
