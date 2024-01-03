@@ -68,7 +68,7 @@ public class ToolLoader {
             menu.setMnemonic(KeyEvent.VK_T);
             // traverse array list and build menu
             for (MarsToolClassAndInstance listItem : marsToolList)
-                menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
+                menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getToolName()));
         }
         return menu;
     }
@@ -88,7 +88,7 @@ public class ToolLoader {
      *
      *  Enhanced 3 Oct 06, DPS: method did not work if running MARS from a JAR file.
      *  The array of files returned is null, but the File object contains the name
-     *  of the JAR file (using toString, not getName).  Extract that name, open it
+     *  of the JAR file (using toString, not getToolName).  Extract that name, open it
      *  as a ZipFile, get the ZipEntry enumeration, find the class files in the tools
      *  folder, then continue as before.
      */

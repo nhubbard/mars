@@ -88,14 +88,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public String getToolName() {
         return "MIPS X-Ray";
     }
 
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    protected JComponent getHelpComponent() {
+    public JComponent getHelpComponent() {
         final String helpContent =
                 """
                         This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
@@ -205,7 +205,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         return (JComponent) painel;
     }
 
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 

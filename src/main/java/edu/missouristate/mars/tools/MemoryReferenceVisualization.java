@@ -149,7 +149,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public String getToolName() {
         return "Memory Reference Visualization";
     }
 
@@ -164,7 +164,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * method is invoked when you click "Connect" button on MarsTool or the
      * "Assemble and Run" button on a Mars-based app.
      */
-    protected void addAsObserver() {
+    public void addAsObserver() {
         int highAddress = baseAddress + theGrid.getRows() * theGrid.getColumns() * Memory.WORD_LENGTH_BYTES * wordsPerUnit;
         // Special case: baseAddress<0 means we're in kernel memory (0x80000000 and up) and most likely
         // in memory map address space (0xffff0000 and up).  In this case, we need to make sure the high address
@@ -214,7 +214,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * Initialize all JComboBox choice structures not already initialized at declaration.
      * Overrides inherited method that does nothing.
      */
-    protected void initializePreGUI() {
+    public void initializePreGUI() {
         initializeDisplayBaseChoices();
         counterColorScale = new CounterColorScale(defaultCounterColors);
         // NOTE: Can't call "createNewGrid()" here because it uses settings from
@@ -230,7 +230,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * of the various combo boxes. Overrides inherited method that does nothing.
      */
 
-    protected void initializePostGUI() {
+    public void initializePostGUI() {
         wordsPerUnit = getIntComboBoxSelection(wordsPerUnitSelector);
         theGrid = createNewGrid();
         updateBaseAddress();
@@ -241,7 +241,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * Method to reset counters and display when the Reset button selected.
      * Overrides inherited method that does nothing.
      */
-    protected void reset() {
+    public void reset() {
         resetCounts();
         updateDisplay();
     }
@@ -251,7 +251,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * display configuration changes as needed, and after each execution step when Mars
      * is running in timed mode.  Overrides inherited method that does nothing.
      */
-    protected void updateDisplay() {
+    public void updateDisplay() {
         canvas.repaint();
     }
 
@@ -259,7 +259,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    protected JComponent getHelpComponent() {
+    public JComponent getHelpComponent() {
         final String helpContent =
                 """
                         Use this program to visualize dynamic memory reference

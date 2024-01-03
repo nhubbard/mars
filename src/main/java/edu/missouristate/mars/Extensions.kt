@@ -23,6 +23,9 @@
 
 package edu.missouristate.mars
 
+import java.awt.Window
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import kotlin.contracts.contract
 
 private typealias JFloat = java.lang.Float
@@ -56,4 +59,15 @@ fun IntArray?.isNullOrEmpty(): Boolean {
         returns(false) implies (this@isNullOrEmpty != null)
     }
     return this == null || this.isEmpty()
+}
+
+/**
+ * Helps out with addWindowListener.
+ */
+fun Window.addWindowClosingListener(block: (WindowEvent) -> Unit) {
+    addWindowListener(object : WindowAdapter() {
+        override fun windowClosing(e: WindowEvent) {
+            block(e)
+        }
+    })
 }

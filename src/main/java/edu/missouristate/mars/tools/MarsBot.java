@@ -201,7 +201,7 @@ public class MarsBot implements Observer, MarsTool {
 
     /* ------------------------------------------------------------------------- */
 
-    public String getName() {
+    public String getToolName() {
         return "Mars Bot";
     }
 

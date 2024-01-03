@@ -117,7 +117,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      *
      * @return String containing tool name
      */
-    public String getName() {
+    public String getToolName() {
         return "Floating Point Representation";
     }
 
@@ -128,7 +128,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      * If you use the inherited GUI buttons, this method is invoked when you click "Connect" button
      * on MarsTool or the "Assemble and Run" button on a Mars-based app.
      */
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(attachedRegister);
     }
 
@@ -173,7 +173,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      * If attached to a MIPS register at the time, the register will be reset as well.
      * Overrides inherited method that does nothing.
      */
-    protected void reset() {
+    public void reset() {
         instructions.setText(defaultInstructions);
         updateDisplaysAndRegister(new FlavorsOfFloat());
     }

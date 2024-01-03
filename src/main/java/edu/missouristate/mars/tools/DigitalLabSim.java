@@ -71,11 +71,11 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         new DigitalLabSim(heading + ", " + version, heading).go();
     }
 
-    public String getName() {
+    public String getToolName() {
         return "Digital Lab Sim";
     }
 
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(IN_ADRESS_DISPLAY_1, IN_ADRESS_DISPLAY_1);
         addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
@@ -98,7 +98,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
     }
 
-    protected void reset() {
+    public void reset() {
         sevenSegPanel.resetSevenSegment();
         hexaKeyPanel.resetHexaKeyboard();
         SecondCounter.resetOneSecondCounter();
@@ -116,7 +116,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
-        if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
+        if (!this.isBeingUsedAsAMarsTool() || connectButton.isConnected()) {
             synchronized (Globals.getMemoryAndRegistersLock()) {
                 try {
                     Globals.memory.setByte(dataAddr, dataValue);
@@ -131,7 +131,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
     }
 
-    protected JComponent getHelpComponent() {
+    public JComponent getHelpComponent() {
         final String helpContent = """
                  This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
                 Seven segment display

@@ -421,7 +421,7 @@ public class ScavengerHunt implements Observer, MarsTool {
         // System.out.println("ScavengerHunt.constructor: starting....");
     }
 
-    public String getName() {
+    public String getToolName() {
         return "ScavengerHunt";
     }
 

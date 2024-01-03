@@ -49,7 +49,7 @@ import java.awt.image.BufferedImage;
  */
 public class ScreenMagnifier implements MarsTool {
 
-    public String getName() {
+    public String getToolName() {
         return "Screen Magnifier";
     }
 

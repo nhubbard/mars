@@ -18,8 +18,7 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
-package edu.missouristate.mars.tools;
+package edu.missouristate.mars.tools
 
 /**
  * Interface for any tool that interacts with an executing MIPS program.
@@ -30,28 +29,28 @@ package edu.missouristate.mars.tools;
  * using its no-argument constructor and add it to its Tools menu.
  * When its menu item is selected, the action() method will be invoked.
  *
- * <p>A tool may receive communication from MIPS system resources
+ *
+ * A tool may receive communication from MIPS system resources
  * (registers or memory) by registering as an Observer with
  * Mars.Memory and/or Mars.Register objects.
- * <p>
+ *
+ *
  * It may also
  * communicate directly with those resources through their
  * published methods PROVIDED any such communication is
  * wrapped inside a block synchronized on the
  * Mars.Globals.memoryAndRegistersLock object.
  */
-
-public interface MarsTool {
+interface MarsTool {
     /**
      * Return a name you have chosen for this tool.  It will appear as the
      * menu item.
      */
-    String getName();
+    val toolName: String
 
     /**
      * Performs tool functions.  It will be invoked when the tool is selected
      * from the Tools menu.
      */
-
-    void action();
+    fun action()
 }

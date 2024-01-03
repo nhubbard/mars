@@ -153,7 +153,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      *
      * @return the tools's name
      */
-    public String getName() {
+    public String getToolName() {
         return NAME;
     }
 
@@ -214,7 +214,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * registers the tool as observer for the text segment of the MIPS program
      */
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
@@ -317,7 +317,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * performs initialization tasks of the counters before the GUI is created.
      */
-    protected void initializePreGUI() {
+    public void initializePreGUI() {
         totalCounter = 0;
         lastAddress = -1; // from Felipe Lessa's instruction counter tool
         Arrays.fill(counters, 0);
@@ -327,7 +327,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * resets the counter values of the tool and updates the display.
      */
-    protected void reset() {
+    public void reset() {
         totalCounter = 0;
         lastAddress = -1; // from Felipe Lessa's instruction counter tool
         Arrays.fill(counters, 0);
@@ -338,7 +338,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     /**
      * updates the text fields and progress bars according to the current counter values.
      */
-    protected void updateDisplay() {
+    public void updateDisplay() {
         totalCounterField.setText(String.valueOf(totalCounter));
 
         for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {

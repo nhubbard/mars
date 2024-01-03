@@ -64,7 +64,7 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public String getToolName() {
         return "Introduction to Tools";
     }
 

@@ -98,7 +98,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     }
 
     //	@Override
-    public String getName() {
+    public String getToolName() {
         return name;
     }
 
@@ -182,7 +182,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     }
 
     //	@Override
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
     }
 
@@ -214,20 +214,20 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     }
 
     //	@Override
-    protected void initializePreGUI() {
+    public void initializePreGUI() {
         counter = counterR = counterI = counterJ = 0;
         lastAddress = -1;
     }
 
     // @Override
-    protected void reset() {
+    public void reset() {
         counter = counterR = counterI = counterJ = 0;
         lastAddress = -1;
         updateDisplay();
     }
 
     //	@Override
-    protected void updateDisplay() {
+    public void updateDisplay() {
         counterField.setText(String.valueOf(counter));
 
         counterRField.setText(String.valueOf(counterR));

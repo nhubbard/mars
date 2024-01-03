@@ -147,14 +147,14 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public String getToolName() {
         return heading;
     }
 
     // Set the MMIO addresses.  Prior to MARS 3.7 these were final because
     // MIPS address space was final as well.  Now we will get MMIO base address
     // each time to reflect possible change in memory configuration. DPS 6-Aug-09
-    protected void initializePreGUI() {
+    public void initializePreGUI() {
         RECEIVER_CONTROL = Memory.getMemoryMapBaseAddress(); //0xffff0000; // keyboard Ready in low-order bit
         RECEIVER_DATA = Memory.getMemoryMapBaseAddress() + 4; //0xffff0004; // keyboard character in low-order byte
         TRANSMITTER_CONTROL = Memory.getMemoryMapBaseAddress() + 8; //0xffff0008; // display Ready in low-order bit
@@ -177,7 +177,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
      * If you use the inherited GUI buttons, this method is invoked when you click "Connect" button on MarsTool or the
      * "Assemble and Run" button on a Mars-based app.
      */
-    protected void addAsObserver() {
+    public void addAsObserver() {
         // Set transmitter Control ready bit to 1, means we're ready to accept display character.
         updateMMIOControl(TRANSMITTER_CONTROL, readyBitSet(TRANSMITTER_CONTROL));
         // We want to be an observer only of MIPS reads from RECEIVER_DATA and writes to TRANSMITTER_DATA.
@@ -342,7 +342,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
      * Initialization code to be executed after the GUI is configured.  Overrides inherited default.
      */
 
-    protected void initializePostGUI() {
+    public void initializePostGUI() {
         initializeTransmitDelaySimulator();
         keyEventAccepter.requestFocusInWindow();
     }
@@ -352,7 +352,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
      * Method to reset counters and display when the Reset button selected.
      * Overrides inherited method that does nothing.
      */
-    protected void reset() {
+    public void reset() {
         displayRandomAccessMode = false;
         initializeTransmitDelaySimulator();
         initializeDisplay(displayRandomAccessMode);
@@ -439,7 +439,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
      * Overrides default method, to provide a Help button for this tool/app.
      */
 
-    protected JComponent getHelpComponent() {
+    public JComponent getHelpComponent() {
         final String helpContent =
                 "Keyboard And Display MMIO Simulator\n\n" +
                         "Use this program to simulate Memory-Mapped I/O (MMIO) for a keyboard input device and character " +
@@ -658,7 +658,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // This one does the work: update the MMIO Control and optionally the Data register as well
     // NOTE: last argument TRUE means update only the MMIO Control register; FALSE means update both Control and Data.
     private synchronized void updateMMIOControlAndData(int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
-        if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
+        if (!this.isBeingUsedAsAMarsTool() || connectButton.isConnected()) {
             synchronized (Globals.getMemoryAndRegistersLock()) {
                 try {
                     Globals.memory.setRawWord(controlAddr, controlValue);

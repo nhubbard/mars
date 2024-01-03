@@ -313,7 +313,7 @@ public class FileStatus {
     }
 
     /**
-     * Get file name with no path information.  See java.io.File.getName()
+     * Get file name with no path information.  See java.io.File.getToolName()
      *
      * @return filename as a String
      */

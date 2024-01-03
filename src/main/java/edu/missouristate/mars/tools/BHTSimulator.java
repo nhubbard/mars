@@ -106,7 +106,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     /**
      * Adds BHTSimulator as observer of the text segment.
      */
-    protected void addAsObserver() {
+    public void addAsObserver() {
         addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
         addAsObserver(RegisterFile.getProgramCounter());
     }
@@ -135,7 +135,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      *
      * @return the tool's name as String
      */
-    public String getName() {
+    public String getToolName() {
         return BHTSimulator.BHT_NAME;
     }
 
@@ -143,7 +143,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * Performs a reset of the simulator.
      * This causes the BHT to be reseted and the log messages to be cleared.
      */
-    protected void reset() {
+    public void reset() {
         resetSimulator();
     }
 

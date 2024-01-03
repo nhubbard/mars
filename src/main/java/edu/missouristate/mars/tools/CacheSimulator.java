@@ -122,7 +122,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public String getToolName() {
         return "Data Cache Simulator";
     }
 
@@ -402,7 +402,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      * Initialize all JComboBox choice structures not already initialized at declaration.
      * Also creates initial default cache object. Overrides inherited method that does nothing.
      */
-    protected void initializePreGUI() {
+    public void initializePreGUI() {
         cacheBlockSizeChoicesInt = new int[cacheBlockSizeChoices.length];
         for (int i = 0; i < cacheBlockSizeChoices.length; i++) {
             try {
@@ -428,7 +428,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      * of the various combo boxes. Overrides inherited method that does nothing.
      */
 
-    protected void initializePostGUI() {
+    public void initializePostGUI() {
         theCache = createNewCache();
     }
 
@@ -437,7 +437,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      * Method to reset cache, counters and display when the Reset button selected.
      * Overrides inherited method that does nothing.
      */
-    protected void reset() {
+    public void reset() {
         theCache = createNewCache();
         resetCounts();
         updateDisplay();
@@ -450,7 +450,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      * cache configuration changes as needed, and after each execution step when Mars
      * is running in timed mode.  Overrides inherited method that does nothing.
      */
-    protected void updateDisplay() {
+    public void updateDisplay() {
         updateMemoryAccessCountDisplay();
         updateCacheHitCountDisplay();
         updateCacheMissCountDisplay();
