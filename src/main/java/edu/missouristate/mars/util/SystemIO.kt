@@ -19,53 +19,66 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.util;
+package edu.missouristate.mars.util
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.Settings;
-
-import java.io.*;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Settings
+import java.io.*
+import kotlin.math.min
 
 /**
- * Provides standard i/o services needed to simulate the MIPS syscall
- * routines.  These methods will detect whether the simulator is being
- * run from the command line or through the GUI, then do I/O to
- * System.in and System.out in the former situation, and interact with
- * the GUI in the latter.
- *
- * @author Pete Sanderson and Ken Vollmar
- * @version August 2003-2005
+ * Provides standard I/O services needed to simulate the MIPS syscall routines.
+ * These methods will detect whether the simulator is being run from the command line or through the GUI, and do I/O
+ * with `System.in` and `System.out` for the command line, or through the GUI.
  */
-public class SystemIO {
-    /**
-     * Buffer size for syscalls for file I/O
-     */
-    public static final int SYSCALL_BUFSIZE = 128;
-    /**
-     * Maximum number of files that can be open
-     */
-    public static final int SYSCALL_MAXFILES = 32;
-    /**
-     * String used for description of file error
-     */
-    public static String fileErrorString = "File operation OK";
+object SystemIO {
+    const val SYSCALL_BUFSIZE = 128
+    const val SYSCALL_MAXFILES = 32
 
-    private static final int O_RDONLY = 0x00000000;
-    private static final int O_WRONLY = 0x00000001;
-    private static final int O_RDWR = 0x00000002;
-    private static final int O_APPEND = 0x00000008;
-    private static final int O_CREAT = 0x00000200; // 512
-    private static final int O_TRUNC = 0x00000400; // 1024
-    private static final int O_EXCL = 0x00000800; // 2048
+    @JvmStatic var fileErrorMessage = "File operation OK"
+        private set
 
-    // standard I/O channels
-    private static final int STDIN = 0;
-    private static final int STDOUT = 1;
-    private static final int STDERR = 2;
+    private const val O_RDONLY = 0x0
+    private const val O_WRONLY = 0x1
+    private const val O_RDWR = 0x2
+    private const val O_APPEND = 0x8
+    private const val O_CREAT = 0x200
+    private const val O_TRUNC = 0x400
+    private const val O_EXCL = 0x800
 
-    // Will use one buffered reader for all keyboard/redirected/piped input.
-    // Added by DPS 28 Feb 2008.  See getInputReader() below.
-    private static BufferedReader inputReader = null;
+    private const val STDIN = 0
+    private const val STDOUT = 1
+    private const val STDERR = 2
+
+    @JvmStatic
+    private val inputReader by lazy { BufferedReader(InputStreamReader(System.`in`)) }
+
+    /**
+     * Remove the repeated process of grabbing value from either GUI or console.
+     */
+    @JvmStatic
+    private fun promptHelper(
+        message: String,
+        maxLength: Int = -1,
+        defaultValue: String = "0",
+        dropNewline: Boolean = false
+    ): String {
+        var input = defaultValue
+        Globals.gui?.messagesPane?.let {
+            input = if (Globals.settings.getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+                it.getInputString(message)
+            } else {
+                it.getInputString(maxLength)
+            }
+            if (dropNewline && input.endsWith("\n"))
+                input = input.dropLast(1)
+        } ?: run {
+            try {
+                input = inputReader.readLine() ?: input
+            } catch (ignored: Exception) {}
+        }
+        return input.trim()
+    }
 
     /**
      * Implements syscall to read an integer value.
@@ -74,25 +87,9 @@ public class SystemIO {
      * @param serviceNumber the number assigned to Read Int syscall (default 5)
      * @return int value corresponding to user input
      */
-
-    public static int readInteger(int serviceNumber) {
-        String input = "0";
-        if (Globals.getGui() == null) {
-            try {
-                input = getInputReader().readLine();
-            } catch (IOException ignored) {
-            }
-        } else {
-            if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString("Enter an integer value (syscall " + serviceNumber + ")");
-            } else {
-                input = Globals.getGui().getMessagesPane().getInputString(-1);
-            }
-        }
-
-        // Client is responsible for catching NumberFormatException
-        return Integer.parseInt(input.trim());
-    }
+    @JvmStatic
+    fun readInteger(serviceNumber: Int): Int =
+        promptHelper("Enter an integer value (syscall $serviceNumber)").toInt()
 
     /**
      * Implements syscall to read a float value.
@@ -102,23 +99,9 @@ public class SystemIO {
      * @return float value corresponding to user input
      * Feb 14 2005 Ken Vollmar
      */
-    public static float readFloat(int serviceNumber) {
-        String input = "0";
-        if (Globals.getGui() == null) {
-            try {
-                input = getInputReader().readLine();
-            } catch (IOException ignored) {
-            }
-        } else {
-            if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString("Enter a float value (syscall " + serviceNumber + ")");
-            } else {
-                input = Globals.getGui().getMessagesPane().getInputString(-1);
-            }
-        }
-        return Float.parseFloat(input.trim());
-
-    }
+    @JvmStatic
+    fun readFloat(serviceNumber: Int): Float =
+        promptHelper("Enter a float value (syscall $serviceNumber)").toFloat()
 
     /**
      * Implements syscall to read a double value.
@@ -128,34 +111,13 @@ public class SystemIO {
      * @return double value corresponding to user input
      * 1 Aug 2005 DPS, based on Ken Vollmar's readFloat
      */
-    public static double readDouble(int serviceNumber) {
-        String input = "0";
-        if (Globals.getGui() == null) {
-            try {
-                input = getInputReader().readLine();
-            } catch (IOException ignored) {
-            }
-        } else {
-            if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString("Enter a double value (syscall " + serviceNumber + ")");
-            } else {
-                input = Globals.getGui().getMessagesPane().getInputString(-1);
-            }
-        }
-        return Double.parseDouble(input.trim());
+    @JvmStatic
+    fun readDouble(serviceNumber: Int): Double =
+        promptHelper("Enter a double value (syscall $serviceNumber)").toDouble()
 
-    }
-
-    /**
-     * Implements syscall having 4 in $v0, to print a string.
-     */
-    public static void printString(String string) {
-        if (Globals.getGui() == null) {
-            System.out.print(string);
-        } else {
-            Globals.getGui().getMessagesPane().postRunMessage(string);
-        }
-
+    @JvmStatic
+    fun printString(string: String) {
+        Globals.gui?.messagesPane?.postRunMessage(string) ?: print(string)
     }
 
     /**
@@ -165,386 +127,271 @@ public class SystemIO {
      * @param maxLength     the maximum string length
      * @return the entered string, truncated to maximum length if necessary
      */
-    public static String readString(int serviceNumber, int maxLength) {
-        String input = "";
-        if (Globals.getGui() == null) {
-            try {
-                input = getInputReader().readLine();
-            } catch (IOException ignored) {
-            }
-        } else {
-            if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString("Enter a string of maximum length " + maxLength + " (syscall " + serviceNumber + ")");
-            } else {
-                input = Globals.getGui().getMessagesPane().getInputString(maxLength);
-                if (input.endsWith("\n")) {
-                    input = input.substring(0, input.length() - 1);
-                }
-            }
-        }
-
-        if (input.length() > maxLength) {
-            // Modified DPS 13-July-2011.  Originally: return input.substring(0, maxLength);
-            return (maxLength <= 0) ? "" : input.substring(0, maxLength);
-        } else {
-            return input;
-        }
+    @JvmStatic
+    fun readString(serviceNumber: Int, maxLength: Int): String {
+        val input = promptHelper(
+            "Enter a string of maximum length $maxLength (syscall $serviceNumber)",
+            maxLength = maxLength,
+            defaultValue = "",
+            dropNewline = true
+        )
+        return if (input.length > maxLength) {
+            if (maxLength <= 0) "" else input.substring(0, maxLength)
+        } else input
     }
 
     /**
      * Implements syscall having 12 in $v0, to read a char value.
      *
      * @param serviceNumber the number assigned to Read Char syscall (default 12)
-     * @return int value with lowest byte corresponding to user input
+     * @return int value with the lowest byte corresponding to user input
      */
-    public static int readChar(int serviceNumber) {
-        String input = "0";
-        int returnValue;
-        if (Globals.getGui() == null) {
-            try {
-                input = getInputReader().readLine();
-            } catch (IOException ignored) {
-            }
-        } else {
-            if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-                input = Globals.getGui().getMessagesPane().getInputString("Enter a character value (syscall " + serviceNumber + ")");
-            } else {
-                input = Globals.getGui().getMessagesPane().getInputString(1);
-            }
+    @JvmStatic
+    fun readChar(serviceNumber: Int): Char {
+        val input = promptHelper(
+            "Enter a character value (syscall $serviceNumber)",
+            maxLength = 1
+        )
+        return input[0]
+    }
+
+    // TODO: Rewrite these functions using Okio for efficiency/performance.
+
+    /**
+     * Write bytes to a file.
+     *
+     * @param fd The file descriptor to write the bytes to
+     * @param buffer The byte array containing the characters to write
+     * @param lengthRequested The number of bytes to write
+     * @return The number of bytes written, or -1 if an error occurred
+     */
+    @JvmStatic
+    fun writeToFile(fd: Int, buffer: ByteArray, lengthRequested: Int): Int {
+        // When writing to standard out or standard error file descriptor using the IDE, the message is redirected
+        // to the Messages panel.
+        if ((fd == STDOUT || fd == STDERR) && Globals.gui != null) {
+            val data = String(buffer)
+            Globals.gui!!.messagesPane.postRunMessage(data)
+            return data.length
         }
-        // The whole try-catch is not really necessary in this case since I'm
-        // just propagating the runtime exception (the default behavior), but
-        // I want to make it explicit.  The client needs to catch it.
-        returnValue = input.charAt(0); // first character input
-
-        return returnValue;
-
+        // When running in command-line mode, the code below works for either a regular file or standard out/error.
+        if (FileIOData.fdNotInUse(fd, 1)) {
+            fileErrorMessage = "File descriptor $fd is not open for writing."
+            return -1
+        }
+        val outputStream = FileIOData.getStreamInUse(fd) as OutputStream
+        try {
+            for (i in 0..<lengthRequested) outputStream.write(buffer[i].toInt())
+            outputStream.flush()
+        } catch (e: IOException) {
+            fileErrorMessage = "IOException on write of file with FD $fd!"
+            return -1
+        } catch (e: IndexOutOfBoundsException) {
+            fileErrorMessage = "IndexOutOfBoundsException on write of file with FD $fd!"
+            return -1
+        }
+        return lengthRequested
     }
 
     /**
-     * Write bytes to file.
+     * Read bytes from a file.
      *
-     * @param fd              file descriptor
-     * @param myBuffer        byte array containing characters to write
-     * @param lengthRequested number of bytes to write
-     * @return number of bytes written, or -1 on error
+     * @param fd The file descriptor to read the bytes from
+     * @param buffer The byte array to output the bytes to
+     * @param lengthRequested The number of bytes to read.
      */
-
-    public static int writeToFile(int fd, byte[] myBuffer, int lengthRequested) {
-        /////////////// DPS 8-Jan-2013  ////////////////////////////////////////////////////
-        /// Write to STDOUT or STDERR file descriptor while using IDE - write to Messages pane.
-        if ((fd == STDOUT || fd == STDERR) && Globals.getGui() != null) {
-            String data = new String(myBuffer);
-            Globals.getGui().getMessagesPane().postRunMessage(data);
-            return data.length();
-        }
-        ///////////////////////////////////////////////////////////////////////////////////
-        //// When running in command mode, code below works for either regular file or STDOUT/STDERR
-
-        if (FileIOData.fdNotInUse(fd, 1)) // Check the existence of the "write" fd
-        {
-            fileErrorString = "File descriptor " + fd + " is not open for writing";
-            return -1;
-        }
-        // retrieve FileOutputStream from storage
-        OutputStream outputStream = (OutputStream) FileIOData.getStreamInUse(fd);
-        try {
-            // Oct. 9 2005 Ken Vollmar
-            // Observation: made a call to outputStream.write(myBuffer, 0, lengthRequested)
-            //     with myBuffer containing 6(ten) 32-bit-words <---> 24(ten) bytes, where the
-            //     words are MIPS integers with values such that many of the bytes are ZEROES.
-            //     The effect is apparently that the write stops after encountering a zero-valued
-            //     byte. (The method write does not return a value and so this can't be verified
-            //     by the return value.)
-            // Writes up to lengthRequested bytes of data to this output stream from an array of bytes.
-            // outputStream.write(myBuffer, 0, lengthRequested); // write is a void method -- no verification value returned
-
-            // Oct. 9 2005 Ken Vollmar  Force the write statement to write exactly
-            // the number of bytes requested, even though those bytes include many ZERO values.
-            for (int ii = 0; ii < lengthRequested; ii++) {
-                outputStream.write(myBuffer[ii]);
+    @JvmStatic
+    fun readFromFile(fd: Int, buffer: ByteArray, lengthRequested: Int): Int {
+        var retValue: Int
+        // Read from STDIN file descriptor while using IDE is redirected to Messages panel input.
+        Globals.gui?.messagesPane?.let {
+            if (fd == STDIN) {
+                val input = it.getInputString(lengthRequested)
+                val bytesRead = input.encodeToByteArray()
+                for (i in buffer.indices)
+                    buffer[i] = if (i < bytesRead.size) bytesRead[i] else 0
+                return min(buffer.size, bytesRead.size)
             }
-            outputStream.flush();// DPS 7-Jan-2013
-        } catch (IOException e) {
-            fileErrorString = "IO Exception on write of file with fd " + fd;
-            return -1;
-        } catch (IndexOutOfBoundsException e) {
-            fileErrorString = "IndexOutOfBoundsException on write of file with fd" + fd;
-            return -1;
         }
-
-        return lengthRequested;
-
-    } // end writeToFile
+        // If the let statement for the GUI does not execute, we are running in command mode.
+        if (FileIOData.fdNotInUse(fd, 0)) {
+            fileErrorMessage = "File descriptor $fd is not open for reading!"
+            return -1
+        }
+        // Retrieve the InputStream from FileIOData
+        val inputStream = FileIOData.getStreamInUse(fd) as InputStream
+        try {
+            // Read up to lengthRequested bytes of data from the stream into an array of bytes.
+            retValue = inputStream.read(buffer, 0, lengthRequested)
+            // This method will return -1 upon EOF, but out spec says that a negative return value represents an error,
+            // so we return 0 for EOF.
+            if (retValue == -1) retValue = 0
+        } catch (e: IOException) {
+            fileErrorMessage = "IOException on read of file with FD $fd!"
+            return -1
+        } catch (e: IndexOutOfBoundsException) {
+            fileErrorMessage = "IndexOutOfBoundsException on read of file with FD $fd!"
+            return -1
+        }
+        return retValue
+    }
 
     /**
-     * Read bytes from file.
-     *
-     * @param fd              file descriptor
-     * @param myBuffer        byte array to contain bytes read
-     * @param lengthRequested number of bytes to read
-     * @return number of bytes read, 0 on EOF, or -1 on error
-     */
-    public static int readFromFile(int fd, byte[] myBuffer, int lengthRequested) {
-        int retValue;
-        /////////////// DPS 8-Jan-2013  //////////////////////////////////////////////////
-        /// Read from STDIN file descriptor while using IDE - get input from Messages pane.
-        if (fd == STDIN && Globals.getGui() != null) {
-            String input = Globals.getGui().getMessagesPane().getInputString(lengthRequested);
-            byte[] bytesRead = input.getBytes();
-            for (int i = 0; i < myBuffer.length; i++) {
-                myBuffer[i] = (i < bytesRead.length) ? bytesRead[i] : 0;
-            }
-            return Math.min(myBuffer.length, bytesRead.length);
-        }
-        ////////////////////////////////////////////////////////////////////////////////////
-        //// When running in command mode, code below works for either regular file or STDIN
-
-        if (FileIOData.fdNotInUse(fd, 0)) // Check the existence of the "read" fd
-        {
-            fileErrorString = "File descriptor " + fd + " is not open for reading";
-            return -1;
-        }
-        // retrieve FileInputStream from storage
-        InputStream InputStream = (InputStream) FileIOData.getStreamInUse(fd);
-        try {
-            // Reads up to lengthRequested bytes of data from this Input stream into an array of bytes.
-            retValue = InputStream.read(myBuffer, 0, lengthRequested);
-            // This method will return -1 upon EOF, but our spec says that negative
-            // value represents an error, so we return 0 for EOF.  DPS 10-July-2008.
-            if (retValue == -1) {
-                retValue = 0;
-            }
-        } catch (IOException e) {
-            fileErrorString = "IO Exception on read of file with fd " + fd;
-            return -1;
-        } catch (IndexOutOfBoundsException e) {
-            fileErrorString = "IndexOutOfBoundsException on read of file with fd" + fd;
-            return -1;
-        }
-        return retValue;
-
-    } // end readFromFile
-
-    /**
-     * Open a file for either reading or writing. Note that read/write flag is NOT
-     * IMPLEMENTED.  Also note that file permission modes are also NOT IMPLEMENTED.
+     * Open a file for either reading or writing. Note that the read/write flag is NOT
+     * IMPLEMENTED. Also note that file permission modes are also NOT IMPLEMENTED.
      *
      * @param filename string containing filename
-     * @param flags    0 for read, 1 for write
-     * @return file descriptor in the range 0 to SYSCALL_MAXFILES-1, or -1 if error
+     * @param flags    Must be `0` for read or `1` for write
+     * @return file descriptor in the range `0..<SYSCALL_MAXFILES`, or -1 if an error occurs
      * @author Ken Vollmar
      */
-    public static int openFile(String filename, int flags) {
-        // Internally, a "file descriptor" is an index into a table
-        // of the filename, flag, and the File???putStream associated with
-        // that file descriptor.
+    @JvmStatic
+    fun openFile(filename: String, flags: Int): Int {
+        // Internally, a "file descriptor" is an index into a table of the filename, flag, and the File{In,Out}putStream
+        // associated with that file descriptor.
+        var retValue: Int
+        val inputStream: FileInputStream
+        val outputStream: FileOutputStream
 
-        int retValue;
-        char[] ch = {' '}; // Need an array to convert to String
-        FileInputStream inputStream;
-        FileOutputStream outputStream;
-        int fdToUse;
+        // Check the internal plausibility of opening this file
+        val fdToUse = FileIOData.nowOpening(filename, flags)
+        retValue = fdToUse
+        if (fdToUse < 0) return -1
 
-        // Check internal plausibility of opening this file
-        fdToUse = FileIOData.nowOpening(filename, flags);
-        retValue = fdToUse; // return value is the fd
-        if (fdToUse < 0) {
-            return -1;
-        }   // fileErrorString would have been set
-
-        if (flags == O_RDONLY) // Open for reading only
-        {
+        if (flags == O_RDONLY) {
             try {
                 // Set up input stream from disk file
-                inputStream = new FileInputStream(filename);
-                FileIOData.setStreamInUse(fdToUse, inputStream); // Save stream for later use
-            } catch (FileNotFoundException e) {
-                fileErrorString = "File " + filename + " not found, open for input.";
-                retValue = -1;
+                inputStream = FileInputStream(filename)
+                // Save stream for later use
+                FileIOData.setStreamInUse(fdToUse, inputStream)
+            } catch (e: FileNotFoundException) {
+                fileErrorMessage = "File $filename not found; cannot open for input!"
+                retValue = -1
             }
-        } else if ((flags & O_WRONLY) != 0) // Open for writing only
-        {
+        } else if ((flags and O_WRONLY) != 0) {
             // Set up output stream to disk file
             try {
-                outputStream = new FileOutputStream(filename, ((flags & O_APPEND) != 0));
-                FileIOData.setStreamInUse(fdToUse, outputStream); // Save stream for later use
-            } catch (FileNotFoundException e) {
-                fileErrorString = "File " + filename + " not found, open for output.";
-                retValue = -1;
+                outputStream = FileOutputStream(filename, (flags and O_APPEND) != 0)
+                FileIOData.setStreamInUse(fdToUse, outputStream)
+            } catch (e: FileNotFoundException) {
+                fileErrorMessage = "File $filename not found; cannot open for output!"
+                retValue = -1
             }
         }
-        return retValue; // return the "file descriptor"
-
+        return retValue
     }
 
     /**
-     * Close the file with specified file descriptor
-     *
-     * @param fd the file descriptor of an open file
+     * Close the file with the specified file descriptor.
      */
-    public static void closeFile(int fd) {
-        FileIOData.close(fd);
-    }
+    @JvmStatic
+    fun closeFile(fd: Int) = FileIOData.close(fd)
 
     /**
-     * Reset all files -- clears out the file descriptor table.
+     * Reset all files. Clears the file descriptor table.
      */
-    public static void resetFiles() {
-        FileIOData.resetFiles();
-    }
+    @JvmStatic
+    fun resetFiles() = FileIOData.resetFiles()
 
-    /**
-     * Retrieve file operation or error message
-     *
-     * @return string containing message
-     */
-    public static String getFileErrorMessage() {
-        return fileErrorString;
-    }
+    private object FileIOData {
+        @JvmStatic private val fileNames = arrayOfNulls<String>(SYSCALL_MAXFILES)
+        @JvmStatic private val fileFlags = IntArray(SYSCALL_MAXFILES)
+        @JvmStatic private val streams = arrayOfNulls<Any>(SYSCALL_MAXFILES)
 
-    ///////////////////////////////////////////////////////////////////////
-    // Private method to simply return the BufferedReader used for
-    // keyboard input, redirected input, or piped input.
-    // These are all equivalent in the eyes of the program because they are
-    // transparent to it.  Lazy instantiation.  DPS.  28 Feb 2008
-
-    private static BufferedReader getInputReader() {
-        if (inputReader == null) {
-            inputReader = new BufferedReader(new InputStreamReader(System.in));
-        }
-        return inputReader;
-    }
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // Maintain information on files in use. The index to the arrays is the "file descriptor."
-    // Ken Vollmar, August 2005
-
-    private static class FileIOData {
-        private static final String[] fileNames = new String[SYSCALL_MAXFILES]; // The filenames in use. Null if file descriptor i is not in use.
-        private static final int[] fileFlags = new int[SYSCALL_MAXFILES]; // The flags of this file, 0=READ, 1=WRITE. Invalid if this file descriptor is not in use.
-        private static final Object[] streams = new Object[SYSCALL_MAXFILES]; // The streams in use, associated with the filenames
-
-        // Reset all file information. Closes any open files and resets the arrays
-        private static void resetFiles() {
-            for (int i = 0; i < SYSCALL_MAXFILES; i++) {
-                close(i);
-            }
-            setupStdio();
+        @JvmStatic
+        fun resetFiles() {
+            for (i in 0..<SYSCALL_MAXFILES) close(i)
+            setupStdio()
         }
 
-        // DPS 8-Jan-2013
-        private static void setupStdio() {
-            fileNames[STDIN] = "STDIN";
-            fileNames[STDOUT] = "STDOUT";
-            fileNames[STDERR] = "STDERR";
-            fileFlags[STDIN] = SystemIO.O_RDONLY;
-            fileFlags[STDOUT] = SystemIO.O_WRONLY;
-            fileFlags[STDERR] = SystemIO.O_WRONLY;
-            streams[STDIN] = System.in;
-            streams[STDOUT] = System.out;
-            streams[STDERR] = System.err;
-            System.out.flush();
-            System.err.flush();
+        @JvmStatic
+        fun setupStdio() {
+            fileNames[STDIN] = "STDIN"
+            fileNames[STDOUT] = "STDOUT"
+            fileNames[STDERR] = "STDERR"
+            fileFlags[STDIN] = O_RDONLY
+            fileFlags[STDOUT] = O_WRONLY
+            fileFlags[STDERR] = O_WRONLY
+            streams[STDIN] = System.`in`
+            streams[STDOUT] = System.out
+            streams[STDERR] = System.err
+            System.out.flush()
+            System.err.flush()
         }
 
-        // Preserve a stream that is in use
-        private static void setStreamInUse(int fd, Object s) {
-            streams[fd] = s;
-
+        @JvmStatic
+        fun setStreamInUse(fd: Int, s: Any?) {
+            streams[fd] = s
         }
 
-        // Retrieve a stream for use
-        private static Object getStreamInUse(int fd) {
-            return streams[fd];
+        @JvmStatic
+        fun getStreamInUse(fd: Int): Any? = streams[fd]
 
-        }
+        /** Determine whether a given filename is already in use. */
+        @JvmStatic
+        fun filenameInUse(requestedFilename: String): Boolean =
+            fileNames.any { it.equals(requestedFilename) }
 
-        // Determine whether a given filename is already in use.
-        private static boolean filenameInUse(String requestedFilename) {
-            for (int i = 0; i < SYSCALL_MAXFILES; i++) {
-                if (fileNames[i] != null && fileNames[i].equals(requestedFilename)) {
-                    // System.out.println("Mars.SystemIO.FileIOData.filenameInUse: rtng TRUE for " + requestedFilename);
-                    return true;
-                }
-            }
+        /** Determine whether a given file descriptor is already in use with the given flag. */
+        @JvmStatic
+        fun fdNotInUse(fd: Int, flag: Int): Boolean =
+            if (fd < 0 || fd >= SYSCALL_MAXFILES) true
+            else if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) false
+            else fileNames[fd] == null || ((fileFlags[fd] and flag and O_WRONLY) != O_WRONLY)
 
-            // System.out.println("Mars.SystemIO.FileIOData.filenameInUse: rtng TRUE for " + requestedFilename);
-            return false;
-
-        }
-
-        // Determine whether a given fd is already in use with the given flag.
-        private static boolean fdNotInUse(int fd, int flag) {
-            if (fd < 0 || fd >= SYSCALL_MAXFILES) {
-                return true;
-            } else // O_WRONLY write-only
-                if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) {  // O_RDONLY read-only
-                    return false;
-                } else return fileNames[fd] == null || ((fileFlags[fd] & flag & O_WRONLY) != O_WRONLY);
-
-        }
-
-        // Close the file with file descriptor fd. No errors are recoverable -- if the user's
-        // made an error in the call, it will come back to him.
-        private static void close(int fd) {
-            // Can't close STDIN, STDOUT, STDERR, or invalid fd
-            if (fd <= STDERR || fd >= SYSCALL_MAXFILES) return;
-
-            fileNames[fd] = null;
+        /**
+         * Close the file with the file descriptor [fd]. No errors are recoverable; if the user made an error in the
+         * call, it will come back to them.
+         */
+        @JvmStatic
+        fun close(fd: Int) {
+            // Can't close STDIN, STDOUT, STDERR, or invalid file descriptor
+            if (fd <= STDERR || fd >= SYSCALL_MAXFILES) return
+            fileNames[fd] = null
             // All this code will be executed only if the descriptor is open.
             if (streams[fd] != null) {
-                int keepFlag = fileFlags[fd];
-                Object keepStream = streams[fd];
-                fileFlags[fd] = -1;
-                streams[fd] = null;
+                val keepFlag = fileFlags[fd]
+                val keepStream = streams[fd]
+                fileFlags[fd] = -1
+                streams[fd] = null
                 try {
-                    if (keepFlag == O_RDONLY) ((FileInputStream) keepStream).close();
-                    else ((FileOutputStream) keepStream).close();
-                } catch (IOException ioe) {
-                    // not concerned with this exception
-                }
+                    if (keepFlag == O_RDONLY) (keepStream as FileInputStream).close()
+                    else (keepStream as FileOutputStream).close()
+                } catch (ignored: IOException) {}
             } else {
-                fileFlags[fd] = -1; // just to be sure... streams[fd] known to be null
+                fileFlags[fd] = -1
             }
         }
 
-        // Attempt to open a new file with the given flag, using the lowest available file descriptor.
-        // Check that filename is not in use, flag is reasonable, and there is an available file descriptor.
-        // Return: file descriptor in 0...(SYSCALL_MAXFILES-1), or -1 if error
-        private static int nowOpening(String filename, int flag) {
-            int i = 0;
+        /**
+         * Attempt to open a new file with the given flag, using the lowest available file descriptor.
+         * Check that the filename is not in use, the flag is reasonable, and there is an available file descriptor.
+         *
+         * @return The file descriptor in the range `0..<SYSCALL_MAXFILES`, or -1 if there is an error.
+         */
+        @JvmStatic
+        fun nowOpening(filename: String, flag: Int): Int {
+            var i = 0
             if (filenameInUse(filename)) {
-                fileErrorString = STR."File name \{filename} is already open.";
-                return -1;
+                fileErrorMessage = "File name $filename is already open!"
+                return -1
             }
-
-            if (flag != O_RDONLY && flag != O_WRONLY && flag != (O_WRONLY | O_APPEND)) // Only read and write are implemented
-            {
-                fileErrorString = STR."File name \{filename} has unknown requested opening flag";
-                return -1;
+            // Only read and write are implemented
+            if (flag != O_RDONLY && flag != O_WRONLY && flag != (O_WRONLY or O_APPEND)) {
+                fileErrorMessage = "File name $filename has unknown requested opening flag!"
+                return -1
             }
-
-            while (fileNames[i] != null && i < SYSCALL_MAXFILES) {
-                i++;
-            } // Attempt to find available file descriptor
-
-            if (i >= SYSCALL_MAXFILES) // no available file descriptors
-            {
-                fileErrorString = STR."File name \{filename} exceeds maximum open file limit of \{SYSCALL_MAXFILES}";
-                return -1;
+            // Attempt to find the first available descriptor.
+            while (fileNames[i] != null && i < SYSCALL_MAXFILES) i++
+            if (i >= SYSCALL_MAXFILES) {
+                fileErrorMessage = "File name $filename exceeds maximum open file limit of $SYSCALL_MAXFILES!"
+                return -1
             }
-
-            // Must be OK -- put filename in table
-            fileNames[i] = filename; // our table has its own copy of filename
-            fileFlags[i] = flag;
-            fileErrorString = "File operation OK";
-            return i;
-
+            // Must be okay at this point. Put the filename in the table.
+            fileNames[i] = filename
+            fileFlags[i] = flag
+            fileErrorMessage = "File operation OK."
+            return i
         }
-
-    } // end private class FileIOData
-    ////////////////////////////////////////////////////////////////////////////////
-
+    }
 }
-

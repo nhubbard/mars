@@ -46,6 +46,6 @@ class SyscallReadChar : AbstractSyscall(12, "ReadChar") {
             )
         }
         // DPS 20 June 2008: changed from 4 ($a0) to 2 ($v0)
-        updateRegister(2, value)
+        updateRegister(2, value.digitToInt())
     }
 }
