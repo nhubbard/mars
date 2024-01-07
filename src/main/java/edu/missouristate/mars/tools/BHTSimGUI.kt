@@ -19,321 +19,251 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;//.bhtsim;
+@file:Suppress("MemberVisibilityCanBePrivate")
 
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import java.awt.*;
-import java.text.DecimalFormat;
-import java.util.Vector;
+package edu.missouristate.mars.tools
+
+import edu.missouristate.mars.vectorOf
+import java.awt.*
+import java.text.DecimalFormat
+import javax.swing.*
+import javax.swing.table.DefaultTableCellRenderer
 
 /**
- * Represents the GUI of the BHT Simulator Tool.
- * <p>
- * <p>
- * The GUI consists of mainly four parts:
- * <ul>
- * <li>A configuration panel to select the number of entries and the history size
- * <li>A information panel that displays the most recent branch instruction including its address and BHT index
- * <li>A table representing the BHT with all entries and their internal state and statistics
- * <li>A log panel that summarizes the predictions in a textual form
- * </ul>
+ * Represents the GUI of the BHT Simulator tool.
  *
- * @author ingo.kofler@itec.uni-klu.ac.at
+ * The GUI consists of four parts:
+ *
+ * 1. A configuration panel to select the number of entries and history size
+ * 2. An information panel that displays the most recent branch instruction, including its address and BHT index
+ * 3. A table representing the BHT with all entries and their internal state and statistics
+ * 4. A log panel that summarizes the predictions in a textual form
  */
-//@SuppressWarnings("serial")
-public class BHTSimGUI extends JPanel {
+class BHTSimGUI : JPanel() {
+    companion object {
+        /** The color of the current BHT entry. */
+        @JvmField val COLOR_PRE_PREDICTION: Color = Color.yellow
 
-    /**
-     * text field presenting the most recent branch instruction
-     */
-    private JTextField instructionField;
+        /** The color of a correct prediction. */
+        @JvmField val COLOR_PREDICTION_CORRECT: Color = Color.green
 
-    /**
-     * text field representing the address of the most recent branch instruction
-     */
-    private JTextField addressField;
+        /** The color of an incorrect prediction. */
+        @JvmField val COLOR_PREDICTION_INCORRECT: Color = Color.red
 
-    /**
-     * text field representing the resulting BHT index of the branch instruction
-     */
-    private JTextField indexField;
+        /** The string constant representing a taken branch. */
+        const val BHT_TAKE_BRANCH = "Taken"
 
-    /**
-     * combo box for selecting the number of BHT entries
-     */
-    private JComboBox<Integer> bhtEntriesBox;
-
-    /**
-     * combo box for selecting the history size
-     */
-    private JComboBox<Integer> historySizeBox;
-
-    /**
-     * combo box for selecting the initial value
-     */
-    private JComboBox<String> initialBHTSizeBox;
-
-    /**
-     * the table representing the BHT
-     */
-    private final JTable bhtTable;
-
-    /**
-     * text field for log output
-     */
-    private JTextArea logArea;
-
-    /**
-     * constant for the color that highlights the current BHT entry
-     */
-    public final static Color COLOR_PRE_PREDICTION = Color.yellow;
-
-    /**
-     * constant for the color to signal a correct prediction
-     */
-    public final static Color COLOR_PREDICTION_CORRECT = Color.green;
-
-    /**
-     * constant for the color to signal a misprediction
-     */
-    public final static Color COLOR_PREDICTION_INCORRECT = Color.red;
-
-    /**
-     * constant for the String representing "take the branch"
-     */
-    public final static String BHT_TAKE_BRANCH = "TAKE";
-
-    /**
-     * constant for the String representing "do not take the branch"
-     */
-    public final static String BHT_DO_NOT_TAKE_BRANCH = "NOT TAKE";
-
-    /**
-     * Creates the GUI components of the BHT Simulator
-     * The GUI is a subclass of JPanel which is integrated in the GUI of the MARS tool
-     */
-    public BHTSimGUI() {
-        BorderLayout layout = new BorderLayout();
-        layout.setVgap(10);
-        layout.setHgap(10);
-        setLayout(layout);
-
-        bhtTable = createAndInitTable();
-
-        add(buildConfigPanel(), BorderLayout.NORTH);
-        add(buildInfoPanel(), BorderLayout.WEST);
-        add(new JScrollPane(bhtTable), BorderLayout.CENTER);
-        add(buildLogPanel(), BorderLayout.SOUTH);
+        /** The string constant representing a non-taken branch. */
+        const val BHT_DO_NOT_TAKE_BRANCH = "Not Taken"
     }
 
-    /**
-     * Creates and initializes the JTable representing the BHT.
-     *
-     * @return the JTable representing the BHT
-     */
-    private JTable createAndInitTable() {
-        // create the table
-        JTable theTable = new JTable();
+    /** A text field representing the most recent branch instruction. */
+    lateinit var instructionField: JTextField
+        private set
 
-        // create a default renderer for double values (percentage)
-        DefaultTableCellRenderer doubleRenderer = new DefaultTableCellRenderer() {
-            private final DecimalFormat formatter = new DecimalFormat("##0.00");
+    /** A text field representing the address of the most recent branch instruction. */
+    lateinit var addressField: JTextField
+        private set
 
-            public void setValue(Object value) {
-                setText((value == null) ? "" : formatter.format(value));
+    /** A text field representing the resulting BHT index of the branch instruction. */
+    lateinit var indexField: JTextField
+        private set
+
+    /** A combo box for selecting the number of BHT entries. */
+    lateinit var bhtEntriesBox: JComboBox<Int>
+        private set
+
+    /** A combo box for selecting the history size. */
+    lateinit var historySizeBox: JComboBox<Int>
+        private set
+
+    /** A combo box for selecting the initial value. */
+    lateinit var initialBHTSizeBox: JComboBox<String>
+        private set
+
+    /** The table representing the BHT. */
+    var bhtTable: JTable
+        private set
+
+    /** The text field for the log output. */
+    lateinit var logArea: JTextArea
+        private set
+
+    init {
+        val layout = BorderLayout()
+        layout.vgap = 10
+        layout.hgap = 10
+        setLayout(layout)
+
+        bhtTable = createAndInitTable()
+
+        add(buildConfigPanel(), BorderLayout.NORTH)
+        add(buildInfoPanel(), BorderLayout.WEST)
+        add(JScrollPane(bhtTable), BorderLayout.CENTER)
+        add(buildLogPanel(), BorderLayout.SOUTH)
+    }
+
+    /** Create the JTable representing the BHT. */
+    private fun createAndInitTable(): JTable {
+        val theTable = JTable()
+
+        val doubleRenderer = object : DefaultTableCellRenderer() {
+            private val formatter = DecimalFormat("##0.00")
+
+            override fun setValue(value: Any?) {
+                text = value?.let { formatter.format(it) } ?: ""
             }
-        };
-        doubleRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        }
+        doubleRenderer.horizontalAlignment = SwingConstants.CENTER
 
-        // create a default renderer for all other values with center alignment
-        DefaultTableCellRenderer defRenderer = new DefaultTableCellRenderer();
-        defRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        val defRenderer = DefaultTableCellRenderer()
+        defRenderer.horizontalAlignment = SwingConstants.CENTER
 
-        theTable.setDefaultRenderer(Double.class, doubleRenderer);
-        theTable.setDefaultRenderer(Integer.class, defRenderer);
-        theTable.setDefaultRenderer(String.class, defRenderer);
+        theTable.setDefaultRenderer(Double::class.java, doubleRenderer)
+        theTable.setDefaultRenderer(Int::class.java, defRenderer)
+        theTable.setDefaultRenderer(String::class.java, defRenderer)
 
-        theTable.setSelectionBackground(BHTSimGUI.COLOR_PRE_PREDICTION);
-        theTable.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+        theTable.selectionBackground = COLOR_PRE_PREDICTION
+        theTable.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION)
 
-        return theTable;
+        return theTable
+    }
 
+    /** Creates the panel holding the instruction, address, and index text fields. */
+    private fun buildInfoPanel(): JPanel {
+        instructionField = JTextField()
+        addressField = JTextField()
+        indexField = JTextField()
+
+        listOf(instructionField, addressField, indexField).forEach {
+            it.apply {
+                columns = 10
+                isEditable = false
+                horizontalAlignment = JTextField.CENTER
+            }
+        }
+
+        val panel = JPanel()
+        val outerPanel = JPanel()
+        outerPanel.layout = BorderLayout()
+
+        val gbl = GridBagLayout()
+        panel.layout = gbl
+
+        val c = GridBagConstraints()
+
+        c.insets = Insets(5, 5, 2, 5)
+        c.gridx = 1
+        c.gridy = 1
+
+        panel.add(JLabel("Instruction"), c)
+        c.gridy++
+        panel.add(instructionField, c)
+        c.gridy++
+        panel.add(JLabel("@ Address"), c)
+        c.gridy++
+        panel.add(addressField, c)
+        c.gridy++
+        panel.add(JLabel("-> Index"), c)
+        c.gridy++
+        panel.add(indexField, c)
+
+        outerPanel.add(panel, BorderLayout.NORTH)
+        return outerPanel
     }
 
     /**
-     * Creates and initializes the panel holding the instruction, address and index text fields.
-     *
-     * @return the info panel
+     * Creates the panel for configuring the tool.
+     * Contains two combo boxes for selecting the number of BHT entries and history size.
      */
-    private JPanel buildInfoPanel() {
-        instructionField = new JTextField();
-        addressField = new JTextField();
-        indexField = new JTextField();
+    private fun buildConfigPanel(): JPanel {
+        val panel = JPanel()
 
-        instructionField.setColumns(10);
-        instructionField.setEditable(false);
-        instructionField.setHorizontalAlignment(JTextField.CENTER);
-        addressField.setColumns(10);
-        addressField.setEditable(false);
-        addressField.setHorizontalAlignment(JTextField.CENTER);
-        indexField.setColumns(10);
-        indexField.setEditable(false);
-        indexField.setHorizontalAlignment(JTextField.CENTER);
+        val sizes = vectorOf(8, 16, 32)
+        val bits = vectorOf(1, 2)
+        val initVals = vectorOf(BHT_DO_NOT_TAKE_BRANCH, BHT_TAKE_BRANCH)
 
-        JPanel panel = new JPanel();
-        JPanel outerPanel = new JPanel();
-        outerPanel.setLayout(new BorderLayout());
+        bhtEntriesBox = JComboBox(sizes)
+        historySizeBox = JComboBox(bits)
+        initialBHTSizeBox = JComboBox(initVals)
 
-        GridBagLayout gbl = new GridBagLayout();
-        panel.setLayout(gbl);
+        panel.add(JLabel("# of BHT Entries"))
+        panel.add(bhtEntriesBox)
+        panel.add(JLabel("BHT history size"))
+        panel.add(historySizeBox)
+        panel.add(JLabel("Initial value"))
+        panel.add(initialBHTSizeBox)
 
-        GridBagConstraints c = new GridBagConstraints();
-
-        c.insets = new Insets(5, 5, 2, 5);
-        c.gridx = 1;
-        c.gridy = 1;
-
-        panel.add(new JLabel("Instruction"), c);
-        c.gridy++;
-        panel.add(instructionField, c);
-        c.gridy++;
-        panel.add(new JLabel("@ Address"), c);
-        c.gridy++;
-        panel.add(addressField, c);
-        c.gridy++;
-        panel.add(new JLabel("-> Index"), c);
-        c.gridy++;
-        panel.add(indexField, c);
-
-        outerPanel.add(panel, BorderLayout.NORTH);
-        return outerPanel;
+        return panel
     }
 
-    /**
-     * Creates and initializes the panel for the configuration of the tool
-     * The panel contains two combo boxes for selecting the number of BHT entries and the history size.
-     *
-     * @return a panel for the configuration
-     */
-    private JPanel buildConfigPanel() {
-        JPanel panel = new JPanel();
+    /** Create the panel containing the log text area. */
+    private fun buildLogPanel(): JPanel {
+        val panel = JPanel()
+        panel.layout = BorderLayout()
+        logArea = JTextArea()
+        logArea.rows = 6
+        logArea.isEditable = false
 
-        Vector<Integer> sizes = new Vector<>();
-        sizes.add(8);
-        sizes.add(16);
-        sizes.add(32);
+        panel.add(JLabel("Log"), BorderLayout.NORTH)
+        panel.add(JScrollPane(logArea), BorderLayout.CENTER)
 
-        Vector<Integer> bits = new Vector<>();
-        bits.add(1);
-        bits.add(2);
-
-        Vector<String> initVals = new Vector<>();
-        initVals.add(BHTSimGUI.BHT_DO_NOT_TAKE_BRANCH);
-        initVals.add(BHTSimGUI.BHT_TAKE_BRANCH);
-
-        bhtEntriesBox = new JComboBox<>(sizes);
-        historySizeBox = new JComboBox<>(bits);
-        initialBHTSizeBox = new JComboBox<>(initVals);
-
-        panel.add(new JLabel("# of BHT entries"));
-        panel.add(bhtEntriesBox);
-        panel.add(new JLabel("BHT history size"));
-        panel.add(historySizeBox);
-        panel.add(new JLabel("Initial value"));
-        panel.add(initialBHTSizeBox);
-
-        return panel;
+        return panel
     }
 
-    /**
-     * Creates and initializes the panel containing the log text area.
-     *
-     * @return the panel for the logging output
-     */
-    private JPanel buildLogPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        logArea = new JTextArea();
-        logArea.setRows(6);
-        logArea.setEditable(false);
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("bhtEntriesBox"),
+        DeprecationLevel.ERROR
+    )
+    fun getCbBHTentries() = bhtEntriesBox
 
-        panel.add(new JLabel("Log"), BorderLayout.NORTH);
-        panel.add(new JScrollPane(logArea), BorderLayout.CENTER);
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("historySizeBox"),
+        DeprecationLevel.ERROR
+    )
+    fun getCbBHThistory() = historySizeBox
 
-        return panel;
-    }
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("initialBHTSizeBox"),
+        DeprecationLevel.ERROR
+    )
+    fun getCbBHTinitVal() = initialBHTSizeBox
 
-    /***
-     * Returns the combo box for selecting the number of BHT entries.
-     *
-     * @return the reference to the combo box
-     */
-    public JComboBox<Integer> getCbBHTentries() {
-        return bhtEntriesBox;
-    }
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("bhtTable"),
+        DeprecationLevel.ERROR
+    )
+    fun getTabBHT() = bhtTable
 
-    /***
-     * Returns the combo box for selecting the size of the BHT history.
-     *
-     * @return the reference to the combo box
-     */
-    public JComboBox<Integer> getCbBHThistory() {
-        return historySizeBox;
-    }
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("logArea"),
+        DeprecationLevel.ERROR
+    )
+    fun getTaLog() = logArea
 
-    /***
-     * Returns the combo box for selecting the initial value of the BHT
-     *
-     * @return the reference to the combo box
-     */
-    public JComboBox<String> getCbBHTinitVal() {
-        return initialBHTSizeBox;
-    }
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("instructionField"),
+        DeprecationLevel.ERROR
+    )
+    fun getTfInstruction() = instructionField
 
-    /***
-     * Returns the table representing the BHT.
-     *
-     * @return the reference to the table
-     */
-    public JTable getTabBHT() {
-        return bhtTable;
-    }
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("addressField"),
+        DeprecationLevel.ERROR
+    )
+    fun getTfAddress() = addressField
 
-    /***
-     * Returns the text area for log purposes.
-     *
-     * @return the reference to the text area
-     */
-    public JTextArea getTaLog() {
-        return logArea;
-    }
-
-    /***
-     * Returns the text field for displaying the most recent branch instruction
-     *
-     * @return the reference to the text field
-     */
-    public JTextField getTfInstruction() {
-        return instructionField;
-    }
-
-    /***
-     * Returns the text field for displaying the address of the most recent branch instruction
-     *
-     * @return the reference to the text field
-     */
-    public JTextField getTfAddress() {
-        return addressField;
-    }
-
-    /***
-     * Returns the text field for displaying the corresponding index into the BHT
-     *
-     * @return the reference to the text field
-     */
-    public JTextField getTfIndex() {
-        return indexField;
-    }
-
+    @Deprecated(
+        "Use property accessor instead.",
+        ReplaceWith("indexField"),
+        DeprecationLevel.ERROR
+    )
+    fun getTfIndex() = indexField
 }

@@ -23,9 +23,12 @@
 
 package edu.missouristate.mars
 
+import java.awt.Graphics
+import java.awt.Polygon
 import java.awt.Window
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
+import java.util.*
 import kotlin.contracts.contract
 
 private typealias JFloat = java.lang.Float
@@ -70,4 +73,22 @@ fun Window.addWindowClosingListener(block: (WindowEvent) -> Unit) {
             block(e)
         }
     })
+}
+
+fun <T> vectorOf(): Vector<T> = Vector()
+
+fun <T> vectorOf(vararg elements: T): Vector<T> =
+    if (elements.isEmpty()) Vector() else Vector<T>().apply {
+        for (element in elements) add(element)
+    }
+
+// Build a polygon automatically from graphics.
+private fun Graphics.fillPolygon(block: Polygon.() -> Unit) {
+    fillPolygon(Polygon().apply(block))
+}
+
+fun Graphics.fillPolygon(vararg points: Pair<Int, Int>) {
+    fillPolygon {
+        for (point in points) addPoint(point.first, point.second)
+    }
 }

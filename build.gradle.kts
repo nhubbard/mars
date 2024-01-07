@@ -99,6 +99,7 @@ tasks {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
             optIn.add("kotlin.contracts.ExperimentalContracts")
+            optIn.add("kotlin.ExperimentalStdlibApi")
         }
 
         jvmToolchain(21)

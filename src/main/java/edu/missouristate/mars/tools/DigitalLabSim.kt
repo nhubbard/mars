@@ -19,362 +19,340 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+@file:Suppress("DEPRECATION", "SameParameterValue")
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.simulator.Exceptions;
-import edu.missouristate.mars.simulator.Simulator;
+package edu.missouristate.mars.tools
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.util.Observable;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.Coprocessor0
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import edu.missouristate.mars.simulator.Exceptions
+import edu.missouristate.mars.simulator.Simulator
+import java.awt.*
+import java.awt.event.MouseEvent
+import java.awt.event.MouseListener
+import java.util.*
+import javax.swing.*
+import javax.swing.JOptionPane.INFORMATION_MESSAGE
+import kotlin.concurrent.withLock
+import kotlin.system.exitProcess
 
-public class DigitalLabSim extends AbstractMarsToolAndApplication {
-    private static final String heading = "Digital Lab Sim";
-    private static final String version = " Version 1.0 (Didier Teifreto)";
-    private static final int IN_ADRESS_DISPLAY_1 = Memory.getMemoryMapBaseAddress() + 0x10;
-    private static final int IN_ADRESS_DISPLAY_2 = Memory.getMemoryMapBaseAddress() + 0x11;
-    private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.getMemoryMapBaseAddress() + 0x12;
-    private static final int IN_ADRESS_COUNTER = Memory.getMemoryMapBaseAddress() + 0x13;
-    private static final int OUT_ADRESS_HEXA_KEYBOARD = Memory.getMemoryMapBaseAddress() + 0x14;
+class DigitalLabSim @JvmOverloads constructor(
+    title: String = "$HEADING, $VERSION",
+    heading: String = HEADING
+) : AbstractMarsToolAndApplication(title, heading) {
+    companion object {
+        private const val HEADING = "Digital Lab Sim"
+        private const val VERSION = "Version 1.0 (Didier Teifreto)"
+        private const val COUNTER_VALUE_MAX = 30
 
-    public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; //Add for digital Lab Sim
-    public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200;// Add for digital Lab Sim
+        @JvmStatic private val IN_ADDRESS_DISPLAY_1 = Memory.memoryMapBaseAddress + 0x10
+        @JvmStatic private val IN_ADDRESS_DISPLAY_2 = Memory.memoryMapBaseAddress + 0x11
+        @JvmStatic private val IN_ADDRESS_HEX_KEYBOARD = Memory.memoryMapBaseAddress + 0x12
+        @JvmStatic private val IN_ADDRESS_COUNTER = Memory.memoryMapBaseAddress + 0x13
+        @JvmStatic private val OUT_ADDRESS_HEX_KEYBOARD = Memory.memoryMapBaseAddress + 0x14
 
-    // Seven Segment display
-    private SevenSegmentPanel sevenSegPanel;
-    // Keyboard
-    private static int KeyBoardValueButtonClick = -1; // -1 no button click
-    private HexaKeyboard hexaKeyPanel;
-    private static boolean KeyboardInterruptOnOff = false;
-    // Counter
-    private static final int CounterValueMax = 30;
-    private static int CounterValue = CounterValueMax;
-    private static boolean CounterInterruptOnOff = false;
-    private static OneSecondCounter SecondCounter;
+        const val EXTERNAL_INTERRUPT_TIMER = 0x00000100
+        const val EXTERNAL_INTERRUPT_HEX_KEYBOARD = 0x00000200
 
-    public DigitalLabSim(String title, String heading) {
-        super(title, heading);
-    }
+        // -1 is no button click
+        @JvmStatic private var keyboardValueButtonClick = -1
+        @JvmStatic private var keyboardInterruptOnOff = false
+        @JvmStatic private var counterValue = COUNTER_VALUE_MAX
+        @JvmStatic private var counterInterruptOnOff = false
+        @JvmStatic private lateinit var secondCounter: OneSecondCounter
 
-    public DigitalLabSim() {
-        super(heading + ", " + version, heading);
-    }
-
-    public static void main(String[] args) {
-        new DigitalLabSim(heading + ", " + version, heading).go();
-    }
-
-    public String getToolName() {
-        return "Digital Lab Sim";
-    }
-
-    public void addAsObserver() {
-        addAsObserver(IN_ADRESS_DISPLAY_1, IN_ADRESS_DISPLAY_1);
-        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
-    }
-
-    public void update(Observable ressource, Object accessNotice) {
-        MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
-        int address = notice.getAddress();
-        char value = (char) notice.getValue();
-        if (address == IN_ADRESS_DISPLAY_1) updateSevenSegment(1, value);
-        else if (address == IN_ADRESS_DISPLAY_2) updateSevenSegment(0, value);
-        else if (address == IN_ADRESS_HEXA_KEYBOARD) updateHexaKeyboard(value);
-        else if (address == IN_ADRESS_COUNTER) updateOneSecondCounter(value);
-        if (CounterInterruptOnOff) if (CounterValue > 0) {
-            CounterValue--;
-        } else {
-            CounterValue = CounterValueMax;
-            if ((Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
-                Simulator.setExternalInterruptingDevice(Exceptions.fromInt(EXTERNAL_INTERRUPT_TIMER));
-            }
+        @JvmStatic
+        fun main(args: Array<String>) {
+            DigitalLabSim("$HEADING, $VERSION", HEADING).go()
         }
     }
 
-    public void reset() {
-        sevenSegPanel.resetSevenSegment();
-        hexaKeyPanel.resetHexaKeyboard();
-        SecondCounter.resetOneSecondCounter();
+    private lateinit var sevenSegmentPanel: SevenSegmentPanel
+    private lateinit var hexKeyboardPanel: HexKeyboard
+
+    override val toolName: String = HEADING
+
+    override fun addAsObserver() {
+        addAsObserver(IN_ADDRESS_DISPLAY_1, IN_ADDRESS_DISPLAY_1)
+        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress)
     }
 
-    protected JComponent buildMainDisplayArea() {
-        // GUI Interface.
-        JPanel panelTools = new JPanel(new GridLayout(1, 2));
-        sevenSegPanel = new SevenSegmentPanel();
-        panelTools.add(sevenSegPanel);
-        hexaKeyPanel = new HexaKeyboard();
-        panelTools.add(hexaKeyPanel);
-        SecondCounter = new OneSecondCounter();
-        return panelTools;
+    override fun update(resource: Observable, accessNotice: Any) {
+        if (accessNotice !is MemoryAccessNotice) return
+        val address = accessNotice.address
+        val value = accessNotice.value.digitToChar()
+        when (address) {
+            IN_ADDRESS_DISPLAY_1 -> updateSevenSegment(1, value)
+            IN_ADDRESS_DISPLAY_2 -> updateSevenSegment(0, value)
+            IN_ADDRESS_HEX_KEYBOARD -> updateHexKeyboard(value)
+            IN_ADDRESS_COUNTER -> updateOneSecondCounter(value)
+        }
+        if (counterInterruptOnOff) {
+            if (counterValue > 0) counterValue--
+        } else {
+            counterValue = COUNTER_VALUE_MAX
+            if ((Coprocessor0.getValue(Coprocessor0.STATUS) and 2) == 0)
+                Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_TIMER
+        }
     }
 
-    private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
-        if (!this.isBeingUsedAsAMarsTool() || connectButton.isConnected()) {
-            synchronized (Globals.getMemoryAndRegistersLock()) {
+    override fun reset() {
+        sevenSegmentPanel.reset()
+        hexKeyboardPanel.reset()
+        secondCounter.reset()
+    }
+
+    override fun buildMainDisplayArea(): JComponent {
+        val panelTools = JPanel(GridLayout(1, 2))
+        sevenSegmentPanel = SevenSegmentPanel()
+        panelTools.add(sevenSegmentPanel)
+        hexKeyboardPanel = HexKeyboard()
+        panelTools.add(hexKeyboardPanel)
+        secondCounter = OneSecondCounter()
+        return panelTools
+    }
+
+    @Synchronized
+    private fun updateMMIOControlAndData(dataAddr: Int, dataValue: Int) {
+        if (isBeingUsedAsAMarsTool || connectButton?.isConnected == true) {
+            Globals.memoryAndRegistersLock.withLock {
                 try {
-                    Globals.memory.setByte(dataAddr, dataValue);
-                } catch (AddressErrorException aee) {
-                    System.out.println("Tool author specified incorrect MMIO address!" + aee);
-                    System.exit(0);
+                    Globals.memory.setByte(dataAddr, dataValue)
+                } catch (aee: AddressErrorException) {
+                    println("Tool author specified incorrect MMIO address! $aee")
+                    exitProcess(1)
                 }
             }
-            if (Globals.getGui() != null && Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().getCodeHighlighting()) {
-                Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+            Globals.gui?.mainPane?.executePane?.let {
+                if (it.textSegmentWindow.codeHighlighting) it.dataSegmentWindow.updateValues()
             }
         }
     }
 
-    public JComponent getHelpComponent() {
-        final String helpContent = """
-                 This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
-                Seven segment display
-                 Byte value at address 0xFFFF0010 : command right seven segment display\s
-                  Byte value at address 0xFFFF0011 : command left seven segment display\s
-                  Each bit of these two bytes are connected to segments (bit 0 for a segment, 1 for b segment and 7 for point\s
-                \s
-                Hexadecimal keyboard
-                 Byte value at address 0xFFFF0012 : command row number of hexadecimal keyboard (bit 0 to 3) and enable keyboard interrupt (bit 7)\s
-                 Byte value at address 0xFFFF0014 : receive row and column of the key pressed, 0 if not key pressed\s
-                 The mips program have to scan, one by one, each row (send 1,2,4,8...) and then observe if a key is pressed (that mean byte value at adresse 0xFFFF0014 is different from zero).  This byte value is composed of row number (4 left bits) and column number (4 right bits) Here you'll find the code for each key : 0x11,0x21,0x41,0x81,0x12,0x22,0x42,0x82,0x14,0x24,0x44,0x84,0x18,0x28,0x48,0x88.\s
-                 For exemple key number 2 return 0x41, that mean the key is on column 3 and row 1.\s
-                 If keyboard interruption is enable, an exception is started, with cause register bit number 11 set.
-                \s
-                Counter
-                 Byte value at address 0xFFFF0013 : If one bit of this byte is set, the counter interruption is enable.
-                 If counter interruption is enable, every 30 instructions, an exception is started with cause register bit number 10.
-                   (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)""";
-        JButton help = new JButton("Help");
-        help.addActionListener(e -> {
-            JTextArea ja = new JTextArea(helpContent);
-            ja.setRows(20);
-            ja.setColumns(60);
-            ja.setLineWrap(true);
-            ja.setWrapStyleWord(true);
-            JOptionPane.showMessageDialog(theWindow, new JScrollPane(ja), "Simulating the Hexa Keyboard and Seven segment display", JOptionPane.INFORMATION_MESSAGE);
-        });
-        return help;
-    }/* ....................Seven Segment display start here................................... */
-
-    /* ...........................Seven segment display start here ..............................*/
-    public void updateSevenSegment(int number, char value) {
-        sevenSegPanel.display[number].modifyDisplay(value);
+    override fun getHelpComponent(): JComponent {
+        val helpContent = """
+        This tool is composed of 3 parts: two seven-segment displays, a hexadecimal keyboard, and a counter.
+        
+        Seven segment display:
+          - Byte value at address 0xFFFF0010: command right seven segment display
+          - Byte value at address 0xFFFF0011: command left seven segment display
+          - Each bit of these two bytes are connected to segments (bit 0 for a segment, 1 for b segment and 7 for point)
+        
+        Hexadecimal keyboard:
+          - Byte value at address 0xFFFF0012: command row number of hexadecimal keyboard (bit 0 to 3) and enable
+            keyboard interrupt (bit 7)
+          - Byte value at address 0xFFFF0014: receive row and column of the key pressed, 0 if not key pressed
+          - The MIPS program has to scan, one by one, each row (send 1,2,4,8...) and observe if a key is pressed (that
+            means the byte value at address 0xFFFF0014 is different from zero). This byte value is composed of a row
+            number (4 left bits) and column number (4 right bits). Here you'll find the code for each key:
+            0x11,0x21,0x41,0x81,0x12,0x22,0x42,0x82,0x14,0x24,0x44,0x84,0x18,0x28,0x48,0x88.
+          - For example, key number 2 return 0x41, so the key is on column 3 and row 1.
+          - If keyboard interrupts are enabled, an exception is thrown with cause register bit 11 set.
+        
+        Counter:
+          - Byte value at address 0xFFFF0013: If one bit of this byte is set, the counter interruption is enabled.
+          - If counter interruption is enabled, an exception is thrown every 30 instructions with cause register bit
+            number 10 set.
+        
+        Contributed by Didier Teifreto (dteifreto@lifc.univ-fcomte.fr).
+        """.trimIndent()
+        val help = JButton("Help")
+        help.addActionListener {
+            val ja = JTextArea(helpContent)
+            ja.rows = 25
+            ja.columns = 120
+            ja.lineWrap = true
+            ja.wrapStyleWord = true
+            JOptionPane.showMessageDialog(theWindow, JScrollPane(ja), "Digital Lab Simulator Help", INFORMATION_MESSAGE)
+        }
+        return help
     }
 
-    public static class SevenSegmentDisplay extends JComponent {
-        public char aff;
+    private fun updateSevenSegment(number: Int, value: Char) {
+        sevenSegmentPanel.display[number].modifyDisplay(value)
+    }
 
-        public SevenSegmentDisplay(char aff) {
-            this.aff = aff;
-            this.setPreferredSize(new Dimension(60, 80));
+    private fun updateHexKeyboard(row: Char) {
+        val key = keyboardValueButtonClick
+        if ((key != -1) && ((1 shl (key / 4)) == (row.digitToInt() and 0xF))) {
+            updateMMIOControlAndData(OUT_ADDRESS_HEX_KEYBOARD, (1 shl (key / 4)) or (1 shl (4 + (key % 4))))
+        } else {
+            updateMMIOControlAndData(OUT_ADDRESS_HEX_KEYBOARD, 0)
+        }
+        keyboardInterruptOnOff = (row.digitToInt() and 0xF0) != 0
+    }
+
+    private fun updateOneSecondCounter(value: Char) {
+        if (value != 0.digitToChar()) {
+            counterInterruptOnOff = true
+            counterValue = COUNTER_VALUE_MAX
+        } else {
+            counterInterruptOnOff = false
+        }
+    }
+
+    private class SevenSegmentDisplay(var value: Char) : JComponent() {
+        init {
+            preferredSize = Dimension(60, 80)
         }
 
-        public void modifyDisplay(char val) {
-            aff = val;
-            this.repaint();
+        fun modifyDisplay(value: Char) {
+            this.value = value
+            repaint()
         }
 
-        public void SwitchSegment(Graphics g, char segment) {
-            switch (segment) {
-                case 'a': //a segment
-                    int[] pxa1 = {12, 9, 12};
-                    int[] pxa2 = {36, 39, 36};
-                    int[] pya = {5, 8, 11};
-                    g.fillPolygon(pxa1, pya, 3);
-                    g.fillPolygon(pxa2, pya, 3);
-                    g.fillRect(12, 5, 24, 6);
-                    break;
-                case 'b': //b segment
-                    int[] pxb = {37, 40, 43};
-                    int[] pyb1 = {12, 9, 12};
-                    int[] pyb2 = {36, 39, 36};
-                    g.fillPolygon(pxb, pyb1, 3);
-                    g.fillPolygon(pxb, pyb2, 3);
-                    g.fillRect(37, 12, 6, 24);
-                    break;
-                case 'c': // c segment
-                    int[] pxc = {37, 40, 43};
-                    int[] pyc1 = {44, 41, 44};
-                    int[] pyc2 = {68, 71, 68};
-                    g.fillPolygon(pxc, pyc1, 3);
-                    g.fillPolygon(pxc, pyc2, 3);
-                    g.fillRect(37, 44, 6, 24);
-                    break;
-                case 'd': // d segment
-                    int[] pxd1 = {12, 9, 12};
-                    int[] pxd2 = {36, 39, 36};
-                    int[] pyd = {69, 72, 75};
-                    g.fillPolygon(pxd1, pyd, 3);
-                    g.fillPolygon(pxd2, pyd, 3);
-                    g.fillRect(12, 69, 24, 6);
-                    break;
-                case 'e': // e segment
-                    int[] pxe = {5, 8, 11};
-                    int[] pye1 = {44, 41, 44};
-                    int[] pye2 = {68, 71, 68};
-                    g.fillPolygon(pxe, pye1, 3);
-                    g.fillPolygon(pxe, pye2, 3);
-                    g.fillRect(5, 44, 6, 24);
-                    break;
-                case 'f': // f segment
-                    int[] pxf = {5, 8, 11};
-                    int[] pyf1 = {12, 9, 12};
-                    int[] pyf2 = {36, 39, 36};
-                    g.fillPolygon(pxf, pyf1, 3);
-                    g.fillPolygon(pxf, pyf2, 3);
-                    g.fillRect(5, 12, 6, 24);
-                    break;
-                case 'g': // g segment
-                    int[] pxg1 = {12, 9, 12};
-                    int[] pxg2 = {36, 39, 36};
-                    int[] pyg = {37, 40, 43};
-                    g.fillPolygon(pxg1, pyg, 3);
-                    g.fillPolygon(pxg2, pyg, 3);
-                    g.fillRect(12, 37, 24, 6);
-                    break;
-                case 'h': // decimal point
-                    g.fillOval(49, 68, 8, 8);
-                    break;
+        fun switchSegment(g: Graphics, segment: Char) {
+            when (segment) {
+                'a' -> {
+                    val pxa1 = intArrayOf(12, 9, 12)
+                    val pxa2 = intArrayOf(36, 39, 36)
+                    val pya = intArrayOf(5, 8, 11)
+                    g.fillPolygon(pxa1, pya, 3)
+                    g.fillPolygon(pxa2, pya, 3)
+                    g.fillRect(12, 5, 24, 6)
+                }
+                'b' -> {
+                    val pxb = intArrayOf(37, 40, 43)
+                    val pyb1 = intArrayOf(12, 9, 12)
+                    val pyb2 = intArrayOf(36, 39, 36)
+                    g.fillPolygon(pxb, pyb1, 3)
+                    g.fillPolygon(pxb, pyb2, 3)
+                    g.fillRect(37, 12, 6, 24)
+                }
+                'c' -> {
+                    val pxc = intArrayOf(37, 40, 43)
+                    val pyc1 = intArrayOf(44, 41, 44)
+                    val pyc2 = intArrayOf(68, 71, 68)
+                    g.fillPolygon(pxc, pyc1, 3)
+                    g.fillPolygon(pxc, pyc2, 3)
+                    g.fillRect(37, 44, 6, 24)
+                }
+                'd' -> {
+                    val pxd1 = intArrayOf(12, 9, 12)
+                    val pxd2 = intArrayOf(36, 39, 36)
+                    val pyd = intArrayOf(69, 72, 75)
+                    g.fillPolygon(pxd1, pyd, 3)
+                    g.fillPolygon(pxd2, pyd, 3)
+                    g.fillRect(12, 69, 24, 6)
+                }
+                'e' -> {
+                    val pxe = intArrayOf(5, 8, 11)
+                    val pye1 = intArrayOf(44, 41, 44)
+                    val pye2 = intArrayOf(68, 71, 68)
+                    g.fillPolygon(pxe, pye1, 3)
+                    g.fillPolygon(pxe, pye2, 3)
+                    g.fillRect(5, 44, 6, 24)
+                }
+                'f' -> {
+                    val pxf = intArrayOf(5, 8, 11)
+                    val pyf1 = intArrayOf(12, 9, 12)
+                    val pyf2 = intArrayOf(36, 39, 36)
+                    g.fillPolygon(pxf, pyf1, 3)
+                    g.fillPolygon(pxf, pyf2, 3)
+                    g.fillRect(5, 12, 6, 24)
+                }
+                'g' -> {
+                    val pxg1 = intArrayOf(12, 9, 12)
+                    val pxg2 = intArrayOf(36, 39, 36)
+                    val pyg = intArrayOf(37, 40, 43)
+                    g.fillPolygon(pxg1, pyg, 3)
+                    g.fillPolygon(pxg2, pyg, 3)
+                    g.fillRect(12, 37, 24, 6)
+                }
+                'h' -> g.fillOval(49, 68, 8, 8)
             }
         }
 
-        public void paint(Graphics g) {
-            char c = 'a';
+        override fun paint(g: Graphics) {
+            var c = 'a'
             while (c <= 'h') {
-                if ((aff & 0x1) == 1) g.setColor(Color.RED);
-                else g.setColor(Color.LIGHT_GRAY);
-                SwitchSegment(g, c);
-                aff = (char) (aff >>> 1);
-                c++;
+                g.color = if ((value.digitToInt() and 0x1) == 1) Color.RED else Color.LIGHT_GRAY
+                switchSegment(g, c)
+                value = (value.digitToInt() ushr 1).digitToChar()
+                c++
             }
         }
     }
 
-    public static class SevenSegmentPanel extends JPanel {
-        public final SevenSegmentDisplay[] display;
+    private class SevenSegmentPanel : JPanel() {
+        var display: Array<SevenSegmentDisplay>
+            private set
 
-        public SevenSegmentPanel() {
-            int i;
-            FlowLayout fl = new FlowLayout();
-            this.setLayout(fl);
-            display = new SevenSegmentDisplay[2];
-            for (i = 0; i < 2; i++) {
-                display[i] = new SevenSegmentDisplay((char) (0));
-                this.add(display[i]);
+        init {
+            val fl = FlowLayout()
+            layout = fl
+            display = Array(2) {
+                SevenSegmentDisplay(0.digitToChar())
             }
+            add(display[0])
+            add(display[1])
         }
 
-        public void modifyDisplay(int num, char val) {
-            display[num].modifyDisplay(val);
-            display[num].repaint();
+        fun modifyDisplay(num: Int, value: Char) {
+            display[num].modifyDisplay(value)
+            display[num].repaint()
         }
 
-        public void resetSevenSegment() {
-            int i;
-            for (i = 0; i < 2; i++)
-                modifyDisplay(i, (char) 0);
+        fun reset() {
+            for (i in 0..<2) modifyDisplay(i, 0.digitToChar())
         }
     }
 
-    /* ...........................Seven segment display end here ..............................*/
-    /* ....................Hexa Keyboard start here................................... */
-    public void updateHexaKeyboard(char row) {
-        int key = KeyBoardValueButtonClick;
-        if ((key != -1) && ((1 << (key / 4)) == (row & 0xF))) {
-            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, (char) (1 << (key / 4)) | (1 << (4 + (key % 4))));
-        } else {
-            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
-        }
-        KeyboardInterruptOnOff = (row & 0xF0) != 0;
-    }
+    private inner class HexKeyboard : JPanel() {
+        var button: Array<JButton>
+            private set
 
-    public class HexaKeyboard extends JPanel {
-        public final JButton[] button;
-
-        public HexaKeyboard() {
-            int i;
-            GridLayout layout = new GridLayout(4, 4);
-            this.setLayout(layout);
-            button = new JButton[16];
-            for (i = 0; i < 16; i++) {
-                button[i] = new JButton(Integer.toHexString(i));
-                button[i].setBackground(Color.WHITE);
-                button[i].setMargin(new Insets(10, 10, 10, 10));
-                button[i].addMouseListener(new EcouteurClick(i));
-                this.add(button[i]);
-            }
-        }
-
-        public void resetHexaKeyboard() {
-            int i;
-            KeyBoardValueButtonClick = -1;
-            for (i = 0; i < 16; i++) {
-                button[i].setBackground(Color.WHITE);
-            }
-        }
-
-        public class EcouteurClick implements MouseListener {
-            private final int buttonValue;
-
-            public EcouteurClick(int val) {
-                buttonValue = val;
-            }
-
-            public void mouseEntered(MouseEvent arg0) {
-            }
-
-            public void mouseExited(MouseEvent arg0) {
-            }
-
-            public void mousePressed(MouseEvent arg0) {
-            }
-
-            public void mouseReleased(MouseEvent arg0) {
-            }
-
-            public void mouseClicked(MouseEvent arg0) {
-                int i;
-                if (KeyBoardValueButtonClick != -1) {//Button already pressed -> now realease
-                    KeyBoardValueButtonClick = -1;
-                    updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
-                    for (i = 0; i < 16; i++)
-                        button[i].setBackground(Color.WHITE);
-                } else { // new button pressed
-                    KeyBoardValueButtonClick = buttonValue;
-                    button[KeyBoardValueButtonClick].setBackground(Color.GREEN);
-                    if (KeyboardInterruptOnOff && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
-                        Simulator.setExternalInterruptingDevice(Exceptions.fromInt(EXTERNAL_INTERRUPT_HEXA_KEYBOARD));
-                    }
+        init {
+            layout = GridLayout(4, 4)
+            button = Array(16) {
+                JButton(it.toHexString()).apply {
+                    background = Color.WHITE
+                    margin = Insets(10, 10, 10, 10)
+                    addMouseListener(ButtonClick(it))
                 }
             }
+            for (i in button.indices) add(button[i])
+        }
+
+        fun reset() {
+            keyboardValueButtonClick = -1
+            button.forEach { it.background = Color.WHITE }
+        }
+
+        inner class ButtonClick(private val buttonValue: Int) : MouseListener {
+            override fun mouseClicked(e: MouseEvent) {
+                if (keyboardValueButtonClick != -1) {
+                    // Button already pressed, now release
+                    keyboardValueButtonClick = -1
+                    updateMMIOControlAndData(OUT_ADDRESS_HEX_KEYBOARD, 0)
+                    button.forEach { it.background = Color.WHITE }
+                } else {
+                    // New button pressed
+                    keyboardValueButtonClick = buttonValue
+                    button[keyboardValueButtonClick].background = Color.WHITE
+                    if (keyboardInterruptOnOff && (Coprocessor0.getValue(Coprocessor0.STATUS) and 2) == 0)
+                        Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_HEX_KEYBOARD
+                }
+            }
+
+            override fun mousePressed(e: MouseEvent?) {}
+            override fun mouseReleased(e: MouseEvent?) {}
+            override fun mouseEntered(e: MouseEvent?) {}
+            override fun mouseExited(e: MouseEvent?) {}
         }
     }
 
-    /* ....................Hexa Keyboard end here................................... */
-    /* ....................Timer start here................................... */
-    public void updateOneSecondCounter(char value) {
-        if (value != 0) {
-            CounterInterruptOnOff = true;
-            CounterValue = CounterValueMax;
-        } else {
-            CounterInterruptOnOff = false;
-        }
-    }
-
-    public static class OneSecondCounter {
-        public OneSecondCounter() {
-            CounterInterruptOnOff = false;
+    private class OneSecondCounter {
+        init {
+            counterInterruptOnOff = false
         }
 
-        public void resetOneSecondCounter() {
-            CounterInterruptOnOff = false;
-            CounterValue = CounterValueMax;
+        fun reset() {
+            counterInterruptOnOff = false
+            counterValue = COUNTER_VALUE_MAX
         }
     }
 }

@@ -99,7 +99,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
     private var multiFileAssemble = false
 
     // Structure required for MarsTool use only. We want subclasses to have access.
-    protected lateinit var connectButton: ConnectButton
+    protected var connectButton: ConnectButton? = null
 
     /**
      * Returns the tool name.
@@ -242,12 +242,12 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         tc.titleJustification = TitledBorder.CENTER
         buttonArea.border = tc
         connectButton = ConnectButton()
-        connectButton.toolTipText = "Control whether the tool will respond to the running MIPS program"
-        connectButton.addActionListener {
-            if (connectButton.isConnected) connectButton.disconnect()
-            else connectButton.connect()
+        connectButton!!.toolTipText = "Control whether the tool will respond to the running MIPS program"
+        connectButton!!.addActionListener {
+            if (connectButton!!.isConnected) connectButton!!.disconnect()
+            else connectButton!!.connect()
         }
-        connectButton.addKeyListener(EnterKeyListener(connectButton))
+        connectButton!!.addKeyListener(EnterKeyListener(connectButton!!))
 
         val resetButton = JButton("Reset")
         resetButton.toolTipText = "Reset all counters and other structures"
@@ -260,7 +260,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         closeButton.addKeyListener(EnterKeyListener(closeButton))
 
         // Add all the buttons
-        buttonArea.add(connectButton)
+        buttonArea.add(connectButton!!)
         buttonArea.add(Box.createHorizontalGlue())
         buttonArea.add(resetButton)
         buttonArea.add(Box.createHorizontalGlue())
@@ -512,7 +512,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
 
     private fun performToolClosingDuties() {
         performSpecialClosingDuties()
-        if (connectButton.isConnected) connectButton.disconnect()
+        if (connectButton?.isConnected == true) connectButton?.disconnect()
         dialog.isVisible = false
         dialog.dispose()
     }

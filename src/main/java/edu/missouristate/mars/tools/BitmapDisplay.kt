@@ -19,189 +19,145 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+@file:Suppress("DEPRECATION")
 
-import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.util.Binary;
+package edu.missouristate.mars.tools
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.util.Objects;
-import java.util.Observable;
+import edu.missouristate.mars.mips.hardware.AccessNotice
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import edu.missouristate.mars.util.Binary
+import java.awt.*
+import java.awt.event.ActionEvent
+import java.util.*
+import javax.swing.*
+import javax.swing.border.EmptyBorder
 
 /**
- * Bitmapp display simulator.  It can be run either as a stand-alone Java application having
- * access to the mars package, or through MARS as an item in its Tools menu.  It makes
+ * Bit-mapped display simulator. It can be run either as a stand-alone Java application with
+ * access to the MARS package, or through MARS as a tool from its Tools menu. It makes
  * maximum use of methods inherited from its abstract superclass AbstractMarsToolAndApplication.
- * Pete Sanderson, verison 1.0, 23 December 2010.
  */
-public class BitmapDisplay extends AbstractMarsToolAndApplication {
+class BitmapDisplay @JvmOverloads constructor(
+    title: String = "$HEADING, $VERSION",
+    heading: String = HEADING
+) : AbstractMarsToolAndApplication(title, heading) {
+    companion object {
+        private const val VERSION = "Version 1.0"
+        private const val HEADING = "Bitmap Display"
 
-    private static final String version = "Version 1.0";
-    private static final String heading = "Bitmap Display";
-
-    // Major GUI components
-    private JComboBox<String> visualizationUnitPixelWidthSelector;
-    private JComboBox<String> visualizationUnitPixelHeightSelector;
-    private JComboBox<String> visualizationPixelWidthSelector;
-    private JComboBox<String> visualizationPixelHeightSelector;
-    private JComboBox<String> displayBaseAddressSelector;
-    private Graphics drawingArea;
-    private JPanel canvas;
-
-    // Some GUI settings
-    private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
-    private final Font countFonts = new Font("Times", Font.BOLD, 12);
-    private final Color backgroundColor = Color.WHITE;
-
-    // Values for Combo Boxes
-
-    private final String[] visualizationUnitPixelWidthChoices = {"1", "2", "4", "8", "16", "32"};
-    private final int defaultVisualizationUnitPixelWidthIndex = 0;
-    private final String[] visualizationUnitPixelHeightChoices = {"1", "2", "4", "8", "16", "32"};
-    private final int defaultVisualizationUnitPixelHeightIndex = 0;
-    private final String[] displayAreaPixelWidthChoices = {"64", "128", "256", "512", "1024"};
-    private final int defaultDisplayWidthIndex = 3;
-    private final String[] displayAreaPixelHeightChoices = {"64", "128", "256", "512", "1024"};
-    private final int defaultDisplayHeightIndex = 2;
-
-    // Values for display canvas.  Note their initialization uses the identifiers just above.
-
-    private int unitPixelWidth = Integer.parseInt(visualizationUnitPixelWidthChoices[defaultVisualizationUnitPixelWidthIndex]);
-    private int unitPixelHeight = Integer.parseInt(visualizationUnitPixelHeightChoices[defaultVisualizationUnitPixelHeightIndex]);
-    private int displayAreaWidthInPixels = Integer.parseInt(displayAreaPixelWidthChoices[defaultDisplayWidthIndex]);
-    private int displayAreaHeightInPixels = Integer.parseInt(displayAreaPixelHeightChoices[defaultDisplayHeightIndex]);
-
-    // The next four are initialized dynamically in initializeDisplayBaseChoices()
-    private String[] displayBaseAddressChoices;
-    private int[] displayBaseAddresses;
-    private int defaultBaseAddressIndex;
-    private int baseAddress;
-
-    private Grid theGrid;
-
-    /**
-     * Simple constructor, likely used to run a stand-alone bitmap display tool.
-     *
-     * @param title   String containing title for title bar
-     * @param heading String containing text for heading shown in upper part of window.
-     */
-    public BitmapDisplay(String title, String heading) {
-        super(title, heading);
+        @JvmStatic
+        fun main(args: Array<String>) {
+            BitmapDisplay("$HEADING stand-alone, $VERSION", HEADING).go()
+        }
     }
 
-    /**
-     * Simple constructor, likely used by the MARS Tools menu mechanism
-     */
-    public BitmapDisplay() {
-        super("Bitmap Display, " + version, heading);
-    }
+    private lateinit var unitPixelWidthSelector: JComboBox<String>
+    private lateinit var unitPixelHeightSelector: JComboBox<String>
+    private lateinit var pixelWidthSelector: JComboBox<String>
+    private lateinit var pixelHeightSelector: JComboBox<String>
+    private lateinit var displayBaseAddressSelector: JComboBox<String>
+    private lateinit var drawingArea: Graphics
+    private lateinit var canvas: JPanel
 
-    /**
-     * Main provided for pure stand-alone use.  Recommended stand-alone use is to write a
-     * driver program that instantiates a Bitmap object then invokes its go() method.
-     * "stand-alone" means it is not invoked from the MARS Tools menu.  "Pure" means there
-     * is no driver program to invoke the application.
-     */
-    public static void main(String[] args) {
-        new BitmapDisplay("Bitmap Display stand-alone, " + version, heading).go();
-    }
+    private val emptyBorder = EmptyBorder(4, 4, 4, 4)
+    private val countFonts = Font("Times", Font.BOLD, 12)
+    private val backgroundColor = Color.WHITE
 
-    /**
-     * Required MarsTool method to return Tool name.
-     *
-     * @return Tool name.  MARS will display this in menu item.
-     */
-    public String getToolName() {
-        return "Bitmap Display";
-    }
+    private val unitPixelWidthChoices = arrayOf("1", "2", "4", "8", "16", "32")
+    private val defaultUnitPixelWidthIndex = 0
+    private val unitPixelHeightChoices = arrayOf("1", "2", "4", "8", "16", "32")
+    private val defaultUnitPixelHeightIndex = 0
+    private val pixelWidthChoices = arrayOf("64", "128", "256", "512", "1024")
+    private val defaultPixelWidthIndex = 3
+    private val pixelHeightChoices = arrayOf("64", "128", "256", "512", "1024")
+    private val defaultPixelHeightIndex = 2
+
+    private var unitPixelWidth = unitPixelWidthChoices[defaultUnitPixelWidthIndex].toInt()
+    private var unitPixelHeight = unitPixelHeightChoices[defaultUnitPixelHeightIndex].toInt()
+    private var pixelWidth = pixelWidthChoices[defaultPixelWidthIndex].toInt()
+    private var pixelHeight = pixelHeightChoices[defaultPixelHeightIndex].toInt()
+
+    private lateinit var displayBaseAddressChoices: Array<String>
+    private lateinit var displayBaseAddresses: IntArray
+    private var defaultBaseAddressIndex = -1
+    private var baseAddress = -1
+
+    private lateinit var theGrid: Grid
+
+    override val toolName = HEADING
 
     /**
      * Override the inherited method, which registers us as an Observer over the static data segment
-     * (starting address 0x10010000) only.  This version will register us as observer over the
-     * the memory range as selected by the base address combo box and capacity of the visualization display
+     * (starting address 0x10010000) only.  This version will register us as an observer over the
+     * memory range as selected by the base address combo box and capacity of the visualization display
      * (number of visualization elements times the number of memory words each one represents).
      * It does so by calling the inherited 2-parameter overload of this method.
      * If you use the inherited GUI buttons, this
      * method is invoked when you click "Connect" button on MarsTool or the
      * "Assemble and Run" button on a Mars-based app.
      */
-    public void addAsObserver() {
-        int highAddress = baseAddress + theGrid.getRows() * theGrid.getColumns() * Memory.WORD_LENGTH_BYTES;
+    override fun addAsObserver() {
+        var highAddress = baseAddress + theGrid.rows * theGrid.columns * Memory.WORD_LENGTH_BYTES
         // Special case: baseAddress<0 means we're in kernel memory (0x80000000 and up) and most likely
-        // in memory map address space (0xffff0000 and up).  In this case, we need to make sure the high address
-        // does not drop off the high end of 32 bit address space.  Highest allowable word address is 0xfffffffc,
+        // in memory map address space (0xffff0000 and up). In this case, we need to make sure the high address
+        // does not drop off the high end of the 32-bit address space. The highest allowable word address is 0xfffffffc,
         // which is interpreted in Java int as -4.
-        if (baseAddress < 0 && highAddress > -4) {
-            highAddress = -4;
-        }
-        addAsObserver(baseAddress, highAddress);
+        if (baseAddress < 0 && highAddress > -4) highAddress = -4
+        addAsObserver(baseAddress, highAddress)
     }
 
     /**
      * Method that constructs the main display area.  It is organized vertically
-     * into two major components: the display configuration which an be modified
+     * into two major components: the display configuration, which can be modified
      * using combo boxes, and the visualization display which is updated as the
      * attached MIPS program executes.
      *
      * @return the GUI component containing these two areas
      */
-    protected JComponent buildMainDisplayArea() {
-        JPanel results = new JPanel();
-        results.add(buildOrganizationArea());
-        results.add(buildVisualizationArea());
-        return results;
+    override fun buildMainDisplayArea(): JComponent {
+        val results = JPanel()
+        results.add(buildOrganizationArea())
+        results.add(buildVisualizationArea())
+        return results
     }
-
-    //////////////////////////////////////////////////////////////////////////////////////
-    //  Rest of the protected methods.  These override do-nothing methods inherited from
-    //  the abstract superclass.
-    //////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Update display when connected MIPS program accesses (data) memory.
      *
-     * @param memory       the attached memory
-     * @param accessNotice information provided by memory in MemoryAccessNotice object
+     * @param resource       the attached memory
+     * @param notice information provided by memory in MemoryAccessNotice object
      */
-    protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
-        if (accessNotice.getAccessType() == AccessNotice.AccessType.WRITE) {
-            updateColorForAddress((MemoryAccessNotice) accessNotice);
-        }
+    override fun processMipsUpdate(resource: Observable, notice: AccessNotice) {
+        if (notice.accessType == AccessNotice.AccessType.WRITE)
+            updateColorForAddress(notice as MemoryAccessNotice)
     }
 
     /**
      * Initialize all JComboBox choice structures not already initialized at declaration.
      * Overrides inherited method that does nothing.
      */
-    public void initializePreGUI() {
-        initializeDisplayBaseChoices();
-        // NOTE: Can't call "createNewGrid()" here because it uses settings from
-        //       several combo boxes that have not been created yet.  But a default grid
-        //       needs to be allocated for initial canvas display.
-        theGrid = new Grid(displayAreaHeightInPixels / unitPixelHeight, displayAreaWidthInPixels / unitPixelWidth);
+    override fun initializePreGUI() {
+        initializeDisplayBaseChoices()
+        theGrid = Grid(pixelHeight / unitPixelHeight, pixelWidth / unitPixelWidth)
     }
 
     /**
      * The only post-GUI initialization is to create the initial Grid object based on the default settings
      * of the various combo boxes. Overrides inherited method that does nothing.
      */
-
-    public void initializePostGUI() {
-        theGrid = createNewGrid();
-        updateBaseAddress();
+    override fun initializePostGUI() {
+        theGrid = createNewGrid()
+        updateBaseAddress()
     }
 
     /**
      * Method to reset counters and display when the Reset button selected.
      * Overrides inherited method that does nothing.
      */
-    public void reset() {
-        resetCounts();
-        updateDisplay();
+    override fun reset() {
+        resetCounts()
+        updateDisplay()
     }
 
     /**
@@ -209,325 +165,246 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
      * display configuration changes as needed, and after each execution step when Mars
      * is running in timed mode.  Overrides inherited method that does nothing.
      */
-    public void updateDisplay() {
-        canvas.repaint();
+    override fun updateDisplay() {
+        canvas.repaint()
     }
 
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    public JComponent getHelpComponent() {
-        final String helpContent = """
-                Use this program to simulate a basic bitmap display where
-                each memory word in a specified address space corresponds to
-                one display pixel in row-major order starting at the upper left
-                corner of the display.  This tool may be run either from the
-                MARS Tools menu or as a stand-alone application.
+    override fun getHelpComponent(): JComponent {
+        val helpContent = """
+        |Use this program to simulate a basic bitmap display where
+        |each memory word in a specified address space corresponds to
+        |one display pixel in row-major order starting at the upper left
+        |corner of the display.  This tool may be run either from the
+        |MARS Tools menu or as a stand-alone application.
 
-                You can easily learn to use this small program by playing with
-                it!   Each rectangular unit on the display represents one memory
-                word in a contiguous address space starting with the specified
-                base address.  The value stored in that word will be interpreted
-                as a 24-bit RGB color value with the red component in bits 16-23,
-                the green component in bits 8-15, and the blue component in bits 0-7.
-                Each time a memory word within the display address space is written
-                by the MIPS program, its position in the display will be rendered
-                in the color that its value represents.
+        |You can easily learn to use this small program by playing with
+        |it!   Each rectangular unit on the display represents one memory
+        |word in a contiguous address space starting with the specified
+        |base address.  The value stored in that word will be interpreted
+        |as a 24-bit RGB color value with the red component in bits 16-23,
+        |the green component in bits 8-15, and the blue component in bits 0-7.
+        |Each time a memory word within the display address space is written
+        |by the MIPS program, its position in the display will be rendered
+        |in the color that its value represents.
 
-                Version 1.0 is very basic and was constructed from the Memory
-                Reference Visualization tool's code.  Feel free to improve it and
-                send me your code for consideration in the next MARS release.
+        |Version 1.0 is very basic and was constructed from the Memory
+        |Reference Visualization tool's code.  Feel free to improve it and
+        |send me your code for consideration in the next MARS release.
 
-                Contact Pete Sanderson at psanderson@otterbein.edu with
-                questions or comments.
-                """;
-        JButton help = new JButton("Help");
-        help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
-        return help;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////
-    //  Private methods defined to support the above.
-    //////////////////////////////////////////////////////////////////////////////////////
-
-    // UI components and layout for left half of GUI, where settings are specified.
-    private JComponent buildOrganizationArea() {
-        JPanel organization = new JPanel(new GridLayout(8, 1));
-
-        visualizationUnitPixelWidthSelector = new JComboBox<>(visualizationUnitPixelWidthChoices);
-        visualizationUnitPixelWidthSelector.setEditable(false);
-        visualizationUnitPixelWidthSelector.setBackground(backgroundColor);
-        visualizationUnitPixelWidthSelector.setSelectedIndex(defaultVisualizationUnitPixelWidthIndex);
-        visualizationUnitPixelWidthSelector.setToolTipText("Width in pixels of rectangle representing memory word");
-        visualizationUnitPixelWidthSelector.addActionListener(e -> {
-            unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
-            theGrid = createNewGrid();
-            updateDisplay();
-        });
-        visualizationUnitPixelHeightSelector = new JComboBox<>(visualizationUnitPixelHeightChoices);
-        visualizationUnitPixelHeightSelector.setEditable(false);
-        visualizationUnitPixelHeightSelector.setBackground(backgroundColor);
-        visualizationUnitPixelHeightSelector.setSelectedIndex(defaultVisualizationUnitPixelHeightIndex);
-        visualizationUnitPixelHeightSelector.setToolTipText("Height in pixels of rectangle representing memory word");
-        visualizationUnitPixelHeightSelector.addActionListener(e -> {
-            unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
-            theGrid = createNewGrid();
-            updateDisplay();
-        });
-        visualizationPixelWidthSelector = new JComboBox<>(displayAreaPixelWidthChoices);
-        visualizationPixelWidthSelector.setEditable(false);
-        visualizationPixelWidthSelector.setBackground(backgroundColor);
-        visualizationPixelWidthSelector.setSelectedIndex(defaultDisplayWidthIndex);
-        visualizationPixelWidthSelector.setToolTipText("Total width in pixels of display area");
-        visualizationPixelWidthSelector.addActionListener(e -> {
-            displayAreaWidthInPixels = getIntComboBoxSelection(visualizationPixelWidthSelector);
-            canvas.setPreferredSize(getDisplayAreaDimension());
-            canvas.setSize(getDisplayAreaDimension());
-            theGrid = createNewGrid();
-            updateDisplay();
-        });
-        visualizationPixelHeightSelector = new JComboBox<>(displayAreaPixelHeightChoices);
-        visualizationPixelHeightSelector.setEditable(false);
-        visualizationPixelHeightSelector.setBackground(backgroundColor);
-        visualizationPixelHeightSelector.setSelectedIndex(defaultDisplayHeightIndex);
-        visualizationPixelHeightSelector.setToolTipText("Total height in pixels of display area");
-        visualizationPixelHeightSelector.addActionListener(e -> {
-            displayAreaHeightInPixels = getIntComboBoxSelection(visualizationPixelHeightSelector);
-            canvas.setPreferredSize(getDisplayAreaDimension());
-            canvas.setSize(getDisplayAreaDimension());
-            theGrid = createNewGrid();
-            updateDisplay();
-        });
-        displayBaseAddressSelector = new JComboBox<>(displayBaseAddressChoices);
-        displayBaseAddressSelector.setEditable(false);
-        displayBaseAddressSelector.setBackground(backgroundColor);
-        displayBaseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
-        displayBaseAddressSelector.setToolTipText("Base address for display area (upper left corner)");
-        displayBaseAddressSelector.addActionListener(e -> {
-            // This may also affect what address range we should be registered as an Observer
-            // for.  The default (inherited) address range is the MIPS static data segment
-            // starting at 0x10010000. To change this requires override of
-            // AbstractMarsToolAndApplication.addAsObserver().  The no-argument version of
-            // that method is called automatically  when "Connect" button is clicked for MarsTool
-            // and when "Assemble and Run" button is clicked for Mars application.
-            updateBaseAddress();
-            // If display base address is changed while connected to MIPS (this can only occur
-            // when being used as a MarsTool), we have to delete ourselves as an observer and re-register.
-            if (connectButton != null && connectButton.isConnected()) {
-                deleteAsObserver();
-                addAsObserver();
-            }
-            theGrid = createNewGrid();
-            updateDisplay();
-        });
-
-        // ALL COMPONENTS FOR "ORGANIZATION" SECTION
-
-        JPanel unitWidthInPixelRow = getPanelWithBorderLayout();
-        unitWidthInPixelRow.setBorder(emptyBorder);
-        unitWidthInPixelRow.add(new JLabel("Unit Width in Pixels "), BorderLayout.WEST);
-        unitWidthInPixelRow.add(visualizationUnitPixelWidthSelector, BorderLayout.EAST);
-
-        JPanel unitHeightInPixelRow = getPanelWithBorderLayout();
-        unitHeightInPixelRow.setBorder(emptyBorder);
-        unitHeightInPixelRow.add(new JLabel("Unit Height in Pixels "), BorderLayout.WEST);
-        unitHeightInPixelRow.add(visualizationUnitPixelHeightSelector, BorderLayout.EAST);
-
-        JPanel widthInPixelRow = getPanelWithBorderLayout();
-        widthInPixelRow.setBorder(emptyBorder);
-        widthInPixelRow.add(new JLabel("Display Width in Pixels "), BorderLayout.WEST);
-        widthInPixelRow.add(visualizationPixelWidthSelector, BorderLayout.EAST);
-
-        JPanel heightInPixelRow = getPanelWithBorderLayout();
-        heightInPixelRow.setBorder(emptyBorder);
-        heightInPixelRow.add(new JLabel("Display Height in Pixels "), BorderLayout.WEST);
-        heightInPixelRow.add(visualizationPixelHeightSelector, BorderLayout.EAST);
-
-        JPanel baseAddressRow = getPanelWithBorderLayout();
-        baseAddressRow.setBorder(emptyBorder);
-        baseAddressRow.add(new JLabel("Base address for display "), BorderLayout.WEST);
-        baseAddressRow.add(displayBaseAddressSelector, BorderLayout.EAST);
-
-        // Lay 'em out in the grid...
-        organization.add(unitWidthInPixelRow);
-        organization.add(unitHeightInPixelRow);
-        organization.add(widthInPixelRow);
-        organization.add(heightInPixelRow);
-        organization.add(baseAddressRow);
-        return organization;
-    }
-
-    // UI components and layout for right half of GUI, the visualization display area.
-    private JComponent buildVisualizationArea() {
-        canvas = new GraphicsPanel();
-        canvas.setPreferredSize(getDisplayAreaDimension());
-        canvas.setToolTipText("Bitmap display area");
-        return canvas;
-    }
-
-    // For greatest flexibility, initialize the display base choices directly from
-    // the constants defined in the Memory class.  This method called prior to
-    // building the GUI.  Here are current values from Memory.java:
-    //dataSegmentBaseAddress=0x10000000, globalPointer=0x10008000
-    //dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
-    private void initializeDisplayBaseChoices() {
-        int[] displayBaseAddressArray = {Memory.getDataSegmentBaseAddress(), Memory.getGlobalPointer(), Memory.getDataBaseAddress(), Memory.getHeapBaseAddress(), Memory.getMemoryMapBaseAddress()};
-        // Must agree with previous conditions in number and order...
-        String[] descriptions = {" (global data)", " ($gp)", " (static data)", " (heap)", " (memory map)"};
-        displayBaseAddresses = displayBaseAddressArray;
-        displayBaseAddressChoices = new String[displayBaseAddressArray.length];
-        for (int i = 0; i < displayBaseAddressChoices.length; i++) {
-            displayBaseAddressChoices[i] = Binary.intToHexString(displayBaseAddressArray[i]) + descriptions[i];
+        |Contact Pete Sanderson at psanderson@otterbein.edu with
+        |questions or comments.
+        """.trimIndent()
+        val help = JButton("Help")
+        help.addActionListener {
+            JOptionPane.showMessageDialog(theWindow, helpContent)
         }
-        defaultBaseAddressIndex = 2;  // default to 0x10010000 (static data)
-        baseAddress = displayBaseAddressArray[defaultBaseAddressIndex];
+        return help
     }
 
-    // update based on combo box selection (currently not editable but that may change).
-    private void updateBaseAddress() {
-        baseAddress = displayBaseAddresses[displayBaseAddressSelector.getSelectedIndex()];
-      	/*  If you want to extend this app to allow user to edit combo box, you can always
-      	    parse the getSelectedItem() value, because the pre-defined items are all formatted
-      		 such that the first 10 characters contain the integer's hex value.  And if the
-      		 value is user-entered, the numeric part cannot exceed 10 characters for a 32-bit
-      		 address anyway.  So if the value is > 10 characters long, slice off the first
-      		 10 and apply Integer.parseInt() to it to get custom base address.
-      	*/
+    /**
+     * Draw UI components and layout for the left half of the GUI, where settings are specified.
+     */
+    private fun buildOrganizationArea(): JComponent {
+        val organization = JPanel(GridLayout(8, 1))
+
+        unitPixelWidthSelector = makeComboBox(
+            unitPixelWidthChoices,
+            defaultUnitPixelWidthIndex,
+            "Width in pixels of rectangle representing memory word"
+        ) {
+            unitPixelWidth = getIntComboBoxSelection(unitPixelWidthSelector)
+            theGrid = createNewGrid()
+            updateDisplay()
+        }
+
+        unitPixelHeightSelector = makeComboBox(
+            unitPixelHeightChoices,
+            defaultUnitPixelHeightIndex,
+            "Height in pixels of rectangle representing memory word"
+        ) {
+            unitPixelHeight = getIntComboBoxSelection(unitPixelHeightSelector)
+            theGrid = createNewGrid()
+            updateDisplay()
+        }
+
+        pixelWidthSelector = makeComboBox(
+            pixelWidthChoices,
+            defaultPixelWidthIndex,
+            "Total width in pixels of display area"
+        ) {
+            pixelWidth = getIntComboBoxSelection(pixelWidthSelector)
+            canvas.preferredSize = getDisplayAreaDimension()
+            canvas.size = getDisplayAreaDimension()
+            theGrid = createNewGrid()
+            updateDisplay()
+        }
+
+        pixelHeightSelector = makeComboBox(
+            pixelHeightChoices,
+            defaultPixelHeightIndex,
+            "Total height in pixels of display area"
+        ) {
+            pixelHeight = getIntComboBoxSelection(pixelHeightSelector)
+            canvas.preferredSize = getDisplayAreaDimension()
+            canvas.size = getDisplayAreaDimension()
+            theGrid = createNewGrid()
+            updateDisplay()
+        }
+
+        displayBaseAddressSelector = makeComboBox(
+            displayBaseAddressChoices,
+            defaultBaseAddressIndex,
+            "Base address for display area (upper left corner)"
+        ) {
+            updateBaseAddress()
+            if (connectButton?.isConnected == true) {
+                deleteAsObserver()
+                addAsObserver()
+            }
+            theGrid = createNewGrid()
+            updateDisplay()
+        }
+
+        organization.add(makeOrganizationComponent("Unit Width in Pixels ", unitPixelWidthSelector))
+        organization.add(makeOrganizationComponent("Unit Height in Pixels ", unitPixelHeightSelector))
+        organization.add(makeOrganizationComponent("Display Width in Pixels ", pixelWidthSelector))
+        organization.add(makeOrganizationComponent("Display Height in Pixels ", pixelHeightSelector))
+        organization.add(makeOrganizationComponent("Base Address for Display ", displayBaseAddressSelector))
+
+        return organization
     }
 
-    // Returns Dimension object with current width and height of display area as determined
-    // by current settings of respective combo boxes.
-    private Dimension getDisplayAreaDimension() {
-        return new Dimension(displayAreaWidthInPixels, displayAreaHeightInPixels);
+    private fun buildVisualizationArea(): JComponent {
+        canvas = GraphicsPanel()
+        canvas.preferredSize = getDisplayAreaDimension()
+        canvas.toolTipText = "Bitmap display area"
+        return canvas
     }
 
-    // reset all counters in the Grid.
-    private void resetCounts() {
-        theGrid.reset();
+    private fun initializeDisplayBaseChoices() {
+        val displayBaseAddressArray = intArrayOf(
+            Memory.dataSegmentBaseAddress,
+            Memory.globalPointer,
+            Memory.dataBaseAddress,
+            Memory.heapBaseAddress,
+            Memory.memoryMapBaseAddress
+        )
+        val descriptions = arrayOf(
+            " (global data)",
+            " (\$gp)",
+            " (static data)",
+            " (heap)",
+            " (memory map)"
+        )
+        displayBaseAddresses = displayBaseAddressArray
+        displayBaseAddressChoices = displayBaseAddressArray.zip(descriptions).map {
+            "${Binary.intToHexString(it.first)} ${it.second}"
+        }.toTypedArray()
+        defaultBaseAddressIndex = 2
+        baseAddress = displayBaseAddressArray[defaultBaseAddressIndex]
     }
 
-    // Will return int equivalent of specified combo box's current selection.
-    // The selection must be a String that parses to an int.
-    private int getIntComboBoxSelection(JComboBox<String> comboBox) {
+    private fun updateBaseAddress() {
+        baseAddress = displayBaseAddresses[displayBaseAddressSelector.selectedIndex]
+        // If you want to extend this app to allow user to edit combo box, you can always
+        // parse the getSelectedItem() value, because the pre-defined items are all formatted
+        // such that the first 10 characters contain the integer's hex value.  And if the
+        // value is user-entered, the numeric part cannot exceed 10 characters for a 32-bit
+        // address anyway.  So if the value is > 10 characters long, slice off the first
+        // 10 and apply Integer.parseInt() to it to get custom base address.
+    }
+
+    private fun getDisplayAreaDimension(): Dimension =
+        Dimension(pixelWidth, pixelHeight)
+
+    private fun resetCounts() {
+        theGrid.reset()
+    }
+
+    // TODO: Convert to extension instead
+    private fun getIntComboBoxSelection(comboBox: JComboBox<String>): Int =
+        comboBox.selectedItem?.toString()?.toIntOrNull() ?: 1
+
+    private fun makeComboBox(choices: Array<String>, defaultIndex: Int, tooltip: String, listener: (ActionEvent) -> Unit) =
+        JComboBox(choices).apply {
+            isEditable = false
+            background = backgroundColor
+            selectedIndex = defaultIndex
+            toolTipText = tooltip
+            addActionListener(listener)
+        }
+
+    private fun getPanelWithBorderLayout(): JPanel = JPanel(BorderLayout(2, 2))
+
+    private fun makeOrganizationComponent(labelText: String, component: JComponent): JPanel {
+        val row = getPanelWithBorderLayout()
+        row.border = emptyBorder
+        row.add(JLabel(labelText), BorderLayout.WEST)
+        row.add(component, BorderLayout.EAST)
+        return row
+    }
+
+    private fun createNewGrid(): Grid {
+        val rows = pixelHeight / unitPixelHeight
+        val columns = pixelWidth / unitPixelWidth
+        return Grid(rows, columns)
+    }
+
+    private fun updateColorForAddress(notice: MemoryAccessNotice) {
+        val address = notice.address
+        val value = notice.value
+        val offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES
         try {
-            return Integer.parseInt((String) Objects.requireNonNull(comboBox.getSelectedItem()));
-        } catch (NumberFormatException nfe) {
-            // Can occur only if initialization list contains badly formatted numbers.  This
-            // is a developer's error, not a user error, and better be caught before release.
-            return 1;
-        }
+            theGrid.setElement(offset / theGrid.columns, offset % theGrid.columns, value)
+        } catch (ignored: IndexOutOfBoundsException) {}
     }
 
-    // Use this for consistent results.
-    private JPanel getPanelWithBorderLayout() {
-        return new JPanel(new BorderLayout(2, 2));
-    }
-
-    // Method to determine grid dimensions based on current control settings.
-    // Each grid element corresponds to one visualization unit.
-    private Grid createNewGrid() {
-        int rows = displayAreaHeightInPixels / unitPixelHeight;
-        int columns = displayAreaWidthInPixels / unitPixelWidth;
-        return new Grid(rows, columns);
-    }
-
-    // Given memory address, update color for the corresponding grid element.
-    private void updateColorForAddress(MemoryAccessNotice notice) {
-        int address = notice.getAddress();
-        int value = notice.getValue();
-        int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
-        try {
-            theGrid.setElement(offset / theGrid.getColumns(), offset % theGrid.getColumns(), value);
-        } catch (IndexOutOfBoundsException e) {
-            // If address is out of range for display, do nothing.
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////
-    //  Specialized inner classes for modeling and animation.
-    //////////////////////////////////////////////////////////////////////////////////////
-
-    /////////////////////////////////////////////////////////////////////////////
-    //  Class that represents the panel for visualizing and animating memory reference
-    //  patterns.
-    private class GraphicsPanel extends JPanel {
-
-        // override default paint method to assure display updated correctly every time
-        // the panel is repainted.
-        public void paint(Graphics g) {
-            paintGrid(g, theGrid);
+    private inner class GraphicsPanel : JPanel() {
+        override fun paint(g: Graphics) {
+            paintGrid(g, theGrid)
         }
 
-        // Paint the color codes.
-        private void paintGrid(Graphics g, Grid grid) {
-            int upperLeftX = 0, upperLeftY = 0;
-            for (int i = 0; i < grid.getRows(); i++) {
-                for (int j = 0; j < grid.getColumns(); j++) {
-                    g.setColor(grid.getElementFast(i, j));
-                    g.fillRect(upperLeftX, upperLeftY, unitPixelWidth, unitPixelHeight);
-                    upperLeftX += unitPixelWidth;   // faster than multiplying
+        fun paintGrid(g: Graphics, grid: Grid) {
+            var upperLeftX = 0
+            var upperLeftY = 0
+            for (i in 0..<grid.rows) {
+                for (j in 0..<grid.columns) {
+                    g.color = grid.getElement(i, j)
+                    g.fillRect(upperLeftX, upperLeftY, unitPixelWidth, unitPixelHeight)
+                    upperLeftX += unitPixelWidth // faster than multiplying
                 }
-                // get ready for next row...
-                upperLeftX = 0;
-                upperLeftY += unitPixelHeight;     // faster than multiplying
+                // get ready for the next row
+                upperLeftX = 0
+                upperLeftY += unitPixelHeight // faster than multiplying
             }
         }
     }
 
+    private class Grid(val rows: Int, val columns: Int) {
+        lateinit var grid: Array<Array<Color>>
+            private set
 
-    ////////////////////////////////////////////////////////////////////////
-    // Represents grid of colors
-    private static class Grid {
-
-        final Color[][] grid;
-        final int rows;
-        final int columns;
-
-        private Grid(int rows, int columns) {
-            grid = new Color[rows][columns];
-            this.rows = rows;
-            this.columns = columns;
-            reset();
+        init {
+            reset()
         }
 
-        private int getRows() {
-            return rows;
+        fun getElementOrNull(row: Int, column: Int): Color? = grid.getOrNull(row)?.getOrNull(column)
+
+        fun getElement(row: Int, column: Int): Color = grid[row][column]
+
+        fun setElement(row: Int, column: Int, color: Int) {
+            grid[row][column] = Color(color)
         }
 
-        private int getColumns() {
-            return columns;
+        fun setElement(row: Int, column: Int, color: Color) {
+            grid[row][column] = color
         }
 
-        // Returns value in given grid element; null if row or column is out of range.
-        private Color getElement(int row, int column) {
-            return (row >= 0 && row <= rows && column >= 0 && column <= columns) ? grid[row][column] : null;
-        }
-
-        // Returns value in given grid element without doing any row/column index checking.
-        // Is faster than getElement but will throw array index out of bounds exception if
-        // parameter values are outside the bounds of the grid.
-        private Color getElementFast(int row, int column) {
-            return grid[row][column];
-        }
-
-        // Set the grid element.
-        private void setElement(int row, int column, int color) {
-            grid[row][column] = new Color(color);
-        }
-
-        // Set the grid element.
-        private void setElement(int row, int column, Color color) {
-            grid[row][column] = color;
-        }
-
-        // Set all grid elements to black.
-        private void reset() {
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < columns; j++) {
-                    grid[i][j] = Color.BLACK;
-                }
-            }
+        fun reset() {
+            grid = Array(rows) { Array(columns) { Color.BLACK } }
         }
     }
-
 }

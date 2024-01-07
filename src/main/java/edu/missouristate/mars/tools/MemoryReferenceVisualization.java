@@ -378,7 +378,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
                     updateBaseAddress();
                     // If display base address is changed while connected to MIPS (this can only occur
                     // when being used as a MarsTool), we have to delete ourselves as an observer and re-register.
-                    if (connectButton != null && connectButton.isConnected()) {
+                    if (getConnectButton() != null && getConnectButton().isConnected()) {
                         deleteAsObserver();
                         addAsObserver();
                     }

@@ -658,7 +658,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // This one does the work: update the MMIO Control and optionally the Data register as well
     // NOTE: last argument TRUE means update only the MMIO Control register; FALSE means update both Control and Data.
     private synchronized void updateMMIOControlAndData(int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
-        if (!this.isBeingUsedAsAMarsTool() || connectButton.isConnected()) {
+        if (!this.isBeingUsedAsAMarsTool() || Objects.requireNonNull(getConnectButton()).isConnected()) {
             synchronized (Globals.getMemoryAndRegistersLock()) {
                 try {
                     Globals.memory.setRawWord(controlAddr, controlValue);
