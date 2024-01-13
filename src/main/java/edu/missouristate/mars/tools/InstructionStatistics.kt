@@ -19,332 +19,169 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+package edu.missouristate.mars.tools
 
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.mips.hardware.AccessNotice
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
+import java.util.*
+import javax.swing.*
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.Arrays;
-import java.util.Observable;
-
-/**
- * A MARS tool for obtaining instruction statistics by instruction category.
- * <p>
- * The code of this tools is initially based on the Instruction counter tool by Felipe Lassa.
- *
- * @author Ingo Kofler <ingo.kofler@itec.uni-klu.ac.at>
- */
-public class InstructionStatistics extends AbstractMarsToolAndApplication {
-
-    /**
-     * name of the tool
-     */
-    private static final String NAME = "Instruction Statistics";
-
-    /**
-     * version and author information of the tool
-     */
-    private static final String VERSION = "Version 1.0 (Ingo Kofler)";
-
-    /**
-     * heading of the tool
-     */
-    private static final String HEADING = "";
-
-
-    /**
-     * number of instruction categories used by this tool
-     */
-    private static final int MAX_CATEGORY = 5;
-
-    /**
-     * constant for ALU instructions category
-     */
-    private static final int CATEGORY_ALU = 0;
-
-    /**
-     * constant for jump instructions category
-     */
-    private static final int CATEGORY_JUMP = 1;
-
-    /**
-     * constant for branch instructions category
-     */
-    private static final int CATEGORY_BRANCH = 2;
-
-    /**
-     * constant for memory instructions category
-     */
-    private static final int CATEGORY_MEM = 3;
-
-    /**
-     * constant for any other instruction category
-     */
-    private static final int CATEGORY_OTHER = 4;
-
-
-    /**
-     * text field for visualizing the total number of instructions processed
-     */
-    private JTextField totalCounterField;
-
-    /**
-     * array of text field - one for each instruction category
-     */
-    private JTextField[] instructionCounterFields;
-
-    /**
-     * array of progress pars - one for each instruction category
-     */
-    private JProgressBar[] instructionProgressBars;
-
-
-    /**
-     * counter for the total number of instructions processed
-     */
-    private int totalCounter = 0;
-
-    /**
-     * array of counter variables - one for each instruction category
-     */
-    private final int[] counters = new int[MAX_CATEGORY];
-
-    /**
-     * names of the instruction categories as array
-     */
-    private final String[] categoryLabels = {"ALU", "Jump", "Branch", "Memory", "Other"};
-
-
-    // From Felipe Lessa's instruction counter.  Prevent double-counting of instructions 
-    // which happens because 2 read events are generated.   
-    /**
-     * The last address we saw. We ignore it because the only way for a
-     * program to execute twice the same instruction is to enter an infinite
-     * loop, which is not insteresting in the POV of counting instructions.
-     */
-    protected int lastAddress = -1;
-
-    /**
-     * Simple constructor, likely used to run a stand-alone enhanced instruction counter.
-     *
-     * @param title   String containing title for title bar
-     * @param heading String containing text for heading shown in upper part of window.
-     */
-    public InstructionStatistics(String title, String heading) {
-        super(title, heading);
+class InstructionStatistics(
+    title: String = "$NAME, $VERSION",
+    heading: String = HEADING
+) : AbstractMarsToolAndApplication(title, heading) {
+    companion object {
+        private const val NAME = "Instruction Statistics"
+        private const val VERSION = "Version 1.0 (Ingo Kofler)"
+        private const val HEADING = NAME
     }
 
+    private enum class InstructionCategory(val rawValue: Int) {
+        ALU(0),
+        JUMP(1),
+        BRANCH(2),
+        MEMORY(3),
+        OTHER(4);
 
-    /**
-     * Simple construction, likely used by the MARS Tools menu mechanism.
-     */
-    public InstructionStatistics() {
-        super(InstructionStatistics.NAME + ", " + InstructionStatistics.VERSION, InstructionStatistics.HEADING);
-    }
-
-
-    /**
-     * returns the name of the tool
-     *
-     * @return the tools's name
-     */
-    public String getToolName() {
-        return NAME;
-    }
-
-
-    /**
-     * creates the display area for the tool as required by the API
-     *
-     * @return a panel that holds the GUI of the tool
-     */
-    protected JComponent buildMainDisplayArea() {
-
-        // Create GUI elements for the tool
-        JPanel panel = new JPanel(new GridBagLayout());
-
-        totalCounterField = new JTextField("0", 10);
-        totalCounterField.setEditable(false);
-
-        instructionCounterFields = new JTextField[MAX_CATEGORY];
-        instructionProgressBars = new JProgressBar[MAX_CATEGORY];
-
-        // for each category a text field and a progress bar is created
-        for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
-            instructionCounterFields[i] = new JTextField("0", 10);
-            instructionCounterFields[i].setEditable(false);
-            instructionProgressBars[i] = new JProgressBar(JProgressBar.HORIZONTAL);
-            instructionProgressBars[i].setStringPainted(true);
+        companion object {
+            @JvmStatic
+            fun fromInt(rawValue: Int) =
+                entries.firstOrNull { it.rawValue == rawValue } ?: OTHER
         }
-
-        GridBagConstraints c = new GridBagConstraints();
-        c.anchor = GridBagConstraints.LINE_START;
-        c.gridheight = c.gridwidth = 1;
-
-        // create the label and text field for the total instruction counter
-        c.gridx = 2;
-        c.gridy = 1;
-        c.insets = new Insets(0, 0, 17, 0);
-        panel.add(new JLabel("Total: "), c);
-        c.gridx = 3;
-        panel.add(totalCounterField, c);
-
-        c.insets = new Insets(3, 3, 3, 3);
-
-        // create label, text field and progress bar for each category
-        for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
-            c.gridy++;
-            c.gridx = 2;
-            panel.add(new JLabel(categoryLabels[i] + ":   "), c);
-            c.gridx = 3;
-            panel.add(instructionCounterFields[i], c);
-            c.gridx = 4;
-            panel.add(instructionProgressBars[i], c);
-        }
-
-        return panel;
     }
 
+    private lateinit var totalCounterField: JTextField
+    private lateinit var instructionCounterFields: Array<JTextField>
+    private lateinit var instructionProgressBars: Array<JProgressBar>
+    private var totalCounter: Int = 0
+    private val counters = IntArray(InstructionCategory.entries.size)
+    private val categoryLabels = arrayOf("ALU", "Jump", "Branch", "Memory", "Other")
 
     /**
-     * registers the tool as observer for the text segment of the MIPS program
+     * The last address we saw.
+     * Ignored because the only way for a program to execute twice is to enter an infinite loop.
+     * Such a condition is not the concern for this tool.
      */
-    public void addAsObserver() {
-        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
-    }
+    private var lastAddress = -1
 
+    override val toolName: String = NAME
 
-    /**
-     * decodes the instruction and determines the category of the instruction.
-     * <p>
-     * The instruction is decoded by extracting the operation and function code of the 32-bit instruction.
-     * Only the most relevant instructions are decoded and categorized.
-     *
-     * @param stmt the instruction to decode
-     * @return the category of the instruction
-     * @see InstructionStatistics#CATEGORY_ALU
-     * @see InstructionStatistics#CATEGORY_JUMP
-     * @see InstructionStatistics#CATEGORY_BRANCH
-     * @see InstructionStatistics#CATEGORY_MEM
-     * @see InstructionStatistics#CATEGORY_OTHER
-     */
-    protected int getInstructionCategory(ProgramStatement stmt) {
+    override fun buildMainDisplayArea(): JComponent {
+        val panel = JPanel(GridBagLayout())
 
-        int opCode = stmt.getBinaryStatement() >>> (32 - 6);
-        int funct = stmt.getBinaryStatement() & 0x1F;
+        totalCounterField = JTextField("0", 10)
+        totalCounterField.isEditable = false
 
-        if (opCode == 0x00) {
-            if (funct == 0x00)
-                return InstructionStatistics.CATEGORY_ALU; // sll
-            if (0x02 <= funct && funct <= 0x07)
-                return InstructionStatistics.CATEGORY_ALU; // srl, sra, sllv, srlv, srav
-            if (funct == 0x08 || funct == 0x09)
-                return InstructionStatistics.CATEGORY_JUMP; // jr, jalr
-            if (0x10 <= funct)
-                return InstructionStatistics.CATEGORY_ALU; // mfhi, mthi, mflo, mtlo, mult, multu, div, divu, add, addu, sub, subu, and, or, xor, nor, slt, sltu
-            return InstructionStatistics.CATEGORY_OTHER;
-        }
-        if (opCode == 0x01) {
-            if (funct <= 0x07)
-                return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
-            if (0x10 <= funct && funct <= 0x13)
-                return InstructionStatistics.CATEGORY_BRANCH; // bltzal, bgezal, bltzall, bgczall
-            return InstructionStatistics.CATEGORY_OTHER;
-        }
-        if (opCode == 0x02 || opCode == 0x03)
-            return InstructionStatistics.CATEGORY_JUMP; // j, jal
-        if (opCode <= 0x07)
-            return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
-        if (opCode <= 0x0F)
-            return InstructionStatistics.CATEGORY_ALU; // addi, addiu, slti, sltiu, andi, ori, xori, lui
-        if (0x14 <= opCode && opCode <= 0x17)
-            return InstructionStatistics.CATEGORY_BRANCH; // beql, bnel, blezl, bgtzl
-        if (0x20 <= opCode && opCode <= 0x26)
-            return InstructionStatistics.CATEGORY_MEM; // lb, lh, lwl, lw, lbu, lhu, lwr
-        if (0x28 <= opCode && opCode <= 0x2E)
-            return InstructionStatistics.CATEGORY_MEM; // sb, sh, swl, sw, swr
-
-        return InstructionStatistics.CATEGORY_OTHER;
-    }
-
-
-    /**
-     * method that is called each time the MIPS simulator accesses the text segment.
-     * Before an instruction is executed by the simulator, the instruction is fetched from the program memory.
-     * This memory access is observed and the corresponding instruction is decoded and categorized by the tool.
-     * According to the category the counter values are increased and the display gets updated.
-     *
-     * @param resource the observed resource
-     * @param notice   signals the type of access (memory, register etc.)
-     */
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
-
-        if (!notice.getAccessIsFromMIPS())
-            return;
-
-        // check for a read access in the text segment
-        if (notice.getAccessType() == AccessNotice.AccessType.READ && notice instanceof MemoryAccessNotice memAccNotice) {
-
-            // now it is safe to make a cast of the notice
-
-            // The next three statments are from Felipe Lessa's instruction counter.  Prevents double-counting.
-            int a = memAccNotice.getAddress();
-            if (a == lastAddress)
-                return;
-            lastAddress = a;
-
-            // access the statement in the text segment without notifying other tools etc.
-            ProgramStatement stmt = Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
-
-            // necessary to handle possible null pointers at the end of the program
-            // (e.g., if the simulator tries to execute the next instruction after the last instruction in the text segment)
-            if (stmt != null) {
-                int category = getInstructionCategory(stmt);
-
-                totalCounter++;
-                counters[category]++;
-                updateDisplay();
+        instructionCounterFields = Array(InstructionCategory.entries.size) {
+            JTextField("0", 10).apply {
+                isEditable = false
             }
         }
+        instructionProgressBars = Array(InstructionCategory.entries.size) {
+            JProgressBar(JProgressBar.HORIZONTAL).apply {
+                isStringPainted = true
+            }
+        }
+
+        val c = GridBagConstraints()
+        c.anchor = GridBagConstraints.LINE_START
+        c.gridheight = 1
+        c.gridwidth = 1
+
+        // Place the label and text field for the total instructions counter
+        c.gridx = 2
+        c.gridy = 1
+        c.insets = Insets(0, 0, 17, 0)
+        panel.add(JLabel("Total: "), c)
+        c.gridx = 3
+        panel.add(totalCounterField, c)
+
+        c.insets = Insets(3, 3,3, 3)
+
+        // Place the label, text field, and progress bars for each category
+        for (i in 0..<InstructionCategory.entries.size) {
+            c.gridy++
+            c.gridx = 2
+            panel.add(JLabel("${categoryLabels[i]}: "), c)
+            c.gridx = 3
+            panel.add(instructionCounterFields[i], c)
+            c.gridx = 4
+            panel.add(instructionProgressBars[i], c)
+        }
+
+        return panel
     }
 
-
-    /**
-     * performs initialization tasks of the counters before the GUI is created.
-     */
-    public void initializePreGUI() {
-        totalCounter = 0;
-        lastAddress = -1; // from Felipe Lessa's instruction counter tool
-        Arrays.fill(counters, 0);
+    override fun addAsObserver() {
+        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress)
     }
 
+    private fun getInstructionCategory(statement: ProgramStatement): InstructionCategory {
+        val opCode = statement.getBinaryStatement() ushr (32 - 6)
+        val funct = statement.getBinaryStatement() and 0x1F
 
-    /**
-     * resets the counter values of the tool and updates the display.
-     */
-    public void reset() {
-        totalCounter = 0;
-        lastAddress = -1; // from Felipe Lessa's instruction counter tool
-        Arrays.fill(counters, 0);
-        updateDisplay();
+        return when {
+            opCode == 0x00 -> when {
+                funct == 0x00 -> InstructionCategory.ALU
+                funct in 0x02..0x07 -> InstructionCategory.ALU
+                funct == 0x08 || funct == 0x09 -> InstructionCategory.JUMP
+                0x10 <= funct -> InstructionCategory.ALU
+                else -> InstructionCategory.OTHER
+            }
+            opCode == 0x01 -> when {
+                funct <= 0x07 -> InstructionCategory.BRANCH
+                funct in 0x10..0x13 -> InstructionCategory.BRANCH
+                else -> InstructionCategory.OTHER
+            }
+            opCode == 0x02 || opCode == 0x03 -> InstructionCategory.JUMP
+            opCode <= 0x07 -> InstructionCategory.BRANCH
+            opCode <= 0x0F -> InstructionCategory.ALU
+            opCode in 0x14..0x17 -> InstructionCategory.BRANCH
+            opCode in 0x20..0x26 -> InstructionCategory.MEMORY
+            opCode in 0x28..0x2E -> InstructionCategory.MEMORY
+            else -> InstructionCategory.OTHER
+        }
     }
 
+    override fun processMipsUpdate(resource: Observable, notice: AccessNotice) {
+        if (
+            !notice.accessIsFromMIPS ||
+            notice.accessType != AccessNotice.AccessType.READ ||
+            notice !is MemoryAccessNotice
+        ) return
+        val a = notice.address
+        if (a == lastAddress) return
+        lastAddress = a
+        Memory.instance.getStatement(notice.address, false)?.let { statement ->
+            val category = getInstructionCategory(statement)
+            totalCounter++
+            counters[category.rawValue]++
+            updateDisplay()
+        }
+    }
 
-    /**
-     * updates the text fields and progress bars according to the current counter values.
-     */
-    public void updateDisplay() {
-        totalCounterField.setText(String.valueOf(totalCounter));
+    override fun initializePreGUI() {
+        totalCounter = 0
+        lastAddress = -1
+        counters.fill(0)
+    }
 
-        for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) {
-            instructionCounterFields[i].setText(String.valueOf(counters[i]));
-            instructionProgressBars[i].setMaximum(totalCounter);
-            instructionProgressBars[i].setValue(counters[i]);
+    override fun reset() {
+        initializePreGUI()
+        updateDisplay()
+    }
+
+    override fun updateDisplay() {
+        totalCounterField.text = totalCounter.toString()
+        for (i in 0..<InstructionCategory.entries.size) {
+            instructionCounterFields[i].text = counters[i].toString()
+            instructionProgressBars[i].maximum = totalCounter
+            instructionProgressBars[i].value = counters[i]
         }
     }
 }

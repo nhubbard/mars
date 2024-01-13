@@ -19,61 +19,47 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+package edu.missouristate.mars.tools
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
+import java.awt.BorderLayout
+import java.awt.Rectangle
+import javax.swing.JFrame
+import javax.swing.JPanel
+import javax.swing.border.EmptyBorder
 
-public class FunctionUnitVisualization extends JFrame {
+class FunctionUnitVisualization(private val instruction: String, functionalUnit: FunctionalUnit) : JFrame() {
+    private var currentUnit: FunctionalUnit = FunctionalUnit.ALU
 
-    private final String instruction;
-    private final int alu = 4;
-    private int currentUnit;
-
-    /**
-     * Create the frame.
-     */
-    public FunctionUnitVisualization(String instruction, int functionalUnit) {
-        this.instruction = instruction;
-        //setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBounds(100, 100, 840, 575);
-        JPanel contentPane = new JPanel();
-        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-        contentPane.setLayout(new BorderLayout(0, 0));
-        setContentPane(contentPane);
-        int aluControl = 3;
-        int control = 2;
-        int register = 1;
-        if (functionalUnit == register) {
-            currentUnit = register;
-            UnitAnimation reg = new UnitAnimation(instruction, register);
-            contentPane.add(reg);
-            reg.startAnimation(instruction);
-        } else if (functionalUnit == control) {
-            currentUnit = control;
-            UnitAnimation reg = new UnitAnimation(instruction, control);
-            contentPane.add(reg);
-            reg.startAnimation(instruction);
-        } else if (functionalUnit == aluControl) {
-            currentUnit = aluControl;
-            UnitAnimation reg = new UnitAnimation(instruction, aluControl);
-            contentPane.add(reg);
-            reg.startAnimation(instruction);
-        }
-
+    init {
+        bounds = Rectangle(100, 100, 840, 575)
+        val contentPane = JPanel()
+        contentPane.border = EmptyBorder(5, 5, 5, 5)
+        contentPane.layout = BorderLayout(0, 0)
+        this.contentPane = contentPane
+        currentUnit = functionalUnit
+        val reg = UnitAnimation(instruction, currentUnit)
+        contentPane.add(reg)
+        reg.startAnimation(instruction)
     }
 
-    /**
-     * Launch the application.
-     */
-    public void run() {
+    fun run() {
         try {
-            FunctionUnitVisualization frame = new FunctionUnitVisualization(instruction, currentUnit);
-            frame.setVisible(true);
-        } catch (Exception e) {
-            e.printStackTrace();
+            val frame = FunctionUnitVisualization(instruction, currentUnit)
+            frame.isVisible = true
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
+    enum class FunctionalUnit(val rawValue: Int) {
+        REGISTER(1),
+        CONTROL(2),
+        ALU_CONTROL(3),
+        ALU(4);
+
+        companion object {
+            @JvmStatic
+            fun fromInt(rawValue: Int) = entries.first { it.rawValue == rawValue }
+        }
+    }
 }

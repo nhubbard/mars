@@ -19,1390 +19,1134 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+@file:Suppress("MemberVisibilityCanBePrivate", "SameParameterValue", "DEPRECATION", "DuplicatedCode")
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.mips.instructions.BasicInstruction;
-import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
-import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.actions.RunAssembleAction;
-import edu.missouristate.mars.venus.actions.RunBackstepAction;
-import edu.missouristate.mars.venus.actions.RunStepAction;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+package edu.missouristate.mars.tools
 
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.swing.Timer;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.font.FontRenderContext;
-import java.awt.font.TextLayout;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.Serial;
-import java.text.DecimalFormat;
-import java.util.*;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.mips.hardware.AccessNotice
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import edu.missouristate.mars.vectorOf
+import edu.missouristate.mars.venus.VenusUI
+import edu.missouristate.mars.venus.actions.RunAssembleAction
+import edu.missouristate.mars.venus.actions.RunBackstepAction
+import edu.missouristate.mars.venus.actions.RunStepAction
+import org.w3c.dom.Element
+import org.w3c.dom.NodeList
+import java.awt.*
+import java.awt.event.*
+import java.awt.font.TextLayout
+import java.awt.image.BufferedImage
+import java.io.IOException
+import java.io.Serial
+import java.util.*
+import javax.imageio.ImageIO
+import javax.swing.*
+import javax.swing.Timer
+import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.system.exitProcess
 
-public class MipsXray extends AbstractMarsToolAndApplication {
-    @Serial
-    private static final long serialVersionUID = -1L;
-    private static final String heading = "MIPS X-Ray - Animation of MIPS Datapath";
-    private static final String version = " Version 2.0";
-
-    protected Graphics g;
-    protected int lastAddress = -1; //address of instruction in memory
-    protected JLabel label;
-    private final Container painel = this.getContentPane();
-
-    private GraphicsConfiguration gc;
-    private BufferedImage datapath;
-    private String instructionBinary;
-
-    private Action runAssembleAction, runStepAction, runBackstepAction;
-
-    private VenusUI mainUI;
-    private JToolBar toolbar;
-
-    public MipsXray(String title, String heading) {
-        super(title, heading);
+class MipsXray(
+    title: String = "$NAME, $VERSION",
+    heading: String = HEADING
+) : AbstractMarsToolAndApplication(title, heading) {
+    companion object {
+        private const val NAME = "MIPS X-Ray"
+        private const val VERSION = "Version 2.0"
+        private const val HEADING = "Animation of MIPS Datapath"
     }
 
-    /**
-     * Simple constructor, likely used by the MipsXray menu mechanism
-     */
-    public MipsXray() {
-        super(heading + ", " + version, heading);
+    private lateinit var g: Graphics
+    private var lastAddress = -1
+    private lateinit var label: JLabel
+
+    private val contentPanel = contentPane
+
+    private lateinit var gc: GraphicsConfiguration
+    private lateinit var datapath: BufferedImage
+    private lateinit var instructionBinary: String
+    private lateinit var runAssembleAction: Action
+    private lateinit var runStepAction: Action
+    private lateinit var runBackstepAction: Action
+    private lateinit var mainUI: VenusUI
+    private lateinit var toolbar: JToolBar
+
+    override val toolName: String = NAME
+
+    override fun getHelpComponent(): JComponent {
+        val helpContent = """
+            This plugin is used to visualize the behavior of a MIPS processor using the default datapath. 
+            It reads the source code instruction and generates an animation representing the inputs and 
+            outputs of functional blocks and the interconnection between them. The basic signals 
+            represented are, control signals, opcode bits and data of functional blocks.
+
+            Besides the datapath representation, information for each instruction is displayed below
+            the datapath. That display includes opcode value, with the correspondent colors used to
+            represent the signals in datapath, mnemonic of the instruction processed at the moment, registers
+            used in the instruction and a label that indicates the color code used to represent control signals.
+
+            To see the datapath of register bank and control units click inside the functional unit.
+
+            Version 2.0
+            Developed by Marcio Roberto, Guilherme Sales, Fabricio Vivas, Flavio Cardeal and Fabio Lacio
+            Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.
+            """.trimIndent()
+        val help = JButton("Help")
+        help.addActionListener { JOptionPane.showMessageDialog(theWindow, helpContent) }
+        return help
     }
 
-    /**
-     * Required method to return Tool name.
-     *
-     * @return Tool name.  MARS will display this in menu item.
-     */
-    public String getToolName() {
-        return "MIPS X-Ray";
-    }
+    private fun buildAnimationSequence() = JPanel(GridBagLayout())
 
-    /**
-     * Overrides default method, to provide a Help button for this tool/app.
-     */
-    public JComponent getHelpComponent() {
-        final String helpContent =
-                """
-                        This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
-                        It reads the source code instruction and generates an animation representing the inputs and\s
-                        outputs of functional blocks and the interconnection between them.  The basic signals\s
-                        represented are, control signals, opcode bits and data of functional blocks.
+    override fun buildMainDisplayArea(): JComponent = buildMainDisplayArea("datapath.png")
 
-                        Besides the datapath representation, information for each instruction is displayed below
-                        the datapath. That display includes opcode value, with the correspondent colors used to
-                        represent the signals in datapath, mnemonic of the instruction processed at the moment, registers
-                        used in the instruction and a label that indicates the color code used to represent control signals
+    fun buildMainDisplayArea(figure: String): JComponent {
+        mainUI = Globals.gui ?: throw IllegalStateException("Main UI is null!")
+        createActionObjects()
+        toolbar = setUpToolbar()
 
-                        To see the datapath of register bank and control units click inside the functional unit.
-
-                        Version 2.0
-                        Developed by M�rcio Roberto, Guilherme Sales, Fabr�cio Vivas, Fl�vio Cardeal and F�bio L�cio
-                        Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.
-                        """;
-        JButton help = new JButton("Help");
-        help.addActionListener(
-                e -> JOptionPane.showMessageDialog(theWindow, helpContent));
-        return help;
-    }
-
-    /**
-     * Implementation of the inherited abstract method to build the main
-     * display area of the GUI.  It will be placed in the CENTER area of a
-     * BorderLayout.  The title is in the NORTH area, and the controls are
-     * in the SOUTH area.
-     */
-    protected JComponent buildAnimationSequence() {
-        return new JPanel(new GridBagLayout());
-    }
-
-    // Insert image in the panel and configure the parameters to run animation.
-    protected JComponent buildMainDisplayArea() {
-        mainUI = Globals.getGui();
-        this.createActionObjects();
-        toolbar = this.setUpToolBar();
-
-//   	   JPanel jp = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
+        val res = javaClass.getResource("${Globals.imagesPath}$figure")
+            ?: throw IllegalStateException("Can't get ${Globals.imagesPath}$figure!")
+        val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
+        gc = ge.defaultScreenDevice.defaultConfiguration
         try {
-            BufferedImage im = ImageIO.read(
-                    Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
-
-            int transparency = im.getColorModel().getTransparency();
-            datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(),
-                    transparency);
-
-            Graphics2D g2d = datapath.createGraphics();  // graphics context
-            g2d.drawImage(im, 0, 0, null);
-            g2d.dispose();
-
-        } catch (IOException e) {
-            System.out.println("Load Image error for " +
-                    getClass().getResource(Globals.imagesPath + "datapath.png") + ":\n" + e);
-            e.printStackTrace();
+            val im = ImageIO.read(res)
+            datapath = gc.createCompatibleImage(im.width, im.height, im.colorModel.transparency)
+            val g2d = datapath.createGraphics()
+            g2d.drawImage(im, 0, 0, null)
+            g2d.dispose()
+        } catch (e: IOException) {
+            println("Image loading error for $res:\n$e")
+            e.printStackTrace()
         }
-        System.setProperty("sun.java2d.translaccel", "true");
-        ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
-        Image im = icon.getImage();
-        icon = new ImageIcon(im);
+        System.setProperty("sun.java2d.translaccel", "true")
+        var icon = ImageIcon(res)
+        val im = icon.image
+        icon = ImageIcon(im)
 
-        JLabel label = new JLabel(icon);
-        painel.add(label, BorderLayout.WEST);
-        painel.add(toolbar, BorderLayout.NORTH);
-        this.setResizable(false);
-        return (JComponent) painel;
+        val label = JLabel(icon)
+        contentPanel.add(label, BorderLayout.WEST)
+        contentPanel.add(toolbar, BorderLayout.NORTH)
+        isResizable = false
+        return contentPanel as JComponent
     }
 
-    protected JComponent buildMainDisplayArea(String figure) {
-        mainUI = Globals.getGui();
-        this.createActionObjects();
-        toolbar = this.setUpToolBar();
+    override fun addAsObserver() {
+        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress)
+    }
 
-//      	   JPanel jp = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
+    override fun processMipsUpdate(resource: Observable, notice: AccessNotice) {
+        if (!notice.accessIsFromMIPS || notice.accessType == AccessNotice.AccessType.READ || notice !is MemoryAccessNotice)
+            return
+        val currentAddress = notice.address
+        if (currentAddress == lastAddress) return
+        lastAddress = currentAddress
         try {
-            BufferedImage im = ImageIO.read(
-                    Objects.requireNonNull(getClass().getResource(Globals.imagesPath + figure)));
+            val statement = Memory.instance.getStatement(currentAddress) ?: return
+            instructionBinary = statement.getMachineStatement()!!
 
-            int transparency = im.getColorModel().getTransparency();
-            datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(),
-                    transparency);
+            contentPanel.removeAll()
 
-            Graphics2D g2d = datapath.createGraphics();  // graphics context
-            g2d.drawImage(im, 0, 0, null);
-            g2d.dispose();
-
-        } catch (IOException e) {
-            System.out.println("Load Image error for " +
-                    getClass().getResource(Globals.imagesPath + figure) + ":\n" + e);
-            e.printStackTrace();
+            val datapathAnimation = DatapathAnimation(instructionBinary)
+            createActionObjects()
+            toolbar = setUpToolbar()
+            contentPanel.add(toolbar, BorderLayout.NORTH)
+            contentPanel.add(datapathAnimation, BorderLayout.WEST)
+            datapathAnimation.startAnimation(instructionBinary)
+        } catch (e: AddressErrorException) {
+            e.printStackTrace()
         }
-        System.setProperty("sun.java2d.translaccel", "true");
-        ImageIcon icon = new ImageIcon(Objects.requireNonNull(getClass().getResource(Globals.imagesPath + figure)));
-        Image im = icon.getImage();
-        icon = new ImageIcon(im);
-
-        JLabel label = new JLabel(icon);
-        painel.add(label, BorderLayout.WEST);
-        painel.add(toolbar, BorderLayout.NORTH);
-        this.setResizable(false);
-        return (JComponent) painel;
     }
 
-    public void addAsObserver() {
-        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
+    override fun updateDisplay() {
+        repaint()
     }
 
-    //Function that gets the current instruction in memory and start animation with the selected instruction.
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+    private fun setUpToolbar(): JToolBar {
+        val toolBar = JToolBar()
+        val assemble = JButton(runAssembleAction)
+        assemble.text = ""
+        val runBackStep = JButton(runBackstepAction)
+        runBackStep.text = ""
+        val step = JButton(runStepAction)
+        step.text = ""
+        toolBar.add(assemble)
+        toolBar.add(step)
+        return toolBar
+    }
 
-        if (!notice.getAccessIsFromMIPS()) return;
-        if (notice.getAccessType() != AccessNotice.AccessType.READ) return;
-        MemoryAccessNotice man = (MemoryAccessNotice) notice;
-        int currentAdress = man.getAddress();
-
-        if (currentAdress == lastAddress) return;
-        lastAddress = currentAdress;
-        ProgramStatement stmt;
-
+    private fun createActionObjects() {
+        val tk = Toolkit.getDefaultToolkit()
+        val cs = javaClass
         try {
-            BasicInstruction instr;
-            stmt = Memory.getInstance().getStatement(currentAdress);
-            if (stmt == null) {
-                return;
+            runAssembleAction = RunAssembleAction(
+                "Assemble",
+                ImageIcon(tk.getImage(cs.getResource("${Globals.imagesPath}Assemble22.png"))),
+                "Assemble the current file and clear breakpoints",
+                KeyEvent.VK_A,
+                KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0),
+                mainUI
+            )
+            runStepAction = RunStepAction(
+                "Step",
+                ImageIcon(tk.getImage(cs.getResource("${Globals.imagesPath}StepForward22.png"))),
+                "Run one step at a time",
+                KeyEvent.VK_T,
+                KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0),
+                mainUI
+            )
+            runBackstepAction = RunBackstepAction(
+                "Backstep",
+                ImageIcon(tk.getImage(cs.getResource("${Globals.imagesPath}StepBack22.png"))),
+                "Undo the last step",
+                KeyEvent.VK_B,
+                KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0),
+                mainUI
+            )
+        } catch (e: Exception) {
+            println("Internal Error: images folder not found, or other null pointer exception while creating Action objects!")
+            e.printStackTrace()
+            exitProcess(1)
+        }
+    }
+
+    class Vertex(
+        var numIndex: Int,
+        var init: Int,
+        var end: Int,
+        var name: String,
+        var oppositeAxis: Int,
+        var isMovingXAxis: Boolean,
+        listOfColors: String,
+        listTargetVertex: String,
+        isText: Boolean
+    ) {
+        var current = 0
+        var direction: Direction = Direction.NONE
+            private set
+        var color: Color
+        var isFirstInteraction = false
+        var isActive = false
+        var isText = isText
+            private set
+        var targetVertex: ArrayList<Int>
+            private set
+
+        enum class Direction(val rawValue: Int) {
+            NONE(0),
+            UP(1),
+            DOWN(2),
+            LEFT(3),
+            RIGHT(4);
+
+            companion object {
+                @JvmStatic
+                fun fromInt(rawValue: Int) = entries.firstOrNull { it.rawValue == rawValue } ?: NONE
             }
-
-            instr = (BasicInstruction) stmt.getInstruction();
-            instructionBinary = stmt.getMachineStatement();
-            BasicInstructionFormat format = instr.getInstructionFormat();
-
-            painel.removeAll();
-            //class panel that runs datapath animation.
-            DatapathAnimation datapathAnimation = new DatapathAnimation(instructionBinary);
-            this.createActionObjects();
-            toolbar = this.setUpToolBar();
-            painel.add(toolbar, BorderLayout.NORTH);
-            painel.add(datapathAnimation, BorderLayout.WEST);
-            datapathAnimation.startAnimation(instructionBinary);
-
-        } catch (AddressErrorException e) {
-            e.printStackTrace();
         }
 
-    }
-
-    public void updateDisplay() {
-        this.repaint();
-    }
-
-    //set the tool bar that controls the step in a time instruction running.
-    private JToolBar setUpToolBar() {
-        JToolBar toolBar = new JToolBar();
-        //Components to add menu bar in the plugin window.
-        JButton assemble = new JButton(runAssembleAction);
-        assemble.setText("");
-        JButton runBackStep = new JButton(runBackstepAction);
-        runBackStep.setText("");
-
-        JButton step = new JButton(runStepAction);
-        step.setText("");
-        toolBar.add(assemble);
-        toolBar.add(step);
-
-        return toolBar;
-    }
-
-    //set action in the menu bar.
-    private void createActionObjects() {
-        Toolkit tk = Toolkit.getDefaultToolkit();
-        Class<? extends MipsXray> cs = this.getClass();
-        try {
-            runAssembleAction = new RunAssembleAction("Assemble",
-                    new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "Assemble22.png"))),
-                    "Assemble the current file and clear breakpoints", KeyEvent.VK_A,
-                    KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0),
-                    mainUI);
-
-            runStepAction = new RunStepAction("Step",
-                    new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "StepForward22.png"))),
-                    "Run one step at a time", KeyEvent.VK_T,
-                    KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0),
-                    mainUI);
-            runBackstepAction = new RunBackstepAction("Backstep",
-                    new ImageIcon(tk.getImage(cs.getResource(Globals.imagesPath + "StepBack22.png"))),
-                    "Undo the last step", KeyEvent.VK_B,
-                    KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0),
-                    mainUI);
-        } catch (Exception e) {
-            System.out.println("Internal Error: images folder not found, or other null pointer exception while creating Action objects");
-            e.printStackTrace();
-            System.exit(0);
-        }
-    }
-
-    static class Vertex {
-        private int numIndex;
-        private int init;
-        private int end;
-        private int current;
-        private String name;
-        public static final int movingUpside = 1;
-        public static final int movingDownside = 2;
-        public static final int movingLeft = 3;
-        public static final int movingRight = 4;
-        public final int direction;
-        public int oppositeAxis;
-        private boolean isMovingXaxis;
-        private Color color;
-        private boolean first_interaction;
-        private boolean active;
-        private final boolean isText;
-        private final ArrayList<Integer> targetVertex;
-
-        public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis,
-                      String listOfColors, String listTargetVertex, boolean isText) {
-            this.numIndex = index;
-            this.init = init;
-            this.current = this.init;
-            this.end = end;
-            this.name = name;
-            this.oppositeAxis = oppositeAxis;
-            this.isMovingXaxis = isMovingXaxis;
-            this.first_interaction = true;
-            this.active = false;
-            this.isText = isText;
-            this.color = new Color(0, 153, 0);
-            if (isMovingXaxis) {
-                if (init < end)
-                    direction = movingLeft;
-                else
-                    direction = movingRight;
-
+        init {
+            current = init
+            isFirstInteraction = true
+            isActive = false
+            color = Color(0, 153, 0)
+            direction = if (isMovingXAxis) {
+                if (init < end) Direction.LEFT
+                else Direction.RIGHT
             } else {
-                if (init < end)
-                    direction = movingUpside;
-                else
-                    direction = movingDownside;
+                if (init < end) Direction.UP
+                else Direction.DOWN
             }
-            String[] list = listTargetVertex.split("#");
-            targetVertex = new ArrayList<>();
-            for (String s : list) {
-                targetVertex.add(Integer.parseInt(s));
-                //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
-            }
-            String[] listColor = listOfColors.split("#");
-            this.color = new Color(Integer.parseInt(listColor[0]), Integer.parseInt(listColor[1]), Integer.parseInt(listColor[2]));
-        }
-
-        public int getDirection() {
-            return direction;
-        }
-
-        public boolean isText() {
-            return this.isText;
-        }
-
-        public ArrayList<Integer> getTargetVertex() {
-            return targetVertex;
-        }
-
-        public int getNumIndex() {
-            return numIndex;
-        }
-
-        public void setNumIndex(int numIndex) {
-            this.numIndex = numIndex;
-        }
-
-        public int getInit() {
-            return init;
-        }
-
-        public void setInit(int init) {
-            this.init = init;
-        }
-
-        public int getEnd() {
-            return end;
-        }
-
-        public void setEnd(int end) {
-            this.end = end;
-        }
-
-        public int getCurrent() {
-            return current;
-        }
-
-        public void setCurrent(int current) {
-            this.current = current;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public int getOppositeAxis() {
-            return oppositeAxis;
-        }
-
-        public void setOppositeAxis(int oppositeAxis) {
-            this.oppositeAxis = oppositeAxis;
-        }
-
-        public boolean isMovingXaxis() {
-            return isMovingXaxis;
-        }
-
-        public void setMovingXaxis(boolean isMovingXaxis) {
-            this.isMovingXaxis = isMovingXaxis;
-        }
-
-        public Color getColor() {
-            return color;
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-
-        public boolean isFirst_interaction() {
-            return first_interaction;
-        }
-
-        public void setFirst_interaction(boolean first_interaction) {
-            this.first_interaction = first_interaction;
-        }
-
-        public boolean isActive() {
-            return active;
-        }
-
-        public void setActive(boolean active) {
-            this.active = active;
+            val list = listTargetVertex.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            targetVertex = ArrayList()
+            for (s in list) targetVertex.add(s.toInt())
+            val listColor = listOfColors.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            color = Color(listColor[0].toInt(), listColor[1].toInt(), listColor[2].toInt())
         }
     }
 
-    //Internal class that set the parameters value, control the basic behavior of the animation , and execute the animation of the
-//selected instruction in memory.
-    class DatapathAnimation extends JPanel
-            implements ActionListener, MouseListener {
-        /**
-         *
-         */
+    inner class DatapathAnimation(instructionBinary: String) : JPanel(), ActionListener, MouseListener {
         @Serial
-        private static final long serialVersionUID = -2681757800180958534L;
+        private val serialVersionUID = -2681757800180958534L
+        private val panelWidth = 1000
+        private val panelHeight = 574
 
-        private static final int PWIDTH = 1000;     // size of this panel
-        private static final int PHEIGHT = 574;
-        private final GraphicsConfiguration gc;
+        private var gc: GraphicsConfiguration
+        private var counter: Int = -1
+        private var justStarted: Boolean = false
+        private var indexX: Int = -1
+        private var indexY: Int = -1
+        private var xIsMoving: Boolean = false
+        private var yIsMoving: Boolean = false
+        private lateinit var outputGraph: Vector<Vector<Vertex>>
+        private var vertexList: ArrayList<Vertex>
+        private lateinit var vertexTraversed: ArrayList<Vertex>
+        private var opcodeEquivalenceTable: HashMap<String, String>
+        private var functionEquivalenceTable: HashMap<String, String>
+        private var registerEquivalenceTable: HashMap<String, String>
+        private var instructionCode: String
 
-        private int counter;            //verify then remove.
-        private boolean justStarted;    //flag to start movement
+        private val green1 = Color(0, 153, 0)
+        private val green2 = Color(0, 77, 0)
+        private val yellow = Color(185, 182, 42)
+        private val orange = Color(255, 102, 0)
+        private val brown = Color(119, 34, 34)
+        private val blue = Color(0, 153, 255)
 
-        private int indexX;    //counter of screen position
-        private int indexY;
-        private boolean xIsMoving, yIsMoving;        //flag for mouse movement.
+        private val alu = FunctionUnitVisualization.FunctionalUnit.ALU
+        private lateinit var currentUnit: FunctionUnitVisualization.FunctionalUnit
+        private lateinit var g2d: Graphics2D
+        private lateinit var datapath: BufferedImage
 
-        //	 private Vertex[][] inputGraph;
-        private Vector<Vector<Vertex>> outputGraph;
-        private final ArrayList<Vertex> vertexList;
-        private ArrayList<Vertex> vertexTraversed;
-        //Screen Label variables
-
-        private final HashMap<String, String> opcodeEquivalenceTable;
-        private final HashMap<String, String> functionEquivalenceTable;
-        private final HashMap<String, String> registerEquivalenceTable;
-
-        private String instructionCode;
-
-        //Colors variables
-        private final Color green1 = new Color(0, 153, 0);
-        private final Color green2 = new Color(0, 77, 0);
-        private final Color yellow2 = new Color(185, 182, 42);
-        private final Color orange1 = new Color(255, 102, 0);
-        private final Color orange = new Color(119, 34, 34);
-        private final Color blue2 = new Color(0, 153, 255);
-
-        private final int alu = 4;
-        private int currentUnit;
-        private Graphics2D g2d;
-
-        private BufferedImage datapath;
-
-        public void mousePressed(MouseEvent e) {
-            PointerInfo a = MouseInfo.getPointerInfo();
-            //	System.out.println("olha, capturado x=" + a.getLocation().getX() + " y = " + a.getLocation().getY());
+        override fun mousePressed(e: MouseEvent) {
+            // Content removed; was a debug statement that was commented out
         }
 
-        public DatapathAnimation(String instructionBinary) {
-            DecimalFormat df = new DecimalFormat("0.0");  // 1 dp
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            // for reporting accl. memory usage
-            GraphicsDevice gd = ge.getDefaultScreenDevice();
-            gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
+        init {
+            val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
+            gc = ge.defaultScreenDevice.defaultConfiguration
 
-            int accelMemory = gd.getAvailableAcceleratedMemory();  // in bytes
-            setBackground(Color.white);
-            setPreferredSize(new Dimension(PWIDTH, PHEIGHT));
+            background = Color.white
+            preferredSize = Dimension(panelWidth, panelHeight)
 
-            // load and initialise the images
-            initImages();
+            initImages()
 
-            vertexList = new ArrayList<>();
-            counter = 0;
-            justStarted = true;
-            instructionCode = instructionBinary;
+            vertexList = arrayListOf()
+            counter = 0
+            justStarted = true
+            instructionCode = instructionBinary
+            opcodeEquivalenceTable = hashMapOf()
+            functionEquivalenceTable = hashMapOf()
+            registerEquivalenceTable = hashMapOf()
 
-            //declaration of labels definition.
-            opcodeEquivalenceTable = new HashMap<>();
-            functionEquivalenceTable = new HashMap<>();
-            registerEquivalenceTable = new HashMap<>();
-
-            int countRegLabel = 400;
-            int countALULabel = 380;
-            int countPCLabel = 380;
-            loadHashMapValues();
-            addMouseListener(this);
-
-        } // end of ImagesTests()
-
-        //set the binnary opcode value of the basic instructions of MIPS instruction set
-        public void loadHashMapValues() {
-            importXmlStringData("/MipsXRayOpcode.xml", opcodeEquivalenceTable, "equivalence", "bits", "mnemonic");
-            importXmlStringData("/MipsXRayOpcode.xml", functionEquivalenceTable, "function_equivalence", "bits", "mnemonic");
-            importXmlStringData("/MipsXRayOpcode.xml", registerEquivalenceTable, "register_equivalence", "bits", "mnemonic");
-            importXmlDatapathMap("/MipsXRayOpcode.xml", "datapath_map");
+            loadHashMapValues()
+            addMouseListener(this)
         }
 
-        //import the list of opcodes of mips set of instructions
-        public void importXmlStringData(String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
-            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            dbf.setNamespaceAware(false);
-            DocumentBuilder docBuilder;
+        fun loadHashMapValues() {
+            importXmlStringData("/MipsXRayOpcode.xml", opcodeEquivalenceTable, "equivalence", "bits", "mnemonic")
+            importXmlStringData(
+                "/MipsXRayOpcode.xml",
+                functionEquivalenceTable,
+                "function_equivalence",
+                "bits",
+                "mnemonic"
+            )
+            importXmlStringData(
+                "/MipsXRayOpcode.xml",
+                registerEquivalenceTable,
+                "register_equivalence",
+                "bits",
+                "mnemonic"
+            )
+            importXmlDatapathMap("/MipsXRayOpcode.xml", "datapath_map")
+        }
+
+        fun importXmlStringData(
+            xmlName: String,
+            table: HashMap<String, String>,
+            elementTree: String,
+            tagId: String,
+            tagData: String
+        ) {
+            val dbf = DocumentBuilderFactory.newInstance()
+            dbf.isNamespaceAware = false
             try {
-                //System.out.println();
-                docBuilder = dbf.newDocumentBuilder();
-                Document doc = docBuilder.parse(Objects.requireNonNull(getClass().getResource(xmlName)).toString());
-                Element root = doc.getDocumentElement();
-                Element equivalenceItem;
-                NodeList bitList, mnemonic;
-                NodeList equivalenceList = root.getElementsByTagName(elementTree);
-                for (int i = 0; i < equivalenceList.getLength(); i++) {
-                    equivalenceItem = (Element) equivalenceList.item(i);
-                    bitList = equivalenceItem.getElementsByTagName(tagId);
-                    mnemonic = equivalenceItem.getElementsByTagName(tagData);
-                    for (int j = 0; j < bitList.getLength(); j++) {
-                        table.put(bitList.item(j).getTextContent(), mnemonic.item(j).getTextContent());
-                    }
+                val docBuilder = dbf.newDocumentBuilder()
+                val doc = docBuilder.parse(javaClass.getResource(xmlName)!!.toString())
+                val root = doc.documentElement
+                var equivalenceItem: Element
+                var bitList: NodeList
+                var mnemonic: NodeList
+                val equivalenceList = root.getElementsByTagName(elementTree)
+                for (i in 0..<equivalenceList.length) {
+                    equivalenceItem = equivalenceList.item(i) as Element
+                    bitList = equivalenceItem.getElementsByTagName(tagId)
+                    mnemonic = equivalenceItem.getElementsByTagName(tagData)
+                    for (j in 0..<bitList.length)
+                        table[bitList.item(j).textContent] = mnemonic.item(j).textContent
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
-        //import the parameters of the animation on datapath
-        public void importXmlDatapathMap(String xmlName, String elementTree) {
-            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            dbf.setNamespaceAware(false);
-            DocumentBuilder docBuilder;
+        fun importXmlDatapathMap(xmlName: String, elementTree: String) {
+            val dbf = DocumentBuilderFactory.newInstance()
+            dbf.isNamespaceAware = false
             try {
-                docBuilder = dbf.newDocumentBuilder();
-                Document doc = docBuilder.parse(Objects.requireNonNull(getClass().getResource(xmlName)).toString());
-                Element root = doc.getDocumentElement();
-                Element datapath_mapItem;
-                NodeList index_vertex, name, init, end, color, other_axis, isMovingXaxis, targetVertex, sourceVertex, isText;
-                NodeList datapath_mapList = root.getElementsByTagName(elementTree);
-                for (int i = 0; i < datapath_mapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
-                    datapath_mapItem = (Element) datapath_mapList.item(i);
-                    index_vertex = datapath_mapItem.getElementsByTagName("num_vertex");
-                    name = datapath_mapItem.getElementsByTagName("name");
-                    init = datapath_mapItem.getElementsByTagName("init");
-                    end = datapath_mapItem.getElementsByTagName("end");
-                    //definition of colors line
-                    if (instructionCode.startsWith("000000")) {//R-type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_Rtype");
-                        //System.out.println("rtype");
-                    } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_Jtype");
-                        //System.out.println("jtype");
-                    } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) { //LOAD type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_LOADtype");
-                        //System.out.println("load type");
-                    } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) { //LOAD type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_STOREtype");
-                        //System.out.println("store type");
-                    } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_BRANCHtype");
-                        //System.out.println("branch type");
-                    } else { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("color_Itype");
-                        //System.out.println("immediate type");
+                val docBuilder = dbf.newDocumentBuilder()
+                val doc = docBuilder.parse(javaClass.getResource(xmlName)!!.toString())
+                val root = doc.documentElement
+                var datapathMapItem: Element
+                var indexVertex: NodeList
+                var name: NodeList
+                var init: NodeList
+                var end: NodeList
+                var color: NodeList
+                var otherAxis: NodeList
+                var isMovingXAxis: NodeList
+                var targetVertex: NodeList
+                var isText: NodeList
+                val datapathMapList = root.getElementsByTagName(elementTree)
+                for (i in 0..<datapathMapList.length) {
+                    datapathMapItem = datapathMapList.item(i) as Element
+                    indexVertex = datapathMapItem.getElementsByTagName("num_vertex")
+                    name = datapathMapItem.getElementsByTagName("name")
+                    init = datapathMapItem.getElementsByTagName("init")
+                    end = datapathMapItem.getElementsByTagName("end")
+                    color = if (instructionCode.startsWith("000000")) {
+                        datapathMapItem.getElementsByTagName("color_Rtype")
+                    } else if (instructionCode.substring(0, 6).matches("00001[0-1]".toRegex())) {
+                        datapathMapItem.getElementsByTagName("color_Jtype")
+                    } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]".toRegex())) {
+                        datapathMapItem.getElementsByTagName("color_LOADtype")
+                    } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]".toRegex())) {
+                        datapathMapItem.getElementsByTagName("color_STOREtype")
+                    } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex())) {
+                        datapathMapItem.getElementsByTagName("color_BRANCHtype")
+                    } else {
+                        datapathMapItem.getElementsByTagName("color_Itype")
                     }
-
-                    other_axis = datapath_mapItem.getElementsByTagName("other_axis");
-                    isMovingXaxis = datapath_mapItem.getElementsByTagName("isMovingXaxis");
-                    targetVertex = datapath_mapItem.getElementsByTagName("target_vertex");
-                    isText = datapath_mapItem.getElementsByTagName("is_text");
-
-                    for (int j = 0; j < index_vertex.getLength(); j++) {
-                        Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()),
-                                Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()),
-                                Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
-                        vertexList.add(vert);
+                    otherAxis = datapathMapItem.getElementsByTagName("otherAxis")
+                    isMovingXAxis = datapathMapItem.getElementsByTagName("isMovingXaxis")
+                    targetVertex = datapathMapItem.getElementsByTagName("target_vertex")
+                    isText = datapathMapItem.getElementsByTagName("is_text")
+                    for (j in 0..<indexVertex.length) {
+                        vertexList.add(
+                            Vertex(
+                                indexVertex.item(j).textContent.toInt(),
+                                init.item(j).textContent.toInt(),
+                                end.item(j).textContent.toInt(),
+                                name.item(j).textContent,
+                                otherAxis.item(j).textContent.toInt(),
+                                isMovingXAxis.item(j).textContent.toBoolean(),
+                                color.item(j).textContent,
+                                targetVertex.item(j).textContent,
+                                isText.item(j).textContent.toBoolean()
+                            )
+                        )
                     }
                 }
-                //loading matrix of control of vertex.
-                outputGraph = new Vector<>();
-                vertexTraversed = new ArrayList<>();
-                int size = vertexList.size();
-                Vertex vertex;
-                ArrayList<Integer> targetList;
-                for (Vertex value : vertexList) {
-                    vertex = value;
-                    targetList = vertex.getTargetVertex();
-                    Vector<Vertex> vertexOfTargets = new Vector<>();
-                    for (Integer integer : targetList) {
-                        vertexOfTargets.add(vertexList.get(integer));
-                    }
-                    outputGraph.add(vertexOfTargets);
+                outputGraph = vectorOf()
+                vertexTraversed = arrayListOf()
+                var vertex: Vertex
+                var targetList: ArrayList<Int>
+                for (value in vertexList) {
+                    vertex = value
+                    targetList = vertex.targetVertex
+                    val vertexOfTargets = vectorOf<Vertex>()
+                    for (integer in targetList) vertexOfTargets.add(vertexList[integer])
+                    outputGraph.add(vertexOfTargets)
                 }
-                for (Vector<Vertex> vert : outputGraph) {
-                }
-
-                vertexList.get(0).setActive(true);
-                vertexTraversed.add(vertexList.get(0));
-            } catch (Exception e) {
-                e.printStackTrace();
+                vertexList[0].isActive = true
+                vertexTraversed.add(vertexList[0])
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
         }
 
-        //Set up the information showed in the screen of the current instruction.
-        public void setUpInstructionInfo(Graphics2D g2d) {
+        fun setUpInstructionInfo(g2d: Graphics2D) {
+            val frc = g2d.fontRenderContext
+            val font = Font("Digital-7", Font.PLAIN, 15)
+            val fontTitle = Font("Verdana", Font.PLAIN, 10)
+            var textVariable: TextLayout
 
-            FontRenderContext frc = g2d.getFontRenderContext();
-            Font font = new Font("Digital-7", Font.PLAIN, 15);
-            Font fontTitle = new Font("Verdana", Font.PLAIN, 10);
-
-            TextLayout textVariable;
             if (instructionCode.startsWith("000000")) {  //R-type instructions description on screen definition.
-                textVariable = new TextLayout("REGISTER TYPE INSTRUCTION", new Font("Arial", Font.BOLD, 25), frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 280, 30);
-                //opcode label
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
+                textVariable = TextLayout("REGISTER TYPE INSTRUCTION", Font("Arial", Font.BOLD, 25), frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 280f, 30f)
+                // opcode label
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
 
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
 
-                //rs label
-                textVariable = new TextLayout("rs", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 90, 530);
+                // rs label
+                textVariable = TextLayout("rs", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 90f, 530f)
 
-                //initialize of rs
-                textVariable = new TextLayout(instructionCode.substring(6, 11), font, frc);
-                g2d.setColor(Color.green);
-                textVariable.draw(g2d, 90, 550);
+                // initialize of rs
+                textVariable = TextLayout(instructionCode.substring(6, 11), font, frc)
+                g2d.color = Color.green
+                textVariable.draw(g2d, 90f, 550f)
 
-                //rt label
-                textVariable = new TextLayout("rt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 150, 530);
+                // rt label
+                textVariable = TextLayout("rt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 150f, 530f)
 
-                //initialize of rt
-                textVariable = new TextLayout(instructionCode.substring(11, 16), font, frc);
-                g2d.setColor(Color.blue);
-                textVariable.draw(g2d, 150, 550);
+                // initialize of rt
+                textVariable = TextLayout(instructionCode.substring(11, 16), font, frc)
+                g2d.color = Color.blue
+                textVariable.draw(g2d, 150f, 550f)
 
                 // rd label
-                textVariable = new TextLayout("rd", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 210, 530);
+                textVariable = TextLayout("rd", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 210f, 530f)
 
-                //initialize of rd
-                textVariable = new TextLayout(instructionCode.substring(16, 21), font, frc);
-                g2d.setColor(Color.cyan);
-                textVariable.draw(g2d, 210, 550);
+                // initialize of rd
+                textVariable = TextLayout(instructionCode.substring(16, 21), font, frc)
+                g2d.color = Color.cyan
+                textVariable.draw(g2d, 210f, 550f)
 
-                //shamt label
-                textVariable = new TextLayout("shamt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 270, 530);
+                // shamt label
+                textVariable = TextLayout("shamt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 270f, 530f)
 
-                //initialize of shamt
-                textVariable = new TextLayout(instructionCode.substring(21, 26), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 270, 550);
+                // initialize of shamt
+                textVariable = TextLayout(instructionCode.substring(21, 26), font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 270f, 550f)
 
-                //function label
-                textVariable = new TextLayout("function", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 330, 530);
+                // function label
+                textVariable = TextLayout("function", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 330f, 530f)
 
-                //initialize of function
-                textVariable = new TextLayout(instructionCode.substring(26, 32), font, frc);
-                g2d.setColor(orange1);
-                textVariable.draw(g2d, 330, 550);
+                // initialize of function
+                textVariable = TextLayout(instructionCode.substring(26, 32), font, frc)
+                g2d.color = orange
+                textVariable.draw(g2d, 330f, 550f)
 
-                //instruction mnemonic
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
+                // instruction mnemonic
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
 
-                //instruction name
-                textVariable = new TextLayout(functionEquivalenceTable.get(instructionCode.substring(26, 32)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 25, 500);
+                // instruction name
+                textVariable = TextLayout(functionEquivalenceTable[instructionCode.substring(26, 32)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 25f, 500f)
 
-                //register in RS
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(6, 11)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 65, 500);
+                // register in RS
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(6, 11)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 65f, 500f)
 
-                //register in RT
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(16, 21)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 105, 500);
+                // register in RT
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(16, 21)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 105f, 500f)
 
-                //register in RD
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(11, 16)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 145, 500);
-            } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //jump intructions
-                textVariable = new TextLayout("JUMP TYPE INSTRUCTION", new Font("Verdana", Font.BOLD, 25), frc); //description of instruction code type for jump.
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 280, 30);
+                // register in RD
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(11, 16)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 145f, 500f)
+            } else if (instructionCode.substring(0, 6).matches("00001[0-1]".toRegex())) { // jump instructions
+                textVariable = TextLayout(
+                    "JUMP TYPE INSTRUCTION",
+                    Font("Verdana", Font.BOLD, 25),
+                    frc
+                ) // description of the instruction code type for jump.
+                g2d.color = Color.black
+                textVariable.draw(g2d, 280f, 30f)
 
                 // label opcode
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
 
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
 
-                //label address
-                textVariable = new TextLayout("address", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 95, 530);
+                // label address
+                textVariable = TextLayout("address", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 95f, 530f)
 
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
 
-                //initialize of adress
-                textVariable = new TextLayout(instructionCode.substring(6, 32), font, frc);
-                g2d.setColor(Color.orange);
-                textVariable.draw(g2d, 95, 550);
+                // initialize of address
+                textVariable = TextLayout(instructionCode.substring(6, 32), font, frc)
+                g2d.color = Color.orange
+                textVariable.draw(g2d, 95f, 550f)
 
-                //instruction mnemonic
-                textVariable = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), font, frc);
-                g2d.setColor(Color.cyan);
-                textVariable.draw(g2d, 65, 500);
+                // instruction mnemonic
+                textVariable = TextLayout(opcodeEquivalenceTable[instructionCode.substring(0, 6)], font, frc)
+                g2d.color = Color.cyan
+                textVariable.draw(g2d, 65f, 500f)
 
-                //instruction immediate
-                textVariable = new TextLayout("LABEL", font, frc);
-                g2d.setColor(Color.cyan);
-                textVariable.draw(g2d, 105, 500);
-            } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) {//load instruction
-                textVariable = new TextLayout("LOAD TYPE INSTRUCTION", new Font("Verdana", Font.BOLD, 25), frc); //description of instruction code type for load.
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 280, 30);
-                //opcode label
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
+                // instruction immediate
+                textVariable = TextLayout("LABEL", font, frc)
+                g2d.color = Color.cyan
+                textVariable.draw(g2d, 105f, 500f)
+            } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]".toRegex())) { //load instruction
+                textVariable = TextLayout(
+                    "LOAD TYPE INSTRUCTION",
+                    Font("Verdana", Font.BOLD, 25),
+                    frc
+                ) // description of the instruction code type for load.
+                g2d.color = Color.black
+                textVariable.draw(g2d, 280f, 30f)
+                // opcode label
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
 
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
 
-                //rs label
-                textVariable = new TextLayout("rs", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 90, 530);
+                // rs label
+                textVariable = TextLayout("rs", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 90f, 530f)
 
-                //initialize of rs
-                textVariable = new TextLayout(instructionCode.substring(6, 11), font, frc);
-                g2d.setColor(Color.green);
-                textVariable.draw(g2d, 90, 550);
+                // initialize of rs
+                textVariable = TextLayout(instructionCode.substring(6, 11), font, frc)
+                g2d.color = Color.green
+                textVariable.draw(g2d, 90f, 550f)
 
-                //rt label
-                textVariable = new TextLayout("rt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 145, 530);
+                // rt label
+                textVariable = TextLayout("rt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 145f, 530f)
 
-                //initialize of rt
-                textVariable = new TextLayout(instructionCode.substring(11, 16), font, frc);
-                g2d.setColor(Color.blue);
-                textVariable.draw(g2d, 145, 550);
+                // initialize of rt
+                textVariable = TextLayout(instructionCode.substring(11, 16), font, frc)
+                g2d.color = Color.blue
+                textVariable.draw(g2d, 145f, 550f)
 
                 // rd label
-                textVariable = new TextLayout("Immediate", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 200, 530);
+                textVariable = TextLayout("Immediate", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 200f, 530f)
 
-                //initialize of rd
-                textVariable = new TextLayout(instructionCode.substring(16, 32), font, frc);
-                g2d.setColor(orange1);
-                textVariable.draw(g2d, 200, 550);
+                // initialize of rd
+                textVariable = TextLayout(instructionCode.substring(16, 32), font, frc)
+                g2d.color = orange
+                textVariable.draw(g2d, 200f, 550f)
 
-                //instruction mnemonic
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
+                // instruction mnemonic
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
 
-                textVariable = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 25, 500);
+                textVariable = TextLayout(opcodeEquivalenceTable[instructionCode.substring(0, 6)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 25f, 500f)
 
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(6, 11)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 65, 500);
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(6, 11)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 65f, 500f)
 
-                textVariable = new TextLayout("M[ " + registerEquivalenceTable.get(instructionCode.substring(16, 21)) + " + " + parseBinToInt(instructionCode.substring(6, 32)) + " ]", font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 105, 500);
+                textVariable = TextLayout(
+                    buildString {
+                        append("M[ ")
+                        append(registerEquivalenceTable[instructionCode.substring(16, 21)])
+                        append(" + ")
+                        append(parseBinToInt(instructionCode.substring(6, 32)))
+                        append(" ]")
+                    }, font, frc
+                )
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 105f, 500f)
 
                 //implement co-processors instruction
-            } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) {//store instruction
-                textVariable = new TextLayout("STORE TYPE INSTRUCTION", new Font("Verdana", Font.BOLD, 25), frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 280, 30);
-                //opcode label
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
+            } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]".toRegex())) { //store instruction
+                textVariable = TextLayout("STORE TYPE INSTRUCTION", Font("Verdana", Font.BOLD, 25), frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 280f, 30f)
+                // opcode label
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
 
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
 
-                //rs label
-                textVariable = new TextLayout("rs", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 90, 530);
+                // rs label
+                textVariable = TextLayout("rs", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 90f, 530f)
 
-                //initialize of rs
-                textVariable = new TextLayout(instructionCode.substring(6, 11), font, frc);
-                g2d.setColor(Color.green);
-                textVariable.draw(g2d, 90, 550);
+                // initialize of rs
+                textVariable = TextLayout(instructionCode.substring(6, 11), font, frc)
+                g2d.color = Color.green
+                textVariable.draw(g2d, 90f, 550f)
 
-                //rt label
-                textVariable = new TextLayout("rt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 145, 530);
+                // rt label
+                textVariable = TextLayout("rt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 145f, 530f)
 
-                //initialize of rt
-                textVariable = new TextLayout(instructionCode.substring(11, 16), font, frc);
-                g2d.setColor(Color.blue);
-                textVariable.draw(g2d, 145, 550);
-
-                // rd label
-                textVariable = new TextLayout("Immediate", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 200, 530);
-
-                //initialize of rd
-                textVariable = new TextLayout(instructionCode.substring(16, 32), font, frc);
-                g2d.setColor(orange1);
-                textVariable.draw(g2d, 200, 550);
-
-                //instruction mnemonic
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
-
-                textVariable = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 25, 500);
-
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(6, 11)), font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 65, 500);
-
-                textVariable = new TextLayout("M[ " + registerEquivalenceTable.get(instructionCode.substring(16, 21)) + " + " + parseBinToInt(instructionCode.substring(6, 32)) + " ]", font, frc);
-                g2d.setColor(Color.BLACK);
-                textVariable.draw(g2d, 105, 500);
-
-            } else if (instructionCode.substring(0, 6).matches("0100[0-1][0-1]")) {
-                //implement co-processors instruction
-            } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //branch instruction
-                textVariable = new TextLayout("BRANCH TYPE INSTRUCTION", new Font("Verdana", Font.BOLD, 25), frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 250, 30);
-
-                //label opcode
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 440);
-
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
-
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
-
-                //rs label
-                textVariable = new TextLayout("rs", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 90, 530);
-
-                //initialize of rs
-                textVariable = new TextLayout(instructionCode.substring(6, 11), font, frc);
-                g2d.setColor(Color.green);
-                textVariable.draw(g2d, 90, 550);
-
-                //rt label
-                textVariable = new TextLayout("rt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 145, 530);
-
-                //initialize of rt
-                textVariable = new TextLayout(instructionCode.substring(11, 16), font, frc);
-                g2d.setColor(Color.blue);
-                textVariable.draw(g2d, 145, 550);
+                // initialize of rt
+                textVariable = TextLayout(instructionCode.substring(11, 16), font, frc)
+                g2d.color = Color.blue
+                textVariable.draw(g2d, 145f, 550f)
 
                 // rd label
-                textVariable = new TextLayout("Immediate", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 200, 530);
+                textVariable = TextLayout("Immediate", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 200f, 530f)
 
+                // initialize of rd
+                textVariable = TextLayout(instructionCode.substring(16, 32), font, frc)
+                g2d.color = orange
+                textVariable.draw(g2d, 200f, 550f)
 
-                //initialize of immediate
-                textVariable = new TextLayout(instructionCode.substring(16, 32), font, frc);
-                g2d.setColor(Color.cyan);
-                textVariable.draw(g2d, 200, 550);
+                // instruction mnemonic
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
 
-                //instruction mnemonic
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
+                textVariable = TextLayout(opcodeEquivalenceTable[instructionCode.substring(0, 6)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 25f, 500f)
 
-                textVariable = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 25, 500);
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(6, 11)], font, frc)
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 65f, 500f)
 
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(6, 11)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 105, 500);
+                textVariable = TextLayout(
+                    buildString {
+                        append("M[ ")
+                        append(registerEquivalenceTable[instructionCode.substring(16, 21)])
+                        append(" + ")
+                        append(parseBinToInt(instructionCode.substring(6, 32)))
+                        append(" ]")
+                    }, font, frc
+                )
+                g2d.color = Color.BLACK
+                textVariable.draw(g2d, 105f, 500f)
+            } else if (instructionCode.substring(0, 6).matches("0100[0-1][0-1]".toRegex())) {
+                // TODO: implement co-processors instruction
+            } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex())) { // branch instructions
+                textVariable = TextLayout("BRANCH TYPE INSTRUCTION", Font("Verdana", Font.BOLD, 25), frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 250f, 30f)
 
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(11, 16)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 65, 500);
+                // label opcode
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 440f)
 
-                textVariable = new TextLayout(parseBinToInt(instructionCode.substring(16, 32)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 155, 500);
-            } else { //imediate instructions
-                textVariable = new TextLayout("IMMEDIATE TYPE INSTRUCTION", new Font("Verdana", Font.BOLD, 25), frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 250, 30);
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
 
-                //label opcode
-                textVariable = new TextLayout("opcode", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 530);
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
 
-                //initialize of opcode
-                textVariable = new TextLayout(instructionCode.substring(0, 6), font, frc);
-                g2d.setColor(Color.magenta);
-                textVariable.draw(g2d, 25, 550);
+                // rs label
+                textVariable = TextLayout("rs", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 90f, 530f)
 
-                //rs label
-                textVariable = new TextLayout("rs", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 90, 530);
+                // initialize of rs
+                textVariable = TextLayout(instructionCode.substring(6, 11), font, frc)
+                g2d.color = Color.green
+                textVariable.draw(g2d, 90f, 550f)
 
-                //initialize of rs
-                textVariable = new TextLayout(instructionCode.substring(6, 11), font, frc);
-                g2d.setColor(Color.green);
-                textVariable.draw(g2d, 90, 550);
+                // rt label
+                textVariable = TextLayout("rt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 145f, 530f)
 
-                //rt label
-                textVariable = new TextLayout("rt", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 145, 530);
-
-                //initialize of rt
-                textVariable = new TextLayout(instructionCode.substring(11, 16), font, frc);
-                g2d.setColor(Color.blue);
-                textVariable.draw(g2d, 145, 550);
+                // initialize of rt
+                textVariable = TextLayout(instructionCode.substring(11, 16), font, frc)
+                g2d.color = Color.blue
+                textVariable.draw(g2d, 145f, 550f)
 
                 // rd label
-                textVariable = new TextLayout("Immediate", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 200, 530);
+                textVariable = TextLayout("Immediate", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 200f, 530f)
 
-                //initialize of immediate
-                textVariable = new TextLayout(instructionCode.substring(16, 32), font, frc);
-                g2d.setColor(Color.cyan);
-                textVariable.draw(g2d, 200, 550);
+                // initialize of immediate
+                textVariable = TextLayout(instructionCode.substring(16, 32), font, frc)
+                g2d.color = Color.cyan
+                textVariable.draw(g2d, 200f, 550f)
 
-                //instruction mnemonic
-                textVariable = new TextLayout("Instruction", fontTitle, frc);
-                g2d.setColor(Color.red);
-                textVariable.draw(g2d, 25, 480);
-                textVariable = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 25, 500);
+                // instruction mnemonic
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
 
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(6, 11)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 105, 500);
+                textVariable = TextLayout(opcodeEquivalenceTable[instructionCode.substring(0, 6)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 25f, 500f)
 
-                textVariable = new TextLayout(registerEquivalenceTable.get(instructionCode.substring(11, 16)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 65, 500);
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(6, 11)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 105f, 500f)
 
-                textVariable = new TextLayout(parseBinToInt(instructionCode.substring(16, 32)), font, frc);
-                g2d.setColor(Color.black);
-                textVariable.draw(g2d, 155, 500);
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(11, 16)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 65f, 500f)
+
+                textVariable = TextLayout(parseBinToInt(instructionCode.substring(16, 32)), font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 155f, 500f)
+            } else { // immediate instructions
+                textVariable = TextLayout("IMMEDIATE TYPE INSTRUCTION", Font("Verdana", Font.BOLD, 25), frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 250f, 30f)
+
+                // label opcode
+                textVariable = TextLayout("opcode", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 530f)
+
+                // initialize of opcode
+                textVariable = TextLayout(instructionCode.substring(0, 6), font, frc)
+                g2d.color = Color.magenta
+                textVariable.draw(g2d, 25f, 550f)
+
+                // rs label
+                textVariable = TextLayout("rs", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 90f, 530f)
+
+                // initialize of rs
+                textVariable = TextLayout(instructionCode.substring(6, 11), font, frc)
+                g2d.color = Color.green
+                textVariable.draw(g2d, 90f, 550f)
+
+                // rt label
+                textVariable = TextLayout("rt", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 145f, 530f)
+
+                // initialize of rt
+                textVariable = TextLayout(instructionCode.substring(11, 16), font, frc)
+                g2d.color = Color.blue
+                textVariable.draw(g2d, 145f, 550f)
+
+                // rd label
+                textVariable = TextLayout("Immediate", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 200f, 530f)
+
+                // initialize of immediate
+                textVariable = TextLayout(instructionCode.substring(16, 32), font, frc)
+                g2d.color = Color.cyan
+                textVariable.draw(g2d, 200f, 550f)
+
+                // instruction mnemonic
+                textVariable = TextLayout("Instruction", fontTitle, frc)
+                g2d.color = Color.red
+                textVariable.draw(g2d, 25f, 480f)
+                textVariable = TextLayout(opcodeEquivalenceTable[instructionCode.substring(0, 6)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 25f, 500f)
+
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(6, 11)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 105f, 500f)
+
+                textVariable = TextLayout(registerEquivalenceTable[instructionCode.substring(11, 16)], font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 65f, 500f)
+
+                textVariable = TextLayout(parseBinToInt(instructionCode.substring(16, 32)), font, frc)
+                g2d.color = Color.black
+                textVariable.draw(g2d, 155f, 500f)
             }
 
-            //Type of control signal labels
-            textVariable = new TextLayout("Control Signals", fontTitle, frc);
-            g2d.setColor(Color.red);
-            textVariable.draw(g2d, 25, 440);
+            // Type of control signal labels
+            textVariable = TextLayout("Control Signals", fontTitle, frc)
+            g2d.color = Color.red
+            textVariable.draw(g2d, 25f, 440f)
 
-            textVariable = new TextLayout("Active", font, frc);
-            g2d.setColor(Color.red);
-            textVariable.draw(g2d, 25, 455);
+            textVariable = TextLayout("Active", font, frc)
+            g2d.color = Color.red
+            textVariable.draw(g2d, 25f, 455f)
 
-            textVariable = new TextLayout("Inactive", font, frc);
-            g2d.setColor(Color.gray);
-            textVariable.draw(g2d, 75, 455);
+            textVariable = TextLayout("Inactive", font, frc)
+            g2d.color = Color.gray
+            textVariable.draw(g2d, 75f, 455f)
 
-            textVariable = new TextLayout("To see details of control units and register bank click inside the functional block", font, frc);
-            g2d.setColor(Color.black);
-            textVariable.draw(g2d, 400, 550);
-        }
-        //end of instruction subtitle...
-
-
-        //set the initial state of the variables that controls the animation, and start the timer that triggers the animation.
-        public void startAnimation(String codeInstruction) {
-            instructionCode = codeInstruction;
-            //config variables
-            // velocity of frames in ms
-            int PERIOD = 5;
-            Timer time = new Timer(PERIOD, this);    // start timer
-            time.start();
-            // 	this.repaint();
+            textVariable = TextLayout(
+                "To see details of control units and register bank click inside the functional block",
+                font,
+                frc
+            )
+            g2d.color = Color.black
+            textVariable.draw(g2d, 400f, 550f)
         }
 
-        //initialize the image of datapath.
-        private void initImages() {
+        fun startAnimation(codeInstruction: String) {
+            instructionCode = codeInstruction
+            val time = Timer(5, this)
+            time.start()
+        }
+
+        private fun initImages() {
+            val res = javaClass.getResource("${Globals.imagesPath}datapath.png")
             try {
-                BufferedImage im = ImageIO.read(
-                        Objects.requireNonNull(getClass().getResource(Globals.imagesPath + "datapath.png")));
-
-                int transparency = im.getColorModel().getTransparency();
-                datapath = gc.createCompatibleImage(
-                        im.getWidth(), im.getHeight(),
-                        transparency);
-                g2d = datapath.createGraphics();
-                g2d.drawImage(im, 0, 0, null);
-                g2d.dispose();
-            } catch (IOException e) {
-                System.out.println("Load Image error for " +
-                        getClass().getResource(Globals.imagesPath + "datapath.png") + ":\n" + e);
+                val im = ImageIO.read(res)
+                val transparency = im.colorModel.transparency
+                datapath = gc.createCompatibleImage(im.width, im.height, transparency)
+                g2d = datapath.createGraphics()
+                g2d.drawImage(im, 0, 0, null)
+                g2d.dispose()
+            } catch (e: IOException) {
+                println("Failed to load image $res:\n$e")
             }
         }
 
-
-        public void actionPerformed(ActionEvent e)
-        // triggered by the timer: update, repaint
-        {
-            if (justStarted)
-                justStarted = false;
-            if (xIsMoving)
-                indexX++;
-            if (yIsMoving)
-                indexY--;
-            repaint();
+        override fun actionPerformed(e: ActionEvent) {
+            if (justStarted) justStarted = false
+            if (xIsMoving) indexX++
+            if (yIsMoving) indexY--
+            repaint()
         }
 
-
-        public void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            g2d = (Graphics2D) g;
-            // use antialiasing
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-            // smoother (and slower) image transformations  (e.g. for resizing)
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2d = (Graphics2D) g;
-            drawImage(g2d, datapath, 0, 0, null);
-            executeAnimation(g);
-            counter = (counter + 1) % 100;
-            g2d.dispose();
-
+        override fun paintComponent(g: Graphics) {
+            super.paintComponent(g)
+            g2d = g as Graphics2D
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            // FIXME: Is this reassignment necessary?
+            g2d = g
+            drawImage(g2d, datapath, 0, 0, null)
+            executeAnimation(g)
+            counter = (counter + 1) % 100
+            g2d.dispose()
         }
 
-        private void drawImage(Graphics2D g2d, BufferedImage im, int x, int y, Color c) {
-            if (im == null) {
-                g2d.setColor(c);
-                g2d.fillOval(x, y, 20, 20);
-                g2d.setColor(Color.black);
-                g2d.drawString("   ", x, y);
-            } else
-                g2d.drawImage(im, x, y, this);
+        private fun drawImage(g2d: Graphics2D, im: BufferedImage?, x: Int, y: Int, c: Color?) {
+            im?.let { g2d.drawImage(im, x, y, this) } ?: run {
+                g2d.color = c
+                g2d.fillOval(x, y, 20, 20)
+                g2d.color = Color.black
+                g2d.drawString("   ", x, y)
+            }
         }
 
-        //draw lines.
-        //method to draw the lines that run from left to right.
-        public void printTrackLtoR(Vertex v) {
-            int size;
-            int[] track;
-            size = v.getEnd() - v.getInit();
-            track = new int[size];
-            for (int i = 0; i < size; i++)
-                track[i] = v.getInit() + i;
-            if (v.isActive()) {
-                v.setFirst_interaction(false);
-                for (int i = 0; i < size; i++) {
-                    if (track[i] <= v.getCurrent()) {
-                        g2d.setColor(v.getColor());
-                        g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+        fun printTrackLtoR(v: Vertex) {
+            val size = v.end - v.init
+            val track = IntArray(size) { v.init + it }
+            if (v.isActive) {
+                v.isFirstInteraction = false
+                for (i in 0..<size) {
+                    if (track[i] <= v.current) {
+                        g2d.color = v.color
+                        g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                     }
                 }
-                if (v.getCurrent() == track[size - 1])
-                    v.setActive(false);
-                v.setCurrent(v.getCurrent() + 1);
-            } else if (!v.isFirst_interaction()) {
-                for (int i = 0; i < size; i++) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+                if (v.current == track[size - 1]) v.isActive = false
+                v.current++
+            } else if (!v.isFirstInteraction) {
+                for (i in 0..<size) {
+                    g2d.color = v.color
+                    g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                 }
             }
-
         }
 
-        //method to draw the lines that run from right to left.
-        //public boolean printTrackRtoL(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
-        //		 boolean active, boolean firstInteraction){
-        public void printTrackRtoL(Vertex v) {
-            int size;
-            int[] track;
-            size = v.getInit() - v.getEnd();
-            track = new int[size];
-
-            for (int i = 0; i < size; i++)
-                track[i] = v.getInit() - i;
-
-            if (v.isActive()) {
-                v.setFirst_interaction(false);
-                for (int i = 0; i < size; i++) {
-                    if (track[i] >= v.getCurrent()) {
-                        g2d.setColor(v.getColor());
-                        g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+        fun printTrackRtoL(v: Vertex) {
+            val size = v.init - v.end
+            val track = IntArray(size) { v.init - it }
+            if (v.isActive) {
+                v.isFirstInteraction = false
+                for (i in 0..<size) {
+                    if (track[i] >= v.current) {
+                        g2d.color = v.color
+                        g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                     }
                 }
-                if (v.getCurrent() == track[size - 1])
-                    v.setActive(false);
-
-                v.setCurrent(v.getCurrent() - 1);
-            } else if (!v.isFirst_interaction()) {
-                for (int i = 0; i < size; i++) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+                if (v.current == track[size - 1]) v.isActive = false
+                v.current--
+            } else if (!v.isFirstInteraction) {
+                for (i in 0..<size) {
+                    g2d.color = v.color
+                    g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                 }
             }
         }
 
-        //method to draw the lines that run from down to top.
-        // public boolean printTrackDtoU(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
-        //		 boolean active, boolean firstInteraction){
-        public void printTrackDtoU(Vertex v) {
-            int size;
-            int[] track;
-
-            if (v.getInit() > v.getEnd()) {
-                size = v.getInit() - v.getEnd();
-                track = new int[size];
-                for (int i = 0; i < size; i++)
-                    track[i] = v.getInit() - i;
+        fun printTrackDtoU(v: Vertex) {
+            val size: Int
+            val track: IntArray
+            if (v.init > v.end) {
+                size = v.init - v.end
+                track = IntArray(size) { v.init - it }
             } else {
-                size = v.getEnd() - v.getInit();
-                track = new int[size];
-                for (int i = 0; i < size; i++)
-                    track[i] = v.getInit() + i;
+                size = v.end - v.init
+                track = IntArray(size) { v.init + it }
             }
-
-            if (v.isActive()) {
-                v.setFirst_interaction(false);
-                for (int i = 0; i < size; i++) {
-                    if (track[i] >= v.getCurrent()) {
-                        g2d.setColor(v.getColor());
-                        g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+            if (v.isActive) {
+                v.isFirstInteraction = false
+                for (i in 0..<size) {
+                    if (track[i] >= v.current) {
+                        g2d.color = v.color
+                        g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
                     }
                 }
-                if (v.getCurrent() == track[size - 1])
-                    v.setActive(false);
-                v.setCurrent(v.getCurrent() - 1);
-
-            } else if (!v.isFirst_interaction()) {
-                for (int i = 0; i < size; i++) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+                if (v.current == track[size - 1]) v.isActive = false
+                v.current--
+            } else if (!v.isFirstInteraction) {
+                for (i in 0..<size) {
+                    g2d.color = v.color
+                    g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
                 }
             }
         }
 
-        //method to draw the lines that run from top to down.
-        // public boolean printTrackUtoD(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
-        //		 boolean active,  boolean firstInteraction){
-        public void printTrackUtoD(Vertex v) {
-
-            int size;
-            int[] track;
-            size = v.getEnd() - v.getInit();
-            track = new int[size];
-
-            for (int i = 0; i < size; i++)
-                track[i] = v.getInit() + i;
-
-            if (v.isActive()) {
-                v.setFirst_interaction(false);
-                for (int i = 0; i < size; i++) {
-                    if (track[i] <= v.getCurrent()) {
-                        g2d.setColor(v.getColor());
-                        g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+        fun printTrackUtoD(v: Vertex) {
+            val size = v.end - v.init
+            val track = IntArray(size) { v.init + it }
+            if (v.isActive) {
+                v.isFirstInteraction = false
+                for (i in 0..<size) {
+                    if (track[i] <= v.current) {
+                        g2d.color = v.color
+                        g2d.fillRect(v.oppositeAxis, track[i], 3,3 )
                     }
-
                 }
-                if (v.getCurrent() == track[size - 1])
-                    v.setActive(false);
-                v.setCurrent(v.getCurrent() + 1);
-            } else if (!v.isFirst_interaction()) {
-                for (int i = 0; i < size; i++) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+                if (v.current == track[size - 1]) v.isActive = false
+                v.current++
+            } else if (!v.isFirstInteraction) {
+                for (i in 0..<size) {
+                    g2d.color = v.color
+                    g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
                 }
             }
         }
 
-        public void printTextDtoU(Vertex v) {
-            int size;
-            int[] track;
-            FontRenderContext frc = g2d.getFontRenderContext();
-
-            TextLayout actionInFunctionalBlock = new TextLayout(v.getName(), new Font("Verdana", Font.BOLD, 13), frc);
-            g2d.setColor(Color.RED);
-
-            if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")
-                    && !instructionCode.substring(0, 6).matches("0001[0-1][0-1]")
-                    && !instructionCode.substring(0, 6).matches("00001[0-1]")) {//load instruction
-                actionInFunctionalBlock = new TextLayout(" ", new Font("Verdana", Font.BOLD, 13), frc);
+        fun printTextDtoU(v: Vertex) {
+            val font = Font("Verdana", Font.BOLD, 13)
+            val frc = g2d.fontRenderContext
+            var actionInFunctionalBlock = TextLayout(v.name, font, frc)
+            g2d.color = Color.RED
+            if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]".toRegex()) &&
+                !instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex()) &&
+                !instructionCode.substring(0, 6).matches("00001[0-1]".toRegex())) {
+                actionInFunctionalBlock = TextLayout(" ", font, frc)
             }
-            if (v.getName().equals("ALUVALUE")) {
-                if (instructionCode.startsWith("000000"))//R-type instruction
-                    actionInFunctionalBlock = new TextLayout(functionEquivalenceTable.get(instructionCode.substring(26, 32)), new Font("Verdana", Font.BOLD, 13), frc);
-                else //other instructions
-                    actionInFunctionalBlock = new TextLayout(opcodeEquivalenceTable.get(instructionCode.substring(0, 6)), new Font("Verdana", Font.BOLD, 13), frc);
+            if (v.name == "ALUVALUE") actionInFunctionalBlock = TextLayout(
+                if (instructionCode.startsWith("000000"))
+                    functionEquivalenceTable[instructionCode.substring(26, 32)]
+                else opcodeEquivalenceTable[instructionCode.substring(0, 6)],
+                font,
+                frc
+            )
+            if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex()) && v.name == "CP+4")
+                actionInFunctionalBlock = TextLayout("PC+OFFSET", font, frc)
+            if (v.name == "WRITING")
+                if (!instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]".toRegex()))
+                    actionInFunctionalBlock = TextLayout(" ", font, frc)
+            if (v.isActive) {
+                v.isFirstInteraction = false
+                actionInFunctionalBlock.draw(g2d, v.oppositeAxis.toFloat(), v.current.toFloat())
+                if (v.current == v.end) v.isActive = false
+                v.current--
             }
-
-            if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]") && v.getName().equals("CP+4")) //branch code
-                actionInFunctionalBlock = new TextLayout("PC+OFFSET", new Font("Verdana", Font.BOLD, 13), frc);
-
-            if (v.getName().equals("WRITING")) {
-                if (!instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]"))
-                    actionInFunctionalBlock = new TextLayout(" ", new Font("Verdana", Font.BOLD, 13), frc);
-            }
-            if (v.isActive()) {
-                v.setFirst_interaction(false);
-                actionInFunctionalBlock.draw(g2d, v.getOppositeAxis(), v.getCurrent());
-                if (v.getCurrent() == v.getEnd())
-                    v.setActive(false);
-                v.setCurrent(v.getCurrent() - 1);
-            }
-
-
         }
 
-        //convert binnary value to integer.
-        public String parseBinToInt(String code) {
-            int value = 0;
+        // TODO: Make sure this functions identically to the original code
+        fun parseBinToInt(code: String): String =
+            code.toInt(2).toString()
 
-            for (int i = code.length() - 1; i >= 0; i--) {
-                if ("1".equals(code.substring(i, i + 1))) {
-                    value = value + (int) Math.pow(2, code.length() - i - 1);
-                }
-            }
-
-            return Integer.toString(value);
-        }
-
-        //set and execute the information about the current position of each line of information in the animation,
-        //verifies the previous status of the animation and increment the position of each line that interconnect the unit function.
-        private void executeAnimation(Graphics g) {
-            g2d = (Graphics2D) g;
-            setUpInstructionInfo(g2d);
-            Vertex vert;
-            for (int i = 0; i < vertexTraversed.size(); i++) {
-                vert = vertexTraversed.get(i);
-                if (vert.isMovingXaxis) {
-                    if (vert.getDirection() == Vertex.movingLeft) {
-                        printTrackLtoR(vert);
-                        if (!vert.isActive()) {
-                            int j = vert.getTargetVertex().size();
-                            Vertex tempVertex;
-                            for (int k = 0; k < j; k++) {
-                                tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                boolean hasThisVertex = false;
-                                for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                        hasThisVertex = true;
-                                        break;
+        private fun executeAnimation(g: Graphics) {
+            g2d = g as Graphics2D
+            setUpInstructionInfo(g2d)
+            var vert: Vertex
+            for (i in vertexTraversed.indices) {
+                vert = vertexTraversed[i]
+                if (vert.isMovingXAxis) {
+                    if (vert.direction == Vertex.Direction.LEFT) {
+                        printTrackLtoR(vert)
+                        if (!vert.isActive) {
+                            val j = vert.targetVertex.size
+                            var tempVertex: Vertex
+                            for (k in 0..<j) {
+                                tempVertex = outputGraph[vert.numIndex][k]
+                                var hasThisVertex = false
+                                for (vertex in vertexTraversed) {
+                                    if (tempVertex.numIndex == vertex.numIndex) {
+                                        hasThisVertex = true
+                                        break
                                     }
                                 }
                                 if (!hasThisVertex) {
-                                    outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                    vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                    outputGraph[vert.numIndex][k].isActive = true
+                                    vertexTraversed.add(outputGraph[vert.numIndex][k])
                                 }
                             }
                         }
                     } else {
-                        printTrackRtoL(vert);
-                        if (!vert.isActive()) {
-                            int j = vert.getTargetVertex().size();
-                            Vertex tempVertex;
-                            for (int k = 0; k < j; k++) {
-                                tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                boolean hasThisVertex = false;
-                                for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                        hasThisVertex = true;
-                                        break;
+                        printTrackRtoL(vert)
+                        if (!vert.isActive) {
+                            val j = vert.targetVertex.size
+                            var tempVertex: Vertex
+                            for (k in 0..<j) {
+                                tempVertex = outputGraph[vert.numIndex][k]
+                                var hasThisVertex = false
+                                for (vertex in vertexTraversed) {
+                                    if (tempVertex.numIndex == vertex.numIndex) {
+                                        hasThisVertex = true
+                                        break
                                     }
                                 }
                                 if (!hasThisVertex) {
-                                    outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                    vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                    outputGraph[vert.numIndex][k].isActive = true
+                                    vertexTraversed.add(outputGraph[vert.numIndex][k])
                                 }
                             }
                         }
                     }
-                } //end of condition of X axis
-                else {
-                    if (vert.getDirection() == Vertex.movingDownside) {
-                        if (vert.isText)
-                            printTextDtoU(vert);
-                        else
-                            printTrackDtoU(vert);
+                } else {
+                    if (vert.direction == Vertex.Direction.DOWN) {
+                        if (vert.isText) printTextDtoU(vert)
+                        else printTrackDtoU(vert)
 
-                        if (!vert.isActive()) {
-                            int j = vert.getTargetVertex().size();
-                            Vertex tempVertex;
-                            for (int k = 0; k < j; k++) {
-                                tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                boolean hasThisVertex = false;
-                                for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                        hasThisVertex = true;
-                                        break;
+                        if (!vert.isActive) {
+                            val j = vert.targetVertex.size
+                            var tempVertex: Vertex
+                            for (k in 0..<j) {
+                                tempVertex = outputGraph[vert.numIndex][k]
+                                var hasThisVertex = false
+                                for (vertex in vertexTraversed) {
+                                    if (tempVertex.numIndex == vertex.numIndex) {
+                                        hasThisVertex = true
+                                        break
                                     }
                                 }
                                 if (!hasThisVertex) {
-                                    outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                    vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                    outputGraph[vert.numIndex][k].isActive = true
+                                    vertexTraversed.add(outputGraph[vert.numIndex][k])
                                 }
                             }
                         }
-
                     } else {
-
-                        printTrackUtoD(vert);
-                        if (!vert.isActive()) {
-                            int j = vert.getTargetVertex().size();
-                            Vertex tempVertex;
-                            for (int k = 0; k < j; k++) {
-                                tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                                boolean hasThisVertex = false;
-                                for (Vertex vertex : vertexTraversed) {
-                                    if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                        hasThisVertex = true;
-                                        break;
+                        printTrackUtoD(vert)
+                        if (!vert.isActive) {
+                            val j = vert.targetVertex.size
+                            var tempVertex: Vertex
+                            for (k in 0..<j) {
+                                tempVertex = outputGraph[vert.numIndex][k]
+                                var hasThisVertex = false
+                                for (vertex in vertexTraversed) {
+                                    if (tempVertex.numIndex == vertex.numIndex) {
+                                        hasThisVertex = true
+                                        break
                                     }
                                 }
                                 if (!hasThisVertex) {
-                                    outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                    vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                    outputGraph[vert.numIndex][k].isActive = true
+                                    vertexTraversed.add(outputGraph[vert.numIndex][k])
                                 }
                             }
                         }
@@ -1411,46 +1155,27 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             }
         }
 
-        @Override
-        public void mouseClicked(MouseEvent e) {
-
-            PointerInfo a = MouseInfo.getPointerInfo();
-            //limpar a imagem do painel e iniciar o detalhe da unidade funcional.
-
-
-            if (e.getPoint().getX() > 425 && e.getPoint().getX() < 520 && e.getPoint().getY() > 300 && e.getPoint().getY() < 425) {
-                buildMainDisplayArea("register.png");
-                int register = 1;
-                FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, register);
-                fu.run();
+        override fun mouseClicked(e: MouseEvent) {
+            if (e.point.getX() > 425 && e.point.getX() < 520 && e.point.getY() > 300 && e.point.getY() < 425) {
+                buildMainDisplayArea("register.png")
+                val fu = FunctionUnitVisualization(instructionBinary, FunctionUnitVisualization.FunctionalUnit.REGISTER)
+                fu.run()
             }
-
-            if (e.getPoint().getX() > 355 && e.getPoint().getX() < 415 && e.getPoint().getY() > 180 && e.getPoint().getY() < 280) {
-                buildMainDisplayArea("control.png");
-                int control = 2;
-                FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, control);
-                fu.run();
+            if (e.point.getX() > 355 && e.point.getX() < 415 && e.point.getY() > 180 && e.point.getY() < 280) {
+                buildMainDisplayArea("control.png")
+                val fu = FunctionUnitVisualization(instructionBinary, FunctionUnitVisualization.FunctionalUnit.CONTROL)
+                fu.run()
             }
-
-            if (e.getPoint().getX() > 560 && e.getPoint().getX() < 620 && e.getPoint().getY() > 450 && e.getPoint().getY() < 520) {
-                buildMainDisplayArea("ALUcontrol.png");
-                int aluControl = 3;
-                FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, aluControl);
-                fu.run();
+            if (e.point.getX() > 560 && e.point.getX() < 620 && e.point.getY() > 450 && e.point.getY() < 520) {
+                buildMainDisplayArea("ALUcontrol.png")
+                val fu =
+                    FunctionUnitVisualization(instructionBinary, FunctionUnitVisualization.FunctionalUnit.ALU_CONTROL)
+                fu.run()
             }
-
         }
 
-        @Override
-        public void mouseEntered(MouseEvent e) {
-        }
-
-        @Override
-        public void mouseExited(MouseEvent e) {
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e) {
-        }
+        override fun mouseEntered(e: MouseEvent) {}
+        override fun mouseExited(e: MouseEvent) {}
+        override fun mouseReleased(e: MouseEvent) {}
     }
 }

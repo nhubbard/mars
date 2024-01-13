@@ -19,237 +19,192 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+@file:Suppress("DEPRECATION")
 
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
-import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.mips.instructions.BasicInstruction;
-import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+package edu.missouristate.mars.tools
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.Observable;
+import edu.missouristate.mars.mips.hardware.AccessNotice
+import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
+import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
+import java.util.*
+import javax.swing.*
 
-/**
- * Instruction counter tool. Can be used to know how many instructions
- * were executed to complete a given program.
- * <p>
- * Code slightly based on MemoryReferenceVisualization.
- *
- * @author Felipe Lessa <felipe.lessa@gmail.com>
- */
-public class InstructionCounter extends AbstractMarsToolAndApplication {
-    private static final String name = "Instruction Counter";
-    private static final String version = "Version 1.0 (Felipe Lessa)";
-    private static final String heading = "Counting the number of instructions executed";
-
-    /**
-     * Number of instructions executed until now.
-     */
-    protected int counter = 0;
-    private JTextField counterField;
-
-    /**
-     * Number of instructions of type R.
-     */
-    protected int counterR = 0;
-    private JTextField counterRField;
-    private JProgressBar progressbarR;
-
-    /**
-     * Number of instructions of type I.
-     */
-    protected int counterI = 0;
-    private JTextField counterIField;
-    private JProgressBar progressbarI;
-
-    /**
-     * Number of instructions of type J.
-     */
-    protected int counterJ = 0;
-    private JTextField counterJField;
-    private JProgressBar progressbarJ;
-
-    /**
-     * The last address we saw. We ignore it because the only way for a
-     * program to execute twice the same instruction is to enter an infinite
-     * loop, which is not insteresting in the POV of counting instructions.
-     */
-    protected int lastAddress = -1;
-
-    /**
-     * Simple constructor, likely used to run a stand-alone memory reference visualizer.
-     *
-     * @param title   String containing title for title bar
-     * @param heading String containing text for heading shown in upper part of window.
-     */
-    public InstructionCounter(String title, String heading) {
-        super(title, heading);
+class InstructionCounter(
+    title: String = "$NAME, $VERSION",
+    heading: String = HEADING
+) : AbstractMarsToolAndApplication(title, heading) {
+    companion object {
+        private const val NAME = "Instruction Counter"
+        private const val VERSION = "Version 1.0 (Felipe Lessa)"
+        private const val HEADING = "Counts the number of instructions executed"
     }
 
-    /**
-     * Simple construction, likely used by the MARS Tools menu mechanism.
-     */
-    public InstructionCounter() {
-        super(name + ", " + version, heading);
-    }
+    private var allCounter = 0
+    private lateinit var allCounterField: JTextField
 
-    //	@Override
-    public String getToolName() {
-        return name;
-    }
+    private var rFormatCounter = 0
+    private lateinit var rFormatField: JTextField
+    private lateinit var rFormatBar: JProgressBar
 
-    //	@Override
-    protected JComponent buildMainDisplayArea() {
-        // Create everything
-        JPanel panel = new JPanel(new GridBagLayout());
+    private var iFormatCounter = 0
+    private lateinit var iFormatField: JTextField
+    private lateinit var iFormatBar: JProgressBar
 
-        counterField = new JTextField("0", 10);
-        counterField.setEditable(false);
+    private var jFormatCounter = 0
+    private lateinit var jFormatField: JTextField
+    private lateinit var jFormatBar: JProgressBar
 
-        counterRField = new JTextField("0", 10);
-        counterRField.setEditable(false);
-        progressbarR = new JProgressBar(JProgressBar.HORIZONTAL);
-        progressbarR.setStringPainted(true);
+    private var lastAddress = -1
 
-        counterIField = new JTextField("0", 10);
-        counterIField.setEditable(false);
-        progressbarI = new JProgressBar(JProgressBar.HORIZONTAL);
-        progressbarI.setStringPainted(true);
+    override val toolName: String = NAME
 
-        counterJField = new JTextField("0", 10);
-        counterJField.setEditable(false);
-        progressbarJ = new JProgressBar(JProgressBar.HORIZONTAL);
-        progressbarJ.setStringPainted(true);
+    override fun buildMainDisplayArea(): JComponent {
+        val panel = JPanel(GridBagLayout())
 
-        // Add them to the panel
+        // Initialize components
+
+        allCounterField = JTextField("0", 10)
+        allCounterField.isEditable = false
+
+        rFormatField = JTextField("0", 10)
+        rFormatField.isEditable = false
+        rFormatBar = JProgressBar(JProgressBar.HORIZONTAL)
+        rFormatBar.isStringPainted = true
+
+        iFormatField = JTextField("0", 10)
+        iFormatField.isEditable = false
+        iFormatBar = JProgressBar(JProgressBar.HORIZONTAL)
+        iFormatBar.isStringPainted = true
+
+        jFormatField = JTextField("0", 10)
+        jFormatField.isEditable = false
+        jFormatBar = JProgressBar(JProgressBar.HORIZONTAL)
+        jFormatBar.isStringPainted = true
 
         // Fields
-        GridBagConstraints c = new GridBagConstraints();
-        c.anchor = GridBagConstraints.LINE_START;
-        c.gridheight = c.gridwidth = 1;
-        c.gridx = 3;
-        c.gridy = 1;
-        c.insets = new Insets(0, 0, 17, 0);
-        panel.add(counterField, c);
+        val c = GridBagConstraints()
+        c.anchor = GridBagConstraints.LINE_START
+        c.gridwidth = 1
+        c.gridheight = 1
+        c.gridx = 3
+        c.gridy = 1
+        c.insets = Insets(0, 0, 17, 0)
+        panel.add(allCounterField, c)
 
-        c.insets = new Insets(0, 0, 0, 0);
-        c.gridy++;
-        panel.add(counterRField, c);
+        c.insets = Insets(0, 0, 0, 0)
+        c.gridy++
+        panel.add(rFormatField, c)
 
-        c.gridy++;
-        panel.add(counterIField, c);
+        c.gridy++
+        panel.add(iFormatField, c)
 
-        c.gridy++;
-        panel.add(counterJField, c);
+        c.gridy++
+        panel.add(jFormatField, c)
 
         // Labels
-        c.anchor = GridBagConstraints.LINE_END;
-        c.gridx = 1;
-        c.gridwidth = 2;
-        c.gridy = 1;
-        c.insets = new Insets(0, 0, 17, 0);
-        panel.add(new JLabel("Instructions so far: "), c);
+        c.anchor = GridBagConstraints.LINE_END
+        c.gridx = 1
+        c.gridwidth = 2
+        c.gridy = 1
+        c.insets = Insets(0, 0, 17, 0)
+        panel.add(JLabel("Total instructions: "), c)
 
-        c.insets = new Insets(0, 0, 0, 0);
-        c.gridx = 2;
-        c.gridwidth = 1;
-        c.gridy++;
-        panel.add(new JLabel("R-type: "), c);
+        c.insets = Insets(0, 0, 0, 0)
+        c.gridx = 2
+        c.gridwidth = 1
+        c.gridy++
+        panel.add(JLabel("R-type: "), c)
 
-        c.gridy++;
-        panel.add(new JLabel("I-type: "), c);
+        c.gridy++
+        panel.add(JLabel("I-type: "), c)
 
-        c.gridy++;
-        panel.add(new JLabel("J-type: "), c);
+        c.gridy++
+        panel.add(JLabel("J-type: "), c)
 
         // Progress bars
-        c.insets = new Insets(3, 3, 3, 3);
-        c.gridx = 4;
-        c.gridy = 2;
-        panel.add(progressbarR, c);
+        c.insets = Insets(3, 3, 3, 3)
+        c.gridx = 4
+        c.gridy = 2
+        panel.add(rFormatBar, c)
 
-        c.gridy++;
-        panel.add(progressbarI, c);
+        c.gridy++
+        panel.add(iFormatBar, c)
 
-        c.gridy++;
-        panel.add(progressbarJ, c);
+        c.gridy++
+        panel.add(jFormatBar, c)
 
-        return panel;
+        return panel
     }
 
-    //	@Override
-    public void addAsObserver() {
-        addAsObserver(Memory.getTextBaseAddress(), Memory.getTextLimitAddress());
+    override fun addAsObserver() {
+        addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress)
     }
 
-    //	@Override
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
-        if (!notice.getAccessIsFromMIPS()) return;
-        if (notice.getAccessType() != AccessNotice.AccessType.READ) return;
-        MemoryAccessNotice m = (MemoryAccessNotice) notice;
-        int a = m.getAddress();
-        if (a == lastAddress) return;
-        lastAddress = a;
-        counter++;
+    override fun processMipsUpdate(resource: Observable, notice: AccessNotice) {
+        if (!notice.accessIsFromMIPS) return
+        if (notice.accessType != AccessNotice.AccessType.READ) return
+        if (notice !is MemoryAccessNotice) return
+        val a = notice.address
+        if (a == lastAddress) return
+        lastAddress = a
+        allCounter++
         try {
-            ProgramStatement stmt = Memory.getInstance().getStatement(a);
-            BasicInstruction instr = (BasicInstruction) stmt.getInstruction();
-            BasicInstructionFormat format = instr.getInstructionFormat();
-            if (format == BasicInstructionFormat.R_FORMAT)
-                counterR++;
-            else if (format == BasicInstructionFormat.I_FORMAT
-                    || format == BasicInstructionFormat.I_BRANCH_FORMAT)
-                counterI++;
-            else if (format == BasicInstructionFormat.J_FORMAT)
-                counterJ++;
-        } catch (AddressErrorException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            val statement = Memory.instance.getStatement(a)
+            val instruction = statement?.getInstruction() as? BasicInstruction ?: return
+            val format = instruction.instructionFormat
+            when (format) {
+                BasicInstructionFormat.R_FORMAT -> rFormatCounter++
+                BasicInstructionFormat.I_FORMAT, BasicInstructionFormat.I_BRANCH_FORMAT -> iFormatCounter++
+                BasicInstructionFormat.J_FORMAT -> jFormatCounter++
+            }
+        } catch (e: AddressErrorException) {
+            e.printStackTrace()
         }
-        updateDisplay();
+        updateDisplay()
     }
 
-    //	@Override
-    public void initializePreGUI() {
-        counter = counterR = counterI = counterJ = 0;
-        lastAddress = -1;
+    override fun initializePreGUI() {
+        allCounter = 0
+        rFormatCounter = 0
+        iFormatCounter = 0
+        jFormatCounter = 0
+        lastAddress = -1
     }
 
-    // @Override
-    public void reset() {
-        counter = counterR = counterI = counterJ = 0;
-        lastAddress = -1;
-        updateDisplay();
+    override fun reset() {
+        initializePreGUI()
+        updateDisplay()
     }
 
-    //	@Override
-    public void updateDisplay() {
-        counterField.setText(String.valueOf(counter));
+    override fun updateDisplay() {
+        allCounterField.text = allCounter.toString()
 
-        counterRField.setText(String.valueOf(counterR));
-        progressbarR.setMaximum(counter);
-        progressbarR.setValue(counterR);
+        rFormatField.text = rFormatCounter.toString()
+        rFormatBar.maximum = allCounter
+        rFormatBar.value = rFormatCounter
 
-        counterIField.setText(String.valueOf(counterI));
-        progressbarI.setMaximum(counter);
-        progressbarI.setValue(counterI);
+        iFormatField.text = iFormatCounter.toString()
+        iFormatBar.maximum = allCounter
+        iFormatBar.value = iFormatCounter
 
-        counterJField.setText(String.valueOf(counterJ));
-        progressbarJ.setMaximum(counter);
-        progressbarJ.setValue(counterJ);
+        jFormatField.text = jFormatCounter.toString()
+        jFormatBar.maximum = allCounter
+        jFormatBar.value = jFormatCounter
 
-        if (counter == 0) {
-            progressbarR.setString("0%");
-            progressbarI.setString("0%");
-            progressbarJ.setString("0%");
+        if (allCounter == 0) {
+            rFormatBar.string = "0%"
+            iFormatBar.string = "0%"
+            jFormatBar.string = "0%"
         } else {
-            progressbarR.setString((counterR * 100) / counter + "%");
-            progressbarI.setString((counterI * 100) / counter + "%");
-            progressbarJ.setString((counterJ * 100) / counter + "%");
+            rFormatBar.string = "${((rFormatCounter * 100.0) / allCounter)}%"
+            iFormatBar.string = "${((iFormatCounter * 100.0) / allCounter)}%"
+            jFormatBar.string = "${((jFormatCounter * 100.0) / allCounter)}%"
         }
     }
 }

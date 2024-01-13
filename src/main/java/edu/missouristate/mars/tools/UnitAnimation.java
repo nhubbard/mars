@@ -306,45 +306,45 @@ class UnitAnimation extends JPanel implements ActionListener {
             docBuilder = dbf.newDocumentBuilder();
             Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
             Element root = doc.getDocumentElement();
-            Element datapath_mapItem;
-            NodeList index_vertex, name, init, end, color, other_axis, isMovingXaxis, targetVertex, sourceVertex, isText;
-            NodeList datapath_mapList = root.getElementsByTagName(elementTree);
-            for (int i = 0; i < datapath_mapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
-                datapath_mapItem = (Element) datapath_mapList.item(i);
-                index_vertex = datapath_mapItem.getElementsByTagName("num_vertex");
-                name = datapath_mapItem.getElementsByTagName("name");
-                init = datapath_mapItem.getElementsByTagName("init");
-                end = datapath_mapItem.getElementsByTagName("end");
+            Element datapathMapItem;
+            NodeList indexVertex, name, init, end, color, otherAxis, isMovingXaxis, targetVertex, sourceVertex, isText;
+            NodeList datapathMapList = root.getElementsByTagName(elementTree);
+            for (int i = 0; i < datapathMapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
+                datapathMapItem = (Element) datapathMapList.item(i);
+                indexVertex = datapathMapItem.getElementsByTagName("num_vertex");
+                name = datapathMapItem.getElementsByTagName("name");
+                init = datapathMapItem.getElementsByTagName("init");
+                end = datapathMapItem.getElementsByTagName("end");
                 //definition of colors line
 
                 if (instructionCode.startsWith("000000")) {//R-type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_Rtype");
+                    color = datapathMapItem.getElementsByTagName("color_Rtype");
                     //System.out.println("rtype");
                 } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_Jtype");
+                    color = datapathMapItem.getElementsByTagName("color_Jtype");
                     //System.out.println("jtype");
                 } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_LOADtype");
+                    color = datapathMapItem.getElementsByTagName("color_LOADtype");
                     //System.out.println("load type");
                 } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_STOREtype");
+                    color = datapathMapItem.getElementsByTagName("color_STOREtype");
                     //System.out.println("store type");
                 } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //BRANCH type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_BRANCHtype");
+                    color = datapathMapItem.getElementsByTagName("color_BRANCHtype");
                     //System.out.println("branch type");
                 } else { //BRANCH type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_Itype");
+                    color = datapathMapItem.getElementsByTagName("color_Itype");
                     //System.out.println("immediate type");
                 }
 
 
-                other_axis = datapath_mapItem.getElementsByTagName("other_axis");
-                isMovingXaxis = datapath_mapItem.getElementsByTagName("isMovingXaxis");
-                targetVertex = datapath_mapItem.getElementsByTagName("target_vertex");
-                isText = datapath_mapItem.getElementsByTagName("is_text");
+                otherAxis = datapathMapItem.getElementsByTagName("other_axis");
+                isMovingXaxis = datapathMapItem.getElementsByTagName("isMovingXaxis");
+                targetVertex = datapathMapItem.getElementsByTagName("target_vertex");
+                isText = datapathMapItem.getElementsByTagName("is_text");
 
-                for (int j = 0; j < index_vertex.getLength(); j++) {
-                    Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
+                for (int j = 0; j < indexVertex.getLength(); j++) {
+                    Vertex vert = new Vertex(Integer.parseInt(indexVertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(otherAxis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
                     vertexList.add(vert);
                 }
             }
@@ -363,17 +363,12 @@ class UnitAnimation extends JPanel implements ActionListener {
                 }
                 outputGraph.add(vertexOfTargets);
             }
-            for (Vector<Vertex> vert : outputGraph) {
-            }
-
             vertexList.get(0).setActive(true);
             vertexTraversed.add(vertexList.get(0));
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
-
 
     public void importXmlDatapathMapAluControl(String xmlName, String elementTree) {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -383,59 +378,56 @@ class UnitAnimation extends JPanel implements ActionListener {
             docBuilder = dbf.newDocumentBuilder();
             Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
             Element root = doc.getDocumentElement();
-            Element datapath_mapItem;
-            NodeList index_vertex, name, init, end, color, other_axis, isMovingXaxis, targetVertex, sourceVertex, isText;
-            NodeList datapath_mapList = root.getElementsByTagName(elementTree);
-            for (int i = 0; i < datapath_mapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
-                datapath_mapItem = (Element) datapath_mapList.item(i);
-                index_vertex = datapath_mapItem.getElementsByTagName("num_vertex");
-                name = datapath_mapItem.getElementsByTagName("name");
-                init = datapath_mapItem.getElementsByTagName("init");
-                end = datapath_mapItem.getElementsByTagName("end");
+            Element datapathMapItem;
+            NodeList indexVertex, name, init, end, color, otherAxis, isMovingXAxis, targetVertex, sourceVertex, isText;
+            NodeList datapathMapList = root.getElementsByTagName(elementTree);
+            for (int i = 0; i < datapathMapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
+                datapathMapItem = (Element) datapathMapList.item(i);
+                indexVertex = datapathMapItem.getElementsByTagName("num_vertex");
+                name = datapathMapItem.getElementsByTagName("name");
+                init = datapathMapItem.getElementsByTagName("init");
+                end = datapathMapItem.getElementsByTagName("end");
                 //definition of colors line
 
                 if (instructionCode.startsWith("000000")) {//R-type instructions
                     if (instructionCode.substring(28, 32).matches("0000")) { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("ALU_out010");
+                        color = datapathMapItem.getElementsByTagName("ALU_out010");
                         System.out.println("ALU_out010 type " + instructionCode.substring(28, 32));
                     } else if (instructionCode.substring(28, 32).matches("0010")) { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("ALU_out110");
+                        color = datapathMapItem.getElementsByTagName("ALU_out110");
                         System.out.println("ALU_out110 type " + instructionCode.substring(28, 32));
                     } else if (instructionCode.substring(28, 32).matches("0100")) { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("ALU_out000");
+                        color = datapathMapItem.getElementsByTagName("ALU_out000");
                         System.out.println("ALU_out000 type " + instructionCode.substring(28, 32));
                     } else if (instructionCode.substring(28, 32).matches("0101")) { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("ALU_out001");
+                        color = datapathMapItem.getElementsByTagName("ALU_out001");
                         System.out.println("ALU_out001 type " + instructionCode.substring(28, 32));
                     } else { //BRANCH type instructions
-                        color = datapath_mapItem.getElementsByTagName("ALU_out111");
+                        color = datapathMapItem.getElementsByTagName("ALU_out111");
                         System.out.println("ALU_out111 type " + instructionCode.substring(28, 32));
                     }
                 } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_Jtype");
+                    color = datapathMapItem.getElementsByTagName("color_Jtype");
                     System.out.println("jtype");
                 } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_LOADtype");
+                    color = datapathMapItem.getElementsByTagName("color_LOADtype");
                     System.out.println("load type");
                 } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_STOREtype");
+                    color = datapathMapItem.getElementsByTagName("color_STOREtype");
                     System.out.println("store type");
                 } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //BRANCH type instructions
-                    color = datapath_mapItem.getElementsByTagName("color_BRANCHtype");
+                    color = datapathMapItem.getElementsByTagName("color_BRANCHtype");
                     System.out.println("branch type");
                 } else {
-                    color = datapath_mapItem.getElementsByTagName("color_Itype");
+                    color = datapathMapItem.getElementsByTagName("color_Itype");
                     System.out.println("immediate type");
                 }
-
-
-                other_axis = datapath_mapItem.getElementsByTagName("other_axis");
-                isMovingXaxis = datapath_mapItem.getElementsByTagName("isMovingXaxis");
-                targetVertex = datapath_mapItem.getElementsByTagName("target_vertex");
-                isText = datapath_mapItem.getElementsByTagName("is_text");
-
-                for (int j = 0; j < index_vertex.getLength(); j++) {
-                    Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
+                otherAxis = datapathMapItem.getElementsByTagName("otherAxis");
+                isMovingXAxis = datapathMapItem.getElementsByTagName("isMovingXaxis");
+                targetVertex = datapathMapItem.getElementsByTagName("target_vertex");
+                isText = datapathMapItem.getElementsByTagName("is_text");
+                for (int j = 0; j < indexVertex.getLength(); j++) {
+                    Vertex vert = new Vertex(Integer.parseInt(indexVertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(otherAxis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXAxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
                     vertexList.add(vert);
                 }
             }
@@ -454,15 +446,11 @@ class UnitAnimation extends JPanel implements ActionListener {
                 }
                 outputGraph.add(vertexOfTargets);
             }
-            for (Vector<Vertex> vert : outputGraph) {
-            }
-
             vertexList.get(0).setActive(true);
             vertexTraversed.add(vertexList.get(0));
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     //set the initial state of the variables that controls the animation, and start the timer that triggers the animation.
@@ -525,7 +513,6 @@ class UnitAnimation extends JPanel implements ActionListener {
         executeAnimation(g);
         counter = (counter + 1) % 100;
         g2d.dispose();
-
     }
 
     private void drawImage(Graphics2D g2d, BufferedImage im, int x, int y, Color c) {
@@ -562,7 +549,6 @@ class UnitAnimation extends JPanel implements ActionListener {
                 g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
             }
         }
-
     }
 
     //method to draw the lines that run from right to left.
@@ -586,7 +572,6 @@ class UnitAnimation extends JPanel implements ActionListener {
                 }
             }
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
-
             v.setCurrent(v.getCurrent() - 1);
         } else if (!v.isFirst_interaction()) {
             for (int i = 0; i < size; i++) {
@@ -638,7 +623,6 @@ class UnitAnimation extends JPanel implements ActionListener {
 // public boolean printTrackUtoD(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis, 
 //		 boolean active,  boolean firstInteraction){
     public void printTrackUtoD(Vertex v) {
-
         int size;
         int[] track;
         size = v.getEnd() - v.getInit();
@@ -654,7 +638,6 @@ class UnitAnimation extends JPanel implements ActionListener {
                     g2d.setColor(v.getColor());
                     g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
                 }
-
             }
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
             v.setCurrent(v.getCurrent() + 1);
@@ -670,13 +653,11 @@ class UnitAnimation extends JPanel implements ActionListener {
     //convert binnary value to integer.
     public String parseBinToInt(String code) {
         int value = 0;
-
         for (int i = code.length() - 1; i >= 0; i--) {
             if ("1".equals(code.substring(i, i + 1))) {
                 value = value + (int) Math.pow(2, code.length() - i - 1);
             }
         }
-
         return Integer.toString(value);
     }
 
@@ -729,12 +710,10 @@ class UnitAnimation extends JPanel implements ActionListener {
                         }
                     }
                 }
-            } //end of condition of X axis
-            else {
+            } else {
                 if (vert.getDirection() == Vertex.movingDownside) {
                     if (vert.isText) ;
                     else printTrackDtoU(vert);
-
                     if (!vert.isActive()) {
                         int j = vert.getTargetVertex().size();
                         Vertex tempVertex;
@@ -753,7 +732,6 @@ class UnitAnimation extends JPanel implements ActionListener {
                             }
                         }
                     }
-
                 } else {
                     printTrackUtoD(vert);
                     if (!vert.isActive()) {
@@ -778,5 +756,4 @@ class UnitAnimation extends JPanel implements ActionListener {
             }
         }
     }
-
 }

@@ -92,3 +92,5 @@ fun Graphics.fillPolygon(vararg points: Pair<Int, Int>) {
         for (point in points) addPoint(point.first, point.second)
     }
 }
+
+fun Double.toRadians() = Math.toRadians(this)
