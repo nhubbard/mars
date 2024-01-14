@@ -31,59 +31,51 @@ import java.io.*;
  *
  * @author Team JSpim
  */
-
 public class FileStatus {
     /**
      * initial state or after close
      */
     public static final int NO_FILE = 0;
+
     /**
      * New edit window with no edits
      */
     public static final int NEW_NOT_EDITED = 1;
+
     /**
      * New edit window with unsaved edits
      */
     public static final int NEW_EDITED = 2;
+
     /**
      * open/saved edit window with no edits
      */
     public static final int NOT_EDITED = 3;
+
     /**
      * open/saved edit window with unsaved edits
      */
     public static final int EDITED = 4;
+
     /**
      * successful assembly
      */
     public static final int RUNNABLE = 5;
+
     /**
      * execution is under way
      */
     public static final int RUNNING = 6;
+
     /**
      * execution terminated
      */
     public static final int TERMINATED = 7;
+
     /**
      * file is being opened.  DPS 9-Aug-2011
      */
     public static final int OPENING = 8;
-
-
-    ///////////////////////////////////////////////////////////////////
-    //                                                               //
-    //  The static part.  Legacy code from original student team's   //
-    //  2003 Practicum project through MARS 3.8, when the editor     //
-    //  was limited to one file.  The status of that file became     //
-    //  the de facto status of the system.  Should have used a       //
-    //  singleton class but in 2003 did not know what that was!      //
-    //  My plan is to phase out all statics but the constants        //
-    //  in MARS 4.0 but will keep it in place while at the same time //
-    //  defining non-static members for use by individual files      //
-    //  currently opened in the editor.  DPS, 9 April 2010.          //
-    //                                                               //
-    ///////////////////////////////////////////////////////////////////
 
     private static int systemStatus; // set to one of the above
     private static boolean systemAssembled;

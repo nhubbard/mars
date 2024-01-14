@@ -37,8 +37,8 @@ class SyscallLoader {
     companion object {
         private const val CLASS_PREFIX = "edu.missouristate.mars.mips.instructions.syscalls."
         private const val SYSCALLS_DIRECTORY_PATH = "edu/missouristate/mars/mips/instructions/syscalls"
-        private const val SYSCALL_INTERFACE = "SyscallKt.class"
-        private const val SYSCALL_ABSTRACT = "AbstractSyscallKt.class"
+        private const val SYSCALL_INTERFACE = "Syscall.class"
+        private const val SYSCALL_ABSTRACT = "AbstractSyscall.class"
         private const val CLASS_EXTENSION = "class"
     }
 

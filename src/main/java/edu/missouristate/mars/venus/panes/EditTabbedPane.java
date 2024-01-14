@@ -437,7 +437,7 @@ public class EditTabbedPane extends JTabbedPane {
         }
         // When last file is closed, menu is unable to respond to mnemonics
         // and accelerators.  Let's have it request focus so it may do so.
-        if (getTabCount() == 0) mainUI.haveMenuRequestFocus();
+        if (getTabCount() == 0) mainUI.requestMenuFocus();
     }
 
 

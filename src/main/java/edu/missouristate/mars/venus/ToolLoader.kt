@@ -18,17 +18,16 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+@file:Suppress("UNCHECKED_CAST")
 
-package edu.missouristate.mars.venus;
+package edu.missouristate.mars.venus
 
-import edu.missouristate.mars.tools.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.venus.actions.ToolAction;
-
-import javax.swing.*;
-import java.awt.event.*;
-import java.util.*;
-import java.lang.reflect.*;
+import edu.missouristate.mars.tools.MarsTool
+import edu.missouristate.mars.util.FilenameFinder.getFilenameList
+import edu.missouristate.mars.venus.actions.ToolAction
+import java.awt.event.KeyEvent
+import java.lang.reflect.Modifier
+import javax.swing.JMenu
 
 /**
  * This class provides functionality to bring external Mars tools into the Mars
@@ -42,15 +41,7 @@ import java.lang.reflect.*;
  * @author Pete Sanderson with help from Bret Barker
  * @version August 2005
  */
-
-public class ToolLoader {
-
-    private static final String CLASS_PREFIX = "mars.tools.";
-    private static final String TOOLS_DIRECTORY_PATH = "mars/tools";
-    private static final String TOOLS_MENU_NAME = "Tools";
-    private static final String MARSTOOL_INTERFACE = "MarsTool.class";
-    private static final String CLASS_EXTENSION = "class";
-
+class ToolLoader {
     /**
      * Called in VenusUI to build its Tools menu.  If there are no qualifying tools
      * or any problems accessing those tools, it returns null.  A qualifying tool
@@ -60,17 +51,21 @@ public class ToolLoader {
      *
      * @return a Tools JMenu if qualifying tool classes are found, otherwise null
      */
-    public JMenu buildToolsMenu() {
-        JMenu menu = null;
-        ArrayList<MarsToolClassAndInstance> marsToolList = loadMarsTools();
-        if (!marsToolList.isEmpty()) {
-            menu = new JMenu(TOOLS_MENU_NAME);
-            menu.setMnemonic(KeyEvent.VK_T);
+    fun buildToolsMenu(): JMenu? {
+        var menu: JMenu? = null
+        val marsToolList = loadMarsTools()
+        if (marsToolList.isNotEmpty()) {
+            menu = JMenu(TOOLS_MENU_NAME)
+            menu.mnemonic = KeyEvent.VK_T
             // traverse array list and build menu
-            for (MarsToolClassAndInstance listItem : marsToolList)
-                menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getToolName()));
+            for ((marsToolClass, marsToolInstance) in marsToolList) menu.add(
+                ToolAction(
+                    marsToolClass,
+                    marsToolInstance.toolName
+                )
+            )
         }
-        return menu;
+        return menu
     }
 
     /*
@@ -92,44 +87,49 @@ public class ToolLoader {
      *  as a ZipFile, get the ZipEntry enumeration, find the class files in the tools
      *  folder, then continue as before.
      */
-    @SuppressWarnings("unchecked")
-    private ArrayList<MarsToolClassAndInstance> loadMarsTools() {
-        ArrayList<MarsToolClassAndInstance> toolList = new ArrayList<>();
-        ArrayList<String> candidates = FilenameFinder.getFilenameList(this.getClass().getClassLoader(),
-                TOOLS_DIRECTORY_PATH, CLASS_EXTENSION);
+    private fun loadMarsTools(): ArrayList<MarsToolClassAndInstance> {
+        val toolList = arrayListOf<MarsToolClassAndInstance>()
+        val candidates = getFilenameList(this.javaClass.classLoader, TOOLS_DIRECTORY_PATH, CLASS_EXTENSION)
         // Add any tools stored externally, as listed in Config.properties file.
         // This needs some work, because mars.Globals.getExternalTools() returns
         // whatever is in the properties file entry.  Since the class file will
         // not be located in the mars.tools folder, the loop below will not process
         // it correctly.  Not sure how to create a Class object given an absolute
         // pathname.
-        HashMap<String, String> tools = new HashMap<>();
-        for (String file : candidates) {
+        val tools = hashMapOf<String, String>()
+        for (file in candidates) {
             // Do not add class if already encountered (happens if run in MARS development directory)
-            if (tools.containsKey(file)) {
-                continue;
-            } else {
-                tools.put(file, file);
-            }
-            if (!file.equals(MARSTOOL_INTERFACE)) {
+            if (tools.containsKey(file)) continue else tools[file] = file
+            if (file != MARSTOOL_INTERFACE) {
                 try {
-                    // grab the class, make sure it implements MarsTool, instantiate, add to menu
-                    String toolClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
-                    Class<?> clas = Class.forName(toolClassName);
-                    if (!MarsTool.class.isAssignableFrom(clas) ||
-                            Modifier.isAbstract(clas.getModifiers()) ||
-                            Modifier.isInterface(clas.getModifiers())) {
-                        continue;
-                    }
-                    toolList.add(new MarsToolClassAndInstance((Class<? super MarsTool>) clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
-                } catch (Exception e) {
-                    System.out.println("Error instantiating MarsTool from file " + file + ": " + e);
+                    // grab the class, make sure it implements MarsTool, instantiate, add to the menu
+                    val toolClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1)
+                    val clas = Class.forName(toolClassName)
+                    if (!MarsTool::class.java.isAssignableFrom(clas) ||
+                        Modifier.isAbstract(clas.modifiers) ||
+                        Modifier.isInterface(clas.modifiers)
+                    ) continue
+                    toolList.add(MarsToolClassAndInstance(
+                        clas as Class<in MarsTool?>,
+                        clas.getDeclaredConstructor().newInstance() as MarsTool
+                    ))
+                } catch (e: Exception) {
+                    println("Error instantiating MarsTool from file $file: $e")
                 }
             }
         }
-        return toolList;
+        return toolList
     }
 
 
-    private record MarsToolClassAndInstance(Class<? super MarsTool> marsToolClass, MarsTool marsToolInstance) {}
+    @JvmRecord
+    private data class MarsToolClassAndInstance(val marsToolClass: Class<in MarsTool?>?, val marsToolInstance: MarsTool)
+
+    companion object {
+        private const val CLASS_PREFIX = "edu.missouristate.mars.tools."
+        private const val TOOLS_DIRECTORY_PATH = "edu/missouristate/mars/tools"
+        private const val TOOLS_MENU_NAME = "Tools"
+        private const val MARSTOOL_INTERFACE = "MarsTool.class"
+        private const val CLASS_EXTENSION = "class"
+    }
 }

@@ -47,7 +47,7 @@ public class EditUndoAction extends GuiAction {
         if (editPane != null) {
             editPane.undo();
             updateUndoState();
-            mainUI.editRedoAction.updateRedoState();
+            mainUI.getEditRedoAction().updateRedoState();
         }
     }
 

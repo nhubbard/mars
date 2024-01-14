@@ -28,7 +28,7 @@ class DumpFormatLoader {
     companion object {
         private const val CLASS_PREFIX = "edu.missouristate.mars.mips.dump."
         private const val DUMP_DIRECTORY_PATH = "edu/missouristate/mars/mips/dump"
-        private const val SYSCALL_INTERFACE = "DumpFormatKt.class"
+        private const val SYSCALL_INTERFACE = "DumpFormat.class"
         private const val CLASS_EXTENSION = "class"
         private var formatList: ArrayList<DumpFormat>? = null
 
