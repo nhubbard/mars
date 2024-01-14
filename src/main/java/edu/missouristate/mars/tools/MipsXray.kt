@@ -212,61 +212,6 @@ class MipsXray(
         }
     }
 
-    class Vertex(
-        var numIndex: Int,
-        var init: Int,
-        var end: Int,
-        var name: String,
-        var oppositeAxis: Int,
-        var isMovingXAxis: Boolean,
-        listOfColors: String,
-        listTargetVertex: String,
-        isText: Boolean
-    ) {
-        var current = 0
-        var direction: Direction = Direction.NONE
-            private set
-        var color: Color
-        var isFirstInteraction = false
-        var isActive = false
-        var isText = isText
-            private set
-        var targetVertex: ArrayList<Int>
-            private set
-
-        enum class Direction(val rawValue: Int) {
-            NONE(0),
-            UP(1),
-            DOWN(2),
-            LEFT(3),
-            RIGHT(4);
-
-            companion object {
-                @JvmStatic
-                fun fromInt(rawValue: Int) = entries.firstOrNull { it.rawValue == rawValue } ?: NONE
-            }
-        }
-
-        init {
-            current = init
-            isFirstInteraction = true
-            isActive = false
-            color = Color(0, 153, 0)
-            direction = if (isMovingXAxis) {
-                if (init < end) Direction.LEFT
-                else Direction.RIGHT
-            } else {
-                if (init < end) Direction.UP
-                else Direction.DOWN
-            }
-            val list = listTargetVertex.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            targetVertex = ArrayList()
-            for (s in list) targetVertex.add(s.toInt())
-            val listColor = listOfColors.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            color = Color(listColor[0].toInt(), listColor[1].toInt(), listColor[2].toInt())
-        }
-    }
-
     inner class DatapathAnimation(instructionBinary: String) : JPanel(), ActionListener, MouseListener {
         @Serial
         private val serialVersionUID = -2681757800180958534L

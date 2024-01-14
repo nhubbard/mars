@@ -19,736 +19,475 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.tools;
+@file:Suppress("SameParameterValue", "MemberVisibilityCanBePrivate", "DuplicatedCode")
 
-import edu.missouristate.mars.Globals;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+package edu.missouristate.mars.tools
 
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.Serial;
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.Vector;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.tools.FunctionUnitVisualization.FunctionalUnit
+import edu.missouristate.mars.tools.FunctionUnitVisualization.FunctionalUnit.*
+import edu.missouristate.mars.vectorOf
+import org.w3c.dom.Element
+import org.w3c.dom.NodeList
+import java.awt.*
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
+import java.awt.image.BufferedImage
+import java.io.IOException
+import java.io.Serial
+import java.util.*
+import javax.imageio.ImageIO
+import javax.swing.JPanel
+import javax.swing.Timer
+import javax.xml.parsers.DocumentBuilderFactory
 
-class UnitAnimation extends JPanel implements ActionListener {
-    /**
-     *
-     */
+class UnitAnimation(
+    private var instructionCode: String,
+    private var datapathTypeUsed: FunctionalUnit
+) : JPanel(), ActionListener {
     @Serial
-    private static final long serialVersionUID = -2681757800180958534L;
+    private val serialVersionUID = -2681757800180958534L
 
-    private static final int PWIDTH = 1000;     // size of this panel
-    private static final int PHEIGHT = 574;
-    private final GraphicsConfiguration gc;
+    private val panelWidth = 1000
+    private val panelHeight = 574
 
-    private int counter;            //verify then remove.
-    private boolean justStarted;    //flag to start movement
+    private var gc: GraphicsConfiguration =
+        GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice.defaultConfiguration
+    private var counter: Int = 0
+    private var justStarted: Boolean = true
 
-    private int indexX;    //counter of screen position
-    private int indexY;
-    private boolean xIsMoving, yIsMoving;        //flag for mouse movement.
+    private var xIndex: Int = -1
+    private var yIndex: Int = -1
+    private var xIsMoving: Boolean = false
+    private var yIsMoving: Boolean = false
 
-    // private Vertex[][] inputGraph;
-    private Vector<Vector<Vertex>> outputGraph;
-    private final ArrayList<Vertex> vertexList;
-    private ArrayList<Vertex> vertexTraversed;
-    //Screen Label variables
+    private lateinit var outputGraph: Vector<Vector<Vertex>>
+    private var vertexList: ArrayList<Vertex> = arrayListOf()
+    private lateinit var vertexTraversed: ArrayList<Vertex>
 
-    private final HashMap<String, String> registerEquivalenceTable;
+    private var registerEquivalenceTable: HashMap<String, String> = hashMapOf()
 
-    private String instructionCode;
+    private var cursorInReg: Boolean = false
+    private lateinit var g2d: Graphics2D
+    private lateinit var datapath: BufferedImage
 
-    private final int register = 1;
-    private final int control = 2;
-    private final int aluControl = 3;
-    private final int alu = 4;
-    private final int datapatTypeUsed;
+    init {
+        background = Color.white
+        preferredSize = Dimension(panelWidth, panelHeight)
 
-    private Boolean cursorInReg;
-
-    private Graphics2D g2d;
-
-    private BufferedImage datapath;
-
-    static class Vertex {
-        private int numIndex;
-        private int init;
-        private int end;
-        private int current;
-        private String name;
-        public static final int movingUpside = 1;
-        public static final int movingDownside = 2;
-        public static final int movingLeft = 3;
-        public static final int movingRight = 4;
-        public final int direction;
-        public int oppositeAxis;
-        private boolean isMovingXaxis;
-        private Color color;
-        private boolean first_interaction;
-        private boolean active;
-        private final boolean isText;
-        private final ArrayList<Integer> targetVertex;
-
-        public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis, String listOfColors, String listTargetVertex, boolean isText) {
-            this.numIndex = index;
-            this.init = init;
-            this.current = this.init;
-            this.end = end;
-            this.name = name;
-            this.oppositeAxis = oppositeAxis;
-            this.isMovingXaxis = isMovingXaxis;
-            this.first_interaction = true;
-            this.active = false;
-            this.isText = isText;
-            this.color = new Color(0, 153, 0);
-            if (isMovingXaxis) {
-                if (init < end) direction = movingLeft;
-                else direction = movingRight;
-
-            } else {
-                if (init < end) direction = movingUpside;
-                else direction = movingDownside;
-            }
-            String[] list = listTargetVertex.split("#");
-            targetVertex = new ArrayList<>();
-            for (String s : list) {
-                targetVertex.add(Integer.parseInt(s));
-                //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
-            }
-            String[] listColor = listOfColors.split("#");
-            this.color = new Color(Integer.parseInt(listColor[0]), Integer.parseInt(listColor[1]), Integer.parseInt(listColor[2]));
-        }
-
-        public int getDirection() {
-            return direction;
-        }
-
-        public boolean isText() {
-            return this.isText;
-        }
-
-        public ArrayList<Integer> getTargetVertex() {
-            return targetVertex;
-        }
-
-        public int getNumIndex() {
-            return numIndex;
-        }
-
-        public void setNumIndex(int numIndex) {
-            this.numIndex = numIndex;
-        }
-
-        public int getInit() {
-            return init;
-        }
-
-        public void setInit(int init) {
-            this.init = init;
-        }
-
-        public int getEnd() {
-            return end;
-        }
-
-        public void setEnd(int end) {
-            this.end = end;
-        }
-
-        public int getCurrent() {
-            return current;
-        }
-
-        public void setCurrent(int current) {
-            this.current = current;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public int getOppositeAxis() {
-            return oppositeAxis;
-        }
-
-        public void setOppositeAxis(int oppositeAxis) {
-            this.oppositeAxis = oppositeAxis;
-        }
-
-        public boolean isMovingXaxis() {
-            return isMovingXaxis;
-        }
-
-        public void setMovingXaxis(boolean isMovingXaxis) {
-            this.isMovingXaxis = isMovingXaxis;
-        }
-
-        public Color getColor() {
-            return color;
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-
-        public boolean isFirst_interaction() {
-            return first_interaction;
-        }
-
-        public void setFirst_interaction(boolean first_interaction) {
-            this.first_interaction = first_interaction;
-        }
-
-        public boolean isActive() {
-            return active;
-        }
-
-        public void setActive(boolean active) {
-            this.active = active;
-        }
+        initImages()
+        loadHashMapValues()
     }
 
-    public UnitAnimation(String instructionBinary, int datapathType) {
-        datapatTypeUsed = datapathType;
-        Boolean cursorInIM = false;
-        Boolean cursorInALU = false;
-        Boolean cursorInDataMem = false;
-        DecimalFormat df = new DecimalFormat("0.0");  // 1 dp
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        // for reporting accl. memory usage
-        GraphicsDevice gd = ge.getDefaultScreenDevice();
-        gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
-
-        int accelMemory = gd.getAvailableAcceleratedMemory();  // in bytes
-        setBackground(Color.white);
-        setPreferredSize(new Dimension(PWIDTH, PHEIGHT));
-
-        // load and initialise the images
-        initImages();
-
-        vertexList = new ArrayList<>();
-        counter = 0;
-        justStarted = true;
-        instructionCode = instructionBinary;
-
-        //declaration of labels definition.
-        registerEquivalenceTable = new HashMap<>();
-
-        int countRegLabel = 400;
-        int countALULabel = 380;
-        int countPCLabel = 380;
-        loadHashMapValues();
-
-    } // end of ImagesTests()
-
-    //set the binnary opcode value of the basic instructions of MIPS instruction set
-    public void loadHashMapValues() {
-        if (datapatTypeUsed == register) {
-            importXmlStringData("/registerDatapath.xml", registerEquivalenceTable, "register_equivalence", "bits", "mnemonic");
-            importXmlDatapathMap("/registerDatapath.xml", "datapath_map");
-        } else if (datapatTypeUsed == control) {
-            importXmlStringData("/controlDatapath.xml", registerEquivalenceTable, "register_equivalence", "bits", "mnemonic");
-            importXmlDatapathMap("/controlDatapath.xml", "datapath_map");
-        } else if (datapatTypeUsed == aluControl) {
-            importXmlStringData("/ALUcontrolDatapath.xml", registerEquivalenceTable, "register_equivalence", "bits", "mnemonic");
-            importXmlDatapathMapAluControl("/ALUcontrolDatapath.xml", "datapath_map");
+    fun loadHashMapValues() {
+        val (filename, function) = when (datapathTypeUsed) {
+            REGISTER -> "/registerDatapath.xml" to ::importXmlDatapathMap
+            CONTROL -> "/controlDatapath.xml" to ::importXmlDatapathMap
+            ALU_CONTROL -> "/ALUcontrolDatapath.xml" to ::importXmlDatapathMapAluControl
+            ALU -> return
         }
+        importXmlStringData(filename, registerEquivalenceTable, "register_equivalence", "bits", "mnemonic")
+        function.invoke(filename, "datapath_map")
     }
 
-    //import the list of opcodes of mips set of instructions
-    public void importXmlStringData(String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(false);
-        DocumentBuilder docBuilder;
+    fun importXmlStringData(xmlName: String, table: HashMap<String, String>, elementTree: String, tagId: String, tagData: String) {
+        val dbf = DocumentBuilderFactory.newInstance()
+        dbf.isNamespaceAware = false
         try {
-            //System.out.println();
-            docBuilder = dbf.newDocumentBuilder();
-            Document doc = docBuilder.parse(Objects.requireNonNull(getClass().getResource(xmlName)).toString());
-            Element root = doc.getDocumentElement();
-            Element equivalenceItem;
-            NodeList bitList, mnemonic;
-            NodeList equivalenceList = root.getElementsByTagName(elementTree);
-            for (int i = 0; i < equivalenceList.getLength(); i++) {
-                equivalenceItem = (Element) equivalenceList.item(i);
-                bitList = equivalenceItem.getElementsByTagName(tagId);
-                mnemonic = equivalenceItem.getElementsByTagName(tagData);
-                for (int j = 0; j < bitList.getLength(); j++) {
-                    table.put(bitList.item(j).getTextContent(), mnemonic.item(j).getTextContent());
-                }
+            val docBuilder = dbf.newDocumentBuilder()
+            val doc = docBuilder.parse(javaClass.getResource(xmlName)!!.toString())
+            val root = doc.documentElement
+            var equivalenceItem: Element
+            var bitList: NodeList
+            var mnemonic: NodeList
+            val equivalenceList = root.getElementsByTagName(elementTree)
+            for (i in 0..<equivalenceList.length) {
+                equivalenceItem = equivalenceList.item(i) as Element
+                bitList = equivalenceItem.getElementsByTagName(tagId)
+                mnemonic = equivalenceItem.getElementsByTagName(tagData)
+                for (j in 0..<bitList.length)
+                    table[bitList.item(j).textContent] = mnemonic.item(j).textContent
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    //import the parameters of the animation on datapath
-    public void importXmlDatapathMap(String xmlName, String elementTree) {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(false);
-        DocumentBuilder docBuilder;
+    fun importXmlDatapathMap(xmlName: String, elementTree: String) {
+        val dbf = DocumentBuilderFactory.newInstance()
+        dbf.isNamespaceAware = false
         try {
-            docBuilder = dbf.newDocumentBuilder();
-            Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
-            Element root = doc.getDocumentElement();
-            Element datapathMapItem;
-            NodeList indexVertex, name, init, end, color, otherAxis, isMovingXaxis, targetVertex, sourceVertex, isText;
-            NodeList datapathMapList = root.getElementsByTagName(elementTree);
-            for (int i = 0; i < datapathMapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
-                datapathMapItem = (Element) datapathMapList.item(i);
-                indexVertex = datapathMapItem.getElementsByTagName("num_vertex");
-                name = datapathMapItem.getElementsByTagName("name");
-                init = datapathMapItem.getElementsByTagName("init");
-                end = datapathMapItem.getElementsByTagName("end");
-                //definition of colors line
-
-                if (instructionCode.startsWith("000000")) {//R-type instructions
-                    color = datapathMapItem.getElementsByTagName("color_Rtype");
-                    //System.out.println("rtype");
-                } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
-                    color = datapathMapItem.getElementsByTagName("color_Jtype");
-                    //System.out.println("jtype");
-                } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapathMapItem.getElementsByTagName("color_LOADtype");
-                    //System.out.println("load type");
-                } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapathMapItem.getElementsByTagName("color_STOREtype");
-                    //System.out.println("store type");
-                } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //BRANCH type instructions
-                    color = datapathMapItem.getElementsByTagName("color_BRANCHtype");
-                    //System.out.println("branch type");
-                } else { //BRANCH type instructions
-                    color = datapathMapItem.getElementsByTagName("color_Itype");
-                    //System.out.println("immediate type");
-                }
-
-
-                otherAxis = datapathMapItem.getElementsByTagName("other_axis");
-                isMovingXaxis = datapathMapItem.getElementsByTagName("isMovingXaxis");
-                targetVertex = datapathMapItem.getElementsByTagName("target_vertex");
-                isText = datapathMapItem.getElementsByTagName("is_text");
-
-                for (int j = 0; j < indexVertex.getLength(); j++) {
-                    Vertex vert = new Vertex(Integer.parseInt(indexVertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(otherAxis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
-                    vertexList.add(vert);
+            val docBuilder = dbf.newDocumentBuilder()
+            val doc = docBuilder.parse(javaClass.getResource(xmlName)!!.toString())
+            val root = doc.documentElement
+            var datapathMapItem: Element
+            var indexVertex: NodeList
+            var name: NodeList
+            var init: NodeList
+            var end: NodeList
+            var color: NodeList
+            var otherAxis: NodeList
+            var isMovingXAxis: NodeList
+            var targetVertex: NodeList
+            var isText: NodeList
+            val datapathMapList = root.getElementsByTagName(elementTree)
+            for (i in 0..<datapathMapList.length) {
+                datapathMapItem = datapathMapList.item(i) as Element
+                with(datapathMapItem) {
+                    indexVertex = getElementsByTagName("num_vertex")
+                    name = getElementsByTagName("name")
+                    init = getElementsByTagName("init")
+                    end = getElementsByTagName("end")
+                    color = getElementsByTagName(
+                        when {
+                            instructionCode.startsWith("000000") -> "color_Rtype"
+                            instructionCode.substring(0, 6).matches("00001[0-1]".toRegex()) -> "color_Jtype"
+                            instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]".toRegex()) -> "color_LOADtype"
+                            instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]".toRegex()) -> "color_STOREtype"
+                            instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex()) -> "color_BRANCHtype"
+                            else -> "color_Itype"
+                        }
+                    )
+                    otherAxis = getElementsByTagName("other_axis")
+                    isMovingXAxis = getElementsByTagName("isMovingXaxis")
+                    targetVertex = getElementsByTagName("target_vertex")
+                    isText = getElementsByTagName("is_text")
+                    for (j in 0..<indexVertex.length)
+                        vertexList.add(Vertex(
+                            indexVertex.item(j).textContent.toInt(),
+                            init.item(j).textContent.toInt(),
+                            end.item(j).textContent.toInt(),
+                            name.item(j).textContent,
+                            otherAxis.item(j).textContent.toInt(),
+                            isMovingXAxis.item(j).textContent.toBoolean(),
+                            color.item(j).textContent,
+                            targetVertex.item(j).textContent,
+                            isText.item(j).textContent.toBoolean()
+                        ))
                 }
             }
-            //loading matrix of control of vertex.
-            outputGraph = new Vector<>();
-            vertexTraversed = new ArrayList<>();
-            int size = vertexList.size();
-            Vertex vertex;
-            ArrayList<Integer> targetList;
-            for (Vertex value : vertexList) {
-                vertex = value;
-                targetList = vertex.getTargetVertex();
-                Vector<Vertex> vertexOfTargets = new Vector<>();
-                for (Integer integer : targetList) {
-                    vertexOfTargets.add(vertexList.get(integer));
-                }
-                outputGraph.add(vertexOfTargets);
+            outputGraph = vectorOf()
+            vertexTraversed = arrayListOf()
+            for (vertex in vertexList) {
+                val vertexOfTargets = vectorOf<Vertex>()
+                for (integer in vertex.targetVertex)
+                    vertexOfTargets.add(vertexList[integer])
+                outputGraph.add(vertexOfTargets)
             }
-            vertexList.get(0).setActive(true);
-            vertexTraversed.add(vertexList.get(0));
-        } catch (Exception e) {
-            e.printStackTrace();
+            vertexList[0].isActive = true
+            vertexTraversed.add(vertexList[0])
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    public void importXmlDatapathMapAluControl(String xmlName, String elementTree) {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(false);
-        DocumentBuilder docBuilder;
+    fun importXmlDatapathMapAluControl(xmlName: String, elementTree: String) {
+        val dbf = DocumentBuilderFactory.newInstance()
+        dbf.isNamespaceAware = false
         try {
-            docBuilder = dbf.newDocumentBuilder();
-            Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
-            Element root = doc.getDocumentElement();
-            Element datapathMapItem;
-            NodeList indexVertex, name, init, end, color, otherAxis, isMovingXAxis, targetVertex, sourceVertex, isText;
-            NodeList datapathMapList = root.getElementsByTagName(elementTree);
-            for (int i = 0; i < datapathMapList.getLength(); i++) { //extract the vertex of the xml input and encapsulate into the vertex object
-                datapathMapItem = (Element) datapathMapList.item(i);
-                indexVertex = datapathMapItem.getElementsByTagName("num_vertex");
-                name = datapathMapItem.getElementsByTagName("name");
-                init = datapathMapItem.getElementsByTagName("init");
-                end = datapathMapItem.getElementsByTagName("end");
-                //definition of colors line
+            val docBuilder = dbf.newDocumentBuilder()
+            val doc = docBuilder.parse(javaClass.getResource(xmlName)!!.toString())
+            val root = doc.documentElement
+            var datapathMapItem: Element
+            var indexVertex: NodeList
+            var name: NodeList
+            var init: NodeList
+            var end: NodeList
+            var color: NodeList
+            var otherAxis: NodeList
+            var isMovingXAxis: NodeList
+            var targetVertex: NodeList
+            var isText: NodeList
+            val datapathMapList = root.getElementsByTagName(elementTree)
+            for (i in 0..<datapathMapList.length) {
+                datapathMapItem = datapathMapList.item(i) as Element
+                with(datapathMapItem) {
+                    indexVertex = getElementsByTagName("num_vertex")
+                    name = getElementsByTagName("name")
+                    init = datapathMapItem.getElementsByTagName("init")
+                    end = datapathMapItem.getElementsByTagName("end")
+                    color = getElementsByTagName(when {
+                        instructionCode.startsWith("000000") -> when (instructionCode.substring(28, 32)) {
+                            "0000" -> "ALU_out010"
+                            "0010" -> "ALU_out110"
+                            "0100" -> "ALU_out000"
+                            "0101" -> "ALU_out001"
+                            else -> "ALU_out111"
+                        }
+                        instructionCode.substring(0, 6).matches("00001[0-1]".toRegex()) -> "color_Jtype"
+                        instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]".toRegex()) -> "color_LOADtype"
+                        instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]".toRegex()) -> "color_STOREtype"
+                        instructionCode.substring(0, 6).matches("0001[0-1][0-1]".toRegex()) -> "color_BRANCHtype"
+                        else -> "color_Itype"
+                    })
+                    otherAxis = getElementsByTagName("otherAxis")
+                    isMovingXAxis = getElementsByTagName("isMovingXaxis")
+                    targetVertex = getElementsByTagName("target_vertex")
+                    isText = getElementsByTagName("is_text")
+                    for (j in 0..<indexVertex.length) vertexList.add(Vertex(
+                        indexVertex.item(j).textContent.toInt(),
+                        init.item(j).textContent.toInt(),
+                        end.item(j).textContent.toInt(),
+                        name.item(j).textContent,
+                        otherAxis.item(j).textContent.toInt(),
+                        isMovingXAxis.item(j).textContent.toBoolean(),
+                        color.item(j).textContent,
+                        targetVertex.item(j).textContent,
+                        isText.item(j).textContent.toBoolean()
+                    ))
+                }
+            }
+            outputGraph = vectorOf()
+            vertexTraversed = arrayListOf()
+            for (vertex in vertexList) {
+                val vertexOfTargets = vectorOf<Vertex>()
+                for (integer in vertex.targetVertex)
+                    vertexOfTargets.add(vertexList[integer])
+                outputGraph.add(vertexOfTargets)
+            }
+            vertexList[0].isActive = true
+            vertexTraversed.add(vertexList[0])
+       } catch (e: Exception) {
+           e.printStackTrace()
+       }
+    }
 
-                if (instructionCode.startsWith("000000")) {//R-type instructions
-                    if (instructionCode.substring(28, 32).matches("0000")) { //BRANCH type instructions
-                        color = datapathMapItem.getElementsByTagName("ALU_out010");
-                        System.out.println("ALU_out010 type " + instructionCode.substring(28, 32));
-                    } else if (instructionCode.substring(28, 32).matches("0010")) { //BRANCH type instructions
-                        color = datapathMapItem.getElementsByTagName("ALU_out110");
-                        System.out.println("ALU_out110 type " + instructionCode.substring(28, 32));
-                    } else if (instructionCode.substring(28, 32).matches("0100")) { //BRANCH type instructions
-                        color = datapathMapItem.getElementsByTagName("ALU_out000");
-                        System.out.println("ALU_out000 type " + instructionCode.substring(28, 32));
-                    } else if (instructionCode.substring(28, 32).matches("0101")) { //BRANCH type instructions
-                        color = datapathMapItem.getElementsByTagName("ALU_out001");
-                        System.out.println("ALU_out001 type " + instructionCode.substring(28, 32));
-                    } else { //BRANCH type instructions
-                        color = datapathMapItem.getElementsByTagName("ALU_out111");
-                        System.out.println("ALU_out111 type " + instructionCode.substring(28, 32));
-                    }
-                } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { //J-type instructions
-                    color = datapathMapItem.getElementsByTagName("color_Jtype");
-                    System.out.println("jtype");
-                } else if (instructionCode.substring(0, 6).matches("100[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapathMapItem.getElementsByTagName("color_LOADtype");
-                    System.out.println("load type");
-                } else if (instructionCode.substring(0, 6).matches("101[0-1][0-1][0-1]")) { //LOAD type instructions
-                    color = datapathMapItem.getElementsByTagName("color_STOREtype");
-                    System.out.println("store type");
-                } else if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")) { //BRANCH type instructions
-                    color = datapathMapItem.getElementsByTagName("color_BRANCHtype");
-                    System.out.println("branch type");
-                } else {
-                    color = datapathMapItem.getElementsByTagName("color_Itype");
-                    System.out.println("immediate type");
-                }
-                otherAxis = datapathMapItem.getElementsByTagName("otherAxis");
-                isMovingXAxis = datapathMapItem.getElementsByTagName("isMovingXaxis");
-                targetVertex = datapathMapItem.getElementsByTagName("target_vertex");
-                isText = datapathMapItem.getElementsByTagName("is_text");
-                for (int j = 0; j < indexVertex.getLength(); j++) {
-                    Vertex vert = new Vertex(Integer.parseInt(indexVertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(otherAxis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXAxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
-                    vertexList.add(vert);
-                }
-            }
-            //loading matrix of control of vertex.
-            outputGraph = new Vector<>();
-            vertexTraversed = new ArrayList<>();
-            int size = vertexList.size();
-            Vertex vertex;
-            ArrayList<Integer> targetList;
-            for (Vertex value : vertexList) {
-                vertex = value;
-                targetList = vertex.getTargetVertex();
-                Vector<Vertex> vertexOfTargets = new Vector<>();
-                for (Integer integer : targetList) {
-                    vertexOfTargets.add(vertexList.get(integer));
-                }
-                outputGraph.add(vertexOfTargets);
-            }
-            vertexList.get(0).setActive(true);
-            vertexTraversed.add(vertexList.get(0));
-        } catch (Exception e) {
-            e.printStackTrace();
+    fun startAnimation(codeInstruction: String) {
+        instructionCode = codeInstruction
+        Timer(8, this).start()
+        repaint()
+    }
+
+    private fun initImages() {
+        val name = when (datapathTypeUsed) {
+            REGISTER -> "register.png"
+            CONTROL -> "control.png"
+            ALU_CONTROL -> "ALUcontrol.png"
+            else -> "alu.png"
         }
-    }
-
-    //set the initial state of the variables that controls the animation, and start the timer that triggers the animation.
-    public void startAnimation(String codeInstruction) {
-        instructionCode = codeInstruction;
-        //config variables
-        // velocity of frames in ms
-        int PERIOD = 8;
-        new Timer(PERIOD, this).start();    // start timer
-        this.repaint();
-    }
-
-    //initialize the image of datapath.
-    private void initImages() {
         try {
-            BufferedImage im;
-            if (datapatTypeUsed == register) {
-                im = ImageIO.read(getClass().getResource(Globals.imagesPath + "register.png"));
-            } else if (datapatTypeUsed == control) {
-                im = ImageIO.read(getClass().getResource(Globals.imagesPath + "control.png"));
-            } else if (datapatTypeUsed == aluControl) {
-                im = ImageIO.read(getClass().getResource(Globals.imagesPath + "ALUcontrol.png"));
-            } else {
-                im = ImageIO.read(getClass().getResource(Globals.imagesPath + "alu.png"));
-            }
-
-            int transparency = im.getColorModel().getTransparency();
-            datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(), transparency);
-            g2d = datapath.createGraphics();
-            g2d.drawImage(im, 0, 0, null);
-            g2d.dispose();
-        } catch (IOException e) {
-            System.out.println("Load Image error for " + getClass().getResource(Globals.imagesPath + "register.png") + ":\n" + e);
+            val im = ImageIO.read(javaClass.getResource("${Globals.imagesPath}$name"))
+            val transparency = im.colorModel.transparency
+            datapath = gc.createCompatibleImage(im.width, im.height, transparency)
+            g2d = datapath.createGraphics()
+            g2d.drawImage(im, 0, 0, null)
+            g2d.dispose()
+        } catch (e: IOException) {
+            println("Image loading error for $name:\n$e")
         }
     }
 
-    public void updateDisplay() {
-        this.repaint();
+    fun updateDisplay() = repaint()
+
+    override fun actionPerformed(e: ActionEvent) {
+        if (justStarted) justStarted = false
+        if (xIsMoving) xIndex++
+        if (yIsMoving) yIndex--
+        repaint()
     }
 
-    public void actionPerformed(ActionEvent e)
-    // triggered by the timer: update, repaint
-    {
-        if (justStarted) justStarted = false;
-        if (xIsMoving) indexX++;
-        if (yIsMoving) indexY--;
-        repaint();
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        g2d = g as Graphics2D
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        // TODO: uhh what is this?
+        g2d = g
+        drawImage(g2d, datapath, 0, 0, null)
+        executeAnimation(g)
+        counter = (counter + 1) % 100
+        g2d.dispose()
     }
 
-
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        g2d = (Graphics2D) g;
-        // use antialiasing
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        // smoother (and slower) image transformations  (e.g. for resizing)
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2d = (Graphics2D) g;
-        drawImage(g2d, datapath, 0, 0, null);
-        executeAnimation(g);
-        counter = (counter + 1) % 100;
-        g2d.dispose();
+    private fun drawImage(g2d: Graphics2D, im: BufferedImage?, x: Int, y: Int, c: Color?) {
+        im?.let { g2d.drawImage(im, x, y, this) } ?: run {
+            g2d.color = c
+            g2d.fillOval(x, y, 20, 20)
+            g2d.color = Color.black
+            g2d.drawString("   ", x, y)
+        }
     }
 
-    private void drawImage(Graphics2D g2d, BufferedImage im, int x, int y, Color c) {
-        if (im == null) {
-            g2d.setColor(c);
-            g2d.fillOval(x, y, 20, 20);
-            g2d.setColor(Color.black);
-            g2d.drawString("   ", x, y);
-        } else g2d.drawImage(im, x, y, this);
-    }
-
-    //draw lines.
-    //method to draw the lines that run from left to right.
-    public void printTrackLtoR(Vertex v) {
-        int size;
-        int[] track;
-        size = v.getEnd() - v.getInit();
-        track = new int[size];
-        for (int i = 0; i < size; i++)
-            track[i] = v.getInit() + i;
-        if (v.isActive()) {
-            v.setFirst_interaction(false);
-            for (int i = 0; i < size; i++) {
-                if (track[i] <= v.getCurrent()) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+    fun printTrackLtoR(v: Vertex) {
+        val size = v.end - v.init
+        val track = IntArray(size) { v.init + it }
+        if (v.isActive) {
+            v.isFirstInteraction = false
+            for (i in 0..<size) {
+                if (track[i] <= v.current) {
+                    g2d.color = v.color
+                    g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                 }
             }
-            if (v.getCurrent() == track[size - 1]) v.setActive(false);
-            v.setCurrent(v.getCurrent() + 1);
-        } else if (!v.isFirst_interaction()) {
-            for (int i = 0; i < size; i++) {
-                g2d.setColor(v.getColor());
-                g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+            if (v.current == track[size - 1]) v.isActive = false
+            v.current++
+        } else if (!v.isFirstInteraction) {
+            for (i in 0..<size) {
+                g2d.color = v.color
+                g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
             }
         }
     }
 
-    //method to draw the lines that run from right to left.
-    //public boolean printTrackRtoL(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
-//		 boolean active, boolean firstInteraction){
-    public void printTrackRtoL(Vertex v) {
-        int size;
-        int[] track;
-        size = v.getInit() - v.getEnd();
-        track = new int[size];
-
-        for (int i = 0; i < size; i++)
-            track[i] = v.getInit() - i;
-
-        if (v.isActive()) {
-            v.setFirst_interaction(false);
-            for (int i = 0; i < size; i++) {
-                if (track[i] >= v.getCurrent()) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+    fun printTrackRtoL(v: Vertex) {
+        val size = v.init - v.end
+        val track = IntArray(size) { v.init - it }
+        if (v.isActive) {
+            v.isFirstInteraction = false
+            for (i in 0..<size) {
+                if (track[i] >= v.current) {
+                    g2d.color = v.color
+                    g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
                 }
             }
-            if (v.getCurrent() == track[size - 1]) v.setActive(false);
-            v.setCurrent(v.getCurrent() - 1);
-        } else if (!v.isFirst_interaction()) {
-            for (int i = 0; i < size; i++) {
-                g2d.setColor(v.getColor());
-                g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
+            if (v.current == track[size - 1]) v.isActive = false
+            v.current--
+        } else if (!v.isFirstInteraction) {
+            for (i in 0..<size) {
+                g2d.color = v.color
+                g2d.fillRect(track[i], v.oppositeAxis, 3, 3)
             }
         }
     }
 
-    //method to draw the lines that run from down to top.
-// public boolean printTrackDtoU(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis, 
-//		 boolean active, boolean firstInteraction){
-    public void printTrackDtoU(Vertex v) {
-        int size;
-        int[] track;
-
-        if (v.getInit() > v.getEnd()) {
-            size = v.getInit() - v.getEnd();
-            track = new int[size];
-            for (int i = 0; i < size; i++)
-                track[i] = v.getInit() - i;
+    fun printTrackDtoU(v: Vertex) {
+        val size: Int
+        val track: IntArray
+        if (v.init > v.end) {
+            size = v.init - v.end
+            track = IntArray(size) { v.init - it }
         } else {
-            size = v.getEnd() - v.getInit();
-            track = new int[size];
-            for (int i = 0; i < size; i++)
-                track[i] = v.getInit() + i;
+            size = v.end - v.init
+            track = IntArray(size) { v.init + it }
         }
-
-        if (v.isActive()) {
-            v.setFirst_interaction(false);
-            for (int i = 0; i < size; i++) {
-                if (track[i] >= v.getCurrent()) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+        if (v.isActive) {
+            v.isFirstInteraction = false
+            for (i in 0..<size) {
+                if (track[i] >= v.current) {
+                    g2d.color = v.color
+                    g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
                 }
             }
-            if (v.getCurrent() == track[size - 1]) v.setActive(false);
-            v.setCurrent(v.getCurrent() - 1);
-
-        } else if (!v.isFirst_interaction()) {
-            for (int i = 0; i < size; i++) {
-                g2d.setColor(v.getColor());
-                g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+            if (v.current == track[size - 1]) v.isActive = false
+            v.current--
+        } else if (!v.isFirstInteraction) {
+            for (i in 0..<size) {
+                g2d.color = v.color
+                g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
             }
         }
     }
 
-    //method to draw the lines that run from top to down.
-// public boolean printTrackUtoD(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis, 
-//		 boolean active,  boolean firstInteraction){
-    public void printTrackUtoD(Vertex v) {
-        int size;
-        int[] track;
-        size = v.getEnd() - v.getInit();
-        track = new int[size];
-
-        for (int i = 0; i < size; i++)
-            track[i] = v.getInit() + i;
-
-        if (v.isActive()) {
-            v.setFirst_interaction(false);
-            for (int i = 0; i < size; i++) {
-                if (track[i] <= v.getCurrent()) {
-                    g2d.setColor(v.getColor());
-                    g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+    fun printTrackUtoD(v: Vertex) {
+        val size = v.end - v.init
+        val track = IntArray(size) { v.init + it }
+        if (v.isActive) {
+            v.isFirstInteraction = false
+            for (i in 0..<size) {
+                if (track[i] <= v.current) {
+                    g2d.color = v.color
+                    g2d.fillRect(v.oppositeAxis, track[i], 3,3 )
                 }
             }
-            if (v.getCurrent() == track[size - 1]) v.setActive(false);
-            v.setCurrent(v.getCurrent() + 1);
-        } else if (!v.isFirst_interaction()) {
-            for (int i = 0; i < size; i++) {
-                g2d.setColor(v.getColor());
-                g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
+            if (v.current == track[size - 1]) v.isActive = false
+            v.current++
+        } else if (!v.isFirstInteraction) {
+            for (i in 0..<size) {
+                g2d.color = v.color
+                g2d.fillRect(v.oppositeAxis, track[i], 3, 3)
             }
         }
     }
 
+    // TODO: Make sure this functions identically to the original code
+    fun parseBinToInt(code: String): String =
+        code.toInt(2).toString()
 
-    //convert binnary value to integer.
-    public String parseBinToInt(String code) {
-        int value = 0;
-        for (int i = code.length() - 1; i >= 0; i--) {
-            if ("1".equals(code.substring(i, i + 1))) {
-                value = value + (int) Math.pow(2, code.length() - i - 1);
-            }
-        }
-        return Integer.toString(value);
-    }
-
-    //set and execute the information about the current position of each line of information in the animation,
-    //verifies the previous status of the animation and increment the position of each line that interconnect the unit function.
-    private void executeAnimation(Graphics g) {
-        g2d = (Graphics2D) g;
-        Vertex vert;
-        for (int i = 0; i < vertexTraversed.size(); i++) {
-            vert = vertexTraversed.get(i);
-            if (vert.isMovingXaxis) {
-                if (vert.getDirection() == Vertex.movingLeft) {
-                    printTrackLtoR(vert);
-                    if (!vert.isActive()) {
-                        int j = vert.getTargetVertex().size();
-                        Vertex tempVertex;
-                        for (int k = 0; k < j; k++) {
-                            tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                            boolean hasThisVertex = false;
-                            for (Vertex vertex : vertexTraversed) {
-                                if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                    hasThisVertex = true;
-                                    break;
+    private fun executeAnimation(g: Graphics) {
+        g2d = g as Graphics2D
+        var vert: Vertex
+        for (i in vertexTraversed.indices) {
+            vert = vertexTraversed[i]
+            if (vert.isMovingXAxis) {
+                if (vert.direction == Vertex.Direction.LEFT) {
+                    printTrackLtoR(vert)
+                    if (!vert.isActive) {
+                        val j = vert.targetVertex.size
+                        var tempVertex: Vertex
+                        for (k in 0..<j) {
+                            tempVertex = outputGraph[vert.numIndex][k]
+                            var hasThisVertex = false
+                            for (vertex in vertexTraversed) {
+                                if (tempVertex.numIndex == vertex.numIndex) {
+                                    hasThisVertex = true
+                                    break
                                 }
                             }
                             if (!hasThisVertex) {
-                                outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                outputGraph[vert.numIndex][k].isActive = true
+                                vertexTraversed.add(outputGraph[vert.numIndex][k])
                             }
                         }
                     }
                 } else {
-                    printTrackRtoL(vert);
-                    if (!vert.isActive()) {
-                        int j = vert.getTargetVertex().size();
-                        Vertex tempVertex;
-                        for (int k = 0; k < j; k++) {
-                            tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                            boolean hasThisVertex = false;
-                            for (Vertex vertex : vertexTraversed) {
-                                if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                    hasThisVertex = true;
-                                    break;
+                    printTrackRtoL(vert)
+                    if (!vert.isActive) {
+                        val j = vert.targetVertex.size
+                        var tempVertex: Vertex
+                        for (k in 0..<j) {
+                            tempVertex = outputGraph[vert.numIndex][k]
+                            var hasThisVertex = false
+                            for (vertex in vertexTraversed) {
+                                if (tempVertex.numIndex == vertex.numIndex) {
+                                    hasThisVertex = true
+                                    break
                                 }
                             }
                             if (!hasThisVertex) {
-                                outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                outputGraph[vert.numIndex][k].isActive = true
+                                vertexTraversed.add(outputGraph[vert.numIndex][k])
                             }
                         }
                     }
                 }
             } else {
-                if (vert.getDirection() == Vertex.movingDownside) {
-                    if (vert.isText) ;
-                    else printTrackDtoU(vert);
-                    if (!vert.isActive()) {
-                        int j = vert.getTargetVertex().size();
-                        Vertex tempVertex;
-                        for (int k = 0; k < j; k++) {
-                            tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                            boolean hasThisVertex = false;
-                            for (Vertex vertex : vertexTraversed) {
-                                if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                    hasThisVertex = true;
-                                    break;
+                if (vert.direction == Vertex.Direction.DOWN) {
+                    if (!vert.isText) printTrackDtoU(vert)
+                    if (!vert.isActive) {
+                        val j = vert.targetVertex.size
+                        var tempVertex: Vertex
+                        for (k in 0..<j) {
+                            tempVertex = outputGraph[vert.numIndex][k]
+                            var hasThisVertex = false
+                            for (vertex in vertexTraversed) {
+                                if (tempVertex.numIndex == vertex.numIndex) {
+                                    hasThisVertex = true
+                                    break
                                 }
                             }
                             if (!hasThisVertex) {
-                                outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                outputGraph[vert.numIndex][k].isActive = true
+                                vertexTraversed.add(outputGraph[vert.numIndex][k])
                             }
                         }
                     }
                 } else {
-                    printTrackUtoD(vert);
-                    if (!vert.isActive()) {
-                        int j = vert.getTargetVertex().size();
-                        Vertex tempVertex;
-                        for (int k = 0; k < j; k++) {
-                            tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-                            boolean hasThisVertex = false;
-                            for (Vertex vertex : vertexTraversed) {
-                                if (tempVertex.getNumIndex() == vertex.getNumIndex()) {
-                                    hasThisVertex = true;
-                                    break;
+                    printTrackUtoD(vert)
+                    if (!vert.isActive) {
+                        val j = vert.targetVertex.size
+                        var tempVertex: Vertex
+                        for (k in 0..<j) {
+                            tempVertex = outputGraph[vert.numIndex][k]
+                            var hasThisVertex = false
+                            for (vertex in vertexTraversed) {
+                                if (tempVertex.numIndex == vertex.numIndex) {
+                                    hasThisVertex = true
+                                    break
                                 }
                             }
                             if (!hasThisVertex) {
-                                outputGraph.get(vert.getNumIndex()).get(k).setActive(true);
-                                vertexTraversed.add(outputGraph.get(vert.getNumIndex()).get(k));
+                                outputGraph[vert.numIndex][k].isActive = true
+                                vertexTraversed.add(outputGraph[vert.numIndex][k])
                             }
                         }
                     }

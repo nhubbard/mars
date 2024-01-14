@@ -114,14 +114,6 @@ class FloatRepresentation @JvmOverloads constructor(
     private lateinit var binaryToDecimalFormulaGraphic: BinaryToDecimalFormulaGraphic
     private lateinit var instructions: InstructionsPane
 
-    init {
-        // TODO: WTF is this? Was this a singleton before? It certainly isn't anymore...
-        // Original code was the constructor, which called the super method, and then
-        // created a local variable called thisFloatTool, for whatever reason.
-        // Probably will be removed in short time.
-        val thisFloatTool = this
-    }
-
     override val toolName: String = TITLE
 
     /**
@@ -730,10 +722,6 @@ class FloatRepresentation @JvmOverloads constructor(
             font = instructionFont
             background = parent.background
         }
-
-        var text: String
-            get() = getText()
-            set(value) = setText(value)
     }
 
     /**
