@@ -854,7 +854,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
                                                        boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
-            cell.setFont(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT);
+            cell.setFont(MonoRightCellRenderer.monospacedFont);
             cell.setHorizontalAlignment(SwingConstants.RIGHT);
             if (row % 2 == 0) {
                 cell.setBackground(Globals.getSettings().getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));

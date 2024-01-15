@@ -77,12 +77,12 @@ public class RunStepAction extends GuiAction {
         executePane.getDataSegmentWindow().updateValues();
         if (!done) {
             executePane.getTextSegmentWindow().highlightStepAtPC();
-            FileStatus.set(FileStatus.RUNNABLE);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
         }
         if (done) {
             RunGoAction.resetMaxSteps();
             executePane.getTextSegmentWindow().unhighlightAllSteps();
-            FileStatus.set(FileStatus.TERMINATED);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.TERMINATED);
         }
         if (done && pe == null) {
             mainUI.getMessagesPane().postMarsMessage(
@@ -101,7 +101,7 @@ public class RunStepAction extends GuiAction {
             mainUI.getMessagesPane().postMarsMessage(
                     "\n" + name + ": execution terminated with errors.\n\n");
             mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
-            FileStatus.set(FileStatus.TERMINATED); // should be redundant.
+            FileStatus.Companion.setStatus(FileStatus.StatusType.TERMINATED); // should be redundant.
             executePane.getTextSegmentWindow().setCodeHighlighting(true);
             executePane.getTextSegmentWindow().unhighlightAllSteps();
             executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter().getValue() - 4);

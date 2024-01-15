@@ -68,7 +68,7 @@ public class RunGoAction extends GuiAction {
                 executePane.getTextSegmentWindow().setCodeHighlighting(false);
                 executePane.getTextSegmentWindow().unhighlightAllSteps();
                 //FileStatus.set(FileStatus.RUNNING);
-                mainUI.setMenuState(FileStatus.RUNNING);
+                mainUI.setMenuState(FileStatus.StatusType.RUNNING);
                 try {
                     int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
                     boolean done = Globals.program.simulateFromPC(breakPoints, maxSteps, this);
@@ -111,7 +111,7 @@ public class RunGoAction extends GuiAction {
         executePane.getCoprocessor1Window().updateRegisters();
         executePane.getCoprocessor0Window().updateRegisters();
         executePane.getDataSegmentWindow().updateValues();
-        FileStatus.set(FileStatus.RUNNABLE);
+        FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
         VenusUI.setReset(false);
     }
 
@@ -128,7 +128,7 @@ public class RunGoAction extends GuiAction {
         executePane.getCoprocessor1Window().updateRegisters();
         executePane.getCoprocessor0Window().updateRegisters();
         executePane.getDataSegmentWindow().updateValues();
-        FileStatus.set(FileStatus.TERMINATED);
+        FileStatus.Companion.setStatus(FileStatus.StatusType.TERMINATED);
         SystemIO.resetFiles(); // close any files opened in MIPS program
         // Bring coprocessor 0 to the front if terminated due to exception.
         if (pe != null) {

@@ -72,7 +72,7 @@ public class RunAssembleAction extends GuiAction {
         extendedAssemblerEnabled = Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED);
         warningsAreErrors = Globals.getSettings().getBooleanSetting(Settings.WARNINGS_ARE_ERRORS);
         if (FileStatus.getFile() != null) {
-            if (FileStatus.get() == FileStatus.EDITED) {
+            if (FileStatus.Companion.getStatus() == FileStatus.StatusType.EDITED) {
                 mainUI.getEditor().save();
             }
             try {
@@ -102,7 +102,7 @@ public class RunAssembleAction extends GuiAction {
                 mainUI.getMessagesPane().postMarsMessage(
                         name + ": operation completed successfully.\n\n");
                 FileStatus.setAssembled(true);
-                FileStatus.set(FileStatus.RUNNABLE);
+                FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
                 RegisterFile.resetRegisters();
                 Coprocessor1.resetRegisters();
                 Coprocessor0.resetRegisters();
@@ -150,7 +150,7 @@ public class RunAssembleAction extends GuiAction {
                     }
                 }
                 FileStatus.setAssembled(false);
-                FileStatus.set(FileStatus.NOT_EDITED);
+                FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
             }
         }
     }

@@ -21,6 +21,7 @@
 
 package edu.missouristate.mars.venus
 
+import edu.missouristate.mars.venus.FileStatus.*
 import edu.missouristate.mars.venus.panes.EditTabbedPane
 import java.io.File
 
@@ -75,12 +76,12 @@ class Editor(private val mainUI: VenusUI) {
      * @param name   Name of file (last component of path)
      * @param status Edit status of file.  See FileStatus static constants.
      */
-    fun setTitle(path: String?, name: String?, status: Int) =
-        if (status == FileStatus.NO_FILE || name.isNullOrEmpty()) mainUI.title = mainUIBaseTitle
+    fun setTitle(path: String?, name: String?, status: StatusType) =
+        if (status == StatusType.NO_FILE || name.isNullOrEmpty()) mainUI.title = mainUIBaseTitle
         else {
-            val edited = if ((status == FileStatus.NEW_EDITED || status == FileStatus.EDITED)) "*" else " "
+            val edited = if ((status == StatusType.NEW_EDITED || status == StatusType.EDITED)) "*" else " "
             val titleName =
-                if (status == FileStatus.NEW_EDITED || status == FileStatus.NEW_NOT_EDITED) name else path!!
+                if (status == StatusType.NEW_EDITED || status == StatusType.NEW_NOT_EDITED) name else path!!
             mainUI.title = "$titleName$edited - $mainUIBaseTitle"
             editTabbedPane.setTitleAt(editTabbedPane.selectedIndex, name + edited)
         }

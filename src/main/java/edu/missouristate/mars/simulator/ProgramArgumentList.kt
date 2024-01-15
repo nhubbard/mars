@@ -43,7 +43,7 @@ class ProgramArgumentList {
 
     /**
      * Constructor that parses a string to produce a list. Delimiters are the default Java StringTokenizer delimiters
-     * (space, tab, newline, return, form feed).
+     * (space, tab, newLine, return, form feed).
      *
      * @param args The String containing the delimiter-separated arguments.
      */

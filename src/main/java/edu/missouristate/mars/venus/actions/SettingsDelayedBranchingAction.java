@@ -53,13 +53,13 @@ public class SettingsDelayedBranchingAction extends GuiAction {
                 ((JCheckBoxMenuItem) e.getSource()).isSelected());
         // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
         if (Globals.getGui() != null &&
-                (FileStatus.get() == FileStatus.RUNNABLE ||
-                        FileStatus.get() == FileStatus.RUNNING ||
-                        FileStatus.get() == FileStatus.TERMINATED)
+                (FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNABLE ||
+                        FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNING ||
+                        FileStatus.Companion.getStatus() == FileStatus.StatusType.TERMINATED)
         ) {
             // Stop execution if executing -- should NEVER happen because this
             // Action's widget is disabled during MIPS execution.
-            if (FileStatus.get() == FileStatus.RUNNING) {
+            if (FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNING) {
                 Simulator.getInstance().stopExecution(this);
             }
             Globals.getGui().getRunAssembleAction().actionPerformed(null);

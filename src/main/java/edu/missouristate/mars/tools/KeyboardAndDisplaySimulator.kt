@@ -407,7 +407,7 @@ class KeyboardAndDisplaySimulator(
             splitter between the Display and Keyboard windows) then click the tool's Reset button. Implementation
             detail: the window is implemented by a JTextArea to which text is written as a string. Its caret (cursor)
             position is required to be a position within the string. I simulated a text terminal with random positioning
-            by pre-allocating a string of spaces with one space per (X,Y) position and an embedded newline where each
+            by pre-allocating a string of spaces with one space per (X,Y) position and an embedded newLine where each
             line ends. Each character transmitted to the window thus replaces an existing character in the string.
             
             Thanks to Eric Wang at Washington State University, who requested these features to enable use of this

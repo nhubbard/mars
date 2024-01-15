@@ -129,14 +129,14 @@ public class EditTabbedPane extends JTabbedPane {
         EditPane editPane = new EditPane(this.mainUI);
         editPane.setSourceCode("", true);
         editPane.setShowLineNumbersEnabled(true);
-        editPane.setFileStatus(FileStatus.NEW_NOT_EDITED);
+        editPane.setFileStatus(FileStatus.StatusType.NEW_NOT_EDITED);
         String name = editor.getNextDefaultFilename();
         editPane.setPathname(name);
         this.addTab(name, editPane);
 
         FileStatus.reset();
         FileStatus.setName(name);
-        FileStatus.set(FileStatus.NEW_NOT_EDITED);
+        FileStatus.Companion.setStatus(FileStatus.StatusType.NEW_NOT_EDITED);
 
         RegisterFile.resetRegisters();
         VenusUI.setReset(true);
@@ -260,8 +260,8 @@ public class EditTabbedPane extends JTabbedPane {
         if (saveFile(editPane)) {
             FileStatus.setSaved(true);
             FileStatus.setEdited(false);
-            FileStatus.set(FileStatus.NOT_EDITED);
-            editPane.setFileStatus(FileStatus.NOT_EDITED);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
+            editPane.setFileStatus(FileStatus.StatusType.NOT_EDITED);
             updateTitlesAndMenuState(editPane);
             return true;
         }
@@ -309,10 +309,10 @@ public class EditTabbedPane extends JTabbedPane {
             FileStatus.setName(theFile.getPath());
             FileStatus.setSaved(true);
             FileStatus.setEdited(false);
-            FileStatus.set(FileStatus.NOT_EDITED);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
             editor.setCurrentSaveDirectory(theFile.getParent());
             editPane.setPathname(theFile.getPath());
-            editPane.setFileStatus(FileStatus.NOT_EDITED);
+            editPane.setFileStatus(FileStatus.StatusType.NOT_EDITED);
             updateTitlesAndMenuState(editPane);
             return true;
         }
@@ -400,7 +400,7 @@ public class EditTabbedPane extends JTabbedPane {
                 if (tabs[i].hasUnsavedEdits()) {
                     setCurrentEditTab(tabs[i]);
                     if (saveFile(tabs[i])) {
-                        tabs[i].setFileStatus(FileStatus.NOT_EDITED);
+                        tabs[i].setFileStatus(FileStatus.StatusType.NOT_EDITED);
                         editor.setTitle(tabs[i].getPathname(), tabs[i].getFilename(), tabs[i].getFileStatus());
                     } else {
                         result = false;
@@ -412,8 +412,8 @@ public class EditTabbedPane extends JTabbedPane {
                 EditPane editPane = getCurrentEditTab();
                 FileStatus.setSaved(true);
                 FileStatus.setEdited(false);
-                FileStatus.set(FileStatus.NOT_EDITED);
-                editPane.setFileStatus(FileStatus.NOT_EDITED);
+                FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
+                editPane.setFileStatus(FileStatus.StatusType.NOT_EDITED);
                 updateTitlesAndMenuState(editPane);
             }
         }
@@ -428,11 +428,11 @@ public class EditTabbedPane extends JTabbedPane {
         super.remove(editPane);
         editPane = getCurrentEditTab(); // is now next tab or null
         if (editPane == null) {
-            FileStatus.set(FileStatus.NO_FILE);
-            this.editor.setTitle("", "", FileStatus.NO_FILE);
-            Globals.getGui().setMenuState(FileStatus.NO_FILE);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.NO_FILE);
+            this.editor.setTitle("", "", FileStatus.StatusType.NO_FILE);
+            Globals.getGui().setMenuState(FileStatus.StatusType.NO_FILE);
         } else {
-            FileStatus.set(editPane.getFileStatus());
+            FileStatus.Companion.setStatus(editPane.getFileStatus());
             updateTitlesAndMenuState(editPane);
         }
         // When last file is closed, menu is unable to respond to mnemonics
@@ -588,7 +588,7 @@ public class EditTabbedPane extends JTabbedPane {
             //FileStatus.reset();
             FileStatus.setName(currentFilePath);
             FileStatus.setFile(theFile);
-            FileStatus.set(FileStatus.OPENING);// DPS 9-Aug-2011
+            FileStatus.Companion.setStatus(FileStatus.StatusType.OPENING);// DPS 9-Aug-2011
             if (theFile.canRead()) {
                 Globals.program = new MIPSProgram();
                 try {
@@ -613,14 +613,14 @@ public class EditTabbedPane extends JTabbedPane {
                 // action.  Let's get rid of it.
                 editPane.discardAllUndoableEdits();
                 editPane.setShowLineNumbersEnabled(true);
-                editPane.setFileStatus(FileStatus.NOT_EDITED);
+                editPane.setFileStatus(FileStatus.StatusType.NOT_EDITED);
 
                 addTab(editPane.getFilename(), editPane);
                 setToolTipTextAt(indexOfComponent(editPane), editPane.getPathname());
                 setSelectedComponent(editPane);
                 FileStatus.setSaved(true);
                 FileStatus.setEdited(false);
-                FileStatus.set(FileStatus.NOT_EDITED);
+                FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
 
                 // If assemble-all, then allow opening of any file w/o invalidating assembly.
                 // DPS 9-Aug-2011

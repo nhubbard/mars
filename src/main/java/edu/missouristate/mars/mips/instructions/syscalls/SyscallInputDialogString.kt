@@ -91,7 +91,7 @@ class SyscallInputDialogString : AbstractSyscall(54, "InputDialogString") {
                         (byteAddress + min(inputString.length.toDouble(),
                         (maxLength - 2).toDouble())).toInt(),
                         '\n'.code
-                    ) // newline at string end
+                    ) // newLine at string end
                 }
                 Globals.memory.setByte(
                     (byteAddress + min((inputString.length + 1).toDouble(), (maxLength - 1).toDouble())).toInt(),

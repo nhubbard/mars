@@ -36,7 +36,7 @@ class AsciiTextDumpFormat : AbstractDumpFormat(
     /**
      * Interpret MIPS memory contents as ASCII characters.
      * Each line of text contains one memory word written in ASCII characters.
-     * Those corresponding to tab, newline, null,
+     * Those corresponding to tab, newLine, null,
      * etc. are rendered as a backslash followed by a single-character code, such as \t for tab, or \0 for null.
      * Non-printable characters (control codes, or values beyond 127) are rendered as a period.
      *

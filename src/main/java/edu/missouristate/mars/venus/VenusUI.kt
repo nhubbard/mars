@@ -48,7 +48,7 @@ import kotlin.system.exitProcess
 
 class VenusUI(windowName: String) : JFrame(windowName) {
     companion object {
-        @JvmStatic var menuState = FileStatus.NO_FILE
+        @JvmStatic var menuState = FileStatus.StatusType.NO_FILE
             private set
         @JvmStatic var reset = true
         @JvmStatic var started = false
@@ -208,7 +208,7 @@ class VenusUI(windowName: String) : JFrame(windowName) {
         contentPane.add(center)
 
         FileStatus.reset()
-        FileStatus.set(FileStatus.NO_FILE)
+        FileStatus.status = FileStatus.StatusType.NO_FILE
 
         addWindowListener(object : WindowAdapter() {
             override fun windowOpened(e: WindowEvent) {
@@ -720,13 +720,13 @@ class VenusUI(windowName: String) : JFrame(windowName) {
             Globals.settings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX) //mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
 
         // Tell the corresponding JCheckBox in the Execute Pane about me -- it has already been created.
-        mainPane.executePane.valueDisplayBaseChooser.setSettingsMenuItem(valueDisplayBaseMenuItem)
+        mainPane.executePane.valueDisplayBaseChooser.settingsMenuItem = valueDisplayBaseMenuItem
         addressDisplayBaseMenuItem = JCheckBoxMenuItem(settingsAddressDisplayBaseAction)
         addressDisplayBaseMenuItem.isSelected =
             Globals.settings.getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) //mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
 
         // Tell the corresponding JCheckBox in the Execute Pane about me -- it has already been created.
-        mainPane.executePane.addressDisplayBaseChooser.setSettingsMenuItem(addressDisplayBaseMenuItem)
+        mainPane.executePane.addressDisplayBaseChooser.settingsMenuItem = addressDisplayBaseMenuItem
         val settingsExtended = JCheckBoxMenuItem(settingsExtendedAction)
         settingsExtended.isSelected = Globals.settings.getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED)
         val settingsDelayedBranching = JCheckBoxMenuItem(settingsDelayedBranchingAction)
@@ -883,18 +883,17 @@ class VenusUI(windowName: String) : JFrame(windowName) {
      * setMenuStateRunning: set upon Run->Go
      * setMenuStateTerminated: set upon completion of simulated execution
      */
-    fun setMenuState(status: Int) {
+    fun setMenuState(status: FileStatus.StatusType) {
         menuState = status
         when (status) {
-            FileStatus.NO_FILE -> setMenuStateInitial()
-            FileStatus.NEW_NOT_EDITED, FileStatus.NEW_EDITED -> setMenuStateEditingNew()
-            FileStatus.NOT_EDITED -> setMenuStateNotEdited()
-            FileStatus.EDITED -> setMenuStateEditing()
-            FileStatus.RUNNABLE -> setMenuStateRunnable()
-            FileStatus.RUNNING -> setMenuStateRunning()
-            FileStatus.TERMINATED -> setMenuStateTerminated()
-            FileStatus.OPENING -> {}
-            else -> println("Invalid file status: $status")
+            FileStatus.StatusType.NO_FILE -> setMenuStateInitial()
+            FileStatus.StatusType.NEW_NOT_EDITED, FileStatus.StatusType.NEW_EDITED -> setMenuStateEditingNew()
+            FileStatus.StatusType.NOT_EDITED -> setMenuStateNotEdited()
+            FileStatus.StatusType.EDITED -> setMenuStateEditing()
+            FileStatus.StatusType.RUNNABLE -> setMenuStateRunnable()
+            FileStatus.StatusType.RUNNING -> setMenuStateRunning()
+            FileStatus.StatusType.TERMINATED -> setMenuStateTerminated()
+            FileStatus.StatusType.OPENING -> {}
         }
     }
 

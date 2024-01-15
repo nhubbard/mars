@@ -82,7 +82,7 @@ public class RunResetAction extends GuiAction {
         executePane.getTextSegmentWindow().setCodeHighlighting(true);
         executePane.getTextSegmentWindow().highlightStepAtPC();
         mainUI.getRegistersPane().setSelectedComponent(executePane.getRegistersWindow());
-        FileStatus.set(FileStatus.RUNNABLE);
+        FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
         VenusUI.setReset(true);
         VenusUI.setStarted(false);
 

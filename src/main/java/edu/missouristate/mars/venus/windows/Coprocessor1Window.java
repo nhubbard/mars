@@ -69,9 +69,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         table.getColumnModel().getColumn(FLOAT_COLUMN).setPreferredWidth(70);
         table.getColumnModel().getColumn(DOUBLE_COLUMN).setPreferredWidth(130);
         // Display register values (String-ified) right-justified in mono font
-        table.getColumnModel().getColumn(NAME_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT, SwingConstants.LEFT));
-        table.getColumnModel().getColumn(FLOAT_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT, SwingConstants.RIGHT));
-        table.getColumnModel().getColumn(DOUBLE_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT, SwingConstants.RIGHT));
+        table.getColumnModel().getColumn(NAME_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.monospacedFont, SwingConstants.LEFT));
+        table.getColumnModel().getColumn(FLOAT_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.monospacedFont, SwingConstants.RIGHT));
+        table.getColumnModel().getColumn(DOUBLE_COLUMN).setCellRenderer(new RegisterCellRenderer(MonoRightCellRenderer.monospacedFont, SwingConstants.RIGHT));
         this.add(new JScrollPane(table, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER));
         // Display condition flags in panel below the registers
         JPanel flagsPane = new JPanel(new BorderLayout());

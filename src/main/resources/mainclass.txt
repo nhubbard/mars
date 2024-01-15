@@ -1,2 +1,2 @@
-Main-Class: Mars
+Main-Class: edu.missouristate.mars.Mars
 Class-Path: .

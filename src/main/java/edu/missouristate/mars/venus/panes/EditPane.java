@@ -87,36 +87,36 @@ public class EditPane extends JPanel implements Observer {
                         // This method is triggered when file contents added to document
                         // upon opening, even though not edited by user.  The IF
                         // statement will sense this situation and immediately return.
-                        if (FileStatus.get() == FileStatus.OPENING) {
-                            setFileStatus(FileStatus.NOT_EDITED);
-                            FileStatus.set(FileStatus.NOT_EDITED);
+                        if (FileStatus.Companion.getStatus() == FileStatus.StatusType.OPENING) {
+                            setFileStatus(FileStatus.StatusType.NOT_EDITED);
+                            FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
                             if (showingLineNumbers()) {
                                 lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
                             }
                             return;
                         }
                         // End of 9-Aug-2011 modification.
-                        if (getFileStatus() == FileStatus.NEW_NOT_EDITED) {
-                            setFileStatus(FileStatus.NEW_EDITED);
+                        if (getFileStatus() == FileStatus.StatusType.NEW_NOT_EDITED) {
+                            setFileStatus(FileStatus.StatusType.NEW_EDITED);
                         }
-                        if (getFileStatus() == FileStatus.NOT_EDITED) {
-                            setFileStatus(FileStatus.EDITED);
+                        if (getFileStatus() == FileStatus.StatusType.NOT_EDITED) {
+                            setFileStatus(FileStatus.StatusType.EDITED);
                         }
-                        if (getFileStatus() == FileStatus.NEW_EDITED) {
+                        if (getFileStatus() == FileStatus.StatusType.NEW_EDITED) {
                             mainUI.getEditor().setTitle("", getFilename(), getFileStatus());
                         } else {
                             mainUI.getEditor().setTitle(getPathname(), getFilename(), getFileStatus());
                         }
 
                         FileStatus.setEdited(true);
-                        switch (FileStatus.get()) {
-                            case FileStatus.NEW_NOT_EDITED:
-                                FileStatus.set(FileStatus.NEW_EDITED);
+                        switch (FileStatus.Companion.getStatus()) {
+                            case FileStatus.StatusType.NEW_NOT_EDITED:
+                                FileStatus.Companion.setStatus(FileStatus.StatusType.NEW_EDITED);
                                 break;
-                            case FileStatus.NEW_EDITED:
+                            case FileStatus.StatusType.NEW_EDITED:
                                 break;
                             default:
-                                FileStatus.set(FileStatus.EDITED);
+                                FileStatus.Companion.setStatus(FileStatus.StatusType.EDITED);
                         }
 
                         Globals.getGui().getMainPane().getExecutePane().clearPane(); // DPS 9-Aug-2011
@@ -226,8 +226,8 @@ public class EditPane extends JPanel implements Observer {
 
     /**
      * Calculate and return number of lines in source code text.
-     * Do this by counting newline characters then adding one if last line does
-     * not end with newline character.
+     * Do this by counting newLine characters then adding one if last line does
+     * not end with newLine character.
      */
 
     /*  IMPLEMENTATION NOTE:
@@ -263,8 +263,8 @@ public class EditPane extends JPanel implements Observer {
      *
      * @param fileStatus the status constant from class FileStatus
      */
-    public void setFileStatus(int fileStatus) {
-        this.fileStatus.setFileStatus(fileStatus);
+    public void setFileStatus(FileStatus.StatusType fileStatus) {
+        FileStatus.Companion.setStatus(fileStatus);
     }
 
 
@@ -273,15 +273,15 @@ public class EditPane extends JPanel implements Observer {
      * This will be one of the constants from class FileStatus.
      */
 
-    public int getFileStatus() {
-        return this.fileStatus.getFileStatus();
+    public FileStatus.StatusType getFileStatus() {
+        return FileStatus.Companion.getStatus();
     }
 
     /**
      * Delegates to corresponding FileStatus method
      */
     public String getFilename() {
-        return this.fileStatus.getFilename();
+        return FileStatus.Companion.getFile().getName();
     }
 
 
@@ -289,7 +289,7 @@ public class EditPane extends JPanel implements Observer {
      * Delegates to corresponding FileStatus method
      */
     public String getPathname() {
-        return this.fileStatus.getPathname();
+        return FileStatus.Companion.getFile().getPath();
     }
 
 
@@ -297,14 +297,14 @@ public class EditPane extends JPanel implements Observer {
      * Delegates to corresponding FileStatus method
      */
     public void setPathname(String pathname) {
-        this.fileStatus.setPathname(pathname);
+        this.fileStatus.setPathName(pathname);
     }
 
     /**
      * Delegates to corresponding FileStatus method
      */
     public boolean hasUnsavedEdits() {
-        return this.fileStatus.hasUnsavedEdits();
+        return this.fileStatus.getHasUnsavedEdits();
     }
 
 
@@ -328,9 +328,7 @@ public class EditPane extends JPanel implements Observer {
     /**
      * Delegates to corresponding FileStatus method
      */
-    public void updateStaticFileStatus() {
-        fileStatus.updateStaticFileStatus();
-    }
+    public void updateStaticFileStatus() {}
 
 
     /**

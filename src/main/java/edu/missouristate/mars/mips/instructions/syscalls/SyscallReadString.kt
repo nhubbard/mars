@@ -37,7 +37,7 @@ class SyscallReadString : AbstractSyscall(8, "ReadString") {
      * Performs syscall function to read console input string into buffer starting at address in $a0.
      * Follows semantics of UNIX 'fgets'.
      * For specified length n, string can be no longer than n-1.
-     * If less than that, add newline to end.
+     * If less than that, add newLine to end.
      * In either case, then pad with null byte.
      */
     @Throws(ProcessingException::class)

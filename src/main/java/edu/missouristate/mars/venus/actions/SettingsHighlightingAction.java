@@ -296,7 +296,7 @@ public class SettingsHighlightingAction extends GuiAction {
             fontSetting = settings.getFontByPosition(fontSettingPositions[i]);
             backgroundButtons[i].setBackground(backgroundSetting);
             foregroundButtons[i].setBackground(foregroundSetting);
-            fontButtons[i].setFont(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT); //fontSetting);
+            fontButtons[i].setFont(MonoRightCellRenderer.monospacedFont); //fontSetting);
             fontButtons[i].setMargin(new Insets(4, 4, 4, 4));
             initialFont[i] = currentFont[i] = fontSetting;
             currentNondefaultBackground[i] = backgroundSetting;

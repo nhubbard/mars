@@ -73,7 +73,7 @@ public class RunBackstepAction extends GuiAction {
             executePane.getCoprocessor0Window().updateRegisters();
             executePane.getDataSegmentWindow().updateValues();
             executePane.getTextSegmentWindow().highlightStepAtPC(inDelaySlot); // Argument aded 25 June 2007
-            FileStatus.set(FileStatus.RUNNABLE);
+            FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
             // if we've backed all the way, disable the button
             VenusUI.setReset(false);
         }
