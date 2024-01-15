@@ -108,12 +108,12 @@ abstract class TokenMarker protected constructor() {
      * should return the comment token type so that it continues on
      * the next line.
      *
-     * @param token     The initial token type for this line
+     * @param type     The initial token type for this line
      * @param line      The line to be tokenized
      * @param lineIndex The index of the line in the document, starting at 0
      * @return The initial token type for the next line
      */
-    protected abstract fun markTokensImpl(token: Token.Type, line: Segment, lineIndex: Int): Token.Type
+    protected abstract fun markTokensImpl(type: Token.Type, line: Segment, lineIndex: Int): Token.Type
 
     /**
      * Returns if the token marker supports tokens that span multiple
@@ -168,7 +168,7 @@ abstract class TokenMarker protected constructor() {
      * @param tokenText the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
-    open fun getTokenExactMatchHelp(token: Token, tokenText: String): ArrayList<PopupHelpItem>? = null
+    open fun getTokenExactMatchHelp(token: Token?, tokenText: String?): ArrayList<PopupHelpItem>? = null
 
     /**
      * Construct and return any appropriate help information for
@@ -183,8 +183,8 @@ abstract class TokenMarker protected constructor() {
      */
     open fun getTokenPrefixMatchHelp(
         line: String,
-        tokenList: Token,
-        tokenAtOffset: Token,
+        tokenList: Token?,
+        tokenAtOffset: Token?,
         tokenText: String
     ): ArrayList<PopupHelpItem>? = null
 

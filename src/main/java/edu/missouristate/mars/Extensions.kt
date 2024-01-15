@@ -276,6 +276,19 @@ fun <T> vectorOf(vararg elements: T): Vector<T> =
         for (element in elements) add(element)
     }
 
+/**
+ * Create a [TreeSet] in the same way that Kotlin creates collections.
+ */
+fun <T> treeSetOf(): TreeSet<T> = TreeSet()
+
+/**
+ * Create a [TreeSet] in the same way that Kotlin creates collections, including initial values.
+ */
+fun <T> treeSetOf(vararg elements: T): TreeSet<T> =
+    if (elements.isEmpty()) TreeSet() else TreeSet<T>().apply {
+        for (element in elements) add(element)
+    }
+
 /** Fill a [Polygon] with a receiver function. */
 private fun Graphics.fillPolygon(block: Polygon.() -> Unit) {
     fillPolygon(Polygon().apply(block))

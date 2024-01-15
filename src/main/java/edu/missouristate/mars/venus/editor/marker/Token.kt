@@ -92,6 +92,8 @@ data class Token @JvmOverloads constructor(
 
         val isInternal: Boolean
             get() = rawValue in 100..126
+        val isKeyword: Boolean
+            get() = rawValue in 6..8
     }
 
     override fun toString(): String = "[id=$type,length=$length]"

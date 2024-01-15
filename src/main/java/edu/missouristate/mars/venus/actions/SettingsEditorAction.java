@@ -31,6 +31,7 @@ import edu.missouristate.mars.venus.editor.marker.*;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.HashMap;
 import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.border.*;
@@ -326,12 +327,12 @@ public class SettingsEditorAction extends GuiAction {
             JPanel syntaxStylePanel = new JPanel();
             defaultStyles = SyntaxUtilities.getDefaultSyntaxStyles();
             initialStyles = SyntaxUtilities.getCurrentSyntaxStyles();
-            String[] labels = MIPSTokenMarker.getMIPSTokenLabels();
-            String[] sampleText = MIPSTokenMarker.getMIPSTokenExamples();
+            HashMap<Token.Type, String> labels = MIPSTokenMarker.getTokenLabels();
+            HashMap<Token.Type, String> sampleText = MIPSTokenMarker.getTokenExamples();
             syntaxStylesAction = false;
             int count = 0;
-            // Count the number of actual styles specified
-            for (String s : labels) {
+            // Count the number of actual styles specified.
+            for (String s : labels.values()) {
                 if (s != null) {
                     count++;
                 }
@@ -351,14 +352,14 @@ public class SettingsEditorAction extends GuiAction {
             Font italicFont = new Font(Font.SERIF, Font.ITALIC, genericFont.getSize());
             count = 0;
             // Set all the fixed features.  Changeable features set/reset in initializeSyntaxStyleChangeables
-            for (int i = 0; i < labels.length; i++) {
-                if (labels[i] != null) {
-                    syntaxStyleIndex[count] = i;
+            for (Token.Type key : labels.keySet()) {
+                if (labels.get(key) != null) {
+                    syntaxStyleIndex[count] = key.rawValue;
                     samples[count] = new JLabel();
                     samples[count].setOpaque(true);
                     samples[count].setHorizontalAlignment(SwingConstants.CENTER);
                     samples[count].setBorder(BorderFactory.createLineBorder(Color.black));
-                    samples[count].setText(sampleText[i]);
+                    samples[count].setText(sampleText.get(key));
                     samples[count].setBackground(Color.WHITE);
                     samples[count].setToolTipText(SAMPLE_TOOL_TIP_TEXT);
                     foregroundButtons[count] = new ColorSelectButton(); // defined in SettingsHighlightingAction
@@ -373,7 +374,7 @@ public class SettingsEditorAction extends GuiAction {
                     italic[count].setFont(italicFont);
                     italic[count].addActionListener(boldItalicChanger);
                     italic[count].setToolTipText(ITALIC_TOOL_TIP_TEXT);
-                    label[count] = labels[i];
+                    label[count] = labels.get(key);
                     useDefault[count] = new JCheckBox();
                     useDefault[count].addItemListener(new DefaultChanger(count));
                     useDefault[count].setToolTipText(DEFAULT_TOOL_TIP_TEXT);

@@ -30,7 +30,7 @@ import javax.swing.text.Segment;
  * to values. However, the `keys' are Swing segments. This allows lookups of
  * text substrings without the overhead of creating a new string object.
  * <p>
- * This class is used by <code>CTokenMarker</code> to map keywords to ids.
+ * This class is used by <code>CTokenMarker</code> to map keywords to types.
  *
  * @author Slava Pestov, Mike Dillon
  * @version $Id: KeywordMap.java,v 1.16 1999/12/13 03:40:30 sp Exp $
@@ -79,7 +79,7 @@ public class KeywordMap {
             }
             if (SyntaxUtilities.regionMatches(ignoreCase, text, offset,
                     k.keyword))
-                return k.id;
+                return k.type;
             k = k.next;
         }
         return Token.Type.NULL;
@@ -89,11 +89,11 @@ public class KeywordMap {
      * Adds a key-value mapping.
      *
      * @param keyword The key
-     * @param id      The value
+     * @param type      The value
      */
-    public void add(String keyword, Token.Type id) {
+    public void add(String keyword, Token.Type type) {
         int key = getStringMapKey(keyword);
-        map[key] = new Keyword(keyword.toCharArray(), id, map[key]);
+        map[key] = new Keyword(keyword.toCharArray(), type, map[key]);
     }
 
     /**
@@ -131,14 +131,14 @@ public class KeywordMap {
 
     // private members
     static class Keyword {
-        public Keyword(char[] keyword, Token.Type id, Keyword next) {
+        public Keyword(char[] keyword, Token.Type type, Keyword next) {
             this.keyword = keyword;
-            this.id = id;
+            this.type = type;
             this.next = next;
         }
 
         public final char[] keyword;
-        public final Token.Type id;
+        public final Token.Type type;
         public final Keyword next;
     }
 
