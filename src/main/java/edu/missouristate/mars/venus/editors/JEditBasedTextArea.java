@@ -19,12 +19,11 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax;
+package edu.missouristate.mars.venus.editors;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.panes.EditPane;
-import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.MIPSTokenMarker;
+import edu.missouristate.mars.venus.editors.tokenmarker.MIPSTokenMarker;
 
 import javax.swing.*;
 import javax.swing.event.CaretEvent;
@@ -40,7 +39,7 @@ import java.awt.*;
 /**
  * Adaptor subclass for JEditTextArea
  * <p>
- * Provides those methods required by the MARSTextEditingArea interface
+ * Provides those methods required by the TextEditingArea interface
  * that are not defined by JEditTextArea.  This permits JEditTextArea
  * to be used within MARS largely without modification.  DPS 4-20-2010
  *
@@ -48,7 +47,7 @@ import java.awt.*;
  * @since 4.0
  */
 
-public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditingArea, CaretListener {
+public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
 
     private final EditPane editPane;
     private final UndoManager undoManager;
@@ -258,7 +257,7 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
      * @param caseSensitive true if search is to be case-sensitive, false otherwise
      * @return TEXT_FOUND or TEXT_NOT_FOUND, depending on the result.
      */
-    public int doFindText(String find, boolean caseSensitive) {
+    public TextSearchResult doFindText(String find, boolean caseSensitive) {
         int findPosn = sourceCode.getCaretPosition();
         int nextPosn;
         nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
@@ -268,9 +267,9 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
             sourceCode.setSelectionEnd(nextPosn + find.length());
             // Need to repeat start due to quirk in JEditTextArea implementation of setSelectionStart.
             sourceCode.setSelectionStart(nextPosn);
-            return TEXT_FOUND;
+            return TextSearchResult.TEXT_FOUND;
         } else {
-            return TEXT_NOT_FOUND;
+            return TextSearchResult.TEXT_NOT_FOUND;
         }
     }
 
@@ -322,7 +321,7 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
      * no additional matches.  Returns TEXT_REPLACED_FOUND_NEXT if reaplacement is
      * successful and there is at least one additional match.
      */
-    public int doReplace(String find, String replace, boolean caseSensitive) {
+    public TextSearchResult doReplace(String find, String replace, boolean caseSensitive) {
         int nextPosn;
         int posn;
         // Will perform a "find" and return, unless positioned at the end of
@@ -347,10 +346,10 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
         editPane.updateRedoState();
         isCompoundEdit = false;
         sourceCode.setCaretPosition(nextPosn + replace.length());
-        if (doFindText(find, caseSensitive) == TEXT_NOT_FOUND) {
-            return TEXT_REPLACED_NOT_FOUND_NEXT;
+        if (doFindText(find, caseSensitive) == TextSearchResult.TEXT_NOT_FOUND) {
+            return TextSearchResult.TEXT_REPLACED_NOT_FOUND_NEXT;
         } else {
-            return TEXT_REPLACED_FOUND_NEXT;
+            return TextSearchResult.TEXT_REPLACED_FOUND_NEXT;
         }
     }
 

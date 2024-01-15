@@ -25,8 +25,9 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.Editor;
 import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.venus.dialogs.AbstractFontSettingDialog;
-import edu.missouristate.mars.venus.editors.jeditsyntax.*;
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
+import edu.missouristate.mars.venus.editors.SyntaxStyle;
+import edu.missouristate.mars.venus.editors.SyntaxUtilities;
+import edu.missouristate.mars.venus.editors.tokenmarker.*;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -105,7 +106,7 @@ public class SettingsEditorAction extends GuiAction {
 
         private JSlider tabSizeSelector;
         private JSpinner tabSizeSpinSelector, blinkRateSpinSelector, popupPrefixLengthSpinSelector;
-        private JCheckBox lineHighlightCheck, genericEditorCheck, autoIndentCheck;
+        private JCheckBox lineHighlightCheck, autoIndentCheck;
         private Caret blinkCaret;
         private JTextField blinkSample;
         private JRadioButton[] popupGuidanceOptions;
@@ -114,14 +115,10 @@ public class SettingsEditorAction extends GuiAction {
         private boolean syntaxStylesAction = false;
 
         private int initialEditorTabSize, initialCaretBlinkRate, initialPopupGuidance;
-        private boolean initialLineHighlighting, initialGenericTextEditor, initialAutoIndent;
+        private boolean initialLineHighlighting, initialAutoIndent;
 
         public EditorFontDialog(Frame owner, String title, boolean modality, Font font) {
             super(owner, title, modality, font);
-            if (Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
-                syntaxStylePanel.setVisible(false);
-                otherSettingsPanel.setVisible(false);
-            }
         }
 
         // build the dialog here
@@ -163,19 +160,6 @@ public class SettingsEditorAction extends GuiAction {
             resetButton.setToolTipText(SettingsHighlightingAction.RESET_TOOL_TIP_TEXT);
             resetButton.addActionListener(
                     e -> reset());
-            initialGenericTextEditor = Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR);
-            genericEditorCheck = new JCheckBox("Use Generic Editor", initialGenericTextEditor);
-            genericEditorCheck.setToolTipText(GENERIC_TOOL_TIP_TEXT);
-            genericEditorCheck.addItemListener(
-                    e -> {
-                        if (e.getStateChange() == ItemEvent.SELECTED) {
-                            syntaxStylePanel.setVisible(false);
-                            otherSettingsPanel.setVisible(false);
-                        } else {
-                            syntaxStylePanel.setVisible(true);
-                            otherSettingsPanel.setVisible(true);
-                        }
-                    });
 
             controlPanel.add(Box.createHorizontalGlue());
             controlPanel.add(okButton);
@@ -186,15 +170,12 @@ public class SettingsEditorAction extends GuiAction {
             controlPanel.add(Box.createHorizontalGlue());
             controlPanel.add(resetButton);
             controlPanel.add(Box.createHorizontalGlue());
-            controlPanel.add(genericEditorCheck);
-            controlPanel.add(Box.createHorizontalGlue());
             return controlPanel;
         }
 
         // User has clicked "Apply" or "Apply and Close" button.  Required method, is
         // abstract in superclass.
         protected void apply(Font font) {
-            Globals.getSettings().setBooleanSetting(Settings.GENERIC_TEXT_EDITOR, genericEditorCheck.isSelected());
             Globals.getSettings().setBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING, lineHighlightCheck.isSelected());
             Globals.getSettings().setBooleanSetting(Settings.ENABLE_AUTO_INDENT, autoIndentCheck.isSelected());
             Globals.getSettings().setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
@@ -227,7 +208,6 @@ public class SettingsEditorAction extends GuiAction {
             initializeSyntaxStyleChangeables();
             resetOtherSettings();
             syntaxStylesAction = true;
-            genericEditorCheck.setSelected(initialGenericTextEditor);
         }
 
 

@@ -21,19 +21,24 @@
 
 package edu.missouristate.mars.venus.panes;
 
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.venus.FileStatus;
 import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
-import edu.missouristate.mars.venus.editors.generic.GenericTextArea;
-import edu.missouristate.mars.venus.editors.jeditsyntax.JEditBasedTextArea;
+import edu.missouristate.mars.venus.editors.JEditBasedTextArea;
+import edu.missouristate.mars.venus.editors.TextSearchResult;
 
 import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.undo.CompoundEdit;
+import javax.swing.undo.UndoManager;
 import java.awt.*;
-import javax.swing.undo.*;
-import java.util.*;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Observable;
+import java.util.Observer;
 
 /**
  * Represents one file opened for editing.  Maintains required internal structures.
@@ -46,7 +51,7 @@ import java.io.*;
 
 public class EditPane extends JPanel implements Observer {
 
-    private final MARSTextEditingArea sourceCode;
+    private final JEditBasedTextArea sourceCode;
     private final VenusUI mainUI;
     private final JLabel caretPositionLabel;
     private final JCheckBox showLineNumbers;
@@ -71,11 +76,7 @@ public class EditPane extends JPanel implements Observer {
         this.fileStatus = new FileStatus();
         lineNumbers = new JLabel();
 
-        if (Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
-            this.sourceCode = new GenericTextArea(this, lineNumbers);
-        } else {
-            this.sourceCode = new JEditBasedTextArea(this, lineNumbers);
-        }
+        this.sourceCode = new JEditBasedTextArea(this, lineNumbers);
         // sourceCode is responsible for its own scrolling
         this.add(this.sourceCode.getOuterComponent(), BorderLayout.CENTER);
 
@@ -549,7 +550,7 @@ public class EditPane extends JPanel implements Observer {
      * @param caseSensitive true if search is to be case-sensitive, false otherwise
      * @return TEXT_FOUND or TEXT_NOT_FOUND, depending on the result.
      */
-    public int doFindText(String find, boolean caseSensitive) {
+    public TextSearchResult doFindText(String find, boolean caseSensitive) {
         return sourceCode.doFindText(find, caseSensitive);
     }
 
@@ -569,7 +570,7 @@ public class EditPane extends JPanel implements Observer {
      * no additional matches.  Returns TEXT_REPLACED_FOUND_NEXT if reaplacement is
      * successful and there is at least one additional match.
      */
-    public int doReplace(String find, String replace, boolean caseSensitive) {
+    public TextSearchResult doReplace(String find, String replace, boolean caseSensitive) {
         return sourceCode.doReplace(find, replace, caseSensitive);
     }
 

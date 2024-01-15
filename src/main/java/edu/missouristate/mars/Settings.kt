@@ -26,8 +26,8 @@ package edu.missouristate.mars
 import edu.missouristate.mars.util.Binary
 import edu.missouristate.mars.util.EditorFont
 import edu.missouristate.mars.util.EditorFont.FontStyles
-import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxStyle
-import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxUtilities
+import edu.missouristate.mars.venus.editors.SyntaxStyle
+import edu.missouristate.mars.venus.editors.SyntaxUtilities
 import java.awt.Color
 import java.awt.Font
 import java.util.*

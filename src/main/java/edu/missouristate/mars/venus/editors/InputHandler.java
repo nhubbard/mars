@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax;
+package edu.missouristate.mars.venus.editors;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
@@ -43,7 +43,7 @@ import java.util.Objects;
  *
  * @author Slava Pestov
  * @version $Id: InputHandler.java,v 1.14 1999/12/13 03:40:30 sp Exp $
- * @see edu.missouristate.mars.venus.editors.jeditsyntax.DefaultInputHandler
+ * @see DefaultInputHandler
  * <p>
  * 08/12/2002	Clipboard actions	(Oliver Henning)
  */

@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
+package edu.missouristate.mars.venus.editors.tokenmarker;
 
 /**
  * A linked list of tokens. Each token has three fields - a token

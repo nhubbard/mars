@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
+package edu.missouristate.mars.venus.editors.tokenmarker;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
@@ -30,8 +30,8 @@ import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.venus.editors.jeditsyntax.KeywordMap;
-import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+import edu.missouristate.mars.venus.editors.KeywordMap;
+import edu.missouristate.mars.venus.editors.PopupHelpItem;
 
 import javax.swing.text.Segment;
 import java.util.ArrayList;

@@ -19,10 +19,10 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax;
+package edu.missouristate.mars.venus.editors;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
+import edu.missouristate.mars.venus.editors.tokenmarker.Token;
 
 import javax.swing.*;
 import javax.swing.text.Segment;

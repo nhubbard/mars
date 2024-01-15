@@ -19,9 +19,9 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
+package edu.missouristate.mars.venus.editors.tokenmarker;
 
-import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+import edu.missouristate.mars.venus.editors.PopupHelpItem;
 
 import javax.swing.text.Segment;
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ import java.util.ArrayList;
  *
  * @author Slava Pestov
  * @version $Id: TokenMarker.java,v 1.32 1999/12/13 03:40:30 sp Exp $
- * @see edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token
+ * @see edu.missouristate.mars.venus.editors.tokenmarker.Token
  */
 public abstract class TokenMarker {
     /**

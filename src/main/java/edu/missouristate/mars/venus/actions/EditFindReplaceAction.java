@@ -21,14 +21,16 @@
 
 package edu.missouristate.mars.venus.actions;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.panes.EditPane;
+import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
+import edu.missouristate.mars.venus.editors.TextSearchResult;
+import edu.missouristate.mars.venus.panes.EditPane;
 
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * Action  for the Edit -> Find/Replace menu item
@@ -191,8 +193,8 @@ public class EditFindReplaceAction extends GuiAction {
                 // Being cautious. Should not be null because find/replace tool button disabled if no file open
                 if (editPane != null) {
                     searchString = findInputField.getText();
-                    int posn = editPane.doFindText(searchString, caseSensitiveCheckBox.isSelected());
-                    if (posn == MARSTextEditingArea.TEXT_NOT_FOUND) {
+                    TextSearchResult posn = editPane.doFindText(searchString, caseSensitiveCheckBox.isSelected());
+                    if (posn == TextSearchResult.TEXT_NOT_FOUND) {
                         resultLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_NOT_FOUND);
                     } else {
                         resultLabel.setText(findButton.getText() + ": " + RESULTS_TEXT_FOUND);
@@ -215,20 +217,20 @@ public class EditFindReplaceAction extends GuiAction {
                 // Being cautious. Should not be null b/c find/replace tool button disabled if no file open
                 if (editPane != null) {
                     searchString = findInputField.getText();
-                    int posn = editPane.doReplace(searchString, replaceInputField.getText(), caseSensitiveCheckBox.isSelected());
+                    TextSearchResult posn = editPane.doReplace(searchString, replaceInputField.getText(), caseSensitiveCheckBox.isSelected());
                     String result = replaceButton.getText() + ": ";
                     switch (posn) {
 
-                        case MARSTextEditingArea.TEXT_NOT_FOUND:
+                        case TextSearchResult.TEXT_NOT_FOUND:
                             result += RESULTS_TEXT_NOT_FOUND;
                             break;
-                        case MARSTextEditingArea.TEXT_FOUND:
+                        case TextSearchResult.TEXT_FOUND:
                             result += RESULTS_TEXT_FOUND;
                             break;
-                        case MARSTextEditingArea.TEXT_REPLACED_NOT_FOUND_NEXT:
+                        case TextSearchResult.TEXT_REPLACED_NOT_FOUND_NEXT:
                             result += RESULTS_TEXT_REPLACED_LAST;
                             break;
-                        case MARSTextEditingArea.TEXT_REPLACED_FOUND_NEXT:
+                        case TextSearchResult.TEXT_REPLACED_FOUND_NEXT:
                             result += RESULTS_TEXT_REPLACED;
                             break;
                     }
