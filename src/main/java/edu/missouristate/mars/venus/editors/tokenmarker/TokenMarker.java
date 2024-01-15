@@ -60,8 +60,8 @@ public abstract class TokenMarker {
         if (lineIndex == 0) prev = null;
         else prev = lineInfo[lineIndex - 1];
 
-        byte oldToken = info.token;
-        byte token = markTokensImpl(prev == null ? Token.NULL : prev.token, line, lineIndex);
+        Token.Type oldToken = info.token;
+        Token.Type token = markTokensImpl(prev == null ? Token.Type.NULL : prev.token, line, lineIndex);
 
         info.token = token;
 
@@ -103,7 +103,7 @@ public abstract class TokenMarker {
 
         lastLine = lineIndex;
 
-        addToken(0, Token.END);
+        addToken(0, Token.Type.END);
 
         return firstToken;
     }
@@ -124,7 +124,7 @@ public abstract class TokenMarker {
      * @param lineIndex The index of the line in the document, starting at 0
      * @return The initial token type for the next line
      */
-    protected abstract byte markTokensImpl(byte token, Segment line, int lineIndex);
+    protected abstract Token.Type markTokensImpl(Token.Type token, Segment line, int lineIndex);
 
     /**
      * Returns if the token marker supports tokens that span multiple
@@ -292,25 +292,26 @@ public abstract class TokenMarker {
      * @param length The length of the token
      * @param id     The id of the token
      */
-    protected void addToken(int length, byte id) {
-        if (id >= Token.INTERNAL_FIRST && id <= Token.INTERNAL_LAST) throw new InternalError("Invalid id: " + id);
+    protected void addToken(int length, Token.Type id) {
+        if (id.rawValue >= Token.Type.INTERNAL_1.rawValue && id.rawValue <= Token.Type.INTERNAL_27.rawValue)
+            throw new InternalError("Invalid id: " + id);
 
-        if (length == 0 && id != Token.END) return;
+        if (length == 0 && id != Token.Type.END) return;
 
         if (firstToken == null) {
             firstToken = new Token(length, id);
             lastToken = firstToken;
         } else if (lastToken == null) {
             lastToken = firstToken;
-            firstToken.length = length;
-            firstToken.id = id;
-        } else if (lastToken.next == null) {
-            lastToken.next = new Token(length, id);
-            lastToken = lastToken.next;
+            firstToken.setLength(length);
+            firstToken.setId(id);
+        } else if (lastToken.getNext() == null) {
+            lastToken.setNext(new Token(length, id));
+            lastToken = lastToken.getNext();
         } else {
-            lastToken = lastToken.next;
-            lastToken.length = length;
-            lastToken.id = id;
+            lastToken = lastToken.getNext();
+            lastToken.setLength(length);
+            lastToken.setId(id);
         }
     }
 
@@ -329,7 +330,7 @@ public abstract class TokenMarker {
          * Creates a new LineInfo object with the specified
          * parameters.
          */
-        public LineInfo(byte token, Object obj) {
+        public LineInfo(Token.Type token, Object obj) {
             this.token = token;
             this.obj = obj;
         }
@@ -337,7 +338,7 @@ public abstract class TokenMarker {
         /**
          * The id of the last token of the line.
          */
-        public byte token;
+        public Token.Type token;
 
         /**
          * This is for use by the token marker implementations

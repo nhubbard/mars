@@ -525,7 +525,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
         if (line < 0 || line >= textArea.getLineCount()) {
             if (paintInvalid) {
                 paintHighlight(gfx, line, y);
-                styles[Token.INVALID].setGraphicsFlags(gfx, defaultFont);
+                styles[Token.Type.INVALID.rawValue].setGraphicsFlags(gfx, defaultFont);
                 gfx.drawString("~", 0, y + fm.getHeight());
             }
         } else if (tokenMarker == null) {

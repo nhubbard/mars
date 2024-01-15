@@ -530,17 +530,17 @@ public class JEditTextArea extends JComponent {
             SyntaxStyle[] styles = painter.getStyles();
 
             for (; ; ) {
-                byte id = tokens.id;
-                if (id == Token.END) {
+                Token.Type id = tokens.getId();
+                if (id == Token.Type.END) {
                     return x;
                 }
 
-                if (id == Token.NULL)
+                if (id == Token.Type.NULL)
                     fm = painter.getFontMetrics();
                 else
-                    fm = styles[id].getFontMetrics(defaultFont);
+                    fm = styles[id.rawValue].getFontMetrics(defaultFont);
 
-                int length = tokens.length;
+                int length = tokens.getLength();
 
                 if (offset + segmentOffset < lineSegment.offset + length) {
                     lineSegment.count = offset - (lineSegment.offset - segmentOffset);
@@ -552,7 +552,7 @@ public class JEditTextArea extends JComponent {
                             lineSegment, fm, x, painter, 0);
                     lineSegment.offset += length;
                 }
-                tokens = tokens.next;
+                tokens = tokens.getNext();
             }
         }
     }
@@ -616,16 +616,16 @@ public class JEditTextArea extends JComponent {
             SyntaxStyle[] styles = painter.getStyles();
 
             for (; ; ) {
-                byte id = tokens.id;
-                if (id == Token.END)
+                Token.Type id = tokens.getId();
+                if (id == Token.Type.END)
                     return offset;
 
-                if (id == Token.NULL)
+                if (id == Token.Type.NULL)
                     fm = painter.getFontMetrics();
                 else
-                    fm = styles[id].getFontMetrics(defaultFont);
+                    fm = styles[id.rawValue].getFontMetrics(defaultFont);
 
-                int length = tokens.length;
+                int length = tokens.getLength();
 
                 for (int i = 0; i < length; i++) {
                     char c = segmentArray[segmentOffset + offset + i];
@@ -648,7 +648,7 @@ public class JEditTextArea extends JComponent {
                 }
 
                 offset += length;
-                tokens = tokens.next;
+                tokens = tokens.getNext();
             }
         }
     }
@@ -2085,26 +2085,26 @@ public class JEditTextArea extends JComponent {
             // cool for following the tokens...
             //System.out.print("(JEditTextArea.java) Token Stream:");
             Token toke = tokens;
-            while (toke.id != Token.END) {
+            while (toke.getId() != Token.Type.END) {
                 //System.out.print(" "+toke.id+"("+toke.length+")");
-                toke = toke.next;
+                toke = toke.getNext();
             }
             //System.out.println();
 
             for (; ; ) {
-                byte id = tokens.id;
-                if (id == Token.END)
+                Token.Type id = tokens.getId();
+                if (id == Token.Type.END)
                     break;
-                int length = tokens.length;
+                int length = tokens.getLength();
                 if (offset > tokenOffset && offset <= tokenOffset + length) {
                     tokenAtOffset = tokens;
                     break;
                 }
                 tokenOffset += length;
-                tokens = tokens.next;
+                tokens = tokens.getNext();
             }
             if (tokenAtOffset != null) {
-                String tokenText = lineSegment.toString().substring(tokenOffset, tokenOffset + tokenAtOffset.length);
+                String tokenText = lineSegment.toString().substring(tokenOffset, tokenOffset + tokenAtOffset.getLength());
                 if (exact) {
                     matches = tokenMarker.getTokenExactMatchHelp(tokenAtOffset, tokenText);
                 } else {

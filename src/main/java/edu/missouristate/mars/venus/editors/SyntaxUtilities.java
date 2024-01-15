@@ -101,22 +101,22 @@ public class SyntaxUtilities {
      * to use the default syntax styles.
      */
     public static SyntaxStyle[] getDefaultSyntaxStyles() {
-        SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
+        SyntaxStyle[] styles = new SyntaxStyle[Token.Type.getEntries().size()];
 
         // SyntaxStyle constructor params: color, italic?, bold?
         // All need to be assigned even if not used by language (no gaps in array)
-        styles[Token.NULL] = new SyntaxStyle(Color.black, false, false);
-        styles[Token.COMMENT1] = new SyntaxStyle(new Color(0x00CC33), true, false);//(Color.black,true,false);
-        styles[Token.COMMENT2] = new SyntaxStyle(new Color(0x990033), true, false);
-        styles[Token.KEYWORD1] = new SyntaxStyle(Color.blue, false, false);//(Color.black,false,true);
-        styles[Token.KEYWORD2] = new SyntaxStyle(Color.magenta, false, false);
-        styles[Token.KEYWORD3] = new SyntaxStyle(Color.red, false, false);//(new Color(0x009600),false,false);
-        styles[Token.LITERAL1] = new SyntaxStyle(new Color(0x00CC33), false, false);//(new Color(0x650099),false,false);
-        styles[Token.LITERAL2] = new SyntaxStyle(new Color(0x00CC33), false, false);//(new Color(0x650099),false,true);
-        styles[Token.LABEL] = new SyntaxStyle(Color.black, true, false);//(new Color(0x990033),false,true);
-        styles[Token.OPERATOR] = new SyntaxStyle(Color.black, false, true);
-        styles[Token.INVALID] = new SyntaxStyle(Color.red, false, false);
-        styles[Token.MACRO_ARG] = new SyntaxStyle(new Color(150, 150, 0), false, false);
+        styles[Token.Type.NULL.rawValue] = new SyntaxStyle(Color.black, false, false);
+        styles[Token.Type.COMMENT1.rawValue] = new SyntaxStyle(new Color(0x00CC33), true, false);//(Color.black,true,false);
+        styles[Token.Type.COMMENT2.rawValue] = new SyntaxStyle(new Color(0x990033), true, false);
+        styles[Token.Type.KEYWORD1.rawValue] = new SyntaxStyle(Color.blue, false, false);//(Color.black,false,true);
+        styles[Token.Type.KEYWORD2.rawValue] = new SyntaxStyle(Color.magenta, false, false);
+        styles[Token.Type.KEYWORD3.rawValue] = new SyntaxStyle(Color.red, false, false);//(new Color(0x009600),false,false);
+        styles[Token.Type.LITERAL1.rawValue] = new SyntaxStyle(new Color(0x00CC33), false, false);//(new Color(0x650099),false,false);
+        styles[Token.Type.LITERAL2.rawValue] = new SyntaxStyle(new Color(0x00CC33), false, false);//(new Color(0x650099),false,true);
+        styles[Token.Type.LABEL.rawValue] = new SyntaxStyle(Color.black, true, false);//(new Color(0x990033),false,true);
+        styles[Token.Type.OPERATOR.rawValue] = new SyntaxStyle(Color.black, false, true);
+        styles[Token.Type.INVALID.rawValue] = new SyntaxStyle(Color.red, false, false);
+        styles[Token.Type.MACRO_ARG.rawValue] = new SyntaxStyle(new Color(150, 150, 0), false, false);
         return styles;
     }
 
@@ -128,20 +128,20 @@ public class SyntaxUtilities {
      * same as the default settings.
      */
     public static SyntaxStyle[] getCurrentSyntaxStyles() {
-        SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
+        SyntaxStyle[] styles = new SyntaxStyle[Token.Type.getEntries().size()];
 
-        styles[Token.NULL] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.NULL);
-        styles[Token.COMMENT1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.COMMENT1);
-        styles[Token.COMMENT2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.COMMENT2);
-        styles[Token.KEYWORD1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD1);
-        styles[Token.KEYWORD2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD2);
-        styles[Token.KEYWORD3] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD3);
-        styles[Token.LITERAL1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LITERAL1);
-        styles[Token.LITERAL2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LITERAL2);
-        styles[Token.LABEL] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LABEL);
-        styles[Token.OPERATOR] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.OPERATOR);
-        styles[Token.INVALID] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.INVALID);
-        styles[Token.MACRO_ARG] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.MACRO_ARG);
+        styles[Token.Type.NULL.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.NULL.rawValue);
+        styles[Token.Type.COMMENT1.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.COMMENT1.rawValue);
+        styles[Token.Type.COMMENT2.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.COMMENT2.rawValue);
+        styles[Token.Type.KEYWORD1.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.KEYWORD1.rawValue);
+        styles[Token.Type.KEYWORD2.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.KEYWORD2.rawValue);
+        styles[Token.Type.KEYWORD3.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.KEYWORD3.rawValue);
+        styles[Token.Type.LITERAL1.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.LITERAL1.rawValue);
+        styles[Token.Type.LITERAL2.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.LITERAL2.rawValue);
+        styles[Token.Type.LABEL.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.LABEL.rawValue);
+        styles[Token.Type.OPERATOR.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.OPERATOR.rawValue);
+        styles[Token.Type.INVALID.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.INVALID.rawValue);
+        styles[Token.Type.MACRO_ARG.rawValue] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.Type.MACRO_ARG.rawValue);
         return styles;
     }
 
@@ -170,21 +170,21 @@ public class SyntaxUtilities {
 
         int offset = 0;
         for (; ; ) {
-            byte id = tokens.id;
-            if (id == Token.END)
+            Token.Type id = tokens.getId();
+            if (id == Token.Type.END)
                 break;
 
-            int length = tokens.length;
-            if (id == Token.NULL) {
+            int length = tokens.getLength();
+            if (id == Token.Type.NULL) {
                 if (!defaultColor.equals(gfx.getColor()))
                     gfx.setColor(defaultColor);
                 if (!defaultFont.equals(gfx.getFont()))
                     gfx.setFont(defaultFont);
             } else
-                styles[id].setGraphicsFlags(gfx, defaultFont);
+                styles[id.rawValue].setGraphicsFlags(gfx, defaultFont);
             line.count = length;
 
-            if (id == Token.KEYWORD1) {
+            if (id == Token.Type.KEYWORD1) {
                 //System.out.println("Instruction: "+line);
                 // System.out.println("creating popup");
                 //                   JComponent paintArea = (JComponent) expander;
@@ -218,7 +218,7 @@ public class SyntaxUtilities {
             line.offset += length;
             offset += length;
 
-            tokens = tokens.next;
+            tokens = tokens.getNext();
         }
 
         return x;

@@ -54,38 +54,38 @@ public class MIPSTokenMarker extends TokenMarker {
 
     public static String[] getMIPSTokenLabels() {
         if (tokenLabels == null) {
-            tokenLabels = new String[Token.ID_COUNT];
-            tokenLabels[Token.COMMENT1] = "Comment";
-            tokenLabels[Token.LITERAL1] = "String literal";
-            tokenLabels[Token.LITERAL2] = "Character literal";
-            tokenLabels[Token.LABEL] = "Label";
-            tokenLabels[Token.KEYWORD1] = "MIPS instruction";
-            tokenLabels[Token.KEYWORD2] = "Assembler directive";
-            tokenLabels[Token.KEYWORD3] = "Register";
-            tokenLabels[Token.INVALID] = "In-progress, invalid";
-            tokenLabels[Token.MACRO_ARG] = "Macro parameter";
+            tokenLabels = new String[Token.Type.getEntries().size()];
+            tokenLabels[Token.Type.COMMENT1.rawValue] = "Comment";
+            tokenLabels[Token.Type.LITERAL1.rawValue] = "String literal";
+            tokenLabels[Token.Type.LITERAL2.rawValue] = "Character literal";
+            tokenLabels[Token.Type.LABEL.rawValue] = "Label";
+            tokenLabels[Token.Type.KEYWORD1.rawValue] = "MIPS instruction";
+            tokenLabels[Token.Type.KEYWORD2.rawValue] = "Assembler directive";
+            tokenLabels[Token.Type.KEYWORD3.rawValue] = "Register";
+            tokenLabels[Token.Type.INVALID.rawValue] = "In-progress, invalid";
+            tokenLabels[Token.Type.MACRO_ARG.rawValue] = "Macro parameter";
         }
         return tokenLabels;
     }
 
     public static String[] getMIPSTokenExamples() {
         if (tokenExamples == null) {
-            tokenExamples = new String[Token.ID_COUNT];
-            tokenExamples[Token.COMMENT1] = "# Load";
-            tokenExamples[Token.LITERAL1] = "\"First\"";
-            tokenExamples[Token.LITERAL2] = "'\\n'";
-            tokenExamples[Token.LABEL] = "main:";
-            tokenExamples[Token.KEYWORD1] = "lui";
-            tokenExamples[Token.KEYWORD2] = ".text";
-            tokenExamples[Token.KEYWORD3] = "$zero";
-            tokenExamples[Token.INVALID] = "\"Regi";
-            tokenExamples[Token.MACRO_ARG] = "%arg";
+            tokenExamples = new String[Token.Type.getEntries().size()];
+            tokenExamples[Token.Type.COMMENT1.rawValue] = "# Load";
+            tokenExamples[Token.Type.LITERAL1.rawValue] = "\"First\"";
+            tokenExamples[Token.Type.LITERAL2.rawValue] = "'\\n'";
+            tokenExamples[Token.Type.LABEL.rawValue] = "main:";
+            tokenExamples[Token.Type.KEYWORD1.rawValue] = "lui";
+            tokenExamples[Token.Type.KEYWORD2.rawValue] = ".text";
+            tokenExamples[Token.Type.KEYWORD3.rawValue] = "$zero";
+            tokenExamples[Token.Type.INVALID.rawValue] = "\"Regi";
+            tokenExamples[Token.Type.MACRO_ARG.rawValue] = "%arg";
         }
         return tokenExamples;
     }
 
 
-    public byte markTokensImpl(byte token, Segment line, int lineIndex) {
+    public Token.Type markTokensImpl(Token.Type token, Segment line, int lineIndex) {
         char[] array = line.array;
         int offset = line.offset;
         lastOffset = offset;
@@ -104,7 +104,7 @@ public class MIPSTokenMarker extends TokenMarker {
             }
 
             switch (token) {
-                case Token.NULL:
+                case Token.Type.NULL:
                     switch (c) {
                         case '"':
                             doKeyword(line, i, c);
@@ -112,7 +112,7 @@ public class MIPSTokenMarker extends TokenMarker {
                                 backslash = false;
                             else {
                                 addToken(i - lastOffset, token);
-                                token = Token.LITERAL1;
+                                token = Token.Type.LITERAL1;
                                 lastOffset = lastKeyword = i;
                             }
                             break;
@@ -122,7 +122,7 @@ public class MIPSTokenMarker extends TokenMarker {
                                 backslash = false;
                             else {
                                 addToken(i - lastOffset, token);
-                                token = Token.LITERAL2;
+                                token = Token.Type.LITERAL2;
                                 lastOffset = lastKeyword = i;
                             }
                             break;
@@ -154,7 +154,7 @@ public class MIPSTokenMarker extends TokenMarker {
                                 validIdentifier = TokenTypes.isValidIdentifier(new String(array, lastOffset, i1 - lastOffset - 1).trim());
                             } catch (StringIndexOutOfBoundsException ignored) {}
                             if (validIdentifier) {
-                                addToken(i1 - lastOffset, Token.LABEL);
+                                addToken(i1 - lastOffset, Token.Type.LABEL);
                                 lastOffset = lastKeyword = i1;
                             }
                             break;
@@ -163,7 +163,7 @@ public class MIPSTokenMarker extends TokenMarker {
                             doKeyword(line, i, c);
                             if (length - i >= 1) {
                                 addToken(i - lastOffset, token);
-                                addToken(length - i, Token.COMMENT1);
+                                addToken(length - i, Token.Type.COMMENT1);
                                 lastOffset = lastKeyword = length;
                                 break loop;
                             }
@@ -177,21 +177,21 @@ public class MIPSTokenMarker extends TokenMarker {
                             break;
                     }
                     break;
-                case Token.LITERAL1:
+                case Token.Type.LITERAL1:
                     if (backslash)
                         backslash = false;
                     else if (c == '"') {
                         addToken(i1 - lastOffset, token);
-                        token = Token.NULL;
+                        token = Token.Type.NULL;
                         lastOffset = lastKeyword = i1;
                     }
                     break;
-                case Token.LITERAL2:
+                case Token.Type.LITERAL2:
                     if (backslash)
                         backslash = false;
                     else if (c == '\'') {
-                        addToken(i1 - lastOffset, Token.LITERAL1);
-                        token = Token.NULL;
+                        addToken(i1 - lastOffset, Token.Type.LITERAL1);
+                        token = Token.Type.NULL;
                         lastOffset = lastKeyword = i1;
                     }
                     break;
@@ -201,19 +201,19 @@ public class MIPSTokenMarker extends TokenMarker {
             }
         }
 
-        if (token == Token.NULL)
+        if (token == Token.Type.NULL)
             doKeyword(line, length, '\0');
 
         switch (token) {
-            case Token.LITERAL1:
-            case Token.LITERAL2:
-                addToken(length - lastOffset, Token.INVALID);
-                token = Token.NULL;
+            case Token.Type.LITERAL1:
+            case Token.Type.LITERAL2:
+                addToken(length - lastOffset, Token.Type.INVALID);
+                token = Token.Type.NULL;
                 break;
-            case Token.KEYWORD2:
+            case Token.Type.KEYWORD2:
                 addToken(length - lastOffset, token);
                 if (!backslash)
-                    token = Token.NULL;
+                    token = Token.Type.NULL;
             default:
                 addToken(length - lastOffset, token);
                 break;
@@ -233,7 +233,7 @@ public class MIPSTokenMarker extends TokenMarker {
      */
     public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
         ArrayList<PopupHelpItem> matches = null;
-        if (token != null && token.id == Token.KEYWORD1) {
+        if (token != null && token.getId() == Token.Type.KEYWORD1) {
             ArrayList<Instruction> instrMatches = Globals.instructionSet.matchOperator(tokenText);
             if (!instrMatches.isEmpty()) {
                 int realMatches = 0;
@@ -249,7 +249,7 @@ public class MIPSTokenMarker extends TokenMarker {
                 }
             }
         }
-        if (token != null && token.id == Token.KEYWORD2) {
+        if (token != null && token.getId() == Token.Type.KEYWORD2) {
             Directives dir = Directives.matchDirective(tokenText);
             if (dir != null) {
                 matches = new ArrayList<>();
@@ -275,12 +275,12 @@ public class MIPSTokenMarker extends TokenMarker {
         ArrayList<PopupHelpItem> matches = null;
 
         // CASE:  Unlikely boundary case...
-        if (tokenList == null || tokenList.id == Token.END) {
+        if (tokenList == null || tokenList.getId() == Token.Type.END) {
             return null;
         }
 
         // CASE:  if current token is a comment, turn off the text.
-        if (token != null && token.id == Token.COMMENT1) {
+        if (token != null && token.getId() == Token.Type.COMMENT1) {
             return null;
         }
 
@@ -290,28 +290,28 @@ public class MIPSTokenMarker extends TokenMarker {
 
         Token tokens = tokenList;
         String keywordTokenText = null;
-        byte keywordType = -1;
+        Token.Type keywordType = Token.Type.NULL;
         int offset = 0;
         boolean moreThanOneKeyword = false;
-        while (tokens.id != Token.END) {
-            if (tokens.id == Token.KEYWORD1 || tokens.id == Token.KEYWORD2) {
+        while (tokens.getId() != Token.Type.END) {
+            if (tokens.getId() == Token.Type.KEYWORD1 || tokens.getId() == Token.Type.KEYWORD2) {
                 if (keywordTokenText != null) {
                     moreThanOneKeyword = true;
                     break;
                 }
-                keywordTokenText = line.substring(offset, offset + tokens.length);
-                keywordType = tokens.id;
+                keywordTokenText = line.substring(offset, offset + tokens.getLength());
+                keywordType = tokens.getId();
             }
-            offset += tokens.length;
-            tokens = tokens.next;
+            offset += tokens.getLength();
+            tokens = tokens.getNext();
         }
 
         // CASE:  Current token is valid KEYWORD1 (MIPS instruction).  If this line contains a previous KEYWORD1 or KEYWORD2
         //        token, then we ignore this one and do exact match on the first one.  If it does not, there may be longer
         //        instructions for which this is a prefix, so do a prefix match on current token.
-        if (token != null && token.id == Token.KEYWORD1) {
+        if (token != null && token.getId() == Token.Type.KEYWORD1) {
             if (moreThanOneKeyword) {
-                return (keywordType == Token.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
+                return (keywordType == Token.Type.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
                         : getTextFromDirectiveMatch(keywordTokenText, true);
             } else {
                 return getTextFromInstructionMatch(tokenText, false);
@@ -321,9 +321,9 @@ public class MIPSTokenMarker extends TokenMarker {
         // CASE:  Current token is valid KEYWORD2 (MIPS directive).  If this line contains a previous KEYWORD1 or KEYWORD2
         //        token, then we ignore this one and do exact match on the first one.  If it does not, there may be longer
         //        directives for which this is a prefix, so do a prefix match on current token.
-        if (token != null && token.id == Token.KEYWORD2) {
+        if (token != null && token.getId() == Token.Type.KEYWORD2) {
             if (moreThanOneKeyword) {
-                return (keywordType == Token.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
+                return (keywordType == Token.Type.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
                         : getTextFromDirectiveMatch(keywordTokenText, true);
             } else {
                 return getTextFromDirectiveMatch(tokenText, false);
@@ -333,10 +333,10 @@ public class MIPSTokenMarker extends TokenMarker {
         // CASE: line already contains KEYWORD1 or KEYWORD2 and current token is something other
         //       than KEYWORD1 or KEYWORD2. Generate text based on exact match of that token.
         if (keywordTokenText != null) {
-            if (keywordType == Token.KEYWORD1) {
+            if (keywordType == Token.Type.KEYWORD1) {
                 return getTextFromInstructionMatch(keywordTokenText, true);
             }
-            if (keywordType == Token.KEYWORD2) {
+            if (keywordType == Token.Type.KEYWORD2) {
                 return getTextFromDirectiveMatch(keywordTokenText, true);
             }
         }
@@ -352,7 +352,7 @@ public class MIPSTokenMarker extends TokenMarker {
         //             directives start with "."
 
 
-        if (token != null && token.id == Token.NULL) {
+        if (token != null && token.getId() == Token.Type.NULL) {
 
             String trimmedTokenText = tokenText.trim();
 
@@ -464,23 +464,23 @@ public class MIPSTokenMarker extends TokenMarker {
             // add Instruction mnemonics
             ArrayList<Instruction> instructionSet = Globals.instructionSet.getInstructionList();
             for (Instruction instruction : instructionSet) {
-                cKeywords.add(instruction.getName(), Token.KEYWORD1);
+                cKeywords.add(instruction.getName(), Token.Type.KEYWORD1);
             }
             // add assembler directives
             ArrayList<Directives> directiveSet = Directives.getDirectiveList();
             for (Directives directive : directiveSet) {
-                cKeywords.add(directive.getName(), Token.KEYWORD2);
+                cKeywords.add(directive.getName(), Token.Type.KEYWORD2);
             }
             // add integer register file
             Register[] registerFile = RegisterFile.getRegisters();
             for (int i = 0; i < registerFile.length; i++) {
-                cKeywords.add(registerFile[i].getName(), Token.KEYWORD3);
-                cKeywords.add("$" + i, Token.KEYWORD3);  // also recognize $0, $1, $2, etc
+                cKeywords.add(registerFile[i].getName(), Token.Type.KEYWORD3);
+                cKeywords.add("$" + i, Token.Type.KEYWORD3);  // also recognize $0, $1, $2, etc
             }
             // add Coprocessor 1 (floating point) register file
             Register[] coprocessor1RegisterFile = Coprocessor1.getRegisters();
             for (Register register : coprocessor1RegisterFile) {
-                cKeywords.add(register.getName(), Token.KEYWORD3);
+                cKeywords.add(register.getName(), Token.Type.KEYWORD3);
             }
             // Note: Coprocessor 0 registers referenced only by number: $8, $12, $13, $14. These are already in the map
 
@@ -499,15 +499,15 @@ public class MIPSTokenMarker extends TokenMarker {
         int i1 = i + 1;
 
         int len = i - lastKeyword;
-        byte id = keywords.lookup(line, lastKeyword, len);
-        if (id != Token.NULL) {
+        Token.Type id = keywords.lookup(line, lastKeyword, len);
+        if (id != Token.Type.NULL) {
             // If this is a Token.KEYWORD1 and line already contains a keyword,
             // then assume this one is a label reference and ignore it.
             //   if (id == Token.KEYWORD1 && tokenListContainsKeyword()) {
             //    }
             //    else {
             if (lastKeyword != lastOffset)
-                addToken(lastKeyword - lastOffset, Token.NULL);
+                addToken(lastKeyword - lastOffset, Token.Type.NULL);
             addToken(len, id);
             lastOffset = i;
             //  }
@@ -520,10 +520,10 @@ public class MIPSTokenMarker extends TokenMarker {
         boolean result = false;
         StringBuilder str = new StringBuilder();
         while (token != null) {
-            str.append(token.id).append("(").append(token.length).append(") ");
-            if (token.id == Token.KEYWORD1 || token.id == Token.KEYWORD2 || token.id == Token.KEYWORD3)
+            str.append(token.getId()).append("(").append(token.getLength()).append(") ");
+            if (token.getId() == Token.Type.KEYWORD1 || token.getId() == Token.Type.KEYWORD2 || token.getId() == Token.Type.KEYWORD3)
                 result = true;
-            token = token.next;
+            token = token.getNext();
         }
         System.out.println(result + " " + str);
         return result;

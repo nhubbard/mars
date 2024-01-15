@@ -66,11 +66,11 @@ public class KeywordMap {
      * @param offset The offset of the substring within the text segment
      * @param length The length of the substring
      */
-    public byte lookup(Segment text, int offset, int length) {
+    public Token.Type lookup(Segment text, int offset, int length) {
         if (length == 0)
-            return Token.NULL;
+            return Token.Type.NULL;
         if (text.array[offset] == '%')
-            return Token.MACRO_ARG;  // added 12/12 M. Sekhavat
+            return Token.Type.MACRO_ARG;  // added 12/12 M. Sekhavat
         Keyword k = map[getSegmentMapKey(text, offset, length)];
         while (k != null) {
             if (length != k.keyword.length) {
@@ -82,7 +82,7 @@ public class KeywordMap {
                 return k.id;
             k = k.next;
         }
-        return Token.NULL;
+        return Token.Type.NULL;
     }
 
     /**
@@ -91,7 +91,7 @@ public class KeywordMap {
      * @param keyword The key
      * @param id      The value
      */
-    public void add(String keyword, byte id) {
+    public void add(String keyword, Token.Type id) {
         int key = getStringMapKey(keyword);
         map[key] = new Keyword(keyword.toCharArray(), id, map[key]);
     }
@@ -131,14 +131,14 @@ public class KeywordMap {
 
     // private members
     static class Keyword {
-        public Keyword(char[] keyword, byte id, Keyword next) {
+        public Keyword(char[] keyword, Token.Type id, Keyword next) {
             this.keyword = keyword;
             this.id = id;
             this.next = next;
         }
 
         public final char[] keyword;
-        public final byte id;
+        public final Token.Type id;
         public final Keyword next;
     }
 
