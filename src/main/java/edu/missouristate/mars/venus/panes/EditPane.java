@@ -25,8 +25,8 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.venus.FileStatus;
 import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.editors.JEditBasedTextArea;
-import edu.missouristate.mars.venus.editors.TextSearchResult;
+import edu.missouristate.mars.venus.editor.JEditBasedTextArea;
+import edu.missouristate.mars.venus.editor.TextSearchResult;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

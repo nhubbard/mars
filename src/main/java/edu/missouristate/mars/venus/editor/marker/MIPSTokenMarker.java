@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.tokenmarker;
+package edu.missouristate.mars.venus.editor.marker;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
@@ -30,8 +30,8 @@ import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.venus.editors.KeywordMap;
-import edu.missouristate.mars.venus.editors.PopupHelpItem;
+import edu.missouristate.mars.venus.editor.KeywordMap;
+import edu.missouristate.mars.venus.editor.PopupHelpItem;
 
 import javax.swing.text.Segment;
 import java.util.ArrayList;
@@ -233,7 +233,7 @@ public class MIPSTokenMarker extends TokenMarker {
      */
     public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
         ArrayList<PopupHelpItem> matches = null;
-        if (token != null && token.getId() == Token.Type.KEYWORD1) {
+        if (token != null && token.getType() == Token.Type.KEYWORD1) {
             ArrayList<Instruction> instrMatches = Globals.instructionSet.matchOperator(tokenText);
             if (!instrMatches.isEmpty()) {
                 int realMatches = 0;
@@ -249,7 +249,7 @@ public class MIPSTokenMarker extends TokenMarker {
                 }
             }
         }
-        if (token != null && token.getId() == Token.Type.KEYWORD2) {
+        if (token != null && token.getType() == Token.Type.KEYWORD2) {
             Directives dir = Directives.matchDirective(tokenText);
             if (dir != null) {
                 matches = new ArrayList<>();
@@ -275,12 +275,12 @@ public class MIPSTokenMarker extends TokenMarker {
         ArrayList<PopupHelpItem> matches = null;
 
         // CASE:  Unlikely boundary case...
-        if (tokenList == null || tokenList.getId() == Token.Type.END) {
+        if (tokenList == null || tokenList.getType() == Token.Type.END) {
             return null;
         }
 
         // CASE:  if current token is a comment, turn off the text.
-        if (token != null && token.getId() == Token.Type.COMMENT1) {
+        if (token != null && token.getType() == Token.Type.COMMENT1) {
             return null;
         }
 
@@ -293,14 +293,14 @@ public class MIPSTokenMarker extends TokenMarker {
         Token.Type keywordType = Token.Type.NULL;
         int offset = 0;
         boolean moreThanOneKeyword = false;
-        while (tokens.getId() != Token.Type.END) {
-            if (tokens.getId() == Token.Type.KEYWORD1 || tokens.getId() == Token.Type.KEYWORD2) {
+        while (tokens.getType() != Token.Type.END) {
+            if (tokens.getType() == Token.Type.KEYWORD1 || tokens.getType() == Token.Type.KEYWORD2) {
                 if (keywordTokenText != null) {
                     moreThanOneKeyword = true;
                     break;
                 }
                 keywordTokenText = line.substring(offset, offset + tokens.getLength());
-                keywordType = tokens.getId();
+                keywordType = tokens.getType();
             }
             offset += tokens.getLength();
             tokens = tokens.getNext();
@@ -309,7 +309,7 @@ public class MIPSTokenMarker extends TokenMarker {
         // CASE:  Current token is valid KEYWORD1 (MIPS instruction).  If this line contains a previous KEYWORD1 or KEYWORD2
         //        token, then we ignore this one and do exact match on the first one.  If it does not, there may be longer
         //        instructions for which this is a prefix, so do a prefix match on current token.
-        if (token != null && token.getId() == Token.Type.KEYWORD1) {
+        if (token != null && token.getType() == Token.Type.KEYWORD1) {
             if (moreThanOneKeyword) {
                 return (keywordType == Token.Type.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
                         : getTextFromDirectiveMatch(keywordTokenText, true);
@@ -321,7 +321,7 @@ public class MIPSTokenMarker extends TokenMarker {
         // CASE:  Current token is valid KEYWORD2 (MIPS directive).  If this line contains a previous KEYWORD1 or KEYWORD2
         //        token, then we ignore this one and do exact match on the first one.  If it does not, there may be longer
         //        directives for which this is a prefix, so do a prefix match on current token.
-        if (token != null && token.getId() == Token.Type.KEYWORD2) {
+        if (token != null && token.getType() == Token.Type.KEYWORD2) {
             if (moreThanOneKeyword) {
                 return (keywordType == Token.Type.KEYWORD1) ? getTextFromInstructionMatch(keywordTokenText, true)
                         : getTextFromDirectiveMatch(keywordTokenText, true);
@@ -352,7 +352,7 @@ public class MIPSTokenMarker extends TokenMarker {
         //             directives start with "."
 
 
-        if (token != null && token.getId() == Token.Type.NULL) {
+        if (token != null && token.getType() == Token.Type.NULL) {
 
             String trimmedTokenText = tokenText.trim();
 
@@ -516,12 +516,12 @@ public class MIPSTokenMarker extends TokenMarker {
     }
 
     private boolean tokenListContainsKeyword() {
-        Token token = firstToken;
+        Token token = getFirstToken();
         boolean result = false;
         StringBuilder str = new StringBuilder();
         while (token != null) {
-            str.append(token.getId()).append("(").append(token.getLength()).append(") ");
-            if (token.getId() == Token.Type.KEYWORD1 || token.getId() == Token.Type.KEYWORD2 || token.getId() == Token.Type.KEYWORD3)
+            str.append(token.getType()).append("(").append(token.getLength()).append(") ");
+            if (token.getType() == Token.Type.KEYWORD1 || token.getType() == Token.Type.KEYWORD2 || token.getType() == Token.Type.KEYWORD3)
                 result = true;
             token = token.getNext();
         }

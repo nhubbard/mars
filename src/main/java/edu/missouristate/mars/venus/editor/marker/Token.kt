@@ -19,11 +19,11 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors.tokenmarker
+package edu.missouristate.mars.venus.editor.marker
 
 data class Token @JvmOverloads constructor(
     var length: Int,
-    var id: Type,
+    var type: Type,
     var next: Token? = null
 ) {
     enum class Type(@JvmField val rawValue: Byte) {
@@ -89,7 +89,10 @@ data class Token @JvmOverloads constructor(
             @JvmStatic
             fun fromInt(rawValue: Byte) = entries.firstOrNull { it.rawValue == rawValue } ?: NULL
         }
+
+        val isInternal: Boolean
+            get() = rawValue in 100..126
     }
 
-    override fun toString(): String = "[id=$id,length=$length]"
+    override fun toString(): String = "[id=$type,length=$length]"
 }

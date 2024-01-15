@@ -19,10 +19,10 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors;
+package edu.missouristate.mars.venus.editor;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.editors.tokenmarker.Token;
+import edu.missouristate.mars.venus.editor.marker.Token;
 
 import javax.swing.*;
 import javax.swing.text.Segment;
@@ -170,7 +170,7 @@ public class SyntaxUtilities {
 
         int offset = 0;
         for (; ; ) {
-            Token.Type id = tokens.getId();
+            Token.Type id = tokens.getType();
             if (id == Token.Type.END)
                 break;
 

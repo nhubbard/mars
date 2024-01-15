@@ -19,10 +19,10 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors;
+package edu.missouristate.mars.venus.editor;
 
-import edu.missouristate.mars.venus.editors.tokenmarker.Token;
-import edu.missouristate.mars.venus.editors.tokenmarker.TokenMarker;
+import edu.missouristate.mars.venus.editor.marker.Token;
+import edu.missouristate.mars.venus.editor.marker.TokenMarker;
 
 import javax.swing.*;
 import javax.swing.text.Segment;
@@ -102,7 +102,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
      * Returns the syntax styles used to paint colorized text. Entry <i>n</i>
      * will be used to paint tokens with id = <i>n</i>.
      *
-     * @see edu.missouristate.mars.venus.editors.tokenmarker.Token
+     * @see edu.missouristate.mars.venus.editor.marker.Token
      */
     public final SyntaxStyle[] getStyles() {
         return styles;
@@ -113,7 +113,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
      * will be used to paint tokens with id = <i>n</i>.
      *
      * @param styles The syntax styles
-     * @see edu.missouristate.mars.venus.editors.tokenmarker.Token
+     * @see edu.missouristate.mars.venus.editor.marker.Token
      */
     public final void setStyles(SyntaxStyle[] styles) {
         this.styles = styles;

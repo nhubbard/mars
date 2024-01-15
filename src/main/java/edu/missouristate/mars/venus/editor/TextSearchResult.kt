@@ -19,7 +19,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors
+package edu.missouristate.mars.venus.editor
 
 enum class TextSearchResult(val rawValue: Int) {
     TEXT_NOT_FOUND(0),

@@ -19,12 +19,12 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors;
+package edu.missouristate.mars.venus.editor;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.venus.editors.tokenmarker.Token;
-import edu.missouristate.mars.venus.editors.tokenmarker.TokenMarker;
+import edu.missouristate.mars.venus.editor.marker.Token;
+import edu.missouristate.mars.venus.editor.marker.TokenMarker;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -530,7 +530,7 @@ public class JEditTextArea extends JComponent {
             SyntaxStyle[] styles = painter.getStyles();
 
             for (; ; ) {
-                Token.Type id = tokens.getId();
+                Token.Type id = tokens.getType();
                 if (id == Token.Type.END) {
                     return x;
                 }
@@ -616,7 +616,7 @@ public class JEditTextArea extends JComponent {
             SyntaxStyle[] styles = painter.getStyles();
 
             for (; ; ) {
-                Token.Type id = tokens.getId();
+                Token.Type id = tokens.getType();
                 if (id == Token.Type.END)
                     return offset;
 
@@ -2085,14 +2085,14 @@ public class JEditTextArea extends JComponent {
             // cool for following the tokens...
             //System.out.print("(JEditTextArea.java) Token Stream:");
             Token toke = tokens;
-            while (toke.getId() != Token.Type.END) {
+            while (toke.getType() != Token.Type.END) {
                 //System.out.print(" "+toke.id+"("+toke.length+")");
                 toke = toke.getNext();
             }
             //System.out.println();
 
             for (; ; ) {
-                Token.Type id = tokens.getId();
+                Token.Type id = tokens.getType();
                 if (id == Token.Type.END)
                     break;
                 int length = tokens.getLength();

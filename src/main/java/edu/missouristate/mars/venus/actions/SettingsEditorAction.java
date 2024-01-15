@@ -25,9 +25,9 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.Editor;
 import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.venus.dialogs.AbstractFontSettingDialog;
-import edu.missouristate.mars.venus.editors.SyntaxStyle;
-import edu.missouristate.mars.venus.editors.SyntaxUtilities;
-import edu.missouristate.mars.venus.editors.tokenmarker.*;
+import edu.missouristate.mars.venus.editor.SyntaxStyle;
+import edu.missouristate.mars.venus.editor.SyntaxUtilities;
+import edu.missouristate.mars.venus.editor.marker.*;
 
 import java.awt.*;
 import java.awt.event.*;

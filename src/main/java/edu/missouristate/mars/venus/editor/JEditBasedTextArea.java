@@ -19,11 +19,11 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editors;
+package edu.missouristate.mars.venus.editor;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.panes.EditPane;
-import edu.missouristate.mars.venus.editors.tokenmarker.MIPSTokenMarker;
+import edu.missouristate.mars.venus.editor.marker.MIPSTokenMarker;
 
 import javax.swing.*;
 import javax.swing.event.CaretEvent;

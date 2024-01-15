@@ -23,7 +23,7 @@ package edu.missouristate.mars.venus.actions;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.editors.TextSearchResult;
+import edu.missouristate.mars.venus.editor.TextSearchResult;
 import edu.missouristate.mars.venus.panes.EditPane;
 
 import javax.swing.*;
