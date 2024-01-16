@@ -24,6 +24,8 @@
 package edu.missouristate.mars.venus.editor
 
 import edu.missouristate.mars.hashTableOf
+import edu.missouristate.mars.venus.editor.TextUtilities.findWordEnd
+import edu.missouristate.mars.venus.editor.TextUtilities.findWordStart
 import java.awt.Component
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
@@ -347,7 +349,7 @@ abstract class InputHandler : KeyAdapter() {
                 caret--
             } else {
                 val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = TextUtilities.findWordStart(lineText, caret, noWordSep)
+                caret = lineText.findWordStart(caret, noWordSep)
             }
 
             try {
@@ -404,7 +406,7 @@ abstract class InputHandler : KeyAdapter() {
                 caret++
             } else {
                 val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = TextUtilities.findWordEnd(lineText, caret, noWordSep)
+                caret = lineText.findWordEnd(caret, noWordSep)
             }
 
             try {
@@ -585,7 +587,7 @@ abstract class InputHandler : KeyAdapter() {
                 caret++
             } else {
                 val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = TextUtilities.findWordEnd(lineText, caret, noWordSep)
+                caret = lineText.findWordEnd(caret, noWordSep)
             }
 
             if (select) textArea.select(textArea.markPosition, lineStart + caret)
@@ -670,7 +672,7 @@ abstract class InputHandler : KeyAdapter() {
                 caret--
             } else {
                 val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = TextUtilities.findWordStart(lineText, caret, noWordSep)
+                caret = lineText.findWordStart(caret, noWordSep)
             }
 
             if (select) textArea.select(textArea.markPosition, lineStart + caret)
