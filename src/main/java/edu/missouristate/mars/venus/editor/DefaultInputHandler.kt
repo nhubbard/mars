@@ -56,21 +56,20 @@ class DefaultInputHandler : InputHandler {
             val index = keyStroke.indexOf("+")
             if (index != -1) {
                 for (i in 0..<index) {
-                    modifiers = when (keyStroke[i].uppercase()) {
-                        "A" -> modifiers or InputEvent.ALT_DOWN_MASK
-                        "C" -> modifiers or InputEvent.CTRL_DOWN_MASK
-                        "M" -> modifiers or InputEvent.META_DOWN_MASK
-                        "S" -> modifiers or InputEvent.SHIFT_DOWN_MASK
+                    modifiers = when (keyStroke[i].uppercaseChar()) {
+                        'A' -> modifiers or InputEvent.ALT_DOWN_MASK
+                        'C' -> modifiers or InputEvent.CTRL_DOWN_MASK
+                        'M' -> modifiers or InputEvent.META_DOWN_MASK
+                        'S' -> modifiers or InputEvent.SHIFT_DOWN_MASK
                         else -> modifiers
                     }
                 }
             }
             val key = keyStroke.substring(index + 1)
             if (key.length == 1) {
-                val ch = key[0].uppercase()
-                // Potentially unsafe assumption: ch is only 1 character
+                val ch = key[0].uppercaseChar()
                 return if (modifiers == 0) KeyStroke.getKeyStroke(ch)
-                else KeyStroke.getKeyStroke(ch[0], modifiers)
+                else KeyStroke.getKeyStroke(ch, modifiers)
             } else if (key.isEmpty()) {
                 System.err.println("Invalid keystroke: $keyStroke")
                 return null
@@ -239,7 +238,7 @@ class DefaultInputHandler : InputHandler {
         // Handle Italian Mac keyboards, which require using Alt to insert the pound symbol (#) for comments.
         if (c != CHAR_UNDEFINED && (((modifiers and ALT_DOWN_MASK) == 0) || System.getProperty("os.name").contains("OS X"))) {
             if (c >= 0x20.digitToChar() && c != 0x7f.digitToChar()) {
-                val keyStroke = KeyStroke.getKeyStroke(c.uppercase())
+                val keyStroke = KeyStroke.getKeyStroke(c.uppercaseChar())
                 val o = currentBindings[keyStroke]
                 if (o is Hashtable<*, *>) {
                     currentBindings = o as Hashtable<KeyStroke, Any>

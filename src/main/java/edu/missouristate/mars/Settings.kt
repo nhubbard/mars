@@ -28,6 +28,7 @@ import edu.missouristate.mars.util.EditorFont
 import edu.missouristate.mars.util.EditorFont.FontStyles
 import edu.missouristate.mars.venus.editor.SyntaxStyle
 import edu.missouristate.mars.venus.editor.SyntaxUtilities
+import edu.missouristate.mars.venus.editor.marker.Token
 import java.awt.Color
 import java.awt.Font
 import java.util.*
@@ -531,6 +532,9 @@ class Settings : Observable() {
             syntaxStyleBoldSettingsValues[index]
         )
     }
+
+    fun getEditorSyntaxStyle(type: Token.Type): SyntaxStyle =
+        getEditorSyntaxStyleByPosition(type.rawValue.toInt())
 
     fun getDefaultEditorSyntaxStyleByPosition(index: Int): SyntaxStyle {
         return SyntaxStyle(

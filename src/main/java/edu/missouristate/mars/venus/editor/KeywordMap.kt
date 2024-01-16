@@ -19,45 +19,24 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editor;
+package edu.missouristate.mars.venus.editor
 
-import edu.missouristate.mars.venus.editor.marker.Token;
-
-import javax.swing.text.Segment;
+import edu.missouristate.mars.venus.editor.SyntaxUtilities.regionMatches
+import edu.missouristate.mars.venus.editor.marker.Token
+import javax.swing.text.Segment
 
 /**
- * A <code>KeywordMap</code> is similar to a hashtable in that it maps keys
- * to values. However, the `keys' are Swing segments. This allows lookups of
- * text substrings without the overhead of creating a new string object.
- * <p>
- * This class is used by <code>CTokenMarker</code> to map keywords to types.
+ * Creates a new [KeywordMap].
  *
- * @author Slava Pestov, Mike Dillon
- * @version $Id: KeywordMap.java,v 1.16 1999/12/13 03:40:30 sp Exp $
+ * @param ignoreCase True if the keys are case insensitive
+ * @param mapLength  The number of `buckets' to create.
+ *                   A value of 52 will give good performance for most maps.
  */
-public class KeywordMap {
-    /**
-     * Creates a new <code>KeywordMap</code>.
-     *
-     * @param ignoreCase True if keys are case insensitive
-     */
-    public KeywordMap(boolean ignoreCase) {
-        this(ignoreCase, 52);
-        this.ignoreCase = ignoreCase;
-    }
-
-    /**
-     * Creates a new <code>KeywordMap</code>.
-     *
-     * @param ignoreCase True if the keys are case insensitive
-     * @param mapLength  The number of `buckets' to create.
-     *                   A value of 52 will give good performance for most maps.
-     */
-    public KeywordMap(boolean ignoreCase, int mapLength) {
-        this.mapLength = mapLength;
-        this.ignoreCase = ignoreCase;
-        map = new Keyword[mapLength];
-    }
+class KeywordMap @JvmOverloads constructor (
+    var ignoreCase: Boolean,
+    private val mapLength: Int = 52
+) {
+    private val map: Array<Keyword?> = arrayOfNulls(mapLength)
 
     /**
      * Looks up a key.
@@ -66,82 +45,60 @@ public class KeywordMap {
      * @param offset The offset of the substring within the text segment
      * @param length The length of the substring
      */
-    public Token.Type lookup(Segment text, int offset, int length) {
-        if (length == 0)
-            return Token.Type.NULL;
-        if (text.array[offset] == '%')
-            return Token.Type.MACRO_ARG;  // added 12/12 M. Sekhavat
-        Keyword k = map[getSegmentMapKey(text, offset, length)];
+    fun lookup(text: Segment, offset: Int, length: Int): Token.Type {
+        if (length == 0) return Token.Type.NULL
+        if (text.array[offset] == '%') return Token.Type.MACRO_ARG
+        var k = map[getSegmentMapKey(text, offset, length)]
         while (k != null) {
-            if (length != k.keyword.length) {
-                k = k.next;
-                continue;
+            if (length != k.keyword.size) {
+                k = k.next
+                continue
             }
-            if (SyntaxUtilities.regionMatches(ignoreCase, text, offset,
-                    k.keyword))
-                return k.type;
-            k = k.next;
+            if (text.regionMatches(k.keyword, offset, ignoreCase)) return k.type
+            k = k.next
         }
-        return Token.Type.NULL;
+        return Token.Type.NULL
     }
 
     /**
      * Adds a key-value mapping.
      *
      * @param keyword The key
-     * @param type      The value
+     * @param type    The value
      */
-    public void add(String keyword, Token.Type type) {
-        int key = getStringMapKey(keyword);
-        map[key] = new Keyword(keyword.toCharArray(), type, map[key]);
+    fun add(keyword: String, type: Token.Type) {
+        val key = getStringMapKey(keyword)
+        map[key] = Keyword(keyword.toCharArray(), type, map[key])
     }
 
-    /**
-     * Returns true if the keyword map is set to be case insensitive,
-     * false otherwise.
-     */
-    public boolean getIgnoreCase() {
-        return ignoreCase;
-    }
+    private fun getStringMapKey(s: String): Int =
+        (s[0].uppercaseChar().digitToInt() + s.last().uppercaseChar().digitToInt()) % mapLength
 
-    /**
-     * Sets if the keyword map should be case insensitive.
-     *
-     * @param ignoreCase True if the keyword map should be case
-     *                   insensitive, false otherwise
-     */
-    public void setIgnoreCase(boolean ignoreCase) {
-        this.ignoreCase = ignoreCase;
-    }
+    private fun getSegmentMapKey(s: Segment, offset: Int, length: Int): Int =
+        (s.array[offset].uppercaseChar().digitToInt() +
+            s.array[offset + length - 1].uppercaseChar().digitToInt()) % mapLength
 
-    // protected members
-    protected final int mapLength;
+    data class Keyword(
+        val keyword: CharArray,
+        val type: Token.Type,
+        val next: Keyword? = null
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
 
-    protected int getStringMapKey(String s) {
-        return (Character.toUpperCase(s.charAt(0)) +
-                Character.toUpperCase(s.charAt(s.length() - 1)))
-                % mapLength;
-    }
+            other as Keyword
 
-    protected int getSegmentMapKey(Segment s, int off, int len) {
-        return (Character.toUpperCase(s.array[off]) +
-                Character.toUpperCase(s.array[off + len - 1]))
-                % mapLength;
-    }
+            if (!keyword.contentEquals(other.keyword)) return false
+            if (type != other.type) return false
 
-    // private members
-    static class Keyword {
-        public Keyword(char[] keyword, Token.Type type, Keyword next) {
-            this.keyword = keyword;
-            this.type = type;
-            this.next = next;
+            return true
         }
 
-        public final char[] keyword;
-        public final Token.Type type;
-        public final Keyword next;
+        override fun hashCode(): Int {
+            var result = keyword.contentHashCode()
+            result = 31 * result + type.hashCode()
+            return result
+        }
     }
-
-    private final Keyword[] map;
-    private boolean ignoreCase;
 }
