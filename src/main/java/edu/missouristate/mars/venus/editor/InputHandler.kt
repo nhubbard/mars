@@ -19,6 +19,8 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package edu.missouristate.mars.venus.editor
 
 import edu.missouristate.mars.hashTableOf
@@ -234,7 +236,7 @@ abstract class InputHandler : KeyAdapter() {
      * @param source        The event source
      * @param actionCommand The action command
      */
-    fun executeAction(listener: ActionListener, source: Any, actionCommand: String) {
+    fun executeAction(listener: ActionListener, source: Any, actionCommand: String?) {
         // Create the event
         val event = ActionEvent(source, ActionEvent.ACTION_PERFORMED, actionCommand)
         // Don't do anything if the action is a wrapper
@@ -297,7 +299,7 @@ abstract class InputHandler : KeyAdapter() {
      * Macro recorder interface.
      */
     interface MacroRecorder {
-        fun actionPerformed(listener: ActionListener, actionCommand: String)
+        fun actionPerformed(listener: ActionListener, actionCommand: String?)
     }
 
     class Backspace : ActionListener {
