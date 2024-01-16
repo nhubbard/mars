@@ -289,6 +289,19 @@ fun <T> treeSetOf(vararg elements: T): TreeSet<T> =
         for (element in elements) add(element)
     }
 
+/**
+ * Create a [Hashtable] in the same way that Kotlin creates collections.
+ */
+fun <K, V> hashTableOf(): Hashtable<K, V> = Hashtable()
+
+/**
+ * Create a [Hashtable] in the same way that Kotlin create collections, including initial values.
+ */
+fun <K, V> hashTableOf(vararg elements: Pair<K, V>): Hashtable<K, V> =
+    if (elements.isEmpty()) Hashtable<K, V>() else Hashtable<K, V>().apply {
+        for ((key, value) in elements) put(key, value)
+    }
+
 /** Fill a [Polygon] with a receiver function. */
 private fun Graphics.fillPolygon(block: Polygon.() -> Unit) {
     fillPolygon(Polygon().apply(block))

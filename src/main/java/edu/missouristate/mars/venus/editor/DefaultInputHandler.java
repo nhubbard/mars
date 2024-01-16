@@ -23,9 +23,11 @@ package edu.missouristate.mars.venus.editor;
 
 import edu.missouristate.mars.Globals;
 
-import javax.swing.KeyStroke;
-import java.awt.event.*;
-import java.awt.Toolkit;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
 
@@ -112,8 +114,7 @@ public class DefaultInputHandler extends InputHandler {
         StringTokenizer st = new StringTokenizer(keyBinding);
         while (st.hasMoreTokens()) {
             KeyStroke keyStroke = parseKeyStroke(st.nextToken());
-            if (keyStroke == null)
-                return;
+            if (keyStroke == null) return;
 
             if (st.hasMoreTokens()) {
                 Object o = current.get(keyStroke);
@@ -122,8 +123,7 @@ public class DefaultInputHandler extends InputHandler {
                     current.put(keyStroke, o);
                 }
                 current = (Hashtable<KeyStroke, Object>) o;
-            } else
-                current.put(keyStroke, action);
+            } else current.put(keyStroke, action);
         }
     }
 
@@ -160,20 +160,11 @@ public class DefaultInputHandler extends InputHandler {
     public void keyPressed(KeyEvent evt) {
         int keyCode = evt.getKeyCode();
         int modifiers = evt.getModifiersEx();
-        if (keyCode == KeyEvent.VK_CONTROL ||
-                keyCode == KeyEvent.VK_SHIFT ||
-                keyCode == KeyEvent.VK_ALT ||
-                keyCode == KeyEvent.VK_META)
+        if (keyCode == KeyEvent.VK_CONTROL || keyCode == KeyEvent.VK_SHIFT || keyCode == KeyEvent.VK_ALT || keyCode == KeyEvent.VK_META)
             return;
 
-        if ((modifiers & ~KeyEvent.SHIFT_DOWN_MASK) != 0
-                || evt.isActionKey()
-                || keyCode == KeyEvent.VK_BACK_SPACE
-                || keyCode == KeyEvent.VK_DELETE
-                || keyCode == KeyEvent.VK_ENTER
-                || keyCode == KeyEvent.VK_TAB
-                || keyCode == KeyEvent.VK_ESCAPE) {
-            if (grabAction != null) {
+        if ((modifiers & ~KeyEvent.SHIFT_DOWN_MASK) != 0 || evt.isActionKey() || keyCode == KeyEvent.VK_BACK_SPACE || keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_TAB || keyCode == KeyEvent.VK_ESCAPE) {
+            if (getGrabAction() != null) {
                 handleGrabAction(evt);
                 return;
             }
@@ -191,8 +182,8 @@ public class DefaultInputHandler extends InputHandler {
                         Toolkit.getDefaultToolkit().beep();
                         // F10 should be passed on, but C+e F10
                         // shouldn't
-                        repeatCount = 0;
-                        repeat = false;
+                        setRepeatCount(0);
+                        setRepeatEnabled(false);
                         evt.consume();
                     }
                     currentBindings = bindings;
@@ -203,8 +194,7 @@ public class DefaultInputHandler extends InputHandler {
                 }
                 case ActionListener actionListener -> {
                     currentBindings = bindings;
-                    executeAction(actionListener,
-                            evt.getSource(), null);
+                    executeAction(actionListener, evt.getSource(), null);
 
                     evt.consume();
                 }
@@ -228,8 +218,7 @@ public class DefaultInputHandler extends InputHandler {
         // being echoed to the text area.  E.g. Command-s, for Save, will echo
         // the 's' character unless filtered out here.  Command modifier
         // matches KeyEvent.META_MASK.   DPS 30-Nov-2010
-        if ((modifiers & KeyEvent.META_DOWN_MASK) != 0)
-            return;
+        if ((modifiers & KeyEvent.META_DOWN_MASK) != 0) return;
         // DPS 9-Jan-2013.  Umberto Villano from Italy describes Alt combinations
         // not working on Italian Mac keyboards, where # requires Alt (Option).
         // This is preventing him from writing comments.  Similar complaint from
@@ -270,8 +259,7 @@ public class DefaultInputHandler extends InputHandler {
         // on OS X, which have been entered with the ALT modifier:
         if (c != KeyEvent.CHAR_UNDEFINED && (((modifiers & KeyEvent.ALT_DOWN_MASK) == 0) || System.getProperty("os.name").contains("OS X"))) {
             if (c >= 0x20 && c != 0x7f) {
-                KeyStroke keyStroke = KeyStroke.getKeyStroke(
-                        Character.toUpperCase(c));
+                KeyStroke keyStroke = KeyStroke.getKeyStroke(Character.toUpperCase(c));
                 Object o = currentBindings.get(keyStroke);
 
                 if (o instanceof Hashtable) {
@@ -279,29 +267,26 @@ public class DefaultInputHandler extends InputHandler {
                     return;
                 } else if (o instanceof ActionListener) {
                     currentBindings = bindings;
-                    executeAction((ActionListener) o,
-                            evt.getSource(),
-                            String.valueOf(c));
+                    executeAction((ActionListener) o, evt.getSource(), String.valueOf(c));
                     return;
                 }
 
                 currentBindings = bindings;
 
-                if (grabAction != null) {
+                if (getGrabAction() != null) {
                     handleGrabAction(evt);
                     return;
                 }
 
                 // 0-9 adds another 'digit' to the repeat number
-                if (repeat && Character.isDigit(c)) {
-                    repeatCount *= 10;
-                    repeatCount += (c - '0');
+                if (isRepeatEnabled() && Character.isDigit(c)) {
+                    setRepeatCount(getRepeatCount() * 10);
+                    setRepeatCount(getRepeatCount() + (c - '0'));
                     return;
                 }
-                executeAction(INSERT_CHAR, evt.getSource(),
-                        String.valueOf(evt.getKeyChar()));
-                repeatCount = 0;
-                repeat = false;
+                executeAction(INSERT_CHAR, evt.getSource(), String.valueOf(evt.getKeyChar()));
+                setRepeatCount(0);
+                setRepeatEnabled(false);
             }
         }
     }
@@ -317,14 +302,12 @@ public class DefaultInputHandler extends InputHandler {
      * @param keyStroke A string description of the key stroke
      */
     public static KeyStroke parseKeyStroke(String keyStroke) {
-        if (keyStroke == null)
-            return null;
+        if (keyStroke == null) return null;
         int modifiers = 0;
         int index = keyStroke.indexOf('+');
         if (index != -1) {
             for (int i = 0; i < index; i++) {
-                switch (Character.toUpperCase(keyStroke
-                        .charAt(i))) {
+                switch (Character.toUpperCase(keyStroke.charAt(i))) {
                     case 'A':
                         modifiers |= InputEvent.ALT_DOWN_MASK;
                         break;
@@ -343,10 +326,8 @@ public class DefaultInputHandler extends InputHandler {
         String key = keyStroke.substring(index + 1);
         if (key.length() == 1) {
             char ch = Character.toUpperCase(key.charAt(0));
-            if (modifiers == 0)
-                return KeyStroke.getKeyStroke(ch);
-            else
-                return KeyStroke.getKeyStroke(ch, modifiers);
+            if (modifiers == 0) return KeyStroke.getKeyStroke(ch);
+            else return KeyStroke.getKeyStroke(ch, modifiers);
         } else if (key.isEmpty()) {
             System.err.println("Invalid key stroke: " + keyStroke);
             return null;
@@ -354,11 +335,9 @@ public class DefaultInputHandler extends InputHandler {
             int ch;
 
             try {
-                ch = KeyEvent.class.getField("VK_".concat(key))
-                        .getInt(null);
+                ch = KeyEvent.class.getField("VK_".concat(key)).getInt(null);
             } catch (Exception e) {
-                System.err.println("Invalid key stroke: "
-                        + keyStroke);
+                System.err.println("Invalid key stroke: " + keyStroke);
                 return null;
             }
 
