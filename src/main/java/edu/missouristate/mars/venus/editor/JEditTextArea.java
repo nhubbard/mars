@@ -516,11 +516,11 @@ public class JEditTextArea extends JComponent {
          * tokens can vary in width */
         else {
             Token tokens;
-            if (painter.currentLineIndex == line
+            if (painter.getCurrentLineIndex() == line
                     && painter.currentLineTokens != null)
                 tokens = painter.currentLineTokens;
             else {
-                painter.currentLineIndex = line;
+                painter.setCurrentLineIndex(line);
                 tokens = painter.currentLineTokens
                         = tokenMarker.markTokens(lineSegment, line);
             }
@@ -601,11 +601,11 @@ public class JEditTextArea extends JComponent {
             return segmentCount;
         } else {
             Token tokens;
-            if (painter.currentLineIndex == line && painter
+            if (painter.getCurrentLineIndex() == line && painter
                     .currentLineTokens != null)
                 tokens = painter.currentLineTokens;
             else {
-                painter.currentLineIndex = line;
+                painter.setCurrentLineIndex(line);
                 tokens = painter.currentLineTokens
                         = tokenMarker.markTokens(lineSegment, line);
             }
@@ -1046,7 +1046,7 @@ public class JEditTextArea extends JComponent {
             int newStartLine = getLineOfOffset(newStart);
             int newEndLine = getLineOfOffset(newEnd);
 
-            if (painter.isBracketHighlightEnabled()) {
+            if (painter.isBracketHighlightingEnabled()) {
                 if (bracketLine != -1)
                     painter.invalidateLine(bracketLine);
                 updateBracketHighlight(end);

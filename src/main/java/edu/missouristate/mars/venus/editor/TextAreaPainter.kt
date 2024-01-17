@@ -19,282 +19,145 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editor;
+@file:Suppress("MemberVisibilityCanBePrivate", "NAME_SHADOWING")
 
-import edu.missouristate.mars.venus.editor.marker.Token;
-import edu.missouristate.mars.venus.editor.marker.TokenMarker;
+package edu.missouristate.mars.venus.editor
 
-import javax.swing.*;
-import javax.swing.text.Segment;
-import javax.swing.text.TabExpander;
-import javax.swing.text.Utilities;
-import java.awt.*;
-import java.awt.event.MouseEvent;
+import edu.missouristate.mars.venus.editor.SyntaxUtilities.paintSyntaxLine
+import edu.missouristate.mars.venus.editor.marker.Token
+import edu.missouristate.mars.venus.editor.marker.TokenMarker
+import java.awt.*
+import java.awt.event.MouseEvent
+import java.awt.image.BufferedImage
+import javax.swing.JComponent
+import javax.swing.ToolTipManager
+import javax.swing.text.Segment
+import javax.swing.text.TabExpander
+import javax.swing.text.Utilities
+import kotlin.math.min
 
-/**
- * The text area repaint manager. It performs double buffering and paints
- * lines of text.
- *
- * @author Slava Pestov
- * @version $Id: TextAreaPainter.java,v 1.24 1999/12/13 03:40:30 sp Exp $
- */
-public class TextAreaPainter extends JComponent implements TabExpander {
-    /**
-     * Creates a new repaint manager. This should be not be called
-     * directly.
-     */
-    public TextAreaPainter(JEditTextArea textArea, TextAreaDefaults defaults) {
-        this.textArea = textArea;
+/** The text area repaint manager. Performs double buffering and paints lines of text. */
+class TextAreaPainter(
+    private val textArea: JEditTextArea,
+    defaults: TextAreaDefaults
+) : JComponent(), TabExpander {
+    var currentLineIndex: Int
+    lateinit var currentLineTokens: Token
+    val currentLine: Segment
 
-        setAutoscrolls(true);
-        setDoubleBuffered(true);
-        setOpaque(true);
+    /** The styles of text. */
+    var styles: Array<SyntaxStyle> = arrayOf()
+        set(value) {
+            field = value
+            repaint()
+        }
 
+    /** Control the caret color. */
+    var caretColor: Color = Color.black
+        set(value) {
+            field = value
+            invalidateSelectedLines()
+        }
 
-        ToolTipManager.sharedInstance().registerComponent(this);
+    /** Control the color of selected text. */
+    var selectionColor: Color = Color.blue
+        set(value) {
+            field = value
+            invalidateSelectedLines()
+        }
 
-        currentLine = new Segment();
-        currentLineIndex = -1;
+    /** Control the color that the current line is highlighted in. */
+    var lineHighlightColor: Color = Color.yellow
+        set(value) {
+            field = value
+            invalidateSelectedLines()
+        }
 
-        setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
+    /** Control whether the current line is highlighted. */
+    var isLineHighlightEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidateSelectedLines()
+        }
 
-        setFont(new Font("Courier New" /*"Monospaced"*/, Font.PLAIN, 14));
-        setForeground(Color.black);
-        setBackground(Color.white);
+    /** Control what color brackets are highlighted as. */
+    var bracketHighlightColor: Color = Color.green
+        set(value) {
+            field = value
+            invalidateLine(textArea.bracketLine)
+        }
 
-        tabSizeChars = defaults.tabSize;
-        blockCaret = defaults.blockCaret;
-        styles = defaults.styles;
-        cols = defaults.cols;
-        rows = defaults.rows;
-        caretColor = defaults.caretColor;
-        selectionColor = defaults.selectionColor;
-        lineHighlightColor = defaults.lineHighlightColor;
-        lineHighlight = defaults.lineHighlight;
-        bracketHighlightColor = defaults.bracketHighlightColor;
-        bracketHighlight = defaults.bracketHighlight;
-        paintInvalid = defaults.paintInvalid;
-        eolMarkerColor = defaults.eolMarkerColor;
-        eolMarkers = defaults.eolMarkers;
-    }
+    /** Control whether bracket highlighting is enabled. */
+    var isBracketHighlightingEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidateLine(textArea.bracketLine)
+        }
 
-    /**
-     * Fetch the tab size in characters.  DPS 12-May-2010.
-     *
-     * @return int tab size in characters
-     */
-    public int getTabSize() {
-        return tabSizeChars;
-    }
+    /** Control whether block selection mode for the caret is enabled. */
+    var isBlockCaretEnabled: Boolean = false
+        set(value) {
+            field = value
+            invalidateSelectedLines()
+        }
 
-    /**
-     * Set the tab size in characters. DPS 12-May-2010.
-     * Originally it was fixed at PlainDocument property
-     * value (8).
-     *
-     * @param size tab size in characters
-     */
-    public void setTabSize(int size) {
-        tabSizeChars = size;
-    }
+    /** The color of the EOL markers, if [isEolMarkersEnabled] is set to true. */
+    var eolMarkerColor: Color = Color.lightGray
+        set(value) {
+            field = value
+            repaint()
+        }
 
-    /**
-     * Returns the syntax styles used to paint colorized text. Entry <i>n</i>
-     * will be used to paint tokens with id = <i>n</i>.
-     *
-     * @see edu.missouristate.mars.venus.editor.marker.Token
-     */
-    public final SyntaxStyle[] getStyles() {
-        return styles;
-    }
+    /** Control whether EOL markers are painted. */
+    var isEolMarkersEnabled: Boolean = false
+        set(value) {
+            field = value
+            repaint()
+        }
 
-    /**
-     * Sets the syntax styles used to paint colorized text. Entry <i>n</i>
-     * will be used to paint tokens with id = <i>n</i>.
-     *
-     * @param styles The syntax styles
-     * @see edu.missouristate.mars.venus.editor.marker.Token
-     */
-    public final void setStyles(SyntaxStyle[] styles) {
-        this.styles = styles;
-        repaint();
-    }
+    /** Control whether to paint invalid lines as red tildes (~). */
+    var isPaintingInvalidLines: Boolean
 
-    /**
-     * Returns the caret color.
-     */
-    public final Color getCaretColor() {
-        return caretColor;
-    }
+    private val cols: Int
+    private val rows: Int
+    private var internalTabSize: Int = -1
+    var tabSize: Int
 
-    /**
-     * Sets the caret color.
-     *
-     * @param caretColor The caret color
-     */
-    public final void setCaretColor(Color caretColor) {
-        this.caretColor = caretColor;
-        invalidateSelectedLines();
-    }
+    lateinit var fontMetrics: FontMetrics
+        private set
 
-    /**
-     * Returns the selection color.
-     */
-    public final Color getSelectionColor() {
-        return selectionColor;
-    }
+    private var highlights: Highlight? = null
 
-    /**
-     * Sets the selection color.
-     *
-     * @param selectionColor The selection color
-     */
-    public final void setSelectionColor(Color selectionColor) {
-        this.selectionColor = selectionColor;
-        invalidateSelectedLines();
-    }
+    init {
+        autoscrolls = true
+        isDoubleBuffered = true
+        isOpaque = true
 
-    /**
-     * Returns the line highlight color.
-     */
-    public final Color getLineHighlightColor() {
-        return lineHighlightColor;
-    }
+        ToolTipManager.sharedInstance().registerComponent(this)
 
-    /**
-     * Sets the line highlight color.
-     *
-     * @param lineHighlightColor The line highlight color
-     */
-    public final void setLineHighlightColor(Color lineHighlightColor) {
-        this.lineHighlightColor = lineHighlightColor;
-        invalidateSelectedLines();
-    }
+        currentLine = Segment()
+        currentLineIndex = -1
 
-    /**
-     * Returns true if line highlight is enabled, false otherwise.
-     */
-    public final boolean isLineHighlightEnabled() {
-        return lineHighlight;
-    }
+        cursor = Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR)
 
-    /**
-     * Enables or disables current line highlighting.
-     *
-     * @param lineHighlight True if current line highlight should be enabled,
-     *                      false otherwise
-     */
-    public final void setLineHighlightEnabled(boolean lineHighlight) {
-        this.lineHighlight = lineHighlight;
-        invalidateSelectedLines();
-    }
+        font = Font("Courier New", Font.PLAIN, 14)
+        foreground = Color.black
+        background = Color.white
 
-    /**
-     * Returns the bracket highlight color.
-     */
-    public final Color getBracketHighlightColor() {
-        return bracketHighlightColor;
-    }
-
-    /**
-     * Sets the bracket highlight color.
-     *
-     * @param bracketHighlightColor The bracket highlight color
-     */
-    public final void setBracketHighlightColor(Color bracketHighlightColor) {
-        this.bracketHighlightColor = bracketHighlightColor;
-        invalidateLine(textArea.getBracketLine());
-    }
-
-    /**
-     * Returns true if bracket highlighting is enabled, false otherwise.
-     * When bracket highlighting is enabled, the bracket matching the
-     * one before the caret (if any) is highlighted.
-     */
-    public final boolean isBracketHighlightEnabled() {
-        return bracketHighlight;
-    }
-
-    /**
-     * Enables or disables bracket highlighting.
-     * When bracket highlighting is enabled, the bracket matching the
-     * one before the caret (if any) is highlighted.
-     *
-     * @param bracketHighlight True if bracket highlighting should be
-     *                         enabled, false otherwise
-     */
-    public final void setBracketHighlightEnabled(boolean bracketHighlight) {
-        this.bracketHighlight = bracketHighlight;
-        invalidateLine(textArea.getBracketLine());
-    }
-
-    /**
-     * Returns true if the caret should be drawn as a block, false otherwise.
-     */
-    public final boolean isBlockCaretEnabled() {
-        return blockCaret;
-    }
-
-    /**
-     * Sets if the caret should be drawn as a block, false otherwise.
-     *
-     * @param blockCaret True if the caret should be drawn as a block,
-     *                   false otherwise.
-     */
-    public final void setBlockCaretEnabled(boolean blockCaret) {
-        this.blockCaret = blockCaret;
-        invalidateSelectedLines();
-    }
-
-    /**
-     * Returns the EOL marker color.
-     */
-    public final Color getEOLMarkerColor() {
-        return eolMarkerColor;
-    }
-
-    /**
-     * Sets the EOL marker color.
-     *
-     * @param eolMarkerColor The EOL marker color
-     */
-    public final void setEOLMarkerColor(Color eolMarkerColor) {
-        this.eolMarkerColor = eolMarkerColor;
-        repaint();
-    }
-
-    /**
-     * Returns true if EOL markers are drawn, false otherwise.
-     */
-    public final boolean getEOLMarkersPainted() {
-        return eolMarkers;
-    }
-
-    /**
-     * Sets if EOL markers are to be drawn.
-     *
-     * @param eolMarkers True if EOL markers should be drawn, false otherwise
-     */
-    public final void setEOLMarkersPainted(boolean eolMarkers) {
-        this.eolMarkers = eolMarkers;
-        repaint();
-    }
-
-    /**
-     * Returns true if invalid lines are painted as red tildes (~),
-     * false otherwise.
-     */
-    public boolean getInvalidLinesPainted() {
-        return paintInvalid;
-    }
-
-    /**
-     * Sets if invalid lines are to be painted as red tildes.
-     *
-     * @param paintInvalid True if invalid lines should be drawn, false otherwise
-     */
-    public void setInvalidLinesPainted(boolean paintInvalid) {
-        this.paintInvalid = paintInvalid;
+        tabSize = defaults.tabSize
+        isBlockCaretEnabled = defaults.blockCaret
+        styles = defaults.styles
+        cols = defaults.cols
+        rows = defaults.rows
+        caretColor = defaults.caretColor
+        selectionColor = defaults.selectionColor
+        lineHighlightColor = defaults.lineHighlightColor
+        isLineHighlightEnabled = defaults.lineHighlight
+        bracketHighlightColor = defaults.bracketHighlightColor
+        isBracketHighlightingEnabled = defaults.bracketHighlight
+        isPaintingInvalidLines = defaults.paintInvalid
+        eolMarkerColor = defaults.eolMarkerColor
+        isEolMarkersEnabled = defaults.eolMarkers
     }
 
     /**
@@ -302,379 +165,270 @@ public class TextAreaPainter extends JComponent implements TabExpander {
      *
      * @param highlight The highlight
      */
-    public void addCustomHighlight(Highlight highlight) {
-        highlight.init(textArea, highlights);
-        highlights = highlight;
+    fun addCustomHighlight(highlight: Highlight) {
+        highlight.init(textArea, highlights)
+        highlights = highlight
     }
 
-    /**
-     * Highlight interface.
-     */
-    public interface Highlight {
-        /**
-         * Called after the highlight painter has been added.
-         *
-         * @param textArea The text area
-         * @param next     The painter this one should delegate to
-         */
-        void init(JEditTextArea textArea, Highlight next);
+    /** Interface for highlights. */
+    interface Highlight {
+        /** Called after the highlight painter is added. */
+        fun init(textArea: JEditTextArea, next: Highlight?)
+
+        /** This should paint the highlight and delegate to the next highlight painter. */
+        fun paintHighlight(g: Graphics, line: Int, y: Int)
 
         /**
-         * This should paint the highlight and delgate to the
-         * next highlight painter.
-         *
-         * @param gfx  The graphics context
-         * @param line The line number
-         * @param y    The y co-ordinate of the line
+         * Return the tool tip to display at the specified location.
+         * If this highlighter doesn't know what to display, delegate to the next highlight painter.
          */
-        void paintHighlight(Graphics gfx, int line, int y);
-
-        /**
-         * Returns the tool tip to display at the specified
-         * location. If this highlighter doesn't know what to
-         * display, it should delegate to the next highlight
-         * painter.
-         *
-         * @param evt The mouse event
-         */
-        String getToolTipText(MouseEvent evt);
+        fun getToolTipText(e: MouseEvent): String
     }
 
-    /**
-     * Returns the tool tip to display at the specified location.
-     *
-     * @param evt The mouse event
-     */
-    public String getToolTipText(MouseEvent evt) {
-        if (highlights != null)
-            return highlights.getToolTipText(evt);
-        else if (this.textArea.getTokenMarker() == null)
-            return null;
-        else
-            return this.textArea.getSyntaxSensitiveToolTipText(evt.getX(), evt.getY());
+    override fun getToolTipText(e: MouseEvent): String? =
+        if (highlights != null) highlights!!.getToolTipText(e)
+        else if (textArea.tokenMarker == null) null
+        else textArea.getSyntaxSensitiveToolTipText(e.x, e.y)
+
+    /** Set the font. Has the side effect of creating new font metrics and recalculating visible lines. */
+    override fun setFont(font: Font) {
+        super.setFont(font)
+        // Toolkit.getDefaultToolkit().getFontMetrics(Font) is deprecated.
+        // Use this workaround instead:
+        val tempImage = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
+        val g2d = tempImage.createGraphics()
+        fontMetrics = g2d.getFontMetrics(font)
+        g2d.dispose()
+        textArea.recalculateVisibleLines()
     }
 
-    /**
-     * Returns the font metrics used by this component.
-     */
-    public FontMetrics getFontMetrics() {
-        return fm;
-    }
+    /** Paint the text in the graphics view. */
+    override fun paint(g: Graphics) {
+        g as Graphics2D
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
 
-    /**
-     * Sets the font for this component. This is overridden to update the
-     * cached font metrics and to recalculate which lines are visible.
-     *
-     * @param font The font
-     */
-    public void setFont(Font font) {
-        super.setFont(font);
-        fm = Toolkit.getDefaultToolkit().getFontMetrics(font);
-        textArea.recalculateVisibleLines();
-    }
+        internalTabSize = fontMetrics.charWidth(' ') * tabSize
 
+        val clipRect = g.clipBounds
+        g.color = background
+        g.fillRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height)
 
-    /**
-     * Repaints the text.
-     *
-     * @param gfx The graphics context
-     */
-    public void paint(Graphics gfx) {
-
-        // Added 4/6/10 DPS to set antialiasing for text rendering - smoother letters
-        // Second one says choose algorithm for quality over speed
-        ((Graphics2D) gfx).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        ((Graphics2D) gfx).setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-
-
-        tabSize = fm.charWidth(' ') * tabSizeChars; // was: ((Integer)textArea.getDocument().getProperty(PlainDocument.tabSizeAttribute)).intValue();
-
-        Rectangle clipRect = gfx.getClipBounds();
-
-        gfx.setColor(getBackground());
-        gfx.fillRect(clipRect.x, clipRect.y, clipRect.width, clipRect.height);
-
-        // We don't use yToLine() here because that method doesn't
-        // return lines past the end of the document
-        int height = fm.getHeight();
-        int firstLine = textArea.getFirstLine();
-        int firstInvalid = firstLine + clipRect.y / height;
-        // Because the clipRect's height is usually an even multiple
-        // of the font height, we subtract 1 from it, otherwise one
-        // too many lines will always be painted.
-        int lastInvalid = firstLine + (clipRect.y + clipRect.height - 1) / height;
+        val localHeight = fontMetrics.height
+        val firstLine = textArea.firstLine
+        val firstInvalid = firstLine + clipRect.y / localHeight
+        val lastInvalid = firstLine + (clipRect.y + clipRect.height - 1) / localHeight
 
         try {
-            TokenMarker tokenMarker = ((SyntaxDocument) textArea.getDocument())
-                    .getTokenMarker();
-            int x = textArea.getHorizontalOffset();
-
-            for (int line = firstInvalid; line <= lastInvalid; line++) {
-                paintLine(gfx, tokenMarker, line, x);
+            val tokenMarker = (textArea.document as SyntaxDocument).tokenMarker
+            val x = textArea.horizontalOffset
+            for (line in firstInvalid..lastInvalid) g.paintLine(tokenMarker, line, x)
+            if (tokenMarker != null && tokenMarker.isNextLineRequested) {
+                val h = clipRect.y + clipRect.height
+                repaint(0, h, width, height - h)
             }
-
-            if (tokenMarker != null && tokenMarker.isNextLineRequested()) {
-                int h = clipRect.y + clipRect.height;
-                repaint(0, h, getWidth(), getHeight() - h);
-            }
-        } catch (Exception e) {
-            System.err.println("Error repainting line"
-                    + " range {" + firstInvalid + ","
-                    + lastInvalid + "}:");
-            e.printStackTrace();
+        } catch (e: Exception) {
+            System.err.println("Error repainting line range {$firstInvalid,$lastInvalid}:")
+            e.printStackTrace()
         }
     }
 
-    /**
-     * Marks a line as needing a repaint.
-     *
-     * @param line The line to invalidate
-     */
-    public final void invalidateLine(int line) {
-        repaint(0, textArea.lineToY(line) + fm.getMaxDescent() + fm.getLeading(),
-                getWidth(), fm.getHeight());
+    /** Re-paint a single line. */
+    fun invalidateLine(line: Int) {
+        repaint(
+            0,
+            textArea.lineToY(line) + fontMetrics.maxDescent + fontMetrics.leading,
+            width,
+            fontMetrics.height
+        )
     }
 
-    /**
-     * Marks a range of lines as needing a repaint.
-     *
-     * @param firstLine The first line to invalidate
-     * @param lastLine  The last line to invalidate
-     */
-    public final void invalidateLineRange(int firstLine, int lastLine) {
-        repaint(0, textArea.lineToY(firstLine) + fm.getMaxDescent() + fm.getLeading(),
-                getWidth(), (lastLine - firstLine + 1) * fm.getHeight());
+    /** Re-paint a range of lines. */
+    fun invalidateLineRange(firstLine: Int, lastLine: Int) {
+        repaint(
+            0,
+            textArea.lineToY(firstLine) + fontMetrics.maxDescent + fontMetrics.leading,
+            width,
+            (lastLine - firstLine + 1) * fontMetrics.height
+        )
     }
 
-    /**
-     * Repaints the lines containing the selection.
-     */
-    public final void invalidateSelectedLines() {
-        invalidateLineRange(textArea.getSelectionStartLine(),
-                textArea.getSelectionEndLine());
+    /** Re-paint the selected lines. */
+    fun invalidateSelectedLines() {
+        invalidateLineRange(textArea.selectionStartLine, textArea.selectionEndLine)
     }
 
-    /**
-     * Implementation of TabExpander interface. Returns next tab stop after
-     * a specified point.
-     *
-     * @param x         The x co-ordinate
-     * @param tabOffset Ignored
-     * @return The next tab stop after <i>x</i>
-     */
-    public float nextTabStop(float x, int tabOffset) {
-        int offset = textArea.getHorizontalOffset();
-        int ntabs = ((int) x - offset) / tabSize;
-        return (ntabs + 1) * tabSize + offset;
+    /** Get the next tab stop after a specified point. */
+    override fun nextTabStop(x: Float, tabOffset: Int): Float {
+        val offset = textArea.horizontalOffset
+        val nTabs = (x - offset).toInt() / internalTabSize
+        return ((nTabs + 1) * internalTabSize + offset).toFloat()
     }
 
-    /**
-     * Returns the painter's preferred size.
-     */
-    public Dimension getPreferredSize() {
-        Dimension dim = new Dimension();
-        dim.width = fm.charWidth('w') * cols;
-        dim.height = fm.getHeight() * rows;
-        return dim;
-    }
+    /** Get the painter's preferred size. */
+    override fun getPreferredSize() = Dimension(
+        fontMetrics.charWidth('w') * cols,
+        fontMetrics.height * rows
+    )
 
+    /** Get the painter's minimum size. */
+    override fun getMinimumSize() = preferredSize
 
-    /**
-     * Returns the painter's minimum size.
-     */
-    public Dimension getMinimumSize() {
-        return getPreferredSize();
-    }
+    private fun Graphics.paintLine(tokenMarker: TokenMarker?, line: Int, x: Int) {
+        val defaultFont = font
+        val defaultColor = foreground
 
-    // package-private members
-    int currentLineIndex;
-    Token currentLineTokens;
-    final Segment currentLine;
+        currentLineIndex = line
+        val y = textArea.lineToY(line)
 
-    // protected members
-    protected final JEditTextArea textArea;
-
-    protected SyntaxStyle[] styles;
-    protected Color caretColor;
-    protected Color selectionColor;
-    protected Color lineHighlightColor;
-    protected Color bracketHighlightColor;
-    protected Color eolMarkerColor;
-
-    protected boolean blockCaret;
-    protected boolean lineHighlight;
-    protected boolean bracketHighlight;
-    protected boolean paintInvalid;
-    protected boolean eolMarkers;
-    protected final int cols;
-    protected final int rows;
-
-    protected int tabSize, tabSizeChars;
-    protected FontMetrics fm;
-
-    protected Highlight highlights;
-
-    protected void paintLine(Graphics gfx, TokenMarker tokenMarker,
-                             int line, int x) {//System.out.println("paintLine "+ (++count));
-        Font defaultFont = getFont();
-        Color defaultColor = getForeground();
-
-        currentLineIndex = line;
-        int y = textArea.lineToY(line);
-
-        if (line < 0 || line >= textArea.getLineCount()) {
-            if (paintInvalid) {
-                paintHighlight(gfx, line, y);
-                styles[Token.Type.INVALID.rawValue].setGraphicsFlags(gfx, defaultFont);
-                gfx.drawString("~", 0, y + fm.getHeight());
+        if (line !in 0..<textArea.lineCount) {
+            if (isPaintingInvalidLines) {
+                paintHighlight(line, y)
+                styles[Token.Type.INVALID.rawValue.toInt()].setGraphicsFlags(this, defaultFont)
+                drawString("~", 0, y + fontMetrics.height)
             }
         } else if (tokenMarker == null) {
-            paintPlainLine(gfx, line, defaultFont, defaultColor, x, y);
+            paintPlainLine(line, defaultFont, defaultColor, x, y)
         } else {
-            paintSyntaxLine(gfx, tokenMarker, line, defaultFont,
-                    defaultColor, x, y);
+            paintSyntaxLine(tokenMarker, line, defaultFont, defaultColor, x, y)
         }
     }
 
-    protected void paintPlainLine(Graphics gfx, int line, Font defaultFont,
-                                  Color defaultColor, int x, int y) {
-        paintHighlight(gfx, line, y);
-        textArea.getLineText(line, currentLine);
+    private fun Graphics.paintPlainLine(line: Int, defaultFont: Font, defaultColor: Color, x: Int, y: Int) {
+        var (x, y) = x to y
+        paintHighlight(line, y)
+        textArea.getLineText(line, currentLine)
 
-        gfx.setFont(defaultFont);
-        gfx.setColor(defaultColor);
+        font = defaultFont
+        color = defaultColor
 
-        y += fm.getHeight();
-        x = Utilities.drawTabbedText(currentLine, x, y, gfx, this, 0);
+        y += fontMetrics.height
+        x = Utilities.drawTabbedText(currentLine, x.toFloat(), y.toFloat(), this as Graphics2D, this@TextAreaPainter, 0).toInt()
 
-        if (eolMarkers) {
-            gfx.setColor(eolMarkerColor);
-            gfx.drawString(".", x, y);
+        if (isEolMarkersEnabled) {
+            color = eolMarkerColor
+            drawString(".", x, y)
         }
     }
 
-    //      private int count=0;
-    protected void paintSyntaxLine(Graphics gfx, TokenMarker tokenMarker,
-                                   int line, Font defaultFont, Color defaultColor, int x, int y) {//System.out.println("paintSyntaxLine line "+ line);
-        textArea.getLineText(currentLineIndex, currentLine);
-        currentLineTokens = tokenMarker.markTokens(currentLine,
-                currentLineIndex);
+    private fun Graphics.paintSyntaxLine(
+        tokenMarker: TokenMarker,
+        line: Int,
+        defaultFont: Font,
+        defaultColor: Color,
+        x: Int,
+        y: Int
+    ) {
+        var (x, y) = x to y
+        textArea.getLineText(currentLineIndex, currentLine)
+        currentLineTokens = tokenMarker.markTokens(currentLine, currentLineIndex)
 
-        paintHighlight(gfx, line, y);
+        paintHighlight(line, y)
 
-        gfx.setFont(defaultFont);
-        gfx.setColor(defaultColor);
-        y += fm.getHeight();
-        x = SyntaxUtilities.paintSyntaxLine(currentLine,
-                currentLineTokens, styles, this, gfx, x, y);
-        if (eolMarkers) {
-            gfx.setColor(eolMarkerColor);
-            gfx.drawString(".", x, y);
+        font = defaultFont
+        color = defaultColor
+
+        y += fontMetrics.height
+        x = this.paintSyntaxLine(
+            x.toFloat() to y.toFloat(),
+            currentLine,
+            currentLineTokens,
+            styles,
+            this@TextAreaPainter
+        ).toInt()
+
+        if (isEolMarkersEnabled) {
+            color = eolMarkerColor
+            drawString(".", x, y)
         }
     }
 
-    protected void paintHighlight(Graphics gfx, int line, int y) {
-        if (line >= textArea.getSelectionStartLine()
-                && line <= textArea.getSelectionEndLine())
-            paintLineHighlight(gfx, line, y);
-
-        if (highlights != null)
-            highlights.paintHighlight(gfx, line, y);
-
-        if (bracketHighlight && line == textArea.getBracketLine())
-            paintBracketHighlight(gfx, line, y);
-
-        if (line == textArea.getCaretLine())
-            paintCaret(gfx, line, y);
+    private fun Graphics.paintHighlight(line: Int, y: Int) {
+        if (line in textArea.selectionStartLine..textArea.selectionEndLine)
+            paintLineHighlight(line, y)
+        highlights?.paintHighlight(this, line, y)
+        if (isBracketHighlightingEnabled && line == textArea.bracketLine)
+            paintBracketHighlight(line, y)
+        if (line == textArea.caretLine)
+            paintCaret(line, y)
     }
 
-    protected void paintLineHighlight(Graphics gfx, int line, int y) {//System.out.println("paintLineHighlight "+ (++count));
-        int height = fm.getHeight();
-        y += fm.getLeading() + fm.getMaxDescent();
+    private fun Graphics.paintLineHighlight(line: Int, y: Int) {
+        var y = y
 
-        int selectionStart = textArea.getSelectionStart();
-        int selectionEnd = textArea.getSelectionEnd();
+        val height = fontMetrics.height
+        y += fontMetrics.leading + fontMetrics.maxDescent
+
+        val selectionStart = textArea.selectionStart
+        val selectionEnd = textArea.selectionEnd
 
         if (selectionStart == selectionEnd) {
-            if (lineHighlight) {
-                gfx.setColor(lineHighlightColor);
-                gfx.fillRect(0, y, getWidth(), height);
+            if (isLineHighlightEnabled) {
+                color = lineHighlightColor
+                fillRect(0, y, width, height)
             }
         } else {
-            gfx.setColor(selectionColor);
+            color = selectionColor
 
-            int selectionStartLine = textArea.getSelectionStartLine();
-            int selectionEndLine = textArea.getSelectionEndLine();
-            int lineStart = textArea.getLineStartOffset(line);
+            val selectionStartLine = textArea.selectionStartLine
+            val selectionEndLine = textArea.selectionEndLine
+            val lineStart = textArea.getLineStartOffset(line)
 
-            int x1, x2;
-            if (textArea.isSelectionRectangular()) {
-                int lineLen = textArea.getLineLength(line);
-                x1 = textArea._offsetToX(line, Math.min(lineLen,
-                        selectionStart - textArea.getLineStartOffset(
-                                selectionStartLine)));
-                x2 = textArea._offsetToX(line, Math.min(lineLen,
-                        selectionEnd - textArea.getLineStartOffset(
-                                selectionEndLine)));
-                if (x1 == x2)
-                    x2++;
+            val x1: Int
+            var x2: Int
+
+            if (textArea.isSelectionRectangular) {
+                val lineLen = textArea.getLineLength(line)
+                x1 = textArea._offsetToX(
+                    line,
+                    min(lineLen, selectionStart - textArea.getLineStartOffset(selectionStartLine))
+                )
+                x2 = textArea._offsetToX(
+                    line,
+                    min(lineLen, selectionEnd - textArea.getLineStartOffset(selectionEndLine))
+                )
+                if (x1 == x2) x2++
             } else if (selectionStartLine == selectionEndLine) {
-                x1 = textArea._offsetToX(line,
-                        selectionStart - lineStart);
-                x2 = textArea._offsetToX(line,
-                        selectionEnd - lineStart);
-            } else if (line == selectionStartLine) {
-                x1 = textArea._offsetToX(line,
-                        selectionStart - lineStart);
-                x2 = getWidth();
+                x1 = textArea._offsetToX(line, selectionStart - lineStart)
+                x2 = textArea._offsetToX(line, selectionEnd - lineStart)
             } else if (line == selectionEndLine) {
-                x1 = 0;
-                x2 = textArea._offsetToX(line,
-                        selectionEnd - lineStart);
+                x1 = 0
+                x2 = textArea._offsetToX(line, selectionEnd - lineStart)
             } else {
-                x1 = 0;
-                x2 = getWidth();
+                x1 = 0
+                x2 = width
             }
 
-            // "inlined" min/max()
-            gfx.fillRect(Math.min(x1, x2), y, x1 > x2 ?
-                    (x1 - x2) : (x2 - x1), height);
+            // "inlined" min/max
+            fillRect(min(x1, x2), y, if (x1 > x2) x1 - x2 else x2 - x1, height)
         }
-
     }
 
-    protected void paintBracketHighlight(Graphics gfx, int line, int y) {
-        int position = textArea.getBracketPosition();
-        if (position == -1)
-            return;
-        y += fm.getLeading() + fm.getMaxDescent();
-        int x = textArea._offsetToX(line, position);
-        gfx.setColor(bracketHighlightColor);
-        // Hack!!! Since there is no fast way to get the character
-        // from the bracket matching routine, we use ( since all
-        // brackets probably have the same width anyway
-        gfx.drawRect(x, y, fm.charWidth('(') - 1,
-                fm.getHeight() - 1);
+    private fun Graphics.paintBracketHighlight(line: Int, y: Int) {
+        var y = y
+        val position = textArea.bracketPosition
+        if (position == -1) return
+        y += fontMetrics.leading + fontMetrics.maxDescent
+        val x = textArea._offsetToX(line, position)
+        color = bracketHighlightColor
+        // Hack: since there is no fast way to get the character from the bracket matching routine, use '(' since all
+        // brackets probably have the same width anyway; this is a monospaced font after all.
+        drawRect(x, y, fontMetrics.charWidth('(') - 1, fontMetrics.height - 1)
     }
 
-    protected void paintCaret(Graphics gfx, int line, int y) {
-        if (textArea.isCaretVisible()) {
-            int offset = textArea.getCaretPosition()
-                    - textArea.getLineStartOffset(line);
-            int caretX = textArea._offsetToX(line, offset);
-            int caretWidth = ((blockCaret ||
-                    textArea.isOverwriteEnabled()) ?
-                    fm.charWidth('w') : 1);
-            y += fm.getLeading() + fm.getMaxDescent();
-            int height = fm.getHeight();
-
-            gfx.setColor(caretColor);
-
-            if (textArea.isOverwriteEnabled()) {
-                gfx.fillRect(caretX, y + height - 1,
-                        caretWidth, 1);
+    private fun Graphics.paintCaret(line: Int, y: Int) {
+        var y = y
+        if (textArea.isCaretVisible) {
+            val offset = textArea.caretPosition - textArea.getLineStartOffset(line)
+            val caretX = textArea._offsetToX(line, offset)
+            val caretWidth = if (isBlockCaretEnabled || textArea.isOverwriteEnabled) fontMetrics.charWidth('w') else 1
+            y += fontMetrics.leading + fontMetrics.maxDescent
+            val height = fontMetrics.height
+            color = caretColor
+            if (textArea.isOverwriteEnabled) {
+                fillRect(caretX, y + height - 1, caretWidth, 1)
             } else {
-                gfx.drawRect(caretX, y, caretWidth, height - 1);
+                drawRect(caretX, y, caretWidth, height - 1)
             }
         }
     }

@@ -66,13 +66,10 @@ class SyntaxStyle(val color: Color?, val isItalic: Boolean, val isBold: Boolean)
         // Create a temporary BufferedImage and get its Graphics2D context
         val tempImage = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
         val g2d = tempImage.createGraphics()
-        try {
-            // Use the Graphics2D context to get FontMetrics
-            fontMetrics = g2d.getFontMetrics(lastStyledFont)
-        } finally {
-            // It's important to dispose of the Graphics2D context to free resources
-            g2d.dispose()
-        }
+        // Use the Graphics2D context to get FontMetrics
+        fontMetrics = g2d.getFontMetrics(lastStyledFont)
+        // It's important to dispose of the Graphics2D context to free resources
+        g2d.dispose()
         return fontMetrics!!
     }
 
