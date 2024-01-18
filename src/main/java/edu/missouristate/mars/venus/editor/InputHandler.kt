@@ -314,7 +314,7 @@ abstract class InputHandler : KeyAdapter() {
             }
 
             if (textArea.selectionStart != textArea.selectionEnd) {
-                textArea.selectedText = ""
+                textArea.setSelectedText("")
             } else {
                 val caret = textArea.caretPosition
                 if (caret == 0) {
@@ -322,7 +322,7 @@ abstract class InputHandler : KeyAdapter() {
                     return
                 }
                 try {
-                    textArea.document.remove(caret - 1, 1)
+                    textArea.document?.remove(caret - 1, 1)
                 } catch (bl: BadLocationException) {
                     bl.printStackTrace()
                 }
@@ -334,7 +334,7 @@ abstract class InputHandler : KeyAdapter() {
         override fun actionPerformed(e: ActionEvent) {
             val textArea = getTextArea(e)
             val start = textArea.selectionStart
-            if (start != textArea.selectionEnd) textArea.selectedText = ""
+            if (start != textArea.selectionEnd) textArea.setSelectedText("")
 
             val line = textArea.caretLine
             val lineStart = textArea.getLineStartOffset(line)
@@ -348,12 +348,12 @@ abstract class InputHandler : KeyAdapter() {
                 }
                 caret--
             } else {
-                val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = lineText.findWordStart(caret, noWordSep)
+                val noWordSep = textArea.document?.getProperty("noWordSep") as String
+                caret = lineText!!.findWordStart(caret, noWordSep)
             }
 
             try {
-                textArea.document.remove(caret + lineStart, start - (caret + lineStart))
+                textArea.document!!.remove(caret + lineStart, start - (caret + lineStart))
             } catch (bl: BadLocationException) {
                 bl.printStackTrace()
             }
@@ -370,15 +370,15 @@ abstract class InputHandler : KeyAdapter() {
             }
 
             if (textArea.selectionStart != textArea.selectionEnd) {
-                textArea.selectedText = ""
+                textArea.setSelectedText("")
             } else {
                 val caret = textArea.caretPosition
-                if (caret == textArea.documentLength) {
+                if (caret == textArea.document!!.length) {
                     textArea.toolkit.beep()
                     return
                 }
                 try {
-                    textArea.document.remove(caret, 1)
+                    textArea.document!!.remove(caret, 1)
                 } catch (bl: BadLocationException) {
                     bl.printStackTrace()
                 }
@@ -390,7 +390,7 @@ abstract class InputHandler : KeyAdapter() {
         override fun actionPerformed(e: ActionEvent) {
             val textArea = getTextArea(e)
             val start = textArea.selectionStart
-            if (start != textArea.selectionEnd) textArea.selectedText = ""
+            if (start != textArea.selectionEnd) textArea.setSelectedText("")
 
             val line = textArea.caretLine
             val lineStart = textArea.getLineStartOffset(line)
@@ -398,19 +398,19 @@ abstract class InputHandler : KeyAdapter() {
 
             val lineText = textArea.getLineText(textArea.caretLine)
 
-            if (caret == lineText.length) {
-                if (lineStart + caret == textArea.documentLength) {
+            if (caret == lineText!!.length) {
+                if (lineStart + caret == textArea.document!!.length) {
                     textArea.toolkit.beep()
                     return
                 }
                 caret++
             } else {
-                val noWordSep = textArea.document.getProperty("noWordSep") as String
+                val noWordSep = textArea.document!!.getProperty("noWordSep") as String
                 caret = lineText.findWordEnd(caret, noWordSep)
             }
 
             try {
-                textArea.document.remove(start, (caret + lineStart) - start)
+                textArea.document!!.remove(start, (caret + lineStart) - start)
             } catch (bl: BadLocationException) {
                 bl.printStackTrace()
             }
@@ -430,7 +430,7 @@ abstract class InputHandler : KeyAdapter() {
             } else lastVisibleLine -= (textArea.electricScroll + 1)
 
             val lastVisible = textArea.getLineEndOffset(lastVisibleLine) - 1
-            val lastDocument = textArea.documentLength
+            val lastDocument = textArea.document!!.length
 
             caret = if (caret == lastDocument) {
                 textArea.toolkit.beep()
@@ -455,8 +455,8 @@ abstract class InputHandler : KeyAdapter() {
     class DocumentEnd(private val select: Boolean) : ActionListener {
         override fun actionPerformed(e: ActionEvent) {
             val textArea = getTextArea(e)
-            if (select) textArea.select(textArea.markPosition, textArea.documentLength)
-            else textArea.caretPosition = textArea.documentLength
+            if (select) textArea.select(textArea.markPosition, textArea.document!!.length)
+            else textArea.caretPosition = textArea.document!!.length
         }
     }
 
@@ -500,7 +500,7 @@ abstract class InputHandler : KeyAdapter() {
                 textArea.toolkit.beep()
                 return
             }
-            textArea.selectedText = "\n${textArea.autoIndent}"
+            textArea.setSelectedText("\n${textArea.getAutoIndent()}")
         }
     }
 
@@ -519,7 +519,7 @@ abstract class InputHandler : KeyAdapter() {
         override fun actionPerformed(e: ActionEvent) {
             val textArea = getTextArea(e)
             val caret = textArea.caretPosition
-            if (caret == textArea.documentLength) {
+            if (caret == textArea.document!!.length) {
                 textArea.toolkit.beep()
                 return
             }
@@ -579,14 +579,14 @@ abstract class InputHandler : KeyAdapter() {
 
             val lineText = textArea.getLineText(textArea.caretLine)
 
-            if (caret == lineText.length) {
-                if (lineStart + caret == textArea.documentLength) {
+            if (caret == lineText!!.length) {
+                if (lineStart + caret == textArea.document!!.length) {
                     textArea.toolkit.beep()
                     return
                 }
                 caret++
             } else {
-                val noWordSep = textArea.document.getProperty("noWordSep") as String
+                val noWordSep = textArea.document!!.getProperty("noWordSep") as String
                 caret = lineText.findWordEnd(caret, noWordSep)
             }
 
@@ -671,8 +671,8 @@ abstract class InputHandler : KeyAdapter() {
                 }
                 caret--
             } else {
-                val noWordSep = textArea.document.getProperty("noWordSep") as String
-                caret = lineText.findWordStart(caret, noWordSep)
+                val noWordSep = textArea.document!!.getProperty("noWordSep") as String
+                caret = lineText!!.findWordStart(caret, noWordSep)
             }
 
             if (select) textArea.select(textArea.markPosition, lineStart + caret)

@@ -108,15 +108,13 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      * @param rate blinking rate in milliseconds
      */
     public void setCaretBlinkRate(int rate) {
-        if (rate == 0) {
-            caretBlinks = false;
-        }
+        if (rate == 0) setCaretBlinking(false);
         if (rate > 0) {
-            caretBlinks = true;
-            caretBlinkRate = rate;
-            caretTimer.setDelay(rate);
-            caretTimer.setInitialDelay(rate);
-            caretTimer.restart();
+            setCaretBlinking(true);
+            super.setCaretBlinkRate(rate);
+            getCaretTimer().setDelay(rate);
+            getCaretTimer().setInitialDelay(rate);
+            getCaretTimer().restart();
         }
     }
 
@@ -127,7 +125,7 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      * @param chars number of characters
      */
     public void setTabSize(int chars) {
-        painter.setTabSize(chars);
+        getPainter().setTabSize(chars);
     }
 
     /**
@@ -135,7 +133,7 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      * SyntaxUtilities.
      */
     public void updateSyntaxStyles() {
-        painter.setStyles(SyntaxUtilities.getCurrentSyntaxStyles());
+        getPainter().setStyles(SyntaxUtilities.getCurrentSyntaxStyles());
     }
 
 
@@ -210,14 +208,14 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
     public void undo() {
         // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
         // to pleasingly mark the text and location of the undo.
-        unredoing = true;
+        setUnredoing(true);
         try {
             this.undoManager.undo();
         } catch (CannotUndoException ex) {
             System.out.println("Unable to undo: " + ex);
             ex.printStackTrace();
         }
-        unredoing = false;
+        setUnredoing(false);
         this.setCaretVisible(true);
     }
 
@@ -227,14 +225,14 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
     public void redo() {
         // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
         // to pleasingly mark the text and location of the redo.
-        unredoing = true;
+        setUnredoing(true);
         try {
             this.undoManager.redo();
         } catch (CannotRedoException ex) {
             System.out.println("Unable to redo: " + ex);
             ex.printStackTrace();
         }
-        unredoing = false;
+        setUnredoing(false);
         this.setCaretVisible(true);
     }
 

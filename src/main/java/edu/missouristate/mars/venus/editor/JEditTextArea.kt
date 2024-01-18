@@ -19,390 +19,404 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editor;
+@file:Suppress("LeakingThis", "MemberVisibilityCanBePrivate")
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.venus.editor.marker.Token;
-import edu.missouristate.mars.venus.editor.marker.TokenMarker;
+package edu.missouristate.mars.venus.editor
 
-import javax.swing.*;
-import javax.swing.event.*;
-import javax.swing.text.*;
-import javax.swing.undo.AbstractUndoableEdit;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
-import javax.swing.undo.UndoableEdit;
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Objects;
-import java.util.Vector;
+import edu.missouristate.mars.*
+import edu.missouristate.mars.venus.editor.TextUtilities.findMatchingBracket
+import edu.missouristate.mars.venus.editor.marker.Token
+import edu.missouristate.mars.venus.editor.marker.Token.Type.*
+import edu.missouristate.mars.venus.editor.marker.TokenMarker
+import java.awt.*
+import java.awt.datatransfer.DataFlavor
+import java.awt.datatransfer.StringSelection
+import java.awt.event.*
+import java.awt.event.KeyEvent.*
+import javax.swing.*
+import javax.swing.border.EmptyBorder
+import javax.swing.event.CaretEvent
+import javax.swing.event.CaretListener
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
+import javax.swing.event.EventListenerList
+import javax.swing.text.BadLocationException
+import javax.swing.text.Segment
+import javax.swing.text.Utilities
+import javax.swing.undo.AbstractUndoableEdit
+import javax.swing.undo.UndoableEdit
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * jEdit's text area component. It is more suited for editing program
  * source code than JEditorPane, because it drops the unnecessary features
- * (images, variable-width lines, and so on) and adds a whole bunch of
- * useful goodies such as:
- * <ul>
- * <li>More flexible key binding scheme
- * <li>Supports macro recorders
- * <li>Rectangular selection
- * <li>Bracket highlighting
- * <li>Syntax highlighting
- * <li>Command repetition
- * <li>Block caret can be enabled
- * </ul>
+ * (images, variable-width lines, and so on) and adds many useful goodies, such as:
+ *
+ *   - More flexible key binding scheme
+ *   - Supports macro recorders
+ *   - Rectangular selection
+ *   - Bracket highlighting
+ *   - Syntax highlighting
+ *   - Command repetition
+ *   - Block caret can be enabled
+ *
  * It is also faster and doesn't have as many problems. It can be used
  * in other applications; the only other part of jEdit it depends on is
- * the syntax package.<p>
- * <p>
+ * the syntax package.
+ *
  * To use it in your app, treat it like any other component, for example:
- * <pre>JEditTextArea ta = new JEditTextArea();
+ *
+ * ```java
+ * JEditTextArea ta = new JEditTextArea();
  * ta.setTokenMarker(new JavaTokenMarker());
  * ta.setText("public class Test {\n"
  *     + "    public static void main(String[] args) {\n"
  *     + "        System.out.println(\"Hello World\");\n"
  *     + "    }\n"
- *     + "}");</pre>
+ *     + "}");
+ * ```
  *
+ * @param lineNumbers The line numbers component.
+ * @param defaults    The default values for the editor. Uses the static defaults defined in TextAreaDefaults if not
+ *                    specified.
  * @author Slava Pestov
- * @version $Id: JEditTextArea.java,v 1.36 1999/12/13 03:40:30 sp Exp $
  */
-public class JEditTextArea extends JComponent {
-    /**
-     * Adding components with this name to the text area will place
-     * them left of the horizontal scroll bar. In jEdit, the status
-     * bar is added this way.
-     */
-    public static final String LEFT_OF_SCROLLBAR = "los";
-    public static Color POPUP_HELP_TEXT_COLOR = Color.BLACK;  // DPS 11-July-2014
+open class JEditTextArea @JvmOverloads constructor(
+    lineNumbers: JComponent,
+    defaults: TextAreaDefaults = TextAreaDefaults.getDefaults()
+) : JComponent() {
+    companion object {
+        /**
+         * Adding components with this name to the text area will place them left of the horizontal scroll bar.
+         * This is how the status bar is added in jEdit.
+         */
+        const val LEFT_OF_SCROLLBAR = "los"
 
-    // Number of text lines moved for each click of the vertical scrollbar buttons.
-    private static final int VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES = 1;
-    // Number of text lines moved for each "notch" of the mouse wheel scroller.
-    private static final int LINES_PER_MOUSE_WHEEL_NOTCH = 3;
+        @JvmField var POPUP_HELP_TEXT_COLOR: Color = Color.black
 
-    /**
-     * Creates a new JEditTextArea with the default settings.
-     */
-    public JEditTextArea(JComponent lineNumbers) {
-        this(TextAreaDefaults.getDefaults(), lineNumbers);
+        /** Number of text lines moved for each click of the vertical scrollbar buttons. */
+        private const val VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES = 1
+
+        /** Number of text lines moved for each "notch" of the mouse wheel. */
+        private const val LINES_PER_MOUSE_WHEEL_NOTCH = 3
+
+        protected const val CENTER = "center"
+        protected const val RIGHT = "right"
+        protected const val BOTTOM = "bottom"
+
+        @JvmStatic protected var focusedComponent: JEditTextArea? = null
+        @JvmStatic protected val caretTimer: Timer = Timer(500, CaretBlinker())
+
+        init {
+            caretTimer.initialDelay = 500
+            caretTimer.start()
+        }
     }
 
-    private final JScrollBar lineNumbersVertical;//************************************
+    private val lineNumbersVertical: JScrollBar
+    var popupMenu: JPopupMenu? = null
+
+    /** The object responsible for painting this text area. */
+    var painter: TextAreaPainter? = TextAreaPainter(this, defaults)
+        protected set
+
+    var rightClickPopup: JPopupMenu = defaults.popup
+    protected var listenerList: EventListenerList = EventListenerList()
+    protected var caretEvent: MutableCaretEvent = MutableCaretEvent()
+
+    /** Whether the caret should be blinking. */
+    open var isCaretBlinking: Boolean = defaults.caretBlinks
+        set(value) {
+            field = value
+            if (!value) blink = false
+            painter!!.invalidateSelectedLines()
+        }
+
+    open var isCaretVisible: Boolean = defaults.caretVisible
+        get() = (!isCaretBlinking || blink) && field
+        set(value) {
+            field = value
+            blink = true
+            painter!!.invalidateSelectedLines()
+        }
+
+    protected var blink: Boolean = true
 
     /**
-     * Creates a new JEditTextArea with the specified settings.
-     *
-     * @param defaults The default settings
+     * Returns true if this text area is editable, false otherwise.
      */
-    public JEditTextArea(TextAreaDefaults defaults, JComponent lineNumbers) {
-        // Enable the necessary events
-        enableEvents(AWTEvent.KEY_EVENT_MASK);
+    var isEditable: Boolean = defaults.editable
 
-        // Initialize some misc. stuff
-        painter = new TextAreaPainter(this, defaults);
-        documentHandler = new DocumentHandler();
-        listenerList = new EventListenerList();
-        caretEvent = new MutableCaretEvent();
-        lineSegment = new Segment();
-        bracketLine = bracketPosition = -1;
-        blink = true;
-        unredoing = false;
+    protected open var caretBlinkRate: Int = defaults.caretBlinkRate
 
-        JScrollPane lineNumberScroller = new JScrollPane(lineNumbers,
-                ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
-                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        lineNumberScroller.setBorder(new javax.swing.border.EmptyBorder(1, 1, 1, 1));
-        lineNumbersVertical = lineNumberScroller.getVerticalScrollBar();
+    /** The line displayed at the text area's origin. */
+    var firstLine: Int = 0
+        /** Set the line displayed at the text area's origin and update the scroll bars. */
+        set(value) {
+            if (value == field) return
+            field = value
+            updateScrollBars()
+            painter!!.repaint()
+        }
+
+    var visibleLines: Int = 0
+        private set
+
+    /** The number of lines from the top and bottom of the text are that are always visible. */
+    var electricScroll: Int = defaults.electricScroll
+
+    open var horizontalOffset: Int = 0
+        set(value) {
+            if (value == field) return
+            field = value
+            if (value != horizontal?.value) updateScrollBars()
+            painter!!.repaint()
+        }
+
+    protected var vertical: JScrollBar? = JScrollBar(JScrollBar.VERTICAL)
+    protected var horizontal: JScrollBar? = JScrollBar(JScrollBar.HORIZONTAL)
+    protected var scrollBarsInitialized: Boolean = false
+
+    /** The input handler. */
+    open var inputHandler: InputHandler = defaults.inputHandler
+
+    open var document: SyntaxDocument? = defaults.document
+        set(value) {
+            if (field == value) return
+            field?.removeDocumentListener(documentHandler)
+            field = value
+            field?.addDocumentListener(documentHandler)
+            select(0, 0)
+            updateScrollBars()
+            painter!!.repaint()
+        }
+
+    protected var documentHandler: DocumentHandler = DocumentHandler()
+
+    protected var lineSegment: Segment = Segment()
+
+    var selectionStart: Int = 0
+        set(value) {
+            select(value, selectionEnd)
+        }
+
+    var selectionStartLine: Int = 0
+        private set
+
+    var selectionEnd: Int = 0
+        set(value) {
+            select(selectionStart, value)
+        }
+
+    var selectionEndLine: Int = 0
+        private set
+
+    protected var biasLeft: Boolean = false
+
+    /**
+     * Returns the position of the highlighted bracket (the bracket
+     * matching the one before the caret)
+     */
+    var bracketPosition: Int = -1
+        protected set
+
+    /**
+     * Returns the line of the highlighted bracket (the bracket
+     * matching the one before the caret)
+     */
+    var bracketLine: Int = -1
+        protected set
+
+    /**
+     * Returns the `magic' caret position. This can be used to preserve
+     * the column position when moving up and down lines.
+     */
+    var magicCaretPosition: Int = 0
+
+    /**
+     * Returns true if overwrite mode is enabled, false otherwise.
+     */
+    var isOverwriteEnabled: Boolean = false
+        set(value) {
+            field = value
+            painter!!.invalidateSelectedLines()
+        }
+
+    var isSelectionRectangular: Boolean = false
+        set(value) {
+            field = value
+            painter!!.invalidateSelectedLines()
+        }
+
+    protected var unredoing: Boolean = false
+
+    var tokenMarker: TokenMarker?
+        get() = document?.tokenMarker
+        set(value) {
+            document?.tokenMarker = value
+        }
+
+    val lineCount: Int get() = document?.defaultRootElement?.elementCount ?: 0
+
+    /**
+     * Returns the caret position. This will either be the selection
+     * start or the selection end, depending on which direction the
+     * selection was made in.
+     */
+    var caretPosition: Int
+        get() = if (biasLeft) selectionStart else selectionEnd
+        set(value) {
+            select(value, value)
+        }
+
+    /**
+     * Returns the caret line.
+     */
+    val caretLine: Int get() = if (biasLeft) selectionStartLine else selectionEndLine
+
+    /**
+     * Returns the mark position. This will be the opposite selection
+     * bound to the caret position.
+     *
+     * @see #getCaretPosition()
+     */
+    val markPosition: Int get() = if (biasLeft) selectionEnd else selectionStart
+
+    /**
+     * Returns the mark line.
+     */
+    val markLine: Int get() = if (biasLeft) selectionEndLine else selectionStartLine
+
+    init {
+        // Enable the necessary events.
+        enableEvents(AWTEvent.KEY_EVENT_MASK)
 
         // Initialize the GUI
-        JPanel lineNumbersPlusPainter = new JPanel(new BorderLayout());
-        lineNumbersPlusPainter.add(painter, BorderLayout.CENTER);
-        lineNumbersPlusPainter.add(lineNumberScroller, BorderLayout.WEST);
-        setLayout(new ScrollLayout());
-        add(CENTER, lineNumbersPlusPainter); //was: painter
-        add(RIGHT, vertical = new JScrollBar(JScrollBar.VERTICAL));
-        add(BOTTOM, horizontal = new JScrollBar(JScrollBar.HORIZONTAL));
+        val lineNumberScroller = JScrollPane(
+            lineNumbers,
+            ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
+            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        )
+        lineNumberScroller.border = EmptyBorder(1, 1, 1, 1)
+        lineNumbersVertical = lineNumberScroller.verticalScrollBar
 
+        val lineNumbersPlusPainter = JPanel(BorderLayout())
+        lineNumbersPlusPainter.add(painter!!, BorderLayout.CENTER)
+        lineNumbersPlusPainter.add(lineNumberScroller, BorderLayout.WEST)
+        layout = ScrollLayout()
+        add(CENTER, lineNumbersPlusPainter)
+        add(RIGHT, vertical)
+        add(BOTTOM, horizontal)
 
         // Add some event listeners
-        vertical.addAdjustmentListener(new AdjustHandler());
-        horizontal.addAdjustmentListener(new AdjustHandler());
-        painter.addComponentListener(new ComponentHandler());
-        painter.addMouseListener(new MouseHandler());
-        painter.addMouseMotionListener(new DragHandler());
-        painter.addMouseWheelListener(new MouseWheelHandler()); // DPS 5-5-10
-        addFocusListener(new FocusHandler());
+        vertical!!.addAdjustmentListener(AdjustHandler())
+        horizontal!!.addAdjustmentListener(AdjustHandler())
+        painter!!.addComponentListener(ComponentHandler())
+        painter!!.addMouseListener(MouseHandler())
+        painter!!.addMouseMotionListener(DragHandler())
+        painter!!.addMouseWheelListener(MouseWheelHandler())
+        addFocusListener(FocusHandler())
 
-        // Load the defaults
-        setInputHandler(defaults.inputHandler);
-        setDocument(defaults.document);
-        editable = defaults.editable;
-        caretVisible = defaults.caretVisible;
-        caretBlinks = defaults.caretBlinks;
-        caretBlinkRate = defaults.caretBlinkRate;
-        electricScroll = defaults.electricScroll;
+        caretTimer.delay = caretBlinkRate
 
-        popup = defaults.popup;
-
-        caretTimer.setDelay(caretBlinkRate);
-
-        // Intercept keystrokes before focus manager gets them.  If in editing window,
-        // pass TAB keystrokes on to the key processor instead of letting focus
-        // manager use them for focus traversal.
-        // One can also accomplish this using: setFocusTraversalKeysEnabled(false);
-        // but that seems heavy-handed.
-        // DPS 12May2010
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
-                e -> {
-                    if (JEditTextArea.this.isFocusOwner() && e.getKeyCode() == KeyEvent.VK_TAB && e.getModifiersEx() == 0) {
-                        processKeyEvent(e);
-                        return true;
-                    } else {
-                        return false;
-                    }
-                });
-
-        // We don't seem to get the initial focus event?
-        focusedComponent = this;
-    }
-
-    /**
-     * Returns the object responsible for painting this text area.
-     */
-    public final TextAreaPainter getPainter() {
-        return painter;
-    }
-
-    /**
-     * Returns the input handler.
-     */
-    public final InputHandler getInputHandler() {
-        return inputHandler;
-    }
-
-    /**
-     * Sets the input handler.
-     *
-     * @param inputHandler The new input handler
-     */
-    public void setInputHandler(InputHandler inputHandler) {
-        this.inputHandler = inputHandler;
-    }
-
-    /**
-     * Returns true if the caret is blinking, false otherwise.
-     */
-    public final boolean isCaretBlinkEnabled() {
-        return caretBlinks;
-    }
-
-    /**
-     * Toggles caret blinking.
-     *
-     * @param caretBlinks True if the caret should blink, false otherwise
-     */
-    public void setCaretBlinkEnabled(boolean caretBlinks) {
-        this.caretBlinks = caretBlinks;
-        if (!caretBlinks)
-            blink = false;
-
-        painter.invalidateSelectedLines();
-    }
-
-    /**
-     * Returns true if the caret is visible, false otherwise.
-     */
-    public final boolean isCaretVisible() {
-        return (!caretBlinks || blink) && caretVisible;
-    }
-
-    /**
-     * Sets if the caret should be visible.
-     *
-     * @param caretVisible True if the caret should be visible, false
-     *                     otherwise
-     */
-    public void setCaretVisible(boolean caretVisible) {
-        this.caretVisible = caretVisible;
-        blink = true;
-
-        painter.invalidateSelectedLines();
-    }
-
-    /**
-     * Blinks the caret.
-     */
-    public final void blinkCaret() {
-        if (caretBlinks) {
-            blink = !blink;
-            painter.invalidateSelectedLines();
-        } else
-            blink = true;
-    }
-
-    /**
-     * Returns the number of lines from the top and button of the
-     * text area that are always visible.
-     */
-    public final int getElectricScroll() {
-        return electricScroll;
-    }
-
-    /**
-     * Sets the number of lines from the top and bottom of the text
-     * area that are always visible
-     *
-     * @param electricScroll The number of lines always visible from
-     *                       the top or bottom
-     */
-    public final void setElectricScroll(int electricScroll) {
-        this.electricScroll = electricScroll;
-    }
-
-    /**
-     * Updates the state of the scroll bars. This should be called
-     * if the number of lines in the document changes, or when the
-     * size of the text are changes.
-     */
-    public void updateScrollBars() {
-        if (vertical != null && visibleLines != 0) {
-            vertical.setValues(firstLine, visibleLines, 0, getLineCount());
-            vertical.setUnitIncrement(VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES);
-            vertical.setBlockIncrement(visibleLines);
-
-            // Editing area scrollbar has custom model that increments by number of text lines instead of
-            // number of pixels. The line number display uses a standard (but invisible) scrollbar based
-            // on pixels, so I need to adjust accordingly to keep it in synch with the editing area scrollbar.
-            // DPS 4-May-2010
-            int height = painter.getFontMetrics(painter.getFont()).getHeight();
-            lineNumbersVertical.setValues(firstLine * height, visibleLines * height, 0, getLineCount() * height);
-            lineNumbersVertical.setUnitIncrement(VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES * height);
-            lineNumbersVertical.setBlockIncrement(visibleLines * height);
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher {
+            return@addKeyEventDispatcher if (
+                this@JEditTextArea.isFocusOwner &&
+                it.keyCode == VK_TAB &&
+                it.modifiersEx == 0
+            ) {
+                processKeyEvent(it)
+                true
+            } else false
         }
 
-        int width = painter.getWidth();
-        if (horizontal != null && width != 0) {
-            horizontal.setValues(-horizontalOffset, width, 0, width * 5);
-            horizontal.setUnitIncrement(painter.getFontMetrics()
-                    .charWidth('w'));
-            horizontal.setBlockIncrement(width / 2);
+        // Make sure we get the initial focus event
+        focusedComponent = this
+    }
+
+    /** Blink the caret. */
+    fun blinkCaret() {
+        if (isCaretBlinking) {
+            blink = !blink
+            painter!!.invalidateSelectedLines()
+        } else blink = true
+    }
+
+    /**
+     * Update the state of the scroll bars. This should be called if the number of lines in the document changes, or
+     * when the size of the text changes.
+     */
+    open fun updateScrollBars() {
+        vertical?.let {
+            if (visibleLines != 0) {
+                it.setValues(firstLine, visibleLines, 0, lineCount)
+                it.unitIncrement = VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES
+                it.blockIncrement = visibleLines
+
+                // The editing area scrollbar has a custom model that increments the bar by the number of text lines
+                // instead of by the number of pixels. The line number display uses a standard (but invisible) scrollbar
+                // based on pixels, so we adjust it accordingly to keep it in sync with the editing area scrollbar.
+                val height = painter!!.getFontMetrics(painter!!.font).height
+                lineNumbersVertical.setValues(firstLine * height, visibleLines * height, 0, lineCount * height)
+                lineNumbersVertical.unitIncrement = VERTICAL_SCROLLBAR_UNIT_INCREMENT_IN_LINES * height
+                lineNumbersVertical.blockIncrement = visibleLines * height
+            }
+        }
+        val width = painter!!.width
+        horizontal?.let {
+            if (width != 0) {
+                it.setValues(-horizontalOffset, width, 0, width * 5)
+                it.unitIncrement = painter!!.fontMetrics.charWidth('w')
+                it.blockIncrement = width / 2
+            }
+        }
+    }
+
+    /** Recalculate the number of visible lines. This should not be called directly. */
+    fun recalculateVisibleLines() {
+        painter?.let {
+            val height = it.height
+            val lineHeight = it.fontMetrics.height
+            visibleLines = height / lineHeight
+            updateScrollBars()
         }
     }
 
     /**
-     * Returns the line displayed at the text area's origin.
-     */
-    public final int getFirstLine() {
-        return firstLine;
-    }
-
-    /**
-     * Sets the line displayed at the text area's origin and
-     * updates the scroll bars.
-     */
-    public void setFirstLine(int firstLine) {
-        if (firstLine == this.firstLine)
-            return;
-        int oldFirstLine = this.firstLine;
-        this.firstLine = firstLine;
-        updateScrollBars();
-        painter.repaint();
-    }
-
-    /**
-     * Returns the number of lines visible in this text area.
-     */
-    public final int getVisibleLines() {
-        return visibleLines;
-    }
-
-    /**
-     * Recalculates the number of visible lines. This should not
-     * be called directly.
-     */
-    public final void recalculateVisibleLines() {
-        if (painter == null)
-            return;
-        int height = painter.getHeight();
-        int lineHeight = painter.getFontMetrics().getHeight();
-        int oldVisibleLines = visibleLines;
-        visibleLines = height / lineHeight;
-        updateScrollBars();
-    }
-
-    /**
-     * Returns the horizontal offset of drawn lines.
-     */
-    public final int getHorizontalOffset() {
-        return horizontalOffset;
-    }
-
-    /**
-     * Sets the horizontal offset of drawn lines. This can be used to
-     * implement horizontal scrolling.
+     * A fast way of changing both the first line and horizontal offset.
      *
-     * @param horizontalOffset offset The new horizontal offset
-     */
-    public void setHorizontalOffset(int horizontalOffset) {
-        if (horizontalOffset == this.horizontalOffset)
-            return;
-        this.horizontalOffset = horizontalOffset;
-        if (horizontalOffset != horizontal.getValue())
-            updateScrollBars();
-        painter.repaint();
-    }
-
-    /**
-     * A fast way of changing both the first line and horizontal
-     * offset.
-     *
-     * @param firstLine        The new first line
+     * @param firstLine The new first line
      * @param horizontalOffset The new horizontal offset
      * @return True if any of the values were changed, false otherwise
      */
-    public boolean setOrigin(int firstLine, int horizontalOffset) {
-        boolean changed = false;
-        int oldFirstLine = this.firstLine;
-
+    open fun setOrigin(firstLine: Int, horizontalOffset: Int): Boolean {
+        var changed = false
         if (horizontalOffset != this.horizontalOffset) {
-            this.horizontalOffset = horizontalOffset;
-            changed = true;
+            this.horizontalOffset = horizontalOffset
+            changed = true
         }
-
         if (firstLine != this.firstLine) {
-            this.firstLine = firstLine;
-            changed = true;
+            this.firstLine = firstLine
+            changed = true
         }
-
         if (changed) {
-            updateScrollBars();
-            painter.repaint();
+            updateScrollBars()
+            painter!!.repaint()
         }
-
-        return changed;
+        return changed
     }
 
     /**
-     * Ensures that the caret is visible by scrolling the text area if
-     * necessary.
-     *
-     * @return True if scrolling was actually performed, false if the
-     * caret was already visible
+     * Scroll to the caret if necessary.
+     * Returns true if the scroll was performed or false if the caret is already visible.
      */
-    public boolean scrollToCaret() {
-        int line = getCaretLine();
-        int lineStart = getLineStartOffset(line);
-        int offset = Math.max(0, Math.min(getLineLength(line) - 1,
-                getCaretPosition() - lineStart));
-
-        return scrollTo(line, offset);
+    open fun scrollToCaret(): Boolean {
+        val line = caretLine
+        val lineStart = getLineStartOffset(line)
+        val offset = max(0, min(getLineLength(line) - 1, caretPosition - lineStart))
+        return scrollTo(line, offset)
     }
 
     /**
@@ -412,42 +426,31 @@ public class JEditTextArea extends JComponent {
      * @param line   The line to scroll to
      * @param offset The offset in the line to scroll to
      * @return True if scrolling was actually performed, false if the
-     * line and offset was already visible
+     * line and the offset was already visible
      */
-    public boolean scrollTo(int line, int offset) {
-        // visibleLines == 0 before the component is realized
-        // we can't do any proper scrolling then, so we have
-        // this hack...
+    open fun scrollTo(line: Int, offset: Int): Boolean {
         if (visibleLines == 0) {
-            setFirstLine(Math.max(0, line - electricScroll));
-            return true;
+            firstLine = max(0, line - electricScroll)
+            return true
         }
-
-        int newFirstLine = firstLine;
-        int newHorizontalOffset = horizontalOffset;
-
+        var newFirstLine = firstLine
         if (line < firstLine + electricScroll) {
-            newFirstLine = Math.max(0, line - electricScroll);
+            newFirstLine = max(0, line - electricScroll)
         } else if (line + electricScroll >= firstLine + visibleLines) {
-            newFirstLine = (line - visibleLines) + electricScroll + 1;
-            if (newFirstLine + visibleLines >= getLineCount())
-                newFirstLine = getLineCount() - visibleLines;
+            newFirstLine = (line - visibleLines) + electricScroll + 1
+            if (newFirstLine + visibleLines >= lineCount)
+                newFirstLine = lineCount - visibleLines
             if (newFirstLine < 0)
-                newFirstLine = 0;
+                newFirstLine = 0
         }
-
-        int x = _offsetToX(line, offset);
-        int width = painter.getFontMetrics().charWidth('w');
-
-        if (x < 0) {
-            newHorizontalOffset = Math.min(0, horizontalOffset
-                    - x + width + 5);
-        } else if (x + width >= painter.getWidth()) {
-            newHorizontalOffset = horizontalOffset +
-                    (painter.getWidth() - x) - width - 5;
+        val x = fastOffsetToX(line, offset)
+        val width = painter!!.fontMetrics.charWidth('w')
+        val newHorizontalOffset = if (x < 0) {
+            min(0, horizontalOffset - x + width + 5)
+        } else {
+            horizontalOffset + (painter!!.width - x) - width - 5
         }
-
-        return setOrigin(newFirstLine, newHorizontalOffset);
+        return setOrigin(newFirstLine, newHorizontalOffset)
     }
 
     /**
@@ -455,23 +458,19 @@ public class JEditTextArea extends JComponent {
      *
      * @param line The line
      */
-    public int lineToY(int line) {
-        FontMetrics fm = painter.getFontMetrics();
-        return (line - firstLine) * fm.getHeight()
-                - (fm.getLeading() + fm.getMaxDescent());
-    }
+    open fun lineToY(line: Int): Int = painter?.fontMetrics?.let {
+        (line - firstLine) * it.height - (it.leading + it.maxDescent)
+    } ?: 0
 
     /**
      * Converts a y co-ordinate to a line index.
      *
      * @param y The y co-ordinate
      */
-    public int yToLine(int y) {
-        FontMetrics fm = painter.getFontMetrics();
-        int height = fm.getHeight();
-        return Math.max(0, Math.min(getLineCount() - 1,
-                y / height + firstLine));
-    }
+    open fun yToLine(y: Int): Int = painter?.fontMetrics?.let {
+        val height = it.height
+        max(0, min(lineCount - 1, y / height + firstLine))
+    } ?: 0
 
     /**
      * Converts an offset in a line into an x co-ordinate. This is a
@@ -480,11 +479,18 @@ public class JEditTextArea extends JComponent {
      * @param line   The line
      * @param offset The offset, from the start of the line
      */
-    public final int offsetToX(int line, int offset) {
-        // don't use cached tokens
-        painter.currentLineTokens = null;
-        return _offsetToX(line, offset);
+    fun offsetToX(line: Int, offset: Int): Int {
+        painter!!.currentLineTokens = null
+        return fastOffsetToX(line, offset)
     }
+
+    @Suppress("FunctionName")
+    @Deprecated(
+        "Renamed to fastOffsetToX.",
+        ReplaceWith("fastOffsetToX(line, offset)"),
+        DeprecationLevel.ERROR
+    )
+    fun _offsetToX(line: Int, offset: Int): Int = fastOffsetToX(line, offset)
 
     /**
      * Converts an offset in a line into an x co-ordinate. This is a
@@ -494,67 +500,48 @@ public class JEditTextArea extends JComponent {
      * @param line   The line
      * @param offset The offset, from the start of the line
      */
-    @SuppressWarnings("deprecation")
-    public int _offsetToX(int line, int offset) {
-        TokenMarker tokenMarker = getTokenMarker();
+    open fun fastOffsetToX(line: Int, offset: Int): Int {
+        var fm = painter!!.fontMetrics
+        getLineText(line, lineSegment)
+        val segmentOffset = lineSegment.offset
+        var x = horizontalOffset
 
-        /* Use painter's cached info for speed */
-        FontMetrics fm = painter.getFontMetrics();
-
-        getLineText(line, lineSegment);
-
-        int segmentOffset = lineSegment.offset;
-        int x = horizontalOffset;
-
-        /* If syntax coloring is disabled, do simple translation */
+        // If syntax highlighting is disabled, do simple translation.
         if (tokenMarker == null) {
-            lineSegment.count = offset;
-            return x + Utilities.getTabbedTextWidth(lineSegment,
-                    fm, x, painter, 0);
-        }
-        /* If syntax coloring is enabled, we have to do this because
-         * tokens can vary in width */
-        else {
-            Token tokens;
-            if (painter.getCurrentLineIndex() == line
-                    && painter.currentLineTokens != null)
-                tokens = painter.currentLineTokens;
-            else {
-                painter.setCurrentLineIndex(line);
-                tokens = painter.currentLineTokens
-                        = tokenMarker.markTokens(lineSegment, line);
+            lineSegment.count = offset
+            return x + Utilities.getTabbedTextWidth(lineSegment, fm, x.toFloat(), painter!!, 0).toInt()
+        } else {
+
+            // If syntax coloring is enabled, we have to do this because tokens can vary in width.
+            var tokens = if (painter!!.currentLineIndex == line && painter!!.currentLineTokens != null) {
+                painter!!.currentLineTokens
+            } else {
+                painter!!.currentLineIndex = line
+                painter!!.currentLineTokens = tokenMarker?.markTokens(lineSegment, line)
+                painter!!.currentLineTokens
             }
 
-            Toolkit toolkit = painter.getToolkit();
-            Font defaultFont = painter.getFont();
-            SyntaxStyle[] styles = painter.getStyles();
+            val defaultFont = painter!!.font
+            val styles = painter!!.styles
 
-            for (; ; ) {
-                Token.Type id = tokens.getType();
-                if (id == Token.Type.END) {
-                    return x;
-                }
-
-                if (id == Token.Type.NULL)
-                    fm = painter.getFontMetrics();
-                else
-                    fm = styles[id.rawValue].getFontMetrics(defaultFont);
-
-                int length = tokens.getLength();
-
-                if (offset + segmentOffset < lineSegment.offset + length) {
-                    lineSegment.count = offset - (lineSegment.offset - segmentOffset);
-                    return x + Utilities.getTabbedTextWidth(
-                            lineSegment, fm, x, painter, 0);
+            while (tokens != null) {
+                val type = tokens.type
+                if (type == END) return x
+                fm = if (type == NULL) painter!!.fontMetrics
+                else styles[type.rawValue.toInt()].getFontMetrics(defaultFont)
+                val length = tokens.length
+                if (offset + segmentOffset < lineSegment.offset - offset) {
+                    lineSegment.count = offset - (lineSegment.offset - segmentOffset)
+                    return x + Utilities.getTabbedTextWidth(lineSegment, fm, x.toFloat(), painter, 0).toInt()
                 } else {
-                    lineSegment.count = length;
-                    x += Utilities.getTabbedTextWidth(
-                            lineSegment, fm, x, painter, 0);
-                    lineSegment.offset += length;
+                    lineSegment.count = length
+                    x += Utilities.getTabbedTextWidth(lineSegment, fm, x.toFloat(), painter, 0).toInt()
+                    lineSegment.offset += length
                 }
-                tokens = tokens.getNext();
+                tokens = tokens.next
             }
         }
+        return 0
     }
 
     /**
@@ -563,92 +550,60 @@ public class JEditTextArea extends JComponent {
      * @param line The line
      * @param x    The x co-ordinate
      */
-    public int xToOffset(int line, int x) {
-        TokenMarker tokenMarker = getTokenMarker();
-
-        /* Use painter's cached info for speed */
-        FontMetrics fm = painter.getFontMetrics();
-
-        getLineText(line, lineSegment);
-
-        char[] segmentArray = lineSegment.array;
-        int segmentOffset = lineSegment.offset;
-        int segmentCount = lineSegment.count;
-
-        int width = horizontalOffset;
+    open fun xToOffset(line: Int, x: Int): Int {
+        var fm = painter!!.fontMetrics
+        getLineText(line, lineSegment)
+        val segmentArray = lineSegment.array
+        val segmentOffset = lineSegment.offset
+        val segmentCount = lineSegment.count
+        var width = horizontalOffset
 
         if (tokenMarker == null) {
-            for (int i = 0; i < segmentCount; i++) {
-                char c = segmentArray[i + segmentOffset];
-                int charWidth;
-                if (c == '\t')
-                    charWidth = (int) painter.nextTabStop(width, i)
-                            - width;
-                else
-                    charWidth = fm.charWidth(c);
-
-                if (painter.isBlockCaretEnabled()) {
-                    if (x - charWidth <= width)
-                        return i;
+            for (i in 0..<segmentCount) {
+                val c = segmentArray[i + segmentOffset]
+                val charWidth = if (c == '\t') {
+                    painter!!.nextTabStop(width.toFloat(), i).toInt() - width
+                } else fm.charWidth(c)
+                if (painter!!.isBlockCaretEnabled) {
+                    if (x - charWidth <= width) return i
                 } else {
-                    if (x - charWidth / 2 <= width)
-                        return i;
+                    if (x - charWidth / 2 <= width) return i
                 }
-
-                width += charWidth;
+                width += charWidth
             }
-
-            return segmentCount;
+            return segmentCount
         } else {
-            Token tokens;
-            if (painter.getCurrentLineIndex() == line && painter
-                    .currentLineTokens != null)
-                tokens = painter.currentLineTokens;
-            else {
-                painter.setCurrentLineIndex(line);
-                tokens = painter.currentLineTokens
-                        = tokenMarker.markTokens(lineSegment, line);
+            var tokens = if (painter!!.currentLineIndex == line && painter!!.currentLineTokens != null) {
+                painter!!.currentLineTokens
+            } else {
+                painter!!.currentLineIndex = line
+                painter!!.currentLineTokens = tokenMarker!!.markTokens(lineSegment, line)
+                painter!!.currentLineTokens
             }
-
-            int offset = 0;
-            Toolkit toolkit = painter.getToolkit();
-            Font defaultFont = painter.getFont();
-            SyntaxStyle[] styles = painter.getStyles();
-
-            for (; ; ) {
-                Token.Type id = tokens.getType();
-                if (id == Token.Type.END)
-                    return offset;
-
-                if (id == Token.Type.NULL)
-                    fm = painter.getFontMetrics();
-                else
-                    fm = styles[id.rawValue].getFontMetrics(defaultFont);
-
-                int length = tokens.getLength();
-
-                for (int i = 0; i < length; i++) {
-                    char c = segmentArray[segmentOffset + offset + i];
-                    int charWidth;
-                    if (c == '\t')
-                        charWidth = (int) painter.nextTabStop(width, offset + i)
-                                - width;
-                    else
-                        charWidth = fm.charWidth(c);
-
-                    if (painter.isBlockCaretEnabled()) {
-                        if (x - charWidth <= width)
-                            return offset + i;
+            var offset = 0
+            val defaultFont = painter!!.font
+            val styles = painter!!.styles
+            while (true) {
+                val type = tokens?.type
+                if (type == END) return offset
+                fm = if (type == NULL)
+                    painter!!.fontMetrics
+                else styles[type?.rawValue?.toInt() ?: NULL.rawValue.toInt()].getFontMetrics(defaultFont)
+                val length = tokens?.length ?: 0
+                for (i in 0..<length) {
+                    val c = segmentArray[segmentOffset + offset + i]
+                    val charWidth = if (c == '\t') {
+                        painter!!.nextTabStop(width.toFloat(), offset + i).toInt()
+                    } else fm.charWidth('c')
+                    if (painter!!.isBlockCaretEnabled) {
+                        if (x - charWidth <= width) return offset + i
                     } else {
-                        if (x - charWidth / 2 <= width)
-                            return offset + i;
+                        if (x - charWidth / 2 <= width) return offset + i
                     }
-
-                    width += charWidth;
+                    width += charWidth
                 }
-
-                offset += length;
-                tokens = tokens.getNext();
+                offset += length
+                tokens = tokens?.next
             }
         }
     }
@@ -659,69 +614,10 @@ public class JEditTextArea extends JComponent {
      * @param x The x co-ordinate of the point
      * @param y The y co-ordinate of the point
      */
-    public int xyToOffset(int x, int y) {
-        int line = yToLine(y);
-        int start = getLineStartOffset(line);
-        return start + xToOffset(line, x);
-    }
-
-    /**
-     * Returns the document this text area is editing.
-     */
-    public final Document getDocument() {
-        return document;
-    }
-
-    /**
-     * Sets the document this text area is editing.
-     *
-     * @param document The document
-     */
-    public void setDocument(SyntaxDocument document) {
-        if (this.document == document)
-            return;
-        if (this.document != null)
-            this.document.removeDocumentListener(documentHandler);
-        this.document = document;
-
-        document.addDocumentListener(documentHandler);
-
-        select(0, 0);
-        updateScrollBars();
-        painter.repaint();
-    }
-
-    /**
-     * Returns the document's token marker. Equivalent to calling
-     * <code>getDocument().getTokenMarker()</code>.
-     */
-    public final TokenMarker getTokenMarker() {
-        return document.getTokenMarker();
-    }
-
-    /**
-     * Sets the document's token marker. Equivalent to caling
-     * <code>getDocument().setTokenMarker()</code>.
-     *
-     * @param tokenMarker The token marker
-     */
-    public final void setTokenMarker(TokenMarker tokenMarker) {
-        document.setTokenMarker(tokenMarker);
-    }
-
-    /**
-     * Returns the length of the document. Equivalent to calling
-     * <code>getDocument().getLength()</code>.
-     */
-    public final int getDocumentLength() {
-        return document.getLength();
-    }
-
-    /**
-     * Returns the number of lines in the document.
-     */
-    public final int getLineCount() {
-        return document.getDefaultRootElement().getElementCount();
+    open fun xyToOffset(x: Int, y: Int): Int {
+        val line = yToLine(y)
+        val start = getLineStartOffset(line)
+        return start + xToOffset(line, x)
     }
 
     /**
@@ -729,81 +625,60 @@ public class JEditTextArea extends JComponent {
      *
      * @param offset The offset
      */
-    public final int getLineOfOffset(int offset) {
-        return document.getDefaultRootElement().getElementIndex(offset);
-    }
+    fun getLineOfOffset(offset: Int): Int = document?.defaultRootElement?.getElementIndex(offset) ?: 0
 
     /**
      * Returns the start offset of the specified line.
      *
      * @param line The line
-     * @return The start offset of the specified line, or -1 if the line is
-     * invalid
+     * @return The start offset of the specified line, or -1 if the line is invalid
      */
-    public int getLineStartOffset(int line) {
-        Element lineElement = document.getDefaultRootElement()
-                .getElement(line);
-        if (lineElement == null)
-            return -1;
-        else
-            return lineElement.getStartOffset();
-    }
+    open fun getLineStartOffset(line: Int): Int =
+        document?.defaultRootElement?.getElement(line)?.startOffset ?: -1
 
     /**
      * Returns the end offset of the specified line.
      *
      * @param line The line
-     * @return The end offset of the specified line, or -1 if the line is
-     * invalid.
+     * @return The end offset of the specified line, or -1 if the line is invalid.
      */
-    public int getLineEndOffset(int line) {
-        Element lineElement = document.getDefaultRootElement()
-                .getElement(line);
-        if (lineElement == null)
-            return -1;
-        else
-            return lineElement.getEndOffset();
-    }
+    fun getLineEndOffset(line: Int): Int =
+        document?.defaultRootElement?.getElement(line)?.endOffset ?: -1
 
     /**
      * Returns the length of the specified line.
      *
      * @param line The line
      */
-    public int getLineLength(int line) {
-        Element lineElement = document.getDefaultRootElement()
-                .getElement(line);
-        if (lineElement == null)
-            return -1;
-        else
-            return lineElement.getEndOffset()
-                    - lineElement.getStartOffset() - 1;
-    }
+    fun getLineLength(line: Int): Int =
+        document?.defaultRootElement?.getElement(line)?.let {
+            it.endOffset - it.startOffset - 1
+        } ?: -1
 
     /**
      * Returns the entire text of this text area.
      */
-    public String getText() {
-        try {
-            return document.getText(0, document.getLength());
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
-            return null;
-        }
+    fun getText(): String? = try {
+        document?.getText(0, document?.length ?: 0)
+    } catch (e: BadLocationException) {
+        e.printStackTrace()
+        null
     }
 
     /**
      * Sets the entire text of this text area.
      */
-    public void setText(String text) {
-        try {
-            document.beginCompoundEdit();
-            document.remove(0, document.getLength());
-            document.insertString(0, text, null);
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
-        } finally {
-            document.endCompoundEdit();
+    fun setText(text: String) {
+        document?.let {
+            try {
+                it.beginCompoundEdit()
+                it.remove(0, it.length)
+                it.insertString(0, text, null)
+            } catch (bl: BadLocationException) {
+                bl.printStackTrace()
+            } finally {
+                it.endCompoundEdit()
+            }
         }
     }
 
@@ -814,13 +689,11 @@ public class JEditTextArea extends JComponent {
      * @param len   The length of the substring
      * @return The substring, or null if the offsets are invalid
      */
-    public final String getText(int start, int len) {
-        try {
-            return document.getText(start, len);
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
-            return null;
-        }
+    fun getText(start: Int, len: Int): String? = try {
+        document?.getText(start, len)
+    } catch (bl: BadLocationException) {
+        bl.printStackTrace()
+        null
     }
 
     /**
@@ -831,13 +704,12 @@ public class JEditTextArea extends JComponent {
      * @param len     The length of the substring
      * @param segment The segment
      */
-    public final void getText(int start, int len, Segment segment) {
-        try {
-            document.getText(start, len, segment);
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
-            segment.offset = segment.count = 0;
-        }
+    fun getText(start: Int, len: Int, segment: Segment) = try {
+        document?.getText(start, len, segment)
+    } catch (bl: BadLocationException) {
+        bl.printStackTrace()
+        segment.offset = 0
+        segment.count = 0
     }
 
     /**
@@ -846,9 +718,9 @@ public class JEditTextArea extends JComponent {
      * @param lineIndex The line
      * @return The text, or null if the line is invalid
      */
-    public final String getLineText(int lineIndex) {
-        int start = getLineStartOffset(lineIndex);
-        return getText(start, getLineEndOffset(lineIndex) - start - 1);
+    fun getLineText(lineIndex: Int): String? {
+        val start = getLineStartOffset(lineIndex)
+        return getText(start, getLineEndOffset(lineIndex) - start - 1)
     }
 
     /**
@@ -857,158 +729,54 @@ public class JEditTextArea extends JComponent {
      *
      * @param lineIndex The line
      */
-    public final void getLineText(int lineIndex, Segment segment) {
-        int start = getLineStartOffset(lineIndex);
-        getText(start, getLineEndOffset(lineIndex) - start - 1, segment);
-    }
-
-    /**
-     * Returns the selection start offset.
-     */
-    public final int getSelectionStart() {
-        return selectionStart;
+    fun getLineText(lineIndex: Int, segment: Segment) {
+        val start = getLineStartOffset(lineIndex)
+        getText(start, getLineEndOffset(lineIndex) - start - 1, segment)
     }
 
     /**
      * Returns the offset where the selection starts on the specified
      * line.
      */
-    public int getSelectionStart(int line) {
+    fun getSelectionStart(line: Int): Int {
         if (line == selectionStartLine)
-            return selectionStart;
-        else if (rectSelect) {
-            Element map = document.getDefaultRootElement();
-            int start = selectionStart - map.getElement(selectionStartLine)
-                    .getStartOffset();
-
-            Element lineElement = map.getElement(line);
-            int lineStart = lineElement.getStartOffset();
-            int lineEnd = lineElement.getEndOffset() - 1;
-            return Math.min(lineEnd, lineStart + start);
-        } else
-            return getLineStartOffset(line);
-    }
-
-    /**
-     * Returns the selection start line.
-     */
-    public final int getSelectionStartLine() {
-        return selectionStartLine;
-    }
-
-    /**
-     * Sets the selection start. The new selection will be the new
-     * selection start and the old selection end.
-     *
-     * @param selectionStart The selection start
-     * @see #select(int, int)
-     */
-    public final void setSelectionStart(int selectionStart) {
-        select(selectionStart, selectionEnd);
-    }
-
-    /**
-     * Returns the selection end offset.
-     */
-    public final int getSelectionEnd() {
-        return selectionEnd;
+            return selectionStart
+        else if (isSelectionRectangular) {
+            val map = document!!.defaultRootElement
+            val start = selectionStart - map.getElement(selectionStartLine).startOffset
+            val lineElement = map.getElement(line)
+            val lineStart = lineElement.startOffset
+            val lineEnd = lineElement.endOffset - 1
+            return min(lineEnd, lineStart + start)
+        } else return getLineStartOffset(line)
     }
 
     /**
      * Returns the offset where the selection ends on the specified
      * line.
      */
-    public int getSelectionEnd(int line) {
+    fun getSelectionEnd(line: Int): Int {
         if (line == selectionEndLine)
-            return selectionEnd;
-        else if (rectSelect) {
-            Element map = document.getDefaultRootElement();
-            int end = selectionEnd - map.getElement(selectionEndLine)
-                    .getStartOffset();
-
-            Element lineElement = map.getElement(line);
-            int lineStart = lineElement.getStartOffset();
-            int lineEnd = lineElement.getEndOffset() - 1;
-            return Math.min(lineEnd, lineStart + end);
-        } else
-            return getLineEndOffset(line) - 1;
-    }
-
-    /**
-     * Returns the selection end line.
-     */
-    public final int getSelectionEndLine() {
-        return selectionEndLine;
-    }
-
-    /**
-     * Sets the selection end. The new selection will be the old
-     * selection start and the new selection end.
-     *
-     * @param selectionEnd The selection end
-     * @see #select(int, int)
-     */
-    public final void setSelectionEnd(int selectionEnd) {
-        select(selectionStart, selectionEnd);
-    }
-
-    /**
-     * Returns the caret position. This will either be the selection
-     * start or the selection end, depending on which direction the
-     * selection was made in.
-     */
-    public final int getCaretPosition() {
-        return (biasLeft ? selectionStart : selectionEnd);
-    }
-
-    /**
-     * Returns the caret line.
-     */
-    public final int getCaretLine() {
-        return (biasLeft ? selectionStartLine : selectionEndLine);
-    }
-
-    /**
-     * Returns the mark position. This will be the opposite selection
-     * bound to the caret position.
-     *
-     * @see #getCaretPosition()
-     */
-    public final int getMarkPosition() {
-        return (biasLeft ? selectionEnd : selectionStart);
-    }
-
-    /**
-     * Returns the mark line.
-     */
-    public final int getMarkLine() {
-        return (biasLeft ? selectionEndLine : selectionStartLine);
-    }
-
-    /**
-     * Sets the caret position. The new selection will consist of the
-     * caret position only (hence no text will be selected)
-     *
-     * @param caret The caret position
-     * @see #select(int, int)
-     */
-    public final void setCaretPosition(int caret) {
-        select(caret, caret);
+            return selectionEnd
+        else if (isSelectionRectangular) {
+            val map = document!!.defaultRootElement
+            val end = selectionEnd - map.getElement(selectionEndLine).startOffset
+            val lineElement = map.getElement(line)
+            val lineStart = lineElement.startOffset
+            val lineEnd = lineElement.endOffset - 1
+            return min(lineEnd, lineStart + end)
+        } else return getLineEndOffset(line) - 1
     }
 
     /**
      * Selects all text in the document.
      */
-    public final void selectAll() {
-        select(0, getDocumentLength());
-    }
+    fun selectAll() = select(0, document!!.length)
 
     /**
      * Moves the mark to the caret position.
      */
-    public final void selectNone() {
-        select(getCaretPosition(), getCaretPosition());
-    }
+    fun selectNone() = select(caretPosition, caretPosition)
 
     /**
      * Selects from the start offset to the end offset. This is the
@@ -1019,350 +787,171 @@ public class JEditTextArea extends JComponent {
      * @param start The start offset
      * @param end   The end offset
      */
-    public void select(int start, int end) {
-        int newStart, newEnd;
-        boolean newBias;
-        if (start <= end) {
-            newStart = start;
-            newEnd = end;
-            newBias = false;
+    fun select(start: Int, end: Int) {
+        val (newStart, newEnd, newBias) = if (start <= end) {
+            Triple(start, end, false)
         } else {
-            newStart = end;
-            newEnd = start;
-            newBias = true;
+            Triple(end, start, true)
         }
 
-        if (newStart < 0 || newEnd > getDocumentLength()) {
-            throw new IllegalArgumentException("Bounds out of"
-                    + " range: " + newStart + "," +
-                    newEnd);
-        }
+        if (newStart < 0 || newEnd > document!!.length)
+            throw IllegalArgumentException("Bounds out of range: $newStart,$newEnd")
 
-        // If the new position is the same as the old, we don't
-        // do all this crap, however we still do the stuff at
-        // the end (clearing magic position, scrolling)
-        if (newStart != selectionStart || newEnd != selectionEnd
-                || newBias != biasLeft) {
-            int newStartLine = getLineOfOffset(newStart);
-            int newEndLine = getLineOfOffset(newEnd);
-
-            if (painter.isBracketHighlightingEnabled()) {
-                if (bracketLine != -1)
-                    painter.invalidateLine(bracketLine);
-                updateBracketHighlight(end);
-                if (bracketLine != -1)
-                    painter.invalidateLine(bracketLine);
+        // If the new position is the same as the old, we don't do anything,
+        // but we still clear the magic position and scroll.
+        if (newStart != selectionStart || newEnd != selectionEnd || newBias != biasLeft) {
+            val newStartLine = getLineOfOffset(newStart)
+            val newEndLine = getLineOfOffset(newEnd)
+            if (painter!!.isBracketHighlightingEnabled) {
+                if (bracketLine != -1) painter!!.invalidateLine(bracketLine)
+                updateBracketHighlight(end)
+                if (bracketLine != -1) painter!!.invalidateLine(bracketLine)
             }
+            painter!!.invalidateLineRange(selectionStartLine, selectionEndLine)
+            painter!!.invalidateLineRange(newStartLine, newEndLine)
 
-            painter.invalidateLineRange(selectionStartLine, selectionEndLine);
-            painter.invalidateLineRange(newStartLine, newEndLine);
+            document!!.addUndoableEdit(CaretUndo(selectionStart, selectionEnd))
 
-            document.addUndoableEdit(new CaretUndo(
-                    selectionStart, selectionEnd));
+            selectionStart = newStart
+            selectionEnd = newEnd
+            selectionStartLine = newStartLine
+            selectionEndLine = newEndLine
+            biasLeft = newBias
 
-            selectionStart = newStart;
-            selectionEnd = newEnd;
-            selectionStartLine = newStartLine;
-            selectionEndLine = newEndLine;
-            biasLeft = newBias;
-
-            fireCaretEvent();
+            fireCaretEvent()
         }
 
-        // When the user is typing, etc, we don't want the caret
-        // to blink
-        blink = true;
-        caretTimer.restart();
+        // Don't blink the caret while the user is typing
+        blink = true
+        caretTimer.restart()
 
-        // Disable rectangle select if selection start = selection end
-        if (selectionStart == selectionEnd)
-            rectSelect = false;
+        // Disable rectangle selection if the selection start and end are equal
+        if (selectionStart == selectionEnd) isSelectionRectangular = false
 
-        // Clear the `magic' caret position used by up/down
-        magicCaret = -1;
-        scrollToCaret();
+        // Clear the 'magic' caret position used by up/down
+        magicCaretPosition = -1
+        scrollToCaret()
     }
 
     /**
      * Returns the selected text, or null if no selection is active.
      */
-    public final String getSelectedText() {
-        if (selectionStart == selectionEnd)
-            return null;
-
-        if (rectSelect) {
+    fun getSelectedText(): String? {
+        if (selectionStart == selectionEnd) return null
+        if (isSelectionRectangular) {
             // Return each row of the selection on a new line
-
-            Element map = document.getDefaultRootElement();
-
-            int start = selectionStart - map.getElement(selectionStartLine)
-                    .getStartOffset();
-            int end = selectionEnd - map.getElement(selectionEndLine)
-                    .getStartOffset();
-
-            // Certain rectangles satisfy this condition...
+            val map = document!!.defaultRootElement
+            var start = selectionStart - map.getElement(selectionStartLine).startOffset
+            var end = selectionEnd - map.getElement(selectionEndLine).startOffset
+            // Certain rectangles satisfy this condition
             if (end < start) {
-                int tmp = end;
-                end = start;
-                start = tmp;
+                val tmp = end
+                end = start
+                start = tmp
             }
-
-            StringBuilder buf = new StringBuilder();
-            Segment seg = new Segment();
-
-            for (int i = selectionStartLine; i <= selectionEndLine; i++) {
-                Element lineElement = map.getElement(i);
-                int lineStart = lineElement.getStartOffset();
-                int lineEnd = lineElement.getEndOffset() - 1;
-                int lineLen;
-
-                lineStart = Math.min(lineStart + start, lineEnd);
-                lineLen = Math.min(end - start, lineEnd - lineStart);
-
-                getText(lineStart, lineLen, seg);
-                buf.append(seg.array, seg.offset, seg.count);
-
-                if (i != selectionEndLine)
-                    buf.append('\n');
+            val buf = StringBuilder()
+            val seg = Segment()
+            for (i in selectionStartLine..selectionEndLine) {
+                val lineElement = map.getElement(i)
+                val lineEnd = lineElement.endOffset - 1
+                val lineStart = min(lineElement.startOffset + start, lineEnd)
+                val lineLen = min(end - start, lineEnd - lineStart)
+                getText(lineStart, lineLen, seg)
+                buf.appendRange(seg.array!!, seg.offset, seg.offset + seg.count)
+                if (i != selectionEndLine) buf.append('\n')
             }
-
-            return buf.toString();
-        } else {
-            return getText(selectionStart,
-                    selectionEnd - selectionStart);
-        }
+            return buf.toString()
+        } else return getText(selectionStart, selectionEnd - selectionStart)
     }
-
 
     /**
      * Replaces the selection with the specified text.
      *
      * @param selectedText The replacement text for the selection
      */
-    public void setSelectedText(String selectedText) {
-        if (!editable) {
-            throw new InternalError("Text component"
-                    + " read only");
-        }
-
-        document.beginCompoundEdit();
-
+    fun setSelectedText(selectedText: String?) {
+        if (!isEditable) throw InternalError("Text component is read only")
+        document!!.beginCompoundEdit()
         try {
-            if (rectSelect) {
-                Element map = document.getDefaultRootElement();
-
-                int start = selectionStart - map.getElement(selectionStartLine)
-                        .getStartOffset();
-                int end = selectionEnd - map.getElement(selectionEndLine)
-                        .getStartOffset();
-
-                // Certain rectangles satisfy this condition...
+            if (isSelectionRectangular) {
+                val map = document!!.defaultRootElement
+                var start = selectionStart - map.getElement(selectionStartLine).startOffset
+                var end = selectionEnd - map.getElement(selectionEndLine).startOffset
+                // Some rectangles satisfy this condition
                 if (end < start) {
-                    int tmp = end;
-                    end = start;
-                    start = tmp;
+                    val tmp = end
+                    end = start
+                    start = tmp
                 }
-
-                int lastNewline = 0;
-                int currNewline = 0;
-
-                for (int i = selectionStartLine; i <= selectionEndLine; i++) {
-                    Element lineElement = map.getElement(i);
-                    int lineStart = lineElement.getStartOffset();
-                    int lineEnd = lineElement.getEndOffset() - 1;
-                    int rectStart = Math.min(lineEnd, lineStart + start);
-
-                    document.remove(rectStart, Math.min(lineEnd - rectStart,
-                            end - start));
-
-                    if (selectedText == null)
-                        continue;
-
-                    currNewline = selectedText.indexOf('\n', lastNewline);
+                var lastNewline = 0
+                var currNewline = 0
+                for (i in selectionStartLine..selectionEndLine) {
+                    val lineElement = map.getElement(i)
+                    val lineStart = lineElement.startOffset
+                    val lineEnd = lineElement.endOffset - 1
+                    val rectStart = min(lineEnd, lineStart + start)
+                    document!!.remove(rectStart, min(lineEnd - rectStart, end - start))
+                    if (selectedText == null) continue
+                    currNewline = selectedText.indexOf('\n', lastNewline)
                     if (currNewline == -1)
-                        currNewline = selectedText.length();
-
-                    document.insertString(rectStart, selectedText
-                            .substring(lastNewline, currNewline), null);
-
-                    lastNewline = Math.min(selectedText.length(),
-                            currNewline + 1);
+                        currNewline = selectedText.length
+                    document!!.insertString(rectStart, selectedText.substring(lastNewline, currNewline), null)
+                    lastNewline = min(selectedText.length, currNewline + 1)
                 }
-
-                if (selectedText != null &&
-                        currNewline != selectedText.length()) {
-                    int offset = map.getElement(selectionEndLine)
-                            .getEndOffset() - 1;
-                    document.insertString(offset, "\n", null);
-                    document.insertString(offset + 1, selectedText
-                            .substring(currNewline + 1), null);
+                if (selectedText != null && currNewline != selectedText.length) {
+                    val offset = map.getElement(selectionEndLine).endOffset - 1
+                    document!!.insertString(offset, "\n", null)
+                    document!!.insertString(offset + 1, selectedText.substring(currNewline + 1), null)
                 }
             } else {
-                document.remove(selectionStart,
-                        selectionEnd - selectionStart);
-                if (selectedText != null) {
-                    document.insertString(selectionStart,
-                            selectedText, null);
-                }
+                document!!.remove(selectionStart, selectionEnd - selectionStart)
+                if (selectedText != null)
+                    document!!.insertString(selectionStart, selectedText, null)
             }
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
-            throw new InternalError("Cannot replace"
-                    + " selection");
+        } catch (e: BadLocationException) {
+            e.printStackTrace()
+            throw InternalError("Cannot replace selection!")
+        } finally {
+            // No matter what happens... don't leave the document in a corrupted state!
+            document!!.endCompoundEdit()
         }
-        // No matter what happends... stops us from leaving document
-        // in a bad state
-        finally {
-            document.endCompoundEdit();
-        }
-
-        setCaretPosition(selectionEnd);
+        caretPosition = selectionEnd
     }
 
     /**
-     * Returns true if this text area is editable, false otherwise.
-     */
-    public final boolean isEditable() {
-        return editable;
-    }
-
-    /**
-     * Sets if this component is editable.
-     *
-     * @param editable True if this text area should be editable,
-     *                 false otherwise
-     */
-    public final void setEditable(boolean editable) {
-        this.editable = editable;
-    }
-
-    /**
-     * Returns the right click popup menu.
-     */
-    public final JPopupMenu getRightClickPopup() {
-        return popup;
-    }
-
-    /**
-     * Sets the right click popup menu.
-     *
-     * @param popup The popup
-     */
-    public final void setRightClickPopup(JPopupMenu popup) {
-        this.popup = popup;
-    }
-
-    /**
-     * Returns the `magic' caret position. This can be used to preserve
-     * the column position when moving up and down lines.
-     */
-    public final int getMagicCaretPosition() {
-        return magicCaret;
-    }
-
-    /**
-     * Sets the `magic' caret position. This can be used to preserve
-     * the column position when moving up and down lines.
-     *
-     * @param magicCaret The magic caret position
-     */
-    public final void setMagicCaretPosition(int magicCaret) {
-        this.magicCaret = magicCaret;
-    }
-
-    /**
-     * Similar to <code>setSelectedText()</code>, but overstrikes the
+     * Similar to <code>setSelectedText()</code>, but overwrites the
      * appropriate number of characters if overwrite mode is enabled.
      *
      * @param str The string
      * @see #setSelectedText(String)
      * @see #isOverwriteEnabled()
      */
-    public void overwriteSetSelectedText(String str) {
-        // Don't overstrike if there is a selection
-        if (!overwrite || selectionStart != selectionEnd) {
-            setSelectedText(str);
-            applySyntaxSensitiveHelp();
-            return;
+    fun overwriteSetSelectedText(str: String) {
+        // Don't overwrite if there is a selection
+        if (!isOverwriteEnabled || selectionStart != selectionEnd) {
+            setSelectedText(str)
+            applySyntaxSensitiveHelp()
+            return
+        }
+        // Don't overwrite if we're at the end of the line
+        val caret = caretPosition
+        val caretLineEnd = getLineEndOffset(caretLine)
+        if (caretLineEnd - caret <= str.length) {
+            setSelectedText(str)
+            applySyntaxSensitiveHelp()
+            return
         }
 
-        // Don't overstrike if we're on the end of
-        // the line
-        int caret = getCaretPosition();
-        int caretLineEnd = getLineEndOffset(getCaretLine());
-        if (caretLineEnd - caret <= str.length()) {
-            setSelectedText(str);
-            applySyntaxSensitiveHelp();
-            return;
-        }
-
-        document.beginCompoundEdit();
-
+        document!!.beginCompoundEdit()
         try {
-            document.remove(caret, str.length());
-            document.insertString(caret, str, null);
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
+            document!!.remove(caret, str.length)
+            document!!.insertString(caret, str, null)
+        } catch (bl: BadLocationException) {
+            bl.printStackTrace()
         } finally {
-            document.endCompoundEdit();
+            document!!.endCompoundEdit()
         }
-        applySyntaxSensitiveHelp();
-
-    }
-
-    JPopupMenu popupMenu;
-
-
-    /**
-     * Returns true if overwrite mode is enabled, false otherwise.
-     */
-    public final boolean isOverwriteEnabled() {
-        return overwrite;
-    }
-
-    /**
-     * Sets if overwrite mode should be enabled.
-     *
-     * @param overwrite True if overwrite mode should be enabled,
-     *                  false otherwise.
-     */
-    public final void setOverwriteEnabled(boolean overwrite) {
-        this.overwrite = overwrite;
-        painter.invalidateSelectedLines();
-    }
-
-    /**
-     * Returns true if the selection is rectangular, false otherwise.
-     */
-    public final boolean isSelectionRectangular() {
-        return rectSelect;
-    }
-
-    /**
-     * Sets if the selection should be rectangular.
-     *
-     * @param rectSelect True if the selection should be rectangular,
-     *                   false otherwise.
-     */
-    public final void setSelectionRectangular(boolean rectSelect) {
-        this.rectSelect = rectSelect;
-        painter.invalidateSelectedLines();
-    }
-
-    /**
-     * Returns the position of the highlighted bracket (the bracket
-     * matching the one before the caret)
-     */
-    public final int getBracketPosition() {
-        return bracketPosition;
-    }
-
-    /**
-     * Returns the line of the highlighted bracket (the bracket
-     * matching the one before the caret)
-     */
-    public final int getBracketLine() {
-        return bracketLine;
+        applySyntaxSensitiveHelp()
     }
 
     /**
@@ -1370,8 +959,8 @@ public class JEditTextArea extends JComponent {
      *
      * @param listener The listener
      */
-    public final void addCaretListener(CaretListener listener) {
-        listenerList.add(CaretListener.class, listener);
+    fun addCaretListener(listener: CaretListener) {
+        listenerList.add(CaretListener::class.java, listener)
     }
 
     /**
@@ -1379,69 +968,62 @@ public class JEditTextArea extends JComponent {
      *
      * @param listener The listener
      */
-    public final void removeCaretListener(CaretListener listener) {
-        listenerList.remove(CaretListener.class, listener);
+    fun removeCaretListener(listener: CaretListener) {
+        listenerList.add(CaretListener::class.java, listener)
     }
 
     /**
      * Deletes the selected text from the text area and places it
      * into the clipboard.
      */
-    public void cut() {
-        if (editable) {
-            copy();
-            setSelectedText("");
+    fun cut() {
+        if (isEditable) {
+            copy()
+            setSelectedText("")
         }
     }
 
     /**
      * Places the selected text into the clipboard.
      */
-    public void copy() {
+    fun copy() {
         if (selectionStart != selectionEnd) {
-            Clipboard clipboard = getToolkit().getSystemClipboard();
-
-            String selection = getSelectedText();
-
-            int repeatCount = inputHandler.getRepeatCount();
-
-            clipboard.setContents(new StringSelection(String.valueOf(selection).repeat(Math.max(0, repeatCount))), null);
+            val clipboard = toolkit.systemClipboard
+            val selection = getSelectedText()
+            val repeatCount = inputHandler.repeatCount
+            clipboard.setContents(StringSelection(selection.toString().repeat(max(0, repeatCount))), null)
         }
     }
 
     /**
      * Inserts the clipboard contents into the text.
      */
-    public void paste() {
-        if (editable) {
-            Clipboard clipboard = getToolkit().getSystemClipboard();
+    fun paste() {
+        if (isEditable) {
+            val clipboard = toolkit.systemClipboard
             try {
-                // The MacOS MRJ doesn't convert \r to \n,
-                // so do it here
-                String selection = ((String) clipboard
-                        .getContents(this).getTransferData(
-                                DataFlavor.stringFlavor))
-                        .replace('\r', '\n');
-
-                int repeatCount = inputHandler.getRepeatCount();
-                selection = selection.repeat(Math.max(0, repeatCount));
-                setSelectedText(selection);
-            } catch (Exception e) {
-                getToolkit().beep();
-                System.err.println("Clipboard does not"
-                        + " contain a string");
+                var selection = clipboard
+                    .getContents(this)
+                    .getTransferData(DataFlavor.stringFlavor)
+                    .toString()
+                    .replace('\r', '\n')
+                val repeatCount = inputHandler.repeatCount
+                selection = selection.repeat(max(0, repeatCount))
+                setSelectedText(selection)
+            } catch (e: Exception) {
+                toolkit.beep()
+                System.err.println("Clipboard does not contain a string")
             }
         }
     }
 
     /**
-     * Called by the AWT when this component is removed from it's parent.
-     * This stops clears the currently focused component.
+     * Called by the AWT when this component is removed from its parent.
+     * This stop clears the currently focused component.
      */
-    public void removeNotify() {
-        super.removeNotify();
-        if (focusedComponent == this)
-            focusedComponent = null;
+    override fun removeNotify() {
+        super.removeNotify()
+        if (focusedComponent == this) focusedComponent = null
     }
 
     /**
@@ -1449,856 +1031,582 @@ public class JEditTextArea extends JComponent {
      * This is slightly faster than using a KeyListener
      * because some Swing overhead is avoided.
      */
-    public void processKeyEvent(KeyEvent evt) {
-        if (inputHandler == null)
-            return;
-        switch (evt.getID()) {
-            case KeyEvent.KEY_TYPED:
-                inputHandler.keyTyped(evt);
-                break;
-            case KeyEvent.KEY_PRESSED:
-                if (!checkPopupCompletion(evt)) {
-                    inputHandler.keyPressed(evt);
-                }
-                checkPopupMenu(evt);
-                break;
-            case KeyEvent.KEY_RELEASED:
-                inputHandler.keyReleased(evt);
-                break;
-        }
-    }
-
-    // protected members
-    protected static final String CENTER = "center";
-    protected static final String RIGHT = "right";
-    protected static final String BOTTOM = "bottom";
-
-    protected static JEditTextArea focusedComponent;
-    protected static final Timer caretTimer;
-
-    protected TextAreaPainter painter;
-
-    protected JPopupMenu popup;
-
-    protected EventListenerList listenerList;
-    protected MutableCaretEvent caretEvent;
-
-    protected boolean caretBlinks;
-    protected boolean caretVisible;
-    protected boolean blink;
-
-    protected boolean editable;
-
-    protected int caretBlinkRate;
-    protected int firstLine;
-    protected int visibleLines;
-    protected int electricScroll;
-
-    protected int horizontalOffset;
-
-    protected JScrollBar vertical;
-    protected JScrollBar horizontal;
-    protected boolean scrollBarsInitialized;
-
-    protected InputHandler inputHandler;
-    protected SyntaxDocument document;
-    protected DocumentHandler documentHandler;
-
-    protected Segment lineSegment;
-
-    protected int selectionStart;
-    protected int selectionStartLine;
-    protected int selectionEnd;
-    protected int selectionEndLine;
-    protected boolean biasLeft;
-
-    protected int bracketPosition;
-    protected int bracketLine;
-
-    protected int magicCaret;
-    protected boolean overwrite;
-    protected boolean rectSelect;
-    // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
-    // to pleasingly select the text and location of the undo.   DPS 3-May-2010
-    protected boolean unredoing;
-
-
-    protected void fireCaretEvent() {
-        Object[] listeners = listenerList.getListenerList();
-        for (int i = listeners.length - 2; i >= 0; i--) {
-            if (listeners[i] == CaretListener.class) {
-                ((CaretListener) listeners[i + 1]).caretUpdate(caretEvent);
+    override fun processKeyEvent(e: KeyEvent) {
+        when (e.id) {
+            KEY_TYPED -> inputHandler.keyTyped(e)
+            KEY_PRESSED -> {
+                if (!checkPopupCompletion(e)) inputHandler.keyPressed(e)
+                checkPopupMenu(e)
             }
+            KEY_RELEASED -> inputHandler.keyReleased(e)
         }
     }
 
-    protected void updateBracketHighlight(int newCaretPosition) {
+    protected fun fireCaretEvent() {
+        val listeners = listenerList.listenerList
+        for (i in listeners.size - 2 downTo 0)
+            if (listeners[i] == CaretListener::class.java)
+                (listeners[i + 1] as CaretListener).caretUpdate(caretEvent)
+    }
+
+    protected fun updateBracketHighlight(newCaretPosition: Int) {
         if (newCaretPosition == 0) {
-            bracketPosition = bracketLine = -1;
-            return;
+            bracketPosition = -1
+            bracketLine = -1
+            return
         }
-
         try {
-            int offset = TextUtilities.findMatchingBracket(
-                    document, newCaretPosition - 1);
+            val offset = document!!.findMatchingBracket(newCaretPosition - 1)
             if (offset != -1) {
-                bracketLine = getLineOfOffset(offset);
-                bracketPosition = offset - getLineStartOffset(bracketLine);
-                return;
+                bracketLine = getLineOfOffset(offset)
+                bracketPosition = offset - getLineStartOffset(bracketLine)
+                return
             }
-        } catch (BadLocationException bl) {
-            bl.printStackTrace();
+        } catch (bl: BadLocationException) {
+            bl.printStackTrace()
         }
-
-        bracketLine = bracketPosition = -1;
+        bracketLine = -1
+        bracketPosition = -1
     }
 
-    protected void documentChanged(DocumentEvent evt) {
-        DocumentEvent.ElementChange ch = evt.getChange(
-                document.getDefaultRootElement());
-
-        int count;
-        if (ch == null)
-            count = 0;
-        else
-            count = ch.getChildrenAdded().length -
-                    ch.getChildrenRemoved().length;
-
-        int line = getLineOfOffset(evt.getOffset());
-        if (count == 0) {
-            painter.invalidateLine(line);
-        }
-        // do magic stuff
-        else if (line < firstLine) {
-            setFirstLine(firstLine + count);
-        }
-        // end of magic stuff
+    protected fun documentChanged(e: DocumentEvent) {
+        val ch = e.getChange(document!!.defaultRootElement)
+        val count = ch?.let { it.childrenAdded.size - it.childrenRemoved.size } ?: 0
+        val line = getLineOfOffset(e.offset)
+        if (count == 0) painter!!.invalidateLine(line)
+        else if (line < firstLine) firstLine += count
         else {
-            painter.invalidateLineRange(line, firstLine + visibleLines);
-            updateScrollBars();
+            painter!!.invalidateLineRange(line, firstLine + visibleLines)
+            updateScrollBars()
         }
     }
-
-    class ScrollLayout implements LayoutManager {
-        public void addLayoutComponent(String name, Component comp) {
-            switch (name) {
-                case CENTER -> center = comp;
-                case RIGHT -> right = comp;
-                case BOTTOM -> bottom = comp;
-                case LEFT_OF_SCROLLBAR -> leftOfScrollBar.addElement(comp);
-            }
-        }
-
-        public void removeLayoutComponent(Component comp) {
-            if (center == comp)
-                center = null;
-            if (right == comp)
-                right = null;
-            if (bottom == comp)
-                bottom = null;
-            else
-                leftOfScrollBar.removeElement(comp);
-        }
-
-        public Dimension preferredLayoutSize(Container parent) {
-            Dimension dim = new Dimension();
-            Insets insets = getInsets();
-            dim.width = insets.left + insets.right;
-            dim.height = insets.top + insets.bottom;
-
-            Dimension centerPref = center.getPreferredSize();
-            dim.width += centerPref.width;
-            dim.height += centerPref.height;
-            Dimension rightPref = right.getPreferredSize();
-            dim.width += rightPref.width;
-            Dimension bottomPref = bottom.getPreferredSize();
-            dim.height += bottomPref.height;
-
-            return dim;
-        }
-
-        public Dimension minimumLayoutSize(Container parent) {
-            Dimension dim = new Dimension();
-            Insets insets = getInsets();
-            dim.width = insets.left + insets.right;
-            dim.height = insets.top + insets.bottom;
-
-            Dimension centerPref = center.getMinimumSize();
-            dim.width += centerPref.width;
-            dim.height += centerPref.height;
-            Dimension rightPref = right.getMinimumSize();
-            dim.width += rightPref.width;
-            Dimension bottomPref = bottom.getMinimumSize();
-            dim.height += bottomPref.height;
-
-            return dim;
-        }
-
-        public void layoutContainer(Container parent) {
-            Dimension size = parent.getSize();
-            Insets insets = parent.getInsets();
-            int itop = insets.top;
-            int ileft = insets.left;
-            int ibottom = insets.bottom;
-            int iright = insets.right;
-
-            int rightWidth = right.getPreferredSize().width;
-            int bottomHeight = bottom.getPreferredSize().height;
-            int centerWidth = size.width - rightWidth - ileft - iright;
-            int centerHeight = size.height - bottomHeight - itop - ibottom;
-
-            center.setBounds(
-                    ileft,
-                    itop,
-                    centerWidth,
-                    centerHeight);
-
-            right.setBounds(
-                    ileft + centerWidth,
-                    itop,
-                    rightWidth,
-                    centerHeight);
-
-            // Lay out all status components, in order
-            Enumeration<Component> status = leftOfScrollBar.elements();
-            while (status.hasMoreElements()) {
-                Component comp = status.nextElement();
-                Dimension dim = comp.getPreferredSize();
-                comp.setBounds(ileft,
-                        itop + centerHeight,
-                        dim.width,
-                        bottomHeight);
-                ileft += dim.width;
-            }
-
-            bottom.setBounds(
-                    ileft,
-                    itop + centerHeight,
-                    size.width - rightWidth - ileft - iright,
-                    bottomHeight);
-        }
-
-        // private members
-        private Component center;
-        private Component right;
-        private Component bottom;
-        private final Vector<Component> leftOfScrollBar = new Vector<>();
-    }
-
-    static class CaretBlinker implements ActionListener {
-        public void actionPerformed(ActionEvent evt) {
-            if (focusedComponent != null
-                    && focusedComponent.hasFocus())
-                focusedComponent.blinkCaret();
-        }
-    }
-
-    protected class MutableCaretEvent extends CaretEvent {
-        MutableCaretEvent() {
-            super(JEditTextArea.this);
-        }
-
-        public int getDot() {
-            return getCaretPosition();
-        }
-
-        public int getMark() {
-            return getMarkPosition();
-        }
-    }
-
-    protected class AdjustHandler implements AdjustmentListener {
-        public void adjustmentValueChanged(final AdjustmentEvent evt) {
-            if (!scrollBarsInitialized)
-                return;
-
-            // If this is not done, mousePressed events accumulate
-            // and the result is that scrolling doesn't stop after
-            // the mouse is released
-            SwingUtilities.invokeLater(
-                    () -> {
-                        if (evt.getAdjustable() == vertical)
-                            setFirstLine(vertical.getValue());
-                        else
-                            setHorizontalOffset(-horizontal.getValue());
-                    });
-        }
-    }
-
-    protected class ComponentHandler extends ComponentAdapter {
-        public void componentResized(ComponentEvent evt) {
-            recalculateVisibleLines();
-            scrollBarsInitialized = true;
-        }
-    }
-
-
-    protected class DocumentHandler implements DocumentListener {
-        public void insertUpdate(DocumentEvent evt) {
-            documentChanged(evt);
-
-            int offset = evt.getOffset();
-            int length = evt.getLength();
-
-            // If event fired because of undo or redo, select inserted text. DPS 3-May-2010
-            if (unredoing) {
-                select(offset, offset + length);
-                return;
-            }
-
-            int newStart;
-            int newEnd;
-
-            if (selectionStart > offset || (selectionStart
-                    == selectionEnd && selectionStart == offset))
-                newStart = selectionStart + length;
-            else
-                newStart = selectionStart;
-
-            if (selectionEnd >= offset)
-                newEnd = selectionEnd + length;
-            else
-                newEnd = selectionEnd;
-            select(newStart, newEnd);
-        }
-
-        public void removeUpdate(DocumentEvent evt) {
-            documentChanged(evt);
-
-            int offset = evt.getOffset();
-            int length = evt.getLength();
-
-            // If event fired because of undo or redo, move caret to position of removal. DPS 3-May-2010
-            if (unredoing) {
-                select(offset, offset);
-                setCaretPosition(offset);
-                return;
-            }
-
-            int newStart;
-            int newEnd;
-
-            if (selectionStart > offset) {
-                if (selectionStart > offset + length)
-                    newStart = selectionStart - length;
-                else
-                    newStart = offset;
-            } else
-                newStart = selectionStart;
-
-            if (selectionEnd > offset) {
-                if (selectionEnd > offset + length)
-                    newEnd = selectionEnd - length;
-                else
-                    newEnd = offset;
-            } else
-                newEnd = selectionEnd;
-            select(newStart, newEnd);
-        }
-
-        public void changedUpdate(DocumentEvent evt) {
-        }
-    }
-
-    class DragHandler implements MouseMotionListener {
-        public void mouseDragged(MouseEvent evt) {
-            if (popup != null && popup.isVisible())
-                return;
-
-            setSelectionRectangular((evt.getModifiersEx()
-                    & InputEvent.CTRL_DOWN_MASK) != 0);
-            select(getMarkPosition(), xyToOffset(evt.getX(), evt.getY()));
-        }
-
-        public void mouseMoved(MouseEvent evt) {
-        }
-    }
-
-    class FocusHandler implements FocusListener {
-        public void focusGained(FocusEvent evt) {
-            setCaretVisible(true);
-            focusedComponent = JEditTextArea.this;
-        }
-
-        public void focusLost(FocusEvent evt) {
-            setCaretVisible(false);
-            focusedComponent = null;
-        }
-    }
-
-    // Added by DPS, 5-5-2010. Allows use of mouse wheel to scroll.
-    // Scrolling as fast as I could, the most notches I could get in
-    // one MouseWheelEvent was 3.  Normally it will be 1.  Nonetheless,
-    // this will scroll up to the number in the event, subject to
-    // scrollability of the text in its viewport.
-    class MouseWheelHandler implements MouseWheelListener {
-        public void mouseWheelMoved(MouseWheelEvent e) {
-            int maxMotion = Math.abs(e.getWheelRotation()) * LINES_PER_MOUSE_WHEEL_NOTCH;
-            if (e.getWheelRotation() < 0) {
-                setFirstLine(getFirstLine() - Math.min(maxMotion, getFirstLine()));
-            } else {
-                setFirstLine(getFirstLine() + (Math.min(maxMotion, Math.max(0, getLineCount() - (getFirstLine() + visibleLines)))));
-            }
-        }
-    }
-
-
-    class MouseHandler extends MouseAdapter {
-        public void mousePressed(MouseEvent evt) {
-            requestFocus();
-
-            // Focus events not fired sometimes?
-            setCaretVisible(true);
-            focusedComponent = JEditTextArea.this;
-
-            if ((evt.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0
-                    && popup != null) {
-                popup.show(painter, evt.getX(), evt.getY());
-                return;
-            }
-
-            int line = yToLine(evt.getY());
-            int offset = xToOffset(line, evt.getX());
-            int dot = getLineStartOffset(line) + offset;
-
-            switch (evt.getClickCount()) {
-                case 1:
-                    doSingleClick(evt, line, offset, dot);
-                    break;
-                case 2:
-                    // It uses the bracket matching stuff, so
-                    // it can throw a BLE
-                    try {
-                        doDoubleClick(evt, line, offset, dot);
-                    } catch (BadLocationException bl) {
-                        bl.printStackTrace();
-                    }
-                    break;
-                case 3:
-                    doTripleClick(evt, line, offset, dot);
-                    break;
-            }
-        }
-
-        private void doSingleClick(MouseEvent evt, int line,
-                                   int offset, int dot) {
-            if ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
-                rectSelect = (evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0;
-                select(getMarkPosition(), dot);
-            } else
-                setCaretPosition(dot);
-        }
-
-        private void doDoubleClick(MouseEvent evt, int line,
-                                   int offset, int dot) throws BadLocationException {
-            // Ignore empty lines
-            if (getLineLength(line) == 0)
-                return;
-
-            try {
-                int bracket = TextUtilities.findMatchingBracket(
-                        document, Math.max(0, dot - 1));
-                if (bracket != -1) {
-                    int mark = getMarkPosition();
-                    // Hack
-                    if (bracket > mark) {
-                        bracket++;
-                        mark--;
-                    }
-                    select(mark, bracket);
-                    return;
-                }
-            } catch (BadLocationException bl) {
-                bl.printStackTrace();
-            }
-
-            // Ok, it's not a bracket... select the word
-            String lineText = getLineText(line);
-            char ch = lineText.charAt(Math.max(0, offset - 1));
-
-            String noWordSep = (String) document.getProperty("noWordSep");
-            if (noWordSep == null)
-                noWordSep = "";
-
-            // If the user clicked on a non-letter char,
-            // we select the surrounding non-letters
-            boolean selectNoLetter = (!Character
-                    .isLetterOrDigit(ch)
-                    && noWordSep.indexOf(ch) == -1);
-
-            int wordStart = 0;
-
-            for (int i = offset - 1; i >= 0; i--) {
-                ch = lineText.charAt(i);
-                if (selectNoLetter ^ (!Character
-                        .isLetterOrDigit(ch) &&
-                        noWordSep.indexOf(ch) == -1)) {
-                    wordStart = i + 1;
-                    break;
-                }
-            }
-
-            int wordEnd = lineText.length();
-            for (int i = offset; i < lineText.length(); i++) {
-                ch = lineText.charAt(i);
-                if (selectNoLetter ^ (!Character
-                        .isLetterOrDigit(ch) &&
-                        noWordSep.indexOf(ch) == -1)) {
-                    wordEnd = i;
-                    break;
-                }
-            }
-
-            int lineStart = getLineStartOffset(line);
-            select(lineStart + wordStart, lineStart + wordEnd);
-        }
-
-        private void doTripleClick(MouseEvent evt, int line,
-                                   int offset, int dot) {
-            select(getLineStartOffset(line), getLineEndOffset(line) - 1);
-        }
-    }
-
-    class CaretUndo extends AbstractUndoableEdit {
-        private int start;
-        private int end;
-
-        CaretUndo(int start, int end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        public boolean isSignificant() {
-            return false;
-        }
-
-        public String getPresentationName() {
-            return "caret move";
-        }
-
-        public void undo() throws CannotUndoException {
-            super.undo();
-
-            select(start, end);
-        }
-
-        public void redo() throws CannotRedoException {
-            super.redo();
-
-            select(start, end);
-        }
-
-        public boolean addEdit(UndoableEdit edit) {
-            if (edit instanceof CaretUndo cedit) {
-                start = cedit.start;
-                end = cedit.end;
-                cedit.die();
-
-                return true;
-            } else
-                return false;
-        }
-    }
-
 
     /**
      * Return any relevant tool tip text for token at specified position. Keyword match
-     * must be exact.  DPS 24-May-2010
+     * must be exact.
      *
      * @param x x-coordinate of current position
      * @param y y-coordinate of current position
      * @return String containing appropriate tool tip text.  Possibly HTML-encoded.
      */
-    // Is used for tool tip only (not popup menu)
-    public String getSyntaxSensitiveToolTipText(int x, int y) {
-        StringBuilder result;
-        int line = this.yToLine(y);
-        ArrayList<PopupHelpItem> matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
-        if (matches == null) {
-            return null;
+    fun getSyntaxSensitiveToolTipText(x: Int, y: Int): String? {
+        val line = yToLine(y)
+        val matches = getSyntaxSensitiveHelpAtLineOffset(line, xToOffset(line, x), true) ?: return null
+        val length = PopupHelpItem.maxExampleLength(matches) + 2
+        return buildString {
+            append("<html>")
+            for (i in 0..<matches.size) {
+                val match = matches[i]
+                append(if (i == 0) "" else "<br>")
+                append("<tt>")
+                append(match.padExampleToLength(length).replace(" ", "&nbsp;"))
+                append("</tt>")
+                append(match.description)
+            }
+            append("</html>")
         }
-        int length = PopupHelpItem.maxExampleLength(matches) + 2;
-        result = new StringBuilder("<html>");
-        for (int i = 0; i < matches.size(); i++) {
-            PopupHelpItem match = matches.get(i);
-            result.append((i == 0) ? "" : "<br>").append("<tt>").append(match.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;")).append("</tt>").append(match.getDescription());
-        }
-        return result + "</html>";
     }
 
-
     /**
-     * Constructs string for auto-indent feature.  Returns empty string
-     * if auto-intent is disabled or if line has no leading white space.
-     * Uses getLeadingWhiteSpace(). Is used by InputHandler when processing
-     * key press for Enter key.   DPS 31-Dec-2010
+     * Constructs string for auto-indent feature. Returns empty string
+     * if auto-intent is disabled or if line has no leading whitespace.
+     * Used by InputHandler when processing key press for Enter key.
      *
      * @return String containing auto-indent characters to be inserted into text
      */
-    public String getAutoIndent() {
-        return (Globals.getSettings().getBooleanSetting(Settings.ENABLE_AUTO_INDENT)) ? getLeadingWhiteSpace() : "";
+    fun getAutoIndent() = if (Globals.settings.getBooleanSetting(Settings.ENABLE_AUTO_INDENT))
+        getLeadingWhiteSpace() else ""
+
+    /**
+     * Makes a copy of leading whitespace (tab or space) from the current line and
+     * returns it.
+     *
+     * @return String containing leading whitespace of current line. Empty string if none.
+     */
+    fun getLeadingWhiteSpace(): String {
+        val line = caretLine
+        val lineLength = getLineLength(line)
+        var indent = ""
+        if (lineLength > 0) {
+            val text = getText(getLineStartOffset(line), lineLength)!!
+            for (position in text.indices) {
+                val character = text[position]
+                if (character == '\t' || character == ' ') {
+                    indent += character
+                } else break
+            }
+        }
+        return indent
     }
 
     /**
-     * Makes a copy of leading white space (tab or space) from the current line and
-     * returns it.    DPS 31-Dec-2010
-     *
-     * @return String containing leading white space of current line.  Empty string if none.
+     * Get relevant help information at specified position. Returns ArrayList of
+     * PopupHelpItem with one per match, or null if no matches.
+     * The "exact" parameter is set depending on whether the match has to be
+     * exact or whether a prefix match will do. The token "s" will not match
+     * any instruction names if exact is true, but will match "sw", "sh", etc.
+     * if exact is false. The former is helpful for mouse-movement-based tool
+     * tips (this is what you have). The latter is helpful for caret-based tool
+     * tips (this is what you can do).
      */
-    public String getLeadingWhiteSpace() {
-        int line = getCaretLine();
-        int lineLength = getLineLength(line);
-        String indent = "";
-        if (lineLength > 0) {
-            String text = getText(getLineStartOffset(line), lineLength);
-            for (int position = 0; position < Objects.requireNonNull(text).length(); position++) {
-                char character = text.charAt(position);
-                if (character == '\t' || character == ' ') {
-                    indent += character;
-                } else {
-                    break;
-                }
-            }
-        }
-        return indent;
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////
-    // Get relevant help information at specified position.  Returns ArrayList of
-    // PopupHelpItem with one per match, or null if no matches.
-    // The "exact" parameter is set depending on whether the match has to be
-    // exact or whether a prefix match will do.  The token "s" will not match
-    // any instruction names if exact is true, but will match "sw", "sh", etc
-    // if exact is false.  The former is helpful for mouse-movement-based tool
-    // tips (this is what you have).  The latter is helpful for caret-based tool
-    // tips (this is what you can do).
-    private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
-        ArrayList<PopupHelpItem> matches = null;
-        TokenMarker tokenMarker = this.getTokenMarker();
-        if (tokenMarker != null) {
-            Segment lineSegment = new Segment();
-            this.getLineText(line, lineSegment); // fill segment with info from this line
-            Token tokens = tokenMarker.markTokens(lineSegment, line);
-            Token tokenList = tokens;
-            int tokenOffset = 0;
-            Token tokenAtOffset = null;
-            // cool for following the tokens...
-            //System.out.print("(JEditTextArea.java) Token Stream:");
-            Token toke = tokens;
-            while (toke.getType() != Token.Type.END) {
-                //System.out.print(" "+toke.id+"("+toke.length+")");
-                toke = toke.getNext();
-            }
-            //System.out.println();
-
-            for (; ; ) {
-                Token.Type id = tokens.getType();
-                if (id == Token.Type.END)
-                    break;
-                int length = tokens.getLength();
+    private fun getSyntaxSensitiveHelpAtLineOffset(line: Int, offset: Int, exact: Boolean): ArrayList<PopupHelpItem>? {
+        var matches: ArrayList<PopupHelpItem>? = null
+        tokenMarker?.let {
+            val lineSegment = Segment()
+            getLineText(line, lineSegment)
+            var tokens: Token? = it.markTokens(lineSegment, line)
+            val tokenList = tokens
+            var tokenOffset = 0
+            var tokenAtOffset: Token? = null
+            while (tokens != null) {
+                val type = tokens.type
+                if (type == END) break
+                val length = tokens.length
                 if (offset > tokenOffset && offset <= tokenOffset + length) {
-                    tokenAtOffset = tokens;
-                    break;
+                    tokenAtOffset = tokens
+                    break
                 }
-                tokenOffset += length;
-                tokens = tokens.getNext();
+                tokenOffset += length
+                tokens = tokens.next
             }
             if (tokenAtOffset != null) {
-                String tokenText = lineSegment.toString().substring(tokenOffset, tokenOffset + tokenAtOffset.getLength());
-                if (exact) {
-                    matches = tokenMarker.getTokenExactMatchHelp(tokenAtOffset, tokenText);
+                val tokenText = lineSegment.toString().substring(tokenOffset, tokenOffset + tokenAtOffset.length)
+                matches = if (exact) {
+                    it.getTokenExactMatchHelp(tokenAtOffset, tokenText)
                 } else {
-                    matches = tokenMarker.getTokenPrefixMatchHelp(lineSegment.toString(), tokenList, tokenAtOffset, tokenText);
+                    it.getTokenPrefixMatchHelp(lineSegment.toString(), tokenList, tokenAtOffset, tokenText)
                 }
             }
         }
-        return matches;
+        return matches
     }
 
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Compose and display syntax-sensitive help. Typically invoked upon typing a key.
-    // Results in popup menu.  Is not used for creating tool tips.
-    private void applySyntaxSensitiveHelp() {
-        if (!Globals.getSettings().getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
-            return;
-        }
-        int line = getCaretLine();
-        int lineStart = getLineStartOffset(line);
-        int offset = Math.max(1, Math.min(getLineLength(line),
-                getCaretPosition() - lineStart));
-        ArrayList<PopupHelpItem> helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false);
+    /**
+     * Compose and display syntax-sensitive help. Typically invoked upon typing a key.
+     * Results in a popup menu. Not used for creating tool tips.
+     */
+    private fun applySyntaxSensitiveHelp() {
+        if (!Globals.settings.getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) return
+        val line = caretLine
+        val lineStart = getLineStartOffset(line)
+        val offset = max(1, min(getLineLength(line), caretPosition - lineStart))
+        val helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false)
         if (helpItems == null && popupMenu != null) {
-            popupMenu.setVisible(false);
-            popupMenu = null;
-        }
-        if (helpItems != null) {
-            popupMenu = new JPopupMenu();
-            int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
-            for (PopupHelpItem helpItem : helpItems) {
-                JMenuItem menuItem = new JMenuItem("<html><tt>" + helpItem.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;") + "</tt>" + helpItem.getDescription() + "</html>");
-                if (helpItem.isExact()) {
-                    // The instruction name is completed so the role of the popup changes
-                    // to that of floating help to assist in operand specification.
-                    menuItem.setSelected(false);
-                    // Want menu item to be disabled but that causes rendered text to be hard to see.
-                    // Spent a couple hours on workaround with no success.  The UI uses
-                    // UIManager.get("MenuItem.disabledForeground") property to determine rendering
-                    // color but this is done each time the text is rendered (paintText). There is
-                    // no setter for the menu item itself.  The UIManager property is used for all
-                    // menus not just the editor's popup help menu, so you can't just set the disabled
-                    // foreground color to, say, black and leave it.  Tried several techniques without
-                    // success.  The only solution I found was a hack:  writing a BasicMenuItem UI
-                    // subclass that consists of hacked override of its paintText() method.  But even
-                    // this required use of "SwingUtilities2" class which has been deprecated for years
-                    // So in the end I decided just to leave the menu item enabled.  It will highlight
-                    // but does nothing if selected.  DPS 11-July-2014
-
-                    // menuItem.setEnabled(false);
+            popupMenu!!.isVisible = false
+            popupMenu = null
+        } else if (helpItems != null) {
+            popupMenu = JPopupMenu()
+            val length = PopupHelpItem.maxExampleLength(helpItems) + 2
+            for (helpItem in helpItems) {
+                val menuItem = JMenuItem(
+                    "<html><tt>${
+                        helpItem.padExampleToLength(length).replace(" ".toRegex(), "&nbsp;")
+                    }</tt>${helpItem.description}</html>"
+                )
+                if (helpItem.isExact) {
+                    menuItem.isSelected = false
                 } else {
-                    // Typing of instruction/directive name is still in progress; the action listener
-                    // will complete it when its menu item is selected.
-                    menuItem.addActionListener(new PopupHelpActionListener(helpItem.getTokenText(), helpItem.getExample()));
+                    menuItem.addActionListener(PopupHelpActionListener(helpItem.tokenText, helpItem.example))
                 }
-                popupMenu.add(menuItem);
+                popupMenu!!.add(menuItem)
             }
-            popupMenu.pack();
-            int y = lineToY(line);
-            int x = offsetToX(line, offset);
-            int height = painter.getFontMetrics(painter.getFont()).getHeight();
-            int width = painter.getFontMetrics(painter.getFont()).charWidth('w');
-            int menuXLoc = x + width + width + width;
-            int menuYLoc = y + height + height; // display below;
-            // Modified to always display popup BELOW the current line.
-            // This was done in response to negative student feedback about
-            // the popup blocking information they needed to (e.g. operands from
-            // previous instructions).  Note that if menu is long enough and
-            // current cursor position is low enough, the menu will bottom out at the
-            // bottom of the screen and extend above the current line. DPS 23-Dec-2010
-            popupMenu.show(this, menuXLoc, menuYLoc);
-            this.requestFocusInWindow(); // get cursor back from the menu
+            popupMenu!!.pack()
+            val y = lineToY(line)
+            val x = offsetToX(line, offset)
+            val height = painter!!.getFontMetrics(painter!!.font).height
+            val width = painter!!.getFontMetrics(painter!!.font).charWidth('w')
+            val menuXLoc = x + (width * 3)
+            val menuYLoc = y + (height * 2)
+            popupMenu!!.show(this, menuXLoc, menuYLoc)
+            requestFocusInWindow()
         }
     }
 
-
-    // Carries out the instruction/directive completion when popup menu
-    // item is selected.
-    private class PopupHelpActionListener implements ActionListener {
-        private final String tokenText;
-        private final String text;
-
-        public PopupHelpActionListener(String tokenText, String text) {
-            this.tokenText = tokenText;
-            this.text = text.split(" ")[0];
-        }
-
-        // Completion action will insert either a tab or space character following the
-        // completed instruction mnemonic.  Inserts a tab if tab key was pressed;
-        // space otherwise.  Get this information from the ActionEvent.
-        public void actionPerformed(ActionEvent e) {
-            String insert = (e.getActionCommand().charAt(0) == '\t') ? "\t" : " ";
-            if (this.tokenText.length() >= this.text.length()) {
-                overwriteSetSelectedText(insert);
-            } else {
-                overwriteSetSelectedText(this.text.substring(this.tokenText.length()) + insert);
-            }
-        }
-    }
-
-    private void checkAutoIndent(KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
-            int line = getCaretLine();
-            if (line <= 0)
-                return;
-            int previousLine = line - 1;
-            int previousLineLength = getLineLength(previousLine);
-            if (previousLineLength <= 0)
-                return;
-            String previous = getText(getLineStartOffset(previousLine), previousLineLength);
-            String indent = "";
-            for (int position = 0; position < Objects.requireNonNull(previous).length(); position++) {
-                char character = previous.charAt(position);
+    private fun checkAutoIndent(e: KeyEvent) {
+        if (e.keyCode == VK_ENTER) {
+            val line = caretLine
+            if (line <= 0) return
+            val previousLine = line - 1
+            val previousLineLength = getLineLength(previousLine)
+            if (previousLineLength <= 0) return
+            val previous = getText(getLineStartOffset(previousLine), previousLineLength)!!
+            var indent = ""
+            for (position in previous.indices) {
+                val character = previous[position]
                 if (character == '\t' || character == ' ') {
-                    indent += character;
+                    indent += character
                 } else {
-                    break;
+                    break
                 }
             }
-            overwriteSetSelectedText(indent);
+            overwriteSetSelectedText(indent)
         }
     }
 
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Called after processing a Key Pressed event. Will make popup menu disappear if
-    // Enter or Escape keys pressed.  Will update if Backspace or Delete pressed.
-    // Not really concerned with modifiers here.
-    private void checkPopupMenu(KeyEvent evt) {
-        if (evt.getKeyCode() == KeyEvent.VK_BACK_SPACE || evt.getKeyCode() == KeyEvent.VK_DELETE)
-            applySyntaxSensitiveHelp();
-        if ((evt.getKeyCode() == KeyEvent.VK_ENTER || evt.getKeyCode() == KeyEvent.VK_ESCAPE)
-                && popupMenu != null && popupMenu.isVisible())
-            popupMenu.setVisible(false);
+    /**
+     * Called after processing a Key Pressed event. Will make the popup menu disappear if
+     * Enter or Escape keys pressed.  Will update if Backspace or Delete pressed.
+     * Not really concerned with modifiers here.
+     */
+    private fun checkPopupMenu(e: KeyEvent) {
+        if (e.keyCode == VK_BACK_SPACE || e.keyCode == VK_DELETE) applySyntaxSensitiveHelp()
+        if ((e.keyCode == VK_ENTER || e.keyCode == VK_ESCAPE) && popupMenu != null && popupMenu!!.isVisible)
+            popupMenu!!.isVisible = false
     }
 
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Called before processing Key Pressed event. If popup menu is visible, will process
-    // tab and enter keys to select from the menu, and arrow keys to traverse the menu.
-    private boolean checkPopupCompletion(KeyEvent evt) {
-        if ((evt.getKeyCode() == KeyEvent.VK_UP || evt.getKeyCode() == KeyEvent.VK_DOWN)
-                && popupMenu != null && popupMenu.isVisible() && popupMenu.getComponentCount() > 0) {
-            MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-            if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton))
-                return false;
-            AbstractButton item = (AbstractButton) path[path.length - 1].getComponent();
-            if (item.isEnabled()) {
-                int index = popupMenu.getComponentIndex(item);
-                if (index < 0)
-                    return false;
-                if (evt.getKeyCode() == KeyEvent.VK_UP) {
-                    index = (index == 0) ? popupMenu.getComponentCount() - 1 : index - 1;
+    /**
+     * Called before processing a keypress event. If the popup menu is visible, will process
+     * tab and enter keys to select from the menu, and arrow keys to traverse the menu.
+     */
+    private fun checkPopupCompletion(e: KeyEvent): Boolean {
+        if ((e.keyCode == VK_UP || e.keyCode == VK_DOWN) &&
+            popupMenu != null && popupMenu!!.isVisible && popupMenu!!.componentCount > 0) {
+            val path = MenuSelectionManager.defaultManager().selectedPath
+            if (path.isEmpty() || path.last() !is AbstractButton) return false
+            val item = path.last().component as AbstractButton
+            if (item.isEnabled) {
+                var index = popupMenu!!.getComponentIndex(item)
+                if (index < 0) return false
+                index = if (e.keyCode == VK_UP) {
+                    if (index == 0) popupMenu!!.componentCount - 1 else index - 1
                 } else {
-                    index = (index == popupMenu.getComponentCount() - 1) ? 0 : index + 1;
+                    if (index == popupMenu!!.componentCount - 1) 0 else index + 1
                 }
-                // Neither popupMenu.setSelected() nor popupMenu.getSelectionModel().setSelectedIndex()
-                // have the desired effect (changing the menu item selected).  Found references to
-                // this in a Sun forum.  http://forums.sun.com/thread.jspa?forumID=57&threadID=641745
-                // The solution, as shown here, is to use invokeLater.
-                final MenuElement[] newPath = new MenuElement[2];
-                newPath[0] = path[0];
-                newPath[1] = (MenuElement) popupMenu.getComponent(index);
-                SwingUtilities.invokeLater(
-                        () -> MenuSelectionManager.defaultManager().setSelectedPath(newPath));
-                return true;
+                val newPath = arrayOf(path[0], popupMenu!!.getComponent(index) as MenuElement)
+                SwingUtilities.invokeLater {
+                    MenuSelectionManager.defaultManager().selectedPath = newPath
+                }
+                return true
+            } else return false
+        }
+        if ((e.keyCode == VK_TAB || e.keyCode == VK_ENTER) &&
+            popupMenu != null && popupMenu!!.isVisible && popupMenu!!.componentCount > 0) {
+            val path = MenuSelectionManager.defaultManager().selectedPath
+            if (path.isEmpty() || path.last() !is AbstractButton) return false
+            val item = path.last().component as AbstractButton
+            if (item.isEnabled) {
+                val listeners = item.actionListeners
+                if (listeners.isNotEmpty()) {
+                    listeners[0].actionPerformed(ActionEvent(
+                        item,
+                        ActionEvent.ACTION_FIRST,
+                        if (e.keyCode == VK_TAB) "\t" else " "
+                    ))
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    inner class ScrollLayout : LayoutManager {
+        private var center: Component? = null
+        private var right: Component? = null
+        private var bottom: Component? = null
+
+        private val leftOfScrollBar = vectorOf<Component>()
+
+        override fun addLayoutComponent(name: String?, comp: Component?) {
+            when (name) {
+                CENTER -> center = comp
+                RIGHT -> right = comp
+                BOTTOM -> bottom = comp
+                LEFT_OF_SCROLLBAR -> leftOfScrollBar.addElement(comp)
+            }
+        }
+
+        override fun removeLayoutComponent(comp: Component?) {
+            if (center == comp) center = null
+            else if (right == comp) right = null
+            else if (bottom == comp) bottom = null
+            else leftOfScrollBar.removeElement(comp)
+        }
+
+        override fun preferredLayoutSize(parent: Container?): Dimension {
+            val dim = Dimension()
+            val insets = insets
+            dim.width = insets.left + insets.right
+            dim.height = insets.top + insets.bottom
+
+            dim.width += center?.preferredSize?.width ?: 0
+            dim.height += center?.preferredSize?.height ?: 0
+            dim.width += right?.preferredSize?.width ?: 0
+            dim.height += bottom?.preferredSize?.height ?: 0
+
+            return dim
+        }
+
+        override fun minimumLayoutSize(parent: Container?): Dimension {
+            val dim = Dimension()
+            val insets = insets
+            dim.width = insets.left + insets.right
+            dim.height = insets.top + insets.bottom
+
+            dim.width += center?.minimumSize?.width ?: 0
+            dim.height += center?.minimumSize?.height ?: 0
+            dim.width += right?.minimumSize?.width ?: 0
+            dim.height += bottom?.minimumSize?.height ?: 0
+
+            return dim
+        }
+
+        override fun layoutContainer(parent: Container?) {
+            parent ?: return
+            val size = parent.size
+            val insets = parent.insets
+            var (iTop, iRight, iBottom, iLeft) = insets
+
+            val rightWidth = right?.preferredSize?.width ?: 0
+            val bottomHeight = bottom?.preferredSize?.height ?: 0
+            val centerWidth = size.width - rightWidth - iLeft - iRight
+            val centerHeight = size.height - bottomHeight - iTop - iBottom
+
+            center?.bounds = Rectangle(iLeft, iTop, centerWidth, centerHeight)
+            right?.bounds = Rectangle(iLeft + centerWidth, iTop, rightWidth, centerHeight)
+
+            val status = leftOfScrollBar.elements()
+            while (status.hasMoreElements()) {
+                val comp = status.nextElement()
+                val dim = comp.preferredSize
+                comp.bounds = Rectangle(iLeft, iTop + centerHeight, dim.width, bottomHeight)
+                iLeft += dim.width
+            }
+
+            bottom?.bounds = Rectangle(iLeft, iTop + centerHeight, size.width - rightWidth - iLeft - iRight, bottomHeight)
+        }
+    }
+
+    class CaretBlinker : ActionListener {
+        override fun actionPerformed(e: ActionEvent) {
+            if (focusedComponent?.hasFocus() == true) focusedComponent?.blinkCaret()
+        }
+    }
+
+    protected inner class MutableCaretEvent : CaretEvent(this) {
+        override fun getDot(): Int = caretPosition
+        override fun getMark(): Int = markPosition
+    }
+
+    protected inner class AdjustHandler : AdjustmentListener {
+        override fun adjustmentValueChanged(e: AdjustmentEvent) {
+            if (!scrollBarsInitialized) return
+            SwingUtilities.invokeLater {
+                if (e.adjustable == vertical) firstLine = vertical!!.value
+                else horizontalOffset = -horizontal!!.value
+            }
+        }
+    }
+
+    protected inner class ComponentHandler : ComponentAdapter() {
+        override fun componentResized(e: ComponentEvent) {
+            recalculateVisibleLines()
+            scrollBarsInitialized = true
+        }
+    }
+
+    protected inner class DocumentHandler : DocumentListener {
+        override fun insertUpdate(e: DocumentEvent) {
+            documentChanged(e)
+            val offset = e.offset
+            val length = e.length
+            // If the event was fired because of an undo or redo, select the inserted text.
+            if (unredoing) {
+                select(offset, offset + length)
+                return
+            }
+            val newStart =
+                if (selectionStart > offset || (selectionStart == selectionEnd && selectionStart == offset))
+                    selectionStart + length
+                else selectionStart
+            val newEnd = if (selectionEnd >= offset) selectionEnd + length else selectionEnd
+            select(newStart, newEnd)
+        }
+
+        override fun removeUpdate(e: DocumentEvent) {
+            documentChanged(e)
+            val offset = e.offset
+            val length = e.length
+            // If the event was fired because of an undo or redo, move the caret to the position of removal.
+            if (unredoing) {
+                select(offset, offset)
+                caretPosition = offset
+                return
+            }
+            val newStart = if (selectionStart > offset) {
+                if (selectionStart > offset + length) selectionStart - length else offset
+            } else selectionStart
+            val newEnd = if (selectionEnd > offset) {
+                if (selectionEnd > offset + length) selectionEnd - length else offset
+            } else selectionEnd
+            select(newStart, newEnd)
+        }
+
+        override fun changedUpdate(e: DocumentEvent) {}
+    }
+
+    inner class DragHandler : MouseMotionListener {
+        override fun mouseDragged(e: MouseEvent) {
+            if (popupMenu?.isVisible == true) return
+            isSelectionRectangular = (e.modifiersEx and CTRL_DOWN_MASK) != 0
+            select(markPosition, xyToOffset(e.x, e.y))
+        }
+
+        override fun mouseMoved(e: MouseEvent) {}
+    }
+
+    inner class FocusHandler : FocusListener {
+        override fun focusGained(e: FocusEvent) {
+            isCaretVisible = true
+            focusedComponent = this@JEditTextArea
+        }
+
+        override fun focusLost(e: FocusEvent) {
+            isCaretVisible = false
+            focusedComponent = null
+        }
+    }
+
+    // Allows use of mouse wheel to scroll.
+    // Scrolling as fast as I could, the maximum number of notches I could get in
+    // one MouseWheelEvent was 3. Normally it will be 1. Nonetheless,
+    // this will scroll up to the number in the event, subject to
+    // scrolling ability of the text in its viewport.
+    inner class MouseWheelHandler : MouseWheelListener {
+        override fun mouseWheelMoved(e: MouseWheelEvent) {
+            val maxMotion = abs(e.wheelRotation) * LINES_PER_MOUSE_WHEEL_NOTCH
+            firstLine = if (e.wheelRotation < 0) {
+                firstLine - min(maxMotion, firstLine)
             } else {
-                return false;
+                firstLine + (min(maxMotion, max(0, lineCount - (firstLine + visibleLines))))
             }
         }
-        if ((evt.getKeyCode() == KeyEvent.VK_TAB || evt.getKeyCode() == KeyEvent.VK_ENTER)
-                && popupMenu != null && popupMenu.isVisible() && popupMenu.getComponentCount() > 0) {
-            MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-            if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton))
-                return false;
-            AbstractButton item = (AbstractButton) path[path.length - 1].getComponent();
-            if (item.isEnabled()) {
-                ActionListener[] listeners = item.getActionListeners();
-                if (listeners.length > 0) {
-                    listeners[0].actionPerformed(new ActionEvent(item, ActionEvent.ACTION_FIRST,
-                            (evt.getKeyCode() == KeyEvent.VK_TAB) ? "\t" : " "));
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
+    inner class MouseHandler : MouseAdapter() {
+        override fun mousePressed(e: MouseEvent) {
+            requestFocus()
+            // Focus events aren't fired sometimes...
+            isCaretVisible = true
+            focusedComponent = this@JEditTextArea
 
-    static {
-        caretTimer = new Timer(500, new CaretBlinker());
-        caretTimer.setInitialDelay(500);
-        caretTimer.start();
+            if ((e.modifiersEx and BUTTON3_DOWN_MASK) != 0 && popupMenu != null) {
+                popupMenu!!.show(painter!!, e.x, e.y)
+                return
+            }
+
+            val line = yToLine(e.y)
+            val offset = xToOffset(line, e.x)
+            val dot = getLineStartOffset(line) + offset
+
+            when (e.clickCount) {
+                1 -> e.doSingleClick(dot)
+                2 -> try {
+                    doDoubleClick(line, offset, dot)
+                } catch (bl: BadLocationException) {
+                    bl.printStackTrace()
+                }
+                3 -> doTripleClick(line)
+            }
+        }
+
+        private fun MouseEvent.doSingleClick(dot: Int) {
+            if ((modifiersEx and SHIFT_DOWN_MASK) != 0) {
+                isSelectionRectangular = (modifiersEx and CTRL_DOWN_MASK) != 0
+                select(markPosition, dot)
+            } else caretPosition = dot
+        }
+
+        private fun doDoubleClick(line: Int, offset: Int, dot: Int) {
+            // Ignore empty lines
+            if (getLineLength(line) == 0) return
+            try {
+                var bracket = document?.findMatchingBracket(max(0, dot - 1)) ?: -1
+                if (bracket != -1) {
+                    var mark = markPosition
+                    if (bracket > mark) {
+                        bracket++
+                        mark--
+                    }
+                    select(mark, bracket)
+                    return
+                }
+            } catch (bl: BadLocationException) {
+                bl.printStackTrace()
+            }
+
+            // Okay, it's not a bracket; select the word.
+            val lineText = getLineText(line)!!
+            var ch = lineText[max(0, offset - 1)]
+            val noWordSep = document?.getProperty("noWordSep") as? String ?: ""
+
+            // If the user clicked on a non-letter character, we select the surrounding non-letters
+            val selectNoLetter = !ch.isLetterOrDigit() && noWordSep.indexOf(ch) == -1
+
+            var wordStart = 0
+
+            for (i in offset - 1 downTo 0) {
+                ch = lineText[i]
+                if (selectNoLetter xor (!ch.isLetterOrDigit() && noWordSep.indexOf(ch) == -1)) {
+                    wordStart = i + 1
+                    break
+                }
+            }
+
+            var wordEnd = lineText.length
+            for (i in offset..<lineText.length) {
+                ch = lineText[i]
+                if (selectNoLetter xor (!ch.isLetterOrDigit() && noWordSep.indexOf(ch) == -1)) {
+                    wordEnd = i
+                    break
+                }
+            }
+
+            val lineStart = getLineStartOffset(line)
+            select(lineStart + wordStart, lineStart + wordEnd)
+        }
+
+        private fun doTripleClick(line: Int) {
+            select(getLineStartOffset(line), getLineEndOffset(line) - 1)
+        }
+    }
+
+    inner class CaretUndo(private var start: Int, private var end: Int) : AbstractUndoableEdit() {
+        override fun isSignificant(): Boolean = false
+
+        override fun getPresentationName(): String = "caret move"
+
+        override fun undo() {
+            super.undo()
+            select(start, end)
+        }
+
+        override fun redo() {
+            super.redo()
+            select(start, end)
+        }
+
+        override fun addEdit(edit: UndoableEdit): Boolean {
+            if (edit !is CaretUndo) return false
+            start = edit.start
+            end = edit.end
+            edit.die()
+            return true
+        }
+    }
+
+    private inner class PopupHelpActionListener(
+        private val tokenText: String,
+        text: String
+    ) : ActionListener {
+        private val text: String = text.split(" ".toRegex())[0]
+
+        override fun actionPerformed(e: ActionEvent) {
+            val insert = if (e.actionCommand[0] == '\t') "\t" else " "
+            if (tokenText.length >= text.length) {
+                overwriteSetSelectedText(insert)
+            } else {
+                overwriteSetSelectedText(text.substring(tokenText.length) + insert)
+            }
+        }
     }
 }
-
-

@@ -169,7 +169,7 @@ object SyntaxUtilities {
     fun Graphics.paintSyntaxLine(
         at: Pair<Float, Float>,
         line: Segment,
-        tokens: Token,
+        tokens: Token?,
         styles: Array<SyntaxStyle>,
         expander: TabExpander,
     ): Float {
@@ -179,18 +179,18 @@ object SyntaxUtilities {
         val defaultColor = color
         var offset = 0
         while (true) {
-            val type = tokens.type
+            val type = tokens?.type
             if (type == Token.Type.END) break
-            val length = tokens.length
+            val length = tokens?.length
             if (type == Token.Type.NULL) {
                 if (defaultColor != color) color = defaultColor
                 if (defaultFont != font) font = defaultFont
-            } else styles[type.rawValue.toInt()].setGraphicsFlags(this, defaultFont)
-            line.count = length
+            } else styles[type?.rawValue?.toInt() ?: NULL.rawValue.toInt()].setGraphicsFlags(this, defaultFont)
+            line.count = length ?: 0
             x = Utilities.drawTabbedText(line, x, y, this as Graphics2D, expander, 0)
-            line.offset += length
-            offset += length
-            tokens = tokens.next ?: break
+            line.offset += length ?: 0
+            offset += length ?: 0
+            tokens = tokens?.next ?: break
         }
         return x
     }

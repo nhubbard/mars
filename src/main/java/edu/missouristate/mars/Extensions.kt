@@ -24,6 +24,7 @@
 package edu.missouristate.mars
 
 import java.awt.Graphics
+import java.awt.Insets
 import java.awt.Polygon
 import java.awt.Window
 import java.awt.event.WindowAdapter
@@ -319,3 +320,8 @@ fun Double.toRadians() = Math.toRadians(this)
 
 /** Check if a character is a space character. */
 fun Char.isSpaceChar() = Character.isSpaceChar(this)
+
+operator fun Insets.component1() = top
+operator fun Insets.component2() = right
+operator fun Insets.component3() = bottom
+operator fun Insets.component4() = right

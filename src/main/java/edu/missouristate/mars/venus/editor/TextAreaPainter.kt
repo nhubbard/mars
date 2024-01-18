@@ -42,7 +42,7 @@ class TextAreaPainter(
     defaults: TextAreaDefaults
 ) : JComponent(), TabExpander {
     var currentLineIndex: Int
-    lateinit var currentLineTokens: Token
+    var currentLineTokens: Token? = null
     val currentLine: Segment
 
     /** The styles of text. */
@@ -379,21 +379,21 @@ class TextAreaPainter(
 
             if (textArea.isSelectionRectangular) {
                 val lineLen = textArea.getLineLength(line)
-                x1 = textArea._offsetToX(
+                x1 = textArea.fastOffsetToX(
                     line,
                     min(lineLen, selectionStart - textArea.getLineStartOffset(selectionStartLine))
                 )
-                x2 = textArea._offsetToX(
+                x2 = textArea.fastOffsetToX(
                     line,
                     min(lineLen, selectionEnd - textArea.getLineStartOffset(selectionEndLine))
                 )
                 if (x1 == x2) x2++
             } else if (selectionStartLine == selectionEndLine) {
-                x1 = textArea._offsetToX(line, selectionStart - lineStart)
-                x2 = textArea._offsetToX(line, selectionEnd - lineStart)
+                x1 = textArea.fastOffsetToX(line, selectionStart - lineStart)
+                x2 = textArea.fastOffsetToX(line, selectionEnd - lineStart)
             } else if (line == selectionEndLine) {
                 x1 = 0
-                x2 = textArea._offsetToX(line, selectionEnd - lineStart)
+                x2 = textArea.fastOffsetToX(line, selectionEnd - lineStart)
             } else {
                 x1 = 0
                 x2 = width
@@ -409,7 +409,7 @@ class TextAreaPainter(
         val position = textArea.bracketPosition
         if (position == -1) return
         y += fontMetrics.leading + fontMetrics.maxDescent
-        val x = textArea._offsetToX(line, position)
+        val x = textArea.fastOffsetToX(line, position)
         color = bracketHighlightColor
         // Hack: since there is no fast way to get the character from the bracket matching routine, use '(' since all
         // brackets probably have the same width anyway; this is a monospaced font after all.
@@ -420,7 +420,7 @@ class TextAreaPainter(
         var y = y
         if (textArea.isCaretVisible) {
             val offset = textArea.caretPosition - textArea.getLineStartOffset(line)
-            val caretX = textArea._offsetToX(line, offset)
+            val caretX = textArea.fastOffsetToX(line, offset)
             val caretWidth = if (isBlockCaretEnabled || textArea.isOverwriteEnabled) fontMetrics.charWidth('w') else 1
             y += fontMetrics.leading + fontMetrics.maxDescent
             val height = fontMetrics.height

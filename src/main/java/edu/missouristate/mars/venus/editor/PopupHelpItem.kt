@@ -44,8 +44,8 @@ class PopupHelpItem @JvmOverloads constructor(
          * Utility method to traverse ArrayList of PopupHelpItem objects and return String length of the longest example.
          */
         @JvmStatic
-        fun maxExampleLength(matches: ArrayList<PopupHelpItem?>?): Int =
-            matches?.mapNotNull { it?.exampleLength }?.maxOrNull() ?: 0
+        fun maxExampleLength(matches: ArrayList<PopupHelpItem>): Int =
+            matches.map { it.exampleLength }.maxOrNull() ?: 0
     }
 
     var description: String? = if (isExact) description else {
