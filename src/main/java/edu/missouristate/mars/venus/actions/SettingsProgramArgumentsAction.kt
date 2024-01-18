@@ -18,36 +18,33 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.Globals.gui
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.JCheckBoxMenuItem
+import javax.swing.KeyStroke
 
 /**
  * Action class for the Settings menu item to control whether or not
  * program arguments can be entered and used.  If so, a text field
  * will be displayed where they can be interactively entered.
  */
-public class SettingsProgramArgumentsAction extends GuiAction {
-
-
-    public SettingsProgramArgumentsAction(String name, Icon icon, String descrip,
-                                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
-    public void actionPerformed(ActionEvent e) {
-        boolean selected = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-        Globals.getSettings().setBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS, selected);
+class SettingsProgramArgumentsAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        val selected = (e.source as JCheckBoxMenuItem).isSelected
+        settings.setBooleanSetting(Settings.ENABLE_PROGRAM_ARGUMENTS, selected)
         if (selected) {
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().addProgramArgumentsPanel();
+            gui!!.mainPane.executePane.textSegmentWindow.addProgramArgumentsPanel()
         } else {
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().removeProgramArgumentsPanel();
+            gui!!.mainPane.executePane.textSegmentWindow.removeProgramArgumentsPanel()
         }
     }
-
 }

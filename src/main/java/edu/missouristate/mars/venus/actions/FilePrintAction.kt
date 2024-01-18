@@ -18,28 +18,26 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.HardcopyWriter;
-import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.panes.EditPane;
-
-import java.awt.event.*;
-import javax.swing.*;
-import java.io.*;
-import java.util.*;
+import edu.missouristate.mars.venus.HardcopyWriter
+import edu.missouristate.mars.venus.HardcopyWriter.PrintCanceledException
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.StringReader
+import java.util.*
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the File -> Print menu item
  */
-public class FilePrintAction extends GuiAction {
-
-    public FilePrintAction(String name, Icon icon, String descrip,
-                           Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
+class FilePrintAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
     /**
      * Uses the HardcopyWriter class developed by David Flanagan for the book
      * "Java Examples in a Nutshell".  It will do basic printing of multipage
@@ -48,41 +46,43 @@ public class FilePrintAction extends GuiAction {
      *
      * @param e component triggering this call
      */
-
-    public void actionPerformed(ActionEvent e) {
-        EditPane editPane = mainUI.getMainPane().getEditPane();
-        if (editPane == null) return;
-        int fontsize = 10;  // fixed at 10 point
-        double margins = .5; // all margins (left,right,top,bottom) fixed at .5"
-        HardcopyWriter out;
+    override fun actionPerformed(e: ActionEvent) {
+        val editPane = mainUI.mainPane.editPane ?: return
+        val fontsize = 10 // fixed at 10 point
+        val margins = .5 // all margins (left,right,top,bottom) fixed at .5"
+        val out: HardcopyWriter
         try {
-            out = new HardcopyWriter(mainUI, editPane.getFilename(),
-                    fontsize, margins, margins, margins, margins);
-        } catch (HardcopyWriter.PrintCanceledException pce) {
-            return;
+            out = HardcopyWriter(
+                mainUI, editPane.filename,
+                fontsize, margins, margins, margins, margins
+            )
+        } catch (pce: PrintCanceledException) {
+            return
         }
-        BufferedReader in = new BufferedReader(new StringReader(editPane.getSource()));
-        int lineNumberDigits = Integer.valueOf(editPane.getSourceLineCount()).toString().length();
-        StringBuilder line;
-        StringBuilder lineNumberString = new StringBuilder();
-        int lineNumber = 0;
-        int numchars;
+        val `in` = BufferedReader(StringReader(editPane.source))
+        val lineNumberDigits = editPane.sourceLineCount.toString().length
+        var line: java.lang.StringBuilder?
+        var lineNumberString = java.lang.StringBuilder()
+        var lineNumber = 0
         try {
-            line = Optional.ofNullable(in.readLine()).map(StringBuilder::new).orElse(null);
+            line = Optional.ofNullable(`in`.readLine()).map { str: String? -> StringBuilder(str) }
+                .orElse(null)
             while (line != null) {
                 if (editPane.showingLineNumbers()) {
-                    lineNumber++;
-                    lineNumberString = new StringBuilder(Integer.valueOf(lineNumber).toString() + ": ");
-                    while (lineNumberString.length() < lineNumberDigits) {
-                        lineNumberString.append(" ");
+                    lineNumber++
+                    lineNumberString = java.lang.StringBuilder("$lineNumber: ")
+                    while (lineNumberString.length < lineNumberDigits) {
+                        lineNumberString.append(" ")
                     }
                 }
-                line = new StringBuilder(lineNumberString + line.toString() + "\n");
-                out.write(line.toString().toCharArray(), 0, line.length());
-                line = Optional.ofNullable(in.readLine()).map(StringBuilder::new).orElse(null);
+                line = StringBuilder(lineNumberString.toString() + line.toString() + "\n")
+                out.write(line.toString().toCharArray(), 0, line.length)
+                line = Optional.ofNullable(`in`.readLine()).map { str: String? -> StringBuilder(str) }
+                    .orElse(null)
             }
-            in.close();
-            out.close();
-        } catch (IOException ignored) {}
+            `in`.close()
+            out.close()
+        } catch (ignored: IOException) {
+        }
     }
 }

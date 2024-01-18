@@ -18,28 +18,23 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.simulator.Simulator.Companion.getInstance
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action class for the Run -> Pause menu item (and toolbar icon)
  */
-public class RunPauseAction extends GuiAction {
-
-    public RunPauseAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
-    public void actionPerformed(ActionEvent e) {
-        Simulator.getInstance().stopExecution(this);
+class RunPauseAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        getInstance().stopExecution(this)
         // RunGoAction's "paused" method will do the cleanup.
     }
-
 }

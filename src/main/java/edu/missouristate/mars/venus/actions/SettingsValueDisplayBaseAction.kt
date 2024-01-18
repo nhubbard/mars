@@ -18,30 +18,27 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.Globals.gui
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.JCheckBoxMenuItem
+import javax.swing.KeyStroke
 
 /**
  * Action class for the Settings menu item to control number base (10 or 16) of memory/register contents.
  */
-public class SettingsValueDisplayBaseAction extends GuiAction {
-
-
-    public SettingsValueDisplayBaseAction(String name, Icon icon, String descrip,
-                                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
+class SettingsValueDisplayBaseAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        val isHex = (e.source as JCheckBoxMenuItem).isSelected
+        gui!!.mainPane.executePane.valueDisplayBaseChooser.isSelected = isHex
+        settings.setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, isHex)
     }
-
-    public void actionPerformed(ActionEvent e) {
-        boolean isHex = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-        Globals.getGui().getMainPane().getExecutePane().getValueDisplayBaseChooser().setSelected(isHex);
-        Globals.getSettings().setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, isHex);
-    }
-
 }

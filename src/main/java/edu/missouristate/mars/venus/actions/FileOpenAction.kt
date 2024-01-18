@@ -18,41 +18,36 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.util.ArrayList;
-import java.awt.event.*;
-import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import java.io.*;
-import java.beans.*;
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import java.beans.PropertyChangeListener
+import java.io.File
+import javax.swing.Icon
+import javax.swing.JFileChooser
+import javax.swing.KeyStroke
+import javax.swing.filechooser.FileFilter
 
 /**
  * Action  for the File -> Open menu item
  */
-public class FileOpenAction extends GuiAction {
-
-    private File mostRecentlyOpenedFile;
-    private JFileChooser fileChooser;
-    private int fileFilterCount;
-    private ArrayList<FileFilter> fileFilterList;
-    private PropertyChangeListener listenForUserAddedFileFilter;
-
-    public FileOpenAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
+class FileOpenAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    private val mostRecentlyOpenedFile: File? = null
+    private val fileChooser: JFileChooser? = null
+    private val fileFilterCount = 0
+    private val fileFilterList: ArrayList<FileFilter>? = null
+    private val listenForUserAddedFileFilter: PropertyChangeListener? = null
 
     /**
      * Launch a file chooser for name of file to open
      *
      * @param e component triggering this call
      */
-    public void actionPerformed(ActionEvent e) {
-        mainUI.getEditor().open();
+    override fun actionPerformed(e: ActionEvent) {
+        mainUI.editor.open()
     }
-
 }

@@ -18,31 +18,27 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the File -> New menu item
  */
-public class FileNewAction extends GuiAction {
-
-    public FileNewAction(String name, Icon icon, String descrip,
-                         Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
+class FileNewAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
     /**
      * Code to create a new document.  It clears the source code window.
      *
      * @param e component triggering this call
      */
-    public void actionPerformed(ActionEvent e) {
-        mainUI.getEditor().newFile();
+    override fun actionPerformed(e: ActionEvent) {
+        mainUI.editor.newFile()
     }
 }
-	
+

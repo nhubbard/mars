@@ -18,29 +18,25 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.JCheckBoxMenuItem
+import javax.swing.KeyStroke
 
 /**
  * Action class for the Settings menu item to control use of popup dialog for input syscalls.
  */
-public class SettingsPopupInputAction extends GuiAction {
-
-
-    public SettingsPopupInputAction(String name, Icon icon, String descrip,
-                                    Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
+class SettingsPopupInputAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        val usePopup = (e.source as JCheckBoxMenuItem).isSelected
+        settings.setBooleanSetting(Settings.POPUP_SYSCALL_INPUT, usePopup)
     }
-
-    public void actionPerformed(ActionEvent e) {
-        boolean usePopup = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-        Globals.getSettings().setBooleanSetting(Settings.POPUP_SYSCALL_INPUT, usePopup);
-    }
-
 }

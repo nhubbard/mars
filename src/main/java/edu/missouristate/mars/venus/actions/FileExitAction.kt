@@ -18,30 +18,26 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the File -> Exit menu item
  */
-public class FileExitAction extends GuiAction {
-
-    public FileExitAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
+class FileExitAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
     /**
      * Exit MARS, unless one or more files have unsaved edits and user cancels.
      */
-    public void actionPerformed(ActionEvent e) {
-        if (mainUI.getEditor().closeAll()) {
-            System.exit(0);
+    override fun actionPerformed(e: ActionEvent) {
+        if (mainUI.editor.closeAll()) {
+            System.exit(0)
         }
     }
 }

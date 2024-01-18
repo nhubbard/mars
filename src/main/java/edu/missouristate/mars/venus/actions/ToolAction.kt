@@ -18,13 +18,11 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.tools.*;
-
-import javax.swing.*;
-import java.awt.event.*;
+import edu.missouristate.mars.tools.MarsTool
+import java.awt.event.ActionEvent
+import javax.swing.AbstractAction
 
 /**
  * Connects a MarsTool class (class that implements MarsTool interface) to
@@ -33,35 +31,23 @@ import java.awt.event.*;
  *
  * @author Pete Sanderson
  * @version August 2005
+ * @param toolClass Class object for the associated MarsTool subclass
+ * @param toolName  Name of this tool, for the menu.
  */
-
-public class ToolAction extends AbstractAction {
-    private final Class<? super MarsTool> toolClass; //MarsTool tool;
-
-    /**
-     * Simple constructor.
-     *
-     * @param toolClass Class object for the associated MarsTool subclass
-     * @param toolName  Name of this tool, for the menu.
-     */
-    public ToolAction(Class<? super MarsTool> toolClass, String toolName) {
-        super(toolName, null);
-        this.toolClass = toolClass;
-    }
-
-
+class ToolAction(
+    private val toolClass: Class<in MarsTool>, toolName: String?
+) : AbstractAction(toolName, null) {
     /**
      * Response when tool's item selected from menu.  Invokes tool's action() method.
      *
      * @param e the ActionEvent that triggered this call
      */
-    public void actionPerformed(ActionEvent e) {
+    override fun actionPerformed(e: ActionEvent) {
         try {
             // An exception should not occur here because we got here only after
             // already successfully creating an instance from the same Class object
             // in ToolLoader's loadMarsTools() method.
-            ((MarsTool) this.toolClass.getDeclaredConstructor().newInstance()).action();
-        } catch (Exception ignored) {
-        }
+            (toolClass.getDeclaredConstructor().newInstance() as MarsTool).action()
+        } catch (ignored: Exception) { }
     }
 }

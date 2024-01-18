@@ -18,30 +18,24 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the File -> Save menu item
  */
-public class FileSaveAction extends GuiAction {
-
-    public FileSaveAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
+class FileSaveAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
     /**
      * saves the file, if not alredy saved it will do a saveAs
      */
-
-    public void actionPerformed(ActionEvent e) {
-        mainUI.getEditor().save();
+    override fun actionPerformed(e: ActionEvent) {
+        mainUI.editor.save()
     }
-
 }

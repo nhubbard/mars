@@ -18,16 +18,19 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.FileStatus;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.Globals.gui
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.Settings
+import edu.missouristate.mars.simulator.Simulator.Companion.getInstance
+import edu.missouristate.mars.venus.FileStatus
+import edu.missouristate.mars.venus.FileStatus.Companion.status
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.JCheckBoxMenuItem
+import javax.swing.KeyStroke
 
 /**
  * Action class for the Settings menu item to control delayed branching.
@@ -40,30 +43,25 @@ import javax.swing.*;
  * Note: This action is disabled while the MIPS program is running.
  * The user need only pause or stop execution to re-enable it.
  */
-public class SettingsDelayedBranchingAction extends GuiAction {
-
-
-    public SettingsDelayedBranchingAction(String name, Icon icon, String descrip,
-                                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
-    public void actionPerformed(ActionEvent e) {
-        Globals.getSettings().setBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED,
-                ((JCheckBoxMenuItem) e.getSource()).isSelected());
+class SettingsDelayedBranchingAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        settings.setBooleanSetting(
+            Settings.DELAYED_BRANCHING_ENABLED,
+            (e.source as JCheckBoxMenuItem).isSelected
+        )
         // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
-        if (Globals.getGui() != null &&
-                (FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNABLE ||
-                        FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNING ||
-                        FileStatus.Companion.getStatus() == FileStatus.StatusType.TERMINATED)
+        if (gui != null &&
+            (status == FileStatus.StatusType.RUNNABLE || status == FileStatus.StatusType.RUNNING || status == FileStatus.StatusType.TERMINATED)
         ) {
             // Stop execution if executing -- should NEVER happen because this
             // Action's widget is disabled during MIPS execution.
-            if (FileStatus.Companion.getStatus() == FileStatus.StatusType.RUNNING) {
-                Simulator.getInstance().stopExecution(this);
+            if (status == FileStatus.StatusType.RUNNING) {
+                getInstance().stopExecution(this)
             }
-            Globals.getGui().getRunAssembleAction().actionPerformed(null);
+            gui!!.runAssembleAction.actionPerformed(null)
         }
     }
-
 }

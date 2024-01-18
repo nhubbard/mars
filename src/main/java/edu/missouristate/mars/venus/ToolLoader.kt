@@ -60,7 +60,7 @@ class ToolLoader {
             // traverse array list and build menu
             for ((marsToolClass, marsToolInstance) in marsToolList) menu.add(
                 ToolAction(
-                    marsToolClass,
+                    marsToolClass!!,
                     marsToolInstance.toolName
                 )
             )

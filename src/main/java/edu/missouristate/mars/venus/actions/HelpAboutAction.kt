@@ -18,39 +18,43 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Globals.copyrightHolders
+import edu.missouristate.mars.Globals.copyrightYears
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.ImageIcon
+import javax.swing.JOptionPane
+import javax.swing.KeyStroke
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.VenusUI;
-
-import java.awt.event.*;
-import javax.swing.*;
-	
-	/**
+/**
  * Action  for the Help -> About menu item
  */
-public class HelpAboutAction extends GuiAction {
-    public HelpAboutAction(String name, Icon icon, String descrip,
-                           Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
+class HelpAboutAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        JOptionPane.showMessageDialog(
+            mainUI,
+            """MARS ${Globals.version}    Copyright $copyrightYears
+$copyrightHolders
+MARS is the Mips Assembler and Runtime Simulator.
 
-    public void actionPerformed(ActionEvent e) {
-        JOptionPane.showMessageDialog(mainUI,
-                "MARS " + Globals.version + "    Copyright " + Globals.getCopyrightYears() + "\n" +
-                        Globals.getCopyrightHolders() + "\n" +
-                        "MARS is the Mips Assembler and Runtime Simulator.\n\n" +
-                        "Mars image courtesy of NASA/JPL.\n" +
-                        "Toolbar and menu icons are from:\n" +
-                        "  *  Tango Desktop Project (tango.freedesktop.org),\n" +
-                        "  *  glyFX (www.glyfx.com) Common Toolbar Set,\n" +
-                        "  *  KDE-Look (www.kde-look.org) crystalline-blue-0.1,\n" +
-                        "  *  Icon-King (www.icon-king.com) Nuvola 1.0.\n" +
-                        "Print feature adapted from HardcopyWriter class in David Flanagan's\n" +
-                        "Java Examples in a Nutshell 3rd Edition, O'Reilly, ISBN 0-596-00620-9.",
-                "About Mars",
-                JOptionPane.INFORMATION_MESSAGE,
-                new ImageIcon("images/RedMars50.gif"));
+Mars image courtesy of NASA/JPL.
+Toolbar and menu icons are from:
+  *  Tango Desktop Project (tango.freedesktop.org),
+  *  glyFX (www.glyfx.com) Common Toolbar Set,
+  *  KDE-Look (www.kde-look.org) crystalline-blue-0.1,
+  *  Icon-King (www.icon-king.com) Nuvola 1.0.
+Print feature adapted from HardcopyWriter class in David Flanagan's
+Java Examples in a Nutshell 3rd Edition, O'Reilly, ISBN 0-596-00620-9.""",
+            "About Mars",
+            JOptionPane.INFORMATION_MESSAGE,
+            ImageIcon("images/RedMars50.gif")
+        )
     }
 }

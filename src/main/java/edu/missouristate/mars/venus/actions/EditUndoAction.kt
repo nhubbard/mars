@@ -18,42 +18,40 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.panes.EditPane;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the Edit -> Undo menu item
  */
-public class EditUndoAction extends GuiAction {
-
-    public EditUndoAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-        setEnabled(false);
+class EditUndoAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    init {
+        isEnabled = false
     }
 
     /**
      * Adapted from TextComponentDemo.java in the
      * Java Tutorial "Text Component Features"
      */
-    public void actionPerformed(ActionEvent e) {
-        EditPane editPane = mainUI.getMainPane().getEditPane();
+    override fun actionPerformed(e: ActionEvent) {
+        val editPane = mainUI.mainPane.editPane
         if (editPane != null) {
-            editPane.undo();
-            updateUndoState();
-            mainUI.getEditRedoAction().updateRedoState();
+            editPane.undo()
+            updateUndoState()
+            mainUI.editRedoAction.updateRedoState()
         }
     }
 
-    public void updateUndoState() {
-        EditPane editPane = mainUI.getMainPane().getEditPane();
-        setEnabled(editPane != null && editPane.getUndoManager().canUndo());
+    fun updateUndoState() {
+        val editPane = mainUI.mainPane.editPane
+        isEnabled = editPane != null && editPane.undoManager.canUndo()
         //new Throwable("update undo state: "+(editPane != null && editPane.getUndoManager().canUndo())).printStackTrace();
     }
 }

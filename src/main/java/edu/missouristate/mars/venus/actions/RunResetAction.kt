@@ -18,36 +18,38 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-package edu.missouristate.mars.venus.actions;
-
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.venus.FileStatus;
-import edu.missouristate.mars.venus.VenusUI;
-import edu.missouristate.mars.venus.panes.ExecutePane;
-
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.mips.hardware.Coprocessor0
+import edu.missouristate.mars.mips.hardware.Coprocessor1
+import edu.missouristate.mars.mips.hardware.Memory.Companion.dataBaseAddress
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.util.SystemIO.resetFiles
+import edu.missouristate.mars.venus.FileStatus
+import edu.missouristate.mars.venus.FileStatus.Companion.status
+import edu.missouristate.mars.venus.VenusUI
+import edu.missouristate.mars.venus.VenusUI.Companion.reset
+import edu.missouristate.mars.venus.VenusUI.Companion.started
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.KeyStroke
 
 /**
  * Action  for the Run -> Reset menu item
  */
-public class RunResetAction extends GuiAction {
-
-    public RunResetAction(String name, Icon icon, String descrip,
-                          Integer mnemonic, KeyStroke accel, VenusUI gui) {
-        super(name, icon, descrip, mnemonic, accel, gui);
-    }
-
+class RunResetAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
     /**
      * reset GUI components and MIPS resources
      */
-    public void actionPerformed(ActionEvent e) {
-        RunGoAction.resetMaxSteps();
-        String name = this.getValue(Action.NAME).toString();
-        ExecutePane executePane = mainUI.getMainPane().getExecutePane();
+    override fun actionPerformed(e: ActionEvent) {
+        RunGoAction.resetMaxSteps()
+        val name = this.getValue(NAME).toString()
+        val executePane = mainUI.mainPane.executePane
         // The difficult part here is resetting the data segment.  Two approaches are:
         // 1. After each assembly, get a deep copy of the Globals.memory array
         //    containing data segment.  Then replace it upon reset.
@@ -57,39 +59,42 @@ public class RunResetAction extends GuiAction {
         // I am choosing the second approach although it will slow down the reset
         // operation.  The first approach requires additional Memory class methods.
         try {
-            Globals.program.assemble(RunAssembleAction.getMIPSProgramsToAssemble(),
-                    RunAssembleAction.getExtendedAssemblerEnabled(),
-                    RunAssembleAction.getWarningsAreErrors());
-        } catch (ProcessingException pe) {
-            mainUI.getMessagesPane().postMarsMessage(
-                    //pe.errors().generateErrorReport());
-                    "Unable to reset.  Please close file then re-open and re-assemble.\n");
-            return;
+            Globals.program.assemble(
+                RunAssembleAction.getMIPSProgramsToAssemble(),
+                RunAssembleAction.getExtendedAssemblerEnabled(),
+                RunAssembleAction.getWarningsAreErrors()
+            )
+        } catch (pe: ProcessingException) {
+            mainUI.messagesPane.postMarsMessage( //pe.errors().generateErrorReport());
+                "Unable to reset.  Please close file then re-open and re-assemble.\n"
+            )
+            return
         }
-        RegisterFile.resetRegisters();
-        Coprocessor1.resetRegisters();
-        Coprocessor0.resetRegisters();
+        RegisterFile.resetRegisters()
+        Coprocessor1.resetRegisters()
+        Coprocessor0.resetRegisters()
 
-        executePane.getRegistersWindow().clearHighlighting();
-        executePane.getRegistersWindow().updateRegisters();
-        executePane.getCoprocessor1Window().clearHighlighting();
-        executePane.getCoprocessor1Window().updateRegisters();
-        executePane.getCoprocessor0Window().clearHighlighting();
-        executePane.getCoprocessor0Window().updateRegisters();
-        executePane.getDataSegmentWindow().highlightCellForAddress(Memory.getDataBaseAddress());
-        executePane.getDataSegmentWindow().clearHighlighting();
-        executePane.getTextSegmentWindow().resetModifiedSourceCode();
-        executePane.getTextSegmentWindow().setCodeHighlighting(true);
-        executePane.getTextSegmentWindow().highlightStepAtPC();
-        mainUI.getRegistersPane().setSelectedComponent(executePane.getRegistersWindow());
-        FileStatus.Companion.setStatus(FileStatus.StatusType.RUNNABLE);
-        VenusUI.setReset(true);
-        VenusUI.setStarted(false);
+        executePane.registersWindow.clearHighlighting()
+        executePane.registersWindow.updateRegisters()
+        executePane.coprocessor1Window.clearHighlighting()
+        executePane.coprocessor1Window.updateRegisters()
+        executePane.coprocessor0Window.clearHighlighting()
+        executePane.coprocessor0Window.updateRegisters()
+        executePane.dataSegmentWindow.highlightCellForAddress(dataBaseAddress)
+        executePane.dataSegmentWindow.clearHighlighting()
+        executePane.textSegmentWindow.resetModifiedSourceCode()
+        executePane.textSegmentWindow.codeHighlighting = true
+        executePane.textSegmentWindow.highlightStepAtPC()
+        mainUI.registersPane.selectedComponent = executePane.registersWindow
+        status = FileStatus.StatusType.RUNNABLE
+        reset = true
+        started = false
 
         // Aug. 24, 2005 Ken Vollmar
-        SystemIO.resetFiles();  // Ensure that I/O "file descriptors" are initialized for a new program run
+        resetFiles() // Ensure that I/O "file descriptors" are initialized for a new program run
 
-        mainUI.getMessagesPane().postRunMessage(
-                "\n" + name + ": reset completed.\n\n");
+        mainUI.messagesPane.postRunMessage(
+            "\n$name: reset completed.\n\n"
+        )
     }
 }
