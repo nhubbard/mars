@@ -19,138 +19,123 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.venus.editor;
+package edu.missouristate.mars.venus.editor
 
-import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.panes.EditPane;
-import edu.missouristate.mars.venus.editor.marker.MIPSTokenMarker;
-
-import javax.swing.*;
-import javax.swing.event.CaretEvent;
-import javax.swing.event.CaretListener;
-import javax.swing.event.UndoableEditListener;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
-import javax.swing.undo.CompoundEdit;
-import javax.swing.undo.UndoManager;
-import java.awt.*;
-
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.venus.editor.SyntaxUtilities.getCurrentSyntaxStyles
+import edu.missouristate.mars.venus.editor.marker.MIPSTokenMarker
+import edu.missouristate.mars.venus.panes.EditPane
+import java.awt.Color
+import java.awt.Component
+import java.awt.Font
+import java.util.*
+import javax.swing.JComponent
+import javax.swing.event.CaretEvent
+import javax.swing.event.CaretListener
+import javax.swing.event.UndoableEditListener
+import javax.swing.undo.CannotRedoException
+import javax.swing.undo.CannotUndoException
+import javax.swing.undo.CompoundEdit
+import javax.swing.undo.UndoManager
 
 /**
- * Adaptor subclass for JEditTextArea
- * <p>
+ * Adaptor subclass for JEditTextArea.
+ *
  * Provides those methods required by the TextEditingArea interface
- * that are not defined by JEditTextArea.  This permits JEditTextArea
- * to be used within MARS largely without modification.  DPS 4-20-2010
+ * that are not defined by JEditTextArea. This permits JEditTextArea
+ * to be used within MARS largely without modification.
  *
  * @author Pete Sanderson
  * @since 4.0
  */
+class JEditBasedTextArea(
+    private val editPane: EditPane,
+    lineNumbers: JComponent
+) : JEditTextArea(lineNumbers), CaretListener {
+    private val undoManager: UndoManager = UndoManager()
+    private var isCompoundEdit = false
+    private var compoundEdit: CompoundEdit? = CompoundEdit()
+    private val sourceCode = this
 
-public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
-
-    private final EditPane editPane;
-    private final UndoManager undoManager;
-    private boolean isCompoundEdit = false;
-    private CompoundEdit compoundEdit;
-    private final JEditBasedTextArea sourceCode;
-
-
-    public JEditBasedTextArea(EditPane editPain, JComponent lineNumbers) {
-        super(lineNumbers);
-        this.editPane = editPain;
-        this.undoManager = new UndoManager();
-        this.compoundEdit = new CompoundEdit();
-        this.sourceCode = this;
-
-        // Needed to support unlimited undo/redo capability
-        //Remember the edit and update the menus.
-        UndoableEditListener undoableEditListener = e -> {
-            //Remember the edit and update the menus.
+    init {
+        val undoableEditListener = UndoableEditListener {
             if (isCompoundEdit) {
-                compoundEdit.addEdit(e.getEdit());
+                compoundEdit?.addEdit(it.edit)
             } else {
-                undoManager.addEdit(e.getEdit());
-                editPane.updateUndoState();
-                editPane.updateRedoState();
+                undoManager.addEdit(it.edit)
+                editPane.updateUndoState()
+                editPane.updateRedoState()
             }
-        };
-        this.getDocument().addUndoableEditListener(undoableEditListener);
-        this.setFont(Globals.getSettings().getEditorFont());
-        this.setTokenMarker(new MIPSTokenMarker());
+        }
 
-        addCaretListener(this);
+        document?.addUndoableEditListener(undoableEditListener)
+        font = Globals.settings.getEditorFont()
+        tokenMarker = MIPSTokenMarker()
+
+        addCaretListener(this)
     }
 
-
-    public void setFont(Font f) {
-        getPainter().setFont(f);
+    override fun setFont(font: Font?) {
+        painter?.font = font
     }
 
-
-    public Font getFont() {
-        return getPainter().getFont();
-    }
+    override fun getFont(): Font? = painter?.font
 
     /**
      * Use for highlighting the line currently being edited.
      *
      * @param highlight true to enable line highlighting, false to disable.
      */
-    public void setLineHighlightEnabled(boolean highlight) {
-        getPainter().setLineHighlightEnabled(highlight);
+    fun setLineHighlightEnabled(highlight: Boolean) {
+        painter!!.isLineHighlightEnabled = highlight
     }
 
     /**
-     * Set the caret blinking rate in milliseconds.  If rate is 0
+     * Set the caret blinking rate in milliseconds.  If the rate is 0
      * will disable blinking.  If negative, do nothing.
-     *
-     * @param rate blinking rate in milliseconds
      */
-    public void setCaretBlinkRate(int rate) {
-        if (rate == 0) setCaretBlinking(false);
-        if (rate > 0) {
-            setCaretBlinking(true);
-            super.setCaretBlinkRate(rate);
-            getCaretTimer().setDelay(rate);
-            getCaretTimer().setInitialDelay(rate);
-            getCaretTimer().restart();
+    override var caretBlinkRate: Int
+        get() = super.caretBlinkRate
+        set(rate) {
+            if (rate == 0) isCaretBlinking = false
+            if (rate > 0) {
+                isCaretBlinking = true
+                super.caretBlinkRate = rate
+                caretTimer.delay = rate
+                caretTimer.initialDelay = rate
+                caretTimer.restart()
+            }
         }
-    }
-
 
     /**
      * Set the number of characters a tab will expand to.
      *
      * @param chars number of characters
      */
-    public void setTabSize(int chars) {
-        getPainter().setTabSize(chars);
+    fun setTabSize(chars: Int) {
+        painter!!.tabSize = chars
     }
 
     /**
      * Update the syntax style table, which is obtained from
      * SyntaxUtilities.
      */
-    public void updateSyntaxStyles() {
-        getPainter().setStyles(SyntaxUtilities.getCurrentSyntaxStyles());
+    fun updateSyntaxStyles() {
+        painter!!.styles = getCurrentSyntaxStyles()
     }
 
-
-    public Component getOuterComponent() {
-        return this;
-    }
+    fun getOuterComponent(): Component = this
 
     /**
      * Get rid of any accumulated undoable edits.  It is useful to call
      * this method after opening a file into the text area.  The
      * act of setting its text content upon reading the file will generate
-     * an undoable edit.  Normally you don't want a freshly-opened file
+     * an undoable edit. Normally, you don't want a freshly opened file
      * to appear with its Undo action enabled.  But it will unless you
      * call this after setting the text.
      */
-    public void discardAllUndoableEdits() {
-        this.undoManager.discardAllEdits();
+    fun discardAllUndoableEdits() {
+        undoManager.discardAllEdits()
     }
 
     /**
@@ -158,11 +143,9 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      *
      * @param e A CaretEvent
      */
-
-    public void caretUpdate(CaretEvent e) {
-        editPane.displayCaretPosition(e.getDot());
+    override fun caretUpdate(e: CaretEvent) {
+        editPane.displayCaretPosition(e.dot)
     }
-
 
     /**
      * Same as setSelectedText but named for compatibility with
@@ -171,26 +154,20 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      *
      * @param replacementText The replacement text for the selection
      */
-    public void replaceSelection(String replacementText) {
-        setSelectedText(replacementText);
+    fun replaceSelection(replacementText: String?) {
+        setSelectedText(replacementText)
     }
 
-    //
-    //
-    public void setSelectionVisible(boolean vis) {
+    @Suppress("UNUSED_PARAMETER")
+    fun setSelectionVisible(vis: Boolean) {}
 
-    }
-
-    //
-    //
-    public void setSourceCode(String s, boolean editable) {
-        this.setText(s);
-        this.setBackground((editable) ? Color.WHITE : Color.GRAY);
-        this.setEditable(editable);
-        this.setEnabled(editable);
-        //this.getCaret().setVisible(editable);
-        this.setCaretPosition(0);
-        if (editable) this.requestFocusInWindow();
+    fun setSourceCode(s: String?, editable: Boolean) {
+        this.setText(s!!)
+        this.background = if ((editable)) Color.WHITE else Color.GRAY
+        this.isEditable = editable
+        this.isEnabled = editable
+        this.caretPosition = 0
+        if (editable) this.requestFocusInWindow()
     }
 
     /**
@@ -198,53 +175,41 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      *
      * @return the undo manager
      */
-    public UndoManager getUndoManager() {
-        return undoManager;
-    }
+    fun getUndoManager(): UndoManager = undoManager
 
     /**
      * Undo previous edit
      */
-    public void undo() {
-        // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
+    fun undo() {
+        // "unredoing" is a mode used by DocumentHandler's insertUpdate() and removeUpdate()
         // to pleasingly mark the text and location of the undo.
-        setUnredoing(true);
+        unredoing = true
         try {
-            this.undoManager.undo();
-        } catch (CannotUndoException ex) {
-            System.out.println("Unable to undo: " + ex);
-            ex.printStackTrace();
+            undoManager.undo()
+        } catch (ex: CannotUndoException) {
+            println("Unable to undo: $ex")
+            ex.printStackTrace()
         }
-        setUnredoing(false);
-        this.setCaretVisible(true);
+        unredoing = false
+        this.isCaretVisible = true
     }
 
     /**
      * Redo previous edit
      */
-    public void redo() {
-        // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
+    fun redo() {
+        // "unredoing" is a mode used by DocumentHandler's insertUpdate() and removeUpdate()
         // to pleasingly mark the text and location of the redo.
-        setUnredoing(true);
+        unredoing = true
         try {
-            this.undoManager.redo();
-        } catch (CannotRedoException ex) {
-            System.out.println("Unable to redo: " + ex);
-            ex.printStackTrace();
+            undoManager.redo()
+        } catch (ex: CannotRedoException) {
+            println("Unable to redo: $ex")
+            ex.printStackTrace()
         }
-        setUnredoing(false);
-        this.setCaretVisible(true);
+        unredoing = false
+        this.isCaretVisible = true
     }
-
-
-    //////////////////////////////////////////////////////////////////////////
-    //  Methods to support Find/Replace feature
-    //
-    // Basis for this Find/Replace solution is:
-    // http://java.ittoolbox.com/groups/technical-functional/java-l/search-and-replace-using-jtextpane-630964
-    // as written by Chris Dickenson in 2005
-    //
-
 
     /**
      * Finds next occurrence of text in a forward search of a string. Search begins
@@ -255,155 +220,138 @@ public class JEditBasedTextArea extends JEditTextArea implements CaretListener {
      * @param caseSensitive true if search is to be case-sensitive, false otherwise
      * @return TEXT_FOUND or TEXT_NOT_FOUND, depending on the result.
      */
-    public TextSearchResult doFindText(String find, boolean caseSensitive) {
-        int findPosn = sourceCode.getCaretPosition();
-        int nextPosn;
-        nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
-        if (nextPosn >= 0) {
-            sourceCode.requestFocus(); // guarantees visibility of the blue highlight 
-            sourceCode.setSelectionStart(nextPosn); // position cursor at word start
-            sourceCode.setSelectionEnd(nextPosn + find.length());
+    fun doFindText(find: String?, caseSensitive: Boolean): TextSearchResult {
+        val findPosition = sourceCode.caretPosition
+        val nextPosition = nextIndex(sourceCode.getText(), find, findPosition, caseSensitive)
+        if (nextPosition >= 0) {
+            sourceCode.requestFocus() // guarantees visibility of the blue highlight
+            sourceCode.selectionStart = nextPosition // position cursor at word start
+            sourceCode.selectionEnd = nextPosition + find!!.length
             // Need to repeat start due to quirk in JEditTextArea implementation of setSelectionStart.
-            sourceCode.setSelectionStart(nextPosn);
-            return TextSearchResult.TEXT_FOUND;
-        } else {
-            return TextSearchResult.TEXT_NOT_FOUND;
-        }
+            sourceCode.selectionStart = nextPosition
+            return TextSearchResult.TEXT_FOUND
+        } else return TextSearchResult.TEXT_NOT_FOUND
     }
 
     /**
-     * Returns next posn of word in text - forward search.  If end of string is
-     * reached during the search, will wrap around to the beginning one time.
+     * Returns next position of the provided word in text using forward search. If the end of the string is
+     * reached during the search, it will wrap around to the beginning one time.
      *
      * @param input         the string to search
      * @param find          the string to find
      * @param start         the character position to start the search
-     * @param caseSensitive true for case sensitive. false to ignore case
+     * @param caseSensitive true for case-sensitive. false to ignore the word case
      * @return next indexed position of found text or -1 if not found
      */
-    public int nextIndex(String input, String find, int start, boolean caseSensitive) {
-        int textPosn = -1;
-        if (input != null && find != null && start < input.length()) {
+    fun nextIndex(input: String?, find: String?, start: Int, caseSensitive: Boolean): Int {
+        var textPosition = -1
+        if (input != null && find != null && start < input.length) {
             if (caseSensitive) { // indexOf() returns -1 if not found
-                textPosn = input.indexOf(find, start);
+                textPosition = input.indexOf(find, start)
                 // If not found from non-starting cursor position, wrap around
-                if (start > 0 && textPosn < 0) {
-                    textPosn = input.indexOf(find);
+                if (start > 0 && textPosition < 0) {
+                    textPosition = input.indexOf(find)
                 }
             } else {
-                String lowerCaseText = input.toLowerCase();
-                textPosn = lowerCaseText.indexOf(find.toLowerCase(), start);
+                val lowerCaseText = input.lowercase(Locale.getDefault())
+                textPosition = lowerCaseText.indexOf(find.lowercase(Locale.getDefault()), start)
                 // If not found from non-starting cursor position, wrap around
-                if (start > 0 && textPosn < 0) {
-                    textPosn = lowerCaseText.indexOf(find.toLowerCase());
+                if (start > 0 && textPosition < 0) {
+                    textPosition = lowerCaseText.indexOf(find.lowercase(Locale.getDefault()))
                 }
             }
         }
-        return textPosn;
+        return textPosition
     }
-
 
     /**
      * Finds and replaces next occurrence of text in a string in a forward search.
-     * If cursor is initially at end
+     * If the cursor is initially at the end
      * of matching selection, will immediately replace then find and select the
-     * next occurrence if any.  Otherwise it performs a find operation.  The replace
+     * next occurrence if any. Otherwise, it performs a find operation. The replacement
      * can be undone with one undo operation.
      *
      * @param find          the text to locate in the string
      * @param replace       the text to replace the find text with - if the find text exists
-     * @param caseSensitive true for case sensitive. false to ignore case
-     * @return Returns TEXT_FOUND if not initially at end of selected match and matching
+     * @param caseSensitive true for case-sensitive. false for case-insensitive
+     * @return Returns TEXT_FOUND if not initially at the end of selected match and matching
      * occurrence is found.  Returns TEXT_NOT_FOUND if the text is not matched.
-     * Returns TEXT_REPLACED_NOT_FOUND_NEXT if replacement is successful but there are
-     * no additional matches.  Returns TEXT_REPLACED_FOUND_NEXT if reaplacement is
+     * Returns TEXT_REPLACED_NOT_FOUND_NEXT if replacement is successful, but there are
+     * no additional matches.  Returns TEXT_REPLACED_FOUND_NEXT if replacement is
      * successful and there is at least one additional match.
      */
-    public TextSearchResult doReplace(String find, String replace, boolean caseSensitive) {
-        int nextPosn;
-        int posn;
+    fun doReplace(find: String?, replace: String, caseSensitive: Boolean): TextSearchResult {
         // Will perform a "find" and return, unless positioned at the end of
         // a selected "find" result.
-        if (find == null || !find.equals(sourceCode.getSelectedText()) ||
-                sourceCode.getSelectionEnd() != sourceCode.getCaretPosition()) {
-            return doFindText(find, caseSensitive);
-        }
-        // We are positioned at end of selected "find".  Rreplace and find next.
-        nextPosn = sourceCode.getSelectionStart();
-        sourceCode.grabFocus();
-        sourceCode.setSelectionStart(nextPosn); // posn cursor at word start
-        sourceCode.setSelectionEnd(nextPosn + find.length()); //select found text
+        if (find == null || find != sourceCode.getSelectedText() || sourceCode.selectionEnd != sourceCode.caretPosition)
+            return doFindText(find, caseSensitive)
+        // We are positioned at the end of selected "find".  Replace and find next.
+        val nextPosition = sourceCode.selectionStart
+        sourceCode.grabFocus()
+        sourceCode.selectionStart = nextPosition // Position cursor at word start
+        sourceCode.selectionEnd = nextPosition + find.length //select found text
         // Need to repeat start due to quirk in JEditTextArea implementation of setSelectionStart.
-        sourceCode.setSelectionStart(nextPosn);
-        isCompoundEdit = true;
-        compoundEdit = new CompoundEdit();
-        sourceCode.replaceSelection(replace);
-        compoundEdit.end();
-        undoManager.addEdit(compoundEdit);
-        editPane.updateUndoState();
-        editPane.updateRedoState();
-        isCompoundEdit = false;
-        sourceCode.setCaretPosition(nextPosn + replace.length());
-        if (doFindText(find, caseSensitive) == TextSearchResult.TEXT_NOT_FOUND) {
-            return TextSearchResult.TEXT_REPLACED_NOT_FOUND_NEXT;
+        sourceCode.selectionStart = nextPosition
+        isCompoundEdit = true
+        compoundEdit = CompoundEdit()
+        sourceCode.replaceSelection(replace)
+        compoundEdit?.end()
+        undoManager.addEdit(compoundEdit)
+        editPane.updateUndoState()
+        editPane.updateRedoState()
+        isCompoundEdit = false
+        sourceCode.caretPosition = nextPosition + replace.length
+        return if (doFindText(find, caseSensitive) == TextSearchResult.TEXT_NOT_FOUND) {
+            TextSearchResult.TEXT_REPLACED_NOT_FOUND_NEXT
         } else {
-            return TextSearchResult.TEXT_REPLACED_FOUND_NEXT;
+            TextSearchResult.TEXT_REPLACED_FOUND_NEXT
         }
     }
 
     /**
-     * Finds and replaces <B>ALL</B> occurrences of text in a string in a forward search.
+     * Finds and replaces <B>ALL</B> occurrences of the text in a string in a forward search.
      * All replacements are bundled into one CompoundEdit, so one Undo operation will
      * undo all of them.
      *
      * @param find          the text to locate in the string
      * @param replace       the text to replace the find text with - if the find text exists
-     * @param caseSensitive true for case sensitive. false to ignore case
+     * @param caseSensitive true for case-sensitive. false to ignore case-insensitive
      * @return the number of occurrences that were matched and replaced.
      */
-    public int doReplaceAll(String find, String replace, boolean caseSensitive) {
-        int nextPosn = 0;
-        int findPosn = 0; // *** begin at start of text
-        int replaceCount = 0;
-        compoundEdit = null; // new one will be created upon first replacement
-        isCompoundEdit = true; // undo manager's action listener needs this
-        while (nextPosn >= 0) {
-            nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
-            if (nextPosn >= 0) {
-                // nextIndex() will wrap around, which causes infinite loop if
+    fun doReplaceAll(find: String, replace: String, caseSensitive: Boolean): Int {
+        var nextPosition = 0
+        var findPosition = 0 // *** begin at the start of text
+        var replaceCount = 0
+        compoundEdit = null // the new one will be created upon first replacement
+        isCompoundEdit = true // undo manager's action listener needs this
+        while (nextPosition >= 0) {
+            nextPosition = nextIndex(sourceCode.getText(), find, findPosition, caseSensitive)
+            if (nextPosition >= 0) {
+                // nextIndex() will wrap around, which causes infinite loop if the
                 // find string is a substring of replacement string.  This
                 // statement will prevent that.
-                if (nextPosn < findPosn) {
-                    break;
-                }
-                sourceCode.grabFocus();
-                sourceCode.setSelectionStart(nextPosn); // posn cursor at word start
-                sourceCode.setSelectionEnd(nextPosn + find.length()); //select found text
+                if (nextPosition < findPosition) break
+                sourceCode.grabFocus()
+                sourceCode.selectionStart = nextPosition // position cursor at word start
+                sourceCode.selectionEnd = nextPosition + find.length //select found text
                 // Need to repeat start due to quirk in JEditTextArea implementation of setSelectionStart.
-                sourceCode.setSelectionStart(nextPosn);
+                sourceCode.selectionStart = nextPosition
                 if (compoundEdit == null) {
-                    compoundEdit = new CompoundEdit();
+                    compoundEdit = CompoundEdit()
                 }
-                sourceCode.replaceSelection(replace);
-                findPosn = nextPosn + replace.length(); // set for next search
-                replaceCount++;
+                sourceCode.replaceSelection(replace)
+                findPosition = nextPosition + replace.length // set for next search
+                replaceCount++
             }
         }
-        isCompoundEdit = false;
+        isCompoundEdit = false
         // Will be true if any replacements were performed
         if (compoundEdit != null) {
-            compoundEdit.end();
-            undoManager.addEdit(compoundEdit);
-            editPane.updateUndoState();
-            editPane.updateRedoState();
+            compoundEdit?.end()
+            undoManager.addEdit(compoundEdit)
+            editPane.updateUndoState()
+            editPane.updateRedoState()
         }
-        return replaceCount;
+        return replaceCount
     }
-    //
-    /////////////////////////////  End Find/Replace methods //////////////////////////
-
-    //
-    //////////////////////////////////////////////////////////////////
-
-
 }

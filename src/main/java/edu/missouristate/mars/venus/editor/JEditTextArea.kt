@@ -149,7 +149,7 @@ open class JEditTextArea @JvmOverloads constructor(
      */
     var isEditable: Boolean = defaults.editable
 
-    protected open var caretBlinkRate: Int = defaults.caretBlinkRate
+    open var caretBlinkRate: Int = defaults.caretBlinkRate
 
     /** The line displayed at the text area's origin. */
     var firstLine: Int = 0

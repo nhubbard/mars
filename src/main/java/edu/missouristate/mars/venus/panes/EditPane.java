@@ -48,9 +48,7 @@ import java.util.Observer;
  *
  * @author Sanderson and Bumgarner
  */
-
 public class EditPane extends JPanel implements Observer {
-
     private final JEditBasedTextArea sourceCode;
     private final VenusUI mainUI;
     private final JLabel caretPositionLabel;
@@ -64,7 +62,6 @@ public class EditPane extends JPanel implements Observer {
     /**
      * Constructor for the EditPane class.
      */
-
     public EditPane(VenusUI appFrame) {
         super(new BorderLayout());
         this.mainUI = appFrame;
@@ -81,60 +78,59 @@ public class EditPane extends JPanel implements Observer {
         this.add(this.sourceCode.getOuterComponent(), BorderLayout.CENTER);
 
         // If source code is modified, will set flag to trigger/request file save.
-        sourceCode.getDocument().addDocumentListener(
-                new DocumentListener() {
-                    public void insertUpdate(DocumentEvent evt) {
-                        // IF statement added DPS 9-Aug-2011
-                        // This method is triggered when file contents added to document
-                        // upon opening, even though not edited by user.  The IF
-                        // statement will sense this situation and immediately return.
-                        if (FileStatus.Companion.getStatus() == FileStatus.StatusType.OPENING) {
-                            setFileStatus(FileStatus.StatusType.NOT_EDITED);
-                            FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
-                            if (showingLineNumbers()) {
-                                lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
-                            }
-                            return;
-                        }
-                        // End of 9-Aug-2011 modification.
-                        if (getFileStatus() == FileStatus.StatusType.NEW_NOT_EDITED) {
-                            setFileStatus(FileStatus.StatusType.NEW_EDITED);
-                        }
-                        if (getFileStatus() == FileStatus.StatusType.NOT_EDITED) {
-                            setFileStatus(FileStatus.StatusType.EDITED);
-                        }
-                        if (getFileStatus() == FileStatus.StatusType.NEW_EDITED) {
-                            mainUI.getEditor().setTitle("", getFilename(), getFileStatus());
-                        } else {
-                            mainUI.getEditor().setTitle(getPathname(), getFilename(), getFileStatus());
-                        }
-
-                        FileStatus.setEdited(true);
-                        switch (FileStatus.Companion.getStatus()) {
-                            case FileStatus.StatusType.NEW_NOT_EDITED:
-                                FileStatus.Companion.setStatus(FileStatus.StatusType.NEW_EDITED);
-                                break;
-                            case FileStatus.StatusType.NEW_EDITED:
-                                break;
-                            default:
-                                FileStatus.Companion.setStatus(FileStatus.StatusType.EDITED);
-                        }
-
-                        Globals.getGui().getMainPane().getExecutePane().clearPane(); // DPS 9-Aug-2011
-
-                        if (showingLineNumbers()) {
-                            lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
-                        }
+        sourceCode.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent evt) {
+                // IF statement added DPS 9-Aug-2011
+                // This method is triggered when file contents added to document
+                // upon opening, even though not edited by user.  The IF
+                // statement will sense this situation and immediately return.
+                if (FileStatus.Companion.getStatus() == FileStatus.StatusType.OPENING) {
+                    setFileStatus(FileStatus.StatusType.NOT_EDITED);
+                    FileStatus.Companion.setStatus(FileStatus.StatusType.NOT_EDITED);
+                    if (showingLineNumbers()) {
+                        lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
                     }
+                    return;
+                }
+                // End of 9-Aug-2011 modification.
+                if (getFileStatus() == FileStatus.StatusType.NEW_NOT_EDITED) {
+                    setFileStatus(FileStatus.StatusType.NEW_EDITED);
+                }
+                if (getFileStatus() == FileStatus.StatusType.NOT_EDITED) {
+                    setFileStatus(FileStatus.StatusType.EDITED);
+                }
+                if (getFileStatus() == FileStatus.StatusType.NEW_EDITED) {
+                    mainUI.getEditor().setTitle("", getFilename(), getFileStatus());
+                } else {
+                    mainUI.getEditor().setTitle(getPathname(), getFilename(), getFileStatus());
+                }
 
-                    public void removeUpdate(DocumentEvent evt) {
-                        this.insertUpdate(evt);
-                    }
+                FileStatus.setEdited(true);
+                switch (FileStatus.Companion.getStatus()) {
+                    case FileStatus.StatusType.NEW_NOT_EDITED:
+                        FileStatus.Companion.setStatus(FileStatus.StatusType.NEW_EDITED);
+                        break;
+                    case FileStatus.StatusType.NEW_EDITED:
+                        break;
+                    default:
+                        FileStatus.Companion.setStatus(FileStatus.StatusType.EDITED);
+                }
 
-                    public void changedUpdate(DocumentEvent evt) {
-                        this.insertUpdate(evt);
-                    }
-                });
+                Globals.getGui().getMainPane().getExecutePane().clearPane(); // DPS 9-Aug-2011
+
+                if (showingLineNumbers()) {
+                    lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
+                }
+            }
+
+            public void removeUpdate(DocumentEvent evt) {
+                this.insertUpdate(evt);
+            }
+
+            public void changedUpdate(DocumentEvent evt) {
+                this.insertUpdate(evt);
+            }
+        });
 
         showLineNumbers = new JCheckBox("Show Line Numbers");
         showLineNumbers.setToolTipText("If checked, will display line number for each line of text.");
@@ -150,21 +146,20 @@ public class EditPane extends JPanel implements Observer {
         lineNumbers.setVisible(true);
 
         // Listener fires when "Show Line Numbers" check box is clicked.
-        showLineNumbers.addItemListener(
-                e -> {
-                    if (showLineNumbers.isSelected()) {
-                        lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
-                        lineNumbers.setVisible(true);
-                    } else {
-                        lineNumbers.setText("");
-                        lineNumbers.setVisible(false);
-                    }
-                    sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
-                    Globals.getSettings().setBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED, showLineNumbers.isSelected());
-                    // needed because caret disappears when checkbox clicked
-                    sourceCode.setCaretVisible(true);
-                    sourceCode.requestFocusInWindow();
-                });
+        showLineNumbers.addItemListener(e -> {
+            if (showLineNumbers.isSelected()) {
+                lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
+                lineNumbers.setVisible(true);
+            } else {
+                lineNumbers.setText("");
+                lineNumbers.setVisible(false);
+            }
+            sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
+            Globals.getSettings().setBooleanSetting(Settings.EDITOR_LINE_NUMBERS_DISPLAYED, showLineNumbers.isSelected());
+            // needed because caret disappears when checkbox clicked
+            sourceCode.setCaretVisible(true);
+            sourceCode.requestFocusInWindow();
+        });
 
         JPanel editInfo = new JPanel(new BorderLayout());
         caretPositionLabel = new JLabel();
@@ -175,14 +170,12 @@ public class EditPane extends JPanel implements Observer {
         this.add(editInfo, BorderLayout.SOUTH);
     }
 
-
     /**
      * For initalizing the source code when opening an ASM file
      *
      * @param s        String containing text
      * @param editable set true if code is editable else false
      */
-
     public void setSourceCode(String s, boolean editable) {
         sourceCode.setSourceCode(s, editable);
     }
@@ -224,7 +217,6 @@ public class EditPane extends JPanel implements Observer {
         return lineNumberList.toString();
     }
 
-
     /**
      * Calculate and return number of lines in source code text.
      * Do this by counting newLine characters then adding one if last line does
@@ -257,7 +249,6 @@ public class EditPane extends JPanel implements Observer {
         return sourceCode.getText();
     }
 
-
     /**
      * Set the editing status for this EditPane's associated document.
      * For the argument, use one of the constants from class FileStatus.
@@ -268,12 +259,10 @@ public class EditPane extends JPanel implements Observer {
         FileStatus.Companion.setStatus(fileStatus);
     }
 
-
     /**
      * Get the editing status for this EditPane's associated document.
      * This will be one of the constants from class FileStatus.
      */
-
     public FileStatus.StatusType getFileStatus() {
         return FileStatus.Companion.getStatus();
     }
@@ -285,14 +274,12 @@ public class EditPane extends JPanel implements Observer {
         return FileStatus.Companion.getFile().getName();
     }
 
-
     /**
      * Delegates to corresponding FileStatus method
      */
     public String getPathname() {
         return FileStatus.Companion.getFile().getPath();
     }
-
 
     /**
      * Delegates to corresponding FileStatus method
@@ -308,7 +295,6 @@ public class EditPane extends JPanel implements Observer {
         return this.fileStatus.getHasUnsavedEdits();
     }
 
-
     /**
      * Delegates to corresponding FileStatus method
      */
@@ -316,21 +302,18 @@ public class EditPane extends JPanel implements Observer {
         return this.fileStatus.isNew();
     }
 
-
     /**
      * Delegates to text area's requestFocusInWindow method.
      */
-
     public void tellEditingComponentToRequestFocusInWindow() {
         this.sourceCode.requestFocusInWindow();
     }
 
-
     /**
      * Delegates to corresponding FileStatus method
      */
-    public void updateStaticFileStatus() {}
-
+    public void updateStaticFileStatus() {
+    }
 
     /**
      * get the manager in charge of Undo and Redo operations
@@ -525,7 +508,6 @@ public class EditPane extends JPanel implements Observer {
         }
     }
 
-
     /**
      * Select the specified editor text line.  Lines are numbered starting with 1, consistent
      * with line numbers displayed by the editor.
@@ -574,7 +556,6 @@ public class EditPane extends JPanel implements Observer {
         return sourceCode.doReplace(find, replace, caseSensitive);
     }
 
-
     /**
      * Finds and replaces <B>ALL</B> occurrences of text in a string in a forward search.
      * All replacements are bundled into one CompoundEdit, so one Undo operation will
@@ -588,7 +569,6 @@ public class EditPane extends JPanel implements Observer {
     public int doReplaceAll(String find, String replace, boolean caseSensitive) {
         return sourceCode.doReplaceAll(find, replace, caseSensitive);
     }
-
 
     /**
      * Update, if source code is visible, when Font setting changes.
@@ -613,16 +593,11 @@ public class EditPane extends JPanel implements Observer {
         lineNumbers.revalidate();
     }
 
-
     /* Private helper method.
      * Determine font to use for editor line number display, given current
      * font for source code.
      */
     private Font getLineNumberFont(Font sourceFont) {
-        return (sourceCode.getFont().getStyle() == Font.PLAIN)
-                ? sourceFont
-                : new Font(sourceFont.getFamily(), Font.PLAIN, sourceFont.getSize());
+        return (sourceCode.getFont().getStyle() == Font.PLAIN) ? sourceFont : new Font(sourceFont.getFamily(), Font.PLAIN, sourceFont.getSize());
     }
-
-
 }
