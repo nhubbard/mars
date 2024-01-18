@@ -19,9 +19,20 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-group = "edu.missouristate"
-version = "2.0-SNAPSHOT"
+package edu.missouristate.mars
 
-repositories {
-    mavenCentral()
+import edu.missouristate.mars.venus.VenusUI
+
+object UIGlobals {
+    @JvmStatic
+    lateinit var gui: VenusUI
+
+    @JvmStatic
+    lateinit var settings: UISettings
+
+    @JvmStatic
+    fun initialize() {
+        gui = VenusUI("MARS 5.0")
+        settings = UISettings()
+    }
 }

@@ -1,3 +1,6 @@
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.5.0"
+}
 /*
  * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
  * Copyright (c) 2024-present, Nicholas Hubbard
@@ -20,4 +23,5 @@
  */
 
 rootProject.name = "mars2"
-
+include("core")
+include("venus")

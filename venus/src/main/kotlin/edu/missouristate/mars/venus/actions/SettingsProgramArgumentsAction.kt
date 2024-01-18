@@ -18,10 +18,33 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+package edu.missouristate.mars.venus.actions
 
-group = "edu.missouristate"
-version = "2.0-SNAPSHOT"
+import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.CoreSettings
+import edu.missouristate.mars.UIGlobals
+import edu.missouristate.mars.venus.VenusUI
+import java.awt.event.ActionEvent
+import javax.swing.Icon
+import javax.swing.JCheckBoxMenuItem
+import javax.swing.KeyStroke
 
-repositories {
-    mavenCentral()
+/**
+ * Action class for the Settings menu item to control whether or not
+ * program arguments can be entered and used.  If so, a text field
+ * will be displayed where they can be interactively entered.
+ */
+class SettingsProgramArgumentsAction(
+    name: String?, icon: Icon?, descrip: String?,
+    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
+) : GuiAction(name, icon, descrip, mnemonic, accel, gui) {
+    override fun actionPerformed(e: ActionEvent) {
+        val selected = (e.source as JCheckBoxMenuItem).isSelected
+        settings.setBooleanSetting(CoreSettings.ENABLE_PROGRAM_ARGUMENTS, selected)
+        if (selected) {
+            UIGlobals.gui.mainPane.executePane.textSegmentWindow.addProgramArgumentsPanel()
+        } else {
+            UIGlobals.gui.mainPane.executePane.textSegmentWindow.removeProgramArgumentsPanel()
+        }
+    }
 }

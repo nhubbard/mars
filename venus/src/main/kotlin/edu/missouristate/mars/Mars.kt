@@ -19,9 +19,17 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-group = "edu.missouristate"
-version = "2.0-SNAPSHOT"
+package edu.missouristate.mars
 
-repositories {
-    mavenCentral()
+/**
+ * The portal to MARS.
+ *
+ * @author Pete Sanderson
+ * @version March 2006
+ */
+object Mars {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        MarsLaunch(args)
+    }
 }

@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 /*
  * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
  * Copyright (c) 2024-present, Nicholas Hubbard
@@ -19,9 +21,58 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+plugins {
+    java
+    idea
+    kotlin("jvm") version "1.9.22"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
 group = "edu.missouristate"
 version = "2.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+}
+
+dependencies {
+    implementation(project(":core"))
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+}
+
+tasks {
+    test {
+        useJUnitPlatform()
+    }
+
+    compileJava {
+        options.compilerArgs.addAll(listOf("--enable-preview", "-Xlint:unchecked"))
+    }
+
+    shadowJar {
+        archiveBaseName.set("mars")
+        archiveClassifier.set("core")
+        archiveVersion.set(project.version.toString())
+        from(sourceSets.main.get().output)
+        configurations {
+            add(project.configurations.implementation.get())
+        }
+        from("src/main/resources") {
+            into("edu/missouristate/mars")
+        }
+    }
+
+    withType<Copy>().configureEach {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+            optIn.add("kotlin.contracts.ExperimentalContracts")
+            optIn.add("kotlin.ExperimentalStdlibApi")
+        }
+
+        jvmToolchain(21)
+    }
 }
