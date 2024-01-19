@@ -1,0 +1,162 @@
+/*
+ * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2024-present, Nicholas Hubbard
+ *
+ * Created by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+ * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+ *    the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ * Copyright (c) 2017-2024, Niklas Persson
+ * Copyright (c) 2024-present, Nicholas Hubbard
+ *
+ * The IntelliJ plugin is licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for specific
+ * language governing permissions and limitations under the License.
+ */
+
+{
+    parserClass="edu.missouristate.mars.earth.lang.parser.MipsParser"
+    extends="edu.missouristate.mars.earth.lang.psi.impl.MipsElementImpl"
+    implements="edu.missouristate.mars.earth.lang.psi.MipsNamedElement"
+
+    psiClassPrefix="Mips"
+    psiImplClassSuffix="Impl"
+    psiPackage="edu.missouristate.mars.earth.lang.psi"
+    psiImplPackage="edu.missouristate.mars.earth.lang.psi.impl"
+
+    elementTypeHolderClass="edu.missouristate.mars.earth.lang.psi.MipsElementTypes"
+    elementTypeClass="edu.missouristate.mars.earth.lang.psi.MipsElementType"
+    tokenTypeClass="edu.missouristate.mars.earth.lang.psi.MipsTokenType"
+}
+
+mipsFile ::= statementList
+
+private statementList ::= statement*
+
+private statement ::= label_definition
+                    | directive_statement
+                    | instruction
+                    | COMMA
+                    | EOL
+
+/** Labels */
+label_definition ::= label_identifier COLON
+{
+  pin = 2
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsLabelDefinitionMixin'
+  methods = [getName setName getPresentation]
+}
+
+label_identifier ::= IDENTIFIER | OPERATOR
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsLabelIdentifierMixin'
+  methods = [getName setName]
+}
+
+/** Directives */
+directive_statement ::= DIRECTIVE directive_arg*
+{
+  pin = 1
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsDirectiveMixin'
+  methods = [getName setName getNumbers getIdentifier getString]
+}
+
+directive_arg   ::= number_range
+                  | number_list
+                  | string_literal
+                  | IDENTIFIER
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsDirectiveArgMixin'
+  methods = [isNumber getNumber isIdentifier isString]
+}
+
+private number_list ::= number_literal (delimiter+ number_literal)*
+{
+  pin = 1
+}
+
+number_range ::= number_literal COLON number_literal
+{
+  pin = 3
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsNumberRangeMixin'
+  methods = [getRangeStart getRangeEnd]
+}
+
+/** Instructions */
+instruction ::= OPERATOR instruction_args*
+{
+  pin = 1
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsInstructionMixin'
+  methods = [getOperator getArguments hasArguments]
+}
+
+private instruction_args ::= instruction_arg (delimiter+ instruction_arg)*
+{
+  pin = 1
+}
+
+instruction_arg ::= register_literal
+                  | number_literal
+                  | IDENTIFIER
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsInstructionArgMixin'
+  methods = [isRegister isNumber isIdentifier]
+}
+
+/** Literals **/
+number_literal ::= integer_literal | REAL_NUMBER
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsNumberLiteralMixin'
+  methods = [isHex isInteger5 isInteger16 isInteger16u isInteger32 isReal]
+}
+
+private integer_literal  ::= INTEGER_5
+                           | INTEGER_16
+                           | INTEGER_16U
+                           | INTEGER_32
+
+register_literal ::= register_offset? delimiter* LPAREN delimiter* register_identifier delimiter* RPAREN
+                  | register_identifier
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsRegisterLiteralMixin'
+  methods = [getName setName hasOffset getOffset]
+}
+
+private register_identifier ::= REGISTER_NUMBER
+                             | REGISTER_NAME
+                             | FP_REGISTER_NAME
+
+register_offset ::= IDENTIFIER (delimiter* (PLUS | MINUS) delimiter* number_literal)?
+                  | number_literal
+{
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsRegisterOffsetMixin'
+  methods = [getLabel getImmediate]
+}
+
+string_literal ::= LQUOTE QUOTED_STRING RQUOTE
+{
+  pin = 3
+  mixin = 'edu.missouristate.mars.earth.lang.psi.mixins.MipsStringLiteralMixin'
+  methods = [getText]
+}
+
+private delimiter ::= ' ' | '\t' | COMMA

@@ -1,0 +1,5 @@
+# DATA segment
+.data
+
+# TEXT segment
+.text

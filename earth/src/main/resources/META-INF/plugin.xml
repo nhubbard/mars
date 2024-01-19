@@ -1,0 +1,126 @@
+<!--
+  ~ Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
+  ~ Copyright (c) 2024-present, Nicholas Hubbard
+  ~
+  ~ Created by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
+  ~ Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  ~ documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+  ~ rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  ~ permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  ~
+  ~ 1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+  ~    the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  ~ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  ~ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  ~ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  ~
+  ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~
+  ~ Copyright (c) 2017-2024, Niklas Persson
+  ~ Copyright (c) 2024-present, Nicholas Hubbard
+  ~
+  ~ The IntelliJ plugin is licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+  ~ in compliance with the License. You may obtain a copy of the License at
+  ~
+  ~ https://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for specific
+  ~ language governing permissions and limitations under the License.
+  -->
+
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+  <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+  <id>edu.missouristate.mars</id>
+
+  <!-- Public plugin name should be written in Title Case.
+       Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+  <name>MARS</name>
+
+  <!-- We start at version 5.0 because this is a complete rewrite of MARS 4.5. -->
+  <version>5.0</version>
+
+  <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+  <vendor email="nhubbard@users.noreply.github.com" url="https://www.yourcompany.com">Nicholas Hubbard</vendor>
+
+  <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+       Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+       Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+  <description>MARS is a MIPS development and simulation plugin for IntelliJ IDEA. It replaces the original MARS IDE.</description>
+
+  <!-- Product and plugin compatibility requirements.
+       Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.java</depends>
+
+  <!-- Extension points defined by the plugin.
+       Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- File type -->
+    <fileTypeFactory implementation="edu.missouristate.mars.earth.lang.MipsFileTypeFactory" />
+    <iconProvider implementation="edu.missouristate.mars.earth.icons.MipsIconProvider" />
+    <lang.parserDefinition language="MIPS" implementationClass="edu.missouristate.mars.earth.lang.parser.MipsParserDefinition" />
+
+    <!-- PSI -->
+    <lang.psiStructureViewFactory language="MIPS" implementationClass="edu.missouristate.mars.earth.structure.MipsStructureViewFactory" />
+
+    <!-- Syntax highlighting -->
+    <lang.syntaxHighlighterFactory language="MIPS" implementationClass="edu.missouristate.mars.earth.editor.MipsSyntaxHighlighterFactory" />
+    <colorSettingsPage implementation="edu.missouristate.mars.earth.editor.MipsColorSettingsPage" />
+
+    <!-- Annotator -->
+    <annotator language="MIPS" implementationClass="edu.missouristate.mars.earth.editor.MipsAnnotator" />
+    <codeInsight.lineMarkerProvider language="MIPS" implementationClass="edu.missouristate.mars.earth.editor.MipsLabelSeparatorProvider" />
+
+    <!-- Brace matcher and commenter -->
+    <lang.braceMatcher language="MIPS" implementationClass="edu.missouristate.mars.earth.MipsBraceMatcher" />
+    <lang.commenter language="MIPS" implementationClass="edu.missouristate.mars.earth.MipsCommenter" />
+
+    <!-- Formatter -->
+    <codeStyleSettingsProvider implementation="edu.missouristate.mars.earth.formatter.MipsCodeStyleSettingsProvider" />
+    <langCodeStyleSettingsProvider implementation="edu.missouristate.mars.earth.formatter.MipsLanguageCodeStyleSettingsProvider" />
+    <lang.formatter language="MIPS" implementationClass="edu.missouristate.mars.earth.formatter.MipsFormattingModelBuilder" />
+
+    <!-- Goto manager -->
+    <gotoSymbolContributor implementation="edu.missouristate.mars.earth.MipsGotoSymbolContributor" />
+
+    <!-- Code completion -->
+    <completion.contributor language="MIPS" implementationClass="edu.missouristate.mars.earth.completion.MipsCompletionContributor" />
+
+    <!-- Spelling checker -->
+    <spellchecker.support language="MIPS" implementationClass="edu.missouristate.mars.earth.spellchecker.MipsSpellCheckingStrategy" />
+    <spellchecker.bundledDictionaryProvider implementation="edu.missouristate.mars.earth.spellchecker.MipsBundledDictionaryProvider" />
+
+    <!-- Tool windows (will be expanded significantly) -->
+    <toolWindow id="MARS Registers" secondary="true" icon="/icons/mips-tool-registers-13.png" anchor="right" factoryClass="edu.missouristate.mars.earth.tools.registers.MipsRegistersToolWindowFactory" />
+
+    <!-- Non-debugging run provider -->
+    <configurationType implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationType" />
+    <programRunner implementation="edu.missouristate.mars.earth.run.MipsRunner" />
+    <runConfigurationProducer implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationProducer" />
+
+    <!-- Debugging run provider -->
+    <programRunner implementation="edu.missouristate.mars.earth.run.debugger.MipsDebugRunner" />
+    <xdebugger.breakpointType implementation="edu.missouristate.mars.earth.run.debugger.MipsLineBreakpointType" />
+
+    <!-- File templates -->
+    <createFromTemplateHandler implementation="edu.missouristate.mars.earth.template.MipsCreateFromTemplateHandler" />
+    <internalFileTemplate name="MARS Application" />
+
+    <!-- Live templates -->
+    <defaultLiveTemplatesProvider implementation="edu.missouristate.mars.earth.template.MipsLiveTemplateProvider" />
+    <liveTemplateContext implementation="edu.missouristate.mars.earth.template.MipsContextType$Generic" contextId="Generic" />
+    <liveTemplateContext implementation="edu.missouristate.mars.earth.template.MipsContextType$Declaration" contextId="Declaration" />
+  </extensions>
+
+  <actions>
+    <action id="MARS.NewMipsFile" class="edu.missouristate.mars.earth.actions.CreateMipsFileAction" text="MARS Application" description="Create new MARS file">
+      <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile" />
+    </action>
+  </actions>
+</idea-plugin>
