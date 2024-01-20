@@ -524,7 +524,7 @@ class KeyboardAndDisplaySimulator(
                     exitProcess(1)
                 }
             }
-            UIGlobals.gui?.mainPane?.executePane?.let {
+            UIGlobals.gui.mainPane.executePane?.let {
                 if (it.textSegmentWindow.codeHighlighting) it.dataSegmentWindow.updateValues()
             }
         }

@@ -68,13 +68,6 @@ class PopupHelpItem @JvmOverloads constructor(
     }
     val exampleLength: Int get() = example.length
 
-    @Deprecated(
-        "Renamed to padExampleToLength.",
-        ReplaceWith("padExampleToLength(length)"),
-        DeprecationLevel.ERROR
-    )
-    fun getExamplePaddedToLength(length: Int) = padExampleToLength(length)
-
     fun padExampleToLength(length: Int): String =
         if (length > exampleLength) {
             val numSpaces = min(length - exampleLength, 40)

@@ -45,8 +45,8 @@ import kotlin.system.exitProcess
 
 /**
  * Models Program Arguments, one or more strings provided to the MIPS
- * program at runtime. Equivalent to C's main(int argc, char **argv) or
- * Java's main(String[] args).
+ * program at runtime. Equivalent to C's `main(int argc, char **argv)` or
+ * Java's `main(String[] args)`.
  *
  * @author Pete Sanderson
  * @version July 2008
@@ -68,11 +68,11 @@ class ProgramArgumentList {
     }
 
     /**
-     * Constructor that gets list from section of String array, one
+     * Constructor that gets list from the section of String array, one
      * argument per element.
      *
      * @param list          Array of String, each element containing one argument
-     * @param startPosition Index of array element containing the first argument; all remaining
+     * @param startPosition Index of the array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
     @JvmOverloads
@@ -81,11 +81,11 @@ class ProgramArgumentList {
         programArgumentList.addAll(list.toList().subList(startPosition, list.size))
     }
     /**
-     * Constructor that gets list from section of String ArrayList, one
+     * Constructor that gets list from the section of String ArrayList, one
      * argument per element.
      *
      * @param list          ArrayList of String, each element containing one argument
-     * @param startPosition Index of array element containing the first argument; all remaining
+     * @param startPosition Index of the array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
     @JvmOverloads
@@ -99,9 +99,9 @@ class ProgramArgumentList {
     }
 
     // Place any program arguments into MIPS memory and registers
-    // Arguments are stored starting at highest word of non-kernel
-    // memory and working back toward runtime stack (there is a 4096
-    // byte gap in between).  The argument count (argc) and pointers
+    // Arguments are stored starting at the highest word of non-kernel
+    // memory and working back toward runtime stack (there is a
+    // 4096-byte gap in between).  The argument count (argc) and pointers
     // to the arguments are stored on the runtime stack.  The stack
     // pointer register $sp is adjusted accordingly and $a0 is set
     // to the argument count (argc), and $a1 is set to the stack
@@ -146,13 +146,13 @@ class ProgramArgumentList {
             var stackAddress = stackPointer // base address for runtime stack.
             if (highAddress < stackPointer) {
                 // Based on current values for stackBaseAddress and stackPointer, this will
-                // only happen if the combined lengths of program arguments is greater than
+                // only happen if the combined length of program arguments is greater than
                 // 0x7ffffffc - 0x7fffeffc = 0x00001000 = 4096 bytes.  In this case, set
                 // stackAddress to next lower word boundary minus 4 for clearance (since every
                 // byte from highAddress+1 is filled).
                 stackAddress = highAddress - (highAddress % Memory.WORD_LENGTH_BYTES) - Memory.WORD_LENGTH_BYTES
             }
-            Globals.memory.set(stackAddress, 0, Memory.WORD_LENGTH_BYTES) // null word for end of argv array
+            Globals.memory.set(stackAddress, 0, Memory.WORD_LENGTH_BYTES) // null word for the end of argv array
             stackAddress -= Memory.WORD_LENGTH_BYTES
             for (i in argStartAddress.indices.reversed()) {
                 Globals.memory.set(stackAddress, argStartAddress[i], Memory.WORD_LENGTH_BYTES)

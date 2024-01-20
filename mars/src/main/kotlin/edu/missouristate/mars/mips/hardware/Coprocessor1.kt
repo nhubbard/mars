@@ -309,7 +309,7 @@ object Coprocessor1 {
         registers.firstOrNull {
             it.number == number
         }?.let {
-            val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+            val isBackStepperEnabled = Globals.program.backSteppingEnabled()
             val backStepper = Globals.program.getBackStepper()
             oldValue = if (isBackStepperEnabled)
                 backStepper!!.addCoprocessor1Restore(number, it.setValue(newValue))
@@ -375,14 +375,6 @@ object Coprocessor1 {
         registers.forEach { it.addObserver(observer) }
     }
 
-    @Deprecated(
-        "Renamed to addObserver.",
-        ReplaceWith("addObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun addRegisterObserver(observer: Observer) = addObserver(observer)
-
     /**
      * Remove an Observer from all FPU registers.
      *
@@ -392,14 +384,6 @@ object Coprocessor1 {
     fun deleteObserver(observer: Observer) {
         registers.forEach { it.deleteObserver(observer) }
     }
-
-    @Deprecated(
-        "Renamed to deleteObserver.",
-        ReplaceWith("removeObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 
     /**
      * Set a condition flag to 1 (true).
@@ -411,7 +395,7 @@ object Coprocessor1 {
     fun setConditionFlag(flag: Int): Int {
         var oldValue = 0
         if (flag in 0..<conditionFlagCount) {
-            val isBackSteppingEnabled = Globals.settings.getBackSteppingEnabled()
+            val isBackSteppingEnabled = Globals.program.backSteppingEnabled()
             val backStepper = Globals.program.getBackStepper()
             oldValue = getConditionFlag(flag)
             condition.setValue(Binary.setBit(condition.getValue(), flag))
@@ -433,7 +417,7 @@ object Coprocessor1 {
     fun clearConditionFlag(flag: Int): Int {
         var oldValue = 0
         if (flag in 0..<conditionFlagCount) {
-            val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+            val isBackStepperEnabled = Globals.program.backSteppingEnabled()
             val backStepper = Globals.program.getBackStepper()
             oldValue = getConditionFlag(flag)
             condition.setValue(Binary.clearBit(condition.getValue(), flag))

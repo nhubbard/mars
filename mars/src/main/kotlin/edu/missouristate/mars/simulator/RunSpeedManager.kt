@@ -39,7 +39,7 @@ import kotlin.concurrent.Volatile
 
 object RunSpeedManager {
     /**
-     * Constant that represents unlimited run speed.  Compare with return value of
+     * Constant that represents unlimited run speed.  Compare with the return value of
      * getRunSpeed() to determine if set to unlimited.  At the unlimited setting, the GUI
      * will not attempt to update register and memory contents as each instruction
      * is executed.  This is the only possible value for command-line use of Mars.

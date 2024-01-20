@@ -372,14 +372,14 @@ class FloatRepresentation @JvmOverloads constructor(
             // Here lies a hack: we want to immediately display the updated register value in MARS,
             // but that code was not written for event-driven update (e.g., Observer) --
             // it was written to poll the registers for their values. So we force it to do so.
-            UIGlobals.gui?.registersPane?.coprocessor1Window?.updateRegisters()
+            UIGlobals.gui.registersPane.coprocessor1Window?.updateRegisters()
         }
     }
 
     /** Update all components displaying various representations of the 32-bit floating point value. */
     private fun updateDisplays(flavors: FlavorsOfFloat) {
         val hexIndex =
-            if ((flavors.hexString[0] == '0' && (flavors.hexString[1] == 'x' || flavors.hexString[1] == 'X'))) 2 else 0;
+            if ((flavors.hexString[0] == '0' && (flavors.hexString[1] == 'x' || flavors.hexString[1] == 'X'))) 2 else 0
         hexDisplay.text = flavors.hexString.substring(hexIndex).uppercase()
         binarySignDisplay.text = flavors.binaryString.substring(0, MAX_LENGTH_BINARY_SIGN)
         binaryExponentDisplay.text = flavors.binaryString.substring(
@@ -442,13 +442,6 @@ class FloatRepresentation @JvmOverloads constructor(
             return this
         }
 
-        @Deprecated(
-            "Renamed to fromHexString.",
-            ReplaceWith("fromHexString(hexString)"),
-            DeprecationLevel.ERROR
-        )
-        fun buildOneFromHexString(hexString: String) = fromHexString(hexString)
-
         fun fromBinaryString(): FlavorsOfFloat {
             this.binaryString = getFullBinaryStringFromDisplays()
             this.hexString = Binary.binaryStringToHexString(this.binaryString)
@@ -457,13 +450,6 @@ class FloatRepresentation @JvmOverloads constructor(
             this.intValue = Binary.binaryStringToInt(this.binaryString)
             return this
         }
-
-        @Deprecated(
-            "Renamed to fromBinaryString.",
-            ReplaceWith("fromBinaryString()"),
-            DeprecationLevel.ERROR
-        )
-        fun buildOneFromBinaryString() = fromBinaryString()
 
         fun fromDecimalString(decimalString: String): FlavorsOfFloat? {
             val floatValue = decimalString.toFloatOrNull() ?: return null
@@ -475,13 +461,6 @@ class FloatRepresentation @JvmOverloads constructor(
             return this
         }
 
-        @Deprecated(
-            "Renamed to fromDecimalString.",
-            ReplaceWith("fromDecimalString(decimalString)"),
-            DeprecationLevel.ERROR
-        )
-        fun buildOneFromDecimalString(decimalString: String) = fromDecimalString(decimalString)
-
         fun fromInt(intValue: Int): FlavorsOfFloat {
             this.intValue = intValue
             this.binaryString = Binary.intToBinaryString(intValue)
@@ -490,13 +469,6 @@ class FloatRepresentation @JvmOverloads constructor(
             this.expansionString = buildExpansionFromBinaryString(this.binaryString)
             return this
         }
-
-        @Deprecated(
-            "Renamed to fromInt.",
-            ReplaceWith("fromInt(intValue)"),
-            DeprecationLevel.ERROR
-        )
-        fun buildOneFromInt(intValue: Int) = fromInt(intValue)
 
         fun buildExpansionFromBinaryString(binaryString: String): String {
             val biasedExponent = Binary.binaryStringToInt(binaryString.substring(MAX_LENGTH_BINARY_SIGN, MAX_LENGTH_BINARY_SIGN + MAX_LENGTH_BINARY_EXPONENT))

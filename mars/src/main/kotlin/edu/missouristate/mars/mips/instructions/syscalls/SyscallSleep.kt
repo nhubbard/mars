@@ -43,7 +43,7 @@ import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
  * Service to cause the MARS Java thread to sleep for (at least) the specified number of milliseconds.
  * This timing will not be precise as the Java implementation will add some overhead.
  */
-class SyscallSleep : edu.missouristate.mars.mips.instructions.syscalls.AbstractSyscall(32, "Sleep") {
+class SyscallSleep : AbstractSyscall(32, "Sleep") {
     /**
      * System call to cause the MARS Java thread to sleep for (at least) the specified number of milliseconds.
      * This timing will not be precise as the Java implementation will add some overhead.

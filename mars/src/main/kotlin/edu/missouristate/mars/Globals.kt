@@ -35,6 +35,7 @@
 
 package edu.missouristate.mars
 
+import com.uchuhimo.konf.Config
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.mips.hardware.Memory
 import edu.missouristate.mars.mips.instructions.InstructionSet
@@ -80,6 +81,14 @@ object Globals {
     /** Instance of Settings that can be accessed and modified internally. */
     @JvmStatic
     var settings: CoreSettings = CoreSettings()
+
+    /**
+     * New settings class.
+     */
+    @JvmStatic
+    val config = Config { addSpec(CoreSpec) }
+        .from.env()
+        .from.systemProperties()
 
     /** String to GUI's RunI/O text area when echoing user input from the pop-up dialog. */
     const val userInputAlert = "**** user input : "

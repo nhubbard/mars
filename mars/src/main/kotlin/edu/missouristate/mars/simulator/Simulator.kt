@@ -313,7 +313,7 @@ class Simulator private constructor() : Observable() {
                             )
                         // Simulate the actual instruction
                         instruction.simulationCode.simulate(statement!!)
-                        if (Globals.settings.getBackSteppingEnabled())
+                        if (Globals.program.backSteppingEnabled())
                             Globals.program.getBackStepper()!!.addDoNothing(pc)
                     } catch (e: ProcessingException) {
                         if (pe?.errors() == null) {

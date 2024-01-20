@@ -80,34 +80,10 @@ class BackStepper {
     var isEnabled = true
     private var backSteps = BackstepStack(Globals.maximumBacksteps)
 
-    @Deprecated(
-        "Use isEnabled instead.",
-        ReplaceWith("isEnabled"),
-        DeprecationLevel.ERROR
-    )
-    fun enabled(): Boolean = isEnabled
-
-    @Deprecated(
-        "Use isEnabled instead.",
-        ReplaceWith("isEnabled = state"),
-        DeprecationLevel.ERROR
-    )
-    @JvmName("setIsEnabled")
-    fun setEnabled(state: Boolean) {
-        isEnabled = state
-    }
-
     /**
      * Check whether there are steps that can be undone.
      */
     fun isEmpty(): Boolean = backSteps.isEmpty()
-
-    @Deprecated(
-        "\"empty\" implies clearing the backsteps. Use \"isEmpty\" instead.",
-        ReplaceWith("isEmpty()"),
-        DeprecationLevel.ERROR
-    )
-    fun empty(): Boolean = isEmpty()
 
     /**
      * Determine whether the next back-step action occurred as a result of an instruction that executed in the
@@ -182,7 +158,7 @@ class BackStepper {
      * is to restore a memory half-word value.
      *
      * @param address The affected memory address.
-     * @param value   The "restore" value to be stored there, in low-order half.
+     * @param value   The "restore" value to be stored there, in the low-order half.
      * @return the argument value
      */
     fun addMemoryRestoreHalf(address: Int, value: Int): Int {

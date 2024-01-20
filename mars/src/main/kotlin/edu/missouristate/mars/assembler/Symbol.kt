@@ -42,11 +42,4 @@ data class Symbol(
     val name: String,
     var address: Int,
     val isData: Boolean
-) {
-    @Deprecated(
-        "Replaced with more descriptive member `isData`.",
-        ReplaceWith("isData"),
-        DeprecationLevel.ERROR
-    )
-    val type: Boolean = isData
-}
+)

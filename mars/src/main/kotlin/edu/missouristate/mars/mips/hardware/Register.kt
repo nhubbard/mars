@@ -68,16 +68,6 @@ data class Register
     }
 
     /**
-     * Return the value of the Register without notifying Observers.
-     */
-    @Deprecated(
-        "Use getValue() with optional notify parameter set to false.",
-        ReplaceWith("getValue(notify = false)"),
-        DeprecationLevel.ERROR
-    )
-    fun getValueNoNotify(): Int = getValue(notify = false)
-
-    /**
      * Get the reset value of the Register.
      */
     fun getResetValue(): Int = resetValue

@@ -37,12 +37,6 @@
 
 package edu.missouristate.mars
 
-import java.awt.Graphics
-import java.awt.Insets
-import java.awt.Polygon
-import java.awt.Window
-import java.awt.event.WindowAdapter
-import java.awt.event.WindowEvent
 import java.util.*
 import kotlin.contracts.contract
 
@@ -271,17 +265,6 @@ fun IntArray?.isNullOrEmpty(): Boolean {
     return this == null || this.isEmpty()
 }
 
-/**
- * Helps out with addWindowListener.
- */
-fun Window.addWindowClosingListener(block: (WindowEvent) -> Unit) {
-    addWindowListener(object : WindowAdapter() {
-        override fun windowClosing(e: WindowEvent) {
-            block(e)
-        }
-    })
-}
-
 /** Create a [Vector] in the same way that Kotlin creates collections. */
 fun <T> vectorOf(): Vector<T> = Vector()
 
@@ -317,25 +300,5 @@ fun <K, V> hashTableOf(vararg elements: Pair<K, V>): Hashtable<K, V> =
         for ((key, value) in elements) put(key, value)
     }
 
-/** Fill a [Polygon] with a receiver function. */
-private fun Graphics.fillPolygon(block: Polygon.() -> Unit) {
-    fillPolygon(Polygon().apply(block))
-}
-
-/** Fill a [Polygon] using any number of points. */
-fun Graphics.fillPolygon(vararg points: Pair<Int, Int>) {
-    fillPolygon {
-        for (point in points) addPoint(point.first, point.second)
-    }
-}
-
-/** Convert a [Double] to radians using Java's Math library. */
-fun Double.toRadians() = Math.toRadians(this)
-
 /** Check if a character is a space character. */
 fun Char.isSpaceChar() = Character.isSpaceChar(this)
-
-operator fun Insets.component1() = top
-operator fun Insets.component2() = right
-operator fun Insets.component3() = bottom
-operator fun Insets.component4() = right

@@ -99,7 +99,7 @@ class MacroPool(private val program: MIPSProgram) {
     fun getMatchingMacro(tokens: TokenList): Macro? {
         if (tokens.isEmpty()) return null
         var ret: Macro? = null
-        val firstToken = tokens.get(0)
+        val firstToken = tokens[0]
         for (macro in macroList) {
             if (macro.name == firstToken.value &&
                 macro.args.size + 1 == tokens.size &&
@@ -140,8 +140,8 @@ class MacroPool(private val program: MIPSProgram) {
      * Remove a token from the top of the call stack.
      */
     fun popFromCallStack() {
-        callStack.removeLast()
-        callStackOrigLines.removeLast()
+        callStack.removeLastOrNull()
+        callStackOrigLines.removeLastOrNull()
     }
 
     /**

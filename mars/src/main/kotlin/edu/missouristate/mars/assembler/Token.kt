@@ -73,19 +73,4 @@ data class Token @JvmOverloads constructor(
     val originalSourceLine get() = originalProgramAndLine.second
 
     override fun toString(): String = value
-
-    // Respelled items
-    @Deprecated(
-        "Renamed to sourceMipsProgram to match convention.",
-        ReplaceWith("sourceMipsProgram"),
-        DeprecationLevel.ERROR
-    )
-    val sourceMIPSProgram get() = sourceMipsProgram
-
-    @Deprecated(
-        "Renamed to startPosition to match convention.",
-        ReplaceWith("startPosition"),
-        DeprecationLevel.ERROR
-    )
-    val startPos get() = startPosition
 }

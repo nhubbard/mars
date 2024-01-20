@@ -67,6 +67,7 @@ object SystemIO {
     /**
      * Remove the repeated process of grabbing value from either GUI or console.
      */
+    @Suppress("UNUSED_PARAMETER")
     @JvmStatic
     private fun promptHelper(
         message: String,

@@ -32,50 +32,43 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for specific
  * language governing permissions and limitations under the License.
  */
-package edu.missouristate.mars.venus.actions
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.UIGlobals
-import edu.missouristate.mars.venus.VenusUI
-import java.awt.event.ActionEvent
-import javax.swing.Icon
-import javax.swing.KeyStroke
-import javax.swing.event.TableModelEvent
-import javax.swing.event.TableModelListener
+package edu.missouristate.mars
+
+import java.awt.Graphics
+import java.awt.Insets
+import java.awt.Polygon
+import java.awt.Window
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 
 /**
- * Action class for the Run menu item to clear execution breakpoints that have been set.
- * It is a listener and is notified whenever a breakpoint is added or removed, thus will
- * set its enabled status true or false depending on whether breakpoints remain after that action.
+ * Helps out with addWindowListener.
  */
-class RunClearBreakpointsAction(
-    name: String?, icon: Icon?, descrip: String?,
-    mnemonic: Int?, accel: KeyStroke?, gui: VenusUI?
-) : GuiAction(name, icon, descrip, mnemonic, accel, gui), TableModelListener {
-    /**
-     * Create the object and register with text segment window as a listener on its table model.
-     * The table model has not been created yet, so text segment window will hang onto this
-     * registration info and transfer it to the table model upon creation (which happens with
-     * each successful assembly).
-     */
-    init {
-        UIGlobals.gui.mainPane.executePane.textSegmentWindow.registerTableModelListener(this)
-    }
+fun Window.addWindowClosingListener(block: (WindowEvent) -> Unit) {
+    addWindowListener(object : WindowAdapter() {
+        override fun windowClosing(e: WindowEvent) {
+            block(e)
+        }
+    })
+}
 
-    /**
-     * When this option is selected, tell text segment window to clear breakpoints in its table model.
-     */
-    override fun actionPerformed(e: ActionEvent) {
-        UIGlobals.gui.mainPane.executePane.textSegmentWindow.clearAllBreakpoints()
-    }
+/** Fill a [Polygon] with a receiver function. */
+private fun Graphics.fillPolygon(block: Polygon.() -> Unit) {
+    fillPolygon(Polygon().apply(block))
+}
 
-    /**
-     * Required TableModelListener method.  This is response upon editing of text segment table
-     * model.  The only editable column is breakpoints so this method is called only when user
-     * adds or removes a breakpoint.  Gets new breakpoint count and sets enabled status
-     * accordingly.
-     */
-    override fun tableChanged(e: TableModelEvent) {
-        isEnabled = UIGlobals.gui.mainPane.executePane.textSegmentWindow.breakpointCount > 0
+/** Fill a [Polygon] using any number of points. */
+fun Graphics.fillPolygon(vararg points: Pair<Int, Int>) {
+    fillPolygon {
+        for (point in points) addPoint(point.first, point.second)
     }
 }
+
+/** Convert a [Double] to radians using Java's Math library. */
+fun Double.toRadians() = Math.toRadians(this)
+
+operator fun Insets.component1() = top
+operator fun Insets.component2() = right
+operator fun Insets.component3() = bottom
+operator fun Insets.component4() = right

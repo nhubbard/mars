@@ -84,7 +84,7 @@ object InstructionSet {
 
     @JvmStatic
     private val isDelayedBranchingEnabled: Boolean
-        get() = Globals.settings.getBooleanSetting(CoreSettings.DELAYED_BRANCHING_ENABLED)
+        get() = Globals.config[CoreSpec.enableDelayedBranching]
 
     /**
      * Add all instructions to the list. A given extended instruction may have more than one instruction object,

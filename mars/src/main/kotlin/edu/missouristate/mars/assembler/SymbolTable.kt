@@ -33,7 +33,7 @@
  * language governing permissions and limitations under the License.
  */
 
-@file:Suppress("DEPRECATION", "MemberVisibilityCanBePrivate")
+@file:Suppress("MemberVisibilityCanBePrivate")
 
 package edu.missouristate.mars.assembler
 
@@ -51,23 +51,6 @@ import edu.missouristate.mars.util.Binary
 class SymbolTable(private val filename: String) {
     companion object {
         const val startLabel = "main"
-
-        /*
-         * Note that -1 is a legal 32-bit address (0xFFFFFFFF),
-         * but it is the high address in kernel space,
-         * so it's highly unlikely that any symbol will have this as its associated address!
-         */
-        @Deprecated("Use getAddressOrNull(String) instead.")
-        const val NOT_FOUND = -1
-
-        @Deprecated(
-            "Use direct access instead.",
-            ReplaceWith("startLabel"),
-            DeprecationLevel.ERROR
-        )
-        @JvmStatic
-        @JvmName("getStartLabel")
-        fun badGetStartLabel(): String = startLabel
     }
 
     private var table: ArrayList<Symbol> = arrayListOf()
@@ -104,35 +87,12 @@ class SymbolTable(private val filename: String) {
     }
 
     /**
-     * Returns the address associated with the given label.
-     *
-     * @param s The label.
-     * @return The memory address of the label, or `NOT_FOUND` if not found in the symbol table.
-     */
-    @Deprecated("Use getAddressOrNull with a null check instead.", ReplaceWith("getAddressOrNull(s)"))
-    fun getAddress(s: String) = getAddressOrNull(s) ?: NOT_FOUND
-
-    /**
      * Returns the address associated with the given label, or `null` if the address is not found.
      *
      * @param s The label.
      * @return The memory address of the label, or `null` if not found in the symbol table.
      */
     fun getAddressOrNull(s: String) = table.firstOrNull { it.name == s }?.address
-
-    /**
-     * Return the address associated with the given label.
-     * Checks both the local and global table, starting with the local table (this table) first.
-     *
-     * @param s The label.
-     * @return The memory of the given label, or `NOT_FOUND` if not found in either the local or global symbol tables.
-     */
-    @Deprecated(
-        "Use getLocalOrGlobalAddressOrNull(String) with a null check instead.",
-        ReplaceWith("getLocalOrGlobalAddressOrNull(s)"),
-        DeprecationLevel.ERROR
-    )
-    fun getAddressLocalOrGlobal(s: String) = getLocalOrGlobalAddressOrNull(s) ?: NOT_FOUND
 
     /**
      * Return the address associated with the given label.

@@ -79,11 +79,11 @@ class Macro {
         val tokens = program!!.getTokenList()[line - 1]
         var s = program!!.getSourceLine(line)!!
         for (i in tokens.size - 1 downTo 0) {
-            val token = tokens.get(i)
+            val token = tokens[i]
             if (tokenIsMacroParameter(token.value, true)) {
                 val repl = this.args.indices.firstOrNull { this.args[it] == token.value } ?: -1
                 var substitute = token.value
-                if (repl != -1) substitute = args.get(repl + 1).toString()
+                if (repl != -1) substitute = args[repl + 1].toString()
                 else errors.add(ErrorMessage(program, token.sourceLine, token.startPosition, "Unknown macro parameter!"))
                 s = replaceToken(s, token, substitute)
             } else if (tokenIsMacroLabel(token.value)) {

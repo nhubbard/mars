@@ -63,7 +63,7 @@ class FileStatus @JvmOverloads constructor(pathName: String? = null) {
         @JvmStatic var status: StatusType = StatusType.NO_FILE
             set(value) {
                 field = value
-                UIGlobals.gui?.setMenuState(value)
+                UIGlobals.gui.setMenuState(value)
             }
 
         @JvmStatic var isAssembled: Boolean = false
@@ -100,48 +100,4 @@ class FileStatus @JvmOverloads constructor(pathName: String? = null) {
     fun setPathName(parent: String, name: String) {
         file = File(parent, name)
     }
-
-    @Deprecated(
-        "Use StatusType and status variable instead. No automatic replacement is available.",
-        ReplaceWith(""),
-        DeprecationLevel.ERROR
-    )
-    fun set(status: Int) {
-        Companion.status = StatusType.fromInt(status)
-    }
-
-    @Deprecated(
-        "Move to StatusType and status variable instead. No automatic replacement is available.",
-        ReplaceWith(""),
-        DeprecationLevel.ERROR
-    )
-    fun get(): Int = status.rawValue
-
-    @Deprecated(
-        "Use file variable instead.",
-        ReplaceWith("file?.path", "edu.missouristate.mars.venus.KFileStatus.Companion.file"),
-        DeprecationLevel.ERROR
-    )
-    fun getPathName() = file?.path
-
-    @Deprecated(
-        "Use file variable instead.",
-        ReplaceWith("file?.name", "edu.missouristate.mars.venus.KFileStatus.Companion.file"),
-        DeprecationLevel.ERROR
-    )
-    fun getFileName() = file?.name
-
-    @Deprecated(
-        "Use file variable instead.",
-        ReplaceWith("file?.parent", "edu.missouristate.mars.venus.KFileStatus.Companion.file"),
-        DeprecationLevel.ERROR
-    )
-    fun getParent() = file?.parent
-
-    @Deprecated(
-        "This function is a no-op; remove all usages.",
-        replaceWith = ReplaceWith(""),
-        DeprecationLevel.ERROR
-    )
-    fun updateStaticFileStatus() {}
 }

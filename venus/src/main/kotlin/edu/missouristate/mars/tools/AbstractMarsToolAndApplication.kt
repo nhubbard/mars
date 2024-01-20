@@ -682,20 +682,6 @@ abstract class AbstractMarsToolAndApplication protected constructor(
      * Class for text message field used to update operation status when assembling and running MIPS programs.
      */
     private inner class MessageField(text: String): JTextField(text) {
-        @Deprecated(
-            "Use displayMessage(text, true) instead.",
-            ReplaceWith("displayMessage(text, true)"),
-            DeprecationLevel.ERROR
-        )
-        fun displayTerminatingMessage(text: String?) = displayMessage(text, true)
-
-        @Deprecated(
-            "Use displayMessage(text) instead.",
-            ReplaceWith("displayMessage(text)"),
-            DeprecationLevel.ERROR
-        )
-        fun displayNonTerminatingMessage(text: String?) = displayMessage(text)
-
         @JvmOverloads
         fun displayMessage(text: String?, terminating: Boolean = false) {
             SwingUtilities.invokeLater(MessageWriter(text, terminating))

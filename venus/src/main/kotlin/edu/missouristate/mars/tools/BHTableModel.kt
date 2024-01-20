@@ -169,13 +169,6 @@ class BHTableModel(
         return (address shr 2) % entryCount
     }
 
-    @Deprecated(
-        "Renamed to getIndexForAddress.",
-        ReplaceWith("getIndexForAddress(address)"),
-        DeprecationLevel.ERROR
-    )
-    fun getIdxForAddress(address: Int) = getIndexForAddress(address)
-
     /**
      * Retrieve the prediction for the i-th BHT entry.
      *
@@ -187,13 +180,6 @@ class BHTableModel(
             throw IllegalArgumentException("Only indexes in the range ${entries.indices} are allowed!")
         return entries.elementAt(index).prediction
     }
-
-    @Deprecated(
-        "Renamed to getPredictionAt.",
-        ReplaceWith("getPredictionAt(index)"),
-        DeprecationLevel.ERROR
-    )
-    fun getPredictionAtIdx(index: Int) = getPredictionAt(index)
 
     /**
      * Updates the BHT entry with the outcome of the branch instruction. This causes a change in the model and signals
@@ -207,11 +193,4 @@ class BHTableModel(
         entries.elementAt(index).updatePrediction(branchTaken)
         fireTableRowsUpdated(index, index)
     }
-
-    @Deprecated(
-        "Renamed to updatePredictionAt.",
-        ReplaceWith("updatePredictionAt(index, branchTaken)"),
-        DeprecationLevel.ERROR
-    )
-    fun updatePredictionAtIdx(index: Int, branchTaken: Boolean) = updatePredictionAt(index, branchTaken)
 }

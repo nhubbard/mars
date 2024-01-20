@@ -65,22 +65,6 @@ object EditorFont {
 
     @JvmStatic val DEFAULT_STYLE = FontStyles.PLAIN
 
-    @Deprecated(
-        "Use FontStyles enum instead.",
-        ReplaceWith("DEFAULT_STYLE.stringValue"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    val DEFAULT_STYLE_STRING = FontStyles.PLAIN.styleName
-
-    @Deprecated(
-        "Use FontStyles enum directly instead.",
-        ReplaceWith("DEFAULT_STYLE.constant"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    val DEFAULT_STYLE_INT = FontStyles.PLAIN.constant
-
     const val DEFAULT_SIZE = 12
     const val MIN_SIZE = 6
     const val MAX_SIZE = 72
@@ -101,45 +85,6 @@ object EditorFont {
     private const val TAB_STRING = "\t"
     private const val TAB_CHAR = '\t'
     private const val SPACES = "                                                  "
-
-    /**
-     * Given a string that represents a font style, returns the
-     * corresponding final int defined in Font: PLAIN, BOLD, ITALIC.  It
-     * is not case-sensitive.
-     *
-     * @param style String representing the font style name
-     * @return The int value of the corresponding Font style constant.  If the
-     * string does not match any style name, returns Font.PLAIN.
-     */
-    @JvmStatic
-    @Deprecated(
-        "Use FontStyles.fromName(style).constant instead.",
-        ReplaceWith(
-            "FontStyles.fromName(style).constant",
-            "edu.missouristate.mars.util.KEditorFont.FontStyles"
-        ),
-        DeprecationLevel.ERROR
-    )
-    fun styleStringToStyleInt(style: String) = FontStyles.fromName(style).constant
-
-    /**
-     * Given an int that represents a font style from the Font class,
-     * returns the corresponding String.
-     *
-     * @param style Must be one of {@code Font.PLAIN}, {@code Font.BOLD}, or {@code Font.ITALIC}.
-     * @return The String representation of that style.
-     * If the parameter is not one of the above, returns "Plain".
-     */
-    @JvmStatic
-    @Deprecated(
-        "Use KEditorFont.FontStyles.fromConstant(style).styleName instead.",
-        ReplaceWith(
-            "FontStyles.fromConstant(style).styleName",
-            "edu.missouristate.mars.util.KEditorFont.FontStyles"
-        ),
-        DeprecationLevel.ERROR
-    )
-    fun styleIntToStyleString(style: Int) = FontStyles.fromConstant(style).styleName
 
     /**
      * Given an int representing the font size, returns corresponding string.

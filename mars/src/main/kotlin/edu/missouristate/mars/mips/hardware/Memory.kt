@@ -38,7 +38,6 @@
 package edu.missouristate.mars.mips.hardware
 
 import edu.missouristate.mars.*
-import edu.missouristate.mars.Globals.settings
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataBaseAddress
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultDataSegmentBaseAddress
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations.defaultExceptionHandlerAddress
@@ -481,7 +480,7 @@ class Memory private constructor() : Observable() {
         } else if (inTextSegment(address)) {
             // We are in the text segment.
             // Make sure that self-modifying code is enabled; otherwise, this operation is not permitted.
-            if (settings.getBooleanSetting(CoreSettings.ENABLE_SELF_MODIFYING_CODE)) {
+            if (Globals.config[CoreSpec.enableSelfModifyingCode]) {
                 val oldStatement = getStatement(address, false)
                 if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
                 setStatement(address, ProgramStatement(value, address))
@@ -520,7 +519,7 @@ class Memory private constructor() : Observable() {
 
     /**
      * Starting at the given word address, write the given value over four bytes (a word).
-     * It must be written as-is, without adjusting for byte order (little vs big endian).
+     * It must be written as-is, without adjusting for byte order (little vs. big endian).
      * The address must be word-aligned.
      *
      * @param address Starting address of Memory address to be set.
@@ -542,7 +541,7 @@ class Memory private constructor() : Observable() {
             relative = (stackBaseAddress - address) shr 2
             oldValue = storeWordInTable(stackBlockTable, relative, value)
         } else if (inTextSegment(address)) {
-            if (settings.getBooleanSetting(CoreSettings.ENABLE_SELF_MODIFYING_CODE)) {
+            if (Globals.config[CoreSpec.enableSelfModifyingCode]) {
                 val oldStatement = getStatement(address, false)
                 if (oldStatement != null) oldValue = oldStatement.getBinaryStatement()
                 setStatement(address, ProgramStatement(value, address))
@@ -572,7 +571,7 @@ class Memory private constructor() : Observable() {
             WORD_LENGTH_BYTES,
             value
         )
-        if (settings.getBackSteppingEnabled()) Globals.program.getBackStepper()!!
+        if (Globals.program.backSteppingEnabled()) Globals.program.getBackStepper()!!
             .addMemoryRestoreRawWord(address, oldValue)
         return oldValue
     }
@@ -591,14 +590,9 @@ class Memory private constructor() : Observable() {
         if (address % WORD_LENGTH_BYTES != 0) throw AddressErrorException(
             "Store address not aligned on a word boundary! ", address, Exceptions.ADDRESS_EXCEPTION_STORE
         )
-        return if (settings.getBackSteppingEnabled()) Globals.program.getBackStepper()!!.addMemoryRestoreWord(
-            address, set(
-                address, value, WORD_LENGTH_BYTES
-            )
-        )
-        else set(
-            address, value, WORD_LENGTH_BYTES
-        )
+        return if (Globals.program.backSteppingEnabled())
+            Globals.program.getBackStepper()!!.addMemoryRestoreWord(address, set(address, value, WORD_LENGTH_BYTES))
+        else set(address, value, WORD_LENGTH_BYTES)
     }
 
     /**
@@ -614,7 +608,7 @@ class Memory private constructor() : Observable() {
         if (address % 2 != 0) throw AddressErrorException(
             "Store address not aligned on half-word boundary! ", address, Exceptions.ADDRESS_EXCEPTION_STORE
         )
-        return if (settings.getBackSteppingEnabled()) Globals.program.getBackStepper()!!
+        return if (Globals.program.backSteppingEnabled()) Globals.program.getBackStepper()!!
             .addMemoryRestoreHalf(address, set(address, value, 2))
         else set(address, value, 2)
     }
@@ -628,7 +622,7 @@ class Memory private constructor() : Observable() {
      */
     @Throws(AddressErrorException::class)
     fun setByte(address: Int, value: Int): Int =
-        if (settings.getBackSteppingEnabled()) Globals.program.getBackStepper()!!
+        if (Globals.program.getBackStepper()?.isEnabled == true) Globals.program.getBackStepper()!!
             .addMemoryRestoreByte(address, set(address, value, 1))
         else set(address, value, 1)
 
@@ -701,7 +695,7 @@ class Memory private constructor() : Observable() {
             relativeByteAddress = address - memoryMapBaseAddress
             value = fetchBytesFromTable(memoryMapBlockTable, relativeByteAddress, length)
         } else if (inTextSegment(address)) {
-            if (settings.getBooleanSetting(CoreSettings.ENABLE_SELF_MODIFYING_CODE)) {
+            if (Globals.config[CoreSpec.enableSelfModifyingCode]) {
                 val stmt = getStatement(address, false)
                 value = stmt?.getBinaryStatement() ?: 0
             } else throw AddressErrorException(
@@ -754,7 +748,7 @@ class Memory private constructor() : Observable() {
             relative = (address - memoryMapBaseAddress) shr 2
             value = fetchWordFromTable(memoryMapBlockTable, relative)
         } else if (inTextSegment(address)) {
-            if (settings.getBooleanSetting(CoreSettings.ENABLE_SELF_MODIFYING_CODE)) {
+            if (Globals.config[CoreSpec.enableSelfModifyingCode]) {
                 val stmt = getStatement(address, false)
                 value = stmt?.getBinaryStatement() ?: 0
             } else throw AddressErrorException(
@@ -877,17 +871,6 @@ class Memory private constructor() : Observable() {
     }
 
     /**
-     * Starting at the given word address, read a four-byte word as an int.
-     * Does not use `get()`; we can do it faster here knowing we're working only with full words.
-     * Observers are NOT notified.
-     */
-    @Deprecated(
-        "Use getWord(address, false) instead.", ReplaceWith("getWord(address, false)"), DeprecationLevel.ERROR
-    )
-    @Throws(AddressErrorException::class)
-    fun getWordNoNotify(address: Int) = getWord(address, false)
-
-    /**
      * Starting at the given word address, read a two-byte word into the lower 16 bits of an int.
      *
      * @param address Starting address of word to be read.
@@ -926,7 +909,7 @@ class Memory private constructor() : Observable() {
         if (!wordAligned(address)) throw AddressErrorException(
             "Fetch address for text segment not aligned to word boundary! ", address, Exceptions.ADDRESS_EXCEPTION_LOAD
         )
-        if (!settings.getBooleanSetting(CoreSettings.ENABLE_SELF_MODIFYING_CODE) && !(inTextSegment(address) || inKernelTextSegment(
+        if (!Globals.config[CoreSpec.enableSelfModifyingCode] && !(inTextSegment(address) || inKernelTextSegment(
                 address
             ))
         ) throw AddressErrorException(
@@ -944,14 +927,6 @@ class Memory private constructor() : Observable() {
             ), address
         )
     }
-
-    /**
-     * Get ProgramStatement from Text Segment.
-     */
-    @Deprecated(
-        "Use getStatement(address, false) instead.", ReplaceWith("getStatement(address, false)"), DeprecationLevel.ERROR
-    )
-    fun getStatementNoNotify(address: Int): ProgramStatement? = getStatement(address, false)
 
     /**
      * Register an observer for all memory areas.

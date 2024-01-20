@@ -46,11 +46,4 @@ data class AddressErrorException(
     private val localMessage: String,
     val address: Int,
     val type: Exceptions
-): Exception("$localMessage${Binary.intToHexString(address)}") {
-    @Deprecated(
-        "Incorrect order.",
-        ReplaceWith("AddressErrorException(localMessage, address, type)"),
-        DeprecationLevel.ERROR
-    )
-    constructor(localMessage: String, type: Exceptions, address: Int) : this(localMessage, address, type)
-}
+): Exception("$localMessage${Binary.intToHexString(address)}")

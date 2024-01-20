@@ -498,14 +498,6 @@ open class JEditTextArea @JvmOverloads constructor(
         return fastOffsetToX(line, offset)
     }
 
-    @Suppress("FunctionName")
-    @Deprecated(
-        "Renamed to fastOffsetToX.",
-        ReplaceWith("fastOffsetToX(line, offset)"),
-        DeprecationLevel.ERROR
-    )
-    fun _offsetToX(line: Int, offset: Int): Int = fastOffsetToX(line, offset)
-
     /**
      * Converts an offset in a line into an x co-ordinate. This is a
      * fast version that should only be used if no changes were made

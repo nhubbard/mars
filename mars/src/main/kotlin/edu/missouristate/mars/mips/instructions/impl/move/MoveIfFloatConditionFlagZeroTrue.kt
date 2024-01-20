@@ -43,7 +43,7 @@ import edu.missouristate.mars.mips.instructions.SimulationCode
 
 class MoveIfFloatConditionFlagZeroTrue : BasicInstruction(
     "movt \$t1,\$t2",
-    "Move if FP condition flag 0 true: set \$t1 to \$t2 if FPU (Coproccessor 1) condition flag 0 is true (1)",
+    "Move if FP condition flag 0 true: set \$t1 to \$t2 if FPU (Coprocessor 1) condition flag 0 is true (1)",
     BasicInstructionFormat.R_FORMAT,
     "000000 sssss 000 01 fffff 00000 000001",
     SimulationCode {

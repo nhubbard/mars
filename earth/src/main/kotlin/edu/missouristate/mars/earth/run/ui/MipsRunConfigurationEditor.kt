@@ -32,125 +32,99 @@
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for specific
  * language governing permissions and limitations under the License.
  */
+package edu.missouristate.mars.earth.run.ui
 
-package edu.missouristate.mars.earth.run.ui;
+import com.intellij.ide.util.BrowseFilesListener
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.options.ConfigurationException
+import com.intellij.openapi.options.SettingsEditor
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
+import edu.missouristate.mars.earth.lang.MipsFileType
+import edu.missouristate.mars.earth.run.MipsRunConfiguration
+import edu.missouristate.mars.earth.run.MipsRunConfiguration.Companion.copyParams
+import edu.missouristate.mars.earth.run.MipsRunConfigurationParams
+import javax.swing.*
 
-import com.intellij.ide.util.BrowseFilesListener;
-import com.intellij.openapi.fileChooser.FileChooserDescriptor;
-import com.intellij.openapi.options.ConfigurationException;
-import com.intellij.openapi.options.SettingsEditor;
-import com.intellij.openapi.ui.TextFieldWithBrowseButton;
-import edu.missouristate.mars.earth.lang.MipsFileType;
-import edu.missouristate.mars.earth.run.MipsRunConfiguration;
-import edu.missouristate.mars.earth.run.MipsRunConfigurationParams;
-import org.jetbrains.annotations.NotNull;
+class MipsRunConfigurationEditor(private val cfg: MipsRunConfiguration) : SettingsEditor<MipsRunConfiguration>(), MipsRunConfigurationParams {
+    private var rootPanel: JPanel? = null
+    private var useMainCheck: JCheckBox? = null
+    private var maxStepsSpinner: JSpinner? = null
+    private var mainFileField: TextFieldWithBrowseButton? = null
+    private var workingDirField: TextFieldWithBrowseButton? = null
+    private var extendedInstructionsCheck: JCheckBox? = null
 
-import javax.swing.*;
-
-public class MipsRunConfigurationEditor extends SettingsEditor<MipsRunConfiguration> implements MipsRunConfigurationParams {
-    private final MipsRunConfiguration cfg;
-
-    private JPanel rootPanel;
-    private JCheckBox useMainCheck;
-    private JSpinner maxStepsSpinner;
-    private TextFieldWithBrowseButton mainFileField;
-    private TextFieldWithBrowseButton workingDirField;
-    private JCheckBox extendedInstructionsCheck;
-
-    public MipsRunConfigurationEditor(MipsRunConfiguration cfg) {
-        this.cfg = cfg;
-
-        mainFileField.addBrowseFolderListener("MIPS Main File", "Choose the MIPS file containing the main function.", cfg.getProject(), getChooseMainFileDescriptor());
-        workingDirField.addBrowseFolderListener("Working Directory", "Choose working directory.", cfg.getProject(), BrowseFilesListener.SINGLE_DIRECTORY_DESCRIPTOR);
+    init {
+        mainFileField!!.addBrowseFolderListener(
+            "MIPS Main File",
+            "Choose the MIPS file containing the main function.",
+            cfg.project,
+            chooseMainFileDescriptor
+        )
+        workingDirField!!.addBrowseFolderListener(
+            "Working Directory",
+            "Choose working directory.",
+            cfg.project,
+            BrowseFilesListener.SINGLE_DIRECTORY_DESCRIPTOR
+        )
     }
 
-    private FileChooserDescriptor getChooseMainFileDescriptor() {
-        FileChooserDescriptor chooseMainFile = new FileChooserDescriptor(
-                true,
-                false,
-                false,
-                false,
-                false,
-                false
-        );
-        chooseMainFile.withTreeRootVisible(true);
-        chooseMainFile.withFileFilter(virtualFile -> virtualFile.getFileType() instanceof MipsFileType);
-        chooseMainFile.setRoots(cfg.getProject().getBaseDir());
+    private val chooseMainFileDescriptor: FileChooserDescriptor
+        get() {
+            val chooseMainFile = FileChooserDescriptor(true, false, false, false, false, false)
+            chooseMainFile.withTreeRootVisible(true)
+            chooseMainFile.withFileFilter { it.fileType is MipsFileType }
+            chooseMainFile.setRoots(cfg.project.baseDir)
+            return chooseMainFile
+        }
 
-        return chooseMainFile;
+    override fun resetEditorFrom(runConfiguration: MipsRunConfiguration) {
+        copyParams(runConfiguration, this)
     }
 
-    @Override
-    protected void resetEditorFrom(@NotNull MipsRunConfiguration runConfiguration) {
-        MipsRunConfiguration.copyParams(runConfiguration, this);
+    @Throws(ConfigurationException::class)
+    override fun applyEditorTo(runConfiguration: MipsRunConfiguration) {
+        copyParams(this, runConfiguration)
     }
 
-    @Override
-    protected void applyEditorTo(@NotNull MipsRunConfiguration runConfiguration) throws ConfigurationException {
-        MipsRunConfiguration.copyParams(this, runConfiguration);
+    override fun createEditor(): JComponent {
+        return rootPanel!!
     }
 
-    @NotNull
-    @Override
-    protected JComponent createEditor() {
-        return rootPanel;
-    }
+    override var mainFile: String
+        get() = mainFileField!!.text
+        set(filename) {
+            mainFileField!!.text = filename
+        }
 
-    @Override
-    public String getMainFile() {
-        return mainFileField.getText();
-    }
+    override var workingDirectory: String
+        get() = workingDirField!!.text
+        set(dir) {
+            workingDirField!!.text = dir
+        }
 
-    @Override
-    public void setMainFile(String filename) {
-        mainFileField.setText(filename);
-    }
+    override var maxSteps: Int
+        get() = maxStepsSpinner!!.value as Int
+        set(steps) {
+            maxStepsSpinner!!.value = steps
+        }
 
-    @Override
-    public String getWorkingDirectory() {
-        return workingDirField.getText();
-    }
+    override var isStartMain: Boolean
+        get() = useMainCheck!!.isSelected
+        set(checked) {
+            useMainCheck!!.isSelected = checked
+        }
 
-    @Override
-    public void setWorkingDirectory(String dir) {
-        workingDirField.setText(dir);
-    }
+    override var isAllowExtendedInstructions: Boolean
+        get() = extendedInstructionsCheck!!.isSelected
+        set(checked) {
+            extendedInstructionsCheck!!.isSelected = checked
+        }
 
-    @Override
-    public int getMaxSteps() {
-        return (Integer) maxStepsSpinner.getValue();
-    }
+    private fun createUIComponents() {
+        val maxStepsModel = SpinnerNumberModel()
+        maxStepsModel.minimum = -1
+        maxStepsModel.value = -1
 
-    @Override
-    public void setMaxSteps(int steps) {
-        maxStepsSpinner.setValue(steps);
-    }
-
-    @Override
-    public boolean isStartMain() {
-        return useMainCheck.isSelected();
-    }
-
-    @Override
-    public void setStartMain(boolean checked) {
-        useMainCheck.setSelected(checked);
-    }
-
-    @Override
-    public boolean isAllowExtendedInstructions() {
-        return extendedInstructionsCheck.isSelected();
-    }
-
-    @Override
-    public void setAllowExtendedInstructions(boolean checked) {
-        extendedInstructionsCheck.setSelected(checked);
-    }
-
-    private void createUIComponents() {
-        SpinnerNumberModel maxStepsModel = new SpinnerNumberModel();
-        maxStepsModel.setMinimum(-1);
-        maxStepsModel.setValue(-1);
-
-        maxStepsSpinner = new JSpinner(maxStepsModel);
+        maxStepsSpinner = JSpinner(maxStepsModel)
     }
 }

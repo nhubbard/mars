@@ -54,13 +54,6 @@ class Assembler {
     lateinit var errors: ErrorList
         private set
 
-    @Deprecated(
-        "Use errors accessor instead.",
-        ReplaceWith("errors"),
-        DeprecationLevel.ERROR
-    )
-    val errorList: ErrorList get() = errors
-
     private var inDataSegment: Boolean = false
     private var inMacroSegment: Boolean = false
     private var externAddress: Int = 0
@@ -315,7 +308,7 @@ class Assembler {
                     ps2.getSourceMipsProgram(),
                     ps2.getSourceLine(),
                     0,
-                    "Duplicate text segment address: ${NumberDisplayBaseChooser.formatUnsignedInteger(ps2.getAddress(), if (Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_ADDRESSES_IN_HEX)) 16 else 10)} already occupied by ${ps1.getSourceFile()} line ${ps1.getSourceLine()} (caused by use of ${if (Memory.inTextSegment(ps2.getAddress())) ".text" else ".ktext"} operand)"
+                    "Duplicate text segment address: ${NumberDisplayBaseChooser.formatUnsignedInteger(ps2.getAddress(), if (Globals.config[CoreSpec.displayAddressesInHex]) 16 else 10)} already occupied by ${ps1.getSourceFile()} line ${ps1.getSourceLine()} (caused by use of ${if (Memory.inTextSegment(ps2.getAddress())) ".text" else ".ktext"} operand)"
                 ))
         }
     }
@@ -1306,15 +1299,6 @@ class Assembler {
 
         fun increment(by: Int) {
             address[currentAddressSpace] = address[currentAddressSpace]!! + by
-        }
-
-        @Deprecated(
-            "Use currentAddressSpace setter instead.",
-            ReplaceWith("currentAddressSpace = addressSpace"),
-            DeprecationLevel.ERROR
-        )
-        fun setAddressSpace(addressSpace: AddressSpace) {
-            currentAddressSpace = addressSpace
         }
 
         enum class AddressSpace(val rawValue: Int) {

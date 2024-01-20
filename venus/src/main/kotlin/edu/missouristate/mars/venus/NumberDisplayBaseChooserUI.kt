@@ -37,17 +37,12 @@
 
 package edu.missouristate.mars.venus
 
-import edu.missouristate.mars.*
+import edu.missouristate.mars.NumberDisplayBaseChooser
 import edu.missouristate.mars.NumberDisplayBaseChooser.DECIMAL
 import edu.missouristate.mars.NumberDisplayBaseChooser.HEXADECIMAL
 import edu.missouristate.mars.NumberDisplayBaseChooser.getBase
+import edu.missouristate.mars.UIGlobals
 import edu.missouristate.mars.util.Binary
-import edu.missouristate.mars.util.Binary.highOrderLongToInt
-import edu.missouristate.mars.util.Binary.intToAscii
-import edu.missouristate.mars.util.Binary.intToHexString
-import edu.missouristate.mars.util.Binary.longToHexString
-import edu.missouristate.mars.util.Binary.lowOrderLongToInt
-import edu.missouristate.mars.util.Binary.unsignedIntToIntString
 import java.awt.event.ActionEvent
 import java.awt.event.ItemEvent
 import javax.swing.JCheckBox
@@ -92,7 +87,7 @@ class NumberDisplayBaseChooserUI(text: String, displayInHex: Boolean) : JCheckBo
                 val event = ActionEvent(settingsMenuItem, 0, "chooser")
                 for (listener in listeners ?: arrayOf()) listener.actionPerformed(event)
             }
-            UIGlobals.gui?.mainPane?.executePane?.numberDisplayBaseChanged(choice)
+            UIGlobals.gui.mainPane.executePane?.numberDisplayBaseChanged(choice)
         }
     }
 }

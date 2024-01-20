@@ -62,7 +62,12 @@
        Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
   <extensions defaultExtensionNs="com.intellij">
     <!-- File type -->
-    <fileTypeFactory implementation="edu.missouristate.mars.earth.lang.MipsFileTypeFactory" />
+    <fileType
+      name="MIPS"
+      implementationClass="edu.missouristate.mars.earth.lang.MipsFileType"
+      fieldName="INSTANCE"
+      language="MIPS"
+      extensions="s" />
     <iconProvider implementation="edu.missouristate.mars.earth.icons.MipsIconProvider" />
     <lang.parserDefinition language="MIPS" implementationClass="edu.missouristate.mars.earth.lang.parser.MipsParserDefinition" />
 
@@ -100,9 +105,9 @@
     <toolWindow id="MARS Registers" secondary="true" icon="/icons/mips-tool-registers-13.png" anchor="right" factoryClass="edu.missouristate.mars.earth.tools.registers.JMipsRegistersToolWindowFactory" />
 
     <!-- Non-debugging run provider -->
-    <!--<configurationType implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationType" />-->
-    <!--<programRunner implementation="edu.missouristate.mars.earth.run.MipsRunner" />-->
-<!--    <runConfigurationProducer implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationProducer" />-->
+    <configurationType implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationType" />
+    <programRunner implementation="edu.missouristate.mars.earth.run.MipsRunner" />
+    <runConfigurationProducer implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationProducer" />
 
     <!-- Debugging run provider -->
     <programRunner implementation="edu.missouristate.mars.earth.run.debugger.MipsDebugRunner" />

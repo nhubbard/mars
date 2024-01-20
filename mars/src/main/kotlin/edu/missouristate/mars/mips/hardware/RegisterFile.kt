@@ -37,11 +37,11 @@
 
 package edu.missouristate.mars.mips.hardware
 
+import edu.missouristate.mars.CoreSpec
 import edu.missouristate.mars.Globals
-import edu.missouristate.mars.CoreSettings
 import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.mips.instructions.Instruction
-import java.util.Observer
+import java.util.*
 
 /**
  * Represents non-FPU MIPS registers.
@@ -130,7 +130,7 @@ object RegisterFile {
      */
     @JvmStatic
     fun updateRegister(number: Int, value: Int): Int {
-        val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+        val isBackStepperEnabled = Globals.program.backSteppingEnabled()
         val backStepper = Globals.program.getBackStepper()
         var oldValue = 0
         val register = when (number) {
@@ -210,7 +210,7 @@ object RegisterFile {
     /**
      * Initialize the program counter to either the default reset value,
      * or the address associated with the source program global label "main" if it exists as a text segment label *and*
-     * the [edu.missouristate.mars.CoreSettings.START_AT_MAIN] setting is enabled.
+     * the [edu.missouristate.mars.CoreSpec.startAtMain] setting is enabled.
      *
      * @param startAtMain If `true`, this function will set the program counter to the address of the statement labeled
      * "main", or another defined start label, if defined.
@@ -238,40 +238,10 @@ object RegisterFile {
     fun setProgramCounter(value: Int): Int {
         val oldValue = programCounter.getValue()
         programCounter.setValue(value)
-        if (Globals.settings.getBackSteppingEnabled())
+        if (Globals.program.backSteppingEnabled())
             Globals.program.getBackStepper()!!.addPCRestore(oldValue)
         return oldValue
     }
-
-    /**
-     * Return the value of the program counter.
-     */
-    @Deprecated(
-        "Directly access the program counter instead.",
-        ReplaceWith("programCounter.getValue()"),
-        DeprecationLevel.ERROR
-    )
-    fun getProgramCounterValue() = programCounter.getValue()
-
-    /**
-     * Return the Register object for the program counter.
-     */
-    @Deprecated(
-        "Directly access the program counter instead.",
-        ReplaceWith("programCounter"),
-        DeprecationLevel.ERROR
-    )
-    fun getProgramCounterRegister() = programCounter
-
-    /**
-     * Return the reset value for the program counter.
-     */
-    @Deprecated(
-        "Directly access the program counter instead.",
-        ReplaceWith("programCounter.getResetValue()"),
-        DeprecationLevel.ERROR
-    )
-    fun getInitialProgramCounter() = programCounter.getResetValue()
 
     /**
      * Reinitialize the main register file.
@@ -283,7 +253,7 @@ object RegisterFile {
     @JvmStatic
     fun resetRegisters() {
         for (register in registers) register.resetValue()
-        initializeProgramCounter(Globals.settings.getBooleanSetting(CoreSettings.START_AT_MAIN))
+        initializeProgramCounter(Globals.config[CoreSpec.startAtMain])
         hi.resetValue()
         lo.resetValue()
     }
@@ -306,14 +276,6 @@ object RegisterFile {
         lo.addObserver(observer)
     }
 
-    @Deprecated(
-        "Renamed to addObserver.",
-        ReplaceWith("addObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun addRegisterObserver(observer: Observer) = addObserver(observer)
-
     /**
      * Remove an Observer from all registers.
      */
@@ -323,12 +285,4 @@ object RegisterFile {
         hi.deleteObserver(observer)
         lo.deleteObserver(observer)
     }
-
-    @Deprecated(
-        "Renamed to deleteObserver.",
-        ReplaceWith("deleteObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 }

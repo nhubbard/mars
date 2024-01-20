@@ -78,31 +78,31 @@ enum class TokenTypes(private val descriptor: String) {
          * @return The corresponding TokenTypes entry if the parameter matches a defined MIPS token type, or `null`.
          */
         @JvmStatic
-        fun matchTokenType(value: String): TokenTypes? {
+        fun matchTokenType(value: String): TokenTypes {
             // If it starts with a single quote, it is a malformed character literal
             // because a well-formed character literal was converted to a stringified integer before getting here.
-            if (value[0] == '\'') return TokenTypes.ERROR
+            if (value[0] == '\'') return ERROR
             // Check if it's a comment.
-            if (value[0] == '#') return TokenTypes.COMMENT
+            if (value[0] == '#') return COMMENT
             // Check if it's one of the simple tokens.
             if (value.length == 1) {
                 when (value[0]) {
-                    '(' -> return TokenTypes.LEFT_PAREN
-                    ')' -> return TokenTypes.RIGHT_PAREN
-                    ':' -> return TokenTypes.COLON
-                    '+' -> return TokenTypes.PLUS
-                    '-' -> return TokenTypes.MINUS
+                    '(' -> return LEFT_PAREN
+                    ')' -> return RIGHT_PAREN
+                    ':' -> return COLON
+                    '+' -> return PLUS
+                    '-' -> return MINUS
                 }
             }
             // Check if it's a macro parameter.
-            if (Macro.tokenIsMacroParameter(value, false)) return TokenTypes.MACRO_PARAMETER
+            if (Macro.tokenIsMacroParameter(value, false)) return MACRO_PARAMETER
             // Check if it's a register.
             RegisterFile.getUserRegister(value)?.let {
-                return if (it.name == value) TokenTypes.REGISTER_NAME else TokenTypes.REGISTER_NUMBER
+                return if (it.name == value) REGISTER_NAME else REGISTER_NUMBER
             }
             // Check if it's a floating point register.
             Coprocessor1.getRegister(value)?.let {
-                return TokenTypes.FP_REGISTER_NAME
+                return FP_REGISTER_NAME
             }
             // Check if it's an immediate/constant integer value.
             // Classified based on the number of bits needed to represent the number in binary.
@@ -111,28 +111,28 @@ enum class TokenTypes(private val descriptor: String) {
             try {
                 val i = Binary.stringToInt(value)
                 // A large block comment detailing rescinded modifications dating back to 2008 has been removed.
-                if (i in 0..31) return TokenTypes.INTEGER_5
-                if (i in DataTypes.MIN_UHALF_VALUE..DataTypes.MAX_UHALF_VALUE) return TokenTypes.INTEGER_16U
-                if (i in DataTypes.MIN_HALF_VALUE..DataTypes.MAX_HALF_VALUE) return TokenTypes.INTEGER_16
+                if (i in 0..31) return INTEGER_5
+                if (i in DataTypes.MIN_UHALF_VALUE..DataTypes.MAX_UHALF_VALUE) return INTEGER_16U
+                if (i in DataTypes.MIN_HALF_VALUE..DataTypes.MAX_HALF_VALUE) return INTEGER_16
                 // This is the default value if no other type is applicable.
-                return TokenTypes.INTEGER_32
+                return INTEGER_32
             } catch (ignored: NumberFormatException) {}
             // See if the value is a real (fixed or floating point) number.
             // Note that parseDouble() accepts integer values, but if it is an integer literal, this would not handle
             // integer values.
-            value.toDoubleOrNull()?.let { return TokenTypes.REAL_NUMBER }
+            value.toDoubleOrNull()?.let { return REAL_NUMBER }
             // See if it is an instruction operator.
-            if (Globals.instructionSet.matchOperator(value) != null) return TokenTypes.OPERATOR
+            if (Globals.instructionSet.matchOperator(value) != null) return OPERATOR
             // See if it is a directive.
-            if (value[0] == '.' && Directives.matchDirective(value) != null) return TokenTypes.DIRECTIVE
+            if (value[0] == '.' && Directives.matchDirective(value) != null) return DIRECTIVE
             // See if it is a quoted string.
-            if (value[0] == '"') return TokenTypes.QUOTED_STRING
+            if (value[0] == '"') return QUOTED_STRING
             // Test for identifiers goes last, because there are tokens for various MIPS constructs, such as operators
             // and directives, that could also fit the lexical specifications of an identifier, and those need to be
             // recognized first.
-            if (value.isValidIdentifier()) return TokenTypes.IDENTIFIER
+            if (value.isValidIdentifier()) return IDENTIFIER
             // There is no valid match.
-            return TokenTypes.ERROR
+            return ERROR
         }
 
         @JvmStatic

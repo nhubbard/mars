@@ -223,7 +223,7 @@ class MIPSProgram {
         val mipsProgramsToAssemble = arrayListOf<MIPSProgram>()
         var leadFilePosition = 0
         if (!exceptionHandler.isNullOrEmpty()) {
-            filenames.addFirst(exceptionHandler)
+            filenames.add(0, exceptionHandler)
             leadFilePosition = 1
         }
         for (filename in filenames) {

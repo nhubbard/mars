@@ -35,8 +35,8 @@
 
 package edu.missouristate.mars.mips.hardware
 
+import edu.missouristate.mars.CoreSpec
 import edu.missouristate.mars.Globals
-import edu.missouristate.mars.Globals.settings
 import edu.missouristate.mars.mips.hardware.RegisterFile.programCounter
 
 /**
@@ -164,7 +164,7 @@ object MemoryConfigurations {
             defaultConfiguration = configurations!!.first()
             currentConfiguration = defaultConfiguration
             // Get current config from settings
-            setCurrentConfiguration(getConfigurationByName(settings.getMemoryConfiguration()))
+            setCurrentConfiguration(getConfigurationByName(Globals.config[CoreSpec.memoryConfiguration]))
         }
     }
 

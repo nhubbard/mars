@@ -37,12 +37,9 @@
 
 package edu.missouristate.mars.mips.instructions
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.CoreSettings
+import edu.missouristate.mars.*
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.mips.hardware.RegisterFile
-import edu.missouristate.mars.signExtend
 import edu.missouristate.mars.util.Binary.bitValue
 import edu.missouristate.mars.util.Binary.stringToInt
 
@@ -178,7 +175,7 @@ class ExtendedInstruction @JvmOverloads constructor(
             var instruction = template
             var index: Int
             if (instruction.contains("DBNOP"))
-                return if (Globals.settings.getBooleanSetting(CoreSettings.DELAYED_BRANCHING_ENABLED)) "nop" else ""
+                return if (Globals.config[CoreSpec.enableDelayedBranching]) "nop" else ""
             // Substitute the first operand token for the template's RG1 or OP1, second for RG2 or OP2, etc.
             for (op in 1..<tokenList.size) {
                 instruction = instruction.replace("RG$op", tokenList[op].value)
@@ -398,7 +395,7 @@ class ExtendedInstruction @JvmOverloads constructor(
             // to substitute if delayed branching is DISABLED; the second is offset if ENABLED.
             index = instruction.indexOf("BROFF")
             if (index >= 0) {
-                val delayedBranching = Globals.settings.getBooleanSetting(CoreSettings.DELAYED_BRANCHING_ENABLED)
+                val delayedBranching = Globals.config[CoreSpec.enableDelayedBranching]
                 try {
                     val disabled = instruction.substring(index + 5, index + 6)
                     val enabled = instruction.substring(index + 6, index + 7)
@@ -445,38 +442,6 @@ class ExtendedInstruction @JvmOverloads constructor(
         }
 
         /**
-         * Perform a string substitution.
-         *
-         * @param original The original string
-         * @param find The string to replace
-         * @param replacement The string to replace [find] with
-         */
-        @Deprecated(
-            "Use Kotlin stdlib.",
-            ReplaceWith("original.replace(find, replacement)"),
-            DeprecationLevel.ERROR
-        )
-        @JvmStatic
-        private fun substitute(original: String, find: String, replacement: String) =
-            original.replace(find, replacement)
-
-        /**
-         * Perform a string substitution on the first match only.
-         *
-         * @param original The original string
-         * @param find The string to replace
-         * @param replacement The string to replace [find] with
-         */
-        @JvmStatic
-        @Deprecated(
-            "Use Kotlin stdlib.",
-            ReplaceWith("original.replaceFirst(find, replacement)"),
-            DeprecationLevel.ERROR
-        )
-        private fun substituteFirst(original: String, find: String, replacement: String) =
-            original.replaceFirst(find, replacement)
-
-        /**
          * Takes a list of basic instructions this extended instruction expands to, which is a string, and breaks it
          * out into separate instructions. They are separated by the '\n' character.
          */
@@ -498,7 +463,7 @@ class ExtendedInstruction @JvmOverloads constructor(
             // if delayed branching is enabled. Otherwise, generate nothing. If generating nothing,
             // then don't count the `nop` in the instruction length.
             val instructionCount = translationList.filterNot {
-                it.contains("DBNOP") && !Globals.settings.getBooleanSetting(CoreSettings.DELAYED_BRANCHING_ENABLED)
+                it.contains("DBNOP") && !Globals.config[CoreSpec.enableDelayedBranching]
             }.count()
             return 4 * instructionCount
         }

@@ -35,8 +35,8 @@
 
 package edu.missouristate.mars.mips.dump
 
+import edu.missouristate.mars.CoreSpec
 import edu.missouristate.mars.Globals
-import edu.missouristate.mars.CoreSettings
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.Memory
 import edu.missouristate.mars.util.Binary
@@ -51,8 +51,8 @@ class SegmentWindowDumpFormat : AbstractDumpFormat(
     "txt"
 ) {
     override fun dumpMemoryRange(file: File?, firstAddress: Int, lastAddress: Int) {
-        val hexAddresses = Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_ADDRESSES_IN_HEX)
-        val hexValues = Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX)
+        val hexAddresses = Globals.config[CoreSpec.displayAddressesInHex]
+        val hexValues = Globals.config[CoreSpec.displayValuesInHex]
         file?.let { f ->
             FileOutputStream(f).use { out ->
                 PrintStream(out).use {

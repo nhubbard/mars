@@ -38,14 +38,14 @@ package edu.missouristate.mars.simulator
 import javax.swing.SwingUtilities
 
 /**
- * This is the 3rd version of SwingWorker (also known as
+ * This is the third version of SwingWorker (also known as
  * SwingWorker 3), an abstract class that you subclass to
  * perform GUI-related work in a dedicated thread.  For
  * instructions on and examples of using this class, see:
  *
  * [...](http://java.sun.com/docs/books/tutorial/uiswing/misc/threads.html)
  *
- * Note that the API changed slightly in the 3rd version:
+ * Note that the API changed slightly in the third version:
  * You must now invoke start() on the SwingWorker after
  * creating it.
  *
@@ -74,7 +74,7 @@ abstract class SwingWorker(useSwing: Boolean) {
         private set
 
     /**
-     * Class to maintain reference to current worker thread
+     * Class to maintain reference to the current worker thread
      * under separate synchronization control.
      */
     private class ThreadVar(private var thread: Thread?) {

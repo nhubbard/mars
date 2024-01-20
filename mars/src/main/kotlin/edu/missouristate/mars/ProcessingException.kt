@@ -65,7 +65,7 @@ class ProcessingException : Exception {
      *
      * @param e   An ErrorList which is an ArrayList of ErrorMessage objects.  Each ErrorMessage
      * represents one processing error.
-     * @param aee AddressErrorException object containing specialized error message, cause, address
+     * @param aee AddressErrorException object containing the specialized error message, cause, address
      */
     constructor(e: ErrorList?, aee: AddressErrorException) {
         errs = e

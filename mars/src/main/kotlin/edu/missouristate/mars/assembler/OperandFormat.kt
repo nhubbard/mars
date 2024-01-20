@@ -35,10 +35,7 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.ErrorList
-import edu.missouristate.mars.ErrorMessage
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.CoreSettings
+import edu.missouristate.mars.*
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.util.Binary.stringToInt
 
@@ -79,7 +76,7 @@ object OperandFormat {
     private fun numOperandsCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
         val numOperands = candidate.size - 1
         val reqNumOperands = spec.tokenList.size - 1
-        val operator = candidate.get(0)
+        val operator = candidate[0]
         if (numOperands == reqNumOperands) return true
         else if (numOperands < reqNumOperands) generateMessage(operator, "Too few or incorrectly formatted operands. Expected: ${spec.exampleFormat}", errors)
         else generateMessage(operator, "Too many or incorrectly formatted operands. Expected: ${spec.exampleFormat}", errors)
@@ -120,11 +117,11 @@ object OperandFormat {
                     candidateToken.sourceLine,
                     candidateToken.startPosition
                 )
-                candidate.set(i, replacement)
+                candidate[i] = replacement
                 continue
             }
             if ((specType == TokenTypes.REGISTER_NAME || specType == TokenTypes.REGISTER_NUMBER) && candidateType == TokenTypes.REGISTER_NAME) {
-                if (Globals.settings.getBooleanSetting(CoreSettings.BARE_MACHINE_ENABLED)) {
+                if (Globals.config[CoreSpec.enableBareMachine]) {
                     generateMessage(candidateToken, "Bare machine mode is enabled. You must use a register number instead of a name. Check the settings panel for more information.", errors)
                     return false
                 } else continue

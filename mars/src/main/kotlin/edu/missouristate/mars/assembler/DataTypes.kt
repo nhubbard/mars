@@ -125,13 +125,6 @@ object DataTypes {
      */
     const val MIN_FLOAT_VALUE = -Float.MAX_VALUE
 
-    @Deprecated(
-        "Renamed to MIN_FLOAT_VALUE.",
-        ReplaceWith("MIN_FLOAT_VALUE"),
-        DeprecationLevel.ERROR
-    )
-    const val LOW_FLOAT_VALUE = MIN_FLOAT_VALUE
-
     /**
      * The maximum positive finite value that can be stored in a MIPS double is $(2-2^{-52}) \times 2^{1023}$.
      *
@@ -145,13 +138,6 @@ object DataTypes {
      * @usesMathJax
      */
     const val MIN_DOUBLE_VALUE = -Double.MAX_VALUE
-
-    @Deprecated(
-        "Renamed to MIN_DOUBLE_VALUE.",
-        ReplaceWith("MIN_DOUBLE_VALUE"),
-        DeprecationLevel.ERROR
-    )
-    const val LOW_DOUBLE_VALUE = MIN_DOUBLE_VALUE
 
     /**
      * Get the length in bytes for numeric MIPS directives.

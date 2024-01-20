@@ -48,7 +48,7 @@ import java.util.*
 class SyscallRandIntRange : AbstractSyscall(42, "RandIntRange") {
     /**
      * System call to the random number generator, with an upper range specified.
-     * Return in $a0 the next pseudorandom, uniformly distributed int value between 0 (inclusive)
+     * Return in $a0 the next pseudorandom, uniformly distributed int value between zero (inclusive)
      * and the specified value (exclusive), drawn from this random number generator's sequence.
      */
     @Throws(ProcessingException::class)

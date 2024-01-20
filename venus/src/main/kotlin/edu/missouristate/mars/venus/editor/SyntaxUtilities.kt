@@ -48,18 +48,6 @@ import javax.swing.text.TabExpander
 import javax.swing.text.Utilities
 
 object SyntaxUtilities {
-    @Deprecated(
-        "Use reordered version instead.",
-        ReplaceWith(
-            "text.regionMatches(match, offset, ignoreCase)",
-            "edu.missouristate.mars.venus.editor.KSyntaxUtilities.regionMatches"
-        ),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun regionMatches(ignoreCase: Boolean, text: Segment, offset: Int, match: String): Boolean =
-        text.regionMatches(match, offset, ignoreCase)
-
     /**
      * Checks if a subregion of a [Segment] is equal to a string.
      *
@@ -147,25 +135,6 @@ object SyntaxUtilities {
                 else               -> SyntaxStyle(Color.white, isItalic = false, isBold = false)
             }
         }
-
-    @Deprecated(
-        "Use extension method instead.",
-        ReplaceWith(
-            "gfx.paintSyntaxLine(x.toFloat() to y.toFloat(), line, tokens, styles, expander)",
-            "edu.missouristate.mars.venus.editor.KSyntaxUtilities.paintSyntaxLine"
-        ),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun paintSyntaxLine(
-        line: Segment,
-        tokens: Token,
-        styles: Array<SyntaxStyle>,
-        expander: TabExpander,
-        gfx: Graphics,
-        x: Int,
-        y: Int
-    ): Int = gfx.paintSyntaxLine(x.toFloat() to y.toFloat(), line, tokens, styles, expander).toInt()
 
     /**
      * Paints the specified line onto the graphics context. Note that this

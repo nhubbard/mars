@@ -152,30 +152,6 @@ abstract class InputHandler : KeyAdapter() {
             }.toTypedArray()
         )
 
-        @Deprecated(
-            "Use array accessor syntax instead.",
-            ReplaceWith("actions[name]"),
-            DeprecationLevel.ERROR
-        )
-        @JvmStatic
-        fun getAction(name: String): ActionListener = actions[name]!!
-
-        @Deprecated(
-            "Use array accessor syntax instead.",
-            ReplaceWith("reverseActions[listener]"),
-            DeprecationLevel.ERROR
-        )
-        @JvmStatic
-        fun getActionName(listener: ActionListener): String = reverseActions[listener]!!
-
-        @Deprecated(
-            "Use property access directly instead.",
-            ReplaceWith("actions.keys"),
-            DeprecationLevel.ERROR
-        )
-        @JvmStatic
-        fun getActions() = actions.keys
-
         /**
          * Returns the text area that fired the specified event.
          *

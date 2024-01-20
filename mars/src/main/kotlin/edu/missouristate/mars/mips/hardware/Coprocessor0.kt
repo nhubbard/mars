@@ -101,7 +101,7 @@ object Coprocessor0 {
      */
     @JvmStatic
     fun updateRegister(registerNumber: Int, newValue: Int): Int {
-        val isBackStepperEnabled = Globals.settings.getBackSteppingEnabled()
+        val isBackStepperEnabled = Globals.program.getBackStepper()?.isEnabled ?: return -1
         val backStepper = Globals.program.getBackStepper()
         return registers.firstOrNull { it.number == registerNumber }?.let {
             val oldValue =
@@ -170,26 +170,10 @@ object Coprocessor0 {
     @JvmStatic
     fun addObserver(observer: Observer) = registers.forEach { it.addObserver(observer) }
 
-    @Deprecated(
-        "Renamed to addObserver.",
-        ReplaceWith("addObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun addRegisterObserver(observer: Observer) = addObserver(observer)
-
     /**
      * Each register is a separate object and Observable.
      * This method deletes the given Observer from each register.
      */
     @JvmStatic
     fun deleteObserver(observer: Observer) = registers.forEach { it.deleteObserver(observer) }
-
-    @Deprecated(
-        "Renamed to deleteObserver.",
-        ReplaceWith("removeObserver(observer)"),
-        DeprecationLevel.ERROR
-    )
-    @JvmStatic
-    fun deleteRegisterObserver(observer: Observer) = deleteObserver(observer)
 }

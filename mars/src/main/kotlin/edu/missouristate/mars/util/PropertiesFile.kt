@@ -39,7 +39,7 @@ import java.io.IOException
 import java.util.*
 
 /**
- * Provides means to work with ".properties" files which are used to store
+ * Provides the means to work with ".properties" files which are used to store
  * various MARS settings.
  *
  * @author Pete Sanderson

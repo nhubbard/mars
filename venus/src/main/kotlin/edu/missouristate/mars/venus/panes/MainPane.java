@@ -36,6 +36,7 @@
 package edu.missouristate.mars.venus.panes;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.UIGlobals;
 import edu.missouristate.mars.venus.Editor;
 import edu.missouristate.mars.venus.windows.RegistersWindow;
 import edu.missouristate.mars.venus.VenusUI;
@@ -92,10 +93,10 @@ public class MainPane extends JTabbedPane {
                         JTabbedPane tabbedPane = (JTabbedPane) ce.getSource();
                         int index = tabbedPane.getSelectedIndex();
                         Component c = tabbedPane.getComponentAt(index);
-                        ExecutePane executePane = Globals.getGui().getMainPane().getExecutePane();
+                        ExecutePane executePane = UIGlobals.getGui().getMainPane().getExecutePane();
                         if (c == executePane) {
                             executePane.setWindowBounds();
-                            Globals.getGui().getMainPane().removeChangeListener(this);
+                            UIGlobals.getGui().getMainPane().removeChangeListener(this);
                         }
                     }
                 });

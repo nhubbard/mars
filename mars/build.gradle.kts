@@ -39,7 +39,8 @@ plugins {
     java
     idea
     kotlin("jvm") version "1.9.22"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("org.jetbrains.kotlinx.kover") version "0.7.5"
+    id("org.jetbrains.dokka") version "1.9.10"
 }
 
 group = "edu.missouristate"
@@ -50,12 +51,10 @@ repositories {
 }
 
 dependencies {
-    // Java
-    compileOnly("org.jetbrains:annotations:24.0.0")
-
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
+    implementation("com.uchuhimo:konf:1.1.2")
 
     // Testing
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
@@ -85,19 +84,6 @@ tasks {
 
     compileJava {
         options.compilerArgs.addAll(listOf("--enable-preview", "-Xlint:unchecked"))
-    }
-
-    shadowJar {
-        archiveBaseName.set("mars")
-        archiveClassifier.set("core")
-        archiveVersion.set(project.version.toString())
-        from(sourceSets.main.get().output)
-        configurations {
-            add(project.configurations.implementation.get())
-        }
-        from("src/main/resources") {
-            into("edu/missouristate/mars")
-        }
     }
 
     withType<Copy>().configureEach {

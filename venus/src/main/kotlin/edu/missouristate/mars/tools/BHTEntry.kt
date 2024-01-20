@@ -100,38 +100,11 @@ class BHTEntry(historySize: Int, initVal: Boolean) {
         }
     }
 
-    /**
-     * Get the number of incorrect predictions.
-     */
-    @Deprecated(
-        "Use incorrectPredictions instead.",
-        ReplaceWith("incorrectPredictions"),
-        DeprecationLevel.ERROR
-    )
-    fun getStatsPredIncorrect() = incorrectPredictions
-
-    /**
-     * Get the number of correct predictions.
-     */
-    @Deprecated(
-        "Use correctPredictions instead.",
-        ReplaceWith("correctPredictions"),
-        DeprecationLevel.ERROR
-    )
-    fun getStatsPredCorrect() = correctPredictions
-
     val predictionRatio: Double
         get() {
             val sum = incorrectPredictions + correctPredictions
             return if (sum == 0) 0.0 else correctPredictions * 100.0 / sum
         }
-
-    @Deprecated(
-        "Use predictionRatio instead.",
-        ReplaceWith("predictionRatio"),
-        DeprecationLevel.ERROR
-    )
-    fun getStatsPredPrecision(): Double = predictionRatio
 
     val predictionHistory: String get() = buildString {
         for (i in history.indices) {
@@ -140,21 +113,7 @@ class BHTEntry(historySize: Int, initVal: Boolean) {
         }
     }
 
-    @Deprecated(
-        "Use predictionHistory instead.",
-        ReplaceWith("predictionHistory"),
-        DeprecationLevel.ERROR
-    )
-    fun getHistoryAsStr() = predictionHistory
-
     val currentPrediction: String get() = if (prediction) "Taken" else "Not Taken"
-
-    @Deprecated(
-        "Use currentPrediction instead.",
-        ReplaceWith("currentPrediction"),
-        DeprecationLevel.ERROR
-    )
-    fun getPredictionAsStr(): String = toString()
 
     override fun toString() = currentPrediction
 }

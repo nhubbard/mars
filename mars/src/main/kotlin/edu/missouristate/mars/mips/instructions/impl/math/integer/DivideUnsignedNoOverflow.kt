@@ -48,7 +48,7 @@ class DivideUnsignedNoOverflow : BasicInstruction(
     SimulationCode {
         val operands = it.getOperandsOrThrow()
         if (RegisterFile.getValue(operands[1]) == 0) {
-            // Reminder: no exceptions, and undefined results for zero divide.
+            // Reminder: no exceptions, and undefined results for zero divisions.
             return@SimulationCode
         }
         val oper1 = RegisterFile.getValue(operands[0]).toLong() shl 32 ushr 32

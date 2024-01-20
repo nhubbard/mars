@@ -43,7 +43,7 @@ import edu.missouristate.mars.mips.hardware.RegisterFile.getValue
 import edu.missouristate.mars.util.SystemIO
 
 /**
- * Service to display string stored starting at address in $a0 onto the console.
+ * Service to display string stored starting at the address in $a0 onto the console.
  */
 class SyscallPrintString : AbstractSyscall(4, "PrintString") {
     /**

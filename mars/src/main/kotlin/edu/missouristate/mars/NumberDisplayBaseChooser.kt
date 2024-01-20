@@ -47,10 +47,10 @@ object NumberDisplayBaseChooser {
 
     /**
      * Produces a string form of an unsigned int given the value and the
-     * numerical base to convert it to.  This class
-     * method can be used by anyone anytime.  If base is 16, result
-     * is same as for formatNumber().  If base is 10, will produce
-     * string version of unsigned value.  E.g. 0xffffffff will produce
+     * numerical base to convert it to. This class
+     * method can be used by anyone anytime. If the base is 16, the result
+     * is the same as for formatNumber(). If the base is 10, it will produce
+     * a string version of unsigned value. E.g. 0xffffffff will produce
      * "4294967295" instead of "-1".
      *
      * @param value the number to be converted
@@ -115,17 +115,17 @@ object NumberDisplayBaseChooser {
 
     /**
      * Produces a string form of a float given an integer containing
-     * the 32 bit pattern and the numerical base to use (10 or 16).  If the
+     * the 32-bit pattern and the numerical base to use (10 or 16).  If the
      * base is 16, the string will be built from the 32 bits.  If the
      * base is 10, the int bits will be converted to float and the
-     * string constructed from that.  Seems an odd distinction to make,
-     * except that contents of floating point registers are stored
+     * string constructed from that. It seems like an odd distinction to make,
+     * but the contents of floating point registers are stored
      * internally as int bits.  If the int bits represent a NaN value
-     * (of which there are many!), converting them to float then calling
-     * formatNumber(float, int) above, causes the float value to become
+     * (of which there are many!), converting them to a float and calling
+     * formatNumber(float, int) above causes the float value to become
      * the canonical NaN value 0x7fc00000.  It does not preserve the bit
      * pattern!  Then converting it to hex string yields the canonical NaN.
-     * Not an issue if display base is 10 since result string will be NaN
+     * Not an issue if display base is 10, since the result string will be NaN
      * no matter what the internal NaN value is.
      *
      * @param value the int bits to be converted to string of corresponding float.
@@ -138,17 +138,17 @@ object NumberDisplayBaseChooser {
 
     /**
      * Produces a string form of a double given a long containing
-     * the 64 bit pattern and the numerical base to use (10 or 16).  If the
+     * the 64-bit pattern and the numerical base to use (10 or 16).  If the
      * base is 16, the string will be built from the 64 bits.  If the
      * base is 10, the long bits will be converted to double and the
-     * string constructed from that.  Seems an odd distinction to make,
-     * except that contents of floating point registers are stored
+     * string constructed from that. It seems an odd distinction to make,
+     * but the contents of floating point registers are stored
      * internally as int bits.  If the int bits represent a NaN value
-     * (of which there are many!), converting them to double then calling
-     * formatNumber(double, int) above, causes the double value to become
+     * (of which there are many!), converting them to a double and calling
+     * formatNumber(double, int) above causes the double value to become
      * the canonical NaN value.  It does not preserve the bit
      * pattern!  Then converting it to hex string yields the canonical NaN.
-     * Not an issue if display base is 10 since result string will be NaN
+     * Not an issue if display base is 10, since the result string will be NaN
      * no matter what the internal NaN value is.
      *
      * @param value the long bits to be converted to string of corresponding double.

@@ -414,13 +414,6 @@ class ProgramStatement {
      */
     fun getSourceMipsProgram(): MIPSProgram? = sourceMipsProgram
 
-    @Deprecated(
-        "Use lowercase version instead.",
-        ReplaceWith("getSourceMipsProgram()"),
-        DeprecationLevel.ERROR
-    )
-    fun getSourceMIPSProgram(): MIPSProgram? = getSourceMipsProgram()
-
     /**
      * @return The file name.
      */
@@ -598,9 +591,9 @@ class ProgramStatement {
         }
 
         override fun toString(): String {
-            val addressBase = if (Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_ADDRESSES_IN_HEX))
+            val addressBase = if (Globals.config[CoreSpec.displayAddressesInHex])
                 NumberDisplayBaseChooser.HEXADECIMAL else NumberDisplayBaseChooser.DECIMAL
-            val valueBase = if (Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX))
+            val valueBase = if (Globals.config[CoreSpec.displayValuesInHex])
                 NumberDisplayBaseChooser.HEXADECIMAL else NumberDisplayBaseChooser.DECIMAL
             return buildString {
                 for (element in list) {
