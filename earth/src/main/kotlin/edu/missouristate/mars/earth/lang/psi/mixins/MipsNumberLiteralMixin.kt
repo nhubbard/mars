@@ -41,7 +41,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsElementTypes
 import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsNumberLiteralMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsNumberLiteralMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     fun isHex(): Boolean = text?.startsWith("0x") ?: false
     fun isInteger5(): Boolean = findChildByType<MipsNumberLiteral>(MipsElementTypes.INTEGER_5) != null
     fun isInteger16(): Boolean = findChildByType<MipsNumberLiteral>(MipsElementTypes.INTEGER_16) != null

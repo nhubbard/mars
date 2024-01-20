@@ -12,7 +12,7 @@ import static edu.missouristate.mars.earth.lang.psi.MipsElementTypes.*;
 %%
 
 %{
-  public __MipsLexer() {
+  public MipsLexer() {
     this((java.io.Reader)null);
   }
 %}

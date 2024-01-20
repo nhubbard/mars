@@ -41,7 +41,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.MipsRegisterLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsInstructionArgMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsInstructionArgMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     fun isRegister(): Boolean = firstChild is MipsRegisterLiteral
     fun isNumber(): Boolean = firstChild is MipsNumberLiteral
     fun isIdentifier(): Boolean = firstChild?.node?.elementType == MipsElementTypes.IDENTIFIER

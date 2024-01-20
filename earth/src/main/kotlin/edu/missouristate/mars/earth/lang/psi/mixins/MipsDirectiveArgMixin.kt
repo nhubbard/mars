@@ -40,7 +40,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsElementTypes
 import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsDirectiveArgMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsDirectiveArgMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     fun isNumber(): Boolean = firstChild is MipsNumberLiteral
 
     fun getNumber(): MipsNumberLiteral? =

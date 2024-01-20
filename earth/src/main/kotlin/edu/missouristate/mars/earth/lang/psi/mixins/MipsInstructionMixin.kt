@@ -43,7 +43,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsNamedElement
 import edu.missouristate.mars.earth.lang.psi.impl.MipsInstructionArgImpl
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsInstructionMixin(node: ASTNode) : MipsNamedElementImpl(node), MipsNamedElement {
+open class MipsInstructionMixin(node: ASTNode) : MipsNamedElementImpl(node), MipsNamedElement {
     override fun getNameIdentifier(): PsiElement? = getOperator()
 
     fun getOperator(): PsiElement? = firstChild?.takeIf {

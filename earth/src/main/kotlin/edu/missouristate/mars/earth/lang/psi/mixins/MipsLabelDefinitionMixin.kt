@@ -41,7 +41,7 @@ import com.intellij.psi.NavigatablePsiElement
 import edu.missouristate.mars.earth.icons.MipsIcons
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsLabelDefinitionMixin(node: ASTNode) : MipsNamedElementImpl(node), NavigatablePsiElement {
+open class MipsLabelDefinitionMixin(node: ASTNode) : MipsNamedElementImpl(node), NavigatablePsiElement {
     override fun navigate(requestFocus: Boolean) = super.navigate(requestFocus)
 
     override fun canNavigate(): Boolean = true

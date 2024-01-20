@@ -40,7 +40,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsElementTypes
 import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsNumberRangeMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsNumberRangeMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     fun getRangeStart(): MipsNumberLiteral? = findChildByType(MipsElementTypes.NUMBER_LITERAL)
     fun getRangeEnd(): MipsNumberLiteral? =
         findChildrenByType<MipsNumberLiteral>(MipsElementTypes.NUMBER_LITERAL)

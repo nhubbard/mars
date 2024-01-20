@@ -40,7 +40,7 @@ import com.intellij.psi.PsiElement
 import edu.missouristate.mars.earth.lang.psi.MipsElementTypes
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsLabelIdentifierMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsLabelIdentifierMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     override fun getNameIdentifier(): PsiElement? =
         firstChild?.takeIf {
             it.node.elementType == MipsElementTypes.IDENTIFIER ||

@@ -97,12 +97,12 @@
     <spellchecker.bundledDictionaryProvider implementation="edu.missouristate.mars.earth.spellchecker.MipsBundledDictionaryProvider" />
 
     <!-- Tool windows (will be expanded significantly) -->
-    <toolWindow id="MARS Registers" secondary="true" icon="/icons/mips-tool-registers-13.png" anchor="right" factoryClass="edu.missouristate.mars.earth.tools.registers.MipsRegistersToolWindowFactory" />
+    <toolWindow id="MARS Registers" secondary="true" icon="/icons/mips-tool-registers-13.png" anchor="right" factoryClass="edu.missouristate.mars.earth.tools.registers.JMipsRegistersToolWindowFactory" />
 
     <!-- Non-debugging run provider -->
-    <configurationType implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationType" />
-    <programRunner implementation="edu.missouristate.mars.earth.run.MipsRunner" />
-    <runConfigurationProducer implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationProducer" />
+    <!--<configurationType implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationType" />-->
+    <!--<programRunner implementation="edu.missouristate.mars.earth.run.MipsRunner" />-->
+<!--    <runConfigurationProducer implementation="edu.missouristate.mars.earth.run.MipsRunConfigurationProducer" />-->
 
     <!-- Debugging run provider -->
     <programRunner implementation="edu.missouristate.mars.earth.run.debugger.MipsDebugRunner" />

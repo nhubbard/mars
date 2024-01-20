@@ -57,33 +57,20 @@ intellij {
   plugins.set(listOf("com.intellij.java"))
 }
 
-sourceSets {
-  create("gen") {
-    java {
-      srcDirs.add(file("src/main/kotlin"))
-      srcDirs.add(file("src/main/gen"))
-    }
-    kotlin {
-      srcDirs.add(file("src/main/kotlin"))
-      srcDirs.add(file("src/main/gen"))
-    }
-  }
-}
-
 dependencies {
   implementation(project(":mars"))
-  implementation(project(project.path, "gen"))
 }
 
 tasks {
   // Set the JVM compatibility versions
-  withType<JavaCompile> {
+  compileJava {
     sourceCompatibility = "17"
     targetCompatibility = "17"
   }
+
   kotlin {
     compilerOptions {
-      jvmTarget.set(JvmTarget.JVM_21)
+      jvmTarget.set(JvmTarget.JVM_17)
       optIn.add("kotlin.contracts.ExperimentalContracts")
       optIn.add("kotlin.ExperimentalStdlibApi")
     }

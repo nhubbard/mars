@@ -50,7 +50,7 @@ abstract class Instruction {
          * MIPS is a RISC architecture, so all instructions are the same length.
          */
         const val INSTRUCTION_LENGTH = 4
-        const val INSTRUCTION_LENGTH_BITS = 12
+        const val INSTRUCTION_LENGTH_BITS = 32
 
         /**
          * Characters used in the instruction mask to indicate bit positions for 'f'irst, 's'econd, and 't'hird operands.

@@ -42,7 +42,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsRegisterOffset
 import edu.missouristate.mars.earth.lang.psi.MipsTokenTypes
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsRegisterLiteralMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsRegisterLiteralMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     override fun getNameIdentifier(): PsiElement? = findChildByType(MipsTokenTypes.REGISTERS)
 
     fun hasOffset(): Boolean = findChildByType<MipsRegisterOffset>(MipsElementTypes.REGISTER_OFFSET) != null

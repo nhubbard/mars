@@ -40,6 +40,4 @@ import com.intellij.lexer.LookAheadLexer
 import com.intellij.lexer.MergingLexerAdapter
 import edu.missouristate.mars.earth.lang.psi.MipsTokenTypes
 
-class MipsLexerAdapter : LookAheadLexer(
-    MergingLexerAdapter(FlexAdapter(MipsLexer()), MipsTokenTypes.COMMENTS)
-)
+class MipsLexerAdapter : LookAheadLexer(MergingLexerAdapter(FlexAdapter(MipsLexer()), MipsTokenTypes.COMMENTS))

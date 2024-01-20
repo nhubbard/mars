@@ -43,7 +43,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.MipsStringLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsDirectiveMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsDirectiveMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     override fun getNameIdentifier(): PsiElement? = firstChild.takeIf {
         it.node.elementType == MipsElementTypes.DIRECTIVE
     }

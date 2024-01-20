@@ -55,7 +55,7 @@ object Globals {
 
     /** The set of implemented MIPS instructions. */
     @JvmStatic
-    lateinit var instructionSet: InstructionSet
+    var instructionSet: InstructionSet = InstructionSet
 
     /** The program currently being worked on. Used by GUI only, not the command line. */
     @JvmStatic
@@ -63,11 +63,11 @@ object Globals {
 
     /** The symbol table for the file currently being assembled. */
     @JvmStatic
-    lateinit var symbolTable: SymbolTable
+    var symbolTable: SymbolTable = SymbolTable("globals")
 
     /** The simulated MIPS memory component. */
     @JvmStatic
-    lateinit var memory: Memory
+    var memory: Memory = Memory.instance
 
     /** Lock variable used at the head of the synchronized block to guard MIPS memory and registers. */
     @JvmStatic
@@ -79,8 +79,7 @@ object Globals {
 
     /** Instance of Settings that can be accessed and modified internally. */
     @JvmStatic
-    lateinit var settings: CoreSettings
-        private set
+    var settings: CoreSettings = CoreSettings()
 
     /** String to GUI's RunI/O text area when echoing user input from the pop-up dialog. */
     const val userInputAlert = "**** user input : "
@@ -144,18 +143,15 @@ object Globals {
      */
     @JvmStatic
     fun initialize() {
-        if (!initialized) {
-            // Clients can use Memory.getInstance() instead of Globals.memory
-            memory = Memory.instance
-            instructionSet = InstructionSet
-            instructionSet.populate()
-            symbolTable = SymbolTable("global")
-            settings = CoreSettings()
-            initialized = true
-            debug = false
-            // Will establish memory configuration from settings
-            memory.clear()
-        }
+        memory = Memory.instance
+        instructionSet = InstructionSet
+        instructionSet.populate()
+        symbolTable = SymbolTable("global")
+        settings = CoreSettings()
+        initialized = true
+        debug = false
+        // Will establish memory configuration from settings
+        memory.clear()
     }
 
     /**
@@ -176,7 +172,7 @@ object Globals {
     private fun getAsciiStrings(): Array<String> {
         val let = getPropertyEntry(configPropertiesFile, "AsciiTable")
         val placeHolder = getAsciiNonPrint()
-        val lets = let!!.split(" +").toMutableList()
+        val lets = let!!.split(" +".toRegex()).toMutableList()
         var maxLength = 0
         for (i in lets.indices) {
             if (lets[i] == "null") lets[i] = placeHolder

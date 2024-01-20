@@ -41,6 +41,6 @@ import edu.missouristate.mars.earth.lang.psi.MipsElementTypes
 import edu.missouristate.mars.earth.lang.psi.MipsNamedElement
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsStringLiteralMixin(node: ASTNode): MipsNamedElementImpl(node), MipsNamedElement {
+open class MipsStringLiteralMixin(node: ASTNode): MipsNamedElementImpl(node), MipsNamedElement {
     override fun getNameIdentifier(): PsiElement? = findChildByType(MipsElementTypes.QUOTED_STRING)
 }

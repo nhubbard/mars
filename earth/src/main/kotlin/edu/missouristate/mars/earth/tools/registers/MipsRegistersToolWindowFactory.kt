@@ -33,64 +33,6 @@
  * language governing permissions and limitations under the License.
  */
 
-package edu.missouristate.mars.earth.tools.registers;
+package edu.missouristate.mars.earth.tools.registers
 
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentFactory;
-import com.intellij.ui.table.JBTable;
-import edu.missouristate.mars.CoreSettings;
-import edu.missouristate.mars.Globals;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
-import java.awt.event.ActionEvent;
-
-// This file cannot be made in Kotlin: https://youtrack.jetbrains.com/issue/KTIJ-791
-public class MipsRegistersToolWindowFactory implements ToolWindowFactory {
-    private ToolWindow toolWindow;
-
-    private JPanel registersPanel;
-    private JPanel coproc0Panel;
-    private JPanel coproc1Panel;
-    private JBTable registersTable;
-    private JBTable coproc1Table;
-    private JBTable coproc0Table;
-    private JCheckBox showValuesInHexCheckBox;
-    private JPanel settingsPanel;
-
-    public MipsRegistersToolWindowFactory() {
-        showValuesInHexCheckBox.setSelected(Globals.getSettings().getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX));
-
-        showValuesInHexCheckBox.addActionListener(new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                Globals.getSettings().setBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX, showValuesInHexCheckBox.isSelected());
-            }
-        });
-    }
-
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        this.toolWindow = toolWindow;
-
-        ContentFactory contentFactory = ContentFactory.getInstance();
-
-        Content registers = contentFactory.createContent(registersPanel, "Registers", true);
-        Content coproc1 = contentFactory.createContent(coproc1Panel, "Coproc 1", true);
-        Content coproc0 = contentFactory.createContent(coproc0Panel, "Coproc 0", true);
-        Content settings = contentFactory.createContent(settingsPanel, "Settings", true);
-
-        toolWindow.getContentManager().addContent(registers);
-        toolWindow.getContentManager().addContent(coproc1);
-        toolWindow.getContentManager().addContent(coproc0);
-        toolWindow.getContentManager().addContent(settings);
-    }
-
-    private void createUIComponents() {
-        registersTable = new MipsRegisterTable();
-        coproc1Table = new MipsCoproc1Table();
-        coproc0Table = new MipsCoproc0Table();
-    }
-}
+class MipsRegistersToolWindowFactory : JMipsRegistersToolWindowFactory()

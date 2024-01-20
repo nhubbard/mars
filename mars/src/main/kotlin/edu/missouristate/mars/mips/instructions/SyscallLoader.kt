@@ -119,7 +119,7 @@ class SyscallLoader {
         var duplicates = false
         for (syscall1 in syscallList) {
             for (syscall2 in syscallList) {
-                if (syscall1.number == syscall2.number) {
+                if (syscall1::class != syscall2::class && syscall1.number == syscall2.number) {
                     println("Error: syscalls ${syscall1.name} and ${syscall2.name} are both assigned the same number (${syscall1.number})!")
                     duplicates = true
                 }

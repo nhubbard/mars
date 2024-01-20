@@ -492,12 +492,12 @@ object InstructionSet {
      */
     @JvmStatic
     private fun addPseudoInstructions() {
+        var line: String? = ""
         // Leading "/" prevents the package name from being prepended to the file path.
         javaClass.getResourceAsStream("/PseudoOps.txt")?.use { stream ->
             InputStreamReader(stream).use { streamReader ->
                 BufferedReader(streamReader).use { `in` ->
                     try {
-                        var line: String?
                         var pseudoOp: String
                         var template: StringBuilder
                         var firstTemplate: String?
@@ -507,7 +507,7 @@ object InstructionSet {
                         line = `in`.readLine()
                         while (line != null) {
                             // Skip over comments, lines that start with a space, and blank lines.
-                            if (!line.startsWith("#") && !line.startsWith(" ") && line.isNotEmpty()) {
+                            if (!line!!.startsWith("#") && !line!!.startsWith(" ") && line!!.isNotEmpty()) {
                                 description = ""
                                 tokenizer = StringTokenizer(line, "\t")
                                 pseudoOp = tokenizer.nextToken()
@@ -538,9 +538,11 @@ object InstructionSet {
                         }
                     } catch (e: IOException) {
                         println("Internal error: MIPS pseudo-instructions could not be loaded.")
+                        e.printStackTrace()
                         exitProcess(1)
                     } catch (e: Exception) {
-                        println("Error: Invalid MIPS pseudo-instruction specification.")
+                        println("Error: Invalid MIPS pseudo-instruction specification:\n$line")
+                        e.printStackTrace()
                         exitProcess(1)
                     }
                 }

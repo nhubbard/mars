@@ -46,5 +46,5 @@ open class MipsNamedElementImpl(node: ASTNode) : MipsElementImpl(node), MipsName
 
     override fun getName(): String? = nameIdentifier?.let { getValue(it) }
     override fun getNameIdentifier(): PsiElement? = firstChild
-    override fun setName(name: String) = null
+    override fun setName(name: String): PsiElement? = null
 }

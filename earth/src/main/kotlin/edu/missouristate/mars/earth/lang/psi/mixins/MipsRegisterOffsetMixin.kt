@@ -41,7 +41,7 @@ import edu.missouristate.mars.earth.lang.psi.MipsLabelIdentifier
 import edu.missouristate.mars.earth.lang.psi.MipsNumberLiteral
 import edu.missouristate.mars.earth.lang.psi.impl.MipsNamedElementImpl
 
-class MipsRegisterOffsetMixin(node: ASTNode) : MipsNamedElementImpl(node) {
+open class MipsRegisterOffsetMixin(node: ASTNode) : MipsNamedElementImpl(node) {
     fun getImmediate(): String? =
         findChildByType<MipsNumberLiteral>(MipsElementTypes.NUMBER_LITERAL)?.name
 
