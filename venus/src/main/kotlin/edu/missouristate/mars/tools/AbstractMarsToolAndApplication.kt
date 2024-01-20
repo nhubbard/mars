@@ -82,7 +82,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
 ) : JFrame(), MarsTool, Observer {
     // Used to determine whether a tool is being invoked from the GUI, or standalone.
     protected var isBeingUsedAsAMarsTool = false
-    protected val thisMarsApp: edu.missouristate.mars.tools.AbstractMarsToolAndApplication = this
+    protected val thisMarsApp: AbstractMarsToolAndApplication = this
 
     // The dialog that appears when a menu item is selected.
     private lateinit var dialog: JDialog
@@ -106,14 +106,14 @@ abstract class AbstractMarsToolAndApplication protected constructor(
     // Several structures required for standalone use only
     private var mostRecentlyOpenedFile: File? = null
     private val interactiveGUIUpdater: Runnable = GUIUpdater()
-    private lateinit var operationStatusMessages: edu.missouristate.mars.tools.AbstractMarsToolAndApplication.MessageField
+    private lateinit var operationStatusMessages: AbstractMarsToolAndApplication.MessageField
     private lateinit var openFileButton: JButton
     private lateinit var assembleRunButton: JButton
     private lateinit var stopButton: JButton
     private var multiFileAssemble = false
 
     // Structure required for MarsTool use only. We want subclasses to have access.
-    protected var connectButton: edu.missouristate.mars.tools.AbstractMarsToolAndApplication.ConnectButton? = null
+    protected var connectButton: AbstractMarsToolAndApplication.ConnectButton? = null
 
     /**
      * Returns the tool name.
@@ -180,7 +180,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
      * generic definitions for interactively controlling the tool.  The generic controls
      * for MarsTools are three buttons: connect/disconnect to MIPS resource (memory and/or
      * registers), reset, and close (exit).  Like "go()" above, this default version
-     * calls 3 methods that can be defined/overriden in the subclass: initializePreGUI()
+     * calls 3 methods that can be defined/overridden in the subclass: initializePreGUI()
      * for any special initialization that must be completed before building the user
      * interface (e.g. data structures whose properties determine default GUI settings),
      * initializePostGUI() for any special initialization that cannot be
@@ -262,7 +262,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
             else connectButton!!.connect()
         }
         connectButton!!.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 connectButton!!
             )
         )
@@ -271,7 +271,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         resetButton.toolTipText = "Reset all counters and other structures"
         resetButton.addActionListener { reset() }
         resetButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 resetButton
             )
         )
@@ -280,7 +280,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         closeButton.toolTipText = "Close (exit) this tool"
         closeButton.addActionListener { performToolClosingDuties() }
         closeButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 closeButton
             )
         )
@@ -346,7 +346,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
             }
         }
         openFileButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 openFileButton
             )
         )
@@ -375,7 +375,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         stopButton.isEnabled = false
         stopButton.addActionListener { Simulator.getInstance().stopExecution(null) }
         stopButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 stopButton
             )
         )
@@ -384,7 +384,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         resetButton.toolTipText = "Reset all counters and other structures"
         resetButton.addActionListener { reset() }
         resetButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 resetButton
             )
         )
@@ -393,7 +393,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
         closeButton.toolTipText = "Exit this application"
         closeButton.addActionListener { performAppClosingDuties() }
         closeButton.addKeyListener(
-            edu.missouristate.mars.tools.AbstractMarsToolAndApplication.EnterKeyListener(
+            EnterKeyListener(
                 closeButton
             )
         )
@@ -508,7 +508,7 @@ abstract class AbstractMarsToolAndApplication protected constructor(
      * Override if you want something different.
      * This method is called when the default "Disconnect" button on a MarsTool is selected or
      * when the MIPS program execution triggered by the default "Assemble and run" on a stand-alone
-     * Mars app terminates (e.g. when the button is re-enabled).
+     * Mars app terminates (e.g., when the button is re-enabled).
      */
     protected open fun deleteAsObserver() {
         Globals.memory.deleteObserver(thisMarsApp)
@@ -617,9 +617,9 @@ abstract class AbstractMarsToolAndApplication protected constructor(
     private inner class CreateAssembleRunMIPSProgram : Runnable {
         override fun run() {
             var exceptionHandler: String? = null
-            if (Globals.settings.getBooleanSetting(CoreSettings.EXCEPTION_HANDLER_ENABLED) &&
-                Globals.settings.getExceptionHandler().isNotEmpty()) {
-                exceptionHandler = Globals.settings.getExceptionHandler()
+            if (Globals.config[CoreSpec.enableExceptionHandler] &&
+                Globals.config[CoreSpec.exceptionHandlerFile].isNotEmpty()) {
+                exceptionHandler = Globals.config[CoreSpec.exceptionHandlerFile]
             }
 
             Thread.currentThread().priority = Thread.NORM_PRIORITY - 1
@@ -646,8 +646,8 @@ abstract class AbstractMarsToolAndApplication protected constructor(
             try {
                 program.assemble(
                     programsToAssemble,
-                    Globals.settings.getBooleanSetting(CoreSettings.EXTENDED_ASSEMBLER_ENABLED),
-                    Globals.settings.getBooleanSetting(CoreSettings.WARNINGS_ARE_ERRORS)
+                    Globals.config[CoreSpec.enableExtendedAssembler],
+                    Globals.config[CoreSpec.upgradeWarningsToErrors]
                 )
             } catch (pe: ProcessingException) {
                 operationStatusMessages.displayMessage("Assembly error: $fileToAssemble", true)

@@ -63,7 +63,7 @@ object CoreSpec : ConfigSpec() {
         false,
         description = "Flag to determine whether to enable delayed branching simulation."
     )
-    val upgradeWarningsAsErrors by optional(
+    val upgradeWarningsToErrors by optional(
         false,
         description = "Flag to determine whether warnings should be upgraded to errors."
     )

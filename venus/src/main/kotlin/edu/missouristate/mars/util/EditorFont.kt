@@ -35,7 +35,6 @@
 
 package edu.missouristate.mars.util
 
-import edu.missouristate.mars.Globals
 import java.awt.Font
 import java.awt.GraphicsEnvironment
 import kotlin.math.max
@@ -135,7 +134,7 @@ object EditorFont {
      */
     @JvmStatic
     @JvmOverloads
-    fun substituteSpacesForTabs(string: String, tabSize: Int = Globals.settings.getEditorTabSize()): String {
+    fun substituteSpacesForTabs(string: String, tabSize: Int = 4): String {
         if (!string.contains(TAB_STRING)) return string
         val result = StringBuilder(string)
         for (i in result.indices)

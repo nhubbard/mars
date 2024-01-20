@@ -72,6 +72,7 @@ repositories {
 
 dependencies {
     implementation(project(":mars"))
+    implementation("com.uchuhimo:konf:1.1.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
 

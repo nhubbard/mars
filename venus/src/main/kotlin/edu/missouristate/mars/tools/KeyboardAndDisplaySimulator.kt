@@ -218,10 +218,10 @@ class KeyboardAndDisplaySimulator(
      * Method to display the character stored in the low-order byte of
      * the parameter.  We also recognize two non-printing characters:
      * Decimal 12 (Ascii Form Feed) to clear the display
-     * Decimal 7 (Ascii Bell) to place the cursor at a specified (X,Y) position.
-     * of a virtual text terminal.  The position is specified in the high
-     * order 24 bits of the transmitter word (X in 20-31, Y in 8-19).
-     * Thus the parameter is the entire word, not just the low-order byte.
+     * Decimal 7 (Ascii Bell) to place the cursor at a specified (x, y) position.
+     * of a virtual text terminal.  The position is specified in the high-order
+     * 24 bits of the transmitter word (X in 20-31, Y in 8-19).
+     * Thus, the parameter is the entire word, not just the low-order byte.
      * Once the latter is performed, the display mode changes to random
      * access, which has repercussions for the implementation of character display.
      */
@@ -240,8 +240,8 @@ class KeyboardAndDisplaySimulator(
                 initializeDisplay(true)
             }
             // For SET_CURSOR_X_Y, we need data from the rest of the word.
-            // High order 3 bytes are split in half to store (X,Y) value.
-            // High 12 bits contain X value, next 12 bits contain Y value.
+            // High-order 3 bytes are split in half to store (x, y) value.
+            // High 12 bits contain X value; the next 12 bits contain Y value.
             var x = (character and -0x100000) ushr 20
             var y = (character and 0x000FFF00) ushr 8
             // If X or Y values are outside current range, set to range limit.
@@ -251,7 +251,7 @@ class KeyboardAndDisplaySimulator(
             // Converting (row,column) to linear position requires knowing how many columns
             // are in each row.  I add one because each row except the last ends with '\n' that
             // does not count as a column but occupies a position in the text string.
-            // The values of rows and columns is set in initializeDisplay().
+            // The values of the rows and columns are set in initializeDisplay().
             display.caretPosition = y * (columns + 1) + x
         } else {
             if (displayRandomAccessMode) {
@@ -292,8 +292,8 @@ class KeyboardAndDisplaySimulator(
      * The display JTextArea (top half) is initialized either to the empty
      * string, or to a string filled with lines of spaces. It will do the
      * latter only if the MIPS program has sent the BELL character (Ascii 7) to
-     * the transmitter.  This sets the caret (cursor) to a specific (x,y) position
-     * on a text-based virtual display.  The lines of spaces is necessary because
+     * the transmitter. This sets the caret (cursor) to a specific (x,y) position
+     * on a text-based virtual display. The lines of spaces are necessary because
      * the caret can only be placed at a position within the current text string.
      */
     private fun initializeDisplay(randomAccess: Boolean) {

@@ -141,7 +141,7 @@ class FloatRepresentation @JvmOverloads constructor(
      * the inherited version which deletes only as an Observer of memory.
      * This method is called when the default "Disconnect" button on a MarsTool is selected or
      * when the MIPS program execution triggered by the default "Assemble and run" on a stand-alone
-     * Mars app terminates (e.g. when the button is re-enabled).
+     * Mars app terminates (e.g., when the button is re-enabled).
      */
     override fun deleteAsObserver() = deleteAsObserver(attachedRegister)
 
@@ -678,7 +678,7 @@ class FloatRepresentation @JvmOverloads constructor(
         }
 
         private fun drawSubtractLabel(g: Graphics, label: String) {
-            // Clear the existing subtract label.  The "+2" overwrites the arrow at initial paint when label width is 0.
+            // Clear the existing subtraction label.  The "+2" overwrites the arrow at initial paint when label width is 0.
             // Originally used "clearRect()" but changed to "fillRect()" with background color, because when running
             // as a MarsTool it would clear with a different color.
             val saved = g.color
