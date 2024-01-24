@@ -51,8 +51,14 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     private final String[] cacheBlockCountChoices = {"1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "1024", "2048"};
     private final String[] placementPolicyChoices = {"Direct Mapping", "Fully Associative", "N-way Set Associative"};
     private final int DIRECT = 0;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final int SET = 2;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final int FULL = 1;
     private final String[] replacementPolicyChoices = {"LRU", "Random"};
     private final int LRU = 0;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final int RANDOM = 1;
     private String[] cacheSetSizeChoices; // will change dynamically based on the other selections
     private final int defaultCacheBlockCountIndex = 3;
     private final int defaultPlacementPolicyIndex = DIRECT;
@@ -447,8 +453,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         String[] choices;
         int firstBlockCountIndex = 0;
         // NOTE: these have to match placementPolicyChoices order!
-        int SET = 2;
-        int FULL = 1;
         switch (placementPolicyIndex) {
             case DIRECT:
                 choices = new String[1];
@@ -751,7 +755,6 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
             int replaceBlock = first;
             if (first != last) {
                 // NOTE: these have to match replacementPolicyChoices order!
-                int RANDOM = 1;
                 switch (cacheReplacementSelector.getSelectedIndex()) {
                     case RANDOM:
                         replaceBlock = first + randu.nextInt(last - first + 1);

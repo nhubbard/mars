@@ -76,7 +76,7 @@ public class Tokenizer {
                 source.set(i, new SourceLine(currentLineTokens.getProcessedLine(), source.get(i).getMIPSProgram(), source.get(i).getLineNumber()));
             }
         }
-        if (errors.hasErrors()) {
+        if (errors.errorsOccurred()) {
             throw new ProcessingException(errors);
         }
         return tokenList;
@@ -151,7 +151,7 @@ public class Tokenizer {
     public TokenList tokenizeExampleInstruction(String example) throws ProcessingException {
         TokenList result;
         result = tokenizeLine(sourceMIPSProgram, 0, example, false);
-        if (errors.hasErrors()) {
+        if (errors.errorsOccurred()) {
             throw new ProcessingException(errors);
         }
         return result;

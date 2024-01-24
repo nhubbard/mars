@@ -439,7 +439,7 @@ public class MarsLaunch {
             if (Globals.debug) out.println("--------  ASSEMBLY BEGINS  -----------");
             // Added logic to check for warnings and print if any. DPS 11/28/06
             ErrorList warnings = code.assemble(MIPSProgramsToAssemble, pseudo, warningsAreErrors);
-            if (warnings != null && warnings.hasWarnings()) out.println(warnings.generateReport(true));
+            if (warnings != null && warnings.warningsOccurred()) out.println(warnings.generateWarningReport());
             RegisterFile.initializeProgramCounter(startAtMain); // DPS 3/9/09
             if (simulate) {
                 // store program args (if any) in MIPS memory

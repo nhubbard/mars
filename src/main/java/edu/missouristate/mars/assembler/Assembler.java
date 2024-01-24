@@ -145,7 +145,7 @@ public class Assembler {
          source file.
         */
         for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
-            if (errors.isErrorLimitExceeded()) break;
+            if (errors.errorLimitExceeded()) break;
             this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
             // List of labels declared ".global". new list for each file assembled
             this.globalDeclarationList = new TokenList();
@@ -173,7 +173,7 @@ public class Assembler {
             // INITIALIZES DATA SEGMENT
             ArrayList<ProgramStatement> statements;
             for (int i = 0; i < tokenList.size(); i++) {
-                if (errors.isErrorLimitExceeded()) break;
+                if (errors.errorLimitExceeded()) break;
                 for (int z = 0; z < tokenList.get(i).size(); z++) {
                     Token t = tokenList.get(i).get(z);
                     // record this token's original source program and line #. Differs from final, if .include used
@@ -206,19 +206,19 @@ public class Assembler {
         accumulatedDataSegmentForwardReferences.generateErrorMessages(errors);
 
         // Throw the collection of errors accumulated through the first pass.
-        if (errors.hasErrors()) throw new ProcessingException(errors);
+        if (errors.errorsOccurred()) throw new ProcessingException(errors);
         if (Globals.debug) System.out.println("Assembler second pass begins");
         // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
         // Generates basic assembler statements...
         for (MIPSProgram tokenizedProgramFile : tokenizedProgramFiles) {
-            if (errors.isErrorLimitExceeded()) break;
+            if (errors.errorLimitExceeded()) break;
             this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
             ArrayList<ProgramStatement> parsedList = fileCurrentlyBeingAssembled.getParsedList();
             ProgramStatement statement;
             for (ProgramStatement programStatement : parsedList) {
                 statement = programStatement;
                 statement.buildBasicStatementFromBasicInstruction(errors);
-                if (errors.hasErrors()) throw new ProcessingException(errors);
+                if (errors.errorsOccurred()) throw new ProcessingException(errors);
                 if (statement.getInstruction() instanceof BasicInstruction) machineList.add(statement);
                 else {
                     /*
@@ -290,7 +290,7 @@ public class Assembler {
         */
         ProgramStatement statement;
         for (ProgramStatement programStatement : machineList) {
-            if (errors.isErrorLimitExceeded()) break;
+            if (errors.errorLimitExceeded()) break;
             statement = programStatement;
             statement.buildMachineStatementFromBasicStatement(errors);
             if (Globals.debug) System.out.println(statement);
@@ -320,7 +320,7 @@ public class Assembler {
         */
         machineList.sort(new ProgramStatementComparator());
         catchDuplicateAddresses(machineList, errors);
-        if (errors.hasErrors() || errors.hasWarnings() && warningsAreErrors) throw new ProcessingException(errors);
+        if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) throw new ProcessingException(errors);
         return machineList;
     } // assemble()
 
@@ -417,7 +417,7 @@ public class Assembler {
          a nice thing to do).
         */
         if (tokenType == TokenTypes.IDENTIFIER && token.getValue().charAt(0) == '.') {
-            errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "MARS does not recognize the " + token.getValue() + " directive.  Ignored.", false));
+            errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "MARS does not recognize the " + token.getValue() + " directive.  Ignored."));
             return null;
         }
 
@@ -655,7 +655,7 @@ public class Assembler {
                 this.externAddress += size;
             }
         } else if (direct == Directives.SET) {
-            errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "MARS currently ignores the .set directive.", false));
+            errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "MARS currently ignores the .set directive."));
         } else if (direct == Directives.GLOBL) {
             if (tokens.size() < 2) {
                 errors.add(new ErrorMessage(token.getSourceMIPSProgram(), token.getSourceLine(), token.getStartPos(), "\"" + token.getValue() + "\" directive requires at least one argument."));
@@ -871,8 +871,7 @@ public class Assembler {
                     token.getSourceMIPSProgram(),
                     token.getSourceLine(),
                     token.getStartPos(),
-                    "\"" + token.getValue() + "\" is out-of-range for a signed value and possibly truncated",
-                    false
+                    "\"" + token.getValue() + "\" is out-of-range for a signed value and possibly truncated"
                 ));
             }
             if (this.inDataSegment) writeToDataSegment(value, lengthInBytes, token, errors);

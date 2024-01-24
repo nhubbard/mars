@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
 import java.awt.event.*;
+import java.util.Objects;
 import javax.swing.*;
 
 /**
@@ -129,7 +130,7 @@ public class RunGoAction extends GuiAction {
                 break;
             case Simulator.EXCEPTION:
                 mainUI.getMessagesPane().postMarsMessage(
-                        Objects.requireNonNull(pe).errors().generateReport());
+                        Objects.requireNonNull(pe).errors().generateErrorReport());
                 mainUI.getMessagesPane().postMarsMessage(
                         "\n" + name + ": execution terminated with errors.\n\n");
                 break;

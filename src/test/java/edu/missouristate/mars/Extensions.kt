@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2003-2023, Pete Sanderson and Kenneth Vollmar
- * Copyright (c) 2023-present, Nicholas Hubbard
+ * Copyright (c) 2003-2024, Pete Sanderson and Kenneth Vollmar
+ * Copyright (c) 2024-present, Nicholas Hubbard
  *
  * Originally developed by Pete Sanderson (psanderson@otterbein.edu) and Kenneth Vollmar (kenvollmar@missouristate.edu)
  * Maintained by Nicholas Hubbard (nhubbard@users.noreply.github.com)
@@ -18,17 +18,20 @@
  * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
 package edu.missouristate.mars
 
-/**
- * The portal to MARS.
- *
- * @author Pete Sanderson
- * @version March 2006
- */
-object Mars {
-    @JvmStatic
-    fun main(args: Array<String>) {
-        MarsLaunch(args)
-    }
-}
+import org.junit.jupiter.params.provider.Arguments
+import java.util.stream.Stream
+
+fun <A, B> argumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
+    args.map { Arguments.of(it.first, it.second) }.stream()
+
+infix fun <A, B, C> A.tri(other: Pair<B, C>): Triple<A, B, C> =
+    Triple(this, other.first, other.second)
+
+infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
+    Triple(first, second, third)
+
+fun <A, B, C> argumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
+    args.map { Arguments.of(it.first, it.second, it.third) }.stream()

@@ -154,7 +154,7 @@ public class Macro {
     /**
      * @return true if <code>value</code> is name of a label defined in this macro's body.
      */
-    private boolean tokenIsMacroLabel(String value) {
+    boolean tokenIsMacroLabel(String value) {
         return (Collections.binarySearch(labels, value) >= 0);
     }
 

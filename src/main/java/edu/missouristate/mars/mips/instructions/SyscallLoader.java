@@ -18,8 +18,8 @@ import java.util.HashMap;
 
 class SyscallLoader {
 
-    private static final String CLASS_PREFIX = "mars.mips.instructions.syscalls.";
-    private static final String SYSCALLS_DIRECTORY_PATH = "mars/mips/instructions/syscalls";
+    private static final String CLASS_PREFIX = "edu.missouristate.mars.mips.instructions.syscalls.";
+    private static final String SYSCALLS_DIRECTORY_PATH = "edu/missouristate/mars/mips/instructions/syscalls";
     private static final String SYSCALL_INTERFACE = "Syscall.class";
     private static final String SYSCALL_ABSTRACT = "AbstractSyscall.class";
     private static final String CLASS_EXTENSION = "class";

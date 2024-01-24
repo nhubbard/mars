@@ -138,6 +138,6 @@ public final class DataTypes {
      * the given directive (.float, .double), <tt>false</tt> otherwise.
      **/
     public static boolean outOfRange(Directives direct, double value) {
-        return direct == Directives.FLOAT && (value < LOW_FLOAT_VALUE || value > MAX_FLOAT_VALUE);
+        return direct == Directives.FLOAT && (value < (float) LOW_FLOAT_VALUE || value > (float) MAX_FLOAT_VALUE || Float.isInfinite((float) value));
     }
 }

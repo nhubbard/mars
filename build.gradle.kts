@@ -27,6 +27,7 @@ plugins {
     idea
     kotlin("jvm") version "1.9.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    jacoco
 }
 
 group = "edu.missouristate"
@@ -44,6 +45,8 @@ dependencies {
     // Testing
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.mockito:mockito-core:5.9.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.9.0")
 }
 
 sourceSets {
@@ -61,17 +64,27 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_20
-    targetCompatibility = JavaVersion.VERSION_20
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 tasks {
     test {
         useJUnitPlatform()
+        finalizedBy(jacocoTestReport)
+    }
+
+    jacocoTestReport {
+        dependsOn(test)
+        reports {
+            xml.required = false
+            csv.required = false
+            html.outputLocation = layout.buildDirectory.dir("jacocoHtml")
+        }
     }
 
     compileJava {
-        options.compilerArgs.addAll(listOf("--enable-preview", "-Xlint:unchecked"))
+        options.compilerArgs.addAll(listOf("-Xlint:unchecked"))
     }
 
     shadowJar {
@@ -83,7 +96,7 @@ tasks {
             add(project.configurations.implementation.get())
         }
         from("src/main/resources") {
-            into("edu/missouristate/mars")
+            into("")
         }
         manifest {
             attributes["Main-Class"] = "edu.missouristate.mars.Mars"
@@ -96,9 +109,9 @@ tasks {
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_20)
+            jvmTarget.set(JvmTarget.JVM_21)
         }
 
-        jvmToolchain(20)
+        jvmToolchain(21)
     }
 }

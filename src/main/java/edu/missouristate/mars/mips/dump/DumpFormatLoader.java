@@ -13,8 +13,8 @@ import java.util.ArrayList;
 
 public class DumpFormatLoader {
 
-    private static final String CLASS_PREFIX = "mars.mips.dump.";
-    private static final String DUMP_DIRECTORY_PATH = "mars/mips/dump";
+    private static final String CLASS_PREFIX = "edu.missouristate.mars.mips.dump.";
+    private static final String DUMP_DIRECTORY_PATH = "edu/missouristate/mars/mips/dump";
     private static final String SYSCALL_INTERFACE = "DumpFormat.class";
     private static final String CLASS_EXTENSION = "class";
 

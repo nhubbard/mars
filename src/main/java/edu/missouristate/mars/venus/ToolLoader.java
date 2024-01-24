@@ -23,8 +23,8 @@ import java.lang.reflect.*;
 
 public class ToolLoader {
 
-    private static final String CLASS_PREFIX = "mars.tools.";
-    private static final String TOOLS_DIRECTORY_PATH = "mars/tools";
+    private static final String CLASS_PREFIX = "edu.missouristate.mars.tools.";
+    private static final String TOOLS_DIRECTORY_PATH = "edu/missouristate/mars/tools";
     private static final String TOOLS_MENU_NAME = "Tools";
     private static final String MARSTOOL_INTERFACE = "MarsTool.class";
     private static final String CLASS_EXTENSION = "class";
@@ -40,14 +40,12 @@ public class ToolLoader {
      */
     public JMenu buildToolsMenu() {
         JMenu menu = null;
-        ArrayList<MarsTool> marsToolList = loadMarsTools();
+        ArrayList<MarsToolClassAndInstance> marsToolList = loadMarsTools();
         if (!marsToolList.isEmpty()) {
             menu = new JMenu(TOOLS_MENU_NAME);
             menu.setMnemonic(KeyEvent.VK_T);
             // traverse array list and build menu
-            MarsToolClassAndInstance listItem;
-            for (Object o : marsToolList) {
-                listItem = (MarsToolClassAndInstance) o;
+            for (MarsToolClassAndInstance listItem : marsToolList) {
                 menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
             }
         }

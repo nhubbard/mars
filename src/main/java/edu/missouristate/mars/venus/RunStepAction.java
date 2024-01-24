@@ -73,7 +73,7 @@ public class RunStepAction extends GuiAction {
         if (pe != null) {
             RunGoAction.resetMaxSteps();
             mainUI.getMessagesPane().postMarsMessage(
-                    pe.errors().generateReport());
+                    pe.errors().generateErrorAndWarningReport());
             mainUI.getMessagesPane().postMarsMessage(
                     "\n" + name + ": execution terminated with errors.\n\n");
             mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());

@@ -71,8 +71,8 @@ public class RunAssembleAction extends GuiAction {
                 // added logic to receive any warnings and output them.... DPS 11/28/06
                 ErrorList warnings = Globals.program.assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled,
                         warningsAreErrors);
-                if (warnings.hasWarnings()) {
-                    mainUI.messagesPane.postMarsMessage(warnings.generateReport(true));
+                if (warnings.warningsOccurred()) {
+                    mainUI.messagesPane.postMarsMessage(warnings.generateWarningReport());
                 }
                 mainUI.messagesPane.postMarsMessage(
                         name + ": operation completed successfully.\n\n");
@@ -104,7 +104,7 @@ public class RunAssembleAction extends GuiAction {
                 mainUI.messagesPane.postMarsMessage(
                         name + ": operation completed with errors.\n\n");
                 // Select editor line containing first error, and corresponding error message.
-                ArrayList<ErrorMessage> errorMessages = pe.errors().getMessages();
+                ArrayList<ErrorMessage> errorMessages = pe.errors().getErrorMessages();
                 for (ErrorMessage errorMessage : errorMessages) {
                     ErrorMessage em = errorMessage;
                     // No line or position may mean File Not Found (e.g. exception file). Don't try to open. DPS 3-Oct-2010

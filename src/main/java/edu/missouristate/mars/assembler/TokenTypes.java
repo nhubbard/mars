@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
 
+import java.util.regex.Pattern;
+
 /**
  * Constants to identify the types of tokens found in MIPS programs.  If Java had
  * enumerated types, that's how these would probably be implemented.
@@ -13,6 +15,7 @@ import edu.missouristate.mars.mips.hardware.*;
  **/
 
 public final class TokenTypes {
+    private static final Pattern VALID_IDENTIFIER = Pattern.compile("^[a-zA-Z_$.][a-zA-Z0-9$._]*$");
     public static final String TOKEN_DELIMITERS = "\t ,()";
     public static final TokenTypes COMMENT = new TokenTypes("COMMENT");
     public static final TokenTypes DIRECTIVE = new TokenTypes("DIRECTIVE");
@@ -246,14 +249,7 @@ public final class TokenTypes {
                       MIPS-target GCC will produce labels that start with $.
     */
     public static boolean isValidIdentifier(String value) {
-        boolean result =
-                (Character.isLetter(value.charAt(0)) || value.charAt(0) == '_' || value.charAt(0) == '.' || value.charAt(0) == '$');
-        int index = 1;
-        while (result && index < value.length()) {
-            if (!(Character.isLetterOrDigit(value.charAt(index)) || value.charAt(index) == '_' || value.charAt(index) == '.' || value.charAt(index) == '$'))
-                result = false;
-            index++;
-        }
-        return result;
+        if (value.isEmpty()) return false;
+        return VALID_IDENTIFIER.matcher(value).matches();
     }
 }
