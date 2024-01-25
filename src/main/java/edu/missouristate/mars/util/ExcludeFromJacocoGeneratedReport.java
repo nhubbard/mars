@@ -19,25 +19,13 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.util;
 
-import org.junit.jupiter.params.provider.Arguments
-import java.util.stream.Stream
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-// One argument
-fun <A> argumentsOf(vararg args: A): Stream<Arguments> =
-    args.map { Arguments.of(it) }.stream()
-
-// Two arguments
-fun <A, B> argumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second) }.stream()
-
-// Three arguments
-infix fun <A, B, C> A.tri(other: Pair<B, C>): Triple<A, B, C> =
-    Triple(this, other.first, other.second)
-
-infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
-    Triple(first, second, third)
-
-fun <A, B, C> argumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second, it.third) }.stream()
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+public @interface ExcludeFromJacocoGeneratedReport {}

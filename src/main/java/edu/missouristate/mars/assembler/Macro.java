@@ -161,7 +161,7 @@ public class Macro {
     /**
      * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with <code>substitute</code>.
      */
-    private String replaceToken(String source, Token tokenToBeReplaced, String substitute) {
+    String replaceToken(String source, Token tokenToBeReplaced, String substitute) {
         /*
          Initially, the position of the substitute was based on token position but that proved problematic
          in that the source string does not always match the token list from which the token comes. The
@@ -190,7 +190,8 @@ public class Macro {
              from Coprocessor0 or Coprocessor1 register sets.  Expanded the condition.
              DPS 7-July-2014.
             */
-            if (!tokenValue.isEmpty() && tokenValue.charAt(0) == '$' &&
+            if (!tokenValue.isEmpty() &&
+                    tokenValue.charAt(0) == '$' &&
                     RegisterFile.getUserRegister(tokenValue) == null &&
                     Coprocessor0.getRegister(tokenValue) == null &&  // added 7-July-2014
                     Coprocessor1.getRegister(tokenValue) == null) {  // added 7-July-2014

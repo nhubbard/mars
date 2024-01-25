@@ -19,25 +19,11 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.assembler
 
-import org.junit.jupiter.params.provider.Arguments
-import java.util.stream.Stream
+import org.junit.jupiter.api.TestInstance
 
-// One argument
-fun <A> argumentsOf(vararg args: A): Stream<Arguments> =
-    args.map { Arguments.of(it) }.stream()
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class TestAssembler {
 
-// Two arguments
-fun <A, B> argumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second) }.stream()
-
-// Three arguments
-infix fun <A, B, C> A.tri(other: Pair<B, C>): Triple<A, B, C> =
-    Triple(this, other.first, other.second)
-
-infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
-    Triple(first, second, third)
-
-fun <A, B, C> argumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second, it.third) }.stream()
+}

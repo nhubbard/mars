@@ -148,6 +148,8 @@ public class Globals {
         return settings;
     }
 
+    private static Boolean isRunningTest = null;
+
     /**
      * Method called once upon system initialization to create the global data structures.
      **/
@@ -161,6 +163,26 @@ public class Globals {
             initialized = true;
             debug = false;
             memory.clear(); // will establish memory configuration from setting
+        }
+    }
+
+    private static boolean isRunningTest() {
+        if (isRunningTest == null) {
+            isRunningTest = true;
+            try {
+                Class.forName("org.junit.jupiter.api.Test");
+            } catch (ClassNotFoundException e) {
+                isRunningTest = false;
+            }
+        }
+        return isRunningTest;
+    }
+
+    public static void resetInitialized() {
+        if (isRunningTest()) {
+            initialized = false;
+        } else {
+            throw new IllegalStateException("This method is unavailable outside of tests. Do NOT use it!");
         }
     }
 

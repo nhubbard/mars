@@ -1,5 +1,7 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+
 import java.util.ArrayList;
 
 /**
@@ -100,6 +102,7 @@ public final class Directives {
     private final String descriptor;
     private final String description; // help text
 
+    @ExcludeFromJacocoGeneratedReport
     private Directives() {
         // private ctor assures no objects can be created other than those above.
         this.descriptor = "generic";
@@ -173,6 +176,7 @@ public final class Directives {
      *
      * @return description of this MIPS directive (for help purposes)
      **/
+    @ExcludeFromJacocoGeneratedReport
     public String getDescription() {
         return this.description;
     }

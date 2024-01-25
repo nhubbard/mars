@@ -19,25 +19,32 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars
+package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.MIPSProgram
+import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.tri
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import java.util.stream.Stream
 
-// One argument
-fun <A> argumentsOf(vararg args: A): Stream<Arguments> =
-    args.map { Arguments.of(it) }.stream()
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class TestSourceLine {
+    // This test only checks that the constructor is okay.
 
-// Two arguments
-fun <A, B> argumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second) }.stream()
+    @ParameterizedTest
+    @MethodSource("testConstructorSource")
+    fun testConstructor(source: String, program: MIPSProgram?, lineNumber: Int) {
+        SourceLine(source, program, lineNumber)
+    }
 
-// Three arguments
-infix fun <A, B, C> A.tri(other: Pair<B, C>): Triple<A, B, C> =
-    Triple(this, other.first, other.second)
-
-infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
-    Triple(first, second, third)
-
-fun <A, B, C> argumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
-    args.map { Arguments.of(it.first, it.second, it.third) }.stream()
+    companion object {
+        @JvmStatic
+        fun testConstructorSource(): Stream<Arguments> = argumentsOf(
+            ("main: li \$a0, 0" to MIPSProgram()) tri 0,
+            ("main: li \$a0, 0" to null) tri 0
+        )
+    }
+}

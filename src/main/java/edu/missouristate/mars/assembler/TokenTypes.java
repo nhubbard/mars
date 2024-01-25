@@ -47,6 +47,7 @@ public final class TokenTypes {
 
     private final String descriptor;
 
+    @ExcludeFromJacocoGeneratedReport
     private TokenTypes() {
         // private ctor assures no objects can be created other than those above.
         descriptor = "generic";

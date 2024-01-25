@@ -21,6 +21,8 @@
 
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.tri
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
@@ -59,72 +61,73 @@ class TestDataTypes {
 
     companion object {
         @JvmStatic
-        fun constantValuesSource(): Stream<Arguments> = Stream.of(
-            Arguments.of(8, DataTypes.DOUBLE_SIZE),
-            Arguments.of(4, DataTypes.FLOAT_SIZE),
-            Arguments.of(4, DataTypes.WORD_SIZE),
-            Arguments.of(2, DataTypes.HALF_SIZE),
-            Arguments.of(1, DataTypes.BYTE_SIZE),
-            Arguments.of(1, DataTypes.CHAR_SIZE),
-            Arguments.of(Integer.MAX_VALUE, DataTypes.MAX_WORD_VALUE),
-            Arguments.of(Integer.MIN_VALUE, DataTypes.MIN_WORD_VALUE),
-            Arguments.of(32767, DataTypes.MAX_HALF_VALUE),
-            Arguments.of(-32768, DataTypes.MIN_HALF_VALUE),
-            Arguments.of(65535, DataTypes.MAX_UHALF_VALUE),
-            Arguments.of(0, DataTypes.MIN_UHALF_VALUE),
-            Arguments.of(Byte.MAX_VALUE.toInt(), DataTypes.MAX_BYTE_VALUE),
-            Arguments.of(Byte.MIN_VALUE.toInt(), DataTypes.MIN_BYTE_VALUE),
-            Arguments.of(Float.MAX_VALUE.toDouble(), DataTypes.MAX_FLOAT_VALUE),
-            Arguments.of(-Float.MAX_VALUE.toDouble(), DataTypes.LOW_FLOAT_VALUE),
-            Arguments.of(Double.MAX_VALUE, DataTypes.MAX_DOUBLE_VALUE),
-            Arguments.of(-Double.MAX_VALUE, DataTypes.LOW_DOUBLE_VALUE)
+        fun constantValuesSource(): Stream<Arguments> = argumentsOf(
+            8 to DataTypes.DOUBLE_SIZE,
+            4 to DataTypes.FLOAT_SIZE,
+            4 to DataTypes.WORD_SIZE,
+            2 to DataTypes.HALF_SIZE,
+            1 to DataTypes.BYTE_SIZE,
+            1 to DataTypes.CHAR_SIZE,
+            Integer.MAX_VALUE to DataTypes.MAX_WORD_VALUE,
+            Integer.MIN_VALUE to DataTypes.MIN_WORD_VALUE,
+            32767 to DataTypes.MAX_HALF_VALUE,
+            -32768 to DataTypes.MIN_HALF_VALUE,
+            65535 to DataTypes.MAX_UHALF_VALUE,
+            0 to DataTypes.MIN_UHALF_VALUE,
+            Byte.MAX_VALUE.toInt() to DataTypes.MAX_BYTE_VALUE,
+            Byte.MIN_VALUE.toInt() to DataTypes.MIN_BYTE_VALUE,
+            Float.MAX_VALUE.toDouble() to DataTypes.MAX_FLOAT_VALUE,
+            -Float.MAX_VALUE.toDouble() to DataTypes.LOW_FLOAT_VALUE,
+            Double.MAX_VALUE to DataTypes.MAX_DOUBLE_VALUE,
+            -Double.MAX_VALUE to DataTypes.LOW_DOUBLE_VALUE
         )
 
         @JvmStatic
-        fun lengthInBytesSource(): Stream<Arguments> = Stream.of(
-            Arguments.of(Directives.DATA, 0),
-            Arguments.of(Directives.TEXT, 0),
-            Arguments.of(Directives.WORD, DataTypes.WORD_SIZE),
-            Arguments.of(Directives.ASCII, 0),
-            Arguments.of(Directives.ASCIIZ, 0),
-            Arguments.of(Directives.BYTE, DataTypes.BYTE_SIZE),
-            Arguments.of(Directives.ALIGN, 0),
-            Arguments.of(Directives.HALF, DataTypes.HALF_SIZE),
-            Arguments.of(Directives.SPACE, 0),
-            Arguments.of(Directives.DOUBLE, DataTypes.DOUBLE_SIZE),
-            Arguments.of(Directives.FLOAT, DataTypes.FLOAT_SIZE),
-            Arguments.of(Directives.EXTERN, 0),
-            Arguments.of(Directives.KDATA, 0),
-            Arguments.of(Directives.KTEXT, 0),
-            Arguments.of(Directives.GLOBL, 0),
-            Arguments.of(Directives.SET, 0),
-            Arguments.of(Directives.EQV, 0),
-            Arguments.of(Directives.MACRO, 0),
-            Arguments.of(Directives.END_MACRO, 0),
-            Arguments.of(Directives.INCLUDE, 0)
+        fun lengthInBytesSource(): Stream<Arguments> = argumentsOf(
+            Directives.DATA to 0,
+            Directives.TEXT to 0,
+            Directives.WORD to DataTypes.WORD_SIZE,
+            Directives.ASCII to 0,
+            Directives.ASCIIZ to 0,
+            Directives.BYTE to DataTypes.BYTE_SIZE,
+            Directives.ALIGN to 0,
+            Directives.HALF to DataTypes.HALF_SIZE,
+            Directives.SPACE to 0,
+            Directives.DOUBLE to DataTypes.DOUBLE_SIZE,
+            Directives.FLOAT to DataTypes.FLOAT_SIZE,
+            Directives.EXTERN to 0,
+            Directives.KDATA to 0,
+            Directives.KTEXT to 0,
+            Directives.GLOBL to 0,
+            Directives.SET to 0,
+            Directives.EQV to 0,
+            Directives.MACRO to 0,
+            Directives.END_MACRO to 0,
+            Directives.INCLUDE to 0
         )
 
         @JvmStatic
-        fun intOutOfRangeSource(): Stream<Arguments> = Stream.of(
-            Arguments.of(Directives.HALF, DataTypes.MIN_HALF_VALUE - 1, true),
-            Arguments.of(Directives.HALF, DataTypes.MAX_HALF_VALUE + 1, true),
-            Arguments.of(Directives.HALF, DataTypes.MIN_HALF_VALUE, false),
-            Arguments.of(Directives.HALF, DataTypes.MAX_HALF_VALUE, false),
-            Arguments.of(Directives.HALF, 0, false),
-            Arguments.of(Directives.BYTE, DataTypes.MIN_BYTE_VALUE - 1, true),
-            Arguments.of(Directives.BYTE, DataTypes.MAX_BYTE_VALUE + 1, true),
-            Arguments.of(Directives.BYTE, DataTypes.MIN_BYTE_VALUE, false),
-            Arguments.of(Directives.BYTE, DataTypes.MAX_BYTE_VALUE, false),
-            Arguments.of(Directives.BYTE, 0, false)
+        fun intOutOfRangeSource(): Stream<Arguments> = argumentsOf(
+            (Directives.HALF to DataTypes.MIN_HALF_VALUE - 1) tri true,
+            (Directives.HALF to DataTypes.MAX_HALF_VALUE + 1) tri true,
+            (Directives.HALF to DataTypes.MIN_HALF_VALUE) tri false,
+            (Directives.HALF to DataTypes.MAX_HALF_VALUE) tri false,
+            (Directives.HALF to 0) tri false,
+            (Directives.BYTE to DataTypes.MIN_BYTE_VALUE - 1) tri true,
+            (Directives.BYTE to DataTypes.MAX_BYTE_VALUE + 1) tri true,
+            (Directives.BYTE to DataTypes.MIN_BYTE_VALUE) tri false,
+            (Directives.BYTE to DataTypes.MAX_BYTE_VALUE) tri false,
+            (Directives.BYTE to 0) tri false
         )
 
         @JvmStatic
-        fun floatOutOfRangeSource(): Stream<Arguments> = Stream.of(
-            Arguments.of(Directives.FLOAT, Float.NEGATIVE_INFINITY, true),
-            Arguments.of(Directives.FLOAT, DataTypes.LOW_FLOAT_VALUE, false),
-            Arguments.of(Directives.FLOAT, Float.POSITIVE_INFINITY, true),
-            Arguments.of(Directives.FLOAT, DataTypes.MAX_FLOAT_VALUE, false),
-            Arguments.of(Directives.FLOAT, 1.0, false)
+        fun floatOutOfRangeSource(): Stream<Arguments> = argumentsOf(
+            (Directives.FLOAT to Float.NEGATIVE_INFINITY) tri true,
+            (Directives.FLOAT to DataTypes.LOW_FLOAT_VALUE) tri false,
+            (Directives.FLOAT to Float.POSITIVE_INFINITY) tri true,
+            (Directives.FLOAT to DataTypes.MAX_FLOAT_VALUE) tri false,
+            (Directives.FLOAT to 1.0) tri false,
+            (Directives.DOUBLE to 10.0) tri false
         )
     }
 }

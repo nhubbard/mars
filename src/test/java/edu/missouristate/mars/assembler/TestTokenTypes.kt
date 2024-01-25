@@ -90,8 +90,9 @@ class TestTokenTypes {
             *(0..31)
                 .map { "$it" to TokenTypes.INTEGER_5 }
                 .toTypedArray(),
-            (DataTypes.MIN_UHALF_VALUE + (DataTypes.MAX_UHALF_VALUE / 2)).toString() to TokenTypes.INTEGER_16U,
-            (DataTypes.MIN_HALF_VALUE + (DataTypes.MAX_HALF_VALUE / 2)).toString() to TokenTypes.INTEGER_16,
+            32768.toString() to TokenTypes.INTEGER_16U,
+            (-16384).toString() to TokenTypes.INTEGER_16,
+            (-1).toString() to TokenTypes.INTEGER_16,
             (Int.MAX_VALUE / 2).toString() to TokenTypes.INTEGER_32,
             (Float.MAX_VALUE / 4).toString() to TokenTypes.REAL_NUMBER,
             *Globals.instructionSet.instructionList
@@ -101,7 +102,11 @@ class TestTokenTypes {
                 .map { it.name to TokenTypes.DIRECTIVE }
                 .toTypedArray(),
             "\"this is a quoted string\\n\"" to TokenTypes.QUOTED_STRING,
-            "main" to TokenTypes.IDENTIFIER
+            "main" to TokenTypes.IDENTIFIER,
+            // Make sure that invalid tokens return an error
+            "!((&)(*&!@(#)(!)(*!@#" to TokenTypes.ERROR,
+            // Make sure that a dot for an unknown directive becomes an identifier
+            ".random" to TokenTypes.IDENTIFIER
         )
 
         @JvmStatic

@@ -77,10 +77,16 @@ class TestMacro {
         macro3.name = "Macro3"
         macro3.addArg("arg2")
 
+        val macro4 = Macro()
+        macro4.name = "Macro1"
+        macro4.addArg("arg")
+        macro4.addArg("arg2")
+
         assertTrue(macro1 == macro2)
         assertFalse(macro1 == macro3)
         assertFalse(macro1.equals(null))
         assertFalse(macro1 == Any())
+        assertFalse(macro1 == macro4)
     }
 
     @Test
@@ -91,15 +97,19 @@ class TestMacro {
         assertEquals(arrayListOf("arg1", "arg2"), macro.args)
     }
 
-    @Test
-    fun testGetSubstitutedLine() {
-        val inputFile = Paths.get("src/test/resources/tests/macro_test.s").toFile()
+    @ParameterizedTest
+    @MethodSource("substitutedLineSource")
+    fun testGetSubstitutedLine(fileName: String, macroName: String?, shouldHaveErrors: Boolean) {
+        val inputFile = Paths.get("src/test/resources/tests/$fileName").toFile()
         Globals.initialize(false)
         val program = MIPSProgram()
         program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
         program.tokenize()
         program.assemble(arrayListOf(program), true, false)
-        assertTrue(program.localMacroPool.matchesAnyMacroName("print_int"))
+        program.simulate(-1)
+        macroName?.let {
+            assertTrue(program.localMacroPool.matchesAnyMacroName(it))
+        } ?: assertNull(program.localMacroPool.current)
     }
 
     @Test
@@ -121,13 +131,33 @@ class TestMacro {
         assertEquals(expectedResult, Macro.tokenIsMacroParameter(value, acceptSpim))
     }
 
+    @Test
+    fun testReplaceToken() {
+        val existsToken = Token(TokenTypes.IDENTIFIER, "old", MIPSProgram(), 1, 0)
+        assertEquals("new", Macro().replaceToken("old", existsToken, "new"))
+        val notExistsToken = Token(TokenTypes.IDENTIFIER, "notReplaced", MIPSProgram(), 1, 0)
+        assertEquals("thing", Macro().replaceToken("thing", notExistsToken, "another"))
+    }
+
     companion object {
         @JvmStatic
         fun tokenIsMacroParameterSource(): Stream<Arguments> = argumentsOf(
             ("%param" to false) tri true,
             ("\$param" to false) tri false,
             ("\$param" to true) tri true,
-            ("param" to true) tri false
+            ("\$vaddr" to true) tri false,
+            ("\$f31" to true) tri false,
+            ("param" to true) tri false,
+            ("" to true) tri false
+        )
+
+        @JvmStatic
+        fun substitutedLineSource(): Stream<Arguments> = argumentsOf(
+            ("macro_test.s" to "print_int") tri false,
+            ("macro_test_no_args.s" to "print_one") tri false,
+            ("macro_test_no_macro.s" to null) tri false,
+            ("macro_test_two_args.s" to "two_args") tri false,
+            ("macro_test_label_inside.s" to "with_label") tri false
         )
     }
 }

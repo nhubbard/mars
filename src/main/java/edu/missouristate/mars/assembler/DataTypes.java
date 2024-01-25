@@ -1,5 +1,7 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+
 /**
  * Information about MIPS data types.
  *
@@ -7,6 +9,9 @@ package edu.missouristate.mars.assembler;
  * @version August 2003
  **/
 public final class DataTypes {
+    @ExcludeFromJacocoGeneratedReport
+    private DataTypes() {}
+
     /**
      * Number of bytes occupied by MIPS double is 8.
      **/

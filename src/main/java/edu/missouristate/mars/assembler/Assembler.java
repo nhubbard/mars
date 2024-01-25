@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
 import edu.missouristate.mars.util.SystemIO;
 import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
 
@@ -1144,7 +1145,7 @@ public class Assembler {
      * Private class used as Comparator to sort the final ArrayList of ProgramStatements.
      * Sorting is based on unsigned integer value of ProgramStatement.getAddress().
      */
-    private static class ProgramStatementComparator implements Comparator<ProgramStatement> {
+    static class ProgramStatementComparator implements Comparator<ProgramStatement> {
         /**
          * Will be used to sort the collection.
          * Unsigned int compare, because all kernel 32-bit addresses have 1 in the high-order bit,
@@ -1166,6 +1167,7 @@ public class Assembler {
          * Take a hard line.
          */
         @Override
+        @ExcludeFromJacocoGeneratedReport
         public boolean equals(Object obj) {
             return this == obj;
         }
@@ -1175,7 +1177,7 @@ public class Assembler {
      * Private class to simultaneously track addresses in both user and kernel address spaces.
      * Instantiate one for data segment and one for text segment.
      */
-    private static class UserKernelAddressSpace {
+    static class UserKernelAddressSpace {
         final int[] address;
         int currentAddressSpace;
         private final int USER = 0, KERNEL = 1;
@@ -1183,26 +1185,26 @@ public class Assembler {
         /**
          * Initially use user address space, not kernel.
          */
-        private UserKernelAddressSpace(int userBase, int kernelBase) {
+        UserKernelAddressSpace(int userBase, int kernelBase) {
             address = new int[2];
             address[USER] = userBase;
             address[KERNEL] = kernelBase;
             currentAddressSpace = USER;
         }
 
-        private int get() {
+        int get() {
             return address[currentAddressSpace];
         }
 
-        private void set(int value) {
+        void set(int value) {
             address[currentAddressSpace] = value;
         }
 
-        private void increment(int increment) {
+        void increment(int increment) {
             address[currentAddressSpace] += increment;
         }
 
-        private void setAddressSpace(int addressSpace) {
+        void setAddressSpace(int addressSpace) {
             if (addressSpace == USER || addressSpace == KERNEL) currentAddressSpace = addressSpace;
             else throw new IllegalArgumentException();
         }
@@ -1222,14 +1224,14 @@ public class Assembler {
      * - the label's token.
      * Normally need only the name but the error message needs more.
      */
-    private static class DataSegmentForwardReferences {
+    static class DataSegmentForwardReferences {
         private final ArrayList<DataSegmentForwardReference> forwardReferenceList;
 
-        private DataSegmentForwardReferences() {
+        DataSegmentForwardReferences() {
             forwardReferenceList = new ArrayList<>();
         }
 
-        private int size() {
+        int size() {
             return forwardReferenceList.size();
         }
 
@@ -1241,7 +1243,7 @@ public class Assembler {
          * - the label's token.
          * All its information will be needed if an error message is generated.
          */
-        private void add(int patchAddress, int length, Token token) {
+        void add(int patchAddress, int length, Token token) {
             forwardReferenceList.add(new DataSegmentForwardReference(patchAddress, length, token));
         }
 
@@ -1250,14 +1252,14 @@ public class Assembler {
          * Can be used at the end of each source file to dump all unresolved references
          * into a common list to be processed after all source files parsed.
          */
-        private void add(DataSegmentForwardReferences another) {
+        void add(DataSegmentForwardReferences another) {
             forwardReferenceList.addAll(another.forwardReferenceList);
         }
 
         /**
          * Clear out the list. Allows you to re-use it.
          */
-        private void clear() {
+        void clear() {
             forwardReferenceList.clear();
         }
 
@@ -1270,7 +1272,7 @@ public class Assembler {
          * the forward reference remains (it is either undefined or a global label
          * defined in a file not yet parsed).
          */
-        private int resolve(SymbolTable localTable) {
+        int resolve(SymbolTable localTable) {
             int count = 0;
             int labelAddress;
             DataSegmentForwardReference entry;
@@ -1294,7 +1296,7 @@ public class Assembler {
          * Call this when you are confident that remaining list entries are to
          * undefined labels.
          */
-        private void generateErrorMessages(ErrorList errors) {
+        void generateErrorMessages(ErrorList errors) {
             DataSegmentForwardReference entry;
             for (DataSegmentForwardReference dataSegmentForwardReference : forwardReferenceList) {
                 entry = dataSegmentForwardReference;
@@ -1310,6 +1312,6 @@ public class Assembler {
         /**
          * inner-inner class to hold each entry of the forward reference list.
          */
-        private record DataSegmentForwardReference(int patchAddress, int length, Token token) {}
+        record DataSegmentForwardReference(int patchAddress, int length, Token token) {}
     }
 }
