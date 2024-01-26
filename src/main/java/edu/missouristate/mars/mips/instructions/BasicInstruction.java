@@ -113,4 +113,9 @@ public class BasicInstruction extends Instruction {
     public int getOpcodeMatch() {
         return this.opcodeMatch;
     }
+
+    @Override
+    public String toString() {
+        return exampleFormat;
+    }
 }

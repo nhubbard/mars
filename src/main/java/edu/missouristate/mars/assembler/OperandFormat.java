@@ -40,7 +40,7 @@ public class OperandFormat {
         if (instrMatches.size() == 1) return instrMatches.get(0);
         for (Instruction instruction : instrMatches)
             if (tokenOperandMatch(tokenList, instruction, new ErrorList())) return instruction;
-        return instrMatches.get(0);
+        return Globals.instructionSet.getInstructionList().get(0);
     }
 
     /**
@@ -65,7 +65,7 @@ public class OperandFormat {
     /**
      * Generate an error message if operand is not of the correct type for this operation & operand position
      */
-    private static boolean operandTypeCheck(TokenList cand, Instruction spec, ErrorList errors) {
+    static boolean operandTypeCheck(TokenList cand, Instruction spec, ErrorList errors) {
         Token candToken, specToken;
         TokenTypes candType, specType;
         for (int i = 1; i < spec.getTokenList().size(); i++) {

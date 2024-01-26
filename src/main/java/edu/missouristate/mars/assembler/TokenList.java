@@ -1,5 +1,7 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+
 import java.util.ArrayList;
 
 /**
@@ -132,10 +134,12 @@ public class TokenList implements Cloneable {
      * @return the cloned list.
      */
     @SuppressWarnings("unchecked")
+    @ExcludeFromJacocoGeneratedReport
     public Object clone() {
-        // Clones are a bit tricky.  super.clone() handles primitives (e.g. values) correctly
+        // Clones are a bit tricky.
+        // super.clone() handles primitives (e.g., values) correctly,
         // but the ArrayList itself has to be cloned separately -- otherwise clone will have
-        // alias to original token list!!
+        // alias to the original token list!!
         try {
             TokenList t = (TokenList) super.clone();
             t.tokenList = (ArrayList<Token>) tokenList.clone();

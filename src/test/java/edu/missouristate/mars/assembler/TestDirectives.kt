@@ -21,7 +21,7 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.twoArgumentsOf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.TestInstance
@@ -60,7 +60,7 @@ class TestDirectives {
 
     companion object {
         @JvmStatic
-        fun exactMatchSource(): Stream<Arguments> = argumentsOf(
+        fun exactMatchSource(): Stream<Arguments> = twoArgumentsOf(
             ".data" to Directives.DATA,
             ".text" to Directives.TEXT,
             ".word" to Directives.WORD,
@@ -85,7 +85,7 @@ class TestDirectives {
         )
 
         @JvmStatic
-        fun prefixMatchSource(): Stream<Arguments> = argumentsOf(
+        fun prefixMatchSource(): Stream<Arguments> = twoArgumentsOf(
             "." to Directives.getDirectiveList(),
             ".a" to arrayListOf(Directives.ALIGN, Directives.ASCII, Directives.ASCIIZ),
             ".b" to arrayListOf(Directives.BYTE),
@@ -116,7 +116,7 @@ class TestDirectives {
         )
 
         @JvmStatic
-        fun isIntegerDirectiveSource(): Stream<Arguments> = argumentsOf(
+        fun isIntegerDirectiveSource(): Stream<Arguments> = twoArgumentsOf(
             Directives.ALIGN to false,
             Directives.ASCII to false,
             Directives.ASCIIZ to false,
@@ -140,7 +140,7 @@ class TestDirectives {
         )
 
         @JvmStatic
-        fun isFloatingDirectiveSource(): Stream<Arguments> = argumentsOf(
+        fun isFloatingDirectiveSource(): Stream<Arguments> = twoArgumentsOf(
             Directives.ALIGN to false,
             Directives.ASCII to false,
             Directives.ASCIIZ to false,

@@ -22,7 +22,7 @@
 package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.oneArgumentOf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
@@ -52,7 +52,7 @@ class TestToken {
 
     companion object {
         @JvmStatic
-        fun setTypeSource(): Stream<Arguments> = argumentsOf(
+        fun setTypeSource(): Stream<Arguments> = oneArgumentOf(
             TokenTypes.COMMENT, TokenTypes.DIRECTIVE, TokenTypes.OPERATOR, TokenTypes.DELIMITER,
             TokenTypes.REGISTER_NAME, TokenTypes.FP_REGISTER_NAME, TokenTypes.IDENTIFIER, TokenTypes.LEFT_PAREN,
             TokenTypes.RIGHT_PAREN, TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U,
@@ -61,7 +61,7 @@ class TestToken {
         )
 
         @JvmStatic
-        fun setOriginalProgramSource(): Stream<Arguments> = argumentsOf(
+        fun setOriginalProgramSource(): Stream<Arguments> = oneArgumentOf(
             MIPSProgram(), null
         )
     }

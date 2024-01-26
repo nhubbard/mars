@@ -22,7 +22,7 @@
 package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.threeArgumentsOf
 import edu.missouristate.mars.tri
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
@@ -42,7 +42,7 @@ class TestSourceLine {
 
     companion object {
         @JvmStatic
-        fun testConstructorSource(): Stream<Arguments> = argumentsOf(
+        fun testConstructorSource(): Stream<Arguments> = threeArgumentsOf(
             ("main: li \$a0, 0" to MIPSProgram()) tri 0,
             ("main: li \$a0, 0" to null) tri 0
         )

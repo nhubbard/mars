@@ -23,7 +23,7 @@ package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.Globals
 import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.threeArgumentsOf
 import edu.missouristate.mars.tri
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -141,7 +141,7 @@ class TestMacro {
 
     companion object {
         @JvmStatic
-        fun tokenIsMacroParameterSource(): Stream<Arguments> = argumentsOf(
+        fun tokenIsMacroParameterSource(): Stream<Arguments> = threeArgumentsOf(
             ("%param" to false) tri true,
             ("\$param" to false) tri false,
             ("\$param" to true) tri true,
@@ -152,7 +152,7 @@ class TestMacro {
         )
 
         @JvmStatic
-        fun substitutedLineSource(): Stream<Arguments> = argumentsOf(
+        fun substitutedLineSource(): Stream<Arguments> = threeArgumentsOf(
             ("macro_test.s" to "print_int") tri false,
             ("macro_test_no_args.s" to "print_one") tri false,
             ("macro_test_no_macro.s" to null) tri false,

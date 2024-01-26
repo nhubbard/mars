@@ -21,9 +21,11 @@
 
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.Globals
 import edu.missouristate.mars.MIPSProgram
-import org.junit.jupiter.api.Assertions.assertTrue
+import edu.missouristate.mars.ProcessingException
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -31,15 +33,20 @@ import java.nio.file.Paths
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestMacroPool {
-    @Test
-    fun testMacroExpansionLoop() {
-        val inputFile = Paths.get("src/test/resources/tests/macropool_loop_test.s").toFile()
+    private fun createProgram(path: String): Pair<MIPSProgram, ErrorList> {
+        val inputFile = Paths.get(path).toFile()
         Globals.initialize(false)
         val program = MIPSProgram()
         program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
         program.tokenize()
-        program.assemble(arrayListOf(program), true, false)
-        // program.simulate(-1)
+        val errors = program.assemble(arrayListOf(program), true, false)
+        program.simulate(-1)
+        return program to errors
+    }
+
+    @Test
+    fun testMacroExpansionLoop() {
+        val (program, _) = createProgram("src/test/resources/tests/macropool_loop_test.s")
         val loopToken = Token(TokenTypes.IDENTIFIER, "intentional_loop", program, 5, 1)
         program.localMacroPool.pushOnCallStack(loopToken)
         assertTrue(program.localMacroPool.pushOnCallStack(Token(TokenTypes.OPERATOR, "intentional_loop", program, 5, 1)))
@@ -48,14 +55,41 @@ class TestMacroPool {
     @Test
     @Disabled
     fun testExpansionHistory() {
-        val inputFile = Paths.get("src/test/resources/tests/macropool_nested_macros.s").toFile()
-        Globals.initialize(false)
-        val program = MIPSProgram()
-        program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
-        program.tokenize()
-        program.assemble(arrayListOf(program), true, false)
-        program.simulate(-1)
-        println(program.localMacroPool.expansionHistory)
+        val (program, _) = createProgram("src/test/resources/tests/macropool_nested_macros.s")
         assertTrue(program.localMacroPool.expansionHistory.contains("->"))
+    }
+
+    @Test
+    fun testMatchesAnyMacroWithNoMacro() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test_no_macro.s")
+        // Doesn't matter what I input to matchesAnyMacroName, should always return false since there are no macros
+        assertFalse(program.localMacroPool.matchesAnyMacroName("no_macro"))
+    }
+
+    @Test
+    fun testMatchesAnyMacroWithCorrectName() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        assertTrue(program.localMacroPool.matchesAnyMacroName("print_int"))
+    }
+
+    @Test
+    fun testMatchesAnyMacroWithIncorrectName() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        assertFalse(program.localMacroPool.matchesAnyMacroName("with_label"))
+    }
+
+    @Test
+    fun testGetMatchingMacroWithEmptyTokenList() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        assertNull(program.localMacroPool.getMatchingMacro(TokenList(), 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroArgsSmallerThanTokenList() {
+        val (program, _) = createProgram("src/test/resources/tests/macropool_args_less_than_token_list.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "my_macro", program, 0, 0))
+        tokens.add(Token(TokenTypes.INTEGER_5, "10", program, 0, 9))
+        assertNotNull(program.localMacroPool.getMatchingMacro(tokens, 0))
     }
 }

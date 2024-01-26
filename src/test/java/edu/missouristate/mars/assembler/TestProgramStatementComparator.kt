@@ -22,7 +22,7 @@
 package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.ProgramStatement
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.threeArgumentsOf
 import edu.missouristate.mars.assembler.Assembler.ProgramStatementComparator
 import edu.missouristate.mars.tri
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -76,7 +76,7 @@ class TestProgramStatementComparator {
 
     companion object {
         @JvmStatic
-        fun compareSource(): Stream<Arguments> = argumentsOf(
+        fun compareSource(): Stream<Arguments> = threeArgumentsOf(
             (10 to 20) tri -10,
             (-10 to -20) tri 10,
             (10 to -20) tri -20,

@@ -22,7 +22,7 @@
 package edu.missouristate.mars.assembler
 
 import edu.missouristate.mars.Globals
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.twoArgumentsOf
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
@@ -64,7 +64,7 @@ class TestTokenTypes {
 
     companion object {
         @JvmStatic
-        fun matchTokenTypeSource(): Stream<Arguments> = argumentsOf(
+        fun matchTokenTypeSource(): Stream<Arguments> = twoArgumentsOf(
             "\'" to TokenTypes.ERROR,
             "# This is a comment" to TokenTypes.COMMENT,
             "(" to TokenTypes.LEFT_PAREN,
@@ -110,7 +110,7 @@ class TestTokenTypes {
         )
 
         @JvmStatic
-        fun isIntegerTokenTypeSource(): Stream<Arguments> = argumentsOf(
+        fun isIntegerTokenTypeSource(): Stream<Arguments> = twoArgumentsOf(
             TokenTypes.COMMENT to false,
             TokenTypes.DIRECTIVE to false,
             TokenTypes.OPERATOR to false,
@@ -135,7 +135,7 @@ class TestTokenTypes {
         )
 
         @JvmStatic
-        fun isFloatingTokenTypeSource(): Stream<Arguments> = argumentsOf(
+        fun isFloatingTokenTypeSource(): Stream<Arguments> = twoArgumentsOf(
             TokenTypes.COMMENT to false,
             TokenTypes.DIRECTIVE to false,
             TokenTypes.OPERATOR to false,
@@ -160,7 +160,7 @@ class TestTokenTypes {
         )
 
         @JvmStatic
-        fun isValidIdentifierSource(): Stream<Arguments> = argumentsOf(
+        fun isValidIdentifierSource(): Stream<Arguments> = twoArgumentsOf(
             "validIdentifier" to true,
             "_valid_identifier" to true,
             "\$valid\$Identifier" to true,

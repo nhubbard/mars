@@ -21,7 +21,8 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.argumentsOf
+import edu.missouristate.mars.threeArgumentsOf
+import edu.missouristate.mars.twoArgumentsOf
 import edu.missouristate.mars.tri
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.TestInstance
@@ -61,7 +62,7 @@ class TestDataTypes {
 
     companion object {
         @JvmStatic
-        fun constantValuesSource(): Stream<Arguments> = argumentsOf(
+        fun constantValuesSource(): Stream<Arguments> = twoArgumentsOf(
             8 to DataTypes.DOUBLE_SIZE,
             4 to DataTypes.FLOAT_SIZE,
             4 to DataTypes.WORD_SIZE,
@@ -83,7 +84,7 @@ class TestDataTypes {
         )
 
         @JvmStatic
-        fun lengthInBytesSource(): Stream<Arguments> = argumentsOf(
+        fun lengthInBytesSource(): Stream<Arguments> = twoArgumentsOf(
             Directives.DATA to 0,
             Directives.TEXT to 0,
             Directives.WORD to DataTypes.WORD_SIZE,
@@ -107,7 +108,7 @@ class TestDataTypes {
         )
 
         @JvmStatic
-        fun intOutOfRangeSource(): Stream<Arguments> = argumentsOf(
+        fun intOutOfRangeSource(): Stream<Arguments> = threeArgumentsOf(
             (Directives.HALF to DataTypes.MIN_HALF_VALUE - 1) tri true,
             (Directives.HALF to DataTypes.MAX_HALF_VALUE + 1) tri true,
             (Directives.HALF to DataTypes.MIN_HALF_VALUE) tri false,
@@ -121,7 +122,7 @@ class TestDataTypes {
         )
 
         @JvmStatic
-        fun floatOutOfRangeSource(): Stream<Arguments> = argumentsOf(
+        fun floatOutOfRangeSource(): Stream<Arguments> = threeArgumentsOf(
             (Directives.FLOAT to Float.NEGATIVE_INFINITY) tri true,
             (Directives.FLOAT to DataTypes.LOW_FLOAT_VALUE) tri false,
             (Directives.FLOAT to Float.POSITIVE_INFINITY) tri true,

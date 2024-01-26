@@ -25,11 +25,11 @@ import org.junit.jupiter.params.provider.Arguments
 import java.util.stream.Stream
 
 // One argument
-fun <A> argumentsOf(vararg args: A): Stream<Arguments> =
+fun <A> oneArgumentOf(vararg args: A): Stream<Arguments> =
     args.map { Arguments.of(it) }.stream()
 
 // Two arguments
-fun <A, B> argumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
+fun <A, B> twoArgumentsOf(vararg args: Pair<A, B>): Stream<Arguments> =
     args.map { Arguments.of(it.first, it.second) }.stream()
 
 // Three arguments
@@ -39,5 +39,5 @@ infix fun <A, B, C> A.tri(other: Pair<B, C>): Triple<A, B, C> =
 infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
     Triple(first, second, third)
 
-fun <A, B, C> argumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
+fun <A, B, C> threeArgumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
     args.map { Arguments.of(it.first, it.second, it.third) }.stream()

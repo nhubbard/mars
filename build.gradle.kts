@@ -72,6 +72,7 @@ tasks {
     test {
         useJUnitPlatform()
         finalizedBy(jacocoTestReport)
+        jvmArgs("-XX:+EnableDynamicAgentLoading")
     }
 
     jacocoTestReport {
