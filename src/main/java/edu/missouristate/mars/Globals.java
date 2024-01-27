@@ -166,7 +166,7 @@ public class Globals {
         }
     }
 
-    private static boolean isRunningTest() {
+    public static boolean isRunningTest() {
         if (isRunningTest == null) {
             isRunningTest = true;
             try {

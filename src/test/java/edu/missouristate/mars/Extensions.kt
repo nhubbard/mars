@@ -22,6 +22,7 @@
 package edu.missouristate.mars
 
 import org.junit.jupiter.params.provider.Arguments
+import java.nio.file.Paths
 import java.util.stream.Stream
 
 // One argument
@@ -41,3 +42,15 @@ infix fun <A, B, C> Pair<A, B>.tri(third: C): Triple<A, B, C> =
 
 fun <A, B, C> threeArgumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> =
     args.map { Arguments.of(it.first, it.second, it.third) }.stream()
+
+// Helper function to create programs from an assembly file
+fun createProgram(path: String): Pair<MIPSProgram, ErrorList> {
+    val inputFile = Paths.get(path).toFile()
+    Globals.initialize(false)
+    val program = MIPSProgram()
+    program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
+    program.tokenize()
+    val errors = program.assemble(arrayListOf(program), true, false)
+    program.simulate(-1)
+    return program to errors
+}

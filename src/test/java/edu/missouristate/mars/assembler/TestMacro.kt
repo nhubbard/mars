@@ -21,10 +21,7 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.threeArgumentsOf
-import edu.missouristate.mars.tri
+import edu.missouristate.mars.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -100,13 +97,7 @@ class TestMacro {
     @ParameterizedTest
     @MethodSource("substitutedLineSource")
     fun testGetSubstitutedLine(fileName: String, macroName: String?, shouldHaveErrors: Boolean) {
-        val inputFile = Paths.get("src/test/resources/tests/$fileName").toFile()
-        Globals.initialize(false)
-        val program = MIPSProgram()
-        program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
-        program.tokenize()
-        program.assemble(arrayListOf(program), true, false)
-        program.simulate(-1)
+        val (program, _) = createProgram("src/test/resources/tests/$fileName")
         macroName?.let {
             assertTrue(program.localMacroPool.matchesAnyMacroName(it))
         } ?: assertNull(program.localMacroPool.current)

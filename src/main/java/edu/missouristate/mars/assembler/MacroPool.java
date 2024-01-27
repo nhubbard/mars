@@ -1,5 +1,6 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.MIPSProgram;
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
 
@@ -163,5 +164,12 @@ public class MacroPool {
             ret.append(callStackOrigLines.get(i).toString());
         }
         return ret.toString();
+    }
+
+    @ExcludeFromJacocoGeneratedReport
+    ArrayList<Macro> getMacrosUnderTesting() {
+        if (!Globals.isRunningTest())
+            throw new IllegalStateException("This method is only for use in tests. DO NOT USE OUTSIDE OF TESTS.");
+        return macroList;
     }
 }

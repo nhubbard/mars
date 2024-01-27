@@ -21,27 +21,13 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.ErrorList
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.MIPSProgram
+import edu.missouristate.mars.createProgram
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.nio.file.Paths
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestMacroPool {
-    private fun createProgram(path: String): Pair<MIPSProgram, ErrorList> {
-        val inputFile = Paths.get(path).toFile()
-        Globals.initialize(false)
-        val program = MIPSProgram()
-        program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
-        program.tokenize()
-        val errors = program.assemble(arrayListOf(program), true, false)
-        program.simulate(-1)
-        return program to errors
-    }
-
     @Test
     fun testMacroExpansionLoop() {
         val (program, _) = createProgram("src/test/resources/tests/macropool_loop_test.s")
@@ -95,15 +81,53 @@ class TestMacroPool {
     }
 
     @Test
-    fun testGetMatchingMacroAllConditions() {
-        val program = MIPSProgram()
-        val macro = Macro()
-        macro.fromLine = 10
-        macro.args = arrayListOf("it")
-        macro.name = "test_macro"
-        val token = Token(TokenTypes.IDENTIFIER, "test_macro", program, 0, 0)
+    fun testGetMatchingMacroWhenRetNull() {
+        val (program, _) = createProgram("src/test/resources/tests/macropool_full_match.s")
         val tokens = TokenList()
-        tokens.add(token)
+        tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 7, 0))
+        val expectedMacro = program.localMacroPool.macrosUnderTesting.first()
+        assertEquals(expectedMacro, program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
 
+    @Test
+    fun testGetMatchingMacroWhenRetNotNull() {
+        val (program, _) = createProgram("src/test/resources/tests/macropool_full_match_2.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 13, 0))
+        val expectedMacro = program.localMacroPool.macrosUnderTesting[1]
+        assertEquals(expectedMacro, program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroNoConditionsMet() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test_no_macro.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 4, 0))
+        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroFirstConditionNotMet() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "print_ints", program, 9, 0))
+        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroSecondConditionNotMet() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "print_int", program, 9, 0))
+        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroThirdConditionNotMet() {
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        val tokens = TokenList()
+        tokens.add(Token(TokenTypes.IDENTIFIER, "print_int", program, 9, 0))
+        tokens.add(Token(TokenTypes.INTEGER_5, "1", program, 9, 11))
+        assertNotNull(program.localMacroPool.getMatchingMacro(tokens, 0))
     }
 }
