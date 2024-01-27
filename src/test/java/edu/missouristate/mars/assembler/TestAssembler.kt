@@ -24,6 +24,4 @@ package edu.missouristate.mars.assembler
 import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TestAssembler {
-
-}
+class TestAssembler

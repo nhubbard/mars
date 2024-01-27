@@ -24,9 +24,7 @@ package edu.missouristate.mars.assembler
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.Globals
 import edu.missouristate.mars.MIPSProgram
-import edu.missouristate.mars.ProcessingException
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.nio.file.Paths
@@ -53,9 +51,12 @@ class TestMacroPool {
     }
 
     @Test
-    @Disabled
     fun testExpansionHistory() {
-        val (program, _) = createProgram("src/test/resources/tests/macropool_nested_macros.s")
+        val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
+        val firstToken = Token(TokenTypes.REGISTER_NAME, "\$t0", program, 2, 0)
+        val secondToken = Token(TokenTypes.IDENTIFIER, "main", program, 3, 0)
+        program.localMacroPool.pushOnCallStack(firstToken)
+        program.localMacroPool.pushOnCallStack(secondToken)
         assertTrue(program.localMacroPool.expansionHistory.contains("->"))
     }
 
@@ -91,5 +92,18 @@ class TestMacroPool {
         tokens.add(Token(TokenTypes.IDENTIFIER, "my_macro", program, 0, 0))
         tokens.add(Token(TokenTypes.INTEGER_5, "10", program, 0, 9))
         assertNotNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+    }
+
+    @Test
+    fun testGetMatchingMacroAllConditions() {
+        val program = MIPSProgram()
+        val macro = Macro()
+        macro.fromLine = 10
+        macro.args = arrayListOf("it")
+        macro.name = "test_macro"
+        val token = Token(TokenTypes.IDENTIFIER, "test_macro", program, 0, 0)
+        val tokens = TokenList()
+        tokens.add(token)
+
     }
 }
