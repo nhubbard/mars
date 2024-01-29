@@ -195,15 +195,25 @@ public class MIPSProgram {
         }
     }
 
+    public void tokenize() throws ProcessingException {
+        this.tokenizer = new Tokenizer();
+        this.tokenList = tokenizer.tokenize(this, false);
+        this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
+    }
+
     /**
      * Tokenizes the MIPS source program. Program must have already been read from file.
      *
      * @throws ProcessingException Will throw exception if errors occured while tokenizing.
      **/
-    public void tokenize() throws ProcessingException {
+    public void tokenize(boolean ignoreErrors) throws ProcessingException {
         this.tokenizer = new Tokenizer();
-        this.tokenList = tokenizer.tokenize(this);
+        this.tokenList = tokenizer.tokenize(this, ignoreErrors);
         this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
+    }
+
+    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
+        return prepareFilesForAssembly(filenames, leadFilename, exceptionHandler, false);
     }
 
     /**
@@ -221,7 +231,7 @@ public class MIPSProgram {
      * objects for any additional files (send ArrayList to assembler)
      * @throws ProcessingException Will throw exception if errors occured while reading or tokenizing.
      **/
-    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
+    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler, boolean ignoreErrors) throws ProcessingException {
         ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
         int leadFilePosition = 0;
         if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
@@ -231,7 +241,7 @@ public class MIPSProgram {
         for (String s : filenames) {
             MIPSProgram currentProgram = (s.equals(leadFilename)) ? this : new MIPSProgram();
             currentProgram.readSource(s);
-            currentProgram.tokenize();
+            currentProgram.tokenize(ignoreErrors);
             // I want "this" MIPSProgram to be the first in the list...except for exception handler
             if (currentProgram == this && !MIPSProgramsToAssemble.isEmpty()) {
                 MIPSProgramsToAssemble.add(leadFilePosition, currentProgram);
@@ -257,6 +267,11 @@ public class MIPSProgram {
         return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, false);
     }
 
+    public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
+                              boolean warningsAreErrors) throws ProcessingException {
+        return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, false);
+    }
+
     /**
      * Assembles the MIPS source program. All files comprising the program must have
      * already been tokenized.
@@ -270,10 +285,10 @@ public class MIPSProgram {
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
-                              boolean warningsAreErrors) throws ProcessingException {
+                              boolean warningsAreErrors, boolean ignoreErrors) throws ProcessingException {
         this.backStepper = null;
         Assembler asm = new Assembler();
-        this.machineList = asm.assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
+        this.machineList = asm.assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, ignoreErrors);
         this.backStepper = new BackStepper();
         return asm.getErrorList();
     }

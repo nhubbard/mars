@@ -108,6 +108,10 @@ public class Assembler {
         return assemble(tokenizedProgramFiles, extendedAssemblerEnabled, false);
     }
 
+    public ArrayList<ProgramStatement> assemble(ArrayList<MIPSProgram> tokenizedProgramFiles, boolean extendedAssemblerEnabled, boolean warningsAreErrors) throws ProcessingException {
+        return assemble(tokenizedProgramFiles, extendedAssemblerEnabled, warningsAreErrors, false);
+    }
+
     /**
      * Parse and generate machine code for the given MIPS program. All source
      * files must have already been tokenized.
@@ -127,7 +131,7 @@ public class Assembler {
      * statement. Returns null if incoming array list is null or empty.
      * @see ProgramStatement
      **/
-    public ArrayList<ProgramStatement> assemble(ArrayList<MIPSProgram> tokenizedProgramFiles, boolean extendedAssemblerEnabled, boolean warningsAreErrors) throws ProcessingException {
+    public ArrayList<ProgramStatement> assemble(ArrayList<MIPSProgram> tokenizedProgramFiles, boolean extendedAssemblerEnabled, boolean warningsAreErrors, boolean ignoreErrors) throws ProcessingException {
         if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) return null;
         textAddress = new UserKernelAddressSpace(Memory.textBaseAddress, Memory.kernelTextBaseAddress);
         dataAddress = new UserKernelAddressSpace(Memory.dataBaseAddress, Memory.kernelDataBaseAddress);
@@ -207,7 +211,7 @@ public class Assembler {
         accumulatedDataSegmentForwardReferences.generateErrorMessages(errors);
 
         // Throw the collection of errors accumulated through the first pass.
-        if (errors.errorsOccurred()) throw new ProcessingException(errors);
+        if (!ignoreErrors && errors.errorsOccurred()) throw new ProcessingException(errors);
         if (Globals.debug) System.out.println("Assembler second pass begins");
         // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
         // Generates basic assembler statements...
@@ -321,7 +325,7 @@ public class Assembler {
         */
         machineList.sort(new ProgramStatementComparator());
         catchDuplicateAddresses(machineList, errors);
-        if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) throw new ProcessingException(errors);
+        if (!ignoreErrors && (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors)) throw new ProcessingException(errors);
         return machineList;
     } // assemble()
 

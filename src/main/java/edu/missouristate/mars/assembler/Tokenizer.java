@@ -55,6 +55,10 @@ public class Tokenizer {
      * that represents a tokenized source statement from the MIPS program.
      **/
     public ArrayList<TokenList> tokenize(MIPSProgram p) throws ProcessingException {
+        return tokenize(p, false);
+    }
+
+    public ArrayList<TokenList> tokenize(MIPSProgram p, boolean ignoreErrors) throws ProcessingException {
         sourceMIPSProgram = p;
         equivalents = new HashMap<>(); // DPS 11-July-2012
         ArrayList<TokenList> tokenList = new ArrayList<>();
@@ -76,7 +80,7 @@ public class Tokenizer {
                 source.set(i, new SourceLine(currentLineTokens.getProcessedLine(), source.get(i).getMIPSProgram(), source.get(i).getLineNumber()));
             }
         }
-        if (errors.errorsOccurred()) {
+        if (!ignoreErrors && errors.errorsOccurred()) {
             throw new ProcessingException(errors);
         }
         return tokenList;

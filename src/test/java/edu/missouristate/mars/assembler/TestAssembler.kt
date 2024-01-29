@@ -21,13 +21,93 @@
 
 package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.MIPSProgram
+import edu.missouristate.mars.ProcessingException
+import edu.missouristate.mars.createProgram
+import edu.missouristate.mars.tapSystemOut
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertThrows
+import java.nio.file.Paths
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestAssembler {
     @Test
-    fun testStripComment() {
+    fun testAssembleHelperFunctions() {
+        val assembler = Assembler()
+        val inputFile = Paths.get("src/test/resources/tests/macro_test.s").toFile()
+        Globals.initialize(false)
+        val program = MIPSProgram()
+        program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
+        program.tokenize()
+        assembler.assemble(program, true)
+        assembler.assemble(program, true, false)
+        assembler.assemble(arrayListOf(program), true)
+        assembler.assemble(arrayListOf(program), true, false)
+    }
 
+    @Test
+    fun testAssembleUnlikelyCase() {
+        val assembler = Assembler()
+        val input: ArrayList<MIPSProgram>? = null
+        assertNull(assembler.assemble(input, true, false))
+        val input2 = arrayListOf<MIPSProgram>()
+        assertNull(assembler.assemble(input2, true, false))
+    }
+
+    @Test
+    fun testAssembleDebugPrintOutput() {
+        Globals.initialize(false)
+        Globals.debug = true
+        val output = tapSystemOut {
+            createProgram("src/test/resources/tests/macro_test.s")
+        }
+        Globals.debug = false
+        assertTrue(output.contains("Assembler first pass begins:"))
+    }
+
+    @Test
+    fun testAssembleErrorLimitExceeded() {
+        val (_, errors) = createProgram(
+            "src/test/resources/tests/assembler_error_limit.s",
+            ignoreErrors = true
+        )
+        assertTrue(errors.errorCount() > 200)
+    }
+
+    @Test
+    fun testAssembleFirstFirstExceedsErrorLimit() {
+        val (program, errors) = createProgram(
+            "src/test/resources/tests/assembler_error_limit.s",
+            "src/test/resources/tests/macro_test.s",
+            ignoreErrors = true
+        )
+        assertTrue(errors.errorCount() > 200)
+        assertTrue(program.localMacroPool.macrosUnderTesting.isEmpty())
+    }
+
+    @Test
+    fun testAssembleErrorLimitExceededThrows() {
+        assertThrows<ProcessingException> {
+            createProgram("src/test/resources/tests/assembler_error_limit.s")
+        }
+    }
+
+    @Test
+    fun testAssembleErrorLimitExceededDoesNotThrowIfIgnoringErrors() {
+        assertDoesNotThrow {
+            createProgram("src/test/resources/tests/assembler_error_limit.s", ignoreErrors = true)
+        }
+    }
+
+    @Test
+    fun testAssembleInvalidMacroDef() {
+        val (_, errors) = createProgram(
+            "src/test/resources/tests/assembler_bad_macro_definition.s",
+            ignoreErrors = true
+        )
+        assertTrue(errors.errorsOccurred())
     }
 }

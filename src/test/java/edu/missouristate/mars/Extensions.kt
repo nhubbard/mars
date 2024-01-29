@@ -21,7 +21,11 @@
 
 package edu.missouristate.mars
 
+import edu.missouristate.mars.util.TapStream
 import org.junit.jupiter.params.provider.Arguments
+import java.io.OutputStream
+import java.io.PrintStream
+import java.nio.charset.Charset
 import java.nio.file.Paths
 import java.util.stream.Stream
 
@@ -44,13 +48,34 @@ fun <A, B, C> threeArgumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> 
     args.map { Arguments.of(it.first, it.second, it.third) }.stream()
 
 // Helper function to create programs from an assembly file
-fun createProgram(path: String): Pair<MIPSProgram, ErrorList> {
-    val inputFile = Paths.get(path).toFile()
+fun createProgram(vararg paths: String, ignoreErrors: Boolean = false): Pair<MIPSProgram, ErrorList> {
+    val inputFile = Paths.get(paths.first()).toFile().absolutePath
+    val otherFiles = paths.drop(1).map { Paths.get(it).toFile().absolutePath }.toTypedArray()
     Globals.initialize(false)
     val program = MIPSProgram()
-    program.prepareFilesForAssembly(arrayListOf(inputFile.absolutePath), inputFile.absolutePath, "")
-    program.tokenize()
-    val errors = program.assemble(arrayListOf(program), true, false)
+    program.prepareFilesForAssembly(arrayListOf(inputFile, *otherFiles), inputFile, "", ignoreErrors)
+    program.tokenize(ignoreErrors)
+    val errors = program.assemble(arrayListOf(program), true, false, ignoreErrors)
     program.simulate(-1)
     return program to errors
+}
+
+private fun wrap(outputStream: OutputStream): PrintStream =
+    PrintStream(outputStream, true, Charset.defaultCharset().name())
+
+private fun executeWithSystemOutReplacement(replacementForOut: OutputStream, statement: () -> Unit) {
+    val originalStream = System.out
+    try {
+        System.setOut(wrap(replacementForOut))
+        statement.invoke()
+    } finally {
+        System.setOut(originalStream)
+    }
+}
+
+// Tap system out (stolen from stefanbirkner/systemlambda on GitHub, thanks!)
+fun tapSystemOut(block: () -> Unit): String {
+    val tapStream = TapStream()
+    executeWithSystemOutReplacement(tapStream, block)
+    return tapStream.getTextThatWasWritten()
 }
