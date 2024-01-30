@@ -21,10 +21,8 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.Globals
-import edu.missouristate.mars.createProgram
+import edu.missouristate.mars.*
 import edu.missouristate.mars.mips.hardware.Memory
-import edu.missouristate.mars.tapSystemOut
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -225,6 +223,32 @@ class TestSymbolTable {
         val table = program.localSymbolTable
         val symbols = table.allSymbols
         assertEquals(4, symbols.size)
+    }
+
+    @Test
+    fun testFixSymbolTableAddress() {
+        val table = SymbolTable("testFile")
+        val originalAddress = 100
+        val replacementAddress = 200
+
+        table.addSymbol(
+            Token(TokenTypes.IDENTIFIER, "label1", MIPSProgram(), 0, 0),
+            originalAddress, true, ErrorList()
+        )
+        table.addSymbol(
+            Token(TokenTypes.IDENTIFIER, "label2", MIPSProgram(), 1, 0),
+            150, false, ErrorList()
+        )
+        table.addSymbol(
+            Token(TokenTypes.IDENTIFIER, "label3", MIPSProgram(), 2, 0),
+            originalAddress, true, ErrorList()
+        )
+
+        table.fixSymbolTableAddress(originalAddress, replacementAddress)
+
+        assertEquals(replacementAddress, table.getAddress("label1"))
+        assertEquals(150, table.getAddress("label2"))
+        assertEquals(replacementAddress, table.getAddress("label3"))
     }
 
     @Test
