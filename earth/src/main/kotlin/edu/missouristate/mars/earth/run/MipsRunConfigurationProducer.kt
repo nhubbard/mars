@@ -38,18 +38,27 @@
 package edu.missouristate.mars.earth.run
 
 import com.intellij.execution.actions.ConfigurationContext
-import com.intellij.execution.actions.RunConfigurationProducer
-import com.intellij.execution.configurations.ConfigurationType.CONFIGURATION_TYPE_EP
-import com.intellij.openapi.extensions.Extensions
+import com.intellij.execution.actions.LazyRunConfigurationProducer
+import com.intellij.execution.configurations.ConfigurationFactory
+import com.intellij.execution.configurations.ConfigurationType
+import com.intellij.execution.configurations.RunConfiguration
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
 import edu.missouristate.mars.earth.lang.psi.MipsFile
 import edu.missouristate.mars.earth.lang.psi.MipsLabelDefinition
 
-open class MipsRunConfigurationProducer protected constructor() : RunConfigurationProducer<MipsRunConfiguration>(
-    Extensions.findExtension(CONFIGURATION_TYPE_EP, MipsRunConfigurationType::class.java)
-) {
+open class MipsRunConfigurationProducer protected constructor() : LazyRunConfigurationProducer<MipsRunConfiguration>() {
+    override fun getConfigurationFactory(): ConfigurationFactory = object : ConfigurationFactory() {
+        override fun createTemplateConfiguration(project: Project): RunConfiguration =
+            MipsRunConfiguration(project, this)
+
+        override fun getType(): ConfigurationType = MipsRunConfigurationType()
+
+        override fun getId(): String = "MipsConfigurationFactory"
+    }
+
     override fun setupConfigurationFromContext(
         cfg: MipsRunConfiguration,
         context: ConfigurationContext,
@@ -70,7 +79,7 @@ open class MipsRunConfigurationProducer protected constructor() : RunConfigurati
             .filter(MipsLabelDefinition::class.java)
             .iterator()
         for (label in iter) {
-            if (label.name != null && label.name == "main") {
+            if (label.name == "main") {
                 cfg.isStartMain = true
                 break
             }

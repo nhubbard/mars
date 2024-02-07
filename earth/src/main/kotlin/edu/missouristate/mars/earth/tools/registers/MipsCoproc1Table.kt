@@ -42,7 +42,7 @@ import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException
 
 class MipsCoproc1Table : MipsRegisterTableBase() {
     init {
-        Coprocessor1.addObserver(this)
+        Coprocessor1.addRegisterObserver(this)
     }
 
     override fun updateHeader() {
@@ -52,12 +52,12 @@ class MipsCoproc1Table : MipsRegisterTableBase() {
         model.getColumn(VALUE.ordinal).headerValue = "Double"
     }
 
-    override fun getName(row: Int) = Coprocessor1.registers[row].name
+    override fun getName(row: Int): String = Coprocessor1.getRegisters()[row].name
     override fun getNumber(row: Int) = getFormattedValue(Coprocessor1.getFloatFromRegister(row))
     override fun getValue(row: Int): Number? = try {
         Coprocessor1.getDoubleFromRegisterPair(row)
     } catch (e: InvalidRegisterAccessException) {
         null
     }
-    override fun getRowCount(): Int = Coprocessor1.registers.size
+    override fun getRowCount(): Int = Coprocessor1.getRegisters().size
 }

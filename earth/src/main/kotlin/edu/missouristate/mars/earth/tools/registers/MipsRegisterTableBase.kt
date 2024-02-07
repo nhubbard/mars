@@ -33,18 +33,16 @@
  * language governing permissions and limitations under the License.
  */
 
-@file:Suppress("DEPRECATION", "LeakingThis")
+@file:Suppress("DEPRECATION", "LeakingThis", "MemberVisibilityCanBePrivate")
 
 package edu.missouristate.mars.earth.tools.registers
 
 import com.intellij.ui.table.JBTable
-import edu.missouristate.mars.CoreSettings
 import edu.missouristate.mars.Globals
-import edu.missouristate.mars.NumberDisplayBaseChooser.DECIMAL
-import edu.missouristate.mars.NumberDisplayBaseChooser.HEXADECIMAL
-import edu.missouristate.mars.NumberDisplayBaseChooser.formatNumber
+import edu.missouristate.mars.Settings
 import edu.missouristate.mars.earth.tools.registers.MipsRegisterTableColumns.*
 import edu.missouristate.mars.mips.hardware.Register
+import edu.missouristate.mars.venus.NumberDisplayBaseChooser.*
 import java.util.*
 import java.util.logging.Logger
 import javax.swing.table.AbstractTableModel
@@ -54,17 +52,17 @@ abstract class MipsRegisterTableBase : JBTable(), Observer {
         @JvmStatic private val LOG = Logger.getLogger("MIPS")
     }
 
-    private var hexValues: Boolean = Globals.settings.getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX)
+    private var hexValues: Boolean = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)
 
     init {
-        Globals.settings.addObserver(this)
+        Globals.getSettings().addObserver(this)
         model = object : AbstractTableModel() {
             override fun getRowCount(): Int = this@MipsRegisterTableBase.rowCount
 
             override fun getColumnCount(): Int = 3
 
             override fun getValueAt(row: Int, col: Int): Any? {
-                val c = entries[col]
+                val c = values()[col]
                 return when (c) {
                     NAME -> this@MipsRegisterTableBase.getName(row)
                     NUMBER -> this@MipsRegisterTableBase.getNumber(row)
@@ -96,12 +94,8 @@ abstract class MipsRegisterTableBase : JBTable(), Observer {
 
     override fun update(observable: Observable, o: Any?) {
         LOG.info("DEBUG :: notification :: obs=$observable, o=$o")
-        if (observable is CoreSettings) {
-            hexValues = observable.getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX)
-            updateRows()
-        } else if (observable is Register) {
-            updateRow(observable.number)
-        }
+        hexValues = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)
+        if (observable is Register) updateRow(observable.number) else updateRows()
     }
 
     fun updateRows() {
@@ -114,7 +108,7 @@ abstract class MipsRegisterTableBase : JBTable(), Observer {
 
     open fun updateHeader() {
         val header = tableHeader.columnModel
-        for (col in entries)
+        for (col in values())
             header.getColumn(col.ordinal).headerValue = col.toString()
     }
 }

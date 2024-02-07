@@ -45,21 +45,21 @@ class MipsRegisterTable : MipsRegisterTableBase() {
     }
 
     init {
-        RegisterFile.addObserver(this)
+        RegisterFile.addRegisterObserver(this)
     }
 
     override fun getName(row: Int): Any = when (row) {
-        PC_REGISTER -> RegisterFile.programCounter.name
+        PC_REGISTER -> RegisterFile.getProgramCounterRegister().name
         HI_REGISTER -> "hi"
         LO_REGISTER -> "lo"
-        else -> RegisterFile.registers[row].name
+        else -> RegisterFile.getRegisters()[row].name
     }
 
-    override fun getNumber(row: Int) = if (row > 31) "" else RegisterFile.registers[row].number
+    override fun getNumber(row: Int) = if (row > 31) "" else RegisterFile.getRegisters()[row].number
 
     override fun getValue(row: Int) = if (row == PC_REGISTER)
-        RegisterFile.programCounter.getValue()
+        RegisterFile.getProgramCounter()
     else RegisterFile.getValue(row)
 
-    override fun getRowCount() = RegisterFile.registers.size + 3
+    override fun getRowCount() = RegisterFile.getRegisters().size + 3
 }

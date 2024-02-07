@@ -33,7 +33,7 @@
  * language governing permissions and limitations under the License.
  */
 
-@file:Suppress("DEPRECATION")
+@file:Suppress("DEPRECATION", "UNCHECKED_CAST")
 
 package edu.missouristate.mars.earth.run.controllers
 
@@ -44,16 +44,13 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.breakpoints.XBreakpoint
-import edu.missouristate.mars.*
 import edu.missouristate.mars.earth.run.MipsRunConfiguration
 import edu.missouristate.mars.earth.run.debugger.MipsSuspendContext
-import edu.missouristate.mars.mips.hardware.RegisterFile
 import edu.missouristate.mars.simulator.Simulator
-import edu.missouristate.mars.simulator.SimulatorNotice
+import edu.missouristate.mars.*
 import org.apache.commons.lang.NotImplementedException
 import java.util.*
 import java.util.logging.Logger
-import kotlin.collections.HashMap
 
 class MarsSimulatorController : MipsSimulatorController, Observer {
     companion object {
@@ -122,21 +119,22 @@ class MarsSimulatorController : MipsSimulatorController, Observer {
 
     private fun breakpointReached() {
         LOG.info("controller.breakpointReached()")
-        val statements = Globals.program.getParsedList()
+        val statements = Globals.program.parsedList as? ArrayList<ProgramStatement> ?: return
         // PC is after the last instruction, stop execution
-        if (RegisterFile.programCounter.getValue() > statements.last().getAddress())
+        if (RegisterFile.getProgramCounter() > statements.last().address)
             stop()
-        findBreakpointByPC(RegisterFile.programCounter.getValue())?.let {
-            val suspendContext = MipsSuspendContext(debugSession!!.project, this, it, RegisterFile.programCounter.getValue())
-            debugSession.breakpointReached(it, "Breakpoint PC=${RegisterFile.programCounter.getValue()}", suspendContext)
+        findBreakpointByPC(RegisterFile.getProgramCounter())?.let {
+            val suspendContext = MipsSuspendContext(debugSession!!.project, this, it, RegisterFile.getProgramCounter())
+            debugSession.breakpointReached(it, "Breakpoint PC=${RegisterFile.getProgramCounter()}", suspendContext)
         }
     }
 
     private fun updateLineToPC() {
-        val statements = Globals.program.getParsedList()
-        for (s in statements) {
-            lineToPC[s.getSourceLine() - 1] = s.getAddress()
-            pcToLine[s.getAddress()] = s.getSourceLine() - 1
+        val statements = Globals.program.parsedList
+        for (statement in statements) {
+            val s = statement as ProgramStatement
+            lineToPC[s.sourceLine - 1] = s.address
+            pcToLine[s.address] = s.sourceLine - 1
         }
     }
 
@@ -165,14 +163,16 @@ class MarsSimulatorController : MipsSimulatorController, Observer {
     }
 
     private fun getMarsBreakpoints(): IntArray {
-        val statements = Globals.program.getParsedList()
+        val statements = Globals.program.parsedList
         val breaks = IntArray(breakpoints.size)
         var breakIndex = 0
         for (b in breakpoints) {
             val line = b.sourcePosition!!.line
-            for (s in statements)
-                if (line == s.getSourceLine() - 1)
-                    breaks[breakIndex++] = s.getAddress()
+            for (statement in statements) {
+                val s = statement as ProgramStatement
+                if (line == s.sourceLine - 1)
+                    breaks[breakIndex++] = s.address
+            }
         }
         return breaks
     }
@@ -184,12 +184,14 @@ class MarsSimulatorController : MipsSimulatorController, Observer {
         Globals.program.readSource(cfg.mainFile)
         Globals.program.tokenize()
         val warnings = Globals.program.assemble(programs, cfg.isAllowExtendedInstructions)
-        if (warnings.hasWarnings) printMarsErrorList(warnings)
+        // if (warnings.warningsOccurred()) printMarsErrorList(warnings)
     }
 
     private fun printMarsErrorList(errors: ErrorList) {
-        for (msg in errors.messages)
+        for (m in errors.errorMessages) {
+            val msg = m as ErrorMessage
             printMarsErrorMessage(msg)
+        }
     }
 
     private fun printMarsErrorMessage(error: ErrorMessage?) {

@@ -51,7 +51,7 @@ object MarsUtils {
     fun getTokenType(text: CharSequence): IElementType {
         val type = TokenTypes.matchTokenType(text.toString())
         try {
-            return MipsElementType.fromToken(Token(type!!, "", null, 0, 0))
+            return MipsElementType.fromToken(Token(type, "", null, 0, 0))
         } catch (e: MipsException) {
             println("WARNING: Unknown token type found during lexing: $type")
             return TokenType.BAD_CHARACTER

@@ -39,8 +39,8 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.table.JBTable
-import edu.missouristate.mars.CoreSettings
-import edu.missouristate.mars.Globals.settings
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Settings
 import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.JCheckBox
@@ -60,11 +60,11 @@ open class JMipsRegistersToolWindowFactory : ToolWindowFactory {
     private var settingsPanel: JPanel? = null
 
     init {
-        showValuesInHexCheckBox!!.isSelected = settings.getBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX)
+        showValuesInHexCheckBox!!.isSelected = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)
 
         showValuesInHexCheckBox!!.addActionListener(object : AbstractAction() {
             override fun actionPerformed(actionEvent: ActionEvent) {
-                settings.setBooleanSetting(CoreSettings.DISPLAY_VALUES_IN_HEX, showValuesInHexCheckBox!!.isSelected)
+                Globals.getSettings().setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, showValuesInHexCheckBox!!.isSelected)
             }
         })
     }

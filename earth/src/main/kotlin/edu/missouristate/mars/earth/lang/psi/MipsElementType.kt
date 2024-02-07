@@ -37,8 +37,8 @@ package edu.missouristate.mars.earth.lang.psi
 
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
-import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.earth.MipsException
 import edu.missouristate.mars.earth.lang.MipsLanguage
 
@@ -68,7 +68,8 @@ class MipsElementType(debug: String) : IElementType(debug, MipsLanguage.INSTANCE
                 TokenTypes.REGISTER_NUMBER -> MipsElementTypes.REGISTER_NUMBER
                 TokenTypes.RIGHT_PAREN -> MipsElementTypes.RPAREN
                 // TODO: Add support for these two token types
-                TokenTypes.FP_REGISTER_NAME, TokenTypes.MACRO_PARAMETER ->
+                // FIXME: TokenTypes.FP_REGISTER_NAME, TokenTypes.MACRO_PARAMETER ->
+                else ->
                     throw MipsException("Unknown token type: ${token.type}")
             }
         }

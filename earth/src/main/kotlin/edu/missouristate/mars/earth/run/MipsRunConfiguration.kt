@@ -70,7 +70,7 @@ open class MipsRunConfiguration(
 
     override var mainFile: String = ""
     override var maxSteps: Int = -1
-    override lateinit var workingDirectory: String
+    override var workingDirectory: String = ""
     override var isStartMain: Boolean = false
     override var isAllowExtendedInstructions: Boolean = false
 
@@ -93,10 +93,10 @@ open class MipsRunConfiguration(
         maxSteps = steps?.toIntOrNull() ?: -1
 
         val useMain = readField(element, "MIPS_START_MAIN")
-        isStartMain = useMain?.toBooleanStrictOrNull() ?: false
+        isStartMain = useMain?.toBoolean() ?: false
 
         val extended = readField(element, "MIPS_EXTENDED_INSTRUCTIONS")
-        isAllowExtendedInstructions = extended?.toBooleanStrictOrNull() ?: true
+        isAllowExtendedInstructions = extended?.toBoolean() ?: true
     }
 
     override fun writeExternal(element: Element) {
@@ -108,6 +108,4 @@ open class MipsRunConfiguration(
     }
 
     override fun checkConfiguration() {}
-
-
 }

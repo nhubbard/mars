@@ -53,7 +53,7 @@ class MipsConsoleInputStream(private val project: Project) : InputStream() {
     override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
         if (eof) return -1
         readInput()
-        for (i in offset..<(buffer?.length ?: 0))
+        for (i in offset until (buffer?.length ?: 0))
             bytes[i] = buffer!![i].code.toByte()
         eof = true
         return buffer!!.length

@@ -37,8 +37,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   id("java")
-  id("org.jetbrains.kotlin.jvm") version "1.9.21"
-  id("org.jetbrains.intellij") version "1.16.1"
+  kotlin("jvm")
+  id("org.jetbrains.intellij")
 }
 
 group = "edu.missouristate"
@@ -58,7 +58,9 @@ intellij {
 }
 
 dependencies {
-  implementation(project(":mars"))
+  // implementation(project(":mars5"))
+  implementation(project(":mars4"))
+  implementation("com.uchuhimo:konf:1.1.2")
 }
 
 tasks {

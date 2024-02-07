@@ -46,7 +46,7 @@ class MipsLanguage private constructor() : Language(NAME) {
     }
 
     init {
-        Globals.initialize()
+        Globals.initialize(false)
         Globals.program = MIPSProgram()
     }
 

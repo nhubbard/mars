@@ -59,6 +59,7 @@ plugins {
  */
 
 rootProject.name = "mars2"
-include("mars")
+include("mars5")
 include("venus")
 include("earth")
+include("mars4")

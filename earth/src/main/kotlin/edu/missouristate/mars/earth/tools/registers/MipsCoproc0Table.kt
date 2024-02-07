@@ -39,11 +39,11 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0
 
 class MipsCoproc0Table : MipsRegisterTableBase() {
     init {
-        Coprocessor0.addObserver(this)
+        Coprocessor0.addRegisterObserver(this)
     }
 
-    override fun getName(row: Int) = Coprocessor0.registers[row].name
-    override fun getNumber(row: Int) = Coprocessor0.registers[row].number
-    override fun getValue(row: Int) = Coprocessor0.registers[row].getValue()
-    override fun getRowCount(): Int = Coprocessor0.registers.size
+    override fun getName(row: Int): String = Coprocessor0.getRegisters()[row].name
+    override fun getNumber(row: Int) = Coprocessor0.getRegisters()[row].number
+    override fun getValue(row: Int) = Coprocessor0.getRegisters()[row].value
+    override fun getRowCount(): Int = Coprocessor0.getRegisters().size
 }

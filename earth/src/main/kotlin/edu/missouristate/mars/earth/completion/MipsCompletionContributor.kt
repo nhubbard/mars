@@ -90,7 +90,7 @@ class MipsCompletionContributor : CompletionContributor() {
         val file = params.originalFile as MipsFile
         for (label in file.getLabelDefinitions())
             result.addElement(
-                LookupElementBuilder.create(label.name ?: continue)
+                LookupElementBuilder.create(label.name)
                     .withTypeText("Label")
                     .withBoldness(true)
                     .withIcon(MipsIcons.LABEL)
@@ -104,15 +104,16 @@ class MipsCompletionContributor : CompletionContributor() {
      */
     fun suggestDirectives(result: CompletionResultSet) {
         val directives = Directives.getDirectiveList()
-        for (directive in directives)
+        for (directive in directives) {
             result.addElement(
                 LookupElementBuilder.create(directive.name)
-                    .withTailText(" ${directive.getDescription()}", true)
+                    .withTailText(" ${directive.description}", true)
                     .withTypeText("Directive", false)
                     .withInsertHandler(MipsInsertHandler())
                     .withBoldness(true)
                     .withIcon(MipsIcons.DIRECTIVE)
             )
+        }
     }
 
     /**

@@ -59,8 +59,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     java
     idea
-    kotlin("jvm") version "1.9.22"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    kotlin("jvm")
+    id("com.github.johnrengelman.shadow")
 }
 
 group = "edu.missouristate"
@@ -71,7 +71,7 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":mars"))
+    implementation(project(":mars5"))
     implementation("com.uchuhimo:konf:1.1.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }
