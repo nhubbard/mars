@@ -65,6 +65,7 @@ tasks {
             files(classDirectories.files.map {
                 fileTree(it) {
                     exclude("edu/missouristate/mars/venus/**")
+                    exclude("edu/missouristate/mars/tools/**")
                 }
             })
         )
