@@ -139,7 +139,6 @@ class TestDumpFormats {
             Globals.memory.setRawWord(i, 0)
         IntelHexDumpFormat().dumpMemoryRange(outFile, Memory.dataBaseAddress, Memory.dataBaseAddress + 256)
         val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
-        println("[${actual.joinToString(", ")}]")
         assertArrayEquals(intArrayOf(
             58, 48, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 70, 67, 10, 58, 48, 52, 48, 48, 48, 52,
             48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 70, 56, 10, 58, 48, 52, 48, 48, 48, 56, 48, 48, 48, 48, 48, 48, 48,
@@ -236,7 +235,6 @@ class TestDumpFormats {
             Globals.memory.setRawWord(i, 16)
         SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.dataBaseAddress, Memory.dataBaseAddress + 32)
         val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
-        println("[${actual.joinToString(", ")}]")
         assertArrayEquals(intArrayOf(
             48, 120, 49, 48, 48, 49, 48, 48, 48, 48, 32, 32, 32, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48,
             120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48,
