@@ -25,7 +25,7 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
      * Constructor.  There is no standard file extension for this format.
      */
     public HexTextDumpFormat() {
-        super("Hexadecimal Text", "HexText", "Written as hex characters to text file", null);
+        super("Hexadecimal Text", "HexText", "Written as hex characters to text file", "txt");
     }
 
 

@@ -46,8 +46,10 @@ import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.breakpoints.XBreakpoint
 import edu.missouristate.mars.earth.run.MipsRunConfiguration
 import edu.missouristate.mars.earth.run.debugger.MipsSuspendContext
-import edu.missouristate.mars.simulator.Simulator
 import edu.missouristate.mars.*
+import edu.missouristate.mars.mips.hardware.RegisterFile
+import edu.missouristate.mars.simulator.Simulator
+import edu.missouristate.mars.simulator.SimulatorNotice
 import org.apache.commons.lang.NotImplementedException
 import java.util.*
 import java.util.logging.Logger

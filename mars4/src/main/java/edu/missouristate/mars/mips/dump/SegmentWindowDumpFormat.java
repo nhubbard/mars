@@ -29,17 +29,13 @@ import java.io.PrintStream;
  * @author Pete Sanderson
  * @version January 2008
  */
-
-
 public class SegmentWindowDumpFormat extends AbstractDumpFormat {
-
     /**
      * Constructor.  There is no standard file extension for this format.
      */
     public SegmentWindowDumpFormat() {
-        super("Text/Data Segment Window", "SegmentWindow", " Text Segment Window or Data Segment Window format to text file", null);
+        super("Text/Data Segment Window", null, " Text Segment Window or Data Segment Window format to text file", "txt");
     }
-
 
     /**
      * Write MIPS memory contents in Segment Window format.  Each line of
@@ -119,6 +115,4 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
             out.close();
         }
     }
-
-
 }

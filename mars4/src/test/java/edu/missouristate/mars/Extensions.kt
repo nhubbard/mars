@@ -79,3 +79,11 @@ fun tapSystemOut(block: () -> Unit): String {
     executeWithSystemOutReplacement(tapStream, block)
     return tapStream.getTextThatWasWritten()
 }
+
+// Mutate settings temporarily
+fun Settings.withMutatedBoolean(setting: Int, newValue: Boolean, block: () -> Unit) {
+    val oldValue = getBooleanSetting(setting)
+    setBooleanSettingNonPersistent(setting, newValue)
+    block()
+    setBooleanSettingNonPersistent(setting, oldValue)
+}

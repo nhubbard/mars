@@ -35,11 +35,13 @@
 
 package edu.missouristate.mars.mips.dump
 
+import edu.missouristate.mars.Globals
+import edu.missouristate.mars.Settings
 import edu.missouristate.mars.createProgram
 import edu.missouristate.mars.mips.hardware.Memory
+import edu.missouristate.mars.withMutatedBoolean
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.nio.file.Paths
@@ -50,18 +52,19 @@ class TestDumpFormats {
     private val highAddress = Memory.textLimitAddress
     private val outFile = Paths.get("src/test/resources/test_dump").toFile()
 
-    private fun testDumpOutput(dumper: DumpFormat, expected: IntArray) {
-        dumper.dumpMemoryRange(outFile, lowAddress, highAddress)
-        val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
-        assertArrayEquals(expected, actual)
-    }
-
-    @BeforeEach
-    fun beforeEach() {
+    private fun testDumpOutput(dumper: DumpFormat, expected: IntArray, expectedReverse: IntArray = intArrayOf()) {
         // Create the output file if it doesn't exist, or clear its content out if it does exist
         if (!outFile.exists()) outFile.createNewFile()
         else outFile.writeBytes(byteArrayOf())
-        createProgram("src/test/resources/tests/symboltable_two_labels.s").first
+        createProgram("src/test/resources/tests/symboltable_two_labels.s")
+        // Test with correct address range
+        dumper.dumpMemoryRange(outFile, lowAddress, highAddress)
+        val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
+        assertArrayEquals(expected, actual)
+        // Test with reversed address range
+        dumper.dumpMemoryRange(outFile, highAddress, lowAddress)
+        val empty = outFile.readText().toCharArray().map { it.code }.toIntArray()
+        assertArrayEquals(expectedReverse, empty)
     }
 
     @Test
@@ -123,7 +126,71 @@ class TestDumpFormats {
             48, 50, 66, 65, 10, 58, 48, 52, 48, 48, 49, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 67, 68, 52, 10, 58, 48,
             52, 48, 48, 50, 48, 48, 48, 50, 52, 48, 50, 48, 48, 48, 65, 65, 67, 10, 58, 48, 52, 48, 48, 50, 52, 48, 48,
             48, 48, 48, 48, 48, 48, 48, 67, 67, 67, 10, 58, 48, 48, 48, 48, 48, 48, 48, 49, 70, 70, 10
-        ))
+        ), intArrayOf(58, 48, 48, 48, 48, 48, 48, 48, 49, 70, 70, 10))
+    }
+
+    @Test
+    fun testIntelHexDumpFormatWithSingleDigitChecksum() {
+        // Create the output file if it doesn't exist, or clear its content out if it does exist
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        Globals.initialize(false)
+        for (i in Memory.dataBaseAddress..(Memory.dataBaseAddress + 256) step 4)
+            Globals.memory.setRawWord(i, 0)
+        IntelHexDumpFormat().dumpMemoryRange(outFile, Memory.dataBaseAddress, Memory.dataBaseAddress + 256)
+        val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
+        println("[${actual.joinToString(", ")}]")
+        assertArrayEquals(intArrayOf(
+            58, 48, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 70, 67, 10, 58, 48, 52, 48, 48, 48, 52,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 70, 56, 10, 58, 48, 52, 48, 48, 48, 56, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 70, 52, 10, 58, 48, 52, 48, 48, 48, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 70, 48, 10, 58,
+            48, 52, 48, 48, 49, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 69, 67, 10, 58, 48, 52, 48, 48, 49, 52, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 69, 56, 10, 58, 48, 52, 48, 48, 49, 56, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 69, 52, 10, 58, 48, 52, 48, 48, 49, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 69, 48, 10, 58, 48,
+            52, 48, 48, 50, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 68, 67, 10, 58, 48, 52, 48, 48, 50, 52, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 68, 56, 10, 58, 48, 52, 48, 48, 50, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 68, 52, 10, 58, 48, 52, 48, 48, 50, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 68, 48, 10, 58, 48, 52,
+            48, 48, 51, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 67, 67, 10, 58, 48, 52, 48, 48, 51, 52, 48, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 67, 56, 10, 58, 48, 52, 48, 48, 51, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            67, 52, 10, 58, 48, 52, 48, 48, 51, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 67, 48, 10, 58, 48, 52, 48,
+            48, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 66, 67, 10, 58, 48, 52, 48, 48, 52, 52, 48, 48, 48, 48,
+            48, 48, 48, 48, 48, 48, 66, 56, 10, 58, 48, 52, 48, 48, 52, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 66,
+            52, 10, 58, 48, 52, 48, 48, 52, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 66, 48, 10, 58, 48, 52, 48, 48,
+            53, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 65, 67, 10, 58, 48, 52, 48, 48, 53, 52, 48, 48, 48, 48, 48,
+            48, 48, 48, 48, 48, 65, 56, 10, 58, 48, 52, 48, 48, 53, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 65, 52,
+            10, 58, 48, 52, 48, 48, 53, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 65, 48, 10, 58, 48, 52, 48, 48, 54,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 57, 67, 10, 58, 48, 52, 48, 48, 54, 52, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 48, 57, 56, 10, 58, 48, 52, 48, 48, 54, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 57, 52, 10,
+            58, 48, 52, 48, 48, 54, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 57, 48, 10, 58, 48, 52, 48, 48, 55, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 56, 67, 10, 58, 48, 52, 48, 48, 55, 52, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 56, 56, 10, 58, 48, 52, 48, 48, 55, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 56, 52, 10, 58,
+            48, 52, 48, 48, 55, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 56, 48, 10, 58, 48, 52, 48, 48, 56, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 55, 67, 10, 58, 48, 52, 48, 48, 56, 52, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 55, 56, 10, 58, 48, 52, 48, 48, 56, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 55, 52, 10, 58, 48,
+            52, 48, 48, 56, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 55, 48, 10, 58, 48, 52, 48, 48, 57, 48, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 54, 67, 10, 58, 48, 52, 48, 48, 57, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 54, 56, 10, 58, 48, 52, 48, 48, 57, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 54, 52, 10, 58, 48, 52,
+            48, 48, 57, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 54, 48, 10, 58, 48, 52, 48, 48, 65, 48, 48, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 53, 67, 10, 58, 48, 52, 48, 48, 65, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            53, 56, 10, 58, 48, 52, 48, 48, 65, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 53, 52, 10, 58, 48, 52, 48,
+            48, 65, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 53, 48, 10, 58, 48, 52, 48, 48, 66, 48, 48, 48, 48, 48,
+            48, 48, 48, 48, 48, 48, 52, 67, 10, 58, 48, 52, 48, 48, 66, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 52,
+            56, 10, 58, 48, 52, 48, 48, 66, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 52, 52, 10, 58, 48, 52, 48, 48,
+            66, 67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 52, 48, 10, 58, 48, 52, 48, 48, 67, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 48, 48, 51, 67, 10, 58, 48, 52, 48, 48, 67, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 51, 56,
+            10, 58, 48, 52, 48, 48, 67, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 51, 52, 10, 58, 48, 52, 48, 48, 67,
+            67, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 51, 48, 10, 58, 48, 52, 48, 48, 68, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 48, 50, 67, 10, 58, 48, 52, 48, 48, 68, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 56, 10,
+            58, 48, 52, 48, 48, 68, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 52, 10, 58, 48, 52, 48, 48, 68, 67,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 50, 48, 10, 58, 48, 52, 48, 48, 69, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 49, 67, 10, 58, 48, 52, 48, 48, 69, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 49, 56, 10, 58,
+            48, 52, 48, 48, 69, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 49, 52, 10, 58, 48, 52, 48, 48, 69, 67, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 49, 48, 10, 58, 48, 52, 48, 48, 70, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 48, 48, 67, 10, 58, 48, 52, 48, 48, 70, 52, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 56, 10, 58, 48,
+            52, 48, 48, 70, 56, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 52, 10, 58, 48, 52, 48, 48, 70, 67, 48, 48,
+            48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 10, 58, 48, 52, 48, 49, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48,
+            48, 70, 66, 10, 58, 48, 48, 48, 48, 48, 48, 48, 49, 70, 70, 10
+        ), actual)
     }
 
     @Test
@@ -158,6 +225,121 @@ class TestDumpFormats {
             32, 115, 121, 115, 99, 97, 108, 108, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 49, 53, 32,
             32, 32, 32, 32, 32, 32, 115, 121, 115, 99, 97, 108, 108, 10
         ))
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatInDataSegment() {
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        Globals.initialize(false)
+        for (i in Memory.dataBaseAddress..<(Memory.dataBaseAddress + 32) step 4)
+            Globals.memory.setRawWord(i, 16)
+        SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.dataBaseAddress, Memory.dataBaseAddress + 32)
+        val actual = outFile.readText().toCharArray().map { it.code }.toIntArray()
+        println("[${actual.joinToString(", ")}]")
+        assertArrayEquals(intArrayOf(
+            48, 120, 49, 48, 48, 49, 48, 48, 48, 48, 32, 32, 32, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48,
+            120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48,
+            48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49,
+            48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 48, 120, 48, 48, 48, 48, 48, 48, 49, 48, 32, 10
+        ), actual)
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatWithDefaultSettings() {
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        // Default values
+        Globals.initialize(false)
+        for (i in Memory.dataBaseAddress..<(Memory.dataBaseAddress + 32) step 4)
+            Globals.memory.setRawWord(i, 16)
+        SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.textBaseAddress, Memory.textLimitAddress + 4)
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatWithIntAddresses() {
+        // Int addresses, hex values
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        Globals.initialize(false)
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_ADDRESSES_IN_HEX, false) {
+            for (i in Memory.dataBaseAddress..<(Memory.dataBaseAddress + 32) step 4)
+                Globals.memory.setRawWord(i, 16)
+            SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.textBaseAddress, Memory.textLimitAddress + 4)
+        }
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatWithIntValues() {
+        // Hex addresses, int values
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        Globals.initialize(false)
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_VALUES_IN_HEX, false) {
+            for (i in Memory.dataBaseAddress..<(Memory.dataBaseAddress + 32) step 4)
+                Globals.memory.setRawWord(i, 16)
+            SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.textBaseAddress, Memory.textLimitAddress + 4)
+        }
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatWithIntAddressesAndValues() {
+        // Int addresses, int values
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        Globals.initialize(false)
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_ADDRESSES_IN_HEX, false) {
+            Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_VALUES_IN_HEX, false) {
+                for (i in Memory.dataBaseAddress..<(Memory.dataBaseAddress + 32) step 4)
+                    Globals.memory.setRawWord(i, 16)
+                SegmentWindowDumpFormat().dumpMemoryRange(outFile, Memory.textBaseAddress, Memory.textLimitAddress + 4)
+            }
+        }
+    }
+
+    @Test
+    fun testSegmentWindowDumpFormatTextSegmentBackwards() {
+        // Create the output file if it doesn't exist, or clear its content out if it does exist
+        if (!outFile.exists()) outFile.createNewFile()
+        else outFile.writeBytes(byteArrayOf())
+        createProgram("src/test/resources/tests/symboltable_two_labels.s")
+        // Test with reversed address range
+        SegmentWindowDumpFormat().dumpMemoryRange(outFile, highAddress, lowAddress)
+        val empty = outFile.readText().toCharArray().map { it.code }.toIntArray()
+        assertArrayEquals(intArrayOf(), empty)
+        // Int address, hex values
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_ADDRESSES_IN_HEX, false) {
+            // Create the output file if it doesn't exist, or clear its content out if it does exist
+            if (!outFile.exists()) outFile.createNewFile()
+            else outFile.writeBytes(byteArrayOf())
+            createProgram("src/test/resources/tests/symboltable_two_labels.s")
+            // Test with reversed address range
+            SegmentWindowDumpFormat().dumpMemoryRange(outFile, highAddress, lowAddress)
+            val empty = outFile.readText().toCharArray().map { it.code }.toIntArray()
+            assertArrayEquals(intArrayOf(), empty)
+        }
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_VALUES_IN_HEX, false) {
+            // Create the output file if it doesn't exist, or clear its content out if it does exist
+            if (!outFile.exists()) outFile.createNewFile()
+            else outFile.writeBytes(byteArrayOf())
+            createProgram("src/test/resources/tests/symboltable_two_labels.s")
+            // Test with reversed address range
+            SegmentWindowDumpFormat().dumpMemoryRange(outFile, highAddress, lowAddress)
+            val empty = outFile.readText().toCharArray().map { it.code }.toIntArray()
+            assertArrayEquals(intArrayOf(), empty)
+        }
+        Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_ADDRESSES_IN_HEX, false) {
+            Globals.getSettings().withMutatedBoolean(Settings.DISPLAY_VALUES_IN_HEX, false) {
+                // Create the output file if it doesn't exist, or clear its content out if it does exist
+                if (!outFile.exists()) outFile.createNewFile()
+                else outFile.writeBytes(byteArrayOf())
+                createProgram("src/test/resources/tests/symboltable_two_labels.s")
+                // Test with reversed address range
+                SegmentWindowDumpFormat().dumpMemoryRange(outFile, highAddress, lowAddress)
+                val empty = outFile.readText().toCharArray().map { it.code }.toIntArray()
+                assertArrayEquals(intArrayOf(), empty)
+            }
+        }
     }
 
     @AfterAll
