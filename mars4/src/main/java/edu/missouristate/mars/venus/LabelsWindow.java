@@ -294,7 +294,7 @@ public class LabelsWindow extends JInternalFrame {
             labelData = new Object[symbols.size()][2];
 
             for (int i = 0; i < symbols.size(); i++) {//sets up the label table
-                Symbol s = (Symbol) (symbols.get(i));
+                Symbol s = symbols.get(i);
                 labelData[i][LABEL_COLUMN] = s.getName();
                 labelData[i][ADDRESS_COLUMN] = NumberDisplayBaseChooser.formatNumber(s.getAddress(), addressBase);
             }
@@ -316,7 +316,7 @@ public class LabelsWindow extends JInternalFrame {
             String formattedAddress;
             int numSymbols = (labelData == null) ? 0 : labelData.length;
             for (int i = 0; i < numSymbols; i++) {
-                address = ((Symbol) symbols.get(i)).getAddress();
+                address = symbols.get(i).getAddress();
                 formattedAddress = NumberDisplayBaseChooser.formatNumber(address, addressBase);
                 labelTable.getModel().setValueAt(formattedAddress, i, ADDRESS_COLUMN);
             }
