@@ -23,6 +23,7 @@ public class SyscallMessageDialog extends AbstractSyscall {
     /**
      * System call to display a message to user.
      */
+    @SuppressWarnings("MagicConstant")
     public void simulate(ProgramStatement statement) throws ProcessingException {
         // Input arguments:
         //   $a0 = address of null-terminated string that is the message to user

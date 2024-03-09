@@ -141,6 +141,7 @@ public class EditorFont {
      * @param size   String containing font size.  The defaults and limits of
      *               sizeStringToSizeInt() are substituted if necessary.
      */
+    @SuppressWarnings("MagicConstant")
     public static @NotNull Font createFontFromStringValues(String family, @NotNull String style, @NotNull String size) {
         return new Font(family, styleStringToStyleInt(style), sizeStringToSizeInt(size));
     }

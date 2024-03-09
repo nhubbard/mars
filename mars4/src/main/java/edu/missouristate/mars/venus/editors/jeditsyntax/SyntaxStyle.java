@@ -89,6 +89,7 @@ public class SyntaxStyle {
     /**
      * Returns the font metrics for the styled font.
      */
+    @SuppressWarnings("MagicConstant")
     public FontMetrics getFontMetrics(@NotNull Font font) {
         if (font == null)
             throw new NullPointerException("font param must not"

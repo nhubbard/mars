@@ -18,6 +18,5 @@ public class BasicInstructionFormat {
     public static final BasicInstructionFormat J_FORMAT = new BasicInstructionFormat();
 
     // private default constructor prevents objects of this class other than those above.
-    private BasicInstructionFormat() {
-    }
+    private BasicInstructionFormat() {}
 }
