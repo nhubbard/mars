@@ -154,7 +154,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      *
      * @return the undo manager
      */
-    public UndoManager getUndoManager() {
+    public @NotNull UndoManager getUndoManager() {
         return undoManager;
     }
 

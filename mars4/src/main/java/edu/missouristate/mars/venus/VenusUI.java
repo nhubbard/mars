@@ -1044,7 +1044,7 @@ public class VenusUI extends JFrame {
      * @return Editor for the GUI.
      **/
 
-    public Editor getEditor() {
+    public @NotNull Editor getEditor() {
         return editor;
     }
 
@@ -1054,7 +1054,7 @@ public class VenusUI extends JFrame {
      * @return MessagesPane object associated with the GUI.
      **/
 
-    public MainPane getMainPane() {
+    public @NotNull MainPane getMainPane() {
         return mainPane;
     }
 
@@ -1064,7 +1064,7 @@ public class VenusUI extends JFrame {
      * @return MessagesPane object associated with the GUI.
      **/
 
-    public MessagesPane getMessagesPane() {
+    public @NotNull MessagesPane getMessagesPane() {
         return messagesPane;
     }
 
@@ -1074,7 +1074,7 @@ public class VenusUI extends JFrame {
      * @return RegistersPane object associated with the GUI.
      **/
 
-    public RegistersPane getRegistersPane() {
+    public @NotNull RegistersPane getRegistersPane() {
         return registersPane;
     }
 

@@ -106,7 +106,7 @@ public class ErrorMessage {
      * @deprecated Newer constructors replace the String filename parameter with a MIPSprogram parameter to provide more information.
      **/
     @Deprecated
-    public ErrorMessage(boolean isWarning, String filename, int line, int position, String message, String macroExpansionHistory) {
+    public ErrorMessage(boolean isWarning, @Nullable String filename, int line, int position, String message, @Nullable String macroExpansionHistory) {
         this.isWarning = isWarning;
         this.filename = filename;
         this.line = line;
@@ -227,7 +227,7 @@ public class ErrorMessage {
      * @return Returns String containing name of source file containing the error.
      */
     // Added October 2006
-    public String getFilename() {
+    public @Nullable String getFilename() {
         return filename;
     }
 

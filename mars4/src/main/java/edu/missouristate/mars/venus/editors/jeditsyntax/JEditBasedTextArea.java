@@ -182,7 +182,7 @@ public class JEditBasedTextArea extends JEditTextArea implements MARSTextEditing
      *
      * @return the undo manager
      */
-    public UndoManager getUndoManager() {
+    public @NotNull UndoManager getUndoManager() {
         return undoManager;
     }
 

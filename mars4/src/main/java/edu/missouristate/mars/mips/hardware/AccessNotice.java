@@ -47,7 +47,7 @@ public abstract class AccessNotice {
      *
      * @return Return reference to the thread that created this notice.
      */
-    public Thread getThread() {
+    public @NotNull Thread getThread() {
         return thread;
     }
 

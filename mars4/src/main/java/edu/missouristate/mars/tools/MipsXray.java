@@ -343,7 +343,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
 
-        public ArrayList<Integer> getTargetVertex() {
+        public @NotNull ArrayList<Integer> getTargetVertex() {
             return targetVertex;
         }
 

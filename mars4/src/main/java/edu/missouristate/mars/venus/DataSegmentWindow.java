@@ -986,7 +986,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         }
 
         // This one will respond when either timer goes off or button lifted.
-        public void actionPerformed(ActionEvent ae) {
+        public void actionPerformed(@NotNull ActionEvent ae) {
             firstAddress -= PREV_NEXT_CHUNK_SIZE;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);
@@ -1009,7 +1009,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
         }
 
         // This one will respond when either timer goes off or button lifted.
-        public void actionPerformed(ActionEvent ae) {
+        public void actionPerformed(@NotNull ActionEvent ae) {
             firstAddress += PREV_NEXT_CHUNK_SIZE;
             firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
             updateModelForMemoryRange(firstAddress);

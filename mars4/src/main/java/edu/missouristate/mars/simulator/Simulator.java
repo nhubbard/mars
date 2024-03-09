@@ -197,7 +197,7 @@ public class Simulator extends Observable {
          * @param breakPoints array of breakpoints (instruction addresses) specified by user
          * @param starter     the GUI component responsible for this call, usually GO or STEP.  null if none.
          */
-        SimThread(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
+        SimThread(MIPSProgram p, int pc, int maxSteps, int @Nullable [] breakPoints, AbstractAction starter) {
             super(Globals.getGui() != null);
             this.pc = pc;
             this.maxSteps = maxSteps;

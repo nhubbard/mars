@@ -125,7 +125,7 @@ public class MIPSProgram {
      * basic MIPS instruction.
      * @see ProgramStatement
      **/
-    public ArrayList<ProgramStatement> getMachineList() {
+    public @Nullable ArrayList<ProgramStatement> getMachineList() {
         return machineList;
     }
 

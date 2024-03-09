@@ -33,7 +33,7 @@ public abstract class SwingWorker {
     private static class ThreadVar {
         private @Nullable Thread thread;
 
-        ThreadVar(Thread t) {
+        ThreadVar(@Nullable Thread t) {
             thread = t;
         }
 

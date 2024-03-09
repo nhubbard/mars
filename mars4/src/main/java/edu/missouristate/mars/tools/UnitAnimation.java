@@ -122,7 +122,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
 
 
-        public ArrayList<Integer> getTargetVertex() {
+        public @NotNull ArrayList<Integer> getTargetVertex() {
             return targetVertex;
         }
 

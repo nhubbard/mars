@@ -97,7 +97,7 @@ public class MainPane extends JTabbedPane {
      *
      * @return the execute pane
      */
-    public ExecutePane getExecuteTab() {
+    public @NotNull ExecutePane getExecuteTab() {
         return executeTab;
     }
 

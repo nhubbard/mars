@@ -59,7 +59,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
     }
 
-    public void update(Observable ressource, Object accessNotice) {
+    public void update(Observable ressource, @NotNull Object accessNotice) {
         MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
         int address = notice.getAddress();
         char value = (char) notice.getValue();

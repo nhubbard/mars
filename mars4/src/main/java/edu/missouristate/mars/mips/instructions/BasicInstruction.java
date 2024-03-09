@@ -75,7 +75,7 @@ public class BasicInstruction extends Instruction {
      *
      * @return The 32 bit mask, as a String
      */
-    public String getOperationMask() {
+    public @NotNull String getOperationMask() {
         return operationMask;
     }
 

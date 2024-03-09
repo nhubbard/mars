@@ -242,7 +242,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
             this.configuration = config;
         }
 
-        public MemoryConfiguration getConfiguration() {
+        public @NotNull MemoryConfiguration getConfiguration() {
             return configuration;
         }
 
