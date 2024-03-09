@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.event.*;
 import javax.swing.*;
@@ -16,7 +17,7 @@ public class SettingsLabelAction extends GuiAction {
         super(name, icon, descrip, mnemonic, accel, gui);
     }
 
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@NotNull ActionEvent e) {
         boolean visibility = ((JCheckBoxMenuItem) e.getSource()).isSelected();
         Globals.getGui().getMainPane().getExecutePane().setLabelWindowVisibility(visibility);
         Globals.getSettings().setBooleanSetting(Settings.LABEL_WINDOW_VISIBILITY, visibility);

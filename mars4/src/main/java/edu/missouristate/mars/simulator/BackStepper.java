@@ -3,6 +3,8 @@ package edu.missouristate.mars.simulator;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Used to "step backward" through execution, undoing each instruction.
@@ -31,7 +33,7 @@ public class BackStepper {
     private static final int NOT_PC_VALUE = -1;
 
     private boolean engaged;
-    private final BackstepStack backSteps;
+    private final @NotNull BackstepStack backSteps;
 
     // One can argue using java.util.Stack, given its clumsy implementation.
     // A homegrown linked implementation will be more streamlined, but
@@ -315,7 +317,7 @@ public class BackStepper {
     private static class BackStep {
         private int action;  // what do do MEMORY_RESTORE_WORD, etc
         private int pc;      // program counter value when original step occurred
-        private ProgramStatement ps;   // statement whose action is being "undone" here
+        private @Nullable ProgramStatement ps;   // statement whose action is being "undone" here
         private int param1;  // first parameter required by that action
         private int param2;  // optional second parameter required by that action
         private boolean inDelaySlot; // true if instruction executed in "delay slot" (delayed branching enabled)
@@ -363,7 +365,7 @@ public class BackStepper {
         private final int capacity;
         private int size;
         private int top;
-        private final BackStep[] stack;
+        private final BackStep @NotNull [] stack;
 
         // Stack is created upon successful assembly or reset.  The one-time overhead of
         // creating all the BackStep objects will not be noticed by the user, and enhances

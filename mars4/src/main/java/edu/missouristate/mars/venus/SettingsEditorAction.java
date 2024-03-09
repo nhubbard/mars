@@ -3,6 +3,7 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -101,7 +102,7 @@ public class SettingsEditorAction extends GuiAction {
         }
 
         // build the dialog here
-        protected JPanel buildDialogPanel() {
+        protected @NotNull JPanel buildDialogPanel() {
             JPanel dialog = new JPanel(new BorderLayout());
             JPanel fontDialogPanel = super.buildDialogPanel();
             JPanel syntaxStylePanel = buildSyntaxStylePanel();
@@ -118,7 +119,7 @@ public class SettingsEditorAction extends GuiAction {
         }
 
         // Row of control buttons to be placed along the button of the dialog
-        protected Component buildControlPanel() {
+        protected @NotNull Component buildControlPanel() {
             Box controlPanel = Box.createHorizontalBox();
             JButton okButton = new JButton("Apply and Close");
             okButton.setToolTipText(SettingsHighlightingAction.CLOSE_TOOL_TIP_TEXT);
@@ -219,7 +220,7 @@ public class SettingsEditorAction extends GuiAction {
         }
 
         // Miscellaneous editor settings (cursor blinking, line highlighting, tab size, etc)
-        private JPanel buildOtherSettingsPanel() {
+        private @NotNull JPanel buildOtherSettingsPanel() {
             JPanel otherSettingsPanel = new JPanel();
 
             // Tab size selector
@@ -318,7 +319,7 @@ public class SettingsEditorAction extends GuiAction {
 
 
         // control style (color, plain/italic/bold) for syntax highlighting
-        private JPanel buildSyntaxStylePanel() {
+        private @NotNull JPanel buildSyntaxStylePanel() {
             JPanel syntaxStylePanel = new JPanel();
             defaultStyles = SyntaxUtilities.getDefaultSyntaxStyles();
             initialStyles = SyntaxUtilities.getCurrentSyntaxStyles();
@@ -442,7 +443,7 @@ public class SettingsEditorAction extends GuiAction {
 
 
         // set the foreground color, bold and italic of sample (a JLabel)
-        private void setSampleStyles(JLabel sample, SyntaxStyle style) {
+        private void setSampleStyles(@NotNull JLabel sample, @NotNull SyntaxStyle style) {
             Font f = previewFont;
             if (style.isBold()) {
                 f = f.deriveFont(f.getStyle() ^ Font.BOLD);
@@ -464,7 +465,7 @@ public class SettingsEditorAction extends GuiAction {
                 this.row = row;
             }
 
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(@NotNull ActionEvent e) {
                 Font f = samples[row].getFont();
                 if (e.getActionCommand().equals(BOLD_BUTTON_TOOL_TIP_TEXT)) {
                     if (bold[row].isSelected()) {
@@ -497,7 +498,7 @@ public class SettingsEditorAction extends GuiAction {
                 row = pos;
             }
 
-            public void actionPerformed(ActionEvent e) {
+            public void actionPerformed(@NotNull ActionEvent e) {
                 JButton button = (JButton) e.getSource();
                 Color newColor = JColorChooser.showDialog(null, "Set Text Color", button.getBackground());
                 if (newColor != null) {
@@ -521,7 +522,7 @@ public class SettingsEditorAction extends GuiAction {
                 row = pos;
             }
 
-            public void itemStateChanged(ItemEvent e) {
+            public void itemStateChanged(@NotNull ItemEvent e) {
 
                 // If selected: disable buttons, save current settings, set to defaults
                 // If deselected:restore current settings, enable buttons

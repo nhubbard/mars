@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.dump;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,7 +38,7 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+    public void dumpMemoryRange(@NotNull File file, int firstAddress, int lastAddress)
             throws AddressErrorException, IOException {
         try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
             StringBuilder string;

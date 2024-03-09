@@ -3,6 +3,8 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.io.*;
@@ -39,7 +41,7 @@ public class RunAssembleAction extends GuiAction {
         return warningsAreErrors;
     }
 
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@Nullable ActionEvent e) {
         String name = this.getValue(Action.NAME).toString();
         Component editPane = mainUI.getMainPane().getEditPane();
         ExecutePane executePane = mainUI.getMainPane().getExecutePane();
@@ -132,7 +134,7 @@ public class RunAssembleAction extends GuiAction {
 
     // Handy little utility for building comma-separated list of filenames
     // while not letting line length get out of hand.
-    private String buildFileNameList(String preamble, ArrayList<MIPSProgram> programList) {
+    private @NotNull String buildFileNameList(@NotNull String preamble, @NotNull ArrayList<MIPSProgram> programList) {
         StringBuilder result = new StringBuilder(preamble);
         int lineLength = result.length();
         for (int i = 0; i < programList.size(); i++) {

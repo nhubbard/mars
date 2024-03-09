@@ -5,6 +5,8 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -49,7 +51,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     private static final String instructionFontTag = "<font size=\"+0\" face=\"Verdana, Arial, Helvetica\" color=\"#000000\">";
     private static final int exponentBias = 127;  // 32 bit floating point exponent bias
 
-    private Register attachedRegister = null;
+    private @Nullable Register attachedRegister = null;
     private Register[] fpRegisters;
     // Panels to hold binary displays and decorations (labels, arrows)
     private JPanel binarySignDecoratedDisplay, binaryExponentDecoratedDisplay, binaryFractionDecoratedDisplay;
@@ -96,7 +98,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      *
      * @return String containing tool name
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "Floating Point Representation";
     }
 
@@ -141,7 +143,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      * @param register     the attached register
      * @param accessNotice information provided by register in RegisterAccessNotice object
      */
-    public void update(Observable register, Object accessNotice) {
+    public void update(Observable register, @NotNull Object accessNotice) {
         if (((AccessNotice) accessNotice).getAccessType() == AccessNotice.WRITE) {
             updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
         }
@@ -162,7 +164,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     //  Private methods defined to support the above.
 
     @SuppressWarnings("unchecked")
-    protected JComponent buildDisplayArea() {
+    protected @NotNull JComponent buildDisplayArea() {
         // Panel to hold all floating point dislay and editing components
         Box mainPanel = Box.createVerticalBox();
         JPanel leftPanel = new JPanel(new GridLayout(5, 1, 0, 0));
@@ -371,7 +373,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // Updates all components displaying various representations of the 32 bit
     // floating point value.
-    private void updateDisplays(FlavorsOfFloat flavors) {
+    private void updateDisplays(@NotNull FlavorsOfFloat flavors) {
         int hexIndex = (flavors.hexString.charAt(0) == '0' && (flavors.hexString.charAt(1) == 'x' || flavors.hexString.charAt(1) == 'X')) ? 2 : 0;
         hexDisplay.setText(flavors.hexString.substring(hexIndex).toUpperCase());  // lop off leading "Ox" if present
         binarySignDisplay.setText(flavors.binaryString.substring(0, maxLengthBinarySign));
@@ -386,7 +388,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // Should be called only by those who know a register should be changed due to
     // user action (reset button or Enter key on one of the input fields).  Note
     // this will not update the register unless we are an active Observer.
-    private void updateDisplaysAndRegister(FlavorsOfFloat flavors) {
+    private void updateDisplaysAndRegister(@NotNull FlavorsOfFloat flavors) {
         updateDisplays(flavors);
         if (isObserving()) {
             updateAnyAttachedRegister(flavors.intValue);
@@ -396,7 +398,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // Called by updateDisplays() to determine whether or not the significand label needs
     // to be changed and if so to change it.  The label explains presence/absence of
     // normalizing "hidden bit".
-    private void updateSignificandLabel(FlavorsOfFloat flavors) {
+    private void updateSignificandLabel(@NotNull FlavorsOfFloat flavors) {
         // Will change significandLabel text only if it needs to be changed...
         if (flavors.binaryString.substring(maxLengthBinarySign, maxLengthBinarySign + maxLengthBinaryExponent).equals(zeroes.substring(maxLengthBinarySign, maxLengthBinarySign + maxLengthBinaryExponent))) {
             // Will change text only if it truly is changing....
@@ -444,7 +446,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         //  Assign all fields given a string representing 32 bit hex value.
-        public FlavorsOfFloat buildOneFromHexString(String hexString) {
+        public @NotNull FlavorsOfFloat buildOneFromHexString(@NotNull String hexString) {
             this.hexString = "0x" + addLeadingZeroes(((hexString.indexOf("0X") == 0 || hexString.indexOf("0x") == 0) ? hexString.substring(2) : hexString), maxLengthHex);
             this.binaryString = Binary.hexStringToBinaryString(this.hexString);
             this.decimalString = Float.valueOf(Float.intBitsToFloat(Binary.binaryStringToInt(this.binaryString))).toString();
@@ -454,7 +456,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         //  Assign all fields given a string representing 32 bit binary value
-        private FlavorsOfFloat buildOneFromBinaryString() {
+        private @NotNull FlavorsOfFloat buildOneFromBinaryString() {
             this.binaryString = getFullBinaryStringFromDisplays();
             this.hexString = Binary.binaryStringToHexString(binaryString);
             this.decimalString = Float.valueOf(Float.intBitsToFloat(Binary.binaryStringToInt(this.binaryString))).toString();
@@ -464,7 +466,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         //  Assign all fields given string representing floating point decimal value.
-        private FlavorsOfFloat buildOneFromDecimalString(String decimalString) {
+        private @Nullable FlavorsOfFloat buildOneFromDecimalString(@NotNull String decimalString) {
             float floatValue;
             try {
                 floatValue = Float.parseFloat(decimalString);
@@ -480,7 +482,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         //  Assign all fields given int representing 32 bit representation of float value
-        private FlavorsOfFloat buildOneFromInt(int intValue) {
+        private @NotNull FlavorsOfFloat buildOneFromInt(int intValue) {
             this.intValue = intValue;
             this.binaryString = Binary.intToBinaryString(intValue);
             this.hexString = Binary.binaryStringToHexString(this.binaryString);
@@ -490,7 +492,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         //  Build binary expansion formula for display -- will not be editable.
-        public String buildExpansionFromBinaryString(String binaryString) {
+        public @NotNull String buildExpansionFromBinaryString(@NotNull String binaryString) {
             int biasedExponent = Binary.binaryStringToInt(binaryString.substring(maxLengthBinarySign, maxLengthBinarySign + maxLengthBinaryExponent));
             String stringExponent = Integer.toString(biasedExponent - exponentBias);
             // stringExponent length will range from 1 to 4 (e.g. "0" to "-128") characters.
@@ -500,12 +502,12 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Handy utility to concatentate the binary field values into one 32 character string
         // Left-pad each field with zeroes as needed to reach its full length.
-        private String getFullBinaryStringFromDisplays() {
+        private @NotNull String getFullBinaryStringFromDisplays() {
             return addLeadingZeroes(binarySignDisplay.getText(), maxLengthBinarySign) + addLeadingZeroes(binaryExponentDisplay.getText(), maxLengthBinaryExponent) + addLeadingZeroes(binaryFractionDisplay.getText(), maxLengthBinaryFraction);
         }
 
         // Handy utility. Pads with leading zeroes to specified length, maximum 64 of 'em.
-        private String addLeadingZeroes(String str, int length) {
+        private @NotNull String addLeadingZeroes(@NotNull String str, int length) {
             return (str.length() < length) ? zeroes.substring(0, Math.min(zeroes.length(), length - str.length())) + str : str;
         }
 
@@ -536,7 +538,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Process user keystroke.  If not valid for the context, this
         // will consume the stroke and beep.
-        public void keyTyped(KeyEvent e) {
+        public void keyTyped(@NotNull KeyEvent e) {
             JTextField source = (JTextField) e.getComponent();
             if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB) return;
             if (!isHexDigit(e.getKeyChar()) || source.getText().length() == digitLength && source.getSelectedText() == null) {
@@ -554,7 +556,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Enter key is echoed on component after keyPressed but before keyTyped?
         // Consuming the VK_ENTER event in keyTyped does not suppress it but this will.
-        public void keyPressed(KeyEvent e) {
+        public void keyPressed(@NotNull KeyEvent e) {
             if (e.getKeyChar() == KeyEvent.VK_ENTER || e.getKeyChar() == KeyEvent.VK_TAB) {
                 updateDisplaysAndRegister(new FlavorsOfFloat().buildOneFromHexString(((JTextField) e.getSource()).getText()));
                 instructions.setText(defaultInstructions);
@@ -586,7 +588,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Process user keystroke.  If not valid for the context, this
         // will consume the stroke and beep.
-        public void keyTyped(KeyEvent e) {
+        public void keyTyped(@NotNull KeyEvent e) {
             JTextField source = (JTextField) e.getComponent();
             if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) return;
             if (!isBinaryDigit(e.getKeyChar()) || e.getKeyChar() == KeyEvent.VK_ENTER || source.getText().length() == bitLength && source.getSelectedText() == null) {
@@ -604,7 +606,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Enter key is echoed on component after keyPressed but before keyTyped?
         // Consuming the VK_ENTER event in keyTyped does not suppress it but this will.
-        public void keyPressed(KeyEvent e) {
+        public void keyPressed(@NotNull KeyEvent e) {
             if (e.getKeyChar() == KeyEvent.VK_ENTER) {
                 updateDisplaysAndRegister(new FlavorsOfFloat().buildOneFromBinaryString());
                 instructions.setText(defaultInstructions);
@@ -631,7 +633,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Process user keystroke.  If not valid for the context, this
         // will consume the stroke and beep.
-        public void keyTyped(KeyEvent e) {
+        public void keyTyped(@NotNull KeyEvent e) {
             JTextField source = (JTextField) e.getComponent();
             if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) return;
             if (!isDecimalFloatDigit(e.getKeyChar())) {
@@ -645,7 +647,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
         // Enter key is echoed on component after keyPressed but before keyTyped?
         // Consuming the VK_ENTER event in keyTyped does not suppress it but this will.
-        public void keyPressed(KeyEvent e) {
+        public void keyPressed(@NotNull KeyEvent e) {
             if (e.getKeyChar() == KeyEvent.VK_ENTER) {
                 FlavorsOfFloat fof = new FlavorsOfFloat().buildOneFromDecimalString(((JTextField) e.getSource()).getText());
                 if (fof == null) {
@@ -679,7 +681,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         // This overrides inherited JPanel method.  Override is necessary to
         // assure my drawn graphics get painted immediately after painting the
         // underlying JPanel (see first statement).
-        public void paintComponent(Graphics g) {
+        public void paintComponent(@NotNull Graphics g) {
             super.paintComponent(g);
             g.setColor(Color.red);
             //FontMetrics fontMetrics = hexDisplay.getGraphics().getFontMetrics();
@@ -735,7 +737,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         final int upperYArrowHead = upperY - arrowHeadOffset;
         int currentExponent = Binary.binaryStringToInt(defaultBinaryExponent);
 
-        public void paintComponent(Graphics g) {
+        public void paintComponent(@NotNull Graphics g) {
             super.paintComponent(g);
             // Arrow down from binary sign field
             centerX = binarySignDecoratedDisplay.getX() + binarySignDecoratedDisplay.getWidth() / 2;
@@ -774,7 +776,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         // Is called by both drawSubtractLabel() just above and by paintComponent().
-        private void drawSubtractLabel(Graphics g, String label) {
+        private void drawSubtractLabel(@NotNull Graphics g, @NotNull String label) {
             // Clear the existing subtract label.  The "+2" overwrites the arrow at initial paint when label width is 0.
             // Originally used "clearRect()" but changed to "fillRect()" with background color, because when running
             // as a MarsTool it would clear with a different color.
@@ -787,7 +789,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         }
 
         // format the label for a given integer exponent value...
-        private String buildSubtractLabel(int value) {
+        private @NotNull String buildSubtractLabel(int value) {
             return value + subtractLabelTrailer;
         }
 
@@ -802,7 +804,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     class InstructionsPane extends JLabel {
 
-        InstructionsPane(Component parent) {
+        InstructionsPane(@NotNull Component parent) {
             super(defaultInstructions);
             this.setFont(instructionsFont);
             this.setBackground(parent.getBackground());

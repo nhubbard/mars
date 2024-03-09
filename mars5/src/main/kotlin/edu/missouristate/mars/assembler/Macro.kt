@@ -97,12 +97,12 @@ class Macro {
     /**
      * @return `true` if `value` is the name of a label defined in this macro's body.
      */
-    private fun tokenIsMacroLabel(value: String): Boolean = Collections.binarySearch(labels, value) >= 0
+    fun tokenIsMacroLabel(value: String): Boolean = Collections.binarySearch(labels, value) >= 0
 
     /**
      * Replace the token `tokenToBeReplaced` where it occurs in `source` with `substitute`.
      */
-    private fun replaceToken(source: String, tokenToBeReplaced: Token, substitute: String): String {
+    fun replaceToken(source: String, tokenToBeReplaced: Token, substitute: String): String {
         val stringToBeReplaced = tokenToBeReplaced.value
         return source.replace(stringToBeReplaced, substitute)
     }

@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -34,8 +36,8 @@ public class RunSpeedPanel extends JPanel {
             26, 27, 28, 29, 30, UNLIMITED_SPEED, UNLIMITED_SPEED, // 31-37
             UNLIMITED_SPEED, UNLIMITED_SPEED, UNLIMITED_SPEED // 38-40
     };
-    private JLabel sliderLabel = null;
-    private static RunSpeedPanel runSpeedPanel = null;
+    private @Nullable JLabel sliderLabel = null;
+    private static @Nullable RunSpeedPanel runSpeedPanel = null;
     private volatile int runSpeedIndex = SPEED_INDEX_MAX;
 
     /**
@@ -44,7 +46,7 @@ public class RunSpeedPanel extends JPanel {
      * @return the run speed panel
      */
 
-    public static RunSpeedPanel getInstance() {
+    public static @NotNull RunSpeedPanel getInstance() {
         if (runSpeedPanel == null) {
             runSpeedPanel = new RunSpeedPanel();
             Globals.runSpeedPanelExists = true; // DPS 24 July 2008 (needed for standalone tools)
@@ -87,7 +89,7 @@ public class RunSpeedPanel extends JPanel {
     /*
      * set label wording depending on current speed setting
      */
-    private String setLabel(int index) {
+    private @NotNull String setLabel(int index) {
         String result = "Run speed ";
         if (index <= SPEED_INDEX_INTERACTION_LIMIT) {
             if (speedTable[index] < 1) {
@@ -108,7 +110,7 @@ public class RunSpeedPanel extends JPanel {
      */
 
     private class RunSpeedListener implements ChangeListener {
-        public void stateChanged(ChangeEvent e) {
+        public void stateChanged(@NotNull ChangeEvent e) {
             JSlider source = (JSlider) e.getSource();
             if (!source.getValueIsAdjusting()) {
                 runSpeedIndex = source.getValue();

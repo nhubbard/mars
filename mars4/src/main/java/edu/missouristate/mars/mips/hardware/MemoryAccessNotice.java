@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Object provided to Observers of runtime access to MIPS memory.
  * Observer can get the access type (R/W), address and length in bytes (4,2,1).
@@ -59,7 +61,7 @@ public class MemoryAccessNotice extends AccessNotice {
     /**
      * String representation indicates access type, address and length in bytes
      */
-    public String toString() {
+    public @NotNull String toString() {
         return ((this.getAccessType() == AccessNotice.READ) ? "R " : "W ") +
                 "Mem " + address + " " + length + "B = " + value;
     }

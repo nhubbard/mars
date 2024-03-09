@@ -28,6 +28,7 @@
 package edu.missouristate.mars.venus;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.io.*;
@@ -45,7 +46,7 @@ import java.util.*;
 public class HardcopyWriter extends Writer {
     // These are the instance variables for the class
     protected final PrintJob job; // The PrintJob object in use
-    protected Graphics page; // Graphics object for current page
+    protected @Nullable Graphics page; // Graphics object for current page
     protected String jobname; // The name of the print job
     protected int fontsize; // Point size of the font
     protected String time; // Current time (appears in header)
@@ -77,7 +78,7 @@ public class HardcopyWriter extends Writer {
      * The font size is specified in points, as on-screen font sizes are.
      * The margins are specified in inches (or fractions of inches).
      **/
-    public HardcopyWriter(Frame frame, String jobname, int fontsize,
+    public HardcopyWriter(@NotNull Frame frame, String jobname, int fontsize,
                           double leftmargin, double rightmargin,
                           double topmargin, double bottommargin)
             throws HardcopyWriter.PrintCanceledException {
@@ -318,7 +319,7 @@ public class HardcopyWriter extends Writer {
      * A program that prints the specified file using HardcopyWriter
      **/
 
-    public static void main(String[] args) {
+    public static void main(String @NotNull [] args) {
         try {
             if (args.length != 1)
                 throw new IllegalArgumentException("Wrong # of arguments");

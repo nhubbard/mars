@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -17,8 +18,8 @@ import java.awt.*;
 
 public class MainPane extends JTabbedPane {
     EditPane editTab;
-    final ExecutePane executeTab;
-    final EditTabbedPane editTabbedPane;
+    final @NotNull ExecutePane executeTab;
+    final @NotNull EditTabbedPane editTabbedPane;
 
     /**
      * Constructor for the MainPane class.
@@ -49,7 +50,7 @@ public class MainPane extends JTabbedPane {
          */
         this.addChangeListener(
                 new ChangeListener() {
-                    public void stateChanged(ChangeEvent ce) {
+                    public void stateChanged(@NotNull ChangeEvent ce) {
                         JTabbedPane tabbedPane = (JTabbedPane) ce.getSource();
                         int index = tabbedPane.getSelectedIndex();
                         Component c = tabbedPane.getComponentAt(index);

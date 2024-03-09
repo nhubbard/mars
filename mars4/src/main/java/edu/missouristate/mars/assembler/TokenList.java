@@ -1,6 +1,8 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 
@@ -110,7 +112,7 @@ public class TokenList implements Cloneable {
      * @return String version of the token list
      * (a blank is inserted after each token).
      */
-    public String toString() {
+    public @NotNull String toString() {
         StringBuilder stringified = new StringBuilder();
         for (Object o : tokenList) stringified.append(o.toString()).append(" ");
         return stringified.toString();
@@ -122,7 +124,7 @@ public class TokenList implements Cloneable {
      * @return String version of the token types for this list
      * (a blank is inserted after each token type).
      */
-    public String toTypeString() {
+    public @NotNull String toTypeString() {
         StringBuilder stringified = new StringBuilder();
         for (Token o : tokenList) stringified.append(o.getType().toString()).append(" ");
         return stringified.toString();
@@ -135,6 +137,7 @@ public class TokenList implements Cloneable {
      */
     @SuppressWarnings("unchecked")
     @ExcludeFromJacocoGeneratedReport
+    @Nullable
     public Object clone() {
         // Clones are a bit tricky.
         // super.clone() handles primitives (e.g., values) correctly,

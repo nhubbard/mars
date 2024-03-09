@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Represents User override of default syscall number assignment.
  * Such overrides are specified in the config.txt file read when
@@ -22,7 +24,7 @@ public class SyscallNumberOverride {
      *                    be issued at MARS launch.
      */
 
-    public SyscallNumberOverride(String serviceName, String value) {
+    public SyscallNumberOverride(String serviceName, @NotNull String value) {
         this.serviceName = serviceName;
         try {
             this.newServiceNumber = Integer.parseInt(value.trim());

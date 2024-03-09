@@ -87,7 +87,7 @@ object OperandFormat {
      * Generate an error message if the operand is not of the correct type for this operation and operand position.
      */
     @JvmStatic
-    private fun operandTypeCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
+    fun operandTypeCheck(candidate: TokenList, spec: Instruction, errors: ErrorList): Boolean {
         var candidateToken: Token
         var specToken: Token
         var candidateType: TokenTypes
@@ -121,7 +121,7 @@ object OperandFormat {
                 continue
             }
             if ((specType == TokenTypes.REGISTER_NAME || specType == TokenTypes.REGISTER_NUMBER) && candidateType == TokenTypes.REGISTER_NAME) {
-                if (Globals.config[CoreSpec.enableBareMachine]) {
+                if (!Globals.config[CoreSpec.enableBareMachine]) {
                     generateMessage(candidateToken, "Bare machine mode is enabled. You must use a register number instead of a name. Check the settings panel for more information.", errors)
                     return false
                 } else continue

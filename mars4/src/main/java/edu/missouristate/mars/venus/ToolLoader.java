@@ -2,6 +2,8 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.tools.*;
 import edu.missouristate.mars.util.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.event.*;
@@ -38,7 +40,7 @@ public class ToolLoader {
      *
      * @return a Tools JMenu if qualifying tool classes are found, otherwise null
      */
-    public JMenu buildToolsMenu() {
+    public @Nullable JMenu buildToolsMenu() {
         JMenu menu = null;
         ArrayList<MarsToolClassAndInstance> marsToolList = loadMarsTools();
         if (!marsToolList.isEmpty()) {
@@ -72,7 +74,7 @@ public class ToolLoader {
      *  folder, then continue as before.
      */
     @SuppressWarnings("unchecked")
-    private ArrayList<MarsToolClassAndInstance> loadMarsTools() {
+    private @NotNull ArrayList<MarsToolClassAndInstance> loadMarsTools() {
         ArrayList<MarsToolClassAndInstance> toolList = new ArrayList<>();
         ArrayList<String> candidates = FilenameFinder.getFilenameList(this.getClass().getClassLoader(),
                 TOOLS_DIRECTORY_PATH, CLASS_EXTENSION);

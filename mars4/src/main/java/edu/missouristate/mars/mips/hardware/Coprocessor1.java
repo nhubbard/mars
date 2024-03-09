@@ -2,6 +2,8 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Observer;
 
@@ -393,8 +395,8 @@ public class Coprocessor1 {
      * @param rName The FPU register name, must be "$f0" through "$f31".
      * @return The register object,or null if not found.
      **/
-
-    public static Register getRegister(String rName) {
+    @Nullable
+    public static Register getRegister(@NotNull String rName) {
         Register reg = null;
         if (rName.charAt(0) == '$' && rName.length() > 1 && rName.charAt(1) == 'f') {
             try {

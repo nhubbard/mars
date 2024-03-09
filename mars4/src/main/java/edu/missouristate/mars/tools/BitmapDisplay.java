@@ -4,6 +4,8 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -97,7 +99,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "Bitmap Display";
     }
 
@@ -133,7 +135,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
      *
      * @return the GUI component containing these two areas
      */
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         JPanel results = new JPanel();
         results.add(buildOrganizationArea());
         results.add(buildVisualizationArea());
@@ -152,7 +154,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
      * @param memory       the attached memory
      * @param accessNotice information provided by memory in MemoryAccessNotice object
      */
-    protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
+    protected void processMIPSUpdate(Observable memory, @NotNull AccessNotice accessNotice) {
         if (accessNotice.getAccessType() == AccessNotice.WRITE) {
             updateColorForAddress((MemoryAccessNotice) accessNotice);
         }
@@ -205,7 +207,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    protected JComponent getHelpComponent() {
+    protected @NotNull JComponent getHelpComponent() {
         final String helpContent = """
                 Use this program to simulate a basic bitmap display where
                 each memory word in a specified address space corresponds to
@@ -240,7 +242,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     //////////////////////////////////////////////////////////////////////////////////////
 
     // UI components and layout for left half of GUI, where settings are specified.
-    private JComponent buildOrganizationArea() {
+    private @NotNull JComponent buildOrganizationArea() {
         JPanel organization = new JPanel(new GridLayout(8, 1));
 
         visualizationUnitPixelWidthSelector = new JComboBox<>(visualizationUnitPixelWidthChoices);
@@ -387,7 +389,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
     // Returns Dimension object with current width and height of display area as determined
     // by current settings of respective combo boxes.
-    private Dimension getDisplayAreaDimension() {
+    private @NotNull Dimension getDisplayAreaDimension() {
         return new Dimension(displayAreaWidthInPixels, displayAreaHeightInPixels);
     }
 
@@ -398,7 +400,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
     // Will return int equivalent of specified combo box's current selection.
     // The selection must be a String that parses to an int.
-    private int getIntComboBoxSelection(JComboBox<String> comboBox) {
+    private int getIntComboBoxSelection(@NotNull JComboBox<String> comboBox) {
         try {
             return Integer.parseInt((String) Objects.requireNonNull(comboBox.getSelectedItem()));
         } catch (NumberFormatException nfe) {
@@ -409,20 +411,20 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     }
 
     // Use this for consistent results.
-    private JPanel getPanelWithBorderLayout() {
+    private @NotNull JPanel getPanelWithBorderLayout() {
         return new JPanel(new BorderLayout(2, 2));
     }
 
     // Method to determine grid dimensions based on current control settings.
     // Each grid element corresponds to one visualization unit.
-    private Grid createNewGrid() {
+    private @NotNull Grid createNewGrid() {
         int rows = displayAreaHeightInPixels / unitPixelHeight;
         int columns = displayAreaWidthInPixels / unitPixelWidth;
         return new Grid(rows, columns);
     }
 
     // Given memory address, update color for the corresponding grid element.
-    private void updateColorForAddress(MemoryAccessNotice notice) {
+    private void updateColorForAddress(@NotNull MemoryAccessNotice notice) {
         int address = notice.getAddress();
         int value = notice.getValue();
         int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
@@ -446,12 +448,12 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
         // override default paint method to assure display updated correctly every time
         // the panel is repainted.
-        public void paint(Graphics g) {
+        public void paint(@NotNull Graphics g) {
             paintGrid(g, theGrid);
         }
 
         // Paint the color codes.
-        private void paintGrid(Graphics g, Grid grid) {
+        private void paintGrid(@NotNull Graphics g, @NotNull Grid grid) {
             int upperLeftX = 0, upperLeftY = 0;
             for (int i = 0; i < grid.getRows(); i++) {
                 for (int j = 0; j < grid.getColumns(); j++) {
@@ -471,7 +473,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     // Represents grid of colors
     private static class Grid {
 
-        final Color[][] grid;
+        final Color[] @NotNull [] grid;
         final int rows;
         final int columns;
 
@@ -491,7 +493,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         }
 
         // Returns value in given grid element; null if row or column is out of range.
-        private Color getElement(int row, int column) {
+        private @Nullable Color getElement(int row, int column) {
             return (row >= 0 && row <= rows && column >= 0 && column <= columns) ? grid[row][column] : null;
         }
 

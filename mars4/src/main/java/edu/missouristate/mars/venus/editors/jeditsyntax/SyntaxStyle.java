@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 
@@ -42,7 +43,7 @@ public class SyntaxStyle {
      * @return String containing hex-coded color value.
      */
 
-    public String getColorAsHexString() {
+    public @NotNull String getColorAsHexString() {
         return Binary.intToHexString(color.getRed() << 16 | color.getGreen() << 8 | color.getBlue());
     }
 
@@ -71,7 +72,7 @@ public class SyntaxStyle {
      * Returns the specified font, but with the style's bold and
      * italic flags applied.
      */
-    public Font getStyledFont(Font font) {
+    public Font getStyledFont(@NotNull Font font) {
         if (font == null)
             throw new NullPointerException("font param must not"
                     + " be null");
@@ -88,7 +89,7 @@ public class SyntaxStyle {
     /**
      * Returns the font metrics for the styled font.
      */
-    public FontMetrics getFontMetrics(Font font) {
+    public FontMetrics getFontMetrics(@NotNull Font font) {
         if (font == null)
             throw new NullPointerException("font param must not"
                     + " be null");
@@ -112,7 +113,7 @@ public class SyntaxStyle {
      * @param gfx  The graphics context
      * @param font The font to add the styles to
      */
-    public void setGraphicsFlags(Graphics gfx, Font font) {
+    public void setGraphicsFlags(@NotNull Graphics gfx, @NotNull Font font) {
         Font _font = getStyledFont(font);
         gfx.setFont(_font);
         gfx.setColor(color);
@@ -121,7 +122,7 @@ public class SyntaxStyle {
     /**
      * Returns a string representation of this object.
      */
-    public String toString() {
+    public @NotNull String toString() {
         return getClass().getName() + "[color=" + color +
                 (italic ? ",italic" : "") +
                 (bold ? ",bold" : "") + "]";

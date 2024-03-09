@@ -1,6 +1,8 @@
 package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnknownNullability;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,13 +14,12 @@ import java.io.IOException;
  * @author Pete Sanderson
  * @version December 2007
  */
-
-
 public abstract class AbstractDumpFormat implements DumpFormat {
-
     private final String name;
+    @Nullable
     private final String commandDescriptor;
     private final String description;
+    @Nullable
     private final String extension;
 
     /**
@@ -32,14 +33,12 @@ public abstract class AbstractDumpFormat implements DumpFormat {
      *                          display in file save dialog or to be used as tool tip.
      * @param extension         Standard file extension for this format.  Null if none.
      */
-    public AbstractDumpFormat(String name, String commandDescriptor,
-                              String description, String extension) {
+    public AbstractDumpFormat(String name, @Nullable String commandDescriptor, String description, @Nullable String extension) {
         this.name = name;
         this.commandDescriptor = (commandDescriptor == null) ? null : commandDescriptor.replaceAll(" ", "");
         this.description = description;
         this.extension = extension;
     }
-
 
     /**
      * Get the file extension associated with this format.
@@ -47,6 +46,7 @@ public abstract class AbstractDumpFormat implements DumpFormat {
      * @return String containing file extension -- without the leading "." -- or
      * null if there is no standard extension.
      */
+    @Nullable
     public String getFileExtension() {
         return extension;
     }
@@ -58,6 +58,7 @@ public abstract class AbstractDumpFormat implements DumpFormat {
      * @return String containing short description to go with the extension
      * or for use as tool tip.  Possibly null.
      */
+    @UnknownNullability
     public String getDescription() {
         return description;
     }
@@ -77,6 +78,7 @@ public abstract class AbstractDumpFormat implements DumpFormat {
      *
      * @return One-word String describing the format.
      */
+    @Nullable
     public String getCommandDescriptor() {
         return commandDescriptor;
     }
@@ -93,7 +95,5 @@ public abstract class AbstractDumpFormat implements DumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public abstract void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException;
-
+    public abstract void dumpMemoryRange(File file, int firstAddress, int lastAddress) throws AddressErrorException, IOException;
 }

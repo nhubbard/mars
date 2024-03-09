@@ -2,6 +2,7 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.text.Segment;
@@ -27,8 +28,8 @@ public class SyntaxUtilities {
      * @param offset     The offset into the segment
      * @param match      The string to match
      */
-    public static boolean regionMatches(boolean ignoreCase, Segment text,
-                                        int offset, String match) {
+    public static boolean regionMatches(boolean ignoreCase, @NotNull Segment text,
+                                        int offset, @NotNull String match) {
         int length = offset + match.length();
         char[] textArray = text.array;
         if (length > text.offset + text.count)
@@ -55,8 +56,8 @@ public class SyntaxUtilities {
      * @param offset     The offset into the segment
      * @param match      The character array to match
      */
-    public static boolean regionMatches(boolean ignoreCase, Segment text,
-                                        int offset, char[] match) {
+    public static boolean regionMatches(boolean ignoreCase, @NotNull Segment text,
+                                        int offset, char @NotNull [] match) {
         int length = offset + match.length;
         char[] textArray = text.array;
         if (length > text.offset + text.count)
@@ -79,7 +80,7 @@ public class SyntaxUtilities {
      * <code>setStyles()</code> method of <code>SyntaxDocument</code>
      * to use the default syntax styles.
      */
-    public static SyntaxStyle[] getDefaultSyntaxStyles() {
+    public static SyntaxStyle @NotNull [] getDefaultSyntaxStyles() {
         SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
 
         // SyntaxStyle constructor params: color, italic?, bold?
@@ -106,7 +107,7 @@ public class SyntaxUtilities {
      * via MARS Settings menu, the current settings will not be the
      * same as the default settings.
      */
-    public static SyntaxStyle[] getCurrentSyntaxStyles() {
+    public static SyntaxStyle @NotNull [] getCurrentSyntaxStyles() {
         SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
 
         styles[Token.NULL] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.NULL);
@@ -141,8 +142,8 @@ public class SyntaxUtilities {
      * @param y        The y co-ordinate
      * @return The x co-ordinate, plus the width of the painted string
      */
-    public static int paintSyntaxLine(Segment line, Token tokens,
-                                      SyntaxStyle[] styles, TabExpander expander, Graphics gfx,
+    public static int paintSyntaxLine(@NotNull Segment line, @NotNull Token tokens,
+                                      SyntaxStyle[] styles, TabExpander expander, @NotNull Graphics gfx,
                                       int x, int y) {
         Font defaultFont = gfx.getFont();
         Color defaultColor = gfx.getColor();
@@ -211,7 +212,7 @@ public class SyntaxUtilities {
 class InstructionMouseEvent extends MouseEvent {
     private final Segment line;
 
-    public InstructionMouseEvent(Component component, int x, int y, Segment line) {
+    public InstructionMouseEvent(@NotNull Component component, int x, int y, Segment line) {
         super(component, MouseEvent.MOUSE_MOVED, new java.util.Date().getTime(), 0, x, y, 0, false);
         System.out.println("Create InstructionMouseEvent " + x + " " + y + " " + line);
         this.line = line;

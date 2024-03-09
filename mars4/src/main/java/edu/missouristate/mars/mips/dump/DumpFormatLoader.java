@@ -19,8 +19,7 @@ public class DumpFormatLoader {
     private static final String DUMP_DIRECTORY_PATH = "edu/missouristate/mars/mips/dump";
     private static final String SYSCALL_INTERFACE = "DumpFormat.class";
     private static final String CLASS_EXTENSION = "class";
-
-    private static ArrayList<DumpFormat> formatList = null;
+    private static @Nullable ArrayList<DumpFormat> formatList = null;
 
     /**
      * Dynamically loads dump formats into an ArrayList.  This method is adapted from
@@ -35,8 +34,7 @@ public class DumpFormatLoader {
         if (formatList == null) {
             formatList = new ArrayList<>();
             // grab all class files in the dump directory
-            ArrayList<String> candidates = FilenameFinder.getFilenameList(this.getClass().getClassLoader(),
-                    DUMP_DIRECTORY_PATH, CLASS_EXTENSION);
+            ArrayList<String> candidates = FilenameFinder.getFilenameList(this.getClass().getClassLoader(), DUMP_DIRECTORY_PATH, CLASS_EXTENSION);
             for (String file : candidates) {
                 try {
                     // grab the class, make sure it implements DumpFormat, instantiate, add to list
@@ -45,14 +43,15 @@ public class DumpFormatLoader {
                     if (DumpFormat.class.isAssignableFrom(clas) && !Modifier.isAbstract(clas.getModifiers())) {
                         formatList.add((DumpFormat) clas.getDeclaredConstructor().newInstance());
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
         return formatList;
     }
 
     @Nullable
-    public static DumpFormat findDumpFormatGivenCommandDescriptor(ArrayList<DumpFormat> formatList, String formatCommandDescriptor) {
+    public static DumpFormat findDumpFormatGivenCommandDescriptor(@NotNull ArrayList<DumpFormat> formatList, String formatCommandDescriptor) {
         AtomicReference<@Nullable DumpFormat> match = new AtomicReference<>();
         for (DumpFormat dumpFormat : formatList) {
             Optional<String> descriptor = Optional.ofNullable(dumpFormat.getCommandDescriptor());

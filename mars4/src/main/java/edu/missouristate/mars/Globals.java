@@ -6,6 +6,8 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.util.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -28,7 +30,7 @@ public class Globals {
     /**
      * the program currently being worked with.  Used by GUI only, not command line.
      **/
-    public static MIPSProgram program;
+    @Nullable public static MIPSProgram program;
 
     /**
      * Symbol table for file currently being assembled.
@@ -74,6 +76,7 @@ public class Globals {
     private static boolean initialized = false;
 
     /** The GUI being used (if any) with this simulator. */
+    @Nullable
     static VenusUI gui = null;
 
     /**
@@ -128,11 +131,11 @@ public class Globals {
 
     public static boolean runSpeedPanelExists = false;
 
-    private static String getCopyrightYears() {
+    private static @NotNull String getCopyrightYears() {
         return "2003-2023";
     }
 
-    private static String getCopyrightHolders() {
+    private static @NotNull String getCopyrightHolders() {
         return "Pete Sanderson and Kenneth Vollmar";
     }
 
@@ -140,7 +143,7 @@ public class Globals {
         gui = g;
     }
 
-    public static VenusUI getGui() {
+    public static @Nullable VenusUI getGui() {
         return gui;
     }
 
@@ -148,6 +151,7 @@ public class Globals {
         return settings;
     }
 
+    @Nullable
     private static Boolean isRunningTest = null;
 
     /**
@@ -212,8 +216,8 @@ public class Globals {
     /**
      * Read ASCII default display character for non-printing characters, from properties file.
      */
-    public static String getAsciiNonPrint() {
-        String anp = getPropertyEntry(configPropertiesFile, "AsciiNonPrint");
+    public static @NotNull String getAsciiNonPrint() {
+        @Nullable String anp = getPropertyEntry(configPropertiesFile, "AsciiNonPrint");
         return (anp == null) ? "." : ((anp.equals("space")) ? " " : anp);
     }
 
@@ -222,7 +226,7 @@ public class Globals {
      * value is "null", substitute value of ASCII_NON_PRINT.  If string is
      * "space", substitute string containing one space character.
      */
-    public static String[] getAsciiStrings() {
+    public static String @NotNull [] getAsciiStrings() {
         String let = getPropertyEntry(configPropertiesFile, "AsciiTable");
         String placeHolder = getAsciiNonPrint();
         String[] lets = let.split(" +");
@@ -255,9 +259,9 @@ public class Globals {
      * Read assembly language file extensions from properties file.  Resulting
      * string is tokenized into array list (assume StringTokenizer default delimiters).
      */
-    private static ArrayList<String> getFileExtensions() {
+    private static @NotNull ArrayList<String> getFileExtensions() {
         ArrayList<String> extensionList = new ArrayList<>();
-        String extensions = getPropertyEntry(configPropertiesFile, "Extensions");
+        @Nullable String extensions = getPropertyEntry(configPropertiesFile, "Extensions");
         if (extensions != null) {
             StringTokenizer st = new StringTokenizer(extensions);
             while (st.hasMoreTokens()) extensionList.add(st.nextToken());
@@ -273,10 +277,10 @@ public class Globals {
      * @return ArrayList.  Each item is file path to .class file
      * of a class that implements MarsTool.  If none, returns empty list.
      */
-    public static ArrayList<String> getExternalTools() {
+    public static @NotNull ArrayList<String> getExternalTools() {
         ArrayList<String> toolsList = new ArrayList<>();
         String delimiter = ";";
-        String tools = getPropertyEntry(configPropertiesFile, "ExternalTools");
+        @Nullable String tools = getPropertyEntry(configPropertiesFile, "ExternalTools");
         if (tools != null) {
             StringTokenizer st = new StringTokenizer(tools, delimiter);
             while (st.hasMoreTokens()) toolsList.add(st.nextToken());
@@ -292,6 +296,7 @@ public class Globals {
      * @param propertyName   String containing desired property name
      * @return String containing associated value; null if property not found
      */
+    @Nullable
     public static String getPropertyEntry(String propertiesFile, String propertyName) {
         return PropertiesFile.loadPropertiesFromFile(propertiesFile).getProperty(propertyName);
     }
@@ -301,7 +306,7 @@ public class Globals {
      *
      * @return ArrayList of SyscallNumberOverride objects
      */
-    public ArrayList<SyscallNumberOverride> getSyscallOverrides() {
+    public @NotNull ArrayList<SyscallNumberOverride> getSyscallOverrides() {
         ArrayList<SyscallNumberOverride> overrides = new ArrayList<>();
         Properties properties = PropertiesFile.loadPropertiesFromFile(syscallPropertiesFile);
         Iterator<Object> keys = properties.keys().asIterator();

@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.TokenMarker;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.BadLocationException;
@@ -34,7 +36,7 @@ public class SyntaxDocument extends PlainDocument {
      *
      * @param tm The new token marker
      */
-    public void setTokenMarker(TokenMarker tm) {
+    public void setTokenMarker(@Nullable TokenMarker tm) {
         tokenMarker = tm;
         if (tm == null)
             return;
@@ -118,7 +120,7 @@ public class SyntaxDocument extends PlainDocument {
      * state immediately so that any event listeners get a
      * consistent token marker.
      */
-    protected void fireInsertUpdate(DocumentEvent evt) {
+    protected void fireInsertUpdate(@NotNull DocumentEvent evt) {
         if (tokenMarker != null) {
             DocumentEvent.ElementChange ch = evt.getChange(
                     getDefaultRootElement());
@@ -137,7 +139,7 @@ public class SyntaxDocument extends PlainDocument {
      * state immediately so that any event listeners get a
      * consistent token marker.
      */
-    protected void fireRemoveUpdate(DocumentEvent evt) {
+    protected void fireRemoveUpdate(@NotNull DocumentEvent evt) {
         if (tokenMarker != null) {
             DocumentEvent.ElementChange ch = evt.getChange(
                     getDefaultRootElement());

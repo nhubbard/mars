@@ -2,6 +2,7 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,7 +45,7 @@ public class TextAreaDefaults {
      * Returns a new TextAreaDefaults object with the default values filled
      * in.
      */
-    public static TextAreaDefaults getDefaults() {
+    public static @NotNull TextAreaDefaults getDefaults() {
         TextAreaDefaults DEFAULTS = new TextAreaDefaults();
 
         DEFAULTS.inputHandler = new DefaultInputHandler();

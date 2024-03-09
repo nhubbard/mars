@@ -9,6 +9,8 @@ import edu.missouristate.mars.MIPSProgram;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Stores information of a macro definition.
@@ -17,8 +19,9 @@ import edu.missouristate.mars.mips.hardware.Coprocessor1;
  */
 public class Macro {
     private String name;
+    @Nullable
     private MIPSProgram program;
-    private final ArrayList<String> labels;
+    private final @NotNull ArrayList<String> labels;
 
     /**
      * first and last line number of macro definition. first line starts with
@@ -48,11 +51,11 @@ public class Macro {
         this.name = name;
     }
 
-    public MIPSProgram getProgram() {
+    public @Nullable MIPSProgram getProgram() {
         return program;
     }
 
-    public void setProgram(MIPSProgram program) {
+    public void setProgram(@Nullable MIPSProgram program) {
         this.program = program;
     }
 
@@ -120,7 +123,7 @@ public class Macro {
      * @return <code>line</code>-th line of source code, with substituted
      * arguments
      */
-    public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
+    public @Nullable String getSubstitutedLine(int line, @NotNull TokenList args, long counter, @NotNull ErrorList errors) {
         TokenList tokens = program.getTokenList().get(line - 1);
         String s = program.getSourceLine(line);
 
@@ -161,7 +164,7 @@ public class Macro {
     /**
      * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with <code>substitute</code>.
      */
-    String replaceToken(String source, Token tokenToBeReplaced, String substitute) {
+    @NotNull String replaceToken(@NotNull String source, @NotNull Token tokenToBeReplaced, String substitute) {
         /*
          Initially, the position of the substitute was based on token position but that proved problematic
          in that the source string does not always match the token list from which the token comes. The
@@ -181,7 +184,7 @@ public class Macro {
      *
      * @param acceptSpimStyleParameters accepts SPIM-style parameters which begin with '$' if true
      */
-    public static boolean tokenIsMacroParameter(String tokenValue, boolean acceptSpimStyleParameters) {
+    public static boolean tokenIsMacroParameter(@NotNull String tokenValue, boolean acceptSpimStyleParameters) {
         if (acceptSpimStyleParameters) {
             /*
              Bug fix: SPIM accepts parameter names that start with $ instead of %.  This can

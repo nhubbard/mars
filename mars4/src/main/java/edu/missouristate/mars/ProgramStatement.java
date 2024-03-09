@@ -11,8 +11,11 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * Represents one assembly/machine statement.  This represents the "bare machine" level.
@@ -23,13 +26,21 @@ import java.util.ArrayList;
  * @version August 2003
  */
 public class ProgramStatement {
+    @Nullable
     private final MIPSProgram sourceMIPSProgram;
-    private String source, basicAssemblyStatement, machineStatement;
+    private String source;
+    @Nullable
+    private String basicAssemblyStatement;
+    @Nullable
+    private String machineStatement;
+    @Nullable
     private final TokenList originalTokenList;
+    @Nullable
     private final TokenList strippedTokenList;
-    private final BasicStatementList basicStatementList;
-    private final int[] operands;
+    private final @NotNull BasicStatementList basicStatementList;
+    private final int @Nullable [] operands;
     private int numOperands;
+    @Nullable
     private final Instruction instruction;
     private final int textAddress;
     private int sourceLine;
@@ -49,7 +60,7 @@ public class ProgramStatement {
      * @param textAddress       The Text Segment address in memory where the binary machine code for this statement
      *                          is stored.
      **/
-    public ProgramStatement(MIPSProgram sourceMIPSProgram, String source, TokenList origTokenList, TokenList strippedTokenList, Instruction inst, int textAddress, int sourceLine) {
+    public ProgramStatement(@Nullable MIPSProgram sourceMIPSProgram, String source, @Nullable TokenList origTokenList, @Nullable TokenList strippedTokenList, @Nullable Instruction inst, int textAddress, int sourceLine) {
         this.sourceMIPSProgram = sourceMIPSProgram;
         this.source = source;
         this.originalTokenList = origTokenList;
@@ -84,7 +95,7 @@ public class ProgramStatement {
         this.originalTokenList = this.strippedTokenList = null;
         this.source = "";
         this.machineStatement = this.basicAssemblyStatement = null;
-        BasicInstruction instr = Globals.instructionSet.findByBinaryCode(binaryStatement);
+        @Nullable BasicInstruction instr = Globals.instructionSet.findByBinaryCode(binaryStatement);
         if (instr == null) {
             this.operands = null;
             this.numOperands = 0;
@@ -128,8 +139,8 @@ public class ProgramStatement {
      *
      * @param errors The list of assembly errors encountered so far.  May add to it here.
      **/
-    public void buildBasicStatementFromBasicInstruction(ErrorList errors) {
-        Token token = strippedTokenList.get(0);
+    public void buildBasicStatementFromBasicInstruction(@NotNull ErrorList errors) {
+        Token token = Objects.requireNonNull(strippedTokenList).get(0);
         String basicStatementElement = token.getValue() + " ";
         StringBuilder basic = new StringBuilder(basicStatementElement);
         basicStatementList.addString(basicStatementElement); // the operator
@@ -146,13 +157,13 @@ public class ProgramStatement {
                 basic.append(basicStatementElement);
                 basicStatementList.addString(basicStatementElement);
                 try {
-                    registerNumber = RegisterFile.getUserRegister(tokenValue).getNumber();
+                    registerNumber = Objects.requireNonNull(RegisterFile.getUserRegister(tokenValue)).getNumber();
                 } catch (Exception e) {
                     // should never happen; should be caught before now...
                     errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid register name"));
                     return;
                 }
-                this.operands[this.numOperands++] = registerNumber;
+                Objects.requireNonNull(this.operands)[this.numOperands++] = registerNumber;
             } else if (tokenType == TokenTypes.REGISTER_NAME) {
                 registerNumber = RegisterFile.getNumber(tokenValue);
                 basicStatementElement = "$" + registerNumber;
@@ -163,7 +174,7 @@ public class ProgramStatement {
                     errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid register name"));
                     return;
                 }
-                this.operands[this.numOperands++] = registerNumber;
+                Objects.requireNonNull(this.operands)[this.numOperands++] = registerNumber;
             } else if (tokenType == TokenTypes.FP_REGISTER_NAME) {
                 registerNumber = Coprocessor1.getRegisterNumber(tokenValue);
                 basicStatementElement = "$f" + registerNumber;
@@ -174,9 +185,9 @@ public class ProgramStatement {
                     errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "invalid FPU register name"));
                     return;
                 }
-                this.operands[this.numOperands++] = registerNumber;
+                Objects.requireNonNull(this.operands)[this.numOperands++] = registerNumber;
             } else if (tokenType == TokenTypes.IDENTIFIER) {
-                int address = this.sourceMIPSProgram.getLocalSymbolTable().getAddressLocalOrGlobal(tokenValue);
+                int address = Objects.requireNonNull(this.sourceMIPSProgram).getLocalSymbolTable().getAddressLocalOrGlobal(tokenValue);
                 if (address == SymbolTable.NOT_FOUND) { // symbol used without being defined
                     errors.add(new ErrorMessage(this.sourceMIPSProgram, token.getSourceLine(), token.getStartPos(), "Symbol \"" + tokenValue + "\" not found in symbol table."));
                     return;
@@ -215,7 +226,7 @@ public class ProgramStatement {
                 } else {
                     basicStatementList.addValue(address);
                 }
-                this.operands[this.numOperands++] = address;
+                Objects.requireNonNull(this.operands)[this.numOperands++] = address;
             } else if (tokenType == TokenTypes.INTEGER_5 || tokenType == TokenTypes.INTEGER_16 || tokenType == TokenTypes.INTEGER_16U || tokenType == TokenTypes.INTEGER_32) {
 
                 int tempNumeric = Binary.stringToInt(tokenValue);
@@ -263,7 +274,7 @@ public class ProgramStatement {
 
                 basic.append(tempNumeric);
                 basicStatementList.addValue(tempNumeric);
-                this.operands[this.numOperands++] = tempNumeric;
+                Objects.requireNonNull(this.operands)[this.numOperands++] = tempNumeric;
                 ///// End modification 1/7/05 KENV   ///////////////////////////////////////////
             } else {
                 basicStatementElement = tokenValue;
@@ -290,11 +301,11 @@ public class ProgramStatement {
      *
      * @param errors The list of assembly errors encountered so far.  May add to it here.
      **/
-    public void buildMachineStatementFromBasicStatement(ErrorList errors) {
+    public void buildMachineStatementFromBasicStatement(@NotNull ErrorList errors) {
 
         try {
             //mask indicates bit positions for 'f'irst, 's'econd, 't'hird operand
-            this.machineStatement = ((BasicInstruction) instruction).getOperationMask();
+            this.machineStatement = ((BasicInstruction) Objects.requireNonNull(instruction)).getOperationMask();
         }   // This means the pseudo-instruction expansion generated another
         // pseudo-instruction (expansion must be to all basic instructions).
         // This is an error on the part of the pseudo-instruction author.
@@ -305,7 +316,7 @@ public class ProgramStatement {
         BasicInstructionFormat format = ((BasicInstruction) instruction).getInstructionFormat();
 
         if (format == BasicInstructionFormat.J_FORMAT) {
-            if ((this.textAddress & 0xF0000000) != (this.operands[0] & 0xF0000000)) {
+            if ((this.textAddress & 0xF0000000) != (Objects.requireNonNull(this.operands)[0] & 0xF0000000)) {
                 // attempt to jump beyond 28-bit byte (26-bit word) address range. 
                 // SPIM flags as warning, I'll flag as error b/c MARS text segment not long enough for it to be OK.
                 errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "Jump target word address beyond 26-bit range"));
@@ -316,14 +327,14 @@ public class ProgramStatement {
             this.insertBinaryCode(this.operands[0], Instruction.operandMask[0], errors);
         } else if (format == BasicInstructionFormat.I_BRANCH_FORMAT) {
             for (int i = 0; i < this.numOperands - 1; i++) {
-                this.insertBinaryCode(this.operands[i], Instruction.operandMask[i], errors);
+                this.insertBinaryCode(Objects.requireNonNull(this.operands)[i], Instruction.operandMask[i], errors);
             }
-            this.insertBinaryCode(operands[this.numOperands - 1], Instruction.operandMask[this.numOperands - 1], errors);
+            this.insertBinaryCode(Objects.requireNonNull(operands)[this.numOperands - 1], Instruction.operandMask[this.numOperands - 1], errors);
         } else {  // R_FORMAT or I_FORMAT
             for (int i = 0; i < this.numOperands; i++)
-                this.insertBinaryCode(this.operands[i], Instruction.operandMask[i], errors);
+                this.insertBinaryCode(Objects.requireNonNull(this.operands)[i], Instruction.operandMask[i], errors);
         }
-        this.binaryStatement = Binary.binaryStringToInt(this.machineStatement);
+        this.binaryStatement = Binary.binaryStringToInt(Objects.requireNonNull(this.machineStatement));
     } // buildMachineStatementFromBasicStatement(
 
     /**
@@ -331,7 +342,7 @@ public class ProgramStatement {
      *
      * @return A String representing the ProgramStatement.
      **/
-    public String toString() {
+    public @NotNull String toString() {
         // a crude attempt at string formatting.  Where's C when you need it?
         String blanks = "                               ";
         StringBuilder result = new StringBuilder("[" + this.textAddress + "]");
@@ -360,7 +371,7 @@ public class ProgramStatement {
      *
      * @param statement A String containing equivalent Basic Assembly statement.
      **/
-    public void setBasicAssemblyStatement(String statement) {
+    public void setBasicAssemblyStatement(@Nullable String statement) {
         basicAssemblyStatement = statement;
     }
 
@@ -370,7 +381,7 @@ public class ProgramStatement {
      *
      * @param statement A String containing equivalent machine code.
      **/
-    public void setMachineStatement(String statement) {
+    public void setMachineStatement(@Nullable String statement) {
         machineStatement = statement;
     }
 
@@ -398,6 +409,7 @@ public class ProgramStatement {
      *
      * @return The MIPSProgram object.  May be null...
      **/
+    @Nullable
     public MIPSProgram getSourceMIPSProgram() {
         return sourceMIPSProgram;
     }
@@ -407,6 +419,7 @@ public class ProgramStatement {
      *
      * @return The file name.
      **/
+    @NotNull
     public String getSourceFile() {
         return (sourceMIPSProgram == null) ? "" : sourceMIPSProgram.getFilename();
     }
@@ -435,7 +448,7 @@ public class ProgramStatement {
      *
      * @return The Basic Assembly statement.
      **/
-    public String getBasicAssemblyStatement() {
+    public @Nullable String getBasicAssemblyStatement() {
         return basicAssemblyStatement;
     }
 
@@ -447,7 +460,7 @@ public class ProgramStatement {
      *
      * @return The Basic Assembly statement.
      **/
-    public String getPrintableBasicAssemblyStatement() {
+    public @NotNull String getPrintableBasicAssemblyStatement() {
         return basicStatementList.toString();
     }
 
@@ -456,7 +469,7 @@ public class ProgramStatement {
      *
      * @return The String version of 32-bit binary machine code.
      **/
-    public String getMachineStatement() {
+    public @Nullable String getMachineStatement() {
         return machineStatement;
     }
 
@@ -474,7 +487,7 @@ public class ProgramStatement {
      *
      * @return The TokenList of Token objects generated from original source.
      **/
-    public TokenList getOriginalTokenList() {
+    public @Nullable TokenList getOriginalTokenList() {
         return originalTokenList;
     }
 
@@ -484,7 +497,7 @@ public class ProgramStatement {
      * @return The TokenList of Token objects generated by stripping original list of all
      * except operator and operand tokens.
      **/
-    public TokenList getStrippedTokenList() {
+    public @Nullable TokenList getStrippedTokenList() {
         return strippedTokenList;
     }
 
@@ -493,7 +506,7 @@ public class ProgramStatement {
      *
      * @return The Instruction that matches the operator used in this statement.
      **/
-    public Instruction getInstruction() {
+    public @Nullable Instruction getInstruction() {
         return instruction;
     }
 
@@ -523,7 +536,7 @@ public class ProgramStatement {
      **/
     public int getOperand(int i) {
         if (i >= 0 && i < this.numOperands) {
-            return operands[i];
+            return Objects.requireNonNull(operands)[i];
         } else {
             return -1;
         }
@@ -533,8 +546,8 @@ public class ProgramStatement {
      * Given operand (register or integer) and mask character ('f', 's', or 't'),
      * generate the correct sequence of bits and replace the mask with them.
      */
-    private void insertBinaryCode(int value, char mask, ErrorList errors) {
-        int startPos = this.machineStatement.indexOf(mask);
+    private void insertBinaryCode(int value, char mask, @NotNull ErrorList errors) {
+        int startPos = Objects.requireNonNull(this.machineStatement).indexOf(mask);
         int endPos = this.machineStatement.lastIndexOf(mask);
         if (startPos == -1 || endPos == -1) { // should NEVER occur
             errors.add(new ErrorMessage(this.sourceMIPSProgram, this.sourceLine, 0, "INTERNAL ERROR: mismatch in number of operands in statement vs mask"));
@@ -552,7 +565,7 @@ public class ProgramStatement {
      * used by the constructor that is given only the int address and binary code.  It is not
      * intended to be used when source code is available.  DPS 11-July-2013
      */
-    private BasicStatementList buildBasicStatementListFromBinaryCode(int binary, BasicInstruction instr, int[] operands, int numOperands) {
+    private @NotNull BasicStatementList buildBasicStatementListFromBinaryCode(int binary, @Nullable BasicInstruction instr, int[] operands, int numOperands) {
         BasicStatementList statementList = new BasicStatementList();
         int tokenListCounter = 1;  // index 0 is operator; operands start at index 1
         if (instr == null) {
@@ -612,8 +625,7 @@ public class ProgramStatement {
      * are relative to the PC.
      */
     private static class BasicStatementList {
-
-        private final ArrayList<ListElement> list;
+        private final @NotNull ArrayList<ListElement> list;
 
         BasicStatementList() {
             list = new ArrayList<>();
@@ -631,7 +643,7 @@ public class ProgramStatement {
             list.add(new ListElement(2, null, value));
         }
 
-        public String toString() {
+        public @NotNull String toString() {
             int addressBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
             int valueBase = (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)) ? NumberDisplayBaseChooser.HEXADECIMAL : NumberDisplayBaseChooser.DECIMAL;
 
@@ -657,6 +669,6 @@ public class ProgramStatement {
             return result.toString();
         }
 
-        private record ListElement(int type, String sValue, int iValue) {}
+        private record ListElement(int type, @Nullable String sValue, int iValue) {}
     }
 }

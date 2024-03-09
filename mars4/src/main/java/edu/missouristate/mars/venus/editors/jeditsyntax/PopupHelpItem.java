@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.HelpHelpAction;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 
@@ -25,7 +27,7 @@ public class PopupHelpItem {
      * @param description A textual description of the instruction
      * @param exact       True if match occurred as result of exact-match search, false otherwise.
      */
-    public PopupHelpItem(String tokenText, String example, String description, boolean exact) {
+    public PopupHelpItem(String tokenText, String example, @NotNull String description, boolean exact) {
         this.tokenText = tokenText;
         this.example = example;
         if (exact) {
@@ -45,7 +47,7 @@ public class PopupHelpItem {
      * @param example     An example instruction
      * @param description A textual description of the instruction
      */
-    public PopupHelpItem(String tokenText, String example, String description) {
+    public PopupHelpItem(String tokenText, String example, @NotNull String description) {
         this(tokenText, example, description, true);
 
     }
@@ -97,7 +99,7 @@ public class PopupHelpItem {
         return result;
     }
 
-    public void setExample(String example) {
+    public void setExample(@NotNull String example) {
         this.example = example;
         this.exampleLength = example.length();
     }
@@ -108,7 +110,7 @@ public class PopupHelpItem {
 
     // Utility method.  Traverse ArrayList of PopupHelpItem objects
     // and return String length of longest example.
-    public static int maxExampleLength(ArrayList<PopupHelpItem> matches) {
+    public static int maxExampleLength(@Nullable ArrayList<PopupHelpItem> matches) {
         int length = 0;
         if (matches != null) {
             for (PopupHelpItem match : matches) {

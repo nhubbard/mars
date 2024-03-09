@@ -2,6 +2,8 @@ package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -16,7 +18,7 @@ import java.util.*;
 
 public class ProgramArgumentList {
 
-    final ArrayList<String> programArgumentList;
+    final @NotNull ArrayList<String> programArgumentList;
 
     /**
      * Constructor that parses string to produce list.  Delimiters
@@ -25,7 +27,7 @@ public class ProgramArgumentList {
      *
      * @param args String containing delimiter-separated arguments
      */
-    public ProgramArgumentList(String args) {
+    public ProgramArgumentList(@NotNull String args) {
         StringTokenizer st = new StringTokenizer(args);
         programArgumentList = new ArrayList<>(st.countTokens());
         while (st.hasMoreTokens()) {
@@ -38,7 +40,7 @@ public class ProgramArgumentList {
      *
      * @param list Array of String, each element containing one argument
      */
-    public ProgramArgumentList(String[] list) {
+    public ProgramArgumentList(String @NotNull [] list) {
         this(list, 0);
     }
 
@@ -50,7 +52,7 @@ public class ProgramArgumentList {
      * @param startPosition Index of array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
-    public ProgramArgumentList(String[] list, int startPosition) {
+    public ProgramArgumentList(String @NotNull [] list, int startPosition) {
         programArgumentList = new ArrayList<>(list.length - startPosition);
         programArgumentList.addAll(Arrays.asList(list).subList(startPosition, list.length));
     }
@@ -73,7 +75,7 @@ public class ProgramArgumentList {
      * @param startPosition Index of array element containing the first argument; all remaining
      *                      elements are assumed to contain an argument.
      */
-    public ProgramArgumentList(ArrayList<String> list, int startPosition) {
+    public ProgramArgumentList(@Nullable ArrayList<String> list, int startPosition) {
         if (list == null || list.size() < startPosition) {
             programArgumentList = new ArrayList<>(0);
         } else {

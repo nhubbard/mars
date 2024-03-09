@@ -5,6 +5,8 @@ import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import javax.swing.*;
@@ -17,9 +19,9 @@ import javax.swing.*;
  **/
 
 public class Simulator extends Observable {
-    private SimThread simulatorThread;
-    private static Simulator simulator = null;  // Singleton object
-    private static Runnable interactiveGUIUpdater = null;
+    private @Nullable SimThread simulatorThread;
+    private static @Nullable Simulator simulator = null;  // Singleton object
+    private static @Nullable Runnable interactiveGUIUpdater = null;
     // Others can set this true to indicate external interrupt.  Initially used
     // to simulate keyboard and display interrupts.  The device is identified
     // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
@@ -41,7 +43,7 @@ public class Simulator extends Observable {
      *
      * @return the Simulator object in use
      */
-    public static Simulator getInstance() {
+    public static @NotNull Simulator getInstance() {
         // Do NOT change this to create the Simulator at load time (in declaration above)!
         // Its constructor looks for the GUI, which at load time is not created yet,
         // and incorrectly leaves interactiveGUIUpdater null!  This causes runtime
@@ -87,7 +89,7 @@ public class Simulator extends Observable {
      * @throws ProcessingException Throws exception if run-time exception occurs.
      **/
 
-    public boolean simulate(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction actor) throws ProcessingException {
+    public boolean simulate(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, @Nullable AbstractAction actor) throws ProcessingException {
         simulatorThread = new SimThread(p, pc, maxSteps, breakPoints, actor);
         simulatorThread.start();
 
@@ -177,11 +179,11 @@ public class Simulator extends Observable {
     static class SimThread extends SwingWorker {
         private final int pc;
         private final int maxSteps;
-        private int[] breakPoints;
+        private int @Nullable [] breakPoints;
         private boolean done;
-        private ProcessingException pe;
+        private @Nullable ProcessingException pe;
         private volatile boolean stop = false;
-        private volatile AbstractAction stopper;
+        private volatile @Nullable AbstractAction stopper;
         private final AbstractAction starter;
         private int constructReturnReason;
 
@@ -225,7 +227,7 @@ public class Simulator extends Observable {
          * execution in the background.
          */
 
-        public Object construct() {
+        public @NotNull Object construct() {
             // The next two statements are necessary for GUI to be consistently updated
             // before the simulation gets underway.  Without them, this happens only intermittently,
             // with a consequence that some simulations are interruptable using PAUSE/STOP and others

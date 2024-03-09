@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,7 +25,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
     private boolean highlighting;
     private int highlightRow;
     private ExecutePane executePane;
-    private final JCheckBox[] conditionFlagCheckBox;
+    private final JCheckBox @NotNull [] conditionFlagCheckBox;
     private static final int NAME_COLUMN = 0;
     private static final int FLOAT_COLUMN = 1;
     private static final int DOUBLE_COLUMN = 2;
@@ -73,7 +74,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      *
      * @param e component that triggered this call
      */
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@NotNull ActionEvent e) {
         JCheckBox checkBox = (JCheckBox) e.getSource();
         int i = Integer.parseInt(checkBox.getText());
         if (checkBox.isSelected()) {
@@ -91,7 +92,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      * @return The array object with the data for the window.
      **/
 
-    public Object[][] setupWindow() {
+    public Object[] @NotNull [] setupWindow() {
         registers = Coprocessor1.getRegisters();
         this.highlighting = false;
         Object[][] tableData = new Object[registers.length][3];
@@ -246,7 +247,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      *
      * @param register Register object corresponding to row to be selected.
      */
-    void highlightCellForRegister(Register register) {
+    void highlightCellForRegister(@NotNull Register register) {
         this.highlightRow = register.getNumber();
         table.tableChanged(new TableModelEvent(table.getModel()));
     }
@@ -266,8 +267,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
             this.alignment = alignment;
         }
 
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
             cell.setFont(font);
@@ -321,7 +322,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -481,7 +482,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         };
 
         //Implement table cell tool tips.
-        public String getToolTipText(MouseEvent e) {
+        public String getToolTipText(@NotNull MouseEvent e) {
             String tip;
             java.awt.Point p = e.getPoint();
             int rowIndex = rowAtPoint(p);
@@ -509,10 +510,10 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         };
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             return
                     new JTableHeader(columnModel) {
-                        public String getToolTipText(MouseEvent e) {
+                        public String getToolTipText(@NotNull MouseEvent e) {
                             String tip = null;
                             java.awt.Point p = e.getPoint();
                             int index = columnModel.getColumnIndexAtX(p.x);

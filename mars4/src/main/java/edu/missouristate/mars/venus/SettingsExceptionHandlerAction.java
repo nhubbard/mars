@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -46,7 +47,7 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     }
 
     // The dialog box that appears when menu item is selected.
-    private JPanel buildDialogPanel() {
+    private @NotNull JPanel buildDialogPanel() {
         JPanel contents = new JPanel(new BorderLayout(20, 20));
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
         // Top row - the check box for setting...
@@ -110,7 +111,7 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     /////////////////////////////////////////////////////////////////////////////////
     // Associated action class: exception handler setting.  Attached to check box.
     private class ExceptionHandlerSettingAction implements ActionListener {
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             boolean selected = ((JCheckBox) e.getSource()).isSelected();
             exceptionHandlerSelectionButton.setEnabled(selected);
             exceptionHandlerDisplay.setEnabled(selected);

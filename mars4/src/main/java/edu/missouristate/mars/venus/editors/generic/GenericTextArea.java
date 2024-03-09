@@ -3,6 +3,8 @@ package edu.missouristate.mars.venus.editors.generic;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.EditPane;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.UndoableEditListener;
@@ -16,15 +18,15 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
 
 
     private final EditPane editPane;
-    private final UndoManager undoManager;
-    private final UndoableEditListener undoableEditListener;
-    private final JTextArea sourceCode;
-    private final JScrollPane editAreaScrollPane;
+    private final @NotNull UndoManager undoManager;
+    private final @NotNull UndoableEditListener undoableEditListener;
+    private final @NotNull JTextArea sourceCode;
+    private final @NotNull JScrollPane editAreaScrollPane;
 
     private boolean isCompoundEdit = false;
-    private CompoundEdit compoundEdit;
+    private @Nullable CompoundEdit compoundEdit;
 
-    public GenericTextArea(EditPane editPain, JComponent lineNumbers) {
+    public GenericTextArea(EditPane editPain, @NotNull JComponent lineNumbers) {
         this.editPane = editPain;
         this.sourceCode = this;
         this.setFont(Globals.getSettings().getEditorFont());
@@ -202,7 +204,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      * @param caseSensitive true if search is to be case-sensitive, false otherwise
      * @return TEXT_FOUND or TEXT_NOT_FOUND, depending on the result.
      */
-    public int doFindText(String find, boolean caseSensitive) {
+    public int doFindText(@NotNull String find, boolean caseSensitive) {
         int findPosn = sourceCode.getCaretPosition();
         int nextPosn;
         nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
@@ -227,7 +229,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      * @param caseSensitive true for case sensitive. false to ignore case
      * @return next indexed position of found text or -1 if not found
      */
-    public int nextIndex(String input, String find, int start, boolean caseSensitive) {
+    public int nextIndex(@Nullable String input, @Nullable String find, int start, boolean caseSensitive) {
         int textPosn = -1;
         if (input != null && find != null && start < input.length()) {
             if (caseSensitive) { // indexOf() returns -1 if not found
@@ -265,7 +267,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      * no additional matches.  Returns TEXT_REPLACED_FOUND_NEXT if reaplacement is
      * successful and there is at least one additional match.
      */
-    public int doReplace(String find, String replace, boolean caseSensitive) {
+    public int doReplace(@Nullable String find, @NotNull String replace, boolean caseSensitive) {
         int nextPosn;
         int posn;
         // Will perform a "find" and return, unless positioned at the end of
@@ -305,7 +307,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
      * @param caseSensitive true for case sensitive. false to ignore case
      * @return the number of occurrences that were matched and replaced.
      */
-    public int doReplaceAll(String find, String replace, boolean caseSensitive) {
+    public int doReplaceAll(@NotNull String find, @NotNull String replace, boolean caseSensitive) {
         int nextPosn = 0;
         int findPosn = 0; // *** begin at start of text
         int replaceCount = 0;

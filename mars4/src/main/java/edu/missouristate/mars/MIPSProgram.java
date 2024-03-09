@@ -3,6 +3,8 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.io.*;
@@ -23,8 +25,8 @@ public class MIPSProgram {
     private ArrayList<String> sourceList;
     private ArrayList<TokenList> tokenList;
     private ArrayList<ProgramStatement> parsedList;
-    private ArrayList<ProgramStatement> machineList;
-    private BackStepper backStepper;
+    private @Nullable ArrayList<ProgramStatement> machineList;
+    @Nullable private BackStepper backStepper;
     private SymbolTable localSymbolTable;
     private MacroPool macroPool;
     private ArrayList<SourceLine> sourceLineList;
@@ -45,7 +47,7 @@ public class MIPSProgram {
      * @param sourceLineList ArrayList of SourceLine.
      *                       Each SourceLine represents one line of MIPS source code.
      **/
-    public void setSourceLineList(ArrayList<SourceLine> sourceLineList) {
+    public void setSourceLineList(@NotNull ArrayList<SourceLine> sourceLineList) {
         this.sourceLineList = sourceLineList;
         sourceList = new ArrayList<>();
         for (SourceLine sl : sourceLineList) {
@@ -59,6 +61,7 @@ public class MIPSProgram {
      * @return ArrayList of SourceLine.
      * Each SourceLine represents one line of MIPS source cod
      **/
+    @Nullable
     public ArrayList<SourceLine> getSourceLineList() {
         return this.sourceLineList;
     }
@@ -99,7 +102,7 @@ public class MIPSProgram {
      * MIPS statement.
      * @see ProgramStatement
      **/
-    public ArrayList<ProgramStatement> createParsedList() {
+    public @NotNull ArrayList<ProgramStatement> createParsedList() {
         parsedList = new ArrayList<>();
         return parsedList;
     }
@@ -131,6 +134,7 @@ public class MIPSProgram {
      *
      * @return BackStepper object, null if there is none.
      **/
+    @Nullable
     public BackStepper getBackStepper() {
         return backStepper;
     }
@@ -159,6 +163,7 @@ public class MIPSProgram {
      * @return Returns specified line of MIPS source.  If outside the line range,
      * it returns null.  Line 1 is first line.
      **/
+    @Nullable
     public String getSourceLine(int i) {
         if ((i >= 1) && (i <= sourceList.size()))
             return sourceList.get(i - 1);
@@ -174,12 +179,12 @@ public class MIPSProgram {
      * @param file String containing name of MIPS source code file.
      * @throws ProcessingException Will throw exception if there is any problem reading the file.
      **/
-    public void readSource(String file) throws ProcessingException {
+    public void readSource(@NotNull String file) throws ProcessingException {
         this.filename = file;
         this.sourceList = new ArrayList<>();
         ErrorList errors;
         BufferedReader inputFile;
-        String line;
+        @Nullable String line;
         int lengthSoFar = 0;
         try {
             inputFile = new BufferedReader(new FileReader(file));
@@ -212,7 +217,7 @@ public class MIPSProgram {
         this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
     }
 
-    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler) throws ProcessingException {
+    public ArrayList<MIPSProgram> prepareFilesForAssembly(@NotNull ArrayList<String> filenames, String leadFilename, @Nullable String exceptionHandler) throws ProcessingException {
         return prepareFilesForAssembly(filenames, leadFilename, exceptionHandler, false);
     }
 
@@ -231,7 +236,7 @@ public class MIPSProgram {
      * objects for any additional files (send ArrayList to assembler)
      * @throws ProcessingException Will throw exception if errors occured while reading or tokenizing.
      **/
-    public ArrayList<MIPSProgram> prepareFilesForAssembly(ArrayList<String> filenames, String leadFilename, String exceptionHandler, boolean ignoreErrors) throws ProcessingException {
+    public @NotNull ArrayList<MIPSProgram> prepareFilesForAssembly(@NotNull ArrayList<String> filenames, String leadFilename, @Nullable String exceptionHandler, boolean ignoreErrors) throws ProcessingException {
         ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
         int leadFilePosition = 0;
         if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
@@ -262,11 +267,13 @@ public class MIPSProgram {
      * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
+    @Nullable
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled)
             throws ProcessingException {
         return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, false);
     }
 
+    @Nullable
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors) throws ProcessingException {
         return assemble(MIPSProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, false);
@@ -284,6 +291,7 @@ public class MIPSProgram {
      * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
      * @throws ProcessingException Will throw exception if errors occured while assembling.
      **/
+    @Nullable
     public ErrorList assemble(ArrayList<MIPSProgram> MIPSProgramsToAssemble, boolean extendedAssemblerEnabled,
                               boolean warningsAreErrors, boolean ignoreErrors) throws ProcessingException {
         this.backStepper = null;
@@ -329,7 +337,7 @@ public class MIPSProgram {
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occured while simulating.
      **/
-    public boolean simulateFromPC(int[] breakPoints, int maxSteps, AbstractAction a) throws ProcessingException {
+    public boolean simulateFromPC(int @Nullable[] breakPoints, int maxSteps, @Nullable AbstractAction a) throws ProcessingException {
         steppedExecution = false;
         Simulator sim = Simulator.getInstance();
         return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a);
@@ -343,7 +351,7 @@ public class MIPSProgram {
      * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occured while simulating.
      **/
-    public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
+    public boolean simulateStepAtPC(@Nullable AbstractAction a) throws ProcessingException {
         steppedExecution = true;
         Simulator sim = Simulator.getInstance();
         return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
@@ -367,7 +375,7 @@ public class MIPSProgram {
      * @return instatiated MacroPool
      * @author M.H.Sekhavat <sekhavat17@gmail.com>
      */
-    public MacroPool createMacroPool() {
+    public @NotNull MacroPool createMacroPool() {
         macroPool = new MacroPool(this);
         return macroPool;
     }
@@ -378,6 +386,7 @@ public class MIPSProgram {
      * @return MacroPool
      * @author M.H.Sekhavat <sekhavat17@gmail.com>
      */
+    @Nullable
     public MacroPool getLocalMacroPool() {
         return macroPool;
     }

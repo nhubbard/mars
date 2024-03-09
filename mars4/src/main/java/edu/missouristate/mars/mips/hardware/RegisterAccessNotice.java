@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Object provided to Observers of runtime access to MIPS register.
  * Observer can get the access type (R/W) and register number.
@@ -30,7 +32,7 @@ public class RegisterAccessNotice extends AccessNotice {
     /**
      * String representation indicates access type and which register
      */
-    public String toString() {
+    public @NotNull String toString() {
         return ((this.getAccessType() == AccessNotice.READ) ? "R " : "W ") +
                 "Reg " + registerName;
     }

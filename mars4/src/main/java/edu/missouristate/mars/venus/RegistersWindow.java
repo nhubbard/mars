@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,7 +57,7 @@ public class RegistersWindow extends JPanel implements Observer {
      * @return The array object with the data for the window.
      **/
 
-    public Object[][] setupWindow() {
+    public Object[] @NotNull [] setupWindow() {
         int valueBase = NumberDisplayBaseChooser.getBase(settings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX));
         Object[][] tableData = new Object[35][3];
         registers = RegisterFile.getRegisters();
@@ -189,7 +190,7 @@ public class RegistersWindow extends JPanel implements Observer {
      *
      * @param register Register object corresponding to row to be selected.
      */
-    void highlightCellForRegister(Register register) {
+    void highlightCellForRegister(@NotNull Register register) {
         this.highlightRow = register.getNumber();
         // Tell the system that table contents have changed.  This will trigger re-rendering
         // during which cell renderers are obtained.  The row of interest (identified by
@@ -213,8 +214,8 @@ public class RegistersWindow extends JPanel implements Observer {
             this.alignment = alignment;
         }
 
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
             cell.setFont(font);
@@ -267,7 +268,7 @@ public class RegistersWindow extends JPanel implements Observer {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -386,7 +387,7 @@ public class RegistersWindow extends JPanel implements Observer {
         };
 
         //Implement table cell tool tips.
-        public String getToolTipText(MouseEvent e) {
+        public String getToolTipText(@NotNull MouseEvent e) {
             String tip;
             java.awt.Point p = e.getPoint();
             int rowIndex = rowAtPoint(p);
@@ -414,10 +415,10 @@ public class RegistersWindow extends JPanel implements Observer {
         };
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             return
                     new JTableHeader(columnModel) {
-                        public String getToolTipText(MouseEvent e) {
+                        public String getToolTipText(@NotNull MouseEvent e) {
                             String tip = null;
                             java.awt.Point p = e.getPoint();
                             int index = columnModel.getColumnIndexAtX(p.x);

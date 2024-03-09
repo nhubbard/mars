@@ -8,6 +8,8 @@ import edu.missouristate.mars.assembler.TokenList;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.StringTokenizer;
@@ -25,7 +27,7 @@ import java.util.StringTokenizer;
 public class ExtendedInstruction extends Instruction {
 
     private final ArrayList<String> translationStrings;
-    private final ArrayList<String> compactTranslationStrings;
+    private final @Nullable ArrayList<String> compactTranslationStrings;
 
     /**
      * Constructor for ExtendedInstruction.
@@ -41,7 +43,7 @@ public class ExtendedInstruction extends Instruction {
      *                           by assuming that data label addresses are 16 bits instead of 32
      **/
 
-    public ExtendedInstruction(String example, String translation, String compactTranslation, String description) {
+    public ExtendedInstruction(@NotNull String example, String translation, String compactTranslation, String description) {
         this.exampleFormat = example;
         this.description = description;
         this.mnemonic = this.extractOperator(example);
@@ -59,7 +61,7 @@ public class ExtendedInstruction extends Instruction {
      * @param description a helpful description to be included on help requests
      **/
 
-    public ExtendedInstruction(String example, String translation, String description) {
+    public ExtendedInstruction(@NotNull String example, String translation, String description) {
         this.exampleFormat = example;
         this.description = description;
         this.mnemonic = this.extractOperator(example);
@@ -77,7 +79,7 @@ public class ExtendedInstruction extends Instruction {
      *                    of one or more MIPS basic instructions.
      **/
 
-    public ExtendedInstruction(String example, String translation) {
+    public ExtendedInstruction(@NotNull String example, String translation) {
         this(example, translation, "");
     }
 
@@ -190,8 +192,8 @@ public class ExtendedInstruction extends Instruction {
      * @param theTokenList a TokenList containing tokens from extended instruction.
      * @return String representing basic assembler statement.
      */
-
-    public static String makeTemplateSubstitutions(MIPSProgram program, String template, TokenList theTokenList) {
+    @Nullable
+    public static String makeTemplateSubstitutions(@NotNull MIPSProgram program, String template, @NotNull TokenList theTokenList) {
         String instruction = template;
         int index;
         // Added 22 Jan 2008 by DPS.  The DBNOP template means to generate a "nop" instruction if delayed branching
@@ -528,7 +530,7 @@ public class ExtendedInstruction extends Instruction {
     // Performs a String substitution.  Java 1.5 adds an overloaded String.replace method to
     // do this directly but I wanted to stay 1.4 compatible.
     // Modified 12 July 2006 to "substitute all occurances", not just the first.
-    private static String substitute(String original, String find, String replacement) {
+    private static @NotNull String substitute(@NotNull String original, @NotNull String find, String replacement) {
         if (!original.contains(find) || find.equals(replacement)) {
             return original;  // second condition prevents infinite loop below
         }
@@ -543,7 +545,7 @@ public class ExtendedInstruction extends Instruction {
     // Performs a String substitution, but will only substitute for the first match.
     // Java 1.5 adds an overloaded String.replace method to do this directly but I
     // wanted to stay 1.4 compatible.
-    private static String substituteFirst(String original, String find, String replacement) {
+    private static @NotNull String substituteFirst(@NotNull String original, @NotNull String find, String replacement) {
         if (!original.contains(find) || find.equals(replacement)) {
             return original;  // second condition prevents infinite loop below
         }
@@ -560,7 +562,7 @@ public class ExtendedInstruction extends Instruction {
     // expands to, which is a string, and breaks out into separate
     // instructions.  They are separated by '\n' character.
 
-    private ArrayList<String> buildTranslationList(String translation) {
+    private ArrayList<String> buildTranslationList(@Nullable String translation) {
         if (translation == null || translation.isEmpty()) {
             return null;
         }
@@ -581,7 +583,7 @@ public class ExtendedInstruction extends Instruction {
      * Returns length in bytes of corresponding binary instruction(s).
      * Returns 0 if the ArrayList is null or empty.
      */
-    private int getInstructionLength(ArrayList<String> translationList) {
+    private int getInstructionLength(@Nullable ArrayList<String> translationList) {
         if (translationList == null || translationList.isEmpty()) {
             return 0;
         }

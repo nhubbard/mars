@@ -1,5 +1,8 @@
 package edu.missouristate.mars.venus;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -48,7 +51,7 @@ public class RepeatButton extends JButton
     /**
      * The hold-down timer for this button.
      */
-    private Timer timer = null;
+    private @Nullable Timer timer = null;
 
 
     /**
@@ -217,7 +220,7 @@ public class RepeatButton extends JButton
      *
      * @param ae the action event
      */
-    public void actionPerformed(ActionEvent ae) {
+    public void actionPerformed(@NotNull ActionEvent ae) {
         // process events only from this components
         if (ae.getSource() == this.timer) {
             ActionEvent event = new ActionEvent(
@@ -236,7 +239,7 @@ public class RepeatButton extends JButton
      *
      * @param me the mouse event
      */
-    public void mouseClicked(MouseEvent me) {
+    public void mouseClicked(@NotNull MouseEvent me) {
         // process events only from this components
         if (me.getSource() == this) {
             this.pressed = false;
@@ -251,7 +254,7 @@ public class RepeatButton extends JButton
      *
      * @param me the mouse event
      */
-    public void mousePressed(MouseEvent me) {
+    public void mousePressed(@NotNull MouseEvent me) {
         // process events only from this components
         if (me.getSource() == this && this.isEnabled() && this.isRepeatEnabled()) {
             this.pressed = true;
@@ -268,7 +271,7 @@ public class RepeatButton extends JButton
      *
      * @param me the mouse event
      */
-    public void mouseReleased(MouseEvent me) {
+    public void mouseReleased(@NotNull MouseEvent me) {
         // process events only from this components
         if (me.getSource() == this) {
             this.pressed = false;
@@ -283,7 +286,7 @@ public class RepeatButton extends JButton
      *
      * @param me the mouse event
      */
-    public void mouseEntered(MouseEvent me) {
+    public void mouseEntered(@NotNull MouseEvent me) {
         // process events only from this components
         if (me.getSource() == this && this.isEnabled() && this.isRepeatEnabled()) {
             if (this.pressed && !this.timer.isRunning()) {
@@ -299,7 +302,7 @@ public class RepeatButton extends JButton
      *
      * @param me the mouse event
      */
-    public void mouseExited(MouseEvent me) {
+    public void mouseExited(@NotNull MouseEvent me) {
         // process events only from this components
         if (me.getSource() == this) {
             if (this.timer.isRunning()) {

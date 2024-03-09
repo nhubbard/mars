@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.event.*;
 import java.util.Objects;
@@ -98,7 +99,7 @@ public class RunGoAction extends GuiAction {
      * terminated due to completion or exception.
      */
 
-    public void stopped(ProcessingException pe, int reason) {
+    public void stopped(@Nullable ProcessingException pe, int reason) {
         // show final register and data segment values.
         executePane.getRegistersWindow().updateRegisters();
         executePane.getCoprocessor1Window().updateRegisters();

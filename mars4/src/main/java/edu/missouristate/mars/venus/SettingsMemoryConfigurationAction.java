@@ -4,6 +4,7 @@ import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.awt.*;
@@ -19,7 +20,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     JDialog configDialog;
     JSlider fontSizeSelector;
     JTextField fontSizeDisplay;
-    final SettingsMemoryConfigurationAction thisAction;
+    final @NotNull SettingsMemoryConfigurationAction thisAction;
 
     // Used to determine upon OK, whether or not anything has changed.
     String initialFontFamily, initialFontStyle, initialFontSize;
@@ -66,7 +67,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
             this.setLocationRelativeTo(owner);
         }
 
-        private JPanel buildDialogPanel() {
+        private @NotNull JPanel buildDialogPanel() {
             JPanel dialogPanel = new JPanel(new BorderLayout());
             dialogPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
@@ -79,7 +80,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
             return dialogPanel;
         }
 
-        private Component buildConfigChooser() {
+        private @NotNull Component buildConfigChooser() {
             JPanel chooserPanel = new JPanel(new GridLayout(4, 1));
             ButtonGroup choices = new ButtonGroup();
             Iterator<MemoryConfiguration> configurationsIterator = MemoryConfigurations.getConfigurationsIterator();
@@ -100,7 +101,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
         }
 
 
-        private Component buildConfigDisplay() {
+        private @NotNull Component buildConfigDisplay() {
             JPanel displayPanel = new JPanel();
             MemoryConfiguration config = MemoryConfigurations.getCurrentConfiguration();
             String[] configurationItemNames = config.getConfigurationItemNames();
@@ -133,7 +134,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
 
         // Carry out action for the radio buttons.
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             MemoryConfiguration config = ((ConfigurationButton) e.getSource()).getConfiguration();
             setConfigDisplay(config);
             this.selectedConfigurationButton = (ConfigurationButton) e.getSource();
@@ -141,7 +142,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
 
         // Row of control buttons to be placed along the button of the dialog
-        private Component buildControlPanel() {
+        private @NotNull Component buildControlPanel() {
             Box controlPanel = Box.createHorizontalBox();
             JButton okButton = new JButton("Apply and Close");
             okButton.setToolTipText(SettingsHighlightingAction.CLOSE_TOOL_TIP_TEXT);
@@ -207,7 +208,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
 
         // Set name values in JLabels and address values in the JTextFields
-        private void setConfigDisplay(MemoryConfiguration config) {
+        private void setConfigDisplay(@NotNull MemoryConfiguration config) {
             String[] configurationItemNames = config.getConfigurationItemNames();
             int[] configurationItemValues = config.getConfigurationItemValues();
             // Will use TreeMap to extract list of address-name pairs sorted by
@@ -234,9 +235,9 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
     // Handy class to connect button to its configuration...
     private static class ConfigurationButton extends JRadioButton {
-        private final MemoryConfiguration configuration;
+        private final @NotNull MemoryConfiguration configuration;
 
-        public ConfigurationButton(MemoryConfiguration config) {
+        public ConfigurationButton(@NotNull MemoryConfiguration config) {
             super(config.getConfigurationName(), config == MemoryConfigurations.getCurrentConfiguration());
             this.configuration = config;
         }

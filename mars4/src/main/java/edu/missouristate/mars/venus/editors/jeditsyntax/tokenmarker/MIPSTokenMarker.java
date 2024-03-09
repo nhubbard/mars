@@ -11,6 +11,8 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.venus.editors.jeditsyntax.KeywordMap;
 import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.text.Segment;
 import java.util.ArrayList;
@@ -31,7 +33,7 @@ public class MIPSTokenMarker extends TokenMarker {
         this.keywords = keywords;
     }
 
-    public static String[] getMIPSTokenLabels() {
+    public static String @NotNull [] getMIPSTokenLabels() {
         if (tokenLabels == null) {
             tokenLabels = new String[Token.ID_COUNT];
             tokenLabels[Token.COMMENT1] = "Comment";
@@ -47,7 +49,7 @@ public class MIPSTokenMarker extends TokenMarker {
         return tokenLabels;
     }
 
-    public static String[] getMIPSTokenExamples() {
+    public static String @NotNull [] getMIPSTokenExamples() {
         if (tokenExamples == null) {
             tokenExamples = new String[Token.ID_COUNT];
             tokenExamples[Token.COMMENT1] = "# Load";
@@ -64,7 +66,7 @@ public class MIPSTokenMarker extends TokenMarker {
     }
 
 
-    public byte markTokensImpl(byte token, Segment line, int lineIndex) {
+    public byte markTokensImpl(byte token, @NotNull Segment line, int lineIndex) {
         char[] array = line.array;
         int offset = line.offset;
         lastOffset = offset;
@@ -210,7 +212,7 @@ public class MIPSTokenMarker extends TokenMarker {
      * @param tokenText the source String that matched to the token
      * @return ArrayList of PopupHelpItem objects, one per match.
      */
-    public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
+    public @Nullable ArrayList<PopupHelpItem> getTokenExactMatchHelp(@Nullable Token token, String tokenText) {
         ArrayList<PopupHelpItem> matches = null;
         if (token != null && token.id == Token.KEYWORD1) {
             ArrayList<Instruction> instrMatches = Globals.instructionSet.matchOperator(tokenText);
@@ -250,7 +252,7 @@ public class MIPSTokenMarker extends TokenMarker {
      * @return ArrayList of PopupHelpItem objects, one per match.
      */
 
-    public ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(String line, Token tokenList, Token token, String tokenText) {
+    public @Nullable ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(@NotNull String line, @Nullable Token tokenList, @Nullable Token token, @NotNull String tokenText) {
         ArrayList<PopupHelpItem> matches = null;
 
         // CASE:  Unlikely boundary case...
@@ -358,7 +360,7 @@ public class MIPSTokenMarker extends TokenMarker {
     // Return ArrayList of PopupHelpItem for match of directives.  If second argument
     // true, will do exact match.  If false, will do prefix match.  Returns null
     // if no matches.
-    private ArrayList<PopupHelpItem> getTextFromDirectiveMatch(String tokenText, boolean exact) {
+    private @Nullable ArrayList<PopupHelpItem> getTextFromDirectiveMatch(String tokenText, boolean exact) {
         ArrayList<PopupHelpItem> matches = null;
         ArrayList<Directives> directiveMatches = null;
         if (exact) {
@@ -382,7 +384,7 @@ public class MIPSTokenMarker extends TokenMarker {
     // Return text for match of instruction mnemonic.  If second argument true, will
     // do exact match.  If false, will do prefix match.   Text is returned as ArrayList
     // of PopupHelpItem objects. If no matches, returns null.
-    private ArrayList<PopupHelpItem> getTextFromInstructionMatch(String tokenText, boolean exact) {
+    private @Nullable ArrayList<PopupHelpItem> getTextFromInstructionMatch(String tokenText, boolean exact) {
         String text = null;
         ArrayList<Instruction> matches;
         ArrayList<PopupHelpItem> results = new ArrayList<>();

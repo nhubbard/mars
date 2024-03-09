@@ -3,6 +3,8 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.MIPSProgram;
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 
@@ -27,16 +29,16 @@ public class MacroPool {
     /**
      * List of macros defined by now
      */
-    private final ArrayList<Macro> macroList;
+    private final @NotNull ArrayList<Macro> macroList;
 
     /**
      * @see MacroPool#beginMacro
      */
-    private Macro current;
+    @Nullable private Macro current;
 
-    private final ArrayList<Integer> callStack;
+    private final @NotNull ArrayList<Integer> callStack;
 
-    private final ArrayList<Integer> callStackOrigLines;
+    private final @NotNull ArrayList<Integer> callStackOrigLines;
 
     /**
      * @see #getNextCounter()
@@ -66,7 +68,7 @@ public class MacroPool {
      *
      * @param nameToken Token containing name of macro after <code>.macro</code> directive
      */
-    public void beginMacro(Token nameToken) {
+    public void beginMacro(@NotNull Token nameToken) {
         current = new Macro();
         current.setName(nameToken.getValue());
         current.setFromLine(nameToken.getSourceLine());
@@ -81,7 +83,7 @@ public class MacroPool {
      *
      * @param endToken Token containing <code>.end_macro</code> directive in source code
      */
-    public void commitMacro(Token endToken) {
+    public void commitMacro(@NotNull Token endToken) {
         current.setToLine(endToken.getSourceLine());
         current.setOriginalToLine(endToken.getOriginalSourceLine());
         current.readyForCommit();
@@ -96,9 +98,10 @@ public class MacroPool {
      * @return {@link Macro} object matching the name and argument count of
      * tokens passed
      */
-    public Macro getMatchingMacro(TokenList tokens, int callerLine) {
+    @Nullable
+    public Macro getMatchingMacro(@NotNull TokenList tokens, int callerLine) {
         if (tokens.isEmpty()) return null;
-        Macro ret = null;
+        @Nullable Macro ret = null;
         Token firstToken = tokens.get(0);
         for (Macro macro : macroList) {
             if (macro.getName().equals(firstToken.getValue()) && macro.getArgs().size() + 1 == tokens.size() && (ret == null || ret.getFromLine() < macro.getFromLine()))
@@ -117,12 +120,13 @@ public class MacroPool {
         return false;
     }
 
+    @Nullable
     public Macro getCurrent() {
         return current;
     }
 
     @ExcludeFromJacocoGeneratedReport
-    public void setCurrent(Macro current) {
+    public void setCurrent(@Nullable Macro current) {
         this.current = current;
     }
 
@@ -138,11 +142,11 @@ public class MacroPool {
     }
 
     @ExcludeFromJacocoGeneratedReport
-    public ArrayList<Integer> getCallStack() {
+    public @NotNull ArrayList<Integer> getCallStack() {
         return callStack;
     }
 
-    public boolean pushOnCallStack(Token token) { //returns true if detected expansion loop
+    public boolean pushOnCallStack(@NotNull Token token) { //returns true if detected expansion loop
         int sourceLine = token.getSourceLine();
         int origSourceLine = token.getOriginalSourceLine();
         if (callStack.contains(sourceLine))
@@ -157,7 +161,7 @@ public class MacroPool {
         callStackOrigLines.remove(callStackOrigLines.size() - 1);
     }
 
-    public String getExpansionHistory() {
+    public @NotNull String getExpansionHistory() {
         StringBuilder ret = new StringBuilder();
         for (int i = 0; i < callStackOrigLines.size(); i++) {
             if (i > 0) ret.append("->");
@@ -167,7 +171,7 @@ public class MacroPool {
     }
 
     @ExcludeFromJacocoGeneratedReport
-    ArrayList<Macro> getMacrosUnderTesting() {
+    @NotNull ArrayList<Macro> getMacrosUnderTesting() {
         if (!Globals.isRunningTest())
             throw new IllegalStateException("This method is only for use in tests. DO NOT USE OUTSIDE OF TESTS.");
         return macroList;

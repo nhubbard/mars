@@ -8,6 +8,8 @@ import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.FilenameFinder;
 import edu.missouristate.mars.util.MemoryDump;
 import edu.missouristate.mars.venus.VenusUI;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.io.File;
@@ -51,7 +53,9 @@ public class MarsLaunch {
     private int maxSteps;
     private int instructionCount;
     private PrintStream out; // stream for display of command line output
+    @Nullable
     private ArrayList<String[]> dumpTriples = null; // each element holds 3 arguments for dump option
+    @Nullable
     private ArrayList<String> programArgumentList; // optional program args for MIPS program (becomes argc, argv)
     private int assembleErrorExitCode;  // MARS command exit code to return if assemble error occurs
     private int simulateErrorExitCode;// MARS command exit code to return if simulation error occurs
@@ -104,7 +108,7 @@ public class MarsLaunch {
      * that follows it is interpreted as a program argument to be<br>
      * made available to the MIPS program at runtime.<br>
      */
-    public MarsLaunch(String[] args) {
+    public MarsLaunch(String @NotNull [] args) {
         boolean gui = (args.length == 0);
         Globals.initialize(gui);
         if (gui) {
@@ -155,7 +159,7 @@ public class MarsLaunch {
 
         for (String[] dumpTriple : dumpTriples) {
             File file = new File(dumpTriple[2]);
-            Integer[] segInfo = MemoryDump.getSegmentBounds(dumpTriple[0]);
+            @Nullable Integer[] segInfo = MemoryDump.getSegmentBounds(dumpTriple[0]);
             // If not segment name, see if it is address range instead.  DPS 14-July-2008
             if (segInfo == null) {
                 try {
@@ -173,7 +177,7 @@ public class MarsLaunch {
             }
             DumpFormatLoader loader = new DumpFormatLoader();
             ArrayList<DumpFormat> dumpFormats = loader.loadDumpFormats();
-            DumpFormat format = DumpFormatLoader.findDumpFormatGivenCommandDescriptor(dumpFormats, dumpTriple[1]);
+            @Nullable DumpFormat format = DumpFormatLoader.findDumpFormatGivenCommandDescriptor(dumpFormats, dumpTriple[1]);
             if (format == null) {
                 out.println("Error while attempting to save dump, format " + dumpTriple[1] + " was not found!");
                 continue;
@@ -216,7 +220,7 @@ public class MarsLaunch {
     // and build data structures.  For help option (h), display the help.
     // Returns true if command args parse OK, false otherwise.
 
-    private boolean parseCommandArgs(String[] args) {
+    private boolean parseCommandArgs(String @NotNull [] args) {
         String noCopyrightSwitch = "nc";
         String displayMessagesToErrSwitch = "me";
         boolean argsOK = true;
@@ -269,7 +273,7 @@ public class MarsLaunch {
             }
             if (args[i].equalsIgnoreCase("mc")) {
                 String configName = args[++i];
-                MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
+                @Nullable MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
                 if (config == null) {
                     out.println("Invalid memory configuration: " + configName);
                     argsOK = false;
@@ -438,7 +442,7 @@ public class MarsLaunch {
                     code.prepareFilesForAssembly(filesToAssemble, mainFile.getAbsolutePath(), null);
             if (Globals.debug) out.println("--------  ASSEMBLY BEGINS  -----------");
             // Added logic to check for warnings and print if any. DPS 11/28/06
-            ErrorList warnings = code.assemble(MIPSProgramsToAssemble, pseudo, warningsAreErrors);
+            @Nullable ErrorList warnings = code.assemble(MIPSProgramsToAssemble, pseudo, warningsAreErrors);
             if (warnings != null && warnings.warningsOccurred()) out.println(warnings.generateWarningReport());
             RegisterFile.initializeProgramCounter(startAtMain); // DPS 3/9/09
             if (simulate) {
@@ -466,8 +470,8 @@ public class MarsLaunch {
      * (e.g., 0x00400000-0x00400010)
      * If the number is not a multiple of 4, it will be rounded up to the next highest number.
      */
-    private String[] checkMemoryAddressRange(String arg) throws NumberFormatException {
-        String[] memoryRange = null;
+    private String @Nullable [] checkMemoryAddressRange(@NotNull String arg) throws NumberFormatException {
+        @Nullable String[] memoryRange = null;
         if (arg.indexOf(rangeSeparator) > 0 && arg.indexOf(rangeSeparator) < arg.length() - 1) {
             // assume the correct format, two numbers separated by -, no embedded spaces.
             // If that doesn't work, it is invalid.
@@ -571,7 +575,7 @@ public class MarsLaunch {
     /**
      * Formats int value for display: decimal, hex, ascii
      */
-    private String formatIntForDisplay(int value) {
+    private @NotNull String formatIntForDisplay(int value) {
         return switch (displayFormat) {
             case DECIMAL -> "" + value;
             case ASCII -> Binary.intToAscii(value);
@@ -602,7 +606,7 @@ public class MarsLaunch {
                 try {
                     // Allow display of binary text segment (machine code) DPS 14-July-2008
                     if (Memory.inTextSegment(addr) || Memory.inKernelTextSegment(addr)) {
-                        Integer iValue = Globals.memory.getRawWordOrNull(addr);
+                        @Nullable Integer iValue = Globals.memory.getRawWordOrNull(addr);
                         value = (iValue == null) ? 0 : iValue;
                     } else value = Globals.memory.getWord(addr);
                     out.print(formatIntForDisplay(value) + "\t");
@@ -619,7 +623,7 @@ public class MarsLaunch {
      * If the option to display MARS messages to standard err (System.err) is present, it must be processed before all
      * others, since messages may be output as early as during the command parse.
      */
-    private void processDisplayMessagesToErrSwitch(String[] args, String displayMessagesToErrSwitch) {
+    private void processDisplayMessagesToErrSwitch(String @NotNull [] args, String displayMessagesToErrSwitch) {
         for (String arg : args) {
             if (arg.toLowerCase().equals(displayMessagesToErrSwitch)) {
                 out = System.err;
@@ -631,7 +635,7 @@ public class MarsLaunch {
     /**
      * Decide whether copyright should be displayed, and display if so.
      */
-    private void displayCopyright(String[] args, String noCopyrightSwitch) {
+    private void displayCopyright(String @NotNull [] args, String noCopyrightSwitch) {
         boolean print = true;
         for (String arg : args) if (arg.toLowerCase().equals(noCopyrightSwitch)) return;
         out.println("MARS " + Globals.version + "  Copyright " + Globals.copyrightYears + " " + Globals.copyrightHolders + "\n");

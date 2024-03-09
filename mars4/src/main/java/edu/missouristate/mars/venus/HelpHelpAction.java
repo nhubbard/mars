@@ -3,6 +3,7 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.instructions.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.io.*;
@@ -22,7 +23,7 @@ public class HelpHelpAction extends GuiAction {
     }
 
     // ideally read or computed from config file...
-    private Dimension getSize() {
+    private @NotNull Dimension getSize() {
         return new Dimension(800, 600);
     }
 
@@ -86,7 +87,7 @@ public class HelpHelpAction extends GuiAction {
 
 
     // Create panel containing Help Info read from html document.
-    private JPanel createHTMLHelpPanel(String filename) {
+    private @NotNull JPanel createHTMLHelpPanel(String filename) {
         JPanel helpPanel = new JPanel(new BorderLayout());
         JScrollPane helpScrollPane;
         JEditorPane helpDisplay;
@@ -115,7 +116,7 @@ public class HelpHelpAction extends GuiAction {
 
 
     // Set up the copyright notice for display.
-    private JPanel createCopyrightInfoPanel() {
+    private @NotNull JPanel createCopyrightInfoPanel() {
         JPanel marsCopyrightInfo = new JPanel(new BorderLayout());
         JScrollPane marsCopyrightScrollPane;
         JEditorPane marsCopyrightDisplay;
@@ -143,7 +144,7 @@ public class HelpHelpAction extends GuiAction {
     }
 
     // Set up MARS help tab.  Subtabs get their contents from HTML files.
-    private JPanel createMarsHelpInfoPanel() {
+    private @NotNull JPanel createMarsHelpInfoPanel() {
         JPanel marsHelpInfo = new JPanel(new BorderLayout());
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.addTab("Intro", createHTMLHelpPanel("MarsHelpIntro.html"));
@@ -160,7 +161,7 @@ public class HelpHelpAction extends GuiAction {
 
 
     // Set up MIPS help tab.  Most contents are generated from instruction set info.
-    private JPanel createMipsHelpInfoPanel() {
+    private @NotNull JPanel createMipsHelpInfoPanel() {
         JPanel mipsHelpInfo = new JPanel(new BorderLayout());
         String helpRemarksColor = "CCFF99";
         // Introductory remarks go at the top as a label
@@ -248,7 +249,7 @@ public class HelpHelpAction extends GuiAction {
     ///////////////  Methods to construct MIPS help tabs from internal MARS objects  //////////////
 
     /////////////////////////////////////////////////////////////////////////////
-    private JScrollPane createMipsDirectivesHelpPane() {
+    private @NotNull JScrollPane createMipsDirectivesHelpPane() {
         Vector<String> exampleList = new Vector<>();
         String blanks = "            ";  // 12 blanks
         Directives direct;
@@ -267,7 +268,7 @@ public class HelpHelpAction extends GuiAction {
     }
 
     ////////////////////////////////////////////////////////////////////////////
-    private JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
+    private @NotNull JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
         ArrayList<Instruction> instructionList = Globals.instructionSet.getInstructionList();
         Vector<String> exampleList = new Vector<>(instructionList.size());
         Iterator<Instruction> it = instructionList.iterator();
@@ -299,8 +300,8 @@ public class HelpHelpAction extends GuiAction {
     private static class MyCellRenderer extends JLabel implements ListCellRenderer<String> {
         // This is the only method defined by ListCellRenderer.
         // We just reconfigure the JLabel each time we're called.
-        public Component getListCellRendererComponent(
-                JList list, // the list
+        public @NotNull Component getListCellRendererComponent(
+                @NotNull JList list, // the list
                 String value, // value to display
                 int index, // cell index
                 boolean isSelected, // is the cell selected
@@ -333,7 +334,7 @@ public class HelpHelpAction extends GuiAction {
         private static final String cannotDisplayMessage =
                 "<html><title></title><body><strong>Unable to display requested document.</strong></body></html>";
 
-        public void hyperlinkUpdate(HyperlinkEvent e) {
+        public void hyperlinkUpdate(@NotNull HyperlinkEvent e) {
             if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                 JEditorPane pane = (JEditorPane) e.getSource();
                 if (e instanceof HTMLFrameHyperlinkEvent evt) {

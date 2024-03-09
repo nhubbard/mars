@@ -1,6 +1,8 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 
@@ -15,90 +17,29 @@ import java.util.ArrayList;
  **/
 public final class Directives {
     private static final ArrayList<Directives> directiveList = new ArrayList<>();
-    public static final Directives DATA = new Directives(
-        ".data",
-        "Subsequent items stored in Data segment at next available address"
-    );
-    public static final Directives TEXT = new Directives(
-        ".text",
-        "Subsequent items (instructions) stored in Text segment at next available address"
-    );
-    public static final Directives WORD = new Directives(
-        ".word",
-        "Store the listed value(s) as 32 bit words on word boundary"
-    );
-    public static final Directives ASCII = new Directives(
-        ".ascii",
-        "Store the string in the Data segment but do not add null terminator"
-    );
-    public static final Directives ASCIIZ = new Directives(
-        ".asciiz",
-        "Store the string in the Data segment and add null terminator"
-    );
-    public static final Directives BYTE = new Directives(
-        ".byte",
-        "Store the listed value(s) as 8 bit bytes"
-    );
-    public static final Directives ALIGN = new Directives(
-            ".align",
-            "Align next data item on specified byte boundary (0=byte, 1=half, 2=word, 3=double)"
-    );
-    public static final Directives HALF = new Directives(
-            ".half",
-            "Store the listed value(s) as 16 bit halfwords on halfword boundary"
-    );
-    public static final Directives SPACE = new Directives(
-            ".space",
-            "Reserve the next specified number of bytes in Data segment"
-    );
-    public static final Directives DOUBLE = new Directives(
-            ".double",
-            "Store the listed value(s) as double precision floating point"
-    );
-    public static final Directives FLOAT = new Directives(
-            ".float",
-            "Store the listed value(s) as single precision floating point"
-    );
-    public static final Directives EXTERN = new Directives(
-            ".extern",
-            "Declare the listed label and byte length to be a global data field"
-    );
-    public static final Directives KDATA = new Directives(
-            ".kdata",
-            "Subsequent items stored in Kernel Data segment at next available address"
-    );
-    public static final Directives KTEXT = new Directives(
-            ".ktext",
-            "Subsequent items (instructions) stored in Kernel Text segment at next available address"
-    );
-    public static final Directives GLOBL = new Directives(
-            ".globl",
-            "Declare the listed label(s) as global to enable referencing from other files"
-    );
-    public static final Directives SET = new Directives(
-            ".set",
-            "Set assembler variables.  Currently ignored but included for SPIM compatability"
-    );
+    public static final Directives DATA = new Directives(".data", "Subsequent items stored in Data segment at next available address");
+    public static final Directives TEXT = new Directives(".text", "Subsequent items (instructions) stored in Text segment at next available address");
+    public static final Directives WORD = new Directives(".word", "Store the listed value(s) as 32 bit words on word boundary");
+    public static final Directives ASCII = new Directives(".ascii", "Store the string in the Data segment but do not add null terminator");
+    public static final Directives ASCIIZ = new Directives(".asciiz", "Store the string in the Data segment and add null terminator");
+    public static final Directives BYTE = new Directives(".byte", "Store the listed value(s) as 8 bit bytes");
+    public static final Directives ALIGN = new Directives(".align", "Align next data item on specified byte boundary (0=byte, 1=half, 2=word, 3=double)");
+    public static final Directives HALF = new Directives(".half", "Store the listed value(s) as 16 bit halfwords on halfword boundary");
+    public static final Directives SPACE = new Directives(".space", "Reserve the next specified number of bytes in Data segment");
+    public static final Directives DOUBLE = new Directives(".double", "Store the listed value(s) as double precision floating point");
+    public static final Directives FLOAT = new Directives(".float", "Store the listed value(s) as single precision floating point");
+    public static final Directives EXTERN = new Directives(".extern", "Declare the listed label and byte length to be a global data field");
+    public static final Directives KDATA = new Directives(".kdata", "Subsequent items stored in Kernel Data segment at next available address");
+    public static final Directives KTEXT = new Directives(".ktext", "Subsequent items (instructions) stored in Kernel Text segment at next available address");
+    public static final Directives GLOBL = new Directives(".globl", "Declare the listed label(s) as global to enable referencing from other files");
+    public static final Directives SET = new Directives(".set", "Set assembler variables.  Currently ignored but included for SPIM compatability");
     /*  EQV added by DPS 11 July 2012 */
-    public static final Directives EQV = new Directives(
-            ".eqv",
-            "Substitute second operand for first. First operand is symbol, second operand is expression (like #define)"
-    );
+    public static final Directives EQV = new Directives(".eqv", "Substitute second operand for first. First operand is symbol, second operand is expression (like #define)");
     /* MACRO and END_MACRO added by Mohammad Sekhavat Oct 2012 */
-    public static final Directives MACRO = new Directives(
-            ".macro",
-            "Begin macro definition.  See .end_macro"
-    );
-    public static final Directives END_MACRO = new Directives(
-            ".end_macro",
-            "End macro definition.  See .macro"
-    );
+    public static final Directives MACRO = new Directives(".macro", "Begin macro definition.  See .end_macro");
+    public static final Directives END_MACRO = new Directives(".end_macro", "End macro definition.  See .macro");
     /*  INCLUDE added by DPS 11 Jan 2013 */
-    public static final Directives INCLUDE = new Directives(
-            ".include",
-            "Insert the contents of the specified file.  Put filename in quotes."
-    );
-
+    public static final Directives INCLUDE = new Directives(".include", "Insert the contents of the specified file.  Put filename in quotes.");
     private final String descriptor;
     private final String description; // help text
 
@@ -122,12 +63,11 @@ public final class Directives {
      * @param str A String containing candidate directive name (e.g. ".ascii")
      * @return If match is found, returns matching Directives object, else returns <tt>null</tt>.
      **/
-    public static Directives matchDirective(String str) {
-        Directives match;
+    @Nullable
+    public static Directives matchDirective(@NotNull String str) {
         for (Directives directives : directiveList) {
-            match = directives;
-            if (str.equalsIgnoreCase(match.descriptor)) {
-                return match;
+            if (str.equalsIgnoreCase(directives.descriptor)) {
+                return directives;
             }
         }
         return null;
@@ -140,13 +80,12 @@ public final class Directives {
      * @param str A String
      * @return If match is found, returns ArrayList of matching Directives objects, else returns <tt>null</tt>.
      **/
-    public static ArrayList<Directives> prefixMatchDirectives(String str) {
-        ArrayList<Directives> matches = null;
+    @Nullable
+    public static ArrayList<Directives> prefixMatchDirectives(@NotNull String str) {
+        @Nullable ArrayList<Directives> matches = null;
         for (Directives directives : directiveList) {
             if (directives.descriptor.toLowerCase().startsWith(str.toLowerCase())) {
-                if (matches == null) {
-                    matches = new ArrayList<>();
-                }
+                if (matches == null) matches = new ArrayList<>();
                 matches.add(directives);
             }
         }

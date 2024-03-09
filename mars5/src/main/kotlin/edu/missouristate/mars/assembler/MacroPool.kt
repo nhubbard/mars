@@ -52,7 +52,7 @@ import edu.missouristate.mars.MIPSProgram
  */
 class MacroPool(private val program: MIPSProgram) {
     /** The list of defined macros */
-    private val macroList: ArrayList<Macro> = arrayListOf()
+    internal val macroList: ArrayList<Macro> = arrayListOf()
     /** @see beginMacro */
     var current: Macro? = null
     private val callStack: ArrayList<Int> = arrayListOf()

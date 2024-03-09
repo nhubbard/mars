@@ -6,6 +6,7 @@ import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -51,7 +52,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+    public void dumpMemoryRange(@NotNull File file, int firstAddress, int lastAddress)
             throws AddressErrorException, IOException {
 
         PrintStream out = new PrintStream(new FileOutputStream(file));

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 
@@ -26,7 +27,7 @@ public class Binary {
      * @return String consisting of '1' and '0' characters corresponding to the requested binary sequence.
      **/
 
-    public static String intToBinaryString(int value, int length) {
+    public static @NotNull String intToBinaryString(int value, int length) {
         char[] result = new char[length];
         int index = length - 1;
         for (int i = 0; i < length; i++) {
@@ -44,7 +45,7 @@ public class Binary {
      * @return String consisting of '1' and '0' characters corresponding to the requested binary sequence.
      **/
 
-    public static String intToBinaryString(int value) {
+    public static @NotNull String intToBinaryString(int value) {
         return intToBinaryString(value, 32);
     }
 
@@ -57,7 +58,7 @@ public class Binary {
      * @return String consisting of '1' and '0' characters corresponding to the requested binary sequence.
      **/
 
-    public static String longToBinaryString(long value, int length) {
+    public static @NotNull String longToBinaryString(long value, int length) {
         char[] result = new char[length];
         int index = length - 1;
         for (int i = 0; i < length; i++) {
@@ -75,7 +76,7 @@ public class Binary {
      * @return String consisting of '1' and '0' characters corresponding to the requested binary sequence.
      **/
 
-    public static String longToBinaryString(long value) {
+    public static @NotNull String longToBinaryString(long value) {
         return longToBinaryString(value, 64);
     }
 
@@ -89,7 +90,7 @@ public class Binary {
      * @return int whose binary value corresponds to decoded String.
      **/
 
-    public static int binaryStringToInt(String value) {
+    public static int binaryStringToInt(@NotNull String value) {
         int result = value.charAt(0) - 48;
         for (int i = 1; i < value.length(); i++) {
             result = (result << 1) | (value.charAt(i) - 48);
@@ -106,7 +107,7 @@ public class Binary {
      * @return long whose binary value corresponds to decoded String.
      **/
 
-    public static long binaryStringToLong(String value) {
+    public static long binaryStringToLong(@NotNull String value) {
         long result = value.charAt(0) - 48;
         for (int i = 1; i < value.length(); i++) {
             result = (result << 1) | (value.charAt(i) - 48);
@@ -124,7 +125,7 @@ public class Binary {
      * @return String containing '0', '1', ...'F' characters which form hexadecimal
      * equivalent of decoded String.
      **/
-    public static String binaryStringToHexString(String value) {
+    public static @NotNull String binaryStringToHexString(@NotNull String value) {
         int digits = (value.length() + 3) / 4;
         char[] hexChars = new char[digits + 2];
         int position, result, pow, rep;
@@ -157,7 +158,7 @@ public class Binary {
      *              Works either with or without leading "Ox".
      * @return String with equivalent value in binary.
      **/
-    public static String hexStringToBinaryString(String value) {
+    public static @NotNull String hexStringToBinaryString(@NotNull String value) {
         StringBuilder result = new StringBuilder();
         // slice off leading Ox or 0X
         if (value.indexOf("0x") == 0 || value.indexOf("0X") == 0) {
@@ -234,7 +235,7 @@ public class Binary {
      * If string length > 4, returns '0'.
      **/
 
-    public static char binaryStringToHexDigit(String value) {
+    public static char binaryStringToHexDigit(@NotNull String value) {
         if (value.length() > 4)
             return '0';
         int result = 0;
@@ -255,7 +256,7 @@ public class Binary {
      * @param d The int value to convert.
      * @return String containing '0', '1', ...'F' which form hexadecimal equivalent of int.
      */
-    public static String intToHexString(int d) {
+    public static @NotNull String intToHexString(int d) {
         String leadingZero = "0";
         String leadingX = "0x";
         String t = Integer.toHexString(d);
@@ -276,7 +277,7 @@ public class Binary {
      * @param d The int value to convert.
      * @return String containing '0', '1', ...'F' which form hexadecimal equivalent of int.
      */
-    public static String intToHalfHexString(int d) {
+    public static @NotNull String intToHalfHexString(int d) {
         String leadingZero = "0";
         String leadingX = "0x";
         String t = Integer.toHexString(d);
@@ -300,7 +301,7 @@ public class Binary {
      * @return String containing '0', '1', ...'F' which form hexadecimal equivalent of long.
      */
 
-    public static String longToHexString(long value) {
+    public static @NotNull String longToHexString(long value) {
         return binaryStringToHexString(longToBinaryString(value));
     }
 
@@ -312,7 +313,7 @@ public class Binary {
      * @param d The int value to interpret.
      * @return String which forms unsigned 32 bit equivalent of int.
      */
-    public static String unsignedIntToIntString(int d) {
+    public static @NotNull String unsignedIntToIntString(int d) {
         return (d >= 0) ? Integer.toString(d) : Long.toString(UNSIGNED_BASE + d);
     }
 
@@ -325,7 +326,7 @@ public class Binary {
      * @param d The int value to interpret
      * @return String that represents ASCII equivalent
      */
-    public static String intToAscii(int d) {
+    public static @NotNull String intToAscii(int d) {
         StringBuilder result = new StringBuilder(8);
         for (int i = 3; i >= 0; i--) {
             int byteValue = getByte(d, i);
@@ -345,7 +346,7 @@ public class Binary {
      * @throws NumberFormatException if string cannot be translated into an int
      */
 
-    public static int stringToInt(String s) throws NumberFormatException {
+    public static int stringToInt(@NotNull String s) throws NumberFormatException {
         String work = s;
         int result = 0;
         // First, use Integer.decode().  This will validate most, but it flags
@@ -410,7 +411,7 @@ public class Binary {
      * @throws NumberFormatException if string cannot be translated into a long
      */
 
-    public static long stringToLong(String s) throws NumberFormatException {
+    public static long stringToLong(@NotNull String s) throws NumberFormatException {
         String work = s;
         long result;
         // First, use Long.decode().  This will validate most, but it flags
@@ -574,7 +575,7 @@ public class Binary {
      * @param v String containing numeric digits (could be decimal, octal, or hex)
      * @return Returns <tt>true</tt> if string represents a hex number, else returns <tt>false</tt>.
      **/
-    public static boolean isHex(String v) {
+    public static boolean isHex(@NotNull String v) {
         try {
             // don't care about return value, just whether it threw exception.
             // If value is EITHER a valid int OR a valid long, continue.
@@ -616,7 +617,7 @@ public class Binary {
      * @param v String containing numeric digits (could be decimal, octal, or hex)
      * @return Returns <tt>true</tt> if string represents an octal number, else returns <tt>false</tt>.
      **/
-    public static boolean isOctal(String v) {
+    public static boolean isOctal(@NotNull String v) {
         // Don't mistake "0" or a string that starts "0x" for an octal string
         try {
             // we don't care what value Binary.stringToInt(v) returns, just whether it threw exception

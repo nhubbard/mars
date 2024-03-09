@@ -2,6 +2,7 @@ package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -120,7 +121,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      *
      * @return the tool's name as String
      */
-    public String getName() {
+    public @NotNull String getName() {
         return BHTSimulator.BHT_NAME;
     }
 
@@ -138,7 +139,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * Handles the actions when selecting another value in one of the two combo boxes.
      * Selecting a different BHT size or history causes a reset of the simulator.
      */
-    public void actionPerformed(ActionEvent event) {
+    public void actionPerformed(@NotNull ActionEvent event) {
         // change of the BHT size or BHT bit configuration
         // resets the simulator
         if (event.getSource() == gui.getCbBHTentries() || event.getSource() == gui.getCbBHThistory() || event.getSource() == gui.getCbBHTinitVal()) {
@@ -172,7 +173,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      *
      * @param stmt the branch statement that is executed
      */
-    protected void handlePreBranchInst(ProgramStatement stmt) {
+    protected void handlePreBranchInst(@NotNull ProgramStatement stmt) {
 
         String strStmt = stmt.getBasicAssemblyStatement();
         int address = stmt.getAddress();
@@ -229,7 +230,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * @param stmt the statement to investigate
      * @return true, if stmt is a branch instruction, otherwise false
      */
-    protected static boolean isBranchInstruction(ProgramStatement stmt) {
+    protected static boolean isBranchInstruction(@NotNull ProgramStatement stmt) {
 
         int opCode = stmt.getBinaryStatement() >>> (32 - 6);
         int funct = stmt.getBinaryStatement() & 0x1F;
@@ -250,7 +251,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * @param stmt the branch instruction to be investigated
      * @return true if the branch will be taken, otherwise false
      */
-    protected static boolean willBranch(ProgramStatement stmt) {
+    protected static boolean willBranch(@NotNull ProgramStatement stmt) {
         int opCode = stmt.getBinaryStatement() >>> (32 - 6);
         int funct = stmt.getBinaryStatement() & 0x1F;
         int rs = stmt.getBinaryStatement() >>> (32 - 6 - 5) & 0x1F;
@@ -293,7 +294,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * @param stmt the branch instruction
      * @return the address of the instruction that is executed if the branch is taken
      */
-    protected static int extractBranchAddress(ProgramStatement stmt) {
+    protected static int extractBranchAddress(@NotNull ProgramStatement stmt) {
         short offset = (short) (stmt.getBinaryStatement() & 0xFFFF);
         return stmt.getAddress() + (offset << 2) + 4;
     }
@@ -309,7 +310,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
      * @param resource the observed resource
      * @param notice   signals the type of access (memory, register etc.)
      */
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+    protected void processMIPSUpdate(Observable resource, @NotNull AccessNotice notice) {
 
         if (!notice.accessIsFromMIPS()) return;
 

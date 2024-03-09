@@ -1,6 +1,7 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -72,7 +73,7 @@ public class EditorFont {
      * @return The int value of the corresponding Font style constant.  If the
      * string does not match any style name, returns Font.PLAIN.
      */
-    public static int styleStringToStyleInt(String style) {
+    public static int styleStringToStyleInt(@NotNull String style) {
         String styleLower = style.toLowerCase();
         for (int i = 0; i < styleStrings.length; i++) {
             if (styleLower.equals(styleStrings[i].toLowerCase())) {
@@ -106,7 +107,7 @@ public class EditorFont {
      * @return String value of parameter, unless it is less than MIN_SIZE (returns MIN_SIZE
      * as String) or greater than MAX_SIZE (returns MAX_SIZE as String).
      */
-    public static String sizeIntToSizeString(int size) {
+    public static @NotNull String sizeIntToSizeString(int size) {
         int result = (size < MIN_SIZE) ? MIN_SIZE : Math.min(size, MAX_SIZE);
         return String.valueOf(result);
     }
@@ -119,7 +120,7 @@ public class EditorFont {
      * MIN_SIZE) or greater than MAX_SIZE (returns MAX_SIZE).  If the string
      * cannot be parsed as a decimal integer, it returns DEFAULT_SIZE.
      */
-    public static int sizeStringToSizeInt(String size) {
+    public static int sizeStringToSizeInt(@NotNull String size) {
         int result = DEFAULT_SIZE;
         try {
             result = Integer.parseInt(size);
@@ -140,7 +141,7 @@ public class EditorFont {
      * @param size   String containing font size.  The defaults and limits of
      *               sizeStringToSizeInt() are substituted if necessary.
      */
-    public static Font createFontFromStringValues(String family, String style, String size) {
+    public static @NotNull Font createFontFromStringValues(String family, @NotNull String style, @NotNull String size) {
         return new Font(family, styleStringToStyleInt(style), sizeStringToSizeInt(size));
     }
 
@@ -157,7 +158,7 @@ public class EditorFont {
      * @return New string in which spaces are substituted for tabs
      * @throws NullPointerException if string is null
      */
-    public static String substituteSpacesForTabs(String string) {
+    public static @NotNull String substituteSpacesForTabs(@NotNull String string) {
         return substituteSpacesForTabs(string, Globals.getSettings().getEditorTabSize());
     }
 
@@ -171,7 +172,7 @@ public class EditorFont {
      * @return New string in which spaces are substituted for tabs
      * @throws NullPointerException if string is null
      */
-    public static String substituteSpacesForTabs(String string, int tabSize) {
+    public static @NotNull String substituteSpacesForTabs(@NotNull String string, int tabSize) {
         if (!string.contains(TAB_STRING))
             return string;
         StringBuilder result = new StringBuilder(string);
@@ -189,7 +190,7 @@ public class EditorFont {
      */
     private static final String[] commonFamilies = actualCommonFamilies();
 
-    private static String[] actualCommonFamilies() {
+    private static String @NotNull [] actualCommonFamilies() {
         String[] result = new String[allCommonFamilies.length];
         String[] availableFamilies = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
         Arrays.sort(availableFamilies); // not sure if necessary; is the list already alphabetical?

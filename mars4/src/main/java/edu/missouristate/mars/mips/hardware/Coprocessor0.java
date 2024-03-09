@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Observer;
 
@@ -156,7 +157,7 @@ public class Coprocessor0 {
      * @return The register object,or null if not found.
      **/
 
-    public static Register getRegister(String rname) {
+    public static @Nullable Register getRegister(String rname) {
         for (Register register : registers) {
             if (("$" + register.getNumber()).equals(rname) || register.getName().equals(rname)) {
                 return register;

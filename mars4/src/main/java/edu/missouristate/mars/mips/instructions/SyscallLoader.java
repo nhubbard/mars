@@ -4,6 +4,8 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallNumberOverride;
 import edu.missouristate.mars.util.FilenameFinder;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +75,7 @@ class SyscallLoader {
 
     // Will get any syscall number override specifications from MARS config file and
     // process them.  This will alter syscallList entry for affected names.
-    private ArrayList<Syscall> processSyscallNumberOverrides(ArrayList<Syscall> syscallList) {
+    private @NotNull ArrayList<Syscall> processSyscallNumberOverrides(@NotNull ArrayList<Syscall> syscallList) {
         ArrayList<SyscallNumberOverride> overrides = new Globals().getSyscallOverrides();
         SyscallNumberOverride override;
         Syscall syscall;
@@ -123,7 +125,7 @@ class SyscallLoader {
      * Method to find Syscall object associated with given service number.
      * Returns null if no associated object found.
      */
-    Syscall findSyscall(int number) {
+    @Nullable Syscall findSyscall(int number) {
         // linear search is OK since number of syscalls is small.
         Syscall service, match = null;
         if (syscallList == null) {

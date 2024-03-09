@@ -1,5 +1,7 @@
 package edu.missouristate.mars.venus;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -15,15 +17,15 @@ public class PopupListener extends MouseAdapter {
         popup = p;
     }
 
-    public void mousePressed(MouseEvent e) {
+    public void mousePressed(@NotNull MouseEvent e) {
         maybeShowPopup(e);
     }
 
-    public void mouseReleased(MouseEvent e) {
+    public void mouseReleased(@NotNull MouseEvent e) {
         maybeShowPopup(e);
     }
 
-    private void maybeShowPopup(MouseEvent e) {
+    private void maybeShowPopup(@NotNull MouseEvent e) {
         if (e.isPopupTrigger()) {
             popup.show(e.getComponent(), e.getX(), e.getY());
         }

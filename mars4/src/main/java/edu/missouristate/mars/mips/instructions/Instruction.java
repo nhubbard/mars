@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.instructions;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.assembler.TokenList;
 import edu.missouristate.mars.assembler.Tokenizer;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.StringTokenizer;
 
@@ -105,7 +106,7 @@ public abstract class Instruction {
      * instruction example.
      **/
 
-    protected String extractOperator(String example) {
+    protected String extractOperator(@NotNull String example) {
         StringTokenizer st = new StringTokenizer(example, " ,\t");
         return st.nextToken();
     }

@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.venus.editors.jeditsyntax.JEditBasedTextArea;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -23,15 +24,15 @@ import java.io.*;
 
 public class EditPane extends JPanel implements Observer {
 
-    private final MARSTextEditingArea sourceCode;
+    private final @NotNull MARSTextEditingArea sourceCode;
     private final VenusUI mainUI;
-    private final JLabel caretPositionLabel;
-    private final JCheckBox showLineNumbers;
-    private final JLabel lineNumbers;
+    private final @NotNull JLabel caretPositionLabel;
+    private final @NotNull JCheckBox showLineNumbers;
+    private final @NotNull JLabel lineNumbers;
     private static final int count = 0;
     private final boolean isCompoundEdit = false;
     private CompoundEdit compoundEdit;
-    private final FileStatus fileStatus;
+    private final @NotNull FileStatus fileStatus;
 
     /**
      * Constructor for the EditPane class.
@@ -183,7 +184,7 @@ public class EditPane extends JPanel implements Observer {
      */
     private static final String spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 
-    public String getLineNumbersList(javax.swing.text.Document doc) {
+    public @NotNull String getLineNumbersList(javax.swing.text.@NotNull Document doc) {
         StringBuilder lineNumberList = new StringBuilder("<html>");
         int lineCount = doc.getDefaultRootElement().getElementCount(); //this.getSourceLineCount();
         int digits = Integer.toString(lineCount).length();
@@ -426,7 +427,7 @@ public class EditPane extends JPanel implements Observer {
      *
      * @param p Point object with x-y (column, line number) coordinates of cursor
      */
-    public void displayCaretPosition(Point p) {
+    public void displayCaretPosition(@NotNull Point p) {
         caretPositionLabel.setText("Line: " + p.y + " Column: " + p.x);
     }
 
@@ -439,7 +440,7 @@ public class EditPane extends JPanel implements Observer {
      * @param position position of character
      * @return position Its column and line number coordinate as a Point.
      */
-    public Point convertStreamPositionToLineColumn(int position) {
+    public @NotNull Point convertStreamPositionToLineColumn(int position) {
         String textStream = sourceCode.getText();
         int line = 1;
         int column = 1;
@@ -596,7 +597,7 @@ public class EditPane extends JPanel implements Observer {
      * Determine font to use for editor line number display, given current
      * font for source code.
      */
-    private Font getLineNumberFont(Font sourceFont) {
+    private Font getLineNumberFont(@NotNull Font sourceFont) {
         return (sourceCode.getFont().getStyle() == Font.PLAIN)
                 ? sourceFont
                 : new Font(sourceFont.getFamily(), Font.PLAIN, sourceFont.getSize());

@@ -3,6 +3,7 @@ package edu.missouristate.mars.util;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +13,7 @@ public class MemoryDump {
     /**
      * A list of segmentname/dumpformat/filename triples which should be dumped
      */
-    public static ArrayList<String[]> dumpTriples = null;
+    public static @Nullable ArrayList<String[]> dumpTriples = null;
 
     private static final String[] segmentNames = {".text", ".data"};
     private static final int[] baseAddresses = new int[2];
@@ -27,7 +28,7 @@ public class MemoryDump {
      * name does not match a known segment name.
      */
 
-    public static Integer[] getSegmentBounds(String segment) {
+    public static Integer @Nullable [] getSegmentBounds(String segment) {
         for (int i = 0; i < segmentNames.length; i++) {
             if (segmentNames[i].equals(segment)) {
                 Integer[] bounds = new Integer[2];

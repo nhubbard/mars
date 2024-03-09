@@ -19,11 +19,32 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package edu.missouristate.mars.mips.hardware
+package edu.missouristate.mars.assembler
 
+import edu.missouristate.mars.MIPSProgram
+import edu.missouristate.mars.threeArgumentsOf
+import edu.missouristate.mars.tri
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TestRegister {
+class TestSourceLine {
+    // This test only checks that the constructor is okay.
 
+    @ParameterizedTest
+    @MethodSource("testConstructorSource")
+    fun testConstructor(source: String, program: MIPSProgram?, lineNumber: Int) {
+        SourceLine(source, program, lineNumber)
+    }
+
+    companion object {
+        @JvmStatic
+        fun testConstructorSource(): Stream<Arguments> = threeArgumentsOf(
+            ("main: li \$a0, 0" to MIPSProgram()) tri 0,
+            ("main: li \$a0, 0" to null) tri 0
+        )
+    }
 }

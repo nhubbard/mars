@@ -1,5 +1,8 @@
 package edu.missouristate.mars;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -26,7 +29,7 @@ public class MarsSplashScreen extends JWindow {
         // Set the window's bounds, centering the window
         // Wee bit of a hack.  I've hardcoded the image dimensions of 
         // MarsSurfacePathfinder.jpg, because obtaining them via
-        // getHeight() and getWidth() is not trival -- it is possible
+        // getHeight() and getWidth() is not trivial -- it is possible
         // that at the time of the call the image has not completed
         // loading so the Image object doesn't know how big it is.
         // So observers are involved -- see the API.
@@ -64,7 +67,7 @@ public class MarsSplashScreen extends JWindow {
 
     @SuppressWarnings("ThrowablePrintedToSystemOut")
     static class ImageBackgroundPanel extends JPanel {
-        Image image;
+        @Nullable Image image;
 
         public ImageBackgroundPanel() {
             try {
@@ -75,7 +78,7 @@ public class MarsSplashScreen extends JWindow {
         }
 
         @Override
-        protected void paintComponent(Graphics g) {
+        protected void paintComponent(@NotNull Graphics g) {
             super.paintComponent(g);
             if (image != null) g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), this);
         }

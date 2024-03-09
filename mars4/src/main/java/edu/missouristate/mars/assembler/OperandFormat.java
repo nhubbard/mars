@@ -3,6 +3,8 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.mips.instructions.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -25,7 +27,7 @@ public class OperandFormat {
      * @return Returns <tt>true</tt> if the programmer's statement matches the MIPS
      * specification, else returns <tt>false</tt>.
      */
-    static boolean tokenOperandMatch(TokenList candidateList, Instruction inst, ErrorList errors) {
+    static boolean tokenOperandMatch(@NotNull TokenList candidateList, @NotNull Instruction inst, @NotNull ErrorList errors) {
         if (!numOperandsCheck(candidateList, inst, errors)) return false;
         return operandTypeCheck(candidateList, inst, errors);
     }
@@ -35,7 +37,8 @@ public class OperandFormat {
      * first such Instruction that has an exact operand match.  If none match,
      * return the first Instruction and let the client deal with operand mismatches.
      */
-    static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
+    @Nullable
+    static Instruction bestOperandMatch(@NotNull TokenList tokenList, @Nullable ArrayList<Instruction> instrMatches) {
         if (instrMatches == null) return null;
         if (instrMatches.size() == 1) return instrMatches.get(0);
         for (Instruction instruction : instrMatches)
@@ -46,7 +49,7 @@ public class OperandFormat {
     /**
      * Check to see if numbers of operands are correct and generate an error message if not.
      */
-    private static boolean numOperandsCheck(TokenList cand, Instruction spec, ErrorList errors) {
+    private static boolean numOperandsCheck(@NotNull TokenList cand, @NotNull Instruction spec, @NotNull ErrorList errors) {
         int numOperands = cand.size() - 1;
         int reqNumOperands = spec.getTokenList().size() - 1;
         Token operator = cand.get(0);
@@ -65,7 +68,7 @@ public class OperandFormat {
     /**
      * Generate an error message if operand is not of the correct type for this operation & operand position
      */
-    static boolean operandTypeCheck(TokenList cand, Instruction spec, ErrorList errors) {
+    static boolean operandTypeCheck(@NotNull TokenList cand, @NotNull Instruction spec, @NotNull ErrorList errors) {
         Token candToken, specToken;
         TokenTypes candType, specType;
         for (int i = 1; i < spec.getTokenList().size(); i++) {
@@ -141,7 +144,7 @@ public class OperandFormat {
     /**
      * Handy utility for all parse errors.
      */
-    private static void generateMessage(Token token, String mess, ErrorList errors) {
+    private static void generateMessage(@NotNull Token token, String mess, @NotNull ErrorList errors) {
         errors.add(new ErrorMessage(
             token.getSourceMIPSProgram(),
             token.getSourceLine(),

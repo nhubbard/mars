@@ -49,7 +49,7 @@ private typealias JLong = java.lang.Long
 fun Boolean.toInt(): Int = if (this) 1 else 0
 
 /** Sign-extend an integer value by [i] bits. */
-fun Int.signExtend(i: Int = 16): Int = this shl i shr i
+inline fun Int.signExtend(i: Int = 16): Int = this shl i shr i
 
 /**
  * Returns the float value corresponding to a given bit representation. The argument is considered to be a

@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.MemoryDump;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -56,7 +57,7 @@ public class FileDumpMemoryAction extends GuiAction {
 
 
     // The dump dialog that appears when menu item is selected.
-    private JDialog createDumpDialog() {
+    private @NotNull JDialog createDumpDialog() {
         JDialog dumpDialog = new JDialog(Globals.getGui(), title, true);
         dumpDialog.setContentPane(buildDialogPanel());
         dumpDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -69,7 +70,7 @@ public class FileDumpMemoryAction extends GuiAction {
     }
 
     // Set contents of dump dialog.
-    private JPanel buildDialogPanel() {
+    private @NotNull JPanel buildDialogPanel() {
         JPanel contents = new JPanel(new BorderLayout(20, 20));
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
@@ -170,7 +171,7 @@ public class FileDumpMemoryAction extends GuiAction {
 
     // User has clicked "Dump" button, so launch a file chooser then get
     // segment (memory range) and format selections and save to the file.
-    private boolean performDump(int firstAddress, int lastAddress, DumpFormat format) {
+    private boolean performDump(int firstAddress, int lastAddress, @NotNull DumpFormat format) {
         File theFile;
         JFileChooser saveDialog;
         boolean operationOK = false;
@@ -227,7 +228,7 @@ public class FileDumpMemoryAction extends GuiAction {
             this.myMaster = myMaster;
         }
 
-        public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+        public @NotNull Component getListCellRendererComponent(JList list, @NotNull Object value, int index, boolean isSelected, boolean cellHasFocus) {
             super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
             setToolTipText(value.toString());
             if (index >= 0 && myMaster.getItemAt(index).getDescription() != null) {

@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.util.EditorFont;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -49,7 +51,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     }
 
     // The dialog area, not including control buttons at bottom
-    protected JPanel buildDialogPanel() {
+    protected @NotNull JPanel buildDialogPanel() {
         JPanel contents = new JPanel(new BorderLayout(20, 20));
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
@@ -125,7 +127,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     protected abstract Component buildControlPanel();
 
 
-    public Font getFont() {
+    public @NotNull Font getFont() {
         return EditorFont.createFontFromStringValues((String) fontFamilySelector.getSelectedItem(), (String) fontStyleSelector.getSelectedItem(), fontSizeSpinSelector.getValue().toString());
     }
 
@@ -173,7 +175,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     // Given an array of string arrays, will produce a Vector contenating
     // the arrays with a separator between each.
-    private Vector<String> makeVectorData(String[][] str) {
+    private @NotNull Vector<String> makeVectorData(String[] @NotNull [] str) {
         boolean needSeparator = false;
         Vector<String> data = new Vector<>();
         for (String[] strings : str) {
@@ -190,7 +192,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     // Required renderer for handling the separator bar.
     private static class ComboBoxRenderer extends JLabel implements ListCellRenderer<String> {
-        final JSeparator separator;
+        final @NotNull JSeparator separator;
 
         public ComboBoxRenderer() {
             setOpaque(true);
@@ -198,7 +200,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
             separator = new JSeparator(JSeparator.HORIZONTAL);
         }
 
-        public Component getListCellRendererComponent(JList list, String value, int index, boolean isSelected, boolean cellHasFocus) {
+        public Component getListCellRendererComponent(@NotNull JList list, @Nullable String value, int index, boolean isSelected, boolean cellHasFocus) {
             String str = (value == null) ? "" : value;
             if (SEPARATOR.equals(str)) {
                 return separator;
@@ -219,9 +221,9 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     // Required listener to handle the separator bar.
     private static class BlockComboListener implements ActionListener {
         final JComboBox<String> combo;
-        Object currentItem;
+        @Nullable Object currentItem;
 
-        BlockComboListener(JComboBox<String> combo) {
+        BlockComboListener(@NotNull JComboBox<String> combo) {
             this.combo = combo;
             combo.setSelectedIndex(0);
             currentItem = combo.getSelectedItem();

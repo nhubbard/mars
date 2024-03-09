@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -178,7 +179,7 @@ public class ScavengerHunt implements Observer, MarsTool {
 
     // private inner class
     private class ScavengerHuntRunnable implements Runnable {
-        final JPanel panel;
+        final @NotNull JPanel panel;
 
         public ScavengerHuntRunnable() // constructor
         {
@@ -405,7 +406,7 @@ public class ScavengerHunt implements Observer, MarsTool {
         // System.out.println("ScavengerHunt.constructor: starting....");
     }
 
-    public String getName() {
+    public @NotNull String getName() {
         return "ScavengerHunt";
     }
 

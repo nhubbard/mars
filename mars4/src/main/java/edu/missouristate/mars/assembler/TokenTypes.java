@@ -3,6 +3,8 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.regex.Pattern;
 
@@ -73,9 +75,9 @@ public final class TokenTypes {
      * @return Returns the corresponding TokenTypes object if the parameter matches a
      * defined MIPS token type, else returns <tt>null</tt>.
      **/
-    public static TokenTypes matchTokenType(String value) {
-
-        TokenTypes type = null;
+    @Nullable
+    public static TokenTypes matchTokenType(@NotNull String value) {
+        @Nullable TokenTypes type = null;
         // If it starts with single quote ('), it is a mal-formed character literal
         // because a well-formed character literal was converted to string-ified
         // integer before getting here...
@@ -238,7 +240,6 @@ public final class TokenTypes {
         return type == TokenTypes.REAL_NUMBER;
     }
 
-
     /*
      COD2, A-51:  "Identifiers are a sequence of alphanumeric characters,
                    underbars (_), and dots (.) that do not begin with a number."
@@ -249,7 +250,7 @@ public final class TokenTypes {
      DPS 14-Jul-2008: added '$' as valid symbol.  Permits labels to include $.
                       MIPS-target GCC will produce labels that start with $.
     */
-    public static boolean isValidIdentifier(String value) {
+    public static boolean isValidIdentifier(@NotNull String value) {
         if (value.isEmpty()) return false;
         return VALID_IDENTIFIER.matcher(value).matches();
     }

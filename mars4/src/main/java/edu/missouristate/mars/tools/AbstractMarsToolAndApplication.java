@@ -8,6 +8,8 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.FilenameFinder;
 import edu.missouristate.mars.venus.RunSpeedPanel;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -42,7 +44,7 @@ import java.util.Observer;
 @SuppressWarnings("EmptyMethod")
 public abstract class AbstractMarsToolAndApplication extends JFrame implements MarsTool, Observer {
     protected boolean isBeingUsedAsAMarsTool = false;  // can use to determine whether invoked as MarsTool or stand-alone.
-    protected final AbstractMarsToolAndApplication thisMarsApp;
+    protected final @NotNull AbstractMarsToolAndApplication thisMarsApp;
 
     // Used only for MarsTool use.
     // This is the pop-up dialog that appears when a menu item is selected.
@@ -67,7 +69,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     private volatile boolean observing = false;
 
     // Several structures required for stand-alone use only (not MarsTool use)
-    private File mostRecentlyOpenedFile = null;
+    private @Nullable File mostRecentlyOpenedFile = null;
     private final Runnable interactiveGUIUpdater = new GUIUpdater();
     private MessageField operationStatusMessages;
     private JButton openFileButton, assembleRunButton, stopButton;
@@ -222,7 +224,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     /**
      * Constructs GUI header as label with default positioning and font.  May be overridden.
      */
-    protected JComponent buildHeadingArea() {
+    protected @NotNull JComponent buildHeadingArea() {
         // OVERALL STRUCTURE OF MESSAGE (TOP)
         headingLabel = new JLabel();
         Box headingPanel = Box.createHorizontalBox();//new JPanel(new BorderLayout());
@@ -241,7 +243,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * The MarsTool default set of controls has one row of three buttons.  It includes a dual-purpose button to
      * attach or detach simulator to MIPS memory, a button to reset the cache, and one to close the tool.
      */
-    protected JComponent buildButtonAreaMarsTool() {
+    protected @NotNull JComponent buildButtonAreaMarsTool() {
         Box buttonArea = Box.createHorizontalBox();
         TitledBorder tc = new TitledBorder("Tool Control");
         tc.setTitleJustification(TitledBorder.CENTER);
@@ -288,7 +290,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * whose action is determined by the subclass reset() method, and an exit button.
      */
 
-    protected JComponent buildButtonAreaStandAlone() {
+    protected @NotNull JComponent buildButtonAreaStandAlone() {
         // Overall structure of control area (two rows).
         Box operationArea = Box.createVerticalBox();
         Box fileControlArea = Box.createHorizontalBox();
@@ -420,7 +422,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * @param resource     the attached MIPS resource
      * @param accessNotice AccessNotice information provided by the resource
      */
-    public void update(Observable resource, Object accessNotice) {
+    public void update(Observable resource, @NotNull Object accessNotice) {
         if (((AccessNotice) accessNotice).accessIsFromMIPS()) {
             processMIPSUpdate(resource, (AccessNotice) accessNotice);
             updateDisplay();
@@ -489,7 +491,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     /**
      * Add this app/tool as an Observer of the specified MIPS register.
      */
-    protected void addAsObserver(Register reg) {
+    protected void addAsObserver(@Nullable Register reg) {
         if (reg != null) {
             reg.addObserver(thisMarsApp);
         }
@@ -513,7 +515,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * Delete this app/tool as an Observer of the specified MIPS register
      */
 
-    protected void deleteAsObserver(Register reg) {
+    protected void deleteAsObserver(@Nullable Register reg) {
         if (reg != null) {
             reg.deleteObserver(thisMarsApp);
         }
@@ -552,7 +554,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * "help" button that launches a help message or dialog.  But it can be any valid
      * JComponent that doesn't mind co-existing among a bunch of JButtons.
      */
-    protected JComponent getHelpComponent() {
+    protected @Nullable JComponent getHelpComponent() {
         return null;
     }
 
@@ -632,7 +634,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
             myButton = who;
         }
 
-        public void keyPressed(KeyEvent e) {
+        public void keyPressed(@NotNull KeyEvent e) {
             if (e.getKeyChar() == KeyEvent.VK_ENTER) {
                 e.consume();
                 try {

@@ -40,6 +40,7 @@ import edu.missouristate.mars.assembler.SymbolTable
 import edu.missouristate.mars.mips.hardware.Memory
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.mips.instructions.syscalls.SyscallNumberOverride
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport
 import edu.missouristate.mars.util.PropertiesFile
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
@@ -145,6 +146,9 @@ object Globals {
     @JvmStatic
     var runSpeedPanelExists: Boolean = false
 
+    @JvmStatic
+    private var isRunningTest: Boolean? = null
+
     /**
      * Function called once upon system initialization to create the global data structures.
      *
@@ -152,15 +156,39 @@ object Globals {
      */
     @JvmStatic
     fun initialize() {
-        memory = Memory.instance
-        instructionSet = InstructionSet
-        instructionSet.populate()
-        symbolTable = SymbolTable("global")
-        settings = CoreSettings()
-        initialized = true
-        debug = false
-        // Will establish memory configuration from settings
-        memory.clear()
+        if (!initialized) {
+            memory = Memory.instance
+            instructionSet = InstructionSet
+            instructionSet.populate()
+            symbolTable = SymbolTable("global")
+            settings = CoreSettings()
+            initialized = true
+            debug = false
+            // Will establish memory configuration from settings
+            memory.clear()
+        }
+    }
+
+    @ExcludeFromJacocoGeneratedReport
+    @JvmStatic
+    fun isRunningTest(): Boolean {
+        if (isRunningTest == null) {
+            isRunningTest = try {
+                Class.forName("org.junit.jupiter.api.Test")
+                true
+            } catch (e: ClassNotFoundException) { false }
+        }
+        return isRunningTest!!
+    }
+
+    @ExcludeFromJacocoGeneratedReport
+    @JvmStatic
+    fun resetInitialized() {
+        if (isRunningTest()) {
+            initialized = false
+        } else {
+            throw IllegalStateException("This method is unavailable outside of tests. Do NOT use it!")
+        }
     }
 
     /**

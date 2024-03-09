@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -57,7 +58,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
      * @return The array object with the data for the window.
      **/
 
-    public Object[][] setupWindow() {
+    public Object[] @NotNull [] setupWindow() {
         registers = Coprocessor0.getRegisters();
         Object[][] tableData = new Object[registers.length][3];
         rowGivenRegNumber = new int[32]; // maximum number of registers
@@ -199,8 +200,8 @@ public class Coprocessor0Window extends JPanel implements Observer {
             this.alignment = alignment;
         }
 
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
             cell.setFont(font);
@@ -251,7 +252,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -338,7 +339,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
         };
 
         //Implement table cell tool tips.
-        public String getToolTipText(MouseEvent e) {
+        public String getToolTipText(@NotNull MouseEvent e) {
             String tip;
             java.awt.Point p = e.getPoint();
             int rowIndex = rowAtPoint(p);
@@ -366,10 +367,10 @@ public class Coprocessor0Window extends JPanel implements Observer {
         };
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             return
                     new JTableHeader(columnModel) {
-                        public String getToolTipText(MouseEvent e) {
+                        public String getToolTipText(@NotNull MouseEvent e) {
                             String tip = null;
                             java.awt.Point p = e.getPoint();
                             int index = columnModel.getColumnIndexAtX(p.x);

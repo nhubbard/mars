@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Object provided to Observers of runtime access to MIPS memory or registers.
  * The access types READ and WRITE defined here; use subclasses defined for
@@ -21,7 +23,7 @@ public abstract class AccessNotice {
     public static final int WRITE = 1;
 
     private final int accessType;
-    private final Thread thread;
+    private final @NotNull Thread thread;
 
     protected AccessNotice(int type) {
         if (type != READ && type != WRITE) {

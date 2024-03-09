@@ -77,7 +77,8 @@ class Tokenizer @JvmOverloads constructor(
      * that represents a tokenized source statement from the MIPS program.
      */
     @Throws(ProcessingException::class)
-    fun tokenize(p: MIPSProgram): ArrayList<TokenList> {
+    @JvmOverloads
+    fun tokenize(p: MIPSProgram, ignoreErrors: Boolean = false): ArrayList<TokenList> {
         sourceMipsProgram = p
         equivalents = hashMapOf()
         val tokenList = arrayListOf<TokenList>()
@@ -97,7 +98,7 @@ class Tokenizer @JvmOverloads constructor(
             if (sourceLine.isNotEmpty() && sourceLine != currentLineTokens.processedLine)
                 source[i] = SourceLine(currentLineTokens.processedLine, source[i].mipsProgram, source[i].lineNumber)
         }
-        if (errors.hasErrors) throw ProcessingException(errors)
+        if (!ignoreErrors && errors.hasErrors) throw ProcessingException(errors)
         return tokenList
     }
 

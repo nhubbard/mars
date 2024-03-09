@@ -4,6 +4,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -105,7 +106,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "Data Cache Simulator";
     }
 
@@ -119,7 +120,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
      *
      * @return the GUI component containing these three areas
      */
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         // OVERALL STRUCTURE OF MAIN UI (CENTER)
         Box results = Box.createVerticalBox();
         results.add(buildOrganizationArea());
@@ -154,7 +155,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
 
     ////////////////////////////////////////////////////////////////////////////
-    private JComponent buildOrganizationArea() {
+    private @NotNull JComponent buildOrganizationArea() {
         JPanel organization = new JPanel(new GridLayout(3, 2));
         TitledBorder otb = new TitledBorder("Cache Organization");
         otb.setTitleJustification(TitledBorder.CENTER);
@@ -252,7 +253,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
 
     ////////////////////////////////////////////////////////////////////////////
-    private JComponent buildPerformanceArea() {
+    private @NotNull JComponent buildPerformanceArea() {
         JPanel performance = new JPanel(new GridLayout(1, 2));
         TitledBorder ptb = new TitledBorder("Cache Performance");
         ptb.setTitleJustification(TitledBorder.CENTER);
@@ -449,7 +450,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
     // Will determine range of choices for "set size in blocks", which is determined both by
     // the number of blocks in the cache and by placement policy.
-    private String[] determineSetSizeChoices(int cacheBlockCountIndex, int placementPolicyIndex) {
+    private String @NotNull [] determineSetSizeChoices(int cacheBlockCountIndex, int placementPolicyIndex) {
         String[] choices;
         int firstBlockCountIndex = 0;
         // NOTE: these have to match placementPolicyChoices order!
@@ -476,7 +477,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     }
 
     // create and return a new cache object based on current specs
-    private AbstractCache createNewCache() {
+    private @NotNull AbstractCache createNewCache() {
         AbstractCache theNewCache;
         int setSize = 1;
         try {
@@ -516,7 +517,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         cacheSizeDisplay.setText(Integer.toString(cacheSize));
     }
 
-    private JPanel getPanelWithBorderLayout() {
+    private @NotNull JPanel getPanelWithBorderLayout() {
         return new JPanel(new BorderLayout(2, 2));
     }
 
@@ -572,7 +573,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         private final int blockSizeInWords;
         private final int setSizeInBlocks;
         private final int numberOfSets;
-        protected final CacheBlock[] blocks;
+        protected final CacheBlock @NotNull [] blocks;
 
         protected AbstractCache(int numberOfBlocks, int blockSizeInWords, int setSizeInBlocks) {
             this.numberOfBlocks = numberOfBlocks;
@@ -701,7 +702,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
         // This method works for any of the placement policies:
         // direct mapped, full associative or n-way set associative.
-        public CacheAccessResult isItAHitThenReadOnMiss(int address) {
+        public @NotNull CacheAccessResult isItAHitThenReadOnMiss(int address) {
             int SET_FULL = 0;
             int result = SET_FULL;
             int firstBlock = getFirstBlockToSearch(address);
@@ -784,7 +785,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     //
     private class Animation {
 
-        private final Box animation;
+        private final @NotNull Box animation;
         private JTextField[] blocks;
         public final Color hitColor = Color.GREEN;
         public final Color missColor = Color.RED;

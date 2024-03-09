@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -102,7 +104,7 @@ public class SettingsHighlightingAction extends GuiAction {
     }
 
     // The dialog box that appears when menu item is selected.
-    private JPanel buildDialogPanel() {
+    private @NotNull JPanel buildDialogPanel() {
         JPanel contents = new JPanel(new BorderLayout(20, 20));
         contents.setBorder(new EmptyBorder(10, 10, 10, 10));
         JPanel patches = new JPanel(new GridLayout(backgroundSettingPositions.length, 4, gridVGap, gridHGap));
@@ -254,7 +256,7 @@ public class SettingsHighlightingAction extends GuiAction {
         return contents;
     }
 
-    private String getHighlightControlText(boolean enabled) {
+    private @NotNull String getHighlightControlText(boolean enabled) {
         return enabled ? "enabled" : "disabled";
     }
 
@@ -368,7 +370,7 @@ public class SettingsHighlightingAction extends GuiAction {
             position = pos;
         }
 
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             JButton button = (JButton) e.getSource();
             Color newColor = JColorChooser.showDialog(null, "Set Background Color", button.getBackground());
             if (newColor != null) {
@@ -390,7 +392,7 @@ public class SettingsHighlightingAction extends GuiAction {
             position = pos;
         }
 
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             JButton button = (JButton) e.getSource();
             Color newColor = JColorChooser.showDialog(null, "Set Text Color", button.getBackground());
             if (newColor != null) {
@@ -413,7 +415,7 @@ public class SettingsHighlightingAction extends GuiAction {
             position = pos;
         }
 
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             JButton button = (JButton) e.getSource();
             FontSettingDialog fontDialog = new FontSettingDialog(null, "Select Text Font", samples[position].getFont());
             Font newFont = fontDialog.showDialog();
@@ -436,7 +438,7 @@ public class SettingsHighlightingAction extends GuiAction {
             position = pos;
         }
 
-        public void itemStateChanged(ItemEvent e) {
+        public void itemStateChanged(@NotNull ItemEvent e) {
             // If selected: disable buttons, set their bg values from default setting, set sample bg & fg
             // If deselected: enable buttons, set their bg values from current setting, set sample bg & bg
             Color newBackground;
@@ -480,7 +482,7 @@ public class SettingsHighlightingAction extends GuiAction {
             super(owner, title, true, currentFont);
         }
 
-        private Font showDialog() {
+        private @Nullable Font showDialog() {
             resultOK = true;
             // Because dialog is modal, this blocks until user terminates the dialog.
             this.setVisible(true);
@@ -500,7 +502,7 @@ public class SettingsHighlightingAction extends GuiAction {
         }
 
         // Control buttons for the dialog.
-        protected Component buildControlPanel() {
+        protected @NotNull Component buildControlPanel() {
             Box controlPanel = Box.createHorizontalBox();
             JButton okButton = new JButton("OK");
             okButton.addActionListener(

@@ -48,7 +48,7 @@ fun <A, B, C> threeArgumentsOf(vararg args: Triple<A, B, C>): Stream<Arguments> 
     args.map { Arguments.of(it.first, it.second, it.third) }.stream()
 
 // Helper function to create programs from an assembly file
-fun createProgram(vararg paths: String, ignoreErrors: Boolean = false): Pair<MIPSProgram, ErrorList> {
+fun createProgram(vararg paths: String, ignoreErrors: Boolean = false): Pair<MIPSProgram, ErrorList?> {
     val inputFile = Paths.get(paths.first()).toFile().absolutePath
     val otherFiles = paths.drop(1).map { Paths.get(it).toFile().absolutePath }.toTypedArray()
     Globals.initialize(false)

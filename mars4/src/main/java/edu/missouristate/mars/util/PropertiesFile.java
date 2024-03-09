@@ -1,5 +1,7 @@
 package edu.missouristate.mars.util;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -23,7 +25,7 @@ public class PropertiesFile {
      * @return Properties (Hashtable) of key-value pairs read from the file.
      */
 
-    public static Properties loadPropertiesFromFile(String file) {
+    public static @NotNull Properties loadPropertiesFromFile(String file) {
         Properties properties = new Properties();
         try {
             InputStream is = PropertiesFile.class.getResourceAsStream("/" + file + ".properties");

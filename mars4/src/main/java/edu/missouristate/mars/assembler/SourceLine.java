@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.MIPSProgram;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Handy class to represent, for a given line of source code, the code
@@ -12,8 +13,8 @@ import edu.missouristate.mars.MIPSProgram;
  */
 public class SourceLine {
     private final String source;
-    private String filename;
-    private final MIPSProgram mipsProgram;
+    @Nullable private String filename;
+    private final @Nullable MIPSProgram mipsProgram;
     private final int lineNumber;
 
     /**
@@ -23,7 +24,7 @@ public class SourceLine {
      * @param mipsProgram The program (object representing source file) containing that line
      * @param lineNumber  The line number within that program where source appears.
      */
-    public SourceLine(String source, MIPSProgram mipsProgram, int lineNumber) {
+    public SourceLine(String source, @Nullable MIPSProgram mipsProgram, int lineNumber) {
         this.source = source;
         this.mipsProgram = mipsProgram;
         if (mipsProgram != null)
@@ -45,6 +46,7 @@ public class SourceLine {
      *
      * @return File name as String
      */
+    @Nullable
     public String getFilename() {
         return filename;
     }

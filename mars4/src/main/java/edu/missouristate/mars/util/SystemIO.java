@@ -2,6 +2,8 @@ package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 
@@ -27,7 +29,7 @@ public class SystemIO {
     /**
      * String used for description of file error
      */
-    public static String fileErrorString = "File operation OK";
+    public static @NotNull String fileErrorString = "File operation OK";
 
     private static final int O_RDONLY = 0x00000000;
     private static final int O_WRONLY = 0x00000001;
@@ -44,7 +46,7 @@ public class SystemIO {
 
     // Will use one buffered reader for all keyboard/redirected/piped input.
     // Added by DPS 28 Feb 2008.  See getInputReader() below.
-    private static BufferedReader inputReader = null;
+    private static @Nullable BufferedReader inputReader = null;
 
     /**
      * Implements syscall to read an integer value.
@@ -151,7 +153,7 @@ public class SystemIO {
      * @param maxLength     the maximum string length
      * @return the entered string, truncated to maximum length if necessary
      */
-    public static String readString(int serviceNumber, int maxLength) {
+    public static @NotNull String readString(int serviceNumber, int maxLength) {
         String input = "";
         if (Globals.getGui() == null) {
             try {
@@ -221,7 +223,7 @@ public class SystemIO {
      * @return number of bytes written, or -1 on error
      */
 
-    public static int writeToFile(int fd, byte[] myBuffer, int lengthRequested) {
+    public static int writeToFile(int fd, byte @NotNull [] myBuffer, int lengthRequested) {
         /////////////// DPS 8-Jan-2013  ////////////////////////////////////////////////////
         /// Write to STDOUT or STDERR file descriptor while using IDE - write to Messages pane.
         if ((fd == STDOUT || fd == STDERR) && Globals.getGui() != null) {
@@ -277,7 +279,7 @@ public class SystemIO {
      * @param lengthRequested number of bytes to read
      * @return number of bytes read, 0 on EOF, or -1 on error
      */
-    public static int readFromFile(int fd, byte[] myBuffer, int lengthRequested) {
+    public static int readFromFile(int fd, byte @NotNull [] myBuffer, int lengthRequested) {
         int retValue;
         /////////////// DPS 8-Jan-2013  //////////////////////////////////////////////////
         /// Read from STDIN file descriptor while using IDE - get input from Messages pane.
@@ -328,7 +330,7 @@ public class SystemIO {
      * @return file descriptor in the range 0 to SYSCALL_MAXFILES-1, or -1 if error
      * @author Ken Vollmar
      */
-    public static int openFile(String filename, int flags) {
+    public static int openFile(@NotNull String filename, int flags) {
         // Internally, a "file descriptor" is an index into a table
         // of the filename, flag, and the File???putStream associated with
         // that file descriptor.
@@ -403,7 +405,7 @@ public class SystemIO {
     // These are all equivalent in the eyes of the program because they are
     // transparent to it.  Lazy instantiation.  DPS.  28 Feb 2008
 
-    private static BufferedReader getInputReader() {
+    private static @NotNull BufferedReader getInputReader() {
         if (inputReader == null) {
             inputReader = new BufferedReader(new InputStreamReader(System.in));
         }

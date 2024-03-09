@@ -2,6 +2,7 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -66,7 +67,7 @@ public class EditFindReplaceAction extends GuiAction {
         }
 
         // Constructs the dialog's main panel.
-        private JPanel buildDialogPanel() {
+        private @NotNull JPanel buildDialogPanel() {
             JPanel dialogPanel = new JPanel(new BorderLayout());
             dialogPanel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
             dialogPanel.add(buildInputPanel(), BorderLayout.NORTH);
@@ -76,7 +77,7 @@ public class EditFindReplaceAction extends GuiAction {
         }
 
         // Top part of the dialog, to contain the two input text fields.
-        private Component buildInputPanel() {
+        private @NotNull Component buildInputPanel() {
             findInputField = new JTextField(30);
             if (!searchString.isEmpty()) {
                 findInputField.setText(searchString);
@@ -102,7 +103,7 @@ public class EditFindReplaceAction extends GuiAction {
         // Center part of the dialog, which contains the check box
         // for case sensitivity along with a label to display the
         // outcome of each operation.
-        private Component buildOptionsPanel() {
+        private @NotNull Component buildOptionsPanel() {
             Box optionsPanel = Box.createHorizontalBox();
             caseSensitiveCheckBox = new JCheckBox("Case Sensitive", caseSensitivity);
             JPanel casePanel = new JPanel(new GridLayout(2, 1));
@@ -122,7 +123,7 @@ public class EditFindReplaceAction extends GuiAction {
 
 
         // Row of control buttons to be placed along the button of the dialog
-        private Component buildControlPanel() {
+        private @NotNull Component buildControlPanel() {
             Box controlPanel = Box.createHorizontalBox();
             controlPanel.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
             findButton = new JButton("Find");

@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -132,7 +133,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      *
      * @return the tools's name
      */
-    public String getName() {
+    public @NotNull String getName() {
         return NAME;
     }
 
@@ -142,7 +143,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      *
      * @return a panel that holds the GUI of the tool
      */
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
 
         // Create GUI elements for the tool
         JPanel panel = new JPanel(new GridBagLayout());
@@ -212,7 +213,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * @see InstructionStatistics#CATEGORY_MEM
      * @see InstructionStatistics#CATEGORY_OTHER
      */
-    protected int getInstructionCategory(ProgramStatement stmt) {
+    protected int getInstructionCategory(@NotNull ProgramStatement stmt) {
 
         int opCode = stmt.getBinaryStatement() >>> (32 - 6);
         int funct = stmt.getBinaryStatement() & 0x1F;
@@ -261,7 +262,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
      * @param resource the observed resource
      * @param notice   signals the type of access (memory, register etc.)
      */
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+    protected void processMIPSUpdate(Observable resource, @NotNull AccessNotice notice) {
 
         if (!notice.accessIsFromMIPS())
             return;

@@ -21,6 +21,8 @@
 
 package edu.missouristate.mars;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.File;
 import java.util.ArrayList;
 
@@ -33,7 +35,7 @@ import java.util.ArrayList;
  **/
 
 public class ErrorList {
-    private final ArrayList<ErrorMessage> messages;
+    private final @NotNull ArrayList<ErrorMessage> messages;
     private int errorCount;
     private int warningCount;
     public static final String ERROR_MESSAGE_PREFIX = "Error";
@@ -59,7 +61,7 @@ public class ErrorList {
      *
      * @return ArrayList of ErrorMessage objects
      */
-    public ArrayList<ErrorMessage> getErrorMessages() {
+    public @NotNull ArrayList<ErrorMessage> getErrorMessages() {
         return messages;
     }
 
@@ -86,7 +88,7 @@ public class ErrorList {
      *
      * @param mess ErrorMessage object to be added to end of error list.
      **/
-    public void add(ErrorMessage mess) {
+    public void add(@NotNull ErrorMessage mess) {
         add(mess, messages.size());
     }
 
@@ -96,7 +98,7 @@ public class ErrorList {
      * @param mess  ErrorMessage object to be added to end of error list.
      * @param index position in error list
      **/
-    public void add(ErrorMessage mess, int index) {
+    public void add(@NotNull ErrorMessage mess, int index) {
         if (errorCount > getErrorLimit()) {
             return;
         }
@@ -160,7 +162,7 @@ public class ErrorList {
      *
      * @return String containing report.
      **/
-    public String generateErrorReport() {
+    public @NotNull String generateErrorReport() {
         return generateReport(ErrorMessage.ERROR);
     }
 
@@ -169,7 +171,7 @@ public class ErrorList {
      *
      * @return String containing report.
      **/
-    public String generateWarningReport() {
+    public @NotNull String generateWarningReport() {
         return generateReport(ErrorMessage.WARNING);
     }
 
@@ -178,12 +180,12 @@ public class ErrorList {
      *
      * @return String containing report.
      **/
-    public String generateErrorAndWarningReport() {
+    public @NotNull String generateErrorAndWarningReport() {
         return generateWarningReport() + generateErrorReport();
     }
 
     // Produces either error or warning report.
-    private String generateReport(boolean isWarning) {
+    private @NotNull String generateReport(boolean isWarning) {
         StringBuilder report = new StringBuilder();
         String reportLine;
         for (ErrorMessage message : messages) {

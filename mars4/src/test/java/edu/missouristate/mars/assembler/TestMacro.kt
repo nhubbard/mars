@@ -21,14 +21,16 @@
 
 package edu.missouristate.mars.assembler
 
-import edu.missouristate.mars.*
+import edu.missouristate.mars.MIPSProgram
+import edu.missouristate.mars.createProgram
+import edu.missouristate.mars.threeArgumentsOf
+import edu.missouristate.mars.tri
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-import java.nio.file.Paths
 import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -99,8 +101,8 @@ class TestMacro {
     fun testGetSubstitutedLine(fileName: String, macroName: String?, shouldHaveErrors: Boolean) {
         val (program, _) = createProgram("src/test/resources/tests/$fileName")
         macroName?.let {
-            assertTrue(program.localMacroPool.matchesAnyMacroName(it))
-        } ?: assertNull(program.localMacroPool.current)
+            assertTrue(program.localMacroPool?.matchesAnyMacroName(it) ?: false)
+        } ?: assertNull(program.localMacroPool?.current)
     }
 
     @Test

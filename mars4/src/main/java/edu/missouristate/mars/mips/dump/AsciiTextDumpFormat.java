@@ -4,6 +4,8 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,17 +23,13 @@ import java.io.PrintStream;
  * @author Pete Sanderson
  * @version December 2010
  */
-
-
 public class AsciiTextDumpFormat extends AbstractDumpFormat {
-
     /**
      * Constructor.  There is no standard file extension for this format.
      */
     public AsciiTextDumpFormat() {
         super("ASCII Text", "Ascii Text", "Memory contents interpreted as ASCII characters", "txt");
     }
-
 
     /**
      * Interpret MIPS memory contents as ASCII characters.  Each line of
@@ -51,17 +49,14 @@ public class AsciiTextDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException {
+    public void dumpMemoryRange(@NotNull File file, int firstAddress, int lastAddress) throws AddressErrorException, IOException {
         try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
-            String string = null;
+            @Nullable String string = null;
             for (int address = firstAddress; address <= lastAddress; address += Memory.WORD_LENGTH_BYTES) {
-                Integer temp = Globals.memory.getRawWordOrNull(address);
-                if (temp == null)
-                    break;
+                @Nullable Integer temp = Globals.memory.getRawWordOrNull(address);
+                if (temp == null) break;
                 out.println(Binary.intToAscii(temp));
             }
         }
     }
-
 }

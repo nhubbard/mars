@@ -5,6 +5,8 @@ import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.EditorFont;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,8 +22,8 @@ import javax.swing.event.*;
  **/
 
 public class TextSegmentWindow extends JInternalFrame implements Observer {
-    private final JPanel programArgumentsPanel;  // DPS 17-July-2008
-    private final JTextField programArgumentsTextField; // DPS 17-July-2008
+    private final @NotNull JPanel programArgumentsPanel;  // DPS 17-July-2008
+    private final @NotNull JTextField programArgumentsTextField; // DPS 17-July-2008
     private static final int PROGRAM_ARGUMENT_TEXTFIELD_COLUMNS = 40;
     private JTable table;
     private JScrollPane tableScroller;
@@ -667,7 +669,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             return data.length;
         }
 
-        public String getColumnName(int col) {
+        public @NotNull String getColumnName(int col) {
             return columnNames[col];
         }
 
@@ -681,7 +683,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
          * then the break column would contain text ("true"/"false"),
          * rather than a check box.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -700,7 +702,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
          * Straightforward process except for the Code column.
          */
         @Override
-        public void setValueAt(Object value, int row, int col) {
+        public void setValueAt(@NotNull Object value, int row, int col) {
             if (col != CODE_COLUMN) {
                 data[row][col] = value;
                 fireTableCellUpdated(row, col);
@@ -789,8 +791,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      */
     class CodeCellRenderer extends DefaultTableCellRenderer {
 
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus, int row, int column) {
             Component cell = super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
             //cell.setFont(tableCellFont);
@@ -827,8 +829,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      * same as MonoRightCellRenderer.
      */
     static class MachineCodeCellRenderer extends DefaultTableCellRenderer {
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                     isSelected, hasFocus, row, column);
             cell.setFont(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT);
@@ -893,10 +895,10 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
              *****************************************************/
         }
 
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected,
-                                                       boolean hasFocus,
-                                                       int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(@Nullable JTable table, Object value,
+                                                                boolean isSelected,
+                                                                boolean hasFocus,
+                                                                int row, int column) {
 
             if (table == null) {
                 // ???
@@ -958,7 +960,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         };
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             tableHeader = new TextTableHeader(columnModel);
             return tableHeader;
         }
@@ -990,7 +992,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
                 this.addMouseListener(new TextTableHeaderMouseListener());
             }
 
-            public String getToolTipText(MouseEvent e) {
+            public String getToolTipText(@NotNull MouseEvent e) {
                 Point p = e.getPoint();
                 int index = columnModel.getColumnIndexAtX(p.x);
                 int realIndex = columnModel.getColumn(index).getModelIndex();
@@ -1002,7 +1004,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             // When user clicks on beakpoint column header, breakpoints are
             // toggled (enabled/disabled).  DPS 31-Dec-2009
             private class TextTableHeaderMouseListener implements MouseListener {
-                public void mouseClicked(MouseEvent e) {
+                public void mouseClicked(@NotNull MouseEvent e) {
                     Point p = e.getPoint();
                     int index = columnModel.getColumnIndexAtX(p.x);
                     int realIndex = columnModel.getColumn(index).getModelIndex();

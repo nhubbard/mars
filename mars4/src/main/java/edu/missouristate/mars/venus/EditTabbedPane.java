@@ -3,6 +3,8 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,7 +25,7 @@ public class EditTabbedPane extends JTabbedPane {
 
     private final VenusUI mainUI;
     private final Editor editor;
-    private final FileOpener fileOpener;
+    private final @NotNull FileOpener fileOpener;
 
     /**
      * Constructor for the EditTabbedPane class.
@@ -81,7 +83,7 @@ public class EditTabbedPane extends JTabbedPane {
      * @param file File object for the desired file.
      * @return EditPane for the specified file, or null if file is unable to be opened in an EditPane
      */
-    public EditPane getCurrentEditTabForFile(File file) {
+    public @Nullable EditPane getCurrentEditTabForFile(@NotNull File file) {
         EditPane result = null;
         EditPane tab = getEditPaneForFile(file.getPath());
         if (tab != null) {
@@ -246,7 +248,7 @@ public class EditTabbedPane extends JTabbedPane {
 
     // Save file associatd with specified edit pane.
     // Returns true if save operation worked, else false.
-    private boolean saveFile(EditPane editPane) {
+    private boolean saveFile(@Nullable EditPane editPane) {
         if (editPane != null) {
             if (editPane.isNew()) {
                 File theFile = saveAsFile(editPane);
@@ -297,7 +299,7 @@ public class EditTabbedPane extends JTabbedPane {
 
     // perform Save As for selected edit pane.  If the save is performed,
     // return its File object.  Otherwise return null.
-    private File saveAsFile(EditPane editPane) {
+    private @Nullable File saveAsFile(@Nullable EditPane editPane) {
         File theFile = null;
         if (editPane != null) {
             JFileChooser saveDialog;
@@ -419,7 +421,7 @@ public class EditTabbedPane extends JTabbedPane {
 
     // Handy little utility to update the title on the current tab and the frame title bar
     // and also to update the MARS menu state (controls which actions are enabled).
-    private void updateTitlesAndMenuState(EditPane editPane) {
+    private void updateTitlesAndMenuState(@NotNull EditPane editPane) {
         editor.setTitle(editPane.getPathname(), editPane.getFilename(), editPane.getFileStatus());
         editPane.updateStaticFileStatus(); //  for legacy code that depends on the static FileStatus (pre 4.0)
         Globals.getGui().setMenuState(editPane.getFileStatus());
@@ -428,7 +430,7 @@ public class EditTabbedPane extends JTabbedPane {
     // Handy little utility to update the title on the current tab and the frame title bar
     // and also to update the MARS menu state (controls which actions are enabled).
     // DPS 9-Aug-2011
-    private void updateTitles(EditPane editPane) {
+    private void updateTitles(@NotNull EditPane editPane) {
         editor.setTitle(editPane.getPathname(), editPane.getFilename(), editPane.getFileStatus());
         boolean assembled = FileStatus.isAssembled();
         editPane.updateStaticFileStatus(); //  for legacy code that depends on the static FileStatus (pre 4.0)
@@ -441,7 +443,7 @@ public class EditTabbedPane extends JTabbedPane {
      * @param pathname Pathname for desired file
      * @return the EditPane for this file if it is open in the editor, or null if not.
      */
-    public EditPane getEditPaneForFile(String pathname) {
+    public @Nullable EditPane getEditPaneForFile(String pathname) {
         EditPane openPane = null;
         for (int i = 0; i < getTabCount(); i++) {
             EditPane pane = (EditPane) getComponentAt(i);
@@ -484,11 +486,11 @@ public class EditTabbedPane extends JTabbedPane {
 
 
     private class FileOpener {
-        private File mostRecentlyOpenedFile;
-        private final JFileChooser fileChooser;
+        private @Nullable File mostRecentlyOpenedFile;
+        private final @NotNull JFileChooser fileChooser;
         private int fileFilterCount;
-        private final ArrayList<FileFilter> fileFilterList;
-        private final PropertyChangeListener listenForUserAddedFileFilter;
+        private final @NotNull ArrayList<FileFilter> fileFilterList;
+        private final @NotNull PropertyChangeListener listenForUserAddedFileFilter;
         private final Editor theEditor;
 
         public FileOpener(Editor theEditor) {
@@ -663,7 +665,7 @@ public class EditTabbedPane extends JTabbedPane {
         //  we will achieve a sort of persistence at least through the current activation of MARS.
 
         private class ChoosableFileFilterChangeListener implements PropertyChangeListener {
-            public void propertyChange(java.beans.PropertyChangeEvent e) {
+            public void propertyChange(java.beans.@NotNull PropertyChangeEvent e) {
                 if (e.getPropertyName().equals(JFileChooser.CHOOSABLE_FILE_FILTER_CHANGED_PROPERTY)) {
                     FileFilter[] newFilters = (FileFilter[]) e.getNewValue();
                     FileFilter[] oldFilters = (FileFilter[]) e.getOldValue();

@@ -29,6 +29,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Portal to Mars
@@ -38,7 +39,7 @@ import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
  **/
 public class Mars {
     @ExcludeFromJacocoGeneratedReport
-    public static void main(String[] args) {
+    public static void main(String @NotNull [] args) {
         new MarsLaunch(args);
     }
 }

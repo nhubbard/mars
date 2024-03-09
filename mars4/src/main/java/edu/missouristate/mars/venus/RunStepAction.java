@@ -3,6 +3,7 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.mips.hardware.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.event.*;
 import javax.swing.*;
@@ -46,7 +47,7 @@ public class RunStepAction extends GuiAction {
 
     // When step is completed, control returns here (from execution thread, indirectly)
     // to update the GUI.
-    public void stepped(boolean done, int reason, ProcessingException pe) {
+    public void stepped(boolean done, int reason, @Nullable ProcessingException pe) {
         executePane.getRegistersWindow().updateRegisters();
         executePane.getCoprocessor1Window().updateRegisters();
         executePane.getCoprocessor0Window().updateRegisters();

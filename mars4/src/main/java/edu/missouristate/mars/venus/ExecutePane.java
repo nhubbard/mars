@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,12 +16,12 @@ public class ExecutePane extends JDesktopPane {
     private final RegistersWindow registerValues;
     private final Coprocessor1Window coprocessor1Values;
     private final Coprocessor0Window coprocessor0Values;
-    private final DataSegmentWindow dataSegment;
-    private final TextSegmentWindow textSegment;
-    private final LabelsWindow labelValues;
+    private final @NotNull DataSegmentWindow dataSegment;
+    private final @NotNull TextSegmentWindow textSegment;
+    private final @NotNull LabelsWindow labelValues;
     private final VenusUI mainUI;
-    private final NumberDisplayBaseChooser valueDisplayBase;
-    private final NumberDisplayBaseChooser addressDisplayBase;
+    private final @NotNull NumberDisplayBaseChooser valueDisplayBase;
+    private final @NotNull NumberDisplayBaseChooser addressDisplayBase;
     private boolean labelWindowVisible;
 
     /**

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.venus.editors;
 
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.text.*;
 import javax.swing.undo.*;
 import java.awt.*;
@@ -31,7 +33,7 @@ public interface MARSTextEditingArea {
 
     Document getDocument();
 
-    String getSelectedText();
+    @Nullable String getSelectedText();
 
     int getSelectionEnd();
 
@@ -41,7 +43,7 @@ public interface MARSTextEditingArea {
 
     void selectAll();
 
-    String getText();
+    @Nullable String getText();
 
     UndoManager getUndoManager();
 

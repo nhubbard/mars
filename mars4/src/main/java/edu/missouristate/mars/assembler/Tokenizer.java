@@ -1,6 +1,8 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.io.*;
@@ -22,8 +24,9 @@ import java.io.*;
  **/
 public class Tokenizer {
     private ErrorList errors;
+    @Nullable
     private MIPSProgram sourceMIPSProgram;
-    private HashMap<String, String> equivalents; // DPS 11-July-2012
+    @Nullable private HashMap<String, String> equivalents; // DPS 11-July-2012
     // The 8 escaped characters are: single quote, double quote, backslash, newline (linefeed),
     // tab, backspace, return, form feed.  The characters and their corresponding decimal codes:
     private static final String escapedCharacters = "'\"\\ntbrf0";
@@ -41,7 +44,7 @@ public class Tokenizer {
      *
      * @param program A previously-existing MIPSProgram object or null if none.
      */
-    public Tokenizer(MIPSProgram program) {
+    public Tokenizer(@Nullable MIPSProgram program) {
         errors = new ErrorList();
         sourceMIPSProgram = program;
     }
@@ -54,11 +57,11 @@ public class Tokenizer {
      * @return An ArrayList representing the tokenized program.  Each list member is a TokenList
      * that represents a tokenized source statement from the MIPS program.
      **/
-    public ArrayList<TokenList> tokenize(MIPSProgram p) throws ProcessingException {
+    public ArrayList<TokenList> tokenize(@NotNull MIPSProgram p) throws ProcessingException {
         return tokenize(p, false);
     }
 
-    public ArrayList<TokenList> tokenize(MIPSProgram p, boolean ignoreErrors) throws ProcessingException {
+    public @NotNull ArrayList<TokenList> tokenize(@NotNull MIPSProgram p, boolean ignoreErrors) throws ProcessingException {
         sourceMIPSProgram = p;
         equivalents = new HashMap<>(); // DPS 11-July-2012
         ArrayList<TokenList> tokenList = new ArrayList<>();
@@ -95,7 +98,7 @@ public class Tokenizer {
      * includes both direct and indirect.
      * DPS 11-Jan-2013
      */
-    private ArrayList<SourceLine> processIncludes(MIPSProgram program, Map<String, String> inclFiles) throws ProcessingException {
+    private @NotNull ArrayList<SourceLine> processIncludes(@NotNull MIPSProgram program, @NotNull Map<String, String> inclFiles) throws ProcessingException {
         ArrayList<String> source = program.getSourceList();
         ArrayList<SourceLine> result = new ArrayList<>(source.size());
         for (int i = 0; i < source.size(); i++) {
@@ -152,7 +155,7 @@ public class Tokenizer {
      * @throws ProcessingException This occurs only if the instruction specification itself
      *                             contains one or more lexical (i.e. token) errors.
      **/
-    public TokenList tokenizeExampleInstruction(String example) throws ProcessingException {
+    public TokenList tokenizeExampleInstruction(@NotNull String example) throws ProcessingException {
         TokenList result;
         result = tokenizeLine(sourceMIPSProgram, 0, example, false);
         if (errors.errorsOccurred()) {
@@ -188,7 +191,7 @@ public class Tokenizer {
      * @param theLine String containing source code
      * @return the generated token list for that line
      **/
-    public TokenList tokenizeLine(int lineNum, String theLine) {
+    public TokenList tokenizeLine(int lineNum, @NotNull String theLine) {
         return tokenizeLine(sourceMIPSProgram, lineNum, theLine, true);
     }
 
@@ -202,7 +205,7 @@ public class Tokenizer {
      * @param callerErrorList errors will go into this list instead of tokenizer's list.
      * @return the generated token list for that line
      **/
-    public TokenList tokenizeLine(int lineNum, String theLine, ErrorList callerErrorList) {
+    public TokenList tokenizeLine(int lineNum, @NotNull String theLine, ErrorList callerErrorList) {
         ErrorList saveList = this.errors;
         this.errors = callerErrorList;
         TokenList tokens = this.tokenizeLine(lineNum, theLine);
@@ -221,7 +224,7 @@ public class Tokenizer {
      * @param doEqvSubstitutes boolean param set true to perform .eqv substitutions, else false
      * @return the generated token list for that line
      **/
-    public TokenList tokenizeLine(int lineNum, String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes) {
+    public TokenList tokenizeLine(int lineNum, @NotNull String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes) {
         ErrorList saveList = this.errors;
         this.errors = callerErrorList;
         TokenList tokens = this.tokenizeLine(sourceMIPSProgram, lineNum, theLine, doEqvSubstitutes);
@@ -240,7 +243,7 @@ public class Tokenizer {
      * @param doEqvSubstitutes boolean param set true to perform .eqv substitutions, else false
      * @return the generated token list for that line
      **/
-    public TokenList tokenizeLine(MIPSProgram program, int lineNum, String theLine, boolean doEqvSubstitutes) {
+    public TokenList tokenizeLine(MIPSProgram program, int lineNum, @NotNull String theLine, boolean doEqvSubstitutes) {
         TokenTypes tokenType;
         TokenList result = new TokenList();
         if (theLine.isEmpty()) return result;
@@ -404,7 +407,7 @@ public class Tokenizer {
      * the substitution needs to be made.
      * DPS 11-July-2012
      */
-    private TokenList processEqv(MIPSProgram program, int lineNum, String theLine, TokenList tokens) {
+    private TokenList processEqv(MIPSProgram program, int lineNum, @NotNull String theLine, @NotNull TokenList tokens) {
         // See if it is .eqv directive.  If so, record it...
         // Have to assure it is a well-formed statement right now (can't wait for assembler).
 
@@ -497,8 +500,8 @@ public class Tokenizer {
     /**
      * Given candidate token and its position, will classify and record it.
      */
-    private void processCandidateToken(char[] token, MIPSProgram program, int line, String theLine,
-                                       int tokenPos, int tokenStartPos, TokenList tokenList) {
+    private void processCandidateToken(char @NotNull [] token, MIPSProgram program, int line, String theLine,
+                                       int tokenPos, int tokenStartPos, @NotNull TokenList tokenList) {
         String value = new String(token, 0, tokenPos);
         if (!value.isEmpty() && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
         TokenTypes type = TokenTypes.matchTokenType(value);
@@ -514,7 +517,7 @@ public class Tokenizer {
      * If passed a candidate character literal, attempt to translate it into integer constant.
      * If the translation fails, return original value.
      */
-    private String preprocessCharacterLiteral(String value) {
+    private @NotNull String preprocessCharacterLiteral(@NotNull String value) {
         // must start and end with quote and have something in between
         if (value.length() < 3 || value.charAt(0) != '\'' || value.charAt(value.length() - 1) != '\'') return value;
         String quotesRemoved = value.substring(1, value.length() - 1);

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
 import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.text.Segment;
 import java.util.ArrayList;
@@ -179,7 +180,7 @@ public abstract class TokenMarker {
      * @param tokenText the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
-    public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
+    public @Nullable ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
         return null;
     }
 
@@ -195,7 +196,7 @@ public abstract class TokenMarker {
      * @param tokenText     the source String that matched to the token
      * @return ArrayList containing PopupHelpItem objects, one per match.
      */
-    public ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(String line, Token tokenList, Token tokenAtOffset, String tokenText) {
+    public @Nullable ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(String line, Token tokenList, Token tokenAtOffset, String tokenText) {
         return null;
     }
 
@@ -211,7 +212,7 @@ public abstract class TokenMarker {
      * The last token in the list. New tokens are added here.
      * This should be set to null before a new line is to be tokenized.
      */
-    protected Token lastToken;
+    protected @Nullable Token lastToken;
 
     /**
      * An array for storing information about lines. It is enlarged and

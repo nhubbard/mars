@@ -1,6 +1,8 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -42,11 +44,11 @@ class UnitAnimation extends JPanel implements ActionListener {
 
     // private Vertex[][] inputGraph;
     private Vector<Vector<Vertex>> outputGraph;
-    private final ArrayList<Vertex> vertexList;
+    private final @NotNull ArrayList<Vertex> vertexList;
     private ArrayList<Vertex> vertexTraversed;
     //Screen Label variables
 
-    private final HashMap<String, String> registerEquivalenceTable;
+    private final @NotNull HashMap<String, String> registerEquivalenceTable;
 
     private String instructionCode;
 
@@ -79,9 +81,9 @@ class UnitAnimation extends JPanel implements ActionListener {
         private boolean first_interaction;
         private boolean active;
         private final boolean isText;
-        private final ArrayList<Integer> targetVertex;
+        private final @NotNull ArrayList<Integer> targetVertex;
 
-        public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis, String listOfColors, String listTargetVertex, boolean isText) {
+        public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis, @NotNull String listOfColors, @NotNull String listTargetVertex, boolean isText) {
             this.numIndex = index;
             this.init = init;
             this.current = this.init;
@@ -254,7 +256,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     }
 
     //import the list of opcodes of mips set of instructions
-    public void importXmlStringData(String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
+    public void importXmlStringData(@NotNull String xmlName, @NotNull HashMap<String, String> table, String elementTree, String tagId, String tagData) {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(false);
         DocumentBuilder docBuilder;
@@ -280,7 +282,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     }
 
     //import the parameters of the animation on datapath
-    public void importXmlDatapathMap(String xmlName, String elementTree) {
+    public void importXmlDatapathMap(@NotNull String xmlName, String elementTree) {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(false);
         DocumentBuilder docBuilder;
@@ -357,7 +359,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     }
 
 
-    public void importXmlDatapathMapAluControl(String xmlName, String elementTree) {
+    public void importXmlDatapathMapAluControl(@NotNull String xmlName, String elementTree) {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(false);
         DocumentBuilder docBuilder;
@@ -510,7 +512,7 @@ class UnitAnimation extends JPanel implements ActionListener {
 
     }
 
-    private void drawImage(Graphics2D g2d, BufferedImage im, int x, int y, Color c) {
+    private void drawImage(@NotNull Graphics2D g2d, @Nullable BufferedImage im, int x, int y, Color c) {
         if (im == null) {
             g2d.setColor(c);
             g2d.fillOval(x, y, 20, 20);
@@ -521,7 +523,7 @@ class UnitAnimation extends JPanel implements ActionListener {
 
     //draw lines.
     //method to draw the lines that run from left to right.
-    public void printTrackLtoR(Vertex v) {
+    public void printTrackLtoR(@NotNull Vertex v) {
         int size;
         int[] track;
         size = v.getEnd() - v.getInit();
@@ -550,7 +552,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     //method to draw the lines that run from right to left.
     //public boolean printTrackRtoL(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
 //		 boolean active, boolean firstInteraction){
-    public void printTrackRtoL(Vertex v) {
+    public void printTrackRtoL(@NotNull Vertex v) {
         int size;
         int[] track;
         size = v.getInit() - v.getEnd();
@@ -581,7 +583,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     //method to draw the lines that run from down to top.
 // public boolean printTrackDtoU(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis, 
 //		 boolean active, boolean firstInteraction){
-    public void printTrackDtoU(Vertex v) {
+    public void printTrackDtoU(@NotNull Vertex v) {
         int size;
         int[] track;
 
@@ -619,7 +621,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     //method to draw the lines that run from top to down.
 // public boolean printTrackUtoD(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis, 
 //		 boolean active,  boolean firstInteraction){
-    public void printTrackUtoD(Vertex v) {
+    public void printTrackUtoD(@NotNull Vertex v) {
 
         int size;
         int[] track;
@@ -650,7 +652,7 @@ class UnitAnimation extends JPanel implements ActionListener {
 
 
     //convert binnary value to integer.
-    public String parseBinToInt(String code) {
+    public @NotNull String parseBinToInt(@NotNull String code) {
         int value = 0;
 
         for (int i = code.length() - 1; i >= 0; i--) {

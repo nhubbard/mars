@@ -70,7 +70,7 @@ class TestAssembler {
             "src/test/resources/tests/assembler_error_limit.s",
             ignoreErrors = true
         )
-        assertTrue(errors.errorCount() > 200)
+        assertTrue(errors!!.errorCount() > 200)
     }
 
     @Test
@@ -80,8 +80,8 @@ class TestAssembler {
             "src/test/resources/tests/macro_test.s",
             ignoreErrors = true
         )
-        assertTrue(errors.errorCount() > 200)
-        assertTrue(program.localMacroPool.macrosUnderTesting.isEmpty())
+        assertTrue(errors!!.errorCount() > 200)
+        assertTrue(program.localMacroPool?.macrosUnderTesting?.isEmpty() ?: false)
     }
 
     @Test
@@ -104,7 +104,7 @@ class TestAssembler {
             "src/test/resources/tests/assembler_bad_macro_definition.s",
             ignoreErrors = true
         )
-        assertTrue(errors.errorsOccurred())
+        assertTrue(errors?.errorsOccurred() ?: false)
     }
 
     @Test

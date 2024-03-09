@@ -1,5 +1,7 @@
 package edu.missouristate.mars.tools;//.bhtsim;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Represents a single entry of the Branch History Table.
  * <p>
@@ -22,7 +24,7 @@ public class BHTEntry {
     /**
      * the history of the BHT entry. Each boolean value signals if the branch was taken or not. The value at index n-1 represents the most recent branch outcome.
      */
-    private final boolean[] history;
+    private final boolean @NotNull [] history;
 
     /**
      * the current prediction
@@ -146,7 +148,7 @@ public class BHTEntry {
      *
      * @return a string representation of the BHT entry's history
      */
-    public String getHistoryAsStr() {
+    public @NotNull String getHistoryAsStr() {
         StringBuilder result = new StringBuilder();
 
         for (int i = 0; i < history.length; i++) {
@@ -163,7 +165,7 @@ public class BHTEntry {
      *
      * @return a string representation of the BHT entry's current prediction
      */
-    public String getPredictionAsStr() {
+    public @NotNull String getPredictionAsStr() {
         return prediction ? "TAKE" : "NOT TAKE";
     }
 }

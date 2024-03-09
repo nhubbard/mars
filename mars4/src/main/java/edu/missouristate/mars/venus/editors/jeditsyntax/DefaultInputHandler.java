@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.KeyStroke;
 import java.awt.event.*;
@@ -85,7 +87,7 @@ public class DefaultInputHandler extends InputHandler {
      * @param keyBinding The key binding
      * @param action     The action
      */
-    public void addKeyBinding(String keyBinding, ActionListener action) {
+    public void addKeyBinding(@NotNull String keyBinding, ActionListener action) {
         Hashtable<KeyStroke, Object> current = bindings;
 
         StringTokenizer st = new StringTokenizer(keyBinding);
@@ -128,7 +130,7 @@ public class DefaultInputHandler extends InputHandler {
      * key bindings. Setting key bindings in the copy will also
      * set them in the original.
      */
-    public InputHandler copy() {
+    public @NotNull InputHandler copy() {
         return new DefaultInputHandler(this);
     }
 
@@ -136,7 +138,7 @@ public class DefaultInputHandler extends InputHandler {
      * Handle a key pressed event. This will look up the binding for
      * the keystroke and execute it.
      */
-    public void keyPressed(KeyEvent evt) {
+    public void keyPressed(@NotNull KeyEvent evt) {
         int keyCode = evt.getKeyCode();
         int modifiers = evt.getModifiersEx();
         if (keyCode == KeyEvent.VK_CONTROL ||
@@ -194,7 +196,7 @@ public class DefaultInputHandler extends InputHandler {
     /**
      * Handle a key typed event. This inserts the key into the text area.
      */
-    public void keyTyped(KeyEvent evt) {
+    public void keyTyped(@NotNull KeyEvent evt) {
         int modifiers = evt.getModifiersEx();
         char c = evt.getKeyChar();
         // This IF statement needed to prevent Macintosh shortcut keyChar from
@@ -289,7 +291,7 @@ public class DefaultInputHandler extends InputHandler {
      *
      * @param keyStroke A string description of the key stroke
      */
-    public static KeyStroke parseKeyStroke(String keyStroke) {
+    public static KeyStroke parseKeyStroke(@Nullable String keyStroke) {
         if (keyStroke == null)
             return null;
         int modifiers = 0;
@@ -343,7 +345,7 @@ public class DefaultInputHandler extends InputHandler {
     private final Hashtable<KeyStroke, Object> bindings;
     private Hashtable<KeyStroke, Object> currentBindings;
 
-    private DefaultInputHandler(DefaultInputHandler copy) {
+    private DefaultInputHandler(@NotNull DefaultInputHandler copy) {
         bindings = currentBindings = copy.bindings;
     }
 }

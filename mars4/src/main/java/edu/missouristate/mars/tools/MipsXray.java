@@ -12,6 +12,8 @@ import edu.missouristate.mars.venus.RunAssembleAction;
 import edu.missouristate.mars.venus.RunBackstepAction;
 import edu.missouristate.mars.venus.RunStepAction;
 import edu.missouristate.mars.venus.VenusUI;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -44,11 +46,11 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     private GraphicsConfiguration gc;
     private BufferedImage datapath;
-    private String instructionBinary;
+    private @Nullable String instructionBinary;
 
     private Action runAssembleAction, runStepAction, runBackstepAction;
 
-    private VenusUI mainUI;
+    private @Nullable VenusUI mainUI;
     private JToolBar toolbar;
 
     public MipsXray(String title, String heading) {
@@ -68,14 +70,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "MIPS X-Ray";
     }
 
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    protected JComponent getHelpComponent() {
+    protected @NotNull JComponent getHelpComponent() {
         final String helpContent =
                 """
                         This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
@@ -106,12 +108,12 @@ public class MipsXray extends AbstractMarsToolAndApplication {
      * BorderLayout.  The title is in the NORTH area, and the controls are
      * in the SOUTH area.
      */
-    protected JComponent buildAnimationSequence() {
+    protected @NotNull JComponent buildAnimationSequence() {
         return new JPanel(new GridBagLayout());
     }
 
     // Insert image in the panel and configure the parameters to run animation.
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         mainUI = Globals.getGui();
         this.createActionObjects();
         toolbar = this.setUpToolBar();
@@ -148,7 +150,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         return (JComponent) painel;
     }
 
-    protected JComponent buildMainDisplayArea(String figure) {
+    protected @NotNull JComponent buildMainDisplayArea(String figure) {
         mainUI = Globals.getGui();
         this.createActionObjects();
         toolbar = this.setUpToolBar();
@@ -190,7 +192,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
 
     //Function that gets the current instruction in memory and start animation with the selected instruction.
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+    protected void processMIPSUpdate(Observable resource, @NotNull AccessNotice notice) {
 
         if (!notice.accessIsFromMIPS()) return;
         if (notice.getAccessType() != AccessNotice.READ) return;
@@ -233,7 +235,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
 
     //set the tool bar that controls the step in a time instruction running.
-    private JToolBar setUpToolBar() {
+    private @NotNull JToolBar setUpToolBar() {
         JToolBar toolBar = new JToolBar();
         //Components to add menu bar in the plugin window.
         JButton assemble = new JButton(runAssembleAction);
@@ -295,10 +297,10 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         private boolean first_interaction;
         private boolean active;
         private final boolean isText;
-        private final ArrayList<Integer> targetVertex;
+        private final @NotNull ArrayList<Integer> targetVertex;
 
         public Vertex(int index, int init, int end, String name, int oppositeAxis, boolean isMovingXaxis,
-                      String listOfColors, String listTargetVertex, boolean isText) {
+                      @NotNull String listOfColors, @NotNull String listTargetVertex, boolean isText) {
             this.numIndex = index;
             this.init = init;
             this.current = this.init;
@@ -452,13 +454,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
         //	 private Vertex[][] inputGraph;
         private Vector<Vector<Vertex>> outputGraph;
-        private final ArrayList<Vertex> vertexList;
+        private final @NotNull ArrayList<Vertex> vertexList;
         private ArrayList<Vertex> vertexTraversed;
         //Screen Label variables
 
-        private final HashMap<String, String> opcodeEquivalenceTable;
-        private final HashMap<String, String> functionEquivalenceTable;
-        private final HashMap<String, String> registerEquivalenceTable;
+        private final @NotNull HashMap<String, String> opcodeEquivalenceTable;
+        private final @NotNull HashMap<String, String> functionEquivalenceTable;
+        private final @NotNull HashMap<String, String> registerEquivalenceTable;
 
         private String instructionCode;
 
@@ -524,7 +526,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         //import the list of opcodes of mips set of instructions
-        public void importXmlStringData(String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
+        public void importXmlStringData(@NotNull String xmlName, @NotNull HashMap<String, String> table, String elementTree, String tagId, String tagData) {
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(false);
             DocumentBuilder docBuilder;
@@ -550,7 +552,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         //import the parameters of the animation on datapath
-        public void importXmlDatapathMap(String xmlName, String elementTree) {
+        public void importXmlDatapathMap(@NotNull String xmlName, String elementTree) {
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(false);
             DocumentBuilder docBuilder;
@@ -627,7 +629,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         //Set up the information showed in the screen of the current instruction.
-        public void setUpInstructionInfo(Graphics2D g2d) {
+        public void setUpInstructionInfo(@NotNull Graphics2D g2d) {
 
             FontRenderContext frc = g2d.getFontRenderContext();
             Font font = new Font("Digital-7", Font.PLAIN, 15);
@@ -1103,7 +1105,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
         }
 
-        private void drawImage(Graphics2D g2d, BufferedImage im, int x, int y, Color c) {
+        private void drawImage(@NotNull Graphics2D g2d, @Nullable BufferedImage im, int x, int y, Color c) {
             if (im == null) {
                 g2d.setColor(c);
                 g2d.fillOval(x, y, 20, 20);
@@ -1115,7 +1117,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
         //draw lines.
         //method to draw the lines that run from left to right.
-        public void printTrackLtoR(Vertex v) {
+        public void printTrackLtoR(@NotNull Vertex v) {
             int size;
             int[] track;
             size = v.getEnd() - v.getInit();
@@ -1145,7 +1147,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         //method to draw the lines that run from right to left.
         //public boolean printTrackRtoL(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
         //		 boolean active, boolean firstInteraction){
-        public void printTrackRtoL(Vertex v) {
+        public void printTrackRtoL(@NotNull Vertex v) {
             int size;
             int[] track;
             size = v.getInit() - v.getEnd();
@@ -1177,7 +1179,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         //method to draw the lines that run from down to top.
         // public boolean printTrackDtoU(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
         //		 boolean active, boolean firstInteraction){
-        public void printTrackDtoU(Vertex v) {
+        public void printTrackDtoU(@NotNull Vertex v) {
             int size;
             int[] track;
 
@@ -1216,7 +1218,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         //method to draw the lines that run from top to down.
         // public boolean printTrackUtoD(int init, int end ,int currentIndex, Graphics2D g2d, Color color, int otherAxis,
         //		 boolean active,  boolean firstInteraction){
-        public void printTrackUtoD(Vertex v) {
+        public void printTrackUtoD(@NotNull Vertex v) {
 
             int size;
             int[] track;
@@ -1246,7 +1248,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             }
         }
 
-        public void printTextDtoU(Vertex v) {
+        public void printTextDtoU(@NotNull Vertex v) {
             int size;
             int[] track;
             FontRenderContext frc = g2d.getFontRenderContext();
@@ -1285,7 +1287,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         //convert binnary value to integer.
-        public String parseBinToInt(String code) {
+        public @NotNull String parseBinToInt(@NotNull String code) {
             int value = 0;
 
             for (int i = code.length() - 1; i >= 0; i--) {
@@ -1401,7 +1403,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         }
 
         @Override
-        public void mouseClicked(MouseEvent e) {
+        public void mouseClicked(@NotNull MouseEvent e) {
 
             PointerInfo a = MouseInfo.getPointerInfo();
             //limpar a imagem do painel e iniciar o detalhe da unidade funcional.

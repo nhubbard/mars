@@ -11,6 +11,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.text.Segment;
 
@@ -55,7 +56,7 @@ public class KeywordMap {
      * @param offset The offset of the substring within the text segment
      * @param length The length of the substring
      */
-    public byte lookup(Segment text, int offset, int length) {
+    public byte lookup(@NotNull Segment text, int offset, int length) {
         if (length == 0)
             return Token.NULL;
         if (text.array[offset] == '%')
@@ -80,7 +81,7 @@ public class KeywordMap {
      * @param keyword The key
      * @param id      The value
      */
-    public void add(String keyword, byte id) {
+    public void add(@NotNull String keyword, byte id) {
         int key = getStringMapKey(keyword);
         map[key] = new Keyword(keyword.toCharArray(), id, map[key]);
     }
@@ -106,13 +107,13 @@ public class KeywordMap {
     // protected members
     protected final int mapLength;
 
-    protected int getStringMapKey(String s) {
+    protected int getStringMapKey(@NotNull String s) {
         return (Character.toUpperCase(s.charAt(0)) +
                 Character.toUpperCase(s.charAt(s.length() - 1)))
                 % mapLength;
     }
 
-    protected int getSegmentMapKey(Segment s, int off, int len) {
+    protected int getSegmentMapKey(@NotNull Segment s, int off, int len) {
         return (Character.toUpperCase(s.array[off]) +
                 Character.toUpperCase(s.array[off + len - 1]))
                 % mapLength;
@@ -131,6 +132,6 @@ public class KeywordMap {
         public final Keyword next;
     }
 
-    private final Keyword[] map;
+    private final Keyword @NotNull [] map;
     private boolean ignoreCase;
 }

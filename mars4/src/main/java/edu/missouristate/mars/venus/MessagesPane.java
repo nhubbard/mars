@@ -11,6 +11,8 @@ import javax.swing.event.DocumentListener;
 import javax.swing.undo.UndoableEdit;
 
 import edu.missouristate.mars.simulator.Simulator;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.Position.Bias;
@@ -22,10 +24,10 @@ import javax.swing.text.Position.Bias;
  **/
 
 public class MessagesPane extends JTabbedPane {
-    final JTextArea assemble;
-    final JTextArea run;
-    final JPanel assembleTab;
-    final JPanel runTab;
+    final @NotNull JTextArea assemble;
+    final @NotNull JTextArea run;
+    final @NotNull JPanel assembleTab;
+    final @NotNull JPanel runTab;
     // These constants are designed to keep scrolled contents of the
     // two message areas from becoming overwhelmingly large (which
     // seems to slow things down as new text is appended).  Once it
@@ -64,7 +66,7 @@ public class MessagesPane extends JTabbedPane {
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED), BorderLayout.CENTER);
         assemble.addMouseListener(
                 new MouseAdapter() {
-                    public void mouseClicked(MouseEvent e) {
+                    public void mouseClicked(@NotNull MouseEvent e) {
                         String text;
                         int lineStart = 0;
                         int lineEnd = 0;
@@ -136,7 +138,7 @@ public class MessagesPane extends JTabbedPane {
     }
 
     // Center given button in a box, centered vertically and 6 pixels on left and right
-    private Box createBoxForButton(JButton button) {
+    private @NotNull Box createBoxForButton(JButton button) {
         Box buttonRow = Box.createHorizontalBox();
         buttonRow.add(Box.createHorizontalStrut(6));
         buttonRow.add(button);
@@ -158,7 +160,7 @@ public class MessagesPane extends JTabbedPane {
      * @param line     Line number for error message
      * @param column   Column number for error message
      */
-    public void selectErrorMessage(String fileName, int line, int column) {
+    public void selectErrorMessage(@NotNull String fileName, int line, int column) {
         String errorReportSubstring = new java.io.File(fileName).getName() + ErrorList.LINE_PREFIX + line + ErrorList.POSITION_PREFIX + column;
         int textPosition = assemble.getText().lastIndexOf(errorReportSubstring);
         if (textPosition >= 0) {
@@ -190,7 +192,7 @@ public class MessagesPane extends JTabbedPane {
      * @param line     Line number for error message
      * @param column   Column number for error message
      */
-    public void selectEditorTextLine(String fileName, int line, int column) {
+    public void selectEditorTextLine(@NotNull String fileName, int line, int column) {
         EditTabbedPane editTabbedPane = (EditTabbedPane) Globals.getGui().getMainPane().getEditTabbedPane();
         EditPane editPane, currentPane = null;
         editPane = editTabbedPane.getEditPaneForFile(new java.io.File(fileName).getPath());
@@ -352,7 +354,7 @@ public class MessagesPane extends JTabbedPane {
 
         final DocumentListener listener =
                 new DocumentListener() {
-                    public void insertUpdate(final DocumentEvent e) {
+                    public void insertUpdate(final @NotNull DocumentEvent e) {
                         EventQueue.invokeLater(
                                 () -> {
                                     try {
@@ -377,7 +379,7 @@ public class MessagesPane extends JTabbedPane {
                                 });
                     }
 
-                    public void removeUpdate(final DocumentEvent e) {
+                    public void removeUpdate(final @NotNull DocumentEvent e) {
                         EventQueue.invokeLater(
                                 () -> {
                                     if ((e.getDocument().getLength() < initialPos || e.getOffset() < initialPos) && e instanceof UndoableEdit) {
@@ -392,14 +394,14 @@ public class MessagesPane extends JTabbedPane {
                 };
         final NavigationFilter navigationFilter =
                 new NavigationFilter() {
-                    public void moveDot(FilterBypass fb, int dot, Bias bias) {
+                    public void moveDot(@NotNull FilterBypass fb, int dot, Bias bias) {
                         if (dot < initialPos) {
                             dot = Math.min(initialPos, run.getDocument().getLength());
                         }
                         fb.moveDot(dot, bias);
                     }
 
-                    public void setDot(FilterBypass fb, int dot, Bias bias) {
+                    public void setDot(@NotNull FilterBypass fb, int dot, Bias bias) {
                         if (dot < initialPos) {
                             dot = Math.min(initialPos, run.getDocument().getLength());
                         }
@@ -442,7 +444,7 @@ public class MessagesPane extends JTabbedPane {
             }
         }
 
-        String response() {
+        @Nullable String response() {
             EventQueue.invokeLater(this);
             try {
                 return resultQueue.take();

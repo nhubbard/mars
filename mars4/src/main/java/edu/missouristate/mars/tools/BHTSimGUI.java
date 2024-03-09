@@ -1,5 +1,8 @@
 package edu.missouristate.mars.tools;//.bhtsim;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
@@ -56,7 +59,7 @@ public class BHTSimGUI extends JPanel {
     /**
      * the table representing the BHT
      */
-    private final JTable bhtTable;
+    private final @NotNull JTable bhtTable;
 
     /**
      * text field for log output
@@ -112,7 +115,7 @@ public class BHTSimGUI extends JPanel {
      *
      * @return the JTable representing the BHT
      */
-    private JTable createAndInitTable() {
+    private @NotNull JTable createAndInitTable() {
         // create the table
         JTable theTable = new JTable();
 
@@ -120,7 +123,7 @@ public class BHTSimGUI extends JPanel {
         DefaultTableCellRenderer doubleRenderer = new DefaultTableCellRenderer() {
             private final DecimalFormat formatter = new DecimalFormat("##0.00");
 
-            public void setValue(Object value) {
+            public void setValue(@Nullable Object value) {
                 setText((value == null) ? "" : formatter.format(value));
             }
         };
@@ -147,7 +150,7 @@ public class BHTSimGUI extends JPanel {
      *
      * @return the info panel
      */
-    private JPanel buildInfoPanel() {
+    private @NotNull JPanel buildInfoPanel() {
         instructionField = new JTextField();
         addressField = new JTextField();
         indexField = new JTextField();
@@ -198,7 +201,7 @@ public class BHTSimGUI extends JPanel {
      *
      * @return a panel for the configuration
      */
-    private JPanel buildConfigPanel() {
+    private @NotNull JPanel buildConfigPanel() {
         JPanel panel = new JPanel();
 
         Vector<Integer> sizes = new Vector<>();
@@ -234,7 +237,7 @@ public class BHTSimGUI extends JPanel {
      *
      * @return the panel for the logging output
      */
-    private JPanel buildLogPanel() {
+    private @NotNull JPanel buildLogPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
         logArea = new JTextArea();

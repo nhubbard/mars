@@ -1,6 +1,7 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -28,7 +29,7 @@ import java.awt.image.BufferedImage;
  */
 public class ScreenMagnifier implements MarsTool {
 
-    public String getName() {
+    public @NotNull String getName() {
         return "Screen Magnifier";
     }
 
@@ -52,15 +53,15 @@ public class ScreenMagnifier implements MarsTool {
 
 class Magnifier extends JFrame implements ComponentListener {
     static Robot robot;
-    final JButton close;
-    final JButton capture;
-    final JButton settings;
-    final JSpinner scaleAdjuster;
-    final JScrollPane view;
+    final @NotNull JButton close;
+    final @NotNull JButton capture;
+    final @NotNull JButton settings;
+    final @NotNull JSpinner scaleAdjuster;
+    final @NotNull JScrollPane view;
     Dimension frameSize;
-    final Dimension viewSize;
-    final MagnifierImage magnifierImage;
-    final ActionListener captureActionListener;
+    final @NotNull Dimension viewSize;
+    final @NotNull MagnifierImage magnifierImage;
+    final @NotNull ActionListener captureActionListener;
     CaptureModel captureResize, captureMove, captureRescale;
     CaptureModel captureDisplayCenter, captureDisplayUpperleft;
     CaptureModel dialogDisplayCenter;
@@ -72,7 +73,7 @@ class Magnifier extends JFrame implements ComponentListener {
     double scale = SCALE_DEFAULT;
     CaptureDisplayAlignmentStrategy alignment;
     final CaptureRectangleStrategy captureLocationSize = new CaptureMagnifierRectangle();
-    final JFrame frame;
+    final @NotNull JFrame frame;
     static final String CAPTURE_TOOLTIP_TEXT = "Capture, scale, and display pixels that lay beneath the Magnifier.";
     static final String SETTINGS_TOOLTIP_TEXT = "Show dialog for changing tool settings.";
     static final String SCALE_TOOLTIP_TEXT = "Magnification scale for captured image.";
@@ -184,7 +185,7 @@ class Magnifier extends JFrame implements ComponentListener {
     }
 
     // A simple explanation of what the tool does.
-    private JButton getHelpButton() {
+    private @NotNull JButton getHelpButton() {
         final String helpContent = """
                 Use this utility tool to display a magnified image of a
                 screen section and highlight things on the image.  This
@@ -253,7 +254,7 @@ class Magnifier extends JFrame implements ComponentListener {
      * @return A Rectangle containing the ScreenMagnifier's location, plus
      * width and height in pixels.
      */
-    Rectangle getFrameRectangle() {
+    @NotNull Rectangle getFrameRectangle() {
         return new Rectangle(getLocation().x, getLocation().y, getSize().width, getSize().height);
     }
 
@@ -263,7 +264,7 @@ class Magnifier extends JFrame implements ComponentListener {
      * @return A Rectangle containing the current screen location (0,0),
      * plus width and height in pixels.
      */
-    Rectangle getScreenRectangle() {
+    @NotNull Rectangle getScreenRectangle() {
         return new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
     }
 
@@ -298,7 +299,7 @@ class Magnifier extends JFrame implements ComponentListener {
     // such a timer was already running (e.g. is this the
     // first componentMoved event?) in case it is called multiple
     // times throughout the move, not just at the end.
-    public void componentMoved(ComponentEvent e) {
+    public void componentMoved(@NotNull ComponentEvent e) {
         if (captureMove.isEnabled()) {
             captureActionListener.actionPerformed(new ActionEvent(e.getComponent(), e.getID(), "capture"));
         }
@@ -314,7 +315,7 @@ class Magnifier extends JFrame implements ComponentListener {
      */
     // See comments above for possible technique for assuring only one
     // capture at the end of the resize.
-    public void componentResized(ComponentEvent e) {
+    public void componentResized(@NotNull ComponentEvent e) {
         if (captureResize.isEnabled()) {
             captureActionListener.actionPerformed(new ActionEvent(e.getComponent(), e.getID(), "capture"));
         }
@@ -347,7 +348,7 @@ class SettingsDialog extends JDialog {
     JComboBox<Integer> lineWidthSetting;
     JButton lineColorSetting;
     JCheckBox dialogCentered; // Whether or not dialog appears centered over the magnfier frame.
-    final JDialog dialog;
+    final @NotNull JDialog dialog;
     // temporary storage until committed with "Apply".  Needed because it is returned
     // by same call that shows the color selection dialog, so cannot be retrieved
     // later from the model (as you can with buttons, checkboxes, etc).
@@ -382,7 +383,7 @@ class SettingsDialog extends JDialog {
     }
 
     // This panel contains the control buttons for the Settings Dialog.
-    private JPanel getButtonRowPanel() {
+    private @NotNull JPanel getButtonRowPanel() {
         JPanel buttonRow = new JPanel();
         applyButton = new JButton("Apply and Close");
         applyButton.setToolTipText(SETTINGS_APPLY_TOOLTIP_TEXT);
@@ -425,7 +426,7 @@ class SettingsDialog extends JDialog {
     // Panel that contains settings for automatically performing an image
     // capture.  These are a convenience, as the image can always be
     // manually captured by clicking the "Capture" button.
-    private JPanel getAutomaticCaptureSettingsPanel() {
+    private @NotNull JPanel getAutomaticCaptureSettingsPanel() {
         JPanel automaticCaptureSettings = new JPanel();
         automaticCaptureSettings.setBorder(new TitledBorder("Automatic Capture"));
         Box automaticCaptureSettingsBox = Box.createHorizontalBox();
@@ -445,7 +446,7 @@ class SettingsDialog extends JDialog {
     // capture.  In version 1.0, the extent is fixed; it is same as that
     // of the tool's frame itself.  The term "extent" refers to the location
     // and dimension of the rectangle.
-    private JPanel getCaptureDisplayPanel() {
+    private @NotNull JPanel getCaptureDisplayPanel() {
         JPanel captureDisplaySetting = new JPanel();
         captureDisplaySetting.setBorder(new TitledBorder("Capture and Display"));
         Box captureDisplaySettingsBox = Box.createHorizontalBox();
@@ -466,7 +467,7 @@ class SettingsDialog extends JDialog {
     // Panel that contains settings for the Scribbler part of the tool.
     // The only settings here are choice of line width (thickness) in pixels
     // and line color.
-    private JPanel getScribblerPanel(final JDialog dialog) {
+    private @NotNull JPanel getScribblerPanel(final JDialog dialog) {
         JPanel scribblerSettings = new JPanel();
         scribblerSettings.setBorder(new TitledBorder("Scribbler"));
         Box scribblerSettingsBox = Box.createHorizontalBox();
@@ -547,26 +548,26 @@ class MagnifierImage extends JPanel {
     // Displayed image's Image object, which is actually a BufferedImage.
     private Image image;
     // Scribbler for highlighting image using mouse.
-    private final Scribbler scribbler;
+    private final @NotNull Scribbler scribbler;
 
 
     /**
      * Construct an MagnifierImage component.
      */
 
-    public MagnifierImage(Magnifier frame) {
+    public MagnifierImage(@NotNull Magnifier frame) {
         // Enclosing JFrame for this panel -- the Screen Magnifier itself.
         this.scribbler = new Scribbler(frame.scribblerSettings);
 
         addMouseListener(new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
+            public void mousePressed(@NotNull MouseEvent e) {
                 scribbler.moveto(e.getX(), e.getY()); // Move to click position
             }
         });
 
         // Install a mouse motion listener to draw the scribble.
         addMouseMotionListener(new MouseMotionAdapter() {
-            public void mouseDragged(MouseEvent e) {
+            public void mouseDragged(@NotNull MouseEvent e) {
                 scribbler.lineto(e.getX(), e.getY(), (Graphics2D) getGraphics());
             }
         });
@@ -589,7 +590,7 @@ class MagnifierImage extends JPanel {
      * @param g graphics context
      */
 
-    public void paintComponent(Graphics g) {
+    public void paintComponent(@NotNull Graphics g) {
         // Repaint the component's background.
         super.paintComponent(g);
         // If an image has been defined, draw that image using the Component
@@ -603,7 +604,7 @@ class MagnifierImage extends JPanel {
      * @param image new image's Image reference
      */
 
-    public void setImage(Image image) {
+    public void setImage(@NotNull Image image) {
         // Save the image for later repaint.
         this.image = image;
         // Set this panel's preferred size to the image's size, to influence the
@@ -623,7 +624,7 @@ class MagnifierImage extends JPanel {
      * @param scaleAlgorithm Scaling algorithm to use: Image.SCALE_DEFAULT,
      *                       Image.SCALE_FAST, Image.SCALE_SMOOTH.
      */
-    static Image getScaledImage(Image image, double scale, int scaleAlgorithm) {
+    static Image getScaledImage(@NotNull Image image, double scale, int scaleAlgorithm) {
         // Don't bother if it is close to 1.  I anticipate this will be used mainly to
         // enlarge the image, so short circuit evalution will apply most of the time.
         return (scale < 1.01 && scale > 0.99) ? image : image.getScaledInstance((int) (image.getWidth(null) * scale), (int) (image.getHeight(null) * scale), scaleAlgorithm);
@@ -636,7 +637,7 @@ class MagnifierImage extends JPanel {
      * @param image the original image
      * @param scale the magnification scale as a double
      */
-    static Image getScaledImage(Image image, double scale) {
+    static Image getScaledImage(@NotNull Image image, double scale) {
         return getScaledImage(image, scale, Image.SCALE_DEFAULT);
     }
 
@@ -651,7 +652,7 @@ class MagnifierImage extends JPanel {
         // coordinates of previous mouse position
         protected int last_x, last_y;
 
-        Scribbler(ScribblerSettings scribblerSettings) {
+        Scribbler(@NotNull ScribblerSettings scribblerSettings) {
             this.scribblerSettings = scribblerSettings;
             drawingStroke = new BasicStroke(scribblerSettings.getLineWidth());
         }
@@ -711,7 +712,7 @@ class MagnifierImage extends JPanel {
         /**
          * Draw from the last point to this point, then remember new point
          */
-        public void lineto(int x, int y, Graphics2D g2d) {
+        public void lineto(int x, int y, @NotNull Graphics2D g2d) {
             // System.out.println(drawingStroke.getLineWidth());
             g2d.setStroke(new BasicStroke(scribblerSettings.getLineWidth()));
             g2d.setColor(scribblerSettings.getLineColor()); // Tell it what color to use
@@ -821,7 +822,7 @@ class CaptureDisplayCentered implements CaptureDisplayAlignmentStrategy {
      *
      * @param scrollBar The scrollbar to be adjusted.
      */
-    public void setScrollBarValue(JScrollBar scrollBar) {
+    public void setScrollBarValue(@NotNull JScrollBar scrollBar) {
         scrollBar.setValue((scrollBar.getModel().getMaximum() - scrollBar.getModel().getMinimum() - scrollBar.getModel().getExtent()) / 2);
     }
 }
@@ -837,7 +838,7 @@ class CaptureDisplayUpperleft implements CaptureDisplayAlignmentStrategy {
      *
      * @param scrollBar The scrollbar to be adjusted.
      */
-    public void setScrollBarValue(JScrollBar scrollBar) {
+    public void setScrollBarValue(@NotNull JScrollBar scrollBar) {
         scrollBar.setValue(0);
     }
 }

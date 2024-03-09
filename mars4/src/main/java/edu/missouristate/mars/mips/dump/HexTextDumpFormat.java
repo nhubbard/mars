@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.dump;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,17 +18,13 @@ import java.io.PrintStream;
  * @author Pete Sanderson
  * @version December 2007
  */
-
-
 public class HexTextDumpFormat extends AbstractDumpFormat {
-
     /**
      * Constructor.  There is no standard file extension for this format.
      */
     public HexTextDumpFormat() {
         super("Hexadecimal Text", "HexText", "Written as hex characters to text file", "txt");
     }
-
 
     /**
      * Write MIPS memory contents in hexadecimal text format.  Each line of
@@ -43,14 +40,12 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException {
+    public void dumpMemoryRange(@NotNull File file, int firstAddress, int lastAddress) throws AddressErrorException, IOException {
         try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
             StringBuilder string;
             for (int address = firstAddress; address <= lastAddress; address += Memory.WORD_LENGTH_BYTES) {
                 Integer temp = Globals.memory.getRawWordOrNull(address);
-                if (temp == null)
-                    break;
+                if (temp == null) break;
                 string = new StringBuilder(Integer.toHexString(temp));
                 while (string.length() < 8) {
                     string.insert(0, '0');
@@ -59,5 +54,4 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
             }
         }
     }
-
 }

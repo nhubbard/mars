@@ -39,7 +39,7 @@ class TestSymbolTable {
             Token(TokenTypes.IDENTIFIER, "main2", program, 17, 0),
             mainAddress,
             false,
-            errors
+            errors ?: ErrorList()
         )
         // Yes debug
         Globals.debug = true
@@ -48,7 +48,7 @@ class TestSymbolTable {
                 Token(TokenTypes.IDENTIFIER, "main3", program, 18, 0),
                 mainAddress,
                 false,
-                errors
+                errors ?: ErrorList()
             )
         }
         // Partial string match only because I don't know the symbol table name
@@ -65,13 +65,13 @@ class TestSymbolTable {
             Token(TokenTypes.IDENTIFIER, "main", program, 15, 0),
             mainAddress,
             false,
-            errors
+            errors ?: ErrorList()
         )
-        assertTrue(errors.errorsOccurred())
-        val error = errors.errorMessages[0]
-        assertEquals(15, error.line)
-        assertEquals(0, error.position)
-        assertEquals("label \"main\" already defined", error.message)
+        assertTrue(errors?.errorsOccurred() ?: false)
+        val error = errors?.errorMessages?.getOrNull(0)
+        assertEquals(15, error?.line)
+        assertEquals(0, error?.position)
+        assertEquals("label \"main\" already defined", error?.message)
     }
 
     @Test
@@ -151,9 +151,9 @@ class TestSymbolTable {
         val table = program.localSymbolTable
         val strAddress = table.getAddress("main").toString()
         val sym = table.getSymbolGivenAddressLocalOrGlobal(strAddress)
-        assertEquals(table.getAddress("main"), sym.address)
-        assertEquals("main", sym.name)
-        assertFalse(sym.type)
+        assertEquals(table.getAddress("main"), sym?.address)
+        assertEquals("main", sym?.name)
+        assertFalse(sym?.type ?: true)
     }
 
     @Test
@@ -176,9 +176,9 @@ class TestSymbolTable {
         val table = program.localSymbolTable
         val address = table.getAddressLocalOrGlobal("globalVar")
         val sym = table.getSymbolGivenAddressLocalOrGlobal(address.toString())
-        assertEquals(address, sym.address)
-        assertEquals("globalVar", sym.name)
-        assertTrue(sym.type)
+        assertEquals(address, sym?.address)
+        assertEquals("globalVar", sym?.name)
+        assertTrue(sym?.type ?: false)
     }
 
     @Test

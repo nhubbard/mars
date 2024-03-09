@@ -1,5 +1,8 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 
@@ -20,7 +23,7 @@ public class TextUtilities {
      * @throws BadLocationException If an out-of-bounds access
      *                              was attempted on the document text
      */
-    public static int findMatchingBracket(Document doc, int offset)
+    public static int findMatchingBracket(@NotNull Document doc, int offset)
             throws BadLocationException {
         if (doc.getLength() == 0)
             return -1;
@@ -134,7 +137,7 @@ public class TextUtilities {
      * @param line The text
      * @param pos  The position
      */
-    public static int findWordStart(String line, int pos, String noWordSep) {
+    public static int findWordStart(@NotNull String line, int pos, @Nullable String noWordSep) {
         char ch = line.charAt(pos - 1);
 
         if (noWordSep == null)
@@ -161,7 +164,7 @@ public class TextUtilities {
      * @param line The text
      * @param pos  The position
      */
-    public static int findWordEnd(String line, int pos, String noWordSep) {
+    public static int findWordEnd(@NotNull String line, int pos, @Nullable String noWordSep) {
         char ch = line.charAt(pos);
 
         if (noWordSep == null)

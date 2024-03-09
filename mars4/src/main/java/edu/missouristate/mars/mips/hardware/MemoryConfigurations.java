@@ -2,6 +2,8 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -17,6 +19,7 @@ import java.util.Iterator;
 
 
 public class MemoryConfigurations {
+    @Nullable
     static ArrayList<MemoryConfiguration> configurations = null;
     static MemoryConfiguration defaultConfiguration;
     static MemoryConfiguration currentConfiguration;
@@ -141,14 +144,15 @@ public class MemoryConfigurations {
         }
     }
 
-    public static Iterator<MemoryConfiguration> getConfigurationsIterator() {
+    public static @NotNull Iterator<MemoryConfiguration> getConfigurationsIterator() {
         if (configurations == null) {
             buildConfigurationCollection();
         }
         return configurations.iterator();
     }
 
-    public static MemoryConfiguration getConfigurationByName(String name) {
+    @Nullable
+    public static MemoryConfiguration getConfigurationByName(@NotNull String name) {
         Iterator<MemoryConfiguration> configurationsIterator = getConfigurationsIterator();
         while (configurationsIterator.hasNext()) {
             MemoryConfiguration config = configurationsIterator.next();
@@ -173,7 +177,7 @@ public class MemoryConfigurations {
         return currentConfiguration;
     }
 
-    public static boolean setCurrentConfiguration(MemoryConfiguration config) {
+    public static boolean setCurrentConfiguration(@Nullable MemoryConfiguration config) {
         if (config == null)
             return false;
         if (config != currentConfiguration) {

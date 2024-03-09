@@ -6,6 +6,8 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.simulator.SimulatorNotice;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.TableModelEvent;
@@ -33,7 +35,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     private static JTable dataTable;
     private JScrollPane dataTableScroller;
     private final Container contentPane;
-    private final JPanel tablePanel;
+    private final @NotNull JPanel tablePanel;
     private JButton dataButton, nextButton, prevButton, stakButton, globButton, heapButton, kernButton, extnButton, mmioButton, textButton;
 
     static final int VALUES_PER_ROW = 8;
@@ -63,7 +65,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // The combo box replaced the row of buttons when number of buttons expanded to 7!
     // We'll keep the button objects however and manually invoke their action listeners
     // when the corresponding combo box item is selected.  DPS 22-Nov-2006
-    final JComboBox<String> baseAddressSelector;
+    final @NotNull JComboBox<String> baseAddressSelector;
 
     // The next bunch are initialized dynamically in initializeBaseAddressChoices()
     private String[] displayBaseAddressChoices;
@@ -77,7 +79,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
      * @param choosers an array of objects used by user to select number display base (10 or 16)
      */
 
-    public DataSegmentWindow(NumberDisplayBaseChooser[] choosers) {
+    public DataSegmentWindow(NumberDisplayBaseChooser @NotNull [] choosers) {
         super("Data Segment", true, false, true, true);
 
         Simulator.getInstance().addObserver(this);
@@ -215,7 +217,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // The two operations are related because the address may fall in within address space not
     // currently in the (display) table, including a different MIPS data segment (e.g. in
     // kernel instead of user data segment).
-    private Point displayCellForAddress(int address) {
+    private @Nullable Point displayCellForAddress(int address) {
         //////////////////////////////////////////////////////////
         // This requires a 5-step process.  Each step is described
         // just above the statements that implement it.
@@ -306,7 +308,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     }
 
     // Create and fill String array containing labels for base address combo box.
-    private String[] createBaseAddressLabelsArray(int[] baseAddressArray, String[] descriptions) {
+    private String @NotNull [] createBaseAddressLabelsArray(int @NotNull [] baseAddressArray, String[] descriptions) {
         String[] baseAddressChoices = new String[baseAddressArray.length];
         for (int i = 0; i < baseAddressChoices.length; i++) {
             baseAddressChoices[i] = ((baseAddressArray[i] != -1) ? Binary.intToHexString(baseAddressArray[i]) : "") + descriptions[i];
@@ -367,7 +369,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     ////////////////////////////////////////////////////////////////////////////////
     //  Generates the Address/Data part of the Data Segment window.
     //   Returns the JScrollPane for the Address/Data part of the Data Segment window.
-    private JScrollPane generateDataPanel() {
+    private @NotNull JScrollPane generateDataPanel() {
         dataData = new Object[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
         int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
         int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
@@ -406,7 +408,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     }
 
     // Little helper.  Is called when headers set up and each time number base changes.
-    private String getHeaderStringForColumn(int i, int base) {
+    private @NotNull String getHeaderStringForColumn(int i, int base) {
         return (i == ADDRESS_COLUMN) ? "Address" : "Value (+" + Integer.toString((i - 1) * BYTES_PER_VALUE, base) + ")";
     }
 
@@ -782,7 +784,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // solution to extend the model class to call the protected
     // "fireContentsChanged()" method worked. DPS 25-Jan-2009
     private static class CustomComboBoxModel extends DefaultComboBoxModel<String> {
-        public CustomComboBoxModel(String[] list) {
+        public CustomComboBoxModel(String @NotNull [] list) {
             super(list);
         }
 
@@ -839,7 +841,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -914,7 +916,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
     class AddressCellRenderer extends DefaultTableCellRenderer {
 
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        public @NotNull Component getTableCellRendererComponent(@NotNull JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
             cell.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -955,9 +957,9 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
                 /* value +n */ " bytes beyond base address for its row."};
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             return new JTableHeader(columnModel) {
-                public String getToolTipText(MouseEvent e) {
+                public String getToolTipText(@NotNull MouseEvent e) {
                     String tip = null;
                     java.awt.Point p = e.getPoint();
                     int index = columnModel.getColumnIndexAtX(p.x);

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,17 +15,14 @@ import java.io.IOException;
  * @author Pete Sanderson
  * @version December 2007
  */
-
-
 public interface DumpFormat {
-
     /**
      * Get the file extension associated with this format.
      *
      * @return String containing file extension -- without the leading "." -- or
      * null if there is no standard extension.
      */
-    String getFileExtension();
+    @Nullable String getFileExtension();
 
     /**
      * Get a short description of the format, suitable
@@ -42,7 +40,7 @@ public interface DumpFormat {
      * command line parser (and the MARS command line user) to specify
      * that this format is to be used.
      */
-    String getCommandDescriptor();
+    @Nullable String getCommandDescriptor();
 
     /**
      * Descriptive name for the format.
@@ -63,7 +61,5 @@ public interface DumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException;
-
+    void dumpMemoryRange(File file, int firstAddress, int lastAddress) throws AddressErrorException, IOException;
 }

@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -118,7 +119,7 @@ public class Memory extends Observable {
     // and high end of address range, but retrieval from the tree has to be based
     // on target address being ANYWHERE IN THE RANGE (not an exact key match).
 
-    Collection<MemoryObservable> observables = getNewMemoryObserversCollection();
+    @NotNull Collection<MemoryObservable> observables = getNewMemoryObserversCollection();
 
     // The data segment is allocated in blocks of 1024 ints (4096 bytes).  Each block is
     // referenced by a "block table" entry, and the table has 1024 entries.  The capacity
@@ -572,7 +573,7 @@ public class Memory extends Observable {
      * @see ProgramStatement
      **/
 
-    public void setStatement(int address, ProgramStatement statement) throws AddressErrorException {
+    public void setStatement(int address, @NotNull ProgramStatement statement) throws AddressErrorException {
         if (address % 4 != 0 || !(inTextSegment(address) || inKernelTextSegment(address))) {
             throw new AddressErrorException(
                     "store address to text segment out of range or not aligned to word boundary ",
@@ -738,6 +739,7 @@ public class Memory extends Observable {
      **/
 
     // See note above, with getRawWord(), concerning duplicated logic.
+    @Nullable
     public Integer getRawWordOrNull(int address) throws AddressErrorException {
         Integer value = null;
         int relative;
@@ -893,7 +895,7 @@ public class Memory extends Observable {
 
     //////////
 
-    private ProgramStatement getStatement(int address, boolean notify) throws AddressErrorException {
+    private @Nullable ProgramStatement getStatement(int address, boolean notify) throws AddressErrorException {
         if (!wordAligned(address)) {
             throw new AddressErrorException(
                     "fetch address for text segment not aligned to word boundary ",
@@ -1138,7 +1140,7 @@ public class Memory extends Observable {
     }
 
 
-    private Collection<MemoryObservable> getNewMemoryObserversCollection() {
+    private @NotNull Collection<MemoryObservable> getNewMemoryObserversCollection() {
         return new Vector<>();  // Vectors are thread-safe
     }
 
@@ -1290,7 +1292,7 @@ public class Memory extends Observable {
     // and block size.  Assumes address is word aligned, no endian processing.
     // Modified 29 Dec 2005 to return overwritten value.
 
-    private synchronized int storeWordInTable(int[][] blockTable, int relative, int value) {
+    private synchronized int storeWordInTable(int[] @NotNull [] blockTable, int relative, int value) {
         int block, offset, oldValue;
         block = relative / BLOCK_LENGTH_WORDS;
         offset = relative % BLOCK_LENGTH_WORDS;
@@ -1311,7 +1313,7 @@ public class Memory extends Observable {
     // and block size.  Assumes word alignment, no endian processing.
     //
 
-    private synchronized int fetchWordFromTable(int[][] blockTable, int relative) {
+    private synchronized int fetchWordFromTable(int[] @NotNull [] blockTable, int relative) {
         int value;
         int block, offset;
         block = relative / BLOCK_LENGTH_WORDS;
@@ -1337,7 +1339,7 @@ public class Memory extends Observable {
     // by Greg Gibeling of UC Berkeley, fall 2007.
     //
 
-    private synchronized Integer fetchWordOrNullFromTable(int[][] blockTable, int relative) {
+    private synchronized @Nullable Integer fetchWordOrNullFromTable(int[] @NotNull [] blockTable, int relative) {
         int value;
         int block, offset;
         block = relative / BLOCK_LENGTH_WORDS;
@@ -1399,7 +1401,7 @@ public class Memory extends Observable {
     // as valid.  It may be either in user or kernel text segment, as specified by arguments.
     // Returns associated ProgramStatement or null if none.
     // Last parameter controls whether or not observers will be notified.
-    private ProgramStatement readProgramStatement(int address, int baseAddress, ProgramStatement[][] blockTable, boolean notify) {
+    private @Nullable ProgramStatement readProgramStatement(int address, int baseAddress, ProgramStatement[][] blockTable, boolean notify) {
         int relative = (address - baseAddress) >> 2; // convert byte address to words
         int block = relative / TEXT_BLOCK_LENGTH_WORDS;
         int offset = relative % TEXT_BLOCK_LENGTH_WORDS;

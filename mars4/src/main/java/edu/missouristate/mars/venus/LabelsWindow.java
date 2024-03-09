@@ -6,6 +6,8 @@ import edu.missouristate.mars.assembler.Symbol;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -27,9 +29,9 @@ import java.util.List;
  **/
 
 public class LabelsWindow extends JInternalFrame {
-    private final JPanel labelPanel;      // holds J
-    private final JCheckBox dataLabels;
-    private final JCheckBox textLabels;
+    private final @NotNull JPanel labelPanel;      // holds J
+    private final @NotNull JCheckBox dataLabels;
+    private final @NotNull JCheckBox textLabels;
     private ArrayList<LabelsForSymbolTable> listOfLabelsForSymbolTable;
     private static final int MAX_DISPLAYED_CHARS = 24;
     private static final int PREFERRED_NAME_COLUMN_WIDTH = 60;
@@ -138,7 +140,7 @@ public class LabelsWindow extends JInternalFrame {
     }
 
     //
-    private JScrollPane generateLabelScrollPane() {
+    private @NotNull JScrollPane generateLabelScrollPane() {
         listOfLabelsForSymbolTable = new ArrayList<>();
         listOfLabelsForSymbolTable.add(new LabelsForSymbolTable(null));// global symtab
         ArrayList<MIPSProgram> MIPSProgramsAssembled = RunAssembleAction.getMIPSProgramsToAssemble();
@@ -222,7 +224,7 @@ public class LabelsWindow extends JInternalFrame {
     //  July 2007.
 
     private static class LabelDisplayMouseListener extends MouseAdapter {
-        public void mouseClicked(MouseEvent e) {
+        public void mouseClicked(@NotNull MouseEvent e) {
             JTable table = (JTable) e.getSource();
             int row = table.rowAtPoint(e.getPoint());
             int column = table.columnAtPoint(e.getPoint());
@@ -257,10 +259,10 @@ public class LabelsWindow extends JInternalFrame {
         private JTable labelTable;
         private ArrayList<Symbol> symbols;
         private final SymbolTable symbolTable;
-        private final String tableName;
+        private final @NotNull String tableName;
 
         // Associated MIPSProgram object.  If null, this represents global symbol table.
-        public LabelsForSymbolTable(MIPSProgram myMIPSProgram) {
+        public LabelsForSymbolTable(@Nullable MIPSProgram myMIPSProgram) {
             this.myMIPSProgram = myMIPSProgram;
             symbolTable = (myMIPSProgram == null) ? Globals.symbolTable : myMIPSProgram.getLocalSymbolTable();
             tableName = (myMIPSProgram == null) ? "(global)" : new File(myMIPSProgram.getFilename()).getName();
@@ -355,7 +357,7 @@ public class LabelsWindow extends JInternalFrame {
          * JTable uses this method to determine the default renderer/
          * editor for each cell.
          */
-        public Class<?> getColumnClass(int c) {
+        public @NotNull Class<?> getColumnClass(int c) {
             return getValueAt(0, c).getClass();
         }
 
@@ -396,7 +398,7 @@ public class LabelsWindow extends JInternalFrame {
 
 
         //Implement table header tool tips.
-        protected JTableHeader createDefaultTableHeader() {
+        protected @NotNull JTableHeader createDefaultTableHeader() {
             return new SymbolTableHeader(columnModel);
         }
 
@@ -424,7 +426,7 @@ public class LabelsWindow extends JInternalFrame {
                 this.addMouseListener(new SymbolTableHeaderMouseListener());
             }
 
-            public String getToolTipText(MouseEvent e) {
+            public @NotNull String getToolTipText(@NotNull MouseEvent e) {
                 Point p = e.getPoint();
                 int index = columnModel.getColumnIndexAtX(p.x);
                 int realIndex = columnModel.getColumn(index).getModelIndex();
@@ -436,7 +438,7 @@ public class LabelsWindow extends JInternalFrame {
             // When user clicks on table column header, system will sort the
             // table based on that column then redraw it.
             private class SymbolTableHeaderMouseListener implements MouseListener {
-                public void mouseClicked(MouseEvent e) {
+                public void mouseClicked(@NotNull MouseEvent e) {
                     Point p = e.getPoint();
                     int index = columnModel.getColumnIndexAtX(p.x);
                     int realIndex = columnModel.getColumn(index).getModelIndex();
@@ -470,7 +472,7 @@ public class LabelsWindow extends JInternalFrame {
     //  Comparator class used to sort in ascending order a List of symbols alphabetically by name
     private static class LabelNameAscendingComparator implements Comparator<Symbol> {
         @Override
-        public int compare(Symbol a, Symbol b) {
+        public int compare(@NotNull Symbol a, @NotNull Symbol b) {
             return a.getName().toLowerCase().compareTo(b.getName().toLowerCase());
         }
     }
@@ -487,7 +489,7 @@ public class LabelsWindow extends JInternalFrame {
     //  If signs differ, b will yield correct result (think about it).
     private static class LabelAddressAscendingComparator implements Comparator<Symbol> {
         @Override
-        public int compare(Symbol a, Symbol b) {
+        public int compare(@NotNull Symbol a, @NotNull Symbol b) {
             int addrA = a.getAddress();
             int addrB = b.getAddress();
             return (addrA >= 0 && addrB >= 0 || addrA < 0 && addrB < 0) ? addrA - addrB : addrB;

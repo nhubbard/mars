@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.util.Binary;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -128,7 +129,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "Memory Reference Visualization";
     }
 
@@ -164,7 +165,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      *
      * @return the GUI component containing these two areas
      */
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         JPanel results = new JPanel();
         results.add(buildOrganizationArea());
         results.add(buildVisualizationArea());
@@ -183,7 +184,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
      * @param memory       the attached memory
      * @param accessNotice information provided by memory in MemoryAccessNotice object
      */
-    protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
+    protected void processMIPSUpdate(Observable memory, @NotNull AccessNotice accessNotice) {
         incrementReferenceCountForAddress(((MemoryAccessNotice) accessNotice).getAddress());
         updateDisplay();
     }
@@ -238,7 +239,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     /**
      * Overrides default method, to provide a Help button for this tool/app.
      */
-    protected JComponent getHelpComponent() {
+    protected @NotNull JComponent getHelpComponent() {
         final String helpContent =
                 """
                         Use this program to visualize dynamic memory reference
@@ -273,7 +274,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     //////////////////////////////////////////////////////////////////////////////////////
 
     // UI components and layout for left half of GUI, where settings are specified.
-    private JComponent buildOrganizationArea() {
+    private @NotNull JComponent buildOrganizationArea() {
         JPanel organization = new JPanel(new GridLayout(9, 1));
 
         drawHashMarksSelector = new JCheckBox();
@@ -458,7 +459,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
     // Returns Dimension object with current width and height of display area as determined
     // by current settings of respective combo boxes.
-    private Dimension getDisplayAreaDimension() {
+    private @NotNull Dimension getDisplayAreaDimension() {
         return new Dimension(visualizationAreaWidthInPixels, visualizationAreaHeightInPixels);
     }
 
@@ -469,7 +470,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
     // Will return int equivalent of specified combo box's current selection.
     // The selection must be a String that parses to an int.
-    private int getIntComboBoxSelection(JComboBox<String> comboBox) {
+    private int getIntComboBoxSelection(@NotNull JComboBox<String> comboBox) {
         try {
             return Integer.parseInt((String) Objects.requireNonNull(comboBox.getSelectedItem()));
         } catch (NumberFormatException nfe) {
@@ -480,13 +481,13 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     }
 
     // Use this for consistent results.
-    private JPanel getPanelWithBorderLayout() {
+    private @NotNull JPanel getPanelWithBorderLayout() {
         return new JPanel(new BorderLayout(2, 2));
     }
 
     // Method to determine grid dimensions based on durrent control settings.
     // Each grid element corresponds to one visualization unit.
-    private Grid createNewGrid() {
+    private @NotNull Grid createNewGrid() {
         int rows = visualizationAreaHeightInPixels / unitPixelHeight;
         int columns = visualizationAreaWidthInPixels / unitPixelWidth;
         return new Grid(rows, columns);
@@ -515,7 +516,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     private class GraphicsPanel extends JPanel {
         // override default paint method to assure visualized reference pattern is produced every time
         // the panel is repainted.
-        public void paint(Graphics g) {
+        public void paint(@NotNull Graphics g) {
             paintGrid(g, theGrid);
             if (drawHashMarksSelector.isSelected()) {
                 paintHashMarks(g, theGrid);
@@ -524,7 +525,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
         // Paint (ash marks on the grid.  Their color is chosef to be in
         // "contrast" to the current color for reference count of zero.
-        private void paintHashMarks(Graphics g, Grid grid) {
+        private void paintHashMarks(@NotNull Graphics g, @NotNull Grid grid) {
             g.setColor(getContrastingColor(counterColorScale.getColor(0)));
             int leftX = 0;
             int rightX = visualizationAreaWidthInPixels;
@@ -544,7 +545,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         }
 
         // Paint the color codes for reference counts.
-        private void paintGrid(Graphics g, Grid grid) {
+        private void paintGrid(@NotNull Graphics g, @NotNull Grid grid) {
             int upperLeftX = 0, upperLeftY = 0;
             for (int i = 0; i < grid.getRows(); i++) {
                 for (int j = 0; j < grid.getColumns(); j++) {
@@ -558,7 +559,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
             }
         }
 
-        private Color getContrastingColor(Color color) {
+        private @NotNull Color getContrastingColor(@NotNull Color color) {
          /* Usual and quick method is to XOR with 0xFFFFFF. Here's a better but slower 
             algorithm from www.codeproject.com/tips/JbColorContrast.asp :
          	If all 3 color components are "close" to 0x80 (midpoint - choose your tolerance),
@@ -574,10 +575,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     // change the color associated with each memory reference count value.
 
     private class ColorChooserControls {
-        private JLabel sliderLabel = null;
-        private final JButton currentColorButton;
-        private final JPanel colorChooserRow;
-        private final JPanel countDisplayRow;
+        private @Nullable JLabel sliderLabel = null;
+        private final @NotNull JButton currentColorButton;
+        private final @NotNull JPanel colorChooserRow;
+        private final @NotNull JPanel countDisplayRow;
         private volatile int counterIndex;
 
         private ColorChooserControls() {
@@ -619,7 +620,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         }
 
         // set label wording depending on current speed setting
-        private String setLabel(int value) {
+        private @NotNull String setLabel(int value) {
             String spaces = "  ";
             if (value >= 10 && value < 100) {
                 spaces = " ";
@@ -631,7 +632,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
         // Listener that both revises label as user slides and updates current index when sliding stops.
         private class ColorChooserListener implements ChangeListener {
-            public void stateChanged(ChangeEvent e) {
+            public void stateChanged(@NotNull ChangeEvent e) {
                 JSlider source = (JSlider) e.getSource();
                 if (!source.getValueIsAdjusting()) {
                     counterIndex = source.getValue();
@@ -724,7 +725,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     // Represents grid of memory access counts
     private static class Grid {
 
-        final int[][] grid;
+        final int[] @NotNull [] grid;
         final int rows;
         final int columns;
 

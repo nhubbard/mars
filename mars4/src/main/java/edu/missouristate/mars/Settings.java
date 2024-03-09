@@ -4,6 +4,8 @@ import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.EditorFont;
 import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxStyle;
 import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxUtilities;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.text.NumberFormat;
@@ -319,12 +321,12 @@ public class Settings extends Observable {
      */
     private static final String[] defaultColorSettingsValues = {"0x00e0e0e0", "0", "0x00ffffff", "0", "0x00ffff99", "0", "0x0033ff00", "0", "0x0099ccff", "0", "0x0099cc55", "0"};
 
-    private final boolean[] booleanSettingsValues;
-    private final String[] stringSettingsValues;
-    private final String[] fontFamilySettingsValues;
-    private final String[] fontStyleSettingsValues;
-    private final String[] fontSizeSettingsValues;
-    private final String[] colorSettingsValues;
+    private final boolean @NotNull [] booleanSettingsValues;
+    private final String @NotNull [] stringSettingsValues;
+    private final String @NotNull [] fontFamilySettingsValues;
+    private final String @NotNull [] fontStyleSettingsValues;
+    private final String @NotNull [] fontSizeSettingsValues;
+    private final String @NotNull [] colorSettingsValues;
 
     private final Preferences preferences;
 
@@ -411,18 +413,18 @@ public class Settings extends Observable {
     private static boolean[] defaultSyntaxStyleBoldSettingsValues;
     private static boolean[] defaultSyntaxStyleItalicSettingsValues;
 
-    public void setEditorSyntaxStyleByPosition(int index, SyntaxStyle syntaxStyle) {
+    public void setEditorSyntaxStyleByPosition(int index, @NotNull SyntaxStyle syntaxStyle) {
         syntaxStyleColorSettingsValues[index] = syntaxStyle.getColorAsHexString();
         syntaxStyleItalicSettingsValues[index] = syntaxStyle.isItalic();
         syntaxStyleBoldSettingsValues[index] = syntaxStyle.isBold();
         saveEditorSyntaxStyle(index);
     }
 
-    public SyntaxStyle getEditorSyntaxStyleByPosition(int index) {
+    public @NotNull SyntaxStyle getEditorSyntaxStyleByPosition(int index) {
         return new SyntaxStyle(getColorValueByPosition(index, syntaxStyleColorSettingsValues), syntaxStyleItalicSettingsValues[index], syntaxStyleBoldSettingsValues[index]);
     }
 
-    public SyntaxStyle getDefaultEditorSyntaxStyleByPosition(int index) {
+    public @NotNull SyntaxStyle getDefaultEditorSyntaxStyleByPosition(int index) {
         return new SyntaxStyle(getColorValueByPosition(index, defaultSyntaxStyleColorSettingsValues), defaultSyntaxStyleItalicSettingsValues[index], defaultSyntaxStyleBoldSettingsValues[index]);
     }
 
@@ -521,7 +523,7 @@ public class Settings extends Observable {
      *
      * @return Font object for current editor font.
      */
-    public Font getEditorFont() {
+    public @Nullable Font getEditorFont() {
         return getFontByPosition(EDITOR_FONT);
     }
 
@@ -531,6 +533,7 @@ public class Settings extends Observable {
      * @param fontSettingPosition constant that identifies which item
      * @return Font object for given item
      */
+    @Nullable
     public Font getFontByPosition(int fontSettingPosition) {
         if (fontSettingPosition >= 0 && fontSettingPosition < fontFamilySettingsValues.length) {
             return EditorFont.createFontFromStringValues(fontFamilySettingsValues[fontSettingPosition], fontStyleSettingsValues[fontSettingPosition], fontSizeSettingsValues[fontSettingPosition]);
@@ -545,6 +548,7 @@ public class Settings extends Observable {
      * @param fontSettingPosition constant that identifies which item
      * @return Font object for given item
      */
+    @Nullable
     public Font getDefaultFontByPosition(int fontSettingPosition) {
         if (fontSettingPosition >= 0 && fontSettingPosition < defaultFontFamilySettingsValues.length) {
             return EditorFont.createFontFromStringValues(defaultFontFamilySettingsValues[fontSettingPosition], defaultFontStyleSettingsValues[fontSettingPosition], defaultFontSizeSettingsValues[fontSettingPosition]);
@@ -638,7 +642,8 @@ public class Settings extends Observable {
      * @param key the Setting key
      * @return corresponding Color, or null if key not found or value not valid color
      */
-    public Color getColorSettingByKey(String key) {
+    @Nullable
+    public Color getColorSettingByKey(@NotNull String key) {
         return getColorValueByKey(key, colorSettingsValues);
     }
 
@@ -649,7 +654,8 @@ public class Settings extends Observable {
      * @param key the Setting key
      * @return corresponding default Color, or null if key not found or value not valid color
      */
-    public Color getDefaultColorSettingByKey(String key) {
+    @Nullable
+    public Color getDefaultColorSettingByKey(@NotNull String key) {
         return getColorValueByKey(key, defaultColorSettingsValues);
     }
 
@@ -660,6 +666,7 @@ public class Settings extends Observable {
      * @param position the Setting name (see list of static constants)
      * @return corresponding Color, or null if argument invalid or value not valid color
      */
+    @Nullable
     public Color getColorSettingByPosition(int position) {
         return getColorValueByPosition(position, colorSettingsValues);
     }
@@ -671,6 +678,7 @@ public class Settings extends Observable {
      * @param position the Setting name (see list of static constants)
      * @return corresponding default Color, or null if argument invalid or value not valid color
      */
+    @Nullable
     public Color getDefaultColorSettingByPosition(int position) {
         return getColorValueByPosition(position, defaultColorSettingsValues);
     }
@@ -764,7 +772,7 @@ public class Settings extends Observable {
      *
      * @param font Font object to be used by text editor.
      */
-    public void setEditorFont(Font font) {
+    public void setEditorFont(@NotNull Font font) {
         setFontByPosition(EDITOR_FONT, font);
     }
 
@@ -774,7 +782,7 @@ public class Settings extends Observable {
      * @param fontSettingPosition Constant that identifies the item the font goes with
      * @param font                The font to set that item to
      */
-    public void setFontByPosition(int fontSettingPosition, Font font) {
+    public void setFontByPosition(int fontSettingPosition, @NotNull Font font) {
         if (fontSettingPosition >= 0 && fontSettingPosition < fontFamilySettingsValues.length) {
             fontFamilySettingsValues[fontSettingPosition] = font.getFamily();
             fontStyleSettingsValues[fontSettingPosition] = EditorFont.styleIntToStyleString(font.getStyle());
@@ -796,7 +804,7 @@ public class Settings extends Observable {
      * @param columnOrder An array of int indicating column order.
      */
 
-    public void setTextColumnOrder(int[] columnOrder) {
+    public void setTextColumnOrder(int @NotNull [] columnOrder) {
         StringBuilder stringifiedOrder = new StringBuilder();
         for (int j : columnOrder) stringifiedOrder.append(j).append(" ");
         setStringSetting(TEXT_COLUMN_ORDER, stringifiedOrder.toString());
@@ -819,7 +827,7 @@ public class Settings extends Observable {
      * @param key   the Setting key
      * @param color the Color to save
      */
-    public void setColorSettingByKey(String key, Color color) {
+    public void setColorSettingByKey(@NotNull String key, @NotNull Color color) {
         for (int i = 0; i < colorSettingsKeys.length; i++) {
             if (key.equals(colorSettingsKeys[i])) {
                 setColorSettingByPosition(i, color);
@@ -834,7 +842,7 @@ public class Settings extends Observable {
      * @param position the Setting name (see list of static constants)
      * @param color    the Color to save
      */
-    public void setColorSettingByPosition(int position, Color color) {
+    public void setColorSettingByPosition(int position, @NotNull Color color) {
         if (position >= 0 && position < colorSettingsKeys.length) {
             setColorSetting(position, color);
         }
@@ -891,7 +899,7 @@ public class Settings extends Observable {
     /**
      * Used by setter methods for color-based settings.
      */
-    private void setColorSetting(int settingIndex, Color color) {
+    private void setColorSetting(int settingIndex, @NotNull Color color) {
         colorSettingsValues[settingIndex] = Binary.intToHexString(color.getRed() << 16 | color.getGreen() << 8 | color.getBlue());
         saveColorSetting(settingIndex);
     }
@@ -900,7 +908,8 @@ public class Settings extends Observable {
      * Get the {@link java.awt.Color} object for this key value.
      * Get it from the values array provided as argument (could be either the current or the default settings array).
      */
-    private Color getColorValueByKey(String key, String[] values) {
+    @Nullable
+    private Color getColorValueByKey(@NotNull String key, String[] values) {
         Color color = null;
         for (int i = 0; i < colorSettingsKeys.length; i++) {
             if (key.equals(colorSettingsKeys[i])) {
@@ -914,6 +923,7 @@ public class Settings extends Observable {
      * Get the {@link java.awt.Color} object for this key array position.
      * Get it from the values array provided as argument (could be either the current or the default settings array).
      */
+    @Nullable
     private Color getColorValueByPosition(int position, String[] values) {
         Color color = null;
         if (position >= 0 && position < colorSettingsKeys.length) {
@@ -929,7 +939,7 @@ public class Settings extends Observable {
      * Not a huge deal as settings are little-used.
      * @return index or -1 if not found.
      */
-    private int getIndexOfKey(String key, String[] array) {
+    private int getIndexOfKey(String key, String @NotNull [] array) {
         int index = -1;
         for (int i = 0; i < array.length; i++) {
             if (array[i].equals(key)) {
@@ -959,7 +969,7 @@ public class Settings extends Observable {
      * default values.
      */
     private boolean readSettingsFromPropertiesFile(String filename) {
-        String settingValue;
+        @Nullable String settingValue;
         try {
             for (int i = 0; i < booleanSettingsKeys.length; i++) {
                 settingValue = Globals.getPropertyEntry(filename, booleanSettingsKeys[i]);
@@ -1045,7 +1055,7 @@ public class Settings extends Observable {
     /**
      * Save the key-value pair in the Properties object and assure it is written to persistent storage.
      */
-    private void saveFontSetting(int index, String[] settingsKeys, String[] settingsValues) {
+    private void saveFontSetting(int index, String @NotNull [] settingsKeys, String @NotNull [] settingsValues) {
         try {
             preferences.put(settingsKeys[index], settingsValues[index]);
             preferences.flush();
@@ -1076,7 +1086,7 @@ public class Settings extends Observable {
      * If a problem occurs with the parameter string, will fall back to the
      * default defined above.
      */
-    private int[] getTextSegmentColumnOrder(String stringOfColumnIndexes) {
+    private int[] getTextSegmentColumnOrder(@NotNull String stringOfColumnIndexes) {
         StringTokenizer st = new StringTokenizer(stringOfColumnIndexes);
         int[] list = new int[st.countTokens()];
         int index = 0, value;

@@ -1,6 +1,8 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.assembler.SourceLine;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -42,11 +44,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 public class ErrorMessage {
     private boolean isWarning; // allow for warnings too (added Nov 2006)
-    private String filename; // name of source file  (added Oct 2006)
+    private @Nullable String filename; // name of source file  (added Oct 2006)
     private int line;     // line in source code where error detected
     private int position; // position in source line where error detected
     private String message;
-    private String macroExpansionHistory;
+    @Nullable private String macroExpansionHistory;
 
     /**
      * Constant to indicate this message is warning not error
@@ -125,7 +127,7 @@ public class ErrorMessage {
      * @param message           String containing appropriate error message.
      **/
 
-    public ErrorMessage(MIPSProgram sourceMIPSprogram, int line, int position, String message) {
+    public ErrorMessage(@Nullable MIPSProgram sourceMIPSprogram, int line, int position, String message) {
         this(ERROR, sourceMIPSprogram, line, position, message);
     }
 
@@ -142,7 +144,7 @@ public class ErrorMessage {
      * @param message           String containing appropriate error message.
      **/
 
-    public ErrorMessage(boolean isWarning, MIPSProgram sourceMIPSprogram, int line, int position, String message) {
+    public ErrorMessage(boolean isWarning, @Nullable MIPSProgram sourceMIPSprogram, int line, int position, String message) {
         this.isWarning = isWarning;
         if (sourceMIPSprogram == null) {
             this.filename = "";
@@ -169,7 +171,7 @@ public class ErrorMessage {
      * @param message   String containing appropriate error message.
      **/
     // Added January 2013
-    public ErrorMessage(ProgramStatement statement, String message) {
+    public ErrorMessage(@NotNull ProgramStatement statement, String message) {
         this.isWarning = ERROR;
         this.filename = (statement.getSourceMIPSProgram() == null)
                 ? "" : statement.getSourceMIPSProgram().getFilename();
@@ -197,7 +199,7 @@ public class ErrorMessage {
         }
     }
 
-    private ArrayList<Integer> parseMacroHistory(String string) {
+    private @NotNull ArrayList<Integer> parseMacroHistory(@NotNull String string) {
         Pattern pattern = Pattern.compile("<\\d+>");
         Matcher matcher = pattern.matcher(string);
         String verify = new String(string).trim();
@@ -275,14 +277,15 @@ public class ErrorMessage {
      * @return string describing macro expansion
      */
     // Method added by Mohammad Sekavat Dec 2012
-    public String getMacroExpansionHistory() {
-        if (macroExpansionHistory == null || macroExpansionHistory.length() == 0)
+    public @NotNull String getMacroExpansionHistory() {
+        if (macroExpansionHistory == null || macroExpansionHistory.isEmpty())
             return "";
         return macroExpansionHistory + "->";
     }
 
     // Added by Mohammad Sekavat Dec 2012
-    private static String getExpansionHistory(MIPSProgram sourceMIPSprogram) {
+    @NotNull
+    private static String getExpansionHistory(@Nullable MIPSProgram sourceMIPSprogram) {
         if (sourceMIPSprogram == null || sourceMIPSprogram.getLocalMacroPool() == null)
             return "";
         return sourceMIPSprogram.getLocalMacroPool().getExpansionHistory();

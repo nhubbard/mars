@@ -1,5 +1,7 @@
 package edu.missouristate.mars.tools;
 
+import org.jetbrains.annotations.NotNull;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -45,7 +47,7 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
      *
      * @return Tool name.  MARS will display this in menu item.
      */
-    public String getName() {
+    public @NotNull String getName() {
         return "Introduction to Tools";
     }
 
@@ -55,7 +57,7 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
      * BorderLayout.  The title is in the NORTH area, and the controls are
      * in the SOUTH area.
      */
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         JTextArea message = new JTextArea();
         message.setEditable(false);
         message.setLineWrap(true);

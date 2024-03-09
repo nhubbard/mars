@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.instructions;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * Class to represent a basic instruction in the MIPS instruction set.
  * Basic instruction means it translates directly to a 32-bit binary machine
@@ -12,7 +14,7 @@ public class BasicInstruction extends Instruction {
 
     private String instructionName;
     private final BasicInstructionFormat instructionFormat;
-    private final String operationMask;
+    private final @NotNull String operationMask;
     private final SimulationCode simulationCode;
 
     private final int opcodeMask;  // integer with 1's where constants required (0/1 become 1, f/s/t become 0)
@@ -41,8 +43,8 @@ public class BasicInstruction extends Instruction {
      * It can also be used at runtime to match a binary machine instruction to the correct
      * instruction simulator -- it needs to match all and only the 0's and 1's.
      */
-    public BasicInstruction(String example, String description, BasicInstructionFormat instrFormat,
-                            String operMask, SimulationCode simCode) {
+    public BasicInstruction(@NotNull String example, String description, BasicInstructionFormat instrFormat,
+                            @NotNull String operMask, SimulationCode simCode) {
         this.exampleFormat = example;
         this.mnemonic = this.extractOperator(example);
         this.description = description;
@@ -59,8 +61,8 @@ public class BasicInstruction extends Instruction {
 
     // Temporary constructor so that instructions without description yet will compile.
 
-    public BasicInstruction(String example, BasicInstructionFormat instrFormat,
-                            String operMask, SimulationCode simCode) {
+    public BasicInstruction(@NotNull String example, BasicInstructionFormat instrFormat,
+                            @NotNull String operMask, SimulationCode simCode) {
         this(example, "", instrFormat, operMask, simCode);
     }
 

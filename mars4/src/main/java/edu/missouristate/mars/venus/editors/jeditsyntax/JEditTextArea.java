@@ -4,6 +4,8 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.Token;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.TokenMarker;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.*;
@@ -80,7 +82,7 @@ public class JEditTextArea extends JComponent {
      *
      * @param defaults The default settings
      */
-    public JEditTextArea(TextAreaDefaults defaults, JComponent lineNumbers) {
+    public JEditTextArea(@NotNull TextAreaDefaults defaults, JComponent lineNumbers) {
         // Enable the necessary events
         enableEvents(AWTEvent.KEY_EVENT_MASK);
 
@@ -656,7 +658,7 @@ public class JEditTextArea extends JComponent {
      *
      * @param document The document
      */
-    public void setDocument(SyntaxDocument document) {
+    public void setDocument(@NotNull SyntaxDocument document) {
         if (this.document == document)
             return;
         if (this.document != null)
@@ -762,7 +764,7 @@ public class JEditTextArea extends JComponent {
     /**
      * Returns the entire text of this text area.
      */
-    public String getText() {
+    public @Nullable String getText() {
         try {
             return document.getText(0, document.getLength());
         } catch (BadLocationException bl) {
@@ -793,7 +795,7 @@ public class JEditTextArea extends JComponent {
      * @param len   The length of the substring
      * @return The substring, or null if the offsets are invalid
      */
-    public final String getText(int start, int len) {
+    public final @Nullable String getText(int start, int len) {
         try {
             return document.getText(start, len);
         } catch (BadLocationException bl) {
@@ -810,7 +812,7 @@ public class JEditTextArea extends JComponent {
      * @param len     The length of the substring
      * @param segment The segment
      */
-    public final void getText(int start, int len, Segment segment) {
+    public final void getText(int start, int len, @NotNull Segment segment) {
         try {
             document.getText(start, len, segment);
         } catch (BadLocationException bl) {
@@ -825,7 +827,7 @@ public class JEditTextArea extends JComponent {
      * @param lineIndex The line
      * @return The text, or null if the line is invalid
      */
-    public final String getLineText(int lineIndex) {
+    public final @Nullable String getLineText(int lineIndex) {
         int start = getLineStartOffset(lineIndex);
         return getText(start, getLineEndOffset(lineIndex) - start - 1);
     }
@@ -836,7 +838,7 @@ public class JEditTextArea extends JComponent {
      *
      * @param lineIndex The line
      */
-    public final void getLineText(int lineIndex, Segment segment) {
+    public final void getLineText(int lineIndex, @NotNull Segment segment) {
         int start = getLineStartOffset(lineIndex);
         getText(start, getLineEndOffset(lineIndex) - start - 1, segment);
     }
@@ -1065,7 +1067,7 @@ public class JEditTextArea extends JComponent {
     /**
      * Returns the selected text, or null if no selection is active.
      */
-    public final String getSelectedText() {
+    public final @Nullable String getSelectedText() {
         if (selectionStart == selectionEnd)
             return null;
 
@@ -1118,7 +1120,7 @@ public class JEditTextArea extends JComponent {
      *
      * @param selectedText The replacement text for the selection
      */
-    public void setSelectedText(String selectedText) {
+    public void setSelectedText(@Nullable String selectedText) {
         if (!editable) {
             throw new InternalError("Text component"
                     + " read only");
@@ -1257,7 +1259,7 @@ public class JEditTextArea extends JComponent {
      * @see #setSelectedText(String)
      * @see #isOverwriteEnabled()
      */
-    public void overwriteSetSelectedText(String str) {
+    public void overwriteSetSelectedText(@NotNull String str) {
         // Don't overstrike if there is a selection
         if (!overwrite || selectionStart != selectionEnd) {
             setSelectedText(str);
@@ -1289,7 +1291,7 @@ public class JEditTextArea extends JComponent {
 
     }
 
-    JPopupMenu popupMenu;
+    @Nullable JPopupMenu popupMenu;
 
 
     /**
@@ -1428,7 +1430,7 @@ public class JEditTextArea extends JComponent {
      * This is slightly faster than using a KeyListener
      * because some Swing overhead is avoided.
      */
-    public void processKeyEvent(KeyEvent evt) {
+    public void processKeyEvent(@NotNull KeyEvent evt) {
         if (inputHandler == null)
             return;
         switch (evt.getID()) {
@@ -1452,8 +1454,8 @@ public class JEditTextArea extends JComponent {
     protected static final String RIGHT = "right";
     protected static final String BOTTOM = "bottom";
 
-    protected static JEditTextArea focusedComponent;
-    protected static final Timer caretTimer;
+    protected static @Nullable JEditTextArea focusedComponent;
+    protected static final @NotNull Timer caretTimer;
 
     protected TextAreaPainter painter;
 
@@ -1532,7 +1534,7 @@ public class JEditTextArea extends JComponent {
         bracketLine = bracketPosition = -1;
     }
 
-    protected void documentChanged(DocumentEvent evt) {
+    protected void documentChanged(@NotNull DocumentEvent evt) {
         DocumentEvent.ElementChange ch = evt.getChange(
                 document.getDefaultRootElement());
 
@@ -1559,7 +1561,7 @@ public class JEditTextArea extends JComponent {
     }
 
     class ScrollLayout implements LayoutManager {
-        public void addLayoutComponent(String name, Component comp) {
+        public void addLayoutComponent(@NotNull String name, Component comp) {
             switch (name) {
                 case CENTER -> center = comp;
                 case RIGHT -> right = comp;
@@ -1579,7 +1581,7 @@ public class JEditTextArea extends JComponent {
                 leftOfScrollBar.removeElement(comp);
         }
 
-        public Dimension preferredLayoutSize(Container parent) {
+        public @NotNull Dimension preferredLayoutSize(Container parent) {
             Dimension dim = new Dimension();
             Insets insets = getInsets();
             dim.width = insets.left + insets.right;
@@ -1596,7 +1598,7 @@ public class JEditTextArea extends JComponent {
             return dim;
         }
 
-        public Dimension minimumLayoutSize(Container parent) {
+        public @NotNull Dimension minimumLayoutSize(Container parent) {
             Dimension dim = new Dimension();
             Insets insets = getInsets();
             dim.width = insets.left + insets.right;
@@ -1613,7 +1615,7 @@ public class JEditTextArea extends JComponent {
             return dim;
         }
 
-        public void layoutContainer(Container parent) {
+        public void layoutContainer(@NotNull Container parent) {
             Dimension size = parent.getSize();
             Insets insets = parent.getInsets();
             int itop = insets.top;
@@ -1658,9 +1660,9 @@ public class JEditTextArea extends JComponent {
         }
 
         // private members
-        private Component center;
-        private Component right;
-        private Component bottom;
+        private @Nullable Component center;
+        private @Nullable Component right;
+        private @Nullable Component bottom;
         private final Vector<Component> leftOfScrollBar = new Vector<>();
     }
 
@@ -1687,7 +1689,7 @@ public class JEditTextArea extends JComponent {
     }
 
     protected class AdjustHandler implements AdjustmentListener {
-        public void adjustmentValueChanged(final AdjustmentEvent evt) {
+        public void adjustmentValueChanged(final @NotNull AdjustmentEvent evt) {
             if (!scrollBarsInitialized)
                 return;
 
@@ -1713,7 +1715,7 @@ public class JEditTextArea extends JComponent {
 
 
     protected class DocumentHandler implements DocumentListener {
-        public void insertUpdate(DocumentEvent evt) {
+        public void insertUpdate(@NotNull DocumentEvent evt) {
             documentChanged(evt);
 
             int offset = evt.getOffset();
@@ -1741,7 +1743,7 @@ public class JEditTextArea extends JComponent {
             select(newStart, newEnd);
         }
 
-        public void removeUpdate(DocumentEvent evt) {
+        public void removeUpdate(@NotNull DocumentEvent evt) {
             documentChanged(evt);
 
             int offset = evt.getOffset();
@@ -1780,7 +1782,7 @@ public class JEditTextArea extends JComponent {
     }
 
     class DragHandler implements MouseMotionListener {
-        public void mouseDragged(MouseEvent evt) {
+        public void mouseDragged(@NotNull MouseEvent evt) {
             if (popup != null && popup.isVisible())
                 return;
 
@@ -1811,7 +1813,7 @@ public class JEditTextArea extends JComponent {
     // this will scroll up to the number in the event, subject to
     // scrollability of the text in its viewport.
     class MouseWheelHandler implements MouseWheelListener {
-        public void mouseWheelMoved(MouseWheelEvent e) {
+        public void mouseWheelMoved(@NotNull MouseWheelEvent e) {
             int maxMotion = Math.abs(e.getWheelRotation()) * LINES_PER_MOUSE_WHEEL_NOTCH;
             if (e.getWheelRotation() < 0) {
                 setFirstLine(getFirstLine() - Math.min(maxMotion, getFirstLine()));
@@ -1823,7 +1825,7 @@ public class JEditTextArea extends JComponent {
 
 
     class MouseHandler extends MouseAdapter {
-        public void mousePressed(MouseEvent evt) {
+        public void mousePressed(@NotNull MouseEvent evt) {
             requestFocus();
 
             // Focus events not fired sometimes?
@@ -1859,7 +1861,7 @@ public class JEditTextArea extends JComponent {
             }
         }
 
-        private void doSingleClick(MouseEvent evt, int line,
+        private void doSingleClick(@NotNull MouseEvent evt, int line,
                                    int offset, int dot) {
             if ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
                 rectSelect = (evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0;
@@ -1951,7 +1953,7 @@ public class JEditTextArea extends JComponent {
             return false;
         }
 
-        public String getPresentationName() {
+        public @NotNull String getPresentationName() {
             return "caret move";
         }
 
@@ -1989,7 +1991,7 @@ public class JEditTextArea extends JComponent {
      * @return String containing appropriate tool tip text.  Possibly HTML-encoded.
      */
     // Is used for tool tip only (not popup menu)
-    public String getSyntaxSensitiveToolTipText(int x, int y) {
+    public @Nullable String getSyntaxSensitiveToolTipText(int x, int y) {
         StringBuilder result;
         int line = this.yToLine(y);
         ArrayList<PopupHelpItem> matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
@@ -2024,7 +2026,7 @@ public class JEditTextArea extends JComponent {
      *
      * @return String containing leading white space of current line.  Empty string if none.
      */
-    public String getLeadingWhiteSpace() {
+    public @NotNull String getLeadingWhiteSpace() {
         int line = getCaretLine();
         int lineLength = getLineLength(line);
         String indent = "";
@@ -2051,7 +2053,7 @@ public class JEditTextArea extends JComponent {
     // if exact is false.  The former is helpful for mouse-movement-based tool
     // tips (this is what you have).  The latter is helpful for caret-based tool
     // tips (this is what you can do).
-    private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
+    private @Nullable ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
         ArrayList<PopupHelpItem> matches = null;
         TokenMarker tokenMarker = this.getTokenMarker();
         if (tokenMarker != null) {
@@ -2166,7 +2168,7 @@ public class JEditTextArea extends JComponent {
         private final String tokenText;
         private final String text;
 
-        public PopupHelpActionListener(String tokenText, String text) {
+        public PopupHelpActionListener(String tokenText, @NotNull String text) {
             this.tokenText = tokenText;
             this.text = text.split(" ")[0];
         }
@@ -2174,7 +2176,7 @@ public class JEditTextArea extends JComponent {
         // Completion action will insert either a tab or space character following the
         // completed instruction mnemonic.  Inserts a tab if tab key was pressed;
         // space otherwise.  Get this information from the ActionEvent.
-        public void actionPerformed(ActionEvent e) {
+        public void actionPerformed(@NotNull ActionEvent e) {
             String insert = (e.getActionCommand().charAt(0) == '\t') ? "\t" : " ";
             if (this.tokenText.length() >= this.text.length()) {
                 overwriteSetSelectedText(insert);
@@ -2184,7 +2186,7 @@ public class JEditTextArea extends JComponent {
         }
     }
 
-    private void checkAutoIndent(KeyEvent evt) {
+    private void checkAutoIndent(@NotNull KeyEvent evt) {
         if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
             int line = getCaretLine();
             if (line <= 0)
@@ -2212,7 +2214,7 @@ public class JEditTextArea extends JComponent {
     // Called after processing a Key Pressed event. Will make popup menu disappear if
     // Enter or Escape keys pressed.  Will update if Backspace or Delete pressed.
     // Not really concerned with modifiers here.
-    private void checkPopupMenu(KeyEvent evt) {
+    private void checkPopupMenu(@NotNull KeyEvent evt) {
         if (evt.getKeyCode() == KeyEvent.VK_BACK_SPACE || evt.getKeyCode() == KeyEvent.VK_DELETE)
             applySyntaxSensitiveHelp();
         if ((evt.getKeyCode() == KeyEvent.VK_ENTER || evt.getKeyCode() == KeyEvent.VK_ESCAPE)
@@ -2224,7 +2226,7 @@ public class JEditTextArea extends JComponent {
     ////////////////////////////////////////////////////////////////////////////////////
     // Called before processing Key Pressed event. If popup menu is visible, will process
     // tab and enter keys to select from the menu, and arrow keys to traverse the menu.
-    private boolean checkPopupCompletion(KeyEvent evt) {
+    private boolean checkPopupCompletion(@NotNull KeyEvent evt) {
         if ((evt.getKeyCode() == KeyEvent.VK_UP || evt.getKeyCode() == KeyEvent.VK_DOWN)
                 && popupMenu != null && popupMenu.isVisible() && popupMenu.getComponentCount() > 0) {
             MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();

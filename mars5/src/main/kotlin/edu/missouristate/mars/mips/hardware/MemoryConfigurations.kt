@@ -45,9 +45,9 @@ import edu.missouristate.mars.mips.hardware.RegisterFile.programCounter
  * the configuration can be changed.
  */
 object MemoryConfigurations {
-    private var configurations: ArrayList<MemoryConfiguration>? = null
-    private var defaultConfiguration: MemoryConfiguration? = null
-    private var currentConfiguration: MemoryConfiguration? = null
+    internal var configurations: ArrayList<MemoryConfiguration>? = null
+    internal var defaultConfiguration: MemoryConfiguration? = null
+    internal var currentConfiguration: MemoryConfiguration? = null
 
     // Be careful, these arrays are parallel and position-sensitive.
     // The getters in this and in MemoryConfiguration depend on this

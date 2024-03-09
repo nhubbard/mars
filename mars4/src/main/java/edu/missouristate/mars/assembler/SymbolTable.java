@@ -2,6 +2,8 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -42,7 +44,7 @@ public class SymbolTable {
      * @param b       The type of Symbol, true for data, false for text.
      * @param errors  List to which to add any processing errors that occur.
      **/
-    public void addSymbol(Token token, int address, boolean b, ErrorList errors) {
+    public void addSymbol(@NotNull Token token, int address, boolean b, @NotNull ErrorList errors) {
         String label = token.getValue();
         if (getSymbol(label) != null) {
             errors.add(new ErrorMessage(
@@ -66,7 +68,7 @@ public class SymbolTable {
      *
      * @param token The token representing the Symbol.
      **/
-    public void removeSymbol(Token token) {
+    public void removeSymbol(@NotNull Token token) {
         String label = token.getValue();
         for (int i = 0; i < table.size(); i++) {
             if (table.get(i).getName().equals(label)) {
@@ -108,6 +110,7 @@ public class SymbolTable {
      * @param s target String
      * @return Symbol object for requested target, null if not found in symbol table.
      **/
+    @Nullable
     public Symbol getSymbol(String s) {
         for (Symbol o : table) if (o.getName().equals(s)) return o;
         return null;
@@ -119,7 +122,8 @@ public class SymbolTable {
      * @param s String representing address
      * @return Symbol object having requested address, null if address not found in symbol table.
      **/
-    public Symbol getSymbolGivenAddress(String s) {
+    @Nullable
+    public Symbol getSymbolGivenAddress(@NotNull String s) {
         int address;
         try {
             address = Binary.stringToInt(s);// DPS 2-Aug-2010: was Integer.parseInt(s) but croaked on hex
@@ -137,7 +141,8 @@ public class SymbolTable {
      * @param s String representing address
      * @return Symbol object having requested address, null if address not found in symbol table.
      **/
-    public Symbol getSymbolGivenAddressLocalOrGlobal(String s) {
+    @Nullable
+    public Symbol getSymbolGivenAddressLocalOrGlobal(@NotNull String s) {
         Symbol sym = this.getSymbolGivenAddress(s);
         return (sym == null) ? Globals.symbolTable.getSymbolGivenAddress(s) : sym;
     }
@@ -147,7 +152,7 @@ public class SymbolTable {
      *
      * @return An ArrayList of Symbol objects.
      **/
-    public ArrayList<Symbol> getDataSymbols() {
+    public @NotNull ArrayList<Symbol> getDataSymbols() {
         ArrayList<Symbol> list = new ArrayList<>();
         for (Symbol o : table) {
             if (o.getType()) {
@@ -162,7 +167,7 @@ public class SymbolTable {
      *
      * @return An ArrayList of Symbol objects.
      **/
-    public ArrayList<Symbol> getTextSymbols() {
+    public @NotNull ArrayList<Symbol> getTextSymbols() {
         ArrayList<Symbol> list = new ArrayList<>();
         for (Symbol o : table) {
             if (!o.getType()) {
@@ -177,7 +182,7 @@ public class SymbolTable {
      *
      * @return An ArrayList of Symbol objects.
      **/
-    public ArrayList<Symbol> getAllSymbols() {
+    public @NotNull ArrayList<Symbol> getAllSymbols() {
         return new ArrayList<>(table);
     }
 
@@ -207,7 +212,7 @@ public class SymbolTable {
      *                           address updated to this value.  Does nothing if none do.
      */
     public void fixSymbolTableAddress(int originalAddress, int replacementAddress) {
-        Symbol label = getSymbolGivenAddress(Integer.toString(originalAddress));
+        @Nullable Symbol label = getSymbolGivenAddress(Integer.toString(originalAddress));
         while (label != null) {
             label.setAddress(replacementAddress);
             label = getSymbolGivenAddress(Integer.toString(originalAddress));
@@ -220,7 +225,7 @@ public class SymbolTable {
      *
      * @return String containing global label whose text segment address is starting address for program execution.
      **/
-    public static String getStartLabel() {
+    public static @NotNull String getStartLabel() {
         return startLabel;
     }
 }

@@ -3,6 +3,7 @@ package edu.missouristate.mars.mips.dump;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,17 +18,13 @@ import java.io.PrintStream;
  * @author Pete Sanderson
  * @version December 2007
  */
-
-
 public class BinaryTextDumpFormat extends AbstractDumpFormat {
-
     /**
      * Constructor.  There is no standard file extension for this format.
      */
     public BinaryTextDumpFormat() {
         super("Binary Text", "BinaryText", "Written as '0' and '1' characters to text file", "txt");
     }
-
 
     /**
      * Write MIPS memory contents in binary text format.  Each line of
@@ -43,7 +40,7 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+    public void dumpMemoryRange(@NotNull File file, int firstAddress, int lastAddress)
             throws AddressErrorException, IOException {
         try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
             StringBuilder string;
@@ -59,5 +56,4 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
             }
         }
     }
-
 }

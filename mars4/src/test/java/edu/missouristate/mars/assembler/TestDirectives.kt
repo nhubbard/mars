@@ -43,7 +43,7 @@ class TestDirectives {
     fun testPrefixMatch(value: String, expectedMatches: ArrayList<Directives>?) {
         if (expectedMatches == null) {
             assertEquals(null, Directives.prefixMatchDirectives(value))
-        } else assertTrue(Directives.prefixMatchDirectives(value).containsAll(expectedMatches))
+        } else assertTrue(Directives.prefixMatchDirectives(value)?.containsAll(expectedMatches) ?: false)
     }
 
     @ParameterizedTest

@@ -197,9 +197,10 @@ class MIPSProgram {
      * @throws ProcessingException Will throw exception if errors occur while tokenizing.
      */
     @Throws(ProcessingException::class)
-    fun tokenize() {
+    @JvmOverloads
+    fun tokenize(ignoreErrors: Boolean = false) {
         this.tokenizer = Tokenizer()
-        this.tokenList = tokenizer.tokenize(this)
+        this.tokenList = tokenizer.tokenize(this, ignoreErrors)
         this.localSymbolTable = SymbolTable(this.filename)
     }
 
@@ -219,7 +220,8 @@ class MIPSProgram {
      * @throws ProcessingException Will throw exception if any errors occur while reading or tokenizing.
      */
     @Throws(ProcessingException::class)
-    fun prepareFilesForAssembly(filenames: ArrayList<String>, leadFilename: String, exceptionHandler: String?): ArrayList<MIPSProgram> {
+    @JvmOverloads
+    fun prepareFilesForAssembly(filenames: ArrayList<String>, leadFilename: String, exceptionHandler: String?, ignoreErrors: Boolean = false): ArrayList<MIPSProgram> {
         val mipsProgramsToAssemble = arrayListOf<MIPSProgram>()
         var leadFilePosition = 0
         if (!exceptionHandler.isNullOrEmpty()) {
@@ -229,7 +231,7 @@ class MIPSProgram {
         for (filename in filenames) {
             val currentProgram = if (filename == leadFilename) this else MIPSProgram()
             currentProgram.readSource(filename)
-            currentProgram.tokenize()
+            currentProgram.tokenize(ignoreErrors)
             // I want "this" KMIPSProgram to be the first in the list, not the exception handler (if present)
             if (currentProgram == this && mipsProgramsToAssemble.isNotEmpty()) {
                 mipsProgramsToAssemble.add(leadFilePosition, currentProgram)
@@ -259,12 +261,13 @@ class MIPSProgram {
     fun assemble(
         mipsProgramsToAssemble: ArrayList<MIPSProgram>,
         extendedAssemblerEnabled: Boolean,
-        warningsAreErrors: Boolean = false
+        warningsAreErrors: Boolean = false,
+        ignoreErrors: Boolean = false
     ): ErrorList {
         this.backStepper = null
         val asm = Assembler()
         println("Is mipsProgramsToAssemble empty? ${mipsProgramsToAssemble.isEmpty()}")
-        this.machineList = asm.assemble(mipsProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors) ?:
+        this.machineList = asm.assemble(mipsProgramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, ignoreErrors) ?:
             throw ProcessingException(ErrorList().apply {
                 add(ErrorMessage("", 0, 0, "An unknown error occurred during assembly."))
             })

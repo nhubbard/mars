@@ -1,6 +1,7 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.venus.RunSpeedPanel;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Object provided to Observers of the Simulator.
@@ -61,7 +62,7 @@ public class SimulatorNotice {
     /**
      * String representation indicates access type, address and length in bytes
      */
-    public String toString() {
+    public @NotNull String toString() {
         return ((this.getAction() == SIMULATOR_START) ? "START " : "STOP  ") +
                 "Max Steps " + this.maxSteps + " " +
                 "Speed " + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED) ? "unlimited " : this.runSpeed + " inst/sec") +

@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.simulator.Simulator;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -49,7 +50,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         new DigitalLabSim(heading + ", " + version, heading).go();
     }
 
-    public String getName() {
+    public @NotNull String getName() {
         return "Digital Lab Sim";
     }
 
@@ -82,7 +83,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         SecondCounter.resetOneSecondCounter();
     }
 
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         // GUI Interface.
         JPanel panelTools = new JPanel(new GridLayout(1, 2));
         sevenSegPanel = new SevenSegmentPanel();
@@ -109,7 +110,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         }
     }
 
-    protected JComponent getHelpComponent() {
+    protected @NotNull JComponent getHelpComponent() {
         final String helpContent = """
                  This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
                 Seven segment display
@@ -158,7 +159,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
             this.repaint();
         }
 
-        public void SwitchSegment(Graphics g, char segment) {
+        public void SwitchSegment(@NotNull Graphics g, char segment) {
             switch (segment) {
                 case 'a': //a segment
                     int[] pxa1 = {12, 9, 12};
@@ -222,7 +223,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
             }
         }
 
-        public void paint(Graphics g) {
+        public void paint(@NotNull Graphics g) {
             char c = 'a';
             while (c <= 'h') {
                 if ((aff & 0x1) == 1) g.setColor(Color.RED);
@@ -235,7 +236,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     public static class SevenSegmentPanel extends JPanel {
-        public final SevenSegmentDisplay[] display;
+        public final SevenSegmentDisplay @NotNull [] display;
 
         public SevenSegmentPanel() {
             int i;
@@ -273,7 +274,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     public class HexaKeyboard extends JPanel {
-        public final JButton[] button;
+        public final JButton @NotNull [] button;
 
         public HexaKeyboard() {
             int i;

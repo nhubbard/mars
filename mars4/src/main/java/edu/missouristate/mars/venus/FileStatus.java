@@ -1,6 +1,8 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 
@@ -69,7 +71,7 @@ public class FileStatus {
     private static boolean systemSaved;
     private static boolean systemEdited;
     private static String systemName;
-    private static File systemFile;
+    private static @Nullable File systemFile;
 
     /**
      * Set file status.  Also updates menu state accordingly.
@@ -201,7 +203,7 @@ public class FileStatus {
 
 
     private int status;
-    private File file;
+    private @Nullable File file;
 
     /**
      * Create a FileStatus object with FileStatis.NO_FILE for status and null for file getters.
@@ -216,7 +218,7 @@ public class FileStatus {
      * @param status   Initial file status.  See FileStatus static constants.
      * @param pathname Full file pathname. See setPathname(String newPath) below.
      */
-    public FileStatus(int status, String pathname) {
+    public FileStatus(int status, @Nullable String pathname) {
         this.status = status;
         if (pathname == null) {
             this.file = null;
@@ -268,7 +270,7 @@ public class FileStatus {
      *
      * @param newPath the new pathname. If no directory path, getParent() will return null.
      */
-    public void setPathname(String newPath) {
+    public void setPathname(@NotNull String newPath) {
         this.file = new File(newPath);
     }
 
@@ -278,7 +280,7 @@ public class FileStatus {
      * @param parent the parent directory of the file.  If null, getParent() will return null.
      * @param name   the name of the file (no directory path)
      */
-    public void setPathname(String parent, String name) {
+    public void setPathname(String parent, @NotNull String name) {
         this.file = new File(parent, name);
     }
 
@@ -287,7 +289,7 @@ public class FileStatus {
      *
      * @return full pathname as a String.  Null if
      */
-    public String getPathname() {
+    public @Nullable String getPathname() {
         return (this.file == null) ? null : this.file.getPath();
     }
 
@@ -296,7 +298,7 @@ public class FileStatus {
      *
      * @return filename as a String
      */
-    public String getFilename() {
+    public @Nullable String getFilename() {
         return (this.file == null) ? null : this.file.getName();
     }
 
@@ -305,7 +307,7 @@ public class FileStatus {
      *
      * @return parent full pathname as a String
      */
-    public String getParent() {
+    public @Nullable String getParent() {
         return (this.file == null) ? null : this.file.getParent();
     }
 

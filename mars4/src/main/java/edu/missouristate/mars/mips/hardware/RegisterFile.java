@@ -5,6 +5,8 @@ import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Observer;
 
@@ -114,7 +116,7 @@ public class RegisterFile {
      * @param val The desired value for the register.
      **/
 
-    public static void updateRegister(String reg, int val) {
+    public static void updateRegister(@NotNull String reg, int val) {
         if (reg.equals("zero")) {
             //System.out.println("You can not change the value of the zero register.");
         } else {
@@ -179,8 +181,8 @@ public class RegisterFile {
      * @param Rname The register name, either in $0 or $zero format.
      * @return The register object,or null if not found.
      **/
-
-    public static Register getUserRegister(String Rname) {
+    @Nullable
+    public static Register getUserRegister(@NotNull String Rname) {
         Register reg = null;
         if (Rname.charAt(0) == '$') {
             try {
@@ -265,7 +267,7 @@ public class RegisterFile {
      *
      * @return program counter's Register object.
      */
-    public static Register getProgramCounterRegister() {
+    public static @NotNull Register getProgramCounterRegister() {
         return programCounter;
     }
 

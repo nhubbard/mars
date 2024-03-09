@@ -4,6 +4,7 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -38,7 +39,7 @@ public class MarsBot implements Observer, MarsTool {
 
     // private inner class
     private class BotRunnable implements Runnable {
-        final JPanel panel;
+        final @NotNull JPanel panel;
 
         public BotRunnable() // constructor
         {
@@ -182,7 +183,7 @@ public class MarsBot implements Observer, MarsTool {
     /* ------------------------------------------------------------------------- */
 
 
-    public String getName() {
+    public @NotNull String getName() {
         return "Mars Bot";
     }
 

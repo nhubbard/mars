@@ -1,5 +1,8 @@
 package edu.missouristate.mars.venus;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.io.*;
 
 /**
@@ -74,7 +77,7 @@ public class Editor {
      *                             it does not exist or is not a directory, the default (MARS launch directory) will be used.
      */
 
-    void setCurrentOpenDirectory(String currentOpenDirectory) {
+    void setCurrentOpenDirectory(@NotNull String currentOpenDirectory) {
         File file = new File(currentOpenDirectory);
         if (!file.exists() || !file.isDirectory()) {
             this.currentOpenDirectory = defaultOpenDirectory;
@@ -104,7 +107,7 @@ public class Editor {
      *                             it does not exist or is not a directory, the default (MARS launch directory) will be used.
      */
 
-    void setCurrentSaveDirectory(String currentSaveDirectory) {
+    void setCurrentSaveDirectory(@NotNull String currentSaveDirectory) {
         File file = new File(currentSaveDirectory);
         if (!file.exists() || !file.isDirectory()) {
             this.currentSaveDirectory = defaultSaveDirectory;
@@ -119,7 +122,7 @@ public class Editor {
      *
      * @return returns string mipsN.asm, where N is 1,2,3,...
      */
-    public String getNextDefaultFilename() {
+    public @NotNull String getNextDefaultFilename() {
         newUsageCount++;
         return "mips" + newUsageCount + ".asm";
     }
@@ -139,7 +142,7 @@ public class Editor {
      * @param name   Name of file (last component of path)
      * @param status Edit status of file.  See FileStatus static constants.
      */
-    public void setTitle(String path, String name, int status) {
+    public void setTitle(String path, @Nullable String name, int status) {
         if (status == FileStatus.NO_FILE || name == null || name.isEmpty()) {
             mainUI.setTitle(mainUIbaseTitle);
         } else {

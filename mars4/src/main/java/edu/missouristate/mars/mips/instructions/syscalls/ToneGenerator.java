@@ -1,6 +1,8 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 
+import org.jetbrains.annotations.NotNull;
+
 import javax.sound.midi.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -227,7 +229,7 @@ class EndOfTrackListener implements javax.sound.midi.MetaEventListener {
 
     private boolean endedYet = false;
 
-    public synchronized void meta(javax.sound.midi.MetaMessage m) {
+    public synchronized void meta(javax.sound.midi.@NotNull MetaMessage m) {
         if (m.getType() == 47) {
             endedYet = true;
             notifyAll();

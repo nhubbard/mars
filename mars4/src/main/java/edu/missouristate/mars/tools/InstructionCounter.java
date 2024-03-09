@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -78,12 +79,12 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     }
 
     //	@Override
-    public String getName() {
+    public @NotNull String getName() {
         return name;
     }
 
     //	@Override
-    protected JComponent buildMainDisplayArea() {
+    protected @NotNull JComponent buildMainDisplayArea() {
         // Create everything
         JPanel panel = new JPanel(new GridBagLayout());
 
@@ -167,7 +168,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     }
 
     //	@Override
-    protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+    protected void processMIPSUpdate(Observable resource, @NotNull AccessNotice notice) {
         if (!notice.accessIsFromMIPS()) return;
         if (notice.getAccessType() != AccessNotice.READ) return;
         MemoryAccessNotice m = (MemoryAccessNotice) notice;

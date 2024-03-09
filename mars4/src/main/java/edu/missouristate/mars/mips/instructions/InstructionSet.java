@@ -10,6 +10,7 @@ import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.util.*;
  */
 
 public class InstructionSet {
-    private final ArrayList<Instruction> instructionList;
+    private final @NotNull ArrayList<Instruction> instructionList;
     private ArrayList<MatchMap> opcodeMatchMaps;
     private SyscallLoader syscallLoader;
 
@@ -42,7 +43,7 @@ public class InstructionSet {
     /**
      * Retrieve the current instruction set.
      */
-    public ArrayList<Instruction> getInstructionList() {
+    public @NotNull ArrayList<Instruction> getInstructionList() {
         return instructionList;
 
     }
@@ -2349,6 +2350,7 @@ public class InstructionSet {
         this.opcodeMatchMaps = matchMaps;
     }
 
+    @Nullable
     public BasicInstruction findByBinaryCode(int binaryInstr) {
         ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
         for (MatchMap matchMap : matchMaps) {
@@ -2435,6 +2437,7 @@ public class InstructionSet {
      * @param name operator mnemonic (e.g. addi, sw,...)
      * @return list of corresponding Instruction object(s), or null if not found.
      */
+    @Nullable
     public ArrayList<Instruction> matchOperator(String name) {
         ArrayList<Instruction> matchingInstructions = null;
         // Linear search for now
@@ -2457,7 +2460,7 @@ public class InstructionSet {
      * @param name a string
      * @return list of matching Instruction object(s), or null if none match.
      */
-    public ArrayList<Instruction> prefixMatchOperator(String name) {
+    public @Nullable ArrayList<Instruction> prefixMatchOperator(@Nullable String name) {
         ArrayList<Instruction> matchingInstructions = null;
         // Linear search for now
         if (name != null) {

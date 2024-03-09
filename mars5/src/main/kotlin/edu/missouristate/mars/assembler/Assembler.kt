@@ -57,13 +57,13 @@ class Assembler {
     private var inDataSegment: Boolean = false
     private var inMacroSegment: Boolean = false
     private var externAddress: Int = 0
-    private var autoAlign: Boolean = false
+    var autoAlign: Boolean = false
     private lateinit var currentDirective: Directives
     private lateinit var dataDirective: Directives
     private lateinit var fileCurrentlyBeingAssembled: MIPSProgram
     private lateinit var globalDeclarationList: TokenList
     private lateinit var textAddress: UserKernelAddressSpace
-    private lateinit var dataAddress: UserKernelAddressSpace
+    internal lateinit var dataAddress: UserKernelAddressSpace
     private lateinit var currentFileDataSegmentForwardReferences: DataSegmentForwardReferences
 
     /**
@@ -116,7 +116,8 @@ class Assembler {
     fun assemble(
         tokenizedProgramFiles: ArrayList<MIPSProgram>?,
         extendedAssemblerEnabled: Boolean,
-        warningsAreErrors: Boolean = false
+        warningsAreErrors: Boolean = false,
+        ignoreErrors: Boolean = false
     ): ArrayList<ProgramStatement>? {
         if (tokenizedProgramFiles.isNullOrEmpty()) return null
         textAddress = UserKernelAddressSpace(Memory.textBaseAddress, Memory.kernelTextBaseAddress)
@@ -205,7 +206,7 @@ class Assembler {
         accumulatedDataSegmentForwardReferences.generateErrorMessages(errors)
 
         // Throw the collection of errors accumulated through the first pass.
-        if (errors.hasErrors) throw ProcessingException(errors)
+        if (!ignoreErrors && errors.hasErrors) throw ProcessingException(errors)
         if (Globals.debug) println("Assembler second pass begins")
         // Generate basic assembler statements
         for (tokenizedProgramFile in tokenizedProgramFiles) {
@@ -309,7 +310,7 @@ class Assembler {
         // The ProgramStatements are now sorted by address value.
         machineList.sortWith(ProgramStatementComparator())
         catchDuplicateAddresses(machineList, errors)
-        if (errors.hasErrors || errors.hasWarnings && warningsAreErrors) throw ProcessingException(errors)
+        if (!ignoreErrors && (errors.hasErrors || errors.hasWarnings && warningsAreErrors)) throw ProcessingException(errors)
         return machineList
     }
 
@@ -1357,7 +1358,7 @@ class Assembler {
      * Works only for DOUBLE floating point values; Memory class doesn't have a method for writing eight bytes, so
      * use setWord twice.
      */
-    private fun writeDoubleToDataSegment(value: Double, token: Token, errors: ErrorList) {
+    fun writeDoubleToDataSegment(value: Double, token: Token, errors: ErrorList) {
         val lengthInBytes = DataTypes.DOUBLE_SIZE
         if (autoAlign) dataAddress.set(alignToBoundary(dataAddress.get(), lengthInBytes))
         try {
@@ -1383,7 +1384,7 @@ class Assembler {
      * For instance, if args are 6 and 4, returns 8 (next multiple of 4 higher than 6).
      * NOTE: it will fix any symbol table entries for this address too. See else part.
      */
-    private fun alignToBoundary(address: Int, byteBoundary: Int): Int {
+    fun alignToBoundary(address: Int, byteBoundary: Int): Int {
         val remainder = address % byteBoundary
         if (remainder == 0) return address
         val alignedAddress = address + byteBoundary - remainder
@@ -1395,7 +1396,7 @@ class Assembler {
      * Private class used as Comparator to sort the final ArrayList of ProgramStatements.
      * Sorting is based on unsigned integer value of ProgramStatement.getAddress().
      */
-    private class ProgramStatementComparator : Comparator<ProgramStatement> {
+    internal class ProgramStatementComparator : Comparator<ProgramStatement> {
         /**
          * Will be used to sort the collection.
          * Unsigned int compare, because all kernel 32-bit addresses have one in the high-order bit,
@@ -1413,7 +1414,7 @@ class Assembler {
      * Private class to track addresses in both user and kernel address spaces.
      * Instantiate one for the data segment and one for the text segment.
      */
-    private class UserKernelAddressSpace(userBase: Int, kernelBase: Int) {
+    internal class UserKernelAddressSpace(userBase: Int, kernelBase: Int) {
         val address: HashMap<AddressSpace, Int>
         var currentAddressSpace: AddressSpace
 
@@ -1451,7 +1452,7 @@ class Assembler {
      * - the label's token.
      * Normally need only the name but the error message needs more.
      */
-    private class DataSegmentForwardReferences {
+    internal class DataSegmentForwardReferences {
         private val forwardReferenceList = arrayListOf<DataSegmentForwardReference>()
 
         fun size() = forwardReferenceList.size
@@ -1530,6 +1531,6 @@ class Assembler {
             }
         }
 
-        private data class DataSegmentForwardReference(val patchAddress: Int, val length: Int, val token: Token)
+        internal data class DataSegmentForwardReference(val patchAddress: Int, val length: Int, val token: Token)
     }
 }

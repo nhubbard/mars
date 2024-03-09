@@ -33,8 +33,10 @@ class TestMacroPool {
     fun testMacroExpansionLoop() {
         val (program, _) = createProgram("src/test/resources/tests/macropool_loop_test.s")
         val loopToken = Token(TokenTypes.IDENTIFIER, "intentional_loop", program, 5, 1)
-        program.localMacroPool.pushOnCallStack(loopToken)
-        assertTrue(program.localMacroPool.pushOnCallStack(Token(TokenTypes.OPERATOR, "intentional_loop", program, 5, 1)))
+        program.localMacroPool?.pushOnCallStack(loopToken)
+        assertTrue(program.localMacroPool?.pushOnCallStack(
+            Token(TokenTypes.OPERATOR, "intentional_loop", program, 5, 1)
+        ) ?: false)
     }
 
     @Test
@@ -42,34 +44,34 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
         val firstToken = Token(TokenTypes.REGISTER_NAME, "\$t0", program, 2, 0)
         val secondToken = Token(TokenTypes.IDENTIFIER, "main", program, 3, 0)
-        program.localMacroPool.pushOnCallStack(firstToken)
-        program.localMacroPool.pushOnCallStack(secondToken)
-        assertTrue(program.localMacroPool.expansionHistory.contains("->"))
+        program.localMacroPool?.pushOnCallStack(firstToken)
+        program.localMacroPool?.pushOnCallStack(secondToken)
+        assertTrue(program.localMacroPool?.expansionHistory?.contains("->") ?: false)
     }
 
     @Test
     fun testMatchesAnyMacroWithNoMacro() {
         val (program, _) = createProgram("src/test/resources/tests/macro_test_no_macro.s")
         // Doesn't matter what I input to matchesAnyMacroName, should always return false since there are no macros
-        assertFalse(program.localMacroPool.matchesAnyMacroName("no_macro"))
+        assertFalse(program.localMacroPool?.matchesAnyMacroName("no_macro") ?: true)
     }
 
     @Test
     fun testMatchesAnyMacroWithCorrectName() {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
-        assertTrue(program.localMacroPool.matchesAnyMacroName("print_int"))
+        assertTrue(program.localMacroPool?.matchesAnyMacroName("print_int") ?: false)
     }
 
     @Test
     fun testMatchesAnyMacroWithIncorrectName() {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
-        assertFalse(program.localMacroPool.matchesAnyMacroName("with_label"))
+        assertFalse(program.localMacroPool?.matchesAnyMacroName("with_label") ?: true)
     }
 
     @Test
     fun testGetMatchingMacroWithEmptyTokenList() {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
-        assertNull(program.localMacroPool.getMatchingMacro(TokenList(), 0))
+        assertNull(program.localMacroPool?.getMatchingMacro(TokenList(), 0))
     }
 
     @Test
@@ -78,7 +80,7 @@ class TestMacroPool {
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "my_macro", program, 0, 0))
         tokens.add(Token(TokenTypes.INTEGER_5, "10", program, 0, 9))
-        assertNotNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+        assertNotNull(program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -86,8 +88,8 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macropool_full_match.s")
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 7, 0))
-        val expectedMacro = program.localMacroPool.macrosUnderTesting.first()
-        assertEquals(expectedMacro, program.localMacroPool.getMatchingMacro(tokens, 0))
+        val expectedMacro = program.localMacroPool?.macrosUnderTesting?.first()
+        assertEquals(expectedMacro, program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -95,8 +97,8 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macropool_full_match_2.s")
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 13, 0))
-        val expectedMacro = program.localMacroPool.macrosUnderTesting[1]
-        assertEquals(expectedMacro, program.localMacroPool.getMatchingMacro(tokens, 0))
+        val expectedMacro = program.localMacroPool?.macrosUnderTesting?.getOrNull(1)
+        assertEquals(expectedMacro, program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -104,7 +106,7 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macro_test_no_macro.s")
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "full_match", program, 4, 0))
-        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+        assertNull(program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -112,7 +114,7 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "print_ints", program, 9, 0))
-        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+        assertNull(program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -120,7 +122,7 @@ class TestMacroPool {
         val (program, _) = createProgram("src/test/resources/tests/macro_test.s")
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "print_int", program, 9, 0))
-        assertNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+        assertNull(program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test
@@ -129,7 +131,7 @@ class TestMacroPool {
         val tokens = TokenList()
         tokens.add(Token(TokenTypes.IDENTIFIER, "print_int", program, 9, 0))
         tokens.add(Token(TokenTypes.INTEGER_5, "1", program, 9, 11))
-        assertNotNull(program.localMacroPool.getMatchingMacro(tokens, 0))
+        assertNotNull(program.localMacroPool?.getMatchingMacro(tokens, 0))
     }
 
     @Test

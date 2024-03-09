@@ -2,6 +2,7 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.dump.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,17 +21,17 @@ import java.net.*;
  */
 
 public class VenusUI extends JFrame {
-    final VenusUI mainUI;
-    public final JMenuBar menu;
-    final JToolBar toolbar;
-    final MainPane mainPane;
-    final RegistersPane registersPane;
-    final RegistersWindow registersTab;
-    final Coprocessor1Window coprocessor1Tab;
-    final Coprocessor0Window coprocessor0Tab;
-    final MessagesPane messagesPane;
-    final JSplitPane splitter;
-    final JSplitPane horizonSplitter;
+    final @NotNull VenusUI mainUI;
+    public final @NotNull JMenuBar menu;
+    final @NotNull JToolBar toolbar;
+    final @NotNull MainPane mainPane;
+    final @NotNull RegistersPane registersPane;
+    final @NotNull RegistersWindow registersTab;
+    final @NotNull Coprocessor1Window coprocessor1Tab;
+    final @NotNull Coprocessor0Window coprocessor0Tab;
+    final @NotNull MessagesPane messagesPane;
+    final @NotNull JSplitPane splitter;
+    final @NotNull JSplitPane horizonSplitter;
     JPanel north;
 
     private int frameState; // see windowActivated() and windowDeactivated()
@@ -39,7 +40,7 @@ public class VenusUI extends JFrame {
     // PLEASE PUT THESE TWO (& THEIR METHODS) SOMEWHERE THEY BELONG, NOT HERE
     private static boolean reset = true; // registers/memory reset for execution
     private static boolean started = false;  // started execution
-    final Editor editor;
+    final @NotNull Editor editor;
 
     private JMenu window;
     private JCheckBoxMenuItem settingsValueDisplayBase;
@@ -421,7 +422,7 @@ public class VenusUI extends JFrame {
      * shared between menu item and corresponding toolbar icon).
      */
 
-    private JMenuBar setUpMenuBar() {
+    private @NotNull JMenuBar setUpMenuBar() {
 
         Toolkit tk = Toolkit.getDefaultToolkit();
         Class<? extends VenusUI> cs = this.getClass();
@@ -609,7 +610,7 @@ public class VenusUI extends JFrame {
      * shared between toolbar icon and corresponding menu item).
      */
 
-    JToolBar setUpToolBar() {
+    @NotNull JToolBar setUpToolBar() {
         JToolBar toolBar = new JToolBar();
 
         JButton aNew = new JButton(fileNewAction);

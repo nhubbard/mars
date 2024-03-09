@@ -1,5 +1,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
  * A linked list of tokens. Each token has three fields - a token
  * identifier, which is a byte value that can be looked up in the
@@ -146,7 +148,7 @@ public class Token {
     /**
      * Returns a string representation of this token.
      */
-    public String toString() {
+    public @NotNull String toString() {
         return "[id=" + id + ",length=" + length + "]";
     }
 }

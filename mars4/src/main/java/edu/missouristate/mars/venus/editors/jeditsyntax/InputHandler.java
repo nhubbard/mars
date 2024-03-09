@@ -1,5 +1,8 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import java.awt.*;
@@ -78,7 +81,7 @@ public abstract class InputHandler extends KeyAdapter {
     // Default action
     public static final ActionListener INSERT_CHAR = new insert_char();
 
-    private static final Hashtable<String, ActionListener> actions;
+    private static final @NotNull Hashtable<String, ActionListener> actions;
 
     static {
         actions = new Hashtable<>();
@@ -136,7 +139,7 @@ public abstract class InputHandler extends KeyAdapter {
      *
      * @param listener The action
      */
-    public static String getActionName(ActionListener listener) {
+    public static @Nullable String getActionName(ActionListener listener) {
         Enumeration<String> enumeration = getActions();
         while (enumeration.hasMoreElements()) {
             String name = enumeration.nextElement();
@@ -259,7 +262,7 @@ public abstract class InputHandler extends KeyAdapter {
      * @param source        The event source
      * @param actionCommand The action command
      */
-    public void executeAction(ActionListener listener, Object source, String actionCommand) {
+    public void executeAction(ActionListener listener, @NotNull Object source, String actionCommand) {
         // create event
         ActionEvent evt = new ActionEvent(source, ActionEvent.ACTION_PERFORMED, actionCommand);
 
@@ -307,7 +310,7 @@ public abstract class InputHandler extends KeyAdapter {
      *
      * @param evt The event
      */
-    public static JEditTextArea getTextArea(EventObject evt) {
+    public static @Nullable JEditTextArea getTextArea(@Nullable EventObject evt) {
         if (evt != null) {
             Object o = evt.getSource();
             if (o instanceof Component c) {
@@ -335,7 +338,7 @@ public abstract class InputHandler extends KeyAdapter {
      * the appropriate key event. It executes the grab action with
      * the typed character as the parameter.
      */
-    protected void handleGrabAction(KeyEvent evt) {
+    protected void handleGrabAction(@NotNull KeyEvent evt) {
         // Clear it *before* it is executed so that executeAction()
         // resets the repeat count
         ActionListener _grabAction = grabAction;
@@ -344,7 +347,7 @@ public abstract class InputHandler extends KeyAdapter {
     }
 
     // protected members
-    protected ActionListener grabAction;
+    protected @Nullable ActionListener grabAction;
     protected boolean repeat;
     protected int repeatCount;
     protected InputHandler.MacroRecorder recorder;
@@ -841,7 +844,7 @@ public abstract class InputHandler extends KeyAdapter {
     }
 
     public static class repeat implements ActionListener, InputHandler.NonRecordable {
-        public void actionPerformed(ActionEvent evt) {
+        public void actionPerformed(@NotNull ActionEvent evt) {
             JEditTextArea textArea = getTextArea(evt);
             Objects.requireNonNull(textArea).getInputHandler().setRepeatEnabled(true);
             String actionCommand = evt.getActionCommand();
@@ -859,7 +862,7 @@ public abstract class InputHandler extends KeyAdapter {
     }
 
     public static class insert_char implements ActionListener, InputHandler.NonRepeatable {
-        public void actionPerformed(ActionEvent evt) {
+        public void actionPerformed(@NotNull ActionEvent evt) {
             JEditTextArea textArea = getTextArea(evt);
             String str = evt.getActionCommand();
             int repeatCount = Objects.requireNonNull(textArea).getInputHandler().getRepeatCount();

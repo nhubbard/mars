@@ -2,6 +2,7 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.event.*;
 import javax.swing.*;
@@ -25,7 +26,7 @@ public class SettingsDelayedBranchingAction extends GuiAction {
         super(name, icon, descrip, mnemonic, accel, gui);
     }
 
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@NotNull ActionEvent e) {
         Globals.getSettings().setBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED,
                 ((JCheckBoxMenuItem) e.getSource()).isSelected());
         // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.

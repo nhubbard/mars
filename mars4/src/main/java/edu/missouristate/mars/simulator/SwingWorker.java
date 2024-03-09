@@ -1,5 +1,7 @@
 package edu.missouristate.mars.simulator;
 
+import org.jetbrains.annotations.Nullable;
+
 import javax.swing.SwingUtilities;
 
 /*-----------------------------------------------------
@@ -29,7 +31,7 @@ public abstract class SwingWorker {
      * under separate synchronization control.
      */
     private static class ThreadVar {
-        private Thread thread;
+        private @Nullable Thread thread;
 
         ThreadVar(Thread t) {
             thread = t;
@@ -92,7 +94,7 @@ public abstract class SwingWorker {
      *
      * @return the value created by the <code>construct</code> method
      */
-    public Object get() {
+    public @Nullable Object get() {
         while (true) {
             Thread t = threadVar.get();
             if (t == null) {

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.venus;
 
+import org.jetbrains.annotations.NotNull;
+
 import javax.swing.table.*;
 import javax.swing.*;
 import java.awt.*;
@@ -13,8 +15,8 @@ import java.awt.*;
 class MonoRightCellRenderer extends DefaultTableCellRenderer {
     public static final Font MONOSPACED_PLAIN_12POINT = new Font("Monospaced", Font.PLAIN, 12);
 
-    public Component getTableCellRendererComponent(JTable table, Object value,
-                                                   boolean isSelected, boolean hasFocus, int row, int column) {
+    public @NotNull Component getTableCellRendererComponent(JTable table, Object value,
+                                                            boolean isSelected, boolean hasFocus, int row, int column) {
         JLabel cell = (JLabel) super.getTableCellRendererComponent(table, value,
                 isSelected, hasFocus, row, column);
         cell.setFont(MONOSPACED_PLAIN_12POINT);
