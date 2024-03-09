@@ -1104,8 +1104,8 @@ public class Memory extends Observable {
      * @param obs Observer to be removed
      */
     public void deleteObserver(Observer obs) {
-        for (Object observable : observables) {
-            ((MemoryObservable) observable).deleteObserver(obs);
+        for (MemoryObservable observable : observables) {
+            observable.deleteObserver(obs);
         }
     }
 

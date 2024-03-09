@@ -183,9 +183,8 @@ public class LabelsWindow extends JInternalFrame {
         // Does it do any good?  Addressing problem that occurs when label (filename) is wider than
         // the table beneath it -- the table column widths are stretched to attain the same width and
         // the address information requires scrolling to see.  All because of a long file name.
-        for (Object tableName : tableNames) {
-            JComponent nameLabel = (JComponent) tableName;
-            nameLabel.setMaximumSize(new Dimension(labelScrollPane.getViewport().getViewSize().width, (int) (1.5 * nameLabel.getFontMetrics(nameLabel.getFont()).getHeight())));
+        for (JComponent tableName : tableNames) {
+            tableName.setMaximumSize(new Dimension(labelScrollPane.getViewport().getViewSize().width, (int) (1.5 * tableName.getFontMetrics(tableName.getFont()).getHeight())));
         }
         labelScrollPane.setColumnHeaderView(tableHeader);
         return labelScrollPane;
@@ -198,8 +197,8 @@ public class LabelsWindow extends JInternalFrame {
      */
     public void updateLabelAddresses() {
         if (listOfLabelsForSymbolTable != null) {
-            for (Object o : listOfLabelsForSymbolTable) {
-                ((LabelsForSymbolTable) o).updateLabelAddresses();
+            for (LabelsForSymbolTable o : listOfLabelsForSymbolTable) {
+                o.updateLabelAddresses();
             }
         }
     }
@@ -209,8 +208,8 @@ public class LabelsWindow extends JInternalFrame {
     //   Listener class to respond to "Text" or "Data" checkbox click
     private class LabelItemListener implements ItemListener {
         public void itemStateChanged(ItemEvent ie) {
-            for (Object o : listOfLabelsForSymbolTable) {
-                ((LabelsForSymbolTable) o).generateLabelTable();
+            for (LabelsForSymbolTable o : listOfLabelsForSymbolTable) {
+                o.generateLabelTable();
             }
         }
     }
