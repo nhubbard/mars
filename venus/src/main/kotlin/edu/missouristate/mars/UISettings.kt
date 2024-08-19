@@ -341,9 +341,9 @@ class UISettings : CoreSettings() {
             fontFamilySettingsValues[fontSettingPosition] = font.family
             fontStyleSettingsValues[fontSettingPosition] = EditorFont.FontStyles.fromConstant(font.style).styleName
             fontSizeSettingsValues[fontSettingPosition] = EditorFont.sizeIntToSizeString(font.size)
-            saveFontSetting(fontSettingPosition, fontFamilySettingsKeys, fontFamilySettingsValues)
-            saveFontSetting(fontSettingPosition, fontStyleSettingsKeys, fontStyleSettingsValues)
-            saveFontSetting(fontSettingPosition, fontSizeSettingsKeys, fontSizeSettingsValues)
+            //saveFontSetting(fontSettingPosition, fontFamilySettingsKeys, fontFamilySettingsValues)
+            //saveFontSetting(fontSettingPosition, fontStyleSettingsKeys, fontStyleSettingsValues)
+            //saveFontSetting(fontSettingPosition, fontSizeSettingsKeys, fontSizeSettingsValues)
         }
         if (fontSettingPosition == EDITOR_FONT) {
             setChanged()
@@ -366,8 +366,8 @@ class UISettings : CoreSettings() {
         }
     }
 
-    override fun applyDefaultSettings() {
-        super.applyDefaultSettings()
+    fun applyDefaultSettings() {
+        // super.applyDefaultSettings()
         IntStream.range(0, fontFamilySettingsValues.size).forEach { i: Int ->
             fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i]
             fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i]
@@ -382,7 +382,7 @@ class UISettings : CoreSettings() {
      */
     private fun setColorSetting(settingIndex: Int, color: Color) {
         colorSettingsValues[settingIndex] = Binary.intToHexString(color.red shl 16 or (color.green shl 8) or color.blue)
-        saveColorSetting(settingIndex)
+        // saveColorSetting(settingIndex)
     }
 
     /**
@@ -412,8 +412,7 @@ class UISettings : CoreSettings() {
         return color
     }
 
-    override fun readSettingsFromPropertiesFile(filename: String): Boolean {
-        val superStatus = super.readSettingsFromPropertiesFile(filename)
+    /*fun readSettingsFromPropertiesFile(filename: String): Boolean {
         var settingValue: String?
         try {
             for (i in fontFamilySettingsValues.indices) {
@@ -444,9 +443,9 @@ class UISettings : CoreSettings() {
             return false
         }
         return superStatus
-    }
+    }*/
 
-    override fun getSettingsFromPreferences() {
+    /*override fun getSettingsFromPreferences() {
         super.getSettingsFromPreferences()
         for (i in fontFamilySettingsKeys.indices) {
             fontFamilySettingsValues[i] = preferences[fontFamilySettingsKeys[i], fontFamilySettingsValues[i]]
@@ -455,7 +454,7 @@ class UISettings : CoreSettings() {
         }
         for (i in colorSettingsKeys.indices)
             colorSettingsValues[i] = preferences[colorSettingsKeys[i], colorSettingsValues[i]]
-    }
+    }*/
 
     /**
      * Set Color object for specified settings name (a static constant). Has no effect if invalid.
@@ -493,7 +492,7 @@ class UISettings : CoreSettings() {
         syntaxStyleColorSettingsValues[index] = syntaxStyle.colorAsHexString
         syntaxStyleItalicSettingsValues[index] = syntaxStyle.isItalic
         syntaxStyleBoldSettingsValues[index] = syntaxStyle.isBold
-        saveEditorSyntaxStyle(index)
+        // saveEditorSyntaxStyle(index)
     }
 
     fun getEditorSyntaxStyleByPosition(index: Int): SyntaxStyle {
@@ -515,7 +514,7 @@ class UISettings : CoreSettings() {
         )
     }
 
-    private fun saveEditorSyntaxStyle(index: Int) {
+    /*private fun saveEditorSyntaxStyle(index: Int) {
         try {
             preferences.put(syntaxStyleColorSettingsKeys[index], syntaxStyleColorSettingsValues[index])
             preferences.putBoolean(syntaxStyleBoldSettingsKeys[index], syntaxStyleBoldSettingsValues[index])
@@ -526,7 +525,7 @@ class UISettings : CoreSettings() {
         } catch (bse: BackingStoreException) {
             // unable to communicate with persistent storage (strange days)
         }
-    }
+    }*/
 
     // For syntax styles, need to initialize from SyntaxUtilities defaults.
     // Taking care not to explicitly create a Color object, since it may trigger
@@ -561,7 +560,7 @@ class UISettings : CoreSettings() {
         }
     }
 
-    private fun getEditorSyntaxStyleSettingsFromPreferences() {
+    /*private fun getEditorSyntaxStyleSettingsFromPreferences() {
         for (i in syntaxStyleColorSettingsKeys.indices) {
             syntaxStyleColorSettingsValues[i] =
                 preferences[syntaxStyleColorSettingsKeys[i], syntaxStyleColorSettingsValues[i]]
@@ -572,12 +571,12 @@ class UISettings : CoreSettings() {
                 syntaxStyleItalicSettingsKeys[i], syntaxStyleItalicSettingsValues[i]
             )
         }
-    }
+    }*/
 
     /**
      * Save the key-value pair in the Properties object and assure it is written to persistent storage.
      */
-    private fun saveFontSetting(index: Int, settingsKeys: Array<String>, settingsValues: Array<String>) =
+    /*private fun saveFontSetting(index: Int, settingsKeys: Array<String>, settingsValues: Array<String>) =
         try {
             preferences.put(settingsKeys[index], settingsValues[index])
             preferences.flush()
@@ -585,12 +584,12 @@ class UISettings : CoreSettings() {
             // cannot write to persistent storage for security reasons
         } catch (bse: BackingStoreException) {
             // unable to communicate with persistent storage (strange days)
-        }
+        }*/
 
     /**
      * Save the key-value pair in the Properties object and assure it is written to persistent storage.
      */
-    private fun saveColorSetting(index: Int) =
+    /*private fun saveColorSetting(index: Int) =
         try {
             preferences.put(colorSettingsKeys[index], colorSettingsValues[index])
             preferences.flush()
@@ -598,5 +597,5 @@ class UISettings : CoreSettings() {
             // cannot write to persistent storage for security reasons
         } catch (bse: BackingStoreException) {
             // unable to communicate with persistent storage (strange days)
-        }
+        }*/
 }

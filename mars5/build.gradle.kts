@@ -54,13 +54,13 @@ dependencies {
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
-    implementation("com.uchuhimo:konf:1.1.2")
+    implementation("io.github.nhubbard:konf:2.1.0")
 
     // Testing
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation(platform("org.junit:junit-bom:5.11.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.mockito:mockito-core:5.9.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.9.0")
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.12.0")
 }
 
 sourceSets {

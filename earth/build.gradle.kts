@@ -36,9 +36,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-  id("java")
+  java
   kotlin("jvm")
-  id("org.jetbrains.intellij")
+  id("org.jetbrains.intellij.platform")
 }
 
 group = "edu.missouristate"
@@ -46,21 +46,31 @@ version = "5.0-SNAPSHOT"
 
 repositories {
   mavenCentral()
-}
-
-// Configure Gradle IntelliJ Plugin
-// Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
-intellij {
-  version.set("2023.1.5")
-  type.set("IC") // Target IDE Platform
-
-  plugins.set(listOf("com.intellij.java"))
+  intellijPlatform {
+    defaultRepositories()
+  }
 }
 
 dependencies {
   // implementation(project(":mars5"))
   implementation(project(":mars4"))
-  implementation("com.uchuhimo:konf:1.1.2")
+  implementation("io.github.nhubbard:konf:2.1.0")
+  intellijPlatform {
+    create("IC", "2023.3")
+    intellijIdeaCommunity("2023.3")
+  }
+}
+
+intellijPlatform {
+  signing {
+    certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
+    privateKey.set(System.getenv("PRIVATE_KEY"))
+    password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
+  }
+
+  publishing {
+    token.set(System.getenv("PUBLISH_TOKEN"))
+  }
 }
 
 tasks {
@@ -78,20 +88,5 @@ tasks {
     }
 
     jvmToolchain(21)
-  }
-
-  patchPluginXml {
-    sinceBuild.set("231")
-    untilBuild.set("241.*")
-  }
-
-  signPlugin {
-    certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
-    privateKey.set(System.getenv("PRIVATE_KEY"))
-    password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
-  }
-
-  publishPlugin {
-    token.set(System.getenv("PUBLISH_TOKEN"))
   }
 }
