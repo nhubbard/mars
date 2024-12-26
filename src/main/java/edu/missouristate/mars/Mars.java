@@ -28,14 +28,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+
 /**
  * Portal to Mars
  *
  * @author Pete Sanderson
  * @version March 2006
  **/
-
 public class Mars {
+    @ExcludeFromJacocoGeneratedReport
     public static void main(String[] args) {
         new MarsLaunch(args);
     }

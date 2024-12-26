@@ -1,5 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
+
 /**
  * Models the memory configuration for the simulated MIPS machine.
  * "configuration" refers to the starting memory addresses for
@@ -31,14 +33,17 @@ public class MemoryConfiguration {
         return configurationIdentifier;
     }
 
+    @ExcludeFromJacocoGeneratedReport
     public String getConfigurationName() {
         return configurationName;
     }
 
+    @ExcludeFromJacocoGeneratedReport
     public int[] getConfigurationItemValues() {
         return configurationItemValues;
     }
 
+    @ExcludeFromJacocoGeneratedReport
     public String[] getConfigurationItemNames() {
         return configurationItemNames;
     }

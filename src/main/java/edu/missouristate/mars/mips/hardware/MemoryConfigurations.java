@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.util.ExcludeFromJacocoGeneratedReport;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -16,10 +17,9 @@ import java.util.Iterator;
 
 
 public class MemoryConfigurations {
-
-    private static ArrayList<MemoryConfiguration> configurations = null;
-    private static MemoryConfiguration defaultConfiguration;
-    private static MemoryConfiguration currentConfiguration;
+    static ArrayList<MemoryConfiguration> configurations = null;
+    static MemoryConfiguration defaultConfiguration;
+    static MemoryConfiguration currentConfiguration;
 
     // Be careful, these arrays are parallel and position-sensitive.
     // The getters in this and in MemoryConfiguration depend on this
@@ -125,11 +125,8 @@ public class MemoryConfigurations {
             0x00007fff  // memory map limit address
     };
 
-
-    public MemoryConfigurations() {
-
-    }
-
+    @ExcludeFromJacocoGeneratedReport
+    private MemoryConfigurations() {}
 
     public static void buildConfigurationCollection() {
         if (configurations == null) {
@@ -149,7 +146,6 @@ public class MemoryConfigurations {
             buildConfigurationCollection();
         }
         return configurations.iterator();
-
     }
 
     public static MemoryConfiguration getConfigurationByName(String name) {
@@ -162,7 +158,6 @@ public class MemoryConfigurations {
         }
         return null;
     }
-
 
     public static MemoryConfiguration getDefaultConfiguration() {
         if (defaultConfiguration == null) {
@@ -194,7 +189,6 @@ public class MemoryConfigurations {
             return false;
         }
     }
-
 
     ////  Use these to initialize Memory static variables at launch
 
@@ -257,30 +251,4 @@ public class MemoryConfigurations {
     public static int getDefaultKernelHighAddress() {
         return defaultConfigurationItemValues[14];
     }
-
-    public int getDefaultDataSegmentLimitAddress() {
-        return defaultConfigurationItemValues[15];
-    }
-
-    public int getDefaultTextLimitAddress() {
-        return defaultConfigurationItemValues[16];
-    }
-
-    public int getDefaultKernelDataSegmentLimitAddress() {
-        return defaultConfigurationItemValues[17];
-    }
-
-    public int getDefaultKernelTextLimitAddress() {
-        return defaultConfigurationItemValues[18];
-    }
-
-    public int getDefaultStackLimitAddress() {
-        return defaultConfigurationItemValues[19];
-    }
-
-    public int getMemoryMapLimitAddress() {
-        return defaultConfigurationItemValues[20];
-    }
-
-
 }

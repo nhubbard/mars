@@ -166,6 +166,7 @@ public class Globals {
         }
     }
 
+    @ExcludeFromJacocoGeneratedReport
     public static boolean isRunningTest() {
         if (isRunningTest == null) {
             isRunningTest = true;
@@ -178,6 +179,7 @@ public class Globals {
         return isRunningTest;
     }
 
+    @ExcludeFromJacocoGeneratedReport
     public static void resetInitialized() {
         if (isRunningTest()) {
             initialized = false;
