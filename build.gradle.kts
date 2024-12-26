@@ -25,13 +25,13 @@ plugins {
     application
     java
     idea
-    kotlin("jvm") version "1.9.21"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    kotlin("jvm") version "2.1.0"
+    id("com.gradleup.shadow") version "8.3.5"
     jacoco
 }
 
 group = "edu.missouristate"
-version = "2.0-SNAPSHOT"
+version = "4.6-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -39,14 +39,14 @@ repositories {
 
 dependencies {
     // Java
-    compileOnly("org.jetbrains:annotations:24.0.0")
+    compileOnly("org.jetbrains:annotations:26.0.1")
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
     // Testing
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.mockito:mockito-core:5.9.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.9.0")
+    testImplementation("org.mockito:mockito-core:5.14.2")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.14.2")
 }
 
 sourceSets {
@@ -64,8 +64,8 @@ application {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 tasks {
@@ -82,6 +82,13 @@ tasks {
             csv.required = false
             html.outputLocation = layout.buildDirectory.dir("jacocoHtml")
         }
+        classDirectories.setFrom(
+            files(classDirectories.files.map {
+                fileTree(it) {
+                    exclude("edu/missouristate/mars/venus/**")
+                }
+            })
+        )
     }
 
     compileJava {
@@ -110,7 +117,7 @@ tasks {
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_21)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
 
         jvmToolchain(21)
