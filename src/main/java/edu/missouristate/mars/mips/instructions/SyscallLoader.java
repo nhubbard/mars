@@ -129,8 +129,8 @@ class SyscallLoader {
         if (syscallList == null) {
             loadSyscalls();
         }
-        for (Object o : syscallList) {
-            service = (Syscall) o;
+        for (Syscall o : syscallList) {
+            service = o;
             if (service.getNumber() == number) {
                 match = service;
             }

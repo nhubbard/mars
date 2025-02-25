@@ -33,6 +33,8 @@ plugins {
 group = "edu.missouristate"
 version = "4.6-SNAPSHOT"
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 repositories {
     mavenCentral()
 }
@@ -44,9 +46,11 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     // Testing
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.mockito:mockito-core:5.14.2")
     testImplementation("org.mockito:mockito-junit-jupiter:5.14.2")
+    mockitoAgent("org.mockito:mockito-core:5.14.2") { isTransitive = false }
 }
 
 sourceSets {
@@ -72,7 +76,7 @@ tasks {
     test {
         useJUnitPlatform()
         finalizedBy(jacocoTestReport)
-        jvmArgs("-XX:+EnableDynamicAgentLoading")
+        jvmArgs("-XX:+EnableDynamicAgentLoading", "-javaagent:${mockitoAgent.asPath}")
     }
 
     jacocoTestReport {

@@ -375,8 +375,8 @@ public class MarsLaunch {
             }
             // Check for stand-alone integer, which is the max execution steps option
             try {
-                //noinspection ResultOfMethodCallIgnored
-                Integer.decode(args[i]);
+                // Commented because we do it twice for some reason
+                // Integer.decode(args[i]);
                 maxSteps = Integer.decode(args[i]); // if we got here, it has to be OK
                 continue;
             } catch (NumberFormatException ignored) {

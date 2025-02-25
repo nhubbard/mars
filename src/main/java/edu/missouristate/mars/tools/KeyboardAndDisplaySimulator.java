@@ -512,32 +512,32 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
                     //  (2) create JOptionPane object, get JDialog from it, make the JDialog modeless
                     // Solution 2 is shorter but requires Java 1.6.  Trying to keep MARS at 1.5.  So we
                     // do it the hard way.  DPS 16-July-2014
-                    final JDialog d;
-                    final String title = "Simulating the Keyboard and Display";
-                    // The following is necessary because there are different JDialog constructors for Dialog and
-                    // Frame and theWindow is declared a Window, superclass for both.
-                    d = (theWindow instanceof Dialog) ? new JDialog((Dialog) theWindow, title, false)
-                            : new JDialog((Frame) theWindow, title, false);
-                    d.setSize(ja.getPreferredSize());
-                    d.getContentPane().setLayout(new BorderLayout());
-                    d.getContentPane().add(new JScrollPane(ja), BorderLayout.CENTER);
-                    JButton b = new JButton("Close");
-                    b.addActionListener(
-                            ev -> {
-                                d.setVisible(false);
-                                d.dispose();
-                            });
-                    JPanel p = new JPanel(); // Flow layout will center button.
-                    p.add(b);
-                    d.getContentPane().add(p, BorderLayout.SOUTH);
-                    d.setLocationRelativeTo(theWindow);
-                    d.setVisible(true);
+//                    final JDialog d;
+//                    final String title = "Simulating the Keyboard and Display";
+//                    // The following is necessary because there are different JDialog constructors for Dialog and
+//                    // Frame and theWindow is declared a Window, superclass for both.
+//                    d = (theWindow instanceof Dialog) ? new JDialog((Dialog) theWindow, title, false)
+//                            : new JDialog((Frame) theWindow, title, false);
+//                    d.setSize(ja.getPreferredSize());
+//                    d.getContentPane().setLayout(new BorderLayout());
+//                    d.getContentPane().add(new JScrollPane(ja), BorderLayout.CENTER);
+//                    JButton b = new JButton("Close");
+//                    b.addActionListener(
+//                            ev -> {
+//                                d.setVisible(false);
+//                                d.dispose();
+//                            });
+//                    JPanel p = new JPanel(); // Flow layout will center button.
+//                    p.add(b);
+//                    d.getContentPane().add(p, BorderLayout.SOUTH);
+//                    d.setLocationRelativeTo(theWindow);
+//                    d.setVisible(true);
                     // This alternative technique is simpler than the above but requires java 1.6!  DPS 16-July-2014
-                    //       JOptionPane theStuff = new JOptionPane(new JScrollPane(ja),JOptionPane.INFORMATION_MESSAGE,
-                    //            JOptionPane.DEFAULT_OPTION, null, new String[]{"Close"} );
-                    //       JDialog theDialog = theStuff.createDialog(theWindow, "Simulating the Keyboard and Display");
-                    //       theDialog.setModal(false);
-                    //       theDialog.setVisible(true);
+                   JOptionPane theStuff = new JOptionPane(new JScrollPane(ja),JOptionPane.INFORMATION_MESSAGE,
+                        JOptionPane.DEFAULT_OPTION, null, new String[]{"Close"} );
+                   JDialog theDialog = theStuff.createDialog(theWindow, "Simulating the Keyboard and Display");
+                   theDialog.setModal(false);
+                   theDialog.setVisible(true);
                 });
         return help;
     }

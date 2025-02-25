@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Objects;
 
 /**
  * Dump MIPS memory contents in Segment Window format.  Each line of
@@ -19,8 +20,8 @@ import java.io.PrintStream;
  * using PrintStream's println() method.  Each line of Text Segment
  * Window represents one word of text segment memory.  The line
  * includes (1) address, (2) machine code in hex, (3) basic instruction,
- * (4) source line.  Each line of Data Segment Window represents 8
- * words of data segment memory.  The line includes address of first
+ * (4) source line.  Each line of Data Segment Window represents eight
+ * words of data segment memory.  The line includes the address of the first
  * word for that line followed by 8 32-bit values.
  * <p>
  * In either case, addresses and values are displayed in decimal or
@@ -29,17 +30,13 @@ import java.io.PrintStream;
  * @author Pete Sanderson
  * @version January 2008
  */
-
-
 public class SegmentWindowDumpFormat extends AbstractDumpFormat {
-
     /**
      * Constructor.  There is no standard file extension for this format.
      */
     public SegmentWindowDumpFormat() {
         super("Text/Data Segment Window", "SegmentWindow", " Text Segment Window or Data Segment Window format to text file", null);
     }
-
 
     /**
      * Write MIPS memory contents in Segment Window format.  Each line of
@@ -55,14 +52,13 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
      * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
      * @throws IOException           if error occurs during file output.
      */
-    public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
-            throws AddressErrorException, IOException {
+    public void dumpMemoryRange(File file, int firstAddress, int lastAddress) throws AddressErrorException, IOException {
 
         PrintStream out = new PrintStream(new FileOutputStream(file));
 
         boolean hexAddresses = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX);
 
-        // If address in data segment, print in same format as Data Segment Window
+        // If address in a data segment, print in the same format as Data Segment Window
         if (Memory.inDataSegment(firstAddress)) {
             boolean hexValues = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX);
             int offset = 0;
@@ -73,12 +69,9 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
                         string = new StringBuilder(((hexAddresses) ? Binary.intToHexString(address) : Binary.unsignedIntToIntString(address)) + "    ");
                     }
                     offset++;
-                    Integer temp = Globals.memory.getRawWordOrNull(address);
-                    if (temp == null)
-                        break;
-                    string.append((hexValues)
-                            ? Binary.intToHexString(temp)
-                            : ("           " + temp).substring(temp.toString().length())).append(" ");
+                    // getRawWordOrNull can't return null when the address is in the data segment.
+                    Integer temp = Objects.requireNonNull(Globals.memory.getRawWordOrNull(address));
+                    string.append((hexValues) ? Binary.intToHexString(temp) : ("           " + temp).substring(temp.toString().length())).append(" ");
                     if (offset % 8 == 0) {
                         out.println(string);
                         string = new StringBuilder();
@@ -93,7 +86,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
         if (!Memory.inTextSegment(firstAddress)) {
             return;
         }
-        // If address in text segment, print in same format as Text Segment Window
+        // If address in the text segment, print in the same format as Text Segment Window
         out.println(" Address    Code        Basic                     Source");
         //           12345678901234567890123456789012345678901234567890
         //                    1         2         3         4         5
@@ -103,13 +96,12 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
             for (int address = firstAddress; address <= lastAddress; address += Memory.WORD_LENGTH_BYTES) {
                 string = ((hexAddresses) ? Binary.intToHexString(address) : Binary.unsignedIntToIntString(address)) + "  ";
                 Integer temp = Globals.memory.getRawWordOrNull(address);
-                if (temp == null)
-                    break;
+                if (temp == null) break;
                 string += Binary.intToHexString(temp) + "  ";
                 try {
                     ProgramStatement ps = Globals.memory.getStatement(address);
                     string += (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
-                    string += (((ps.getSource().equals("")) ? "" : Integer.valueOf(ps.getSourceLine()).toString()) + "     ").substring(0, 5);
+                    string += (((ps.getSource().isEmpty()) ? "" : Integer.valueOf(ps.getSourceLine()).toString()) + "     ").substring(0, 5);
                     string += ps.getSource();
                 } catch (AddressErrorException ignored) {
                 }
@@ -119,6 +111,4 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
             out.close();
         }
     }
-
-
 }

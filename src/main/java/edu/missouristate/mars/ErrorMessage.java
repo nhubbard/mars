@@ -200,8 +200,8 @@ public class ErrorMessage {
     private ArrayList<Integer> parseMacroHistory(String string) {
         Pattern pattern = Pattern.compile("<\\d+>");
         Matcher matcher = pattern.matcher(string);
-        String verify = new String(string).trim();
-        ArrayList<Integer> macroHistory = new ArrayList<Integer>();
+        String verify = string.trim();
+        ArrayList<Integer> macroHistory = new ArrayList<>();
         while (matcher.find()) {
             String match = matcher.group();
             if (verify.indexOf(match) == 0) {

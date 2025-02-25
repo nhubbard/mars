@@ -5,6 +5,8 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.*;
 
+import java.util.stream.Collectors;
+
 /**
  * Class to represent error that occurs while assembling or running a MIPS program.
  *
@@ -96,5 +98,21 @@ public class ProcessingException extends Exception {
      **/
     public ErrorList errors() {
         return errs;
+    }
+
+    @Override
+    public String toString() {
+        return "Processing failed. Errors:\n" +
+                errs
+                    .getErrorMessages()
+                    .stream()
+                    .map(it -> String.format(
+                        "(%s:%d:%d) %s%n",
+                        it.getFilename(),
+                        it.getLine(),
+                        it.getPosition(),
+                        it.getMessage()
+                    ))
+                    .collect(Collectors.joining("\n"));
     }
 }
