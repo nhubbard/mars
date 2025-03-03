@@ -69,8 +69,9 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
                         string = new StringBuilder(((hexAddresses) ? Binary.intToHexString(address) : Binary.unsignedIntToIntString(address)) + "    ");
                     }
                     offset++;
-                    // getRawWordOrNull can't return null when the address is in the data segment.
-                    Integer temp = Objects.requireNonNull(Globals.memory.getRawWordOrNull(address));
+                    Integer temp = Globals.memory.getRawWordOrNull(address);
+                    if (temp == null)
+                        break;
                     string.append((hexValues) ? Binary.intToHexString(temp) : ("           " + temp).substring(temp.toString().length())).append(" ");
                     if (offset % 8 == 0) {
                         out.println(string);

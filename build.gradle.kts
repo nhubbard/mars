@@ -25,8 +25,8 @@ plugins {
     application
     java
     idea
-    kotlin("jvm") version "2.1.0"
-    id("com.gradleup.shadow") version "8.3.5"
+    kotlin("jvm") version "2.1.10"
+    id("com.gradleup.shadow") version "9.0.0-beta9"
     jacoco
 }
 
@@ -41,16 +41,16 @@ repositories {
 
 dependencies {
     // Java
-    compileOnly("org.jetbrains:annotations:26.0.1")
+    compileOnly("org.jetbrains:annotations:26.0.2")
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
     // Testing
-    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation(platform("org.junit:junit-bom:5.12.0"))
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.mockito:mockito-core:5.14.2")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.14.2")
-    mockitoAgent("org.mockito:mockito-core:5.14.2") { isTransitive = false }
+    testImplementation("org.mockito:mockito-core:5.15.2")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.15.2")
+    mockitoAgent("org.mockito:mockito-core:5.15.2") { isTransitive = false }
 }
 
 sourceSets {
@@ -76,6 +76,8 @@ tasks {
     test {
         useJUnitPlatform()
         finalizedBy(jacocoTestReport)
+        minHeapSize = "1024m"
+        maxHeapSize = "2048m"
         jvmArgs("-XX:+EnableDynamicAgentLoading", "-javaagent:${mockitoAgent.asPath}")
     }
 
