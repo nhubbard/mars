@@ -25,8 +25,8 @@ plugins {
     application
     java
     idea
-    kotlin("jvm") version "2.1.10"
-    id("com.gradleup.shadow") version "9.0.0-beta9"
+    kotlin("jvm") version "2.1.20"
+    id("com.gradleup.shadow") version "9.0.0-beta12"
     jacoco
 }
 
@@ -45,12 +45,12 @@ dependencies {
     // Kotlin
     implementation(kotlin("stdlib-jdk8"))
     // Testing
-    testImplementation(platform("org.junit:junit-bom:5.12.0"))
+    testImplementation(platform("org.junit:junit-bom:5.12.1"))
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.mockito:mockito-core:5.15.2")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.15.2")
-    mockitoAgent("org.mockito:mockito-core:5.15.2") { isTransitive = false }
+    testImplementation("org.mockito:mockito-core:5.16.1")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.16.1")
+    mockitoAgent("org.mockito:mockito-core:5.16.1") { isTransitive = false }
 }
 
 sourceSets {
