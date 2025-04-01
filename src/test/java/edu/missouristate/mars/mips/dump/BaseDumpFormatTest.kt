@@ -33,11 +33,27 @@ open class BaseDumpFormatTest {
     internal val textLimit = (Memory.textLimitAddress / 4) - Memory.WORD_LENGTH_BYTES
     internal val kernelTextBase = Memory.kernelTextBaseAddress
     internal val kernelTextLimit = Memory.kernelTextLimitAddress - Memory.WORD_LENGTH_BYTES
+    
+    private var originalHexAddresses: Boolean = false
+    private var originalHexValues: Boolean = false
+    private var originalSelfModifyingCode: Boolean = false
 
     fun setUpBase() {
+        // Initialize with default settings
         Globals.initialize(false)
+        
+        // Store original settings
+        originalHexAddresses = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX)
+        originalHexValues = Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX)
+        originalSelfModifyingCode = Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)
+        
+        Globals.getSettings().setBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX, true)
+        Globals.getSettings().setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, true)
+        
+        // Set up memory
         for (address in dataBase..<dataLimit step step)
             Globals.memory.setWord(address, address - Memory.dataSegmentBaseAddress)
+        
         Globals.getSettings().setBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED, true)
         for (address in textBase..<textLimit step step)
             Globals.memory.setRawWord(address, address - Memory.textBaseAddress)
@@ -45,6 +61,11 @@ open class BaseDumpFormatTest {
     }
 
     fun tearDownBase() {
+        // Restore original settings
+        Globals.getSettings().setBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX, originalHexAddresses)
+        Globals.getSettings().setBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX, originalHexValues)
+        Globals.getSettings().setBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED, originalSelfModifyingCode)
+        
         Globals.resetInitialized()
     }
 }

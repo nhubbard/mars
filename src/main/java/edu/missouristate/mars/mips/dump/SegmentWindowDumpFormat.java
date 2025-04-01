@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Objects;
 
 /**
  * Dump MIPS memory contents in Segment Window format.  Each line of
