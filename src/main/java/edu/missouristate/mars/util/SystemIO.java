@@ -232,7 +232,7 @@ public class SystemIO {
         ///////////////////////////////////////////////////////////////////////////////////
         //// When running in command mode, code below works for either regular file or STDOUT/STDERR
 
-        if (!FileIOData.fdInUse(fd, 1)) // Check the existence of the "write" fd
+        if (FileIOData.fileDescriptorNotInUse(fd, 1)) // Check the existence of the "write" fd
         {
             fileErrorString = "File descriptor " + fd + " is not open for writing";
             return -1;
@@ -292,7 +292,7 @@ public class SystemIO {
         ////////////////////////////////////////////////////////////////////////////////////
         //// When running in command mode, code below works for either regular file or STDIN
 
-        if (!FileIOData.fdInUse(fd, 0)) // Check the existence of the "read" fd
+        if (FileIOData.fileDescriptorNotInUse(fd, 0)) // Check the existence of the "read" fd
         {
             fileErrorString = "File descriptor " + fd + " is not open for reading";
             return -1;
@@ -470,15 +470,14 @@ public class SystemIO {
 
         }
 
-        // Determine whether a given fd is already in use with the given flag.
-        private static boolean fdInUse(int fd, int flag) {
+        // Determine whether a given fd is not in use with the given flag.
+        private static boolean fileDescriptorNotInUse(int fd, int flag) {
             if (fd < 0 || fd >= SYSCALL_MAXFILES) {
-                return false;
+                return true;
             } else // O_WRONLY write-only
                 if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) {  // O_RDONLY read-only
-                return true;
-            } else return fileNames[fd] != null && ((fileFlags[fd] & flag & O_WRONLY) == O_WRONLY);
-
+                return false;
+            } else return fileNames[fd] == null || ((fileFlags[fd] & flag & O_WRONLY) != O_WRONLY);
         }
 
         // Close the file with file descriptor fd. No errors are recoverable -- if the user's
@@ -525,17 +524,9 @@ public class SystemIO {
                 return -1;
             }
 
-            while (fileNames[i] != null && i < SYSCALL_MAXFILES) {
+            while (fileNames[i] != null) {
                 i++;
             } // Attempt to find available file descriptor
-
-            if (i >= SYSCALL_MAXFILES) // no available file descriptors
-            {
-                fileErrorString = "File name " + filename
-                        + " exceeds maximum open file limit of "
-                        + SYSCALL_MAXFILES;
-                return -1;
-            }
 
             // Must be OK -- put filename in table
             fileNames[i] = filename; // our table has its own copy of filename

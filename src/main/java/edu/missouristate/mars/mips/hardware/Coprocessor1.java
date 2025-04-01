@@ -333,17 +333,16 @@ public class Coprocessor1 {
      * @param val The desired int value for the register.
      **/
 
-    public static int updateRegister(int num, int val) {
+    public static void updateRegister(int num, int val) {
         int old = 0;
         for (Register register : registers) {
             if (register.getNumber() == num) {
-                old = (Globals.getSettings().getBackSteppingEnabled())
-                        ? Globals.program.getBackStepper().addCoprocessor1Restore(num, register.setValue(val))
-                        : register.setValue(val);
+                if ((Globals.getSettings().getBackSteppingEnabled())) {
+                    Globals.program.getBackStepper().addCoprocessor1Restore(num, register.setValue(val));
+                } else {register.setValue(val);}
                 break;
             }
         }
-        return old;
     }
 
     /**
@@ -443,10 +442,9 @@ public class Coprocessor1 {
      * Set condition flag to 1 (true).
      *
      * @param flag condition flag number (0-7)
-     * @return previous flag setting (0 or 1)
      */
-    public static int setConditionFlag(int flag) {
-        int old = 0;
+    public static void setConditionFlag(int flag) {
+        int old;
         if (flag >= 0 && flag < numConditionFlags) {
             old = getConditionFlag(flag);
             condition.setValue(Binary.setBit(condition.getValue(), flag));
@@ -457,17 +455,15 @@ public class Coprocessor1 {
                     Globals.program.getBackStepper().addConditionFlagSet(flag);
                 }
         }
-        return old;
     }
 
     /**
      * Set condition flag to 0 (false).
      *
      * @param flag condition flag number (0-7)
-     * @return previous flag setting (0 or 1)
      */
-    public static int clearConditionFlag(int flag) {
-        int old = 0;
+    public static void clearConditionFlag(int flag) {
+        int old;
         if (flag >= 0 && flag < numConditionFlags) {
             old = getConditionFlag(flag);
             condition.setValue(Binary.clearBit(condition.getValue(), flag));
@@ -478,7 +474,6 @@ public class Coprocessor1 {
                     Globals.program.getBackStepper().addConditionFlagSet(flag);
                 }
         }
-        return old;
     }
 
 

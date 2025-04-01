@@ -52,7 +52,7 @@ public class RunGoAction extends GuiAction {
                 }
             } else {
                 // This should never occur because at termination the Go and Step buttons are disabled.
-                JOptionPane.showMessageDialog(mainUI, "reset " + VenusUI.getReset() + " started " + VenusUI.getStarted());//"You must reset before you can execute the program again.");
+                JOptionPane.showMessageDialog(mainUI, "You must reset before you can execute the program again.");
             }
         } else {
             // note: this should never occur since "Go" is only enabled after successful assembly.

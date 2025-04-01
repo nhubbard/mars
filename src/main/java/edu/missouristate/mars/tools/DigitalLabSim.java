@@ -58,6 +58,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
     }
 
+    @Override
     public void update(Observable ressource, Object accessNotice) {
         MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
         int address = notice.getAddress();
@@ -93,11 +94,11 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         return panelTools;
     }
 
-    private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
+    private synchronized void updateMMIOControlAndData(int dataValue) {
         if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
             synchronized (Globals.memoryAndRegistersLock) {
                 try {
-                    Globals.memory.setByte(dataAddr, dataValue);
+                    Globals.memory.setByte(DigitalLabSim.OUT_ADRESS_HEXA_KEYBOARD, dataValue);
                 } catch (AddressErrorException aee) {
                     System.out.println("Tool author specified incorrect MMIO address!" + aee);
                     System.exit(0);
@@ -265,9 +266,9 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     public void updateHexaKeyboard(char row) {
         int key = KeyBoardValueButtonClick;
         if ((key != -1) && ((1 << (key / 4)) == (row & 0xF))) {
-            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, (char) (1 << (key / 4)) | (1 << (4 + (key % 4))));
+            updateMMIOControlAndData((char) (1 << (key / 4)) | (1 << (4 + (key % 4))));
         } else {
-            updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
+            updateMMIOControlAndData(0);
         }
         KeyboardInterruptOnOff = (row & 0xF0) != 0;
     }
@@ -320,7 +321,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
                 int i;
                 if (KeyBoardValueButtonClick != -1) {//Button already pressed -> now realease
                     KeyBoardValueButtonClick = -1;
-                    updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
+                    updateMMIOControlAndData(0);
                     for (i = 0; i < 16; i++)
                         button[i].setBackground(Color.WHITE);
                 } else { // new button pressed

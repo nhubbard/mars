@@ -143,7 +143,7 @@ public class SyntaxUtilities {
      */
     public static int paintSyntaxLine(Segment line, Token tokens,
                                       SyntaxStyle[] styles, TabExpander expander, Graphics gfx,
-                                      int x, int y) {
+                                      float x, float y) {
         Font defaultFont = gfx.getFont();
         Color defaultColor = gfx.getColor();
 
@@ -193,14 +193,14 @@ public class SyntaxUtilities {
                 //    new InstructionMouseEvent((Component)expander, x, y, line));
             }
 
-            x = Utilities.drawTabbedText(line, x, y, gfx, expander, 0);
+            x = Utilities.drawTabbedText(line, x, y, (Graphics2D) gfx, expander, 0);
             line.offset += length;
             offset += length;
 
             tokens = tokens.next;
         }
 
-        return x;
+        return (int) x;
     }
 
     // private members

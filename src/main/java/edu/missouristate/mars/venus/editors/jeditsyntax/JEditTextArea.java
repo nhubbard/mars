@@ -371,17 +371,13 @@ public class JEditTextArea extends JComponent {
     /**
      * Ensures that the caret is visible by scrolling the text area if
      * necessary.
-     *
-     * @return True if scrolling was actually performed, false if the
-     * caret was already visible
      */
-    public boolean scrollToCaret() {
+    public void scrollToCaret() {
         int line = getCaretLine();
         int lineStart = getLineStartOffset(line);
         int offset = Math.max(0, Math.min(getLineLength(line) - 1,
                 getCaretPosition() - lineStart));
-
-        return scrollTo(line, offset);
+        scrollTo(line, offset);
     }
 
     /**
@@ -1847,11 +1843,7 @@ public class JEditTextArea extends JComponent {
                 case 2:
                     // It uses the bracket matching stuff, so
                     // it can throw a BLE
-                    try {
-                        doDoubleClick(evt, line, offset, dot);
-                    } catch (BadLocationException bl) {
-                        bl.printStackTrace();
-                    }
+                    doDoubleClick(evt, line, offset, dot);
                     break;
                 case 3:
                     doTripleClick(evt, line, offset, dot);
@@ -1869,7 +1861,7 @@ public class JEditTextArea extends JComponent {
         }
 
         private void doDoubleClick(MouseEvent evt, int line,
-                                   int offset, int dot) throws BadLocationException {
+                                   int offset, int dot) {
             // Ignore empty lines
             if (getLineLength(line) == 0)
                 return;

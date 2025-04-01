@@ -160,11 +160,9 @@ public class Editor {
 
     /**
      * Perform "close" operation on current tab's file.
-     *
-     * @return true if succeeded, else false.
      */
-    public boolean close() {
-        return editTabbedPane.closeCurrentFile();
+    public void close() {
+        editTabbedPane.closeCurrentFile();
     }
 
     /**
@@ -178,38 +176,30 @@ public class Editor {
 
     /**
      * Perform "save" operation on current tab's file.
-     *
-     * @return true if succeeded, else false.
      */
-    public boolean save() {
-        return editTabbedPane.saveCurrentFile();
+    public void save() {
+        editTabbedPane.saveCurrentFile();
     }
 
     /**
      * Perform "save as" operation on current tab's file.
-     *
-     * @return true if succeeded, else false.
      */
-    public boolean saveAs() {
-        return editTabbedPane.saveAsCurrentFile();
+    public void saveAs() {
+        editTabbedPane.saveAsCurrentFile();
     }
 
     /**
      * Perform save operation on all open files (tabs).
-     *
-     * @return true if succeeded, else false.
      */
-    public boolean saveAll() {
-        return editTabbedPane.saveAllFiles();
+    public void saveAll() {
+        editTabbedPane.saveAllFiles();
     }
 
     /**
      * Open file in a new tab.
-     *
-     * @return true if succeeded, else false.
      */
-    public boolean open() {
-        return editTabbedPane.openFile();
+    public void open() {
+        editTabbedPane.openFile();
     }
 
 

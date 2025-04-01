@@ -45,13 +45,11 @@ public class FileDumpMemoryAction extends GuiAction {
 
     /* Save the memory segment in a supported format.
      */
-    private boolean dumpMemory() {
+    private void dumpMemory() {
         dumpDialog = createDumpDialog();
         dumpDialog.pack();
         dumpDialog.setLocationRelativeTo(Globals.getGui());
         dumpDialog.setVisible(true);
-        return true;
-        /////////////////////////////////////////////////////////////////////
     }
 
 

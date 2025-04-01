@@ -81,7 +81,7 @@ public class RegisterFile {
      * @param val The desired value for the register.
      **/
 
-    public static int updateRegister(int num, int val) {
+    public static void updateRegister(int num, int val) {
         int old = 0;
         if (num == 0) {
             //System.out.println("You can not change the value of the zero register.");
@@ -104,7 +104,6 @@ public class RegisterFile {
                     ? Globals.program.getBackStepper().addRegisterFileRestore(num, lo.setValue(val))
                     : lo.setValue(val);
         }
-        return old;
     }
 
     /**
@@ -238,16 +237,14 @@ public class RegisterFile {
      * incrementPC() method. Use this only when processing jumps and branches.
      *
      * @param value The value to set the Program Counter to.
-     * @return previous PC value
      **/
 
-    public static int setProgramCounter(int value) {
+    public static void setProgramCounter(int value) {
         int old = programCounter.getValue();
         programCounter.setValue(value);
         if (Globals.getSettings().getBackSteppingEnabled()) {
             Globals.program.getBackStepper().addPCRestore(old);
         }
-        return old;
     }
 
     /**

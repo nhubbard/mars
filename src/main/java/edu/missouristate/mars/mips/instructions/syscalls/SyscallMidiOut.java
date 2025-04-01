@@ -37,7 +37,7 @@ public class SyscallMidiOut extends AbstractSyscall {
      * instrument and volume value ranges 0-127 are from javax.sound.midi; actual MIDI instruments
      * use the range 1-128.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    public void simulate(ProgramStatement statement) {
         int pitch = RegisterFile.getValue(4); // $a0
         int duration = RegisterFile.getValue(5); // $a1
         int instrument = RegisterFile.getValue(6); // $a2

@@ -235,12 +235,14 @@ public class ScavengerHunt implements Observer, MarsTool {
             double tempAngle;
 
             // infinite loop: play the Scavenger Hunt game
+            //noinspection InfiniteLoopStatement
             do {
 
                 // Pause to slow down the redisplay of the game. This is separate from
                 // the execution speed of the MIPS program, so the display may lag behind
                 // the state of the MIPS program.
                 try {
+                    //noinspection BusyWait
                     Thread.sleep(100);
                 } catch (InterruptedException ignored) {}
 

@@ -6,7 +6,6 @@ import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxStyle;
 import edu.missouristate.mars.venus.editors.jeditsyntax.SyntaxUtilities;
 
 import java.awt.*;
-import java.text.NumberFormat;
 import java.util.NoSuchElementException;
 import java.util.Observable;
 import java.util.StringTokenizer;

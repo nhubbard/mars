@@ -392,13 +392,11 @@ public class Simulator extends Observable {
                 //                              using Run,  not Step (maxSteps > 1) AND
                 //                              running slowly enough for GUI to keep up
                 //if (Globals.getGui() != null && maxSteps != 1 &&
-                if (interactiveGUIUpdater != null && maxSteps != 1 &&
-                        RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+                if (interactiveGUIUpdater != null && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
                     SwingUtilities.invokeLater(interactiveGUIUpdater);
                 }
                 if (Globals.getGui() != null || Globals.runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
-                    if (maxSteps != 1 &&
-                            RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+                    if (RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
                         try {
                             Thread.sleep((int) (1000 / RunSpeedPanel.getInstance().getRunSpeed())); // make sure it's never zero!
                         } catch (InterruptedException ignored) {
@@ -468,7 +466,7 @@ public class Simulator extends Observable {
                 if (done) {
                     ((RunGoAction) starter).stopped(pe, constructReturnReason);
                 } else if (constructReturnReason == BREAKPOINT) {
-                    ((RunGoAction) starter).paused(done, constructReturnReason, pe);
+                    ((RunGoAction) starter).paused(false, constructReturnReason, pe);
                 } else {
                     String stopperName = (String) stopper.getValue(AbstractAction.NAME);
                     if ("Pause".equals(stopperName)) {

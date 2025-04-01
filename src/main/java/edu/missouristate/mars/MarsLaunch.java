@@ -410,14 +410,14 @@ public class MarsLaunch {
         try {
             Globals.getSettings().setBooleanSettingNonPersistent(Settings.DELAYED_BRANCHING_ENABLED, delayedBranching);
             Globals.getSettings().setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
-            File mainFile = new File(filenameList.get(0)).getAbsoluteFile();// The first file is "main" file
+            File mainFile = new File(filenameList.getFirst()).getAbsoluteFile();// The first file is "main" file
             ArrayList<String> filesToAssemble;
             if (assembleProject) {
                 filesToAssemble = FilenameFinder.getFilenameList(mainFile.getParent(), Globals.fileExtensions);
                 if (filenameList.size() > 1) {
                     // Using "p" project option PLUS listing more than one filename on command line.
                     // Add the additional files, avoiding duplicates.
-                    filenameList.remove(0); // The first one has already been processed
+                    filenameList.removeFirst(); // The first one has already been processed
                     ArrayList<String> moreFilesToAssemble =
                             FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
                     // Remove any duplicates then merge the two lists.
@@ -477,9 +477,7 @@ public class MarsLaunch {
             // NOTE: I will use homegrown decoder, because Integer.decode will throw
             // exception on address higher than 0x7FFFFFFF (e.g., sign bit is 1).
             if (
-                Binary.stringToInt(memoryRange[0]) > Binary.stringToInt(memoryRange[1]) ||
-                !Memory.wordAligned(Binary.stringToInt(memoryRange[0])) ||
-                !Memory.wordAligned(Binary.stringToInt(memoryRange[1]))
+                Binary.stringToInt(memoryRange[0]) > Binary.stringToInt(memoryRange[1]) || Memory.isNotWordAligned(Binary.stringToInt(memoryRange[0])) || Memory.isNotWordAligned(Binary.stringToInt(memoryRange[1]))
             ) throw new NumberFormatException();
         }
         return memoryRange;

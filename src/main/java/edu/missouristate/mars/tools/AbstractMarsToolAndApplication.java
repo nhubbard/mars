@@ -420,6 +420,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
      * @param resource     the attached MIPS resource
      * @param accessNotice AccessNotice information provided by the resource
      */
+    @Override
     public void update(Observable resource, Object accessNotice) {
         if (((AccessNotice) accessNotice).accessIsFromMIPS()) {
             processMIPSUpdate(resource, (AccessNotice) accessNotice);

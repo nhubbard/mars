@@ -76,7 +76,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         public int oppositeAxis;
         private boolean isMovingXaxis;
         private Color color;
-        private boolean first_interaction;
+        private boolean firstInteraction;
         private boolean active;
         private final boolean isText;
         private final ArrayList<Integer> targetVertex;
@@ -89,7 +89,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             this.name = name;
             this.oppositeAxis = oppositeAxis;
             this.isMovingXaxis = isMovingXaxis;
-            this.first_interaction = true;
+            this.firstInteraction = true;
             this.active = false;
             this.isText = isText;
             this.color = new Color(0, 153, 0);
@@ -188,12 +188,12 @@ class UnitAnimation extends JPanel implements ActionListener {
             this.color = color;
         }
 
-        public boolean isFirst_interaction() {
-            return first_interaction;
+        public boolean isNotFirstInteraction() {
+            return !firstInteraction;
         }
 
-        public void setFirst_interaction(boolean first_interaction) {
-            this.first_interaction = first_interaction;
+        public void setFirstInteraction(boolean firstInteraction) {
+            this.firstInteraction = firstInteraction;
         }
 
         public boolean isActive() {
@@ -348,8 +348,8 @@ class UnitAnimation extends JPanel implements ActionListener {
             for (Vector<Vertex> vert : outputGraph) {
             }
 
-            vertexList.get(0).setActive(true);
-            vertexTraversed.add(vertexList.get(0));
+            vertexList.getFirst().setActive(true);
+            vertexTraversed.add(vertexList.getFirst());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -439,8 +439,8 @@ class UnitAnimation extends JPanel implements ActionListener {
             for (Vector<Vertex> vert : outputGraph) {
             }
 
-            vertexList.get(0).setActive(true);
-            vertexTraversed.add(vertexList.get(0));
+            vertexList.getFirst().setActive(true);
+            vertexTraversed.add(vertexList.getFirst());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -529,7 +529,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         for (int i = 0; i < size; i++)
             track[i] = v.getInit() + i;
         if (v.isActive()) {
-            v.setFirst_interaction(false);
+            v.setFirstInteraction(false);
             for (int i = 0; i < size; i++) {
                 if (track[i] <= v.getCurrent()) {
                     g2d.setColor(v.getColor());
@@ -538,7 +538,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             }
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
             v.setCurrent(v.getCurrent() + 1);
-        } else if (!v.isFirst_interaction()) {
+        } else if (v.isNotFirstInteraction()) {
             for (int i = 0; i < size; i++) {
                 g2d.setColor(v.getColor());
                 g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
@@ -560,7 +560,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             track[i] = v.getInit() - i;
 
         if (v.isActive()) {
-            v.setFirst_interaction(false);
+            v.setFirstInteraction(false);
             for (int i = 0; i < size; i++) {
                 if (track[i] >= v.getCurrent()) {
                     g2d.setColor(v.getColor());
@@ -570,7 +570,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
 
             v.setCurrent(v.getCurrent() - 1);
-        } else if (!v.isFirst_interaction()) {
+        } else if (v.isNotFirstInteraction()) {
             for (int i = 0; i < size; i++) {
                 g2d.setColor(v.getColor());
                 g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
@@ -598,7 +598,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
 
         if (v.isActive()) {
-            v.setFirst_interaction(false);
+            v.setFirstInteraction(false);
             for (int i = 0; i < size; i++) {
                 if (track[i] >= v.getCurrent()) {
                     g2d.setColor(v.getColor());
@@ -608,7 +608,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
             v.setCurrent(v.getCurrent() - 1);
 
-        } else if (!v.isFirst_interaction()) {
+        } else if (v.isNotFirstInteraction()) {
             for (int i = 0; i < size; i++) {
                 g2d.setColor(v.getColor());
                 g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
@@ -630,7 +630,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             track[i] = v.getInit() + i;
 
         if (v.isActive()) {
-            v.setFirst_interaction(false);
+            v.setFirstInteraction(false);
             for (int i = 0; i < size; i++) {
                 if (track[i] <= v.getCurrent()) {
                     g2d.setColor(v.getColor());
@@ -640,7 +640,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             }
             if (v.getCurrent() == track[size - 1]) v.setActive(false);
             v.setCurrent(v.getCurrent() + 1);
-        } else if (!v.isFirst_interaction()) {
+        } else if (v.isNotFirstInteraction()) {
             for (int i = 0; i < size; i++) {
                 g2d.setColor(v.getColor());
                 g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);

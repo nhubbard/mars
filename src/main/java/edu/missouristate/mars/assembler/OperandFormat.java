@@ -37,10 +37,10 @@ public class OperandFormat {
      */
     static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
         if (instrMatches == null) return null;
-        if (instrMatches.size() == 1) return instrMatches.get(0);
+        if (instrMatches.size() == 1) return instrMatches.getFirst();
         for (Instruction instruction : instrMatches)
             if (tokenOperandMatch(tokenList, instruction, new ErrorList())) return instruction;
-        return Globals.instructionSet.getInstructionList().get(0);
+        return Globals.instructionSet.getInstructionList().getFirst();
     }
 
     /**

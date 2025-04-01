@@ -175,8 +175,8 @@ class Magnifier extends JFrame implements ComponentListener {
         // (upper-left corner of image at upper-left corner of viewer).
         alignment = new CaptureDisplayCentered();// CaptureDisplayUpperleft();
         // Once the alignment is set, these will correctly self-set.
-        captureDisplayCenter = new CaptureModel(alignment instanceof CaptureDisplayCentered);
-        captureDisplayUpperleft = new CaptureModel(alignment instanceof CaptureDisplayUpperleft);
+        captureDisplayCenter = new CaptureModel(true);
+        captureDisplayUpperleft = new CaptureModel(false);
         // Scribbler has two settings: line width in pixels and line color.
         scribblerSettings = new ScribblerSettings(2, Color.RED);
         // Whether or not to center the Settings dialog over the Magnifier frame.

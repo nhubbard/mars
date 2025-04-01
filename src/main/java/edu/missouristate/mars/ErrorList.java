@@ -97,11 +97,11 @@ public class ErrorList {
      * @param index position in error list
      **/
     public void add(ErrorMessage mess, int index) {
-        if (errorCount > getErrorLimit()) {
+        if (errorCount > Globals.maximumErrorMessages) {
             return;
         }
-        if (errorCount == getErrorLimit()) {
-            messages.add(new ErrorMessage((MIPSProgram) null, mess.getLine(), mess.getPosition(), "Error Limit of " + getErrorLimit() + " exceeded."));
+        if (errorCount == Globals.maximumErrorMessages) {
+            messages.add(new ErrorMessage((MIPSProgram) null, mess.getLine(), mess.getPosition(), "Error Limit of " + Globals.maximumErrorMessages + " exceeded."));
             errorCount++; // subsequent errors will not be added; see if statement above
             return;
         }
@@ -141,18 +141,7 @@ public class ErrorList {
      **/
 
     public boolean errorLimitExceeded() {
-        return this.errorCount > getErrorLimit();
-    }
-
-    /**
-     * Get limit on number of error messages to be generated
-     * by one assemble operation.
-     *
-     * @return error limit.
-     **/
-
-    public int getErrorLimit() {
-        return Globals.maximumErrorMessages;
+        return this.errorCount > Globals.maximumErrorMessages;
     }
 
     /**

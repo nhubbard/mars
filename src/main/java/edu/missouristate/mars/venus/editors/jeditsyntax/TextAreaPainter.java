@@ -386,7 +386,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
         try {
             TokenMarker tokenMarker = ((SyntaxDocument) textArea.getDocument())
                     .getTokenMarker();
-            int x = textArea.getHorizontalOffset();
+            float x = textArea.getHorizontalOffset();
 
             for (int line = firstInvalid; line <= lastInvalid; line++) {
                 paintLine(gfx, tokenMarker, line, x);
@@ -494,18 +494,18 @@ public class TextAreaPainter extends JComponent implements TabExpander {
     protected Highlight highlights;
 
     protected void paintLine(Graphics gfx, TokenMarker tokenMarker,
-                             int line, int x) {//System.out.println("paintLine "+ (++count));
+                             int line, float x) {//System.out.println("paintLine "+ (++count));
         Font defaultFont = getFont();
         Color defaultColor = getForeground();
 
         currentLineIndex = line;
-        int y = textArea.lineToY(line);
+        float y = (float) textArea.lineToY(line);
 
         if (line < 0 || line >= textArea.getLineCount()) {
             if (paintInvalid) {
-                paintHighlight(gfx, line, y);
+                paintHighlight(gfx, line, (int) y);
                 styles[Token.INVALID].setGraphicsFlags(gfx, defaultFont);
-                gfx.drawString("~", 0, y + fm.getHeight());
+                gfx.drawString("~", 0, (int) y + fm.getHeight());
             }
         } else if (tokenMarker == null) {
             paintPlainLine(gfx, line, defaultFont, defaultColor, x, y);
@@ -516,30 +516,30 @@ public class TextAreaPainter extends JComponent implements TabExpander {
     }
 
     protected void paintPlainLine(Graphics gfx, int line, Font defaultFont,
-                                  Color defaultColor, int x, int y) {
-        paintHighlight(gfx, line, y);
+                                  Color defaultColor, float x, float y) {
+        paintHighlight(gfx, line, (int) y);
         textArea.getLineText(line, currentLine);
 
         gfx.setFont(defaultFont);
         gfx.setColor(defaultColor);
 
         y += fm.getHeight();
-        x = Utilities.drawTabbedText(currentLine, x, y, gfx, this, 0);
+        x = Utilities.drawTabbedText(currentLine, x, y, (Graphics2D) gfx, this, 0);
 
         if (eolMarkers) {
             gfx.setColor(eolMarkerColor);
-            gfx.drawString(".", x, y);
+            gfx.drawString(".", (int) x, (int) y);
         }
     }
 
     //      private int count=0;
     protected void paintSyntaxLine(Graphics gfx, TokenMarker tokenMarker,
-                                   int line, Font defaultFont, Color defaultColor, int x, int y) {//System.out.println("paintSyntaxLine line "+ line);
+                                   int line, Font defaultFont, Color defaultColor, float x, float y) {//System.out.println("paintSyntaxLine line "+ line);
         textArea.getLineText(currentLineIndex, currentLine);
         currentLineTokens = tokenMarker.markTokens(currentLine,
                 currentLineIndex);
 
-        paintHighlight(gfx, line, y);
+        paintHighlight(gfx, line, (int) y);
 
         gfx.setFont(defaultFont);
         gfx.setColor(defaultColor);
@@ -548,7 +548,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
                 currentLineTokens, styles, this, gfx, x, y);
         if (eolMarkers) {
             gfx.setColor(eolMarkerColor);
-            gfx.drawString(".", x, y);
+            gfx.drawString(".", (int) x, (int) y);
         }
     }
 

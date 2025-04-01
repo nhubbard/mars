@@ -72,19 +72,17 @@ public class Coprocessor0 {
      *
      * @param num Number of register to set the value of.
      * @param val The desired value for the register.
-     * @return old value in register prior to update
      **/
-    public static int updateRegister(int num, int val) {
+    public static void updateRegister(int num, int val) {
         int old = 0;
         for (Register register : registers) {
             if (register.getNumber() == num) {
-                old = (Globals.getSettings().getBackSteppingEnabled())
-                        ? Globals.program.getBackStepper().addCoprocessor0Restore(num, register.setValue(val))
-                        : register.setValue(val);
+                if ((Globals.getSettings().getBackSteppingEnabled())) {
+                    Globals.program.getBackStepper().addCoprocessor0Restore(num, register.setValue(val));
+                } else {register.setValue(val);}
                 break;
             }
         }
-        return old;
     }
 
 

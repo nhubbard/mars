@@ -112,7 +112,7 @@ public class MessagesPane extends JTabbedPane {
                                 if (fileNameStart < fileNameEnd && fileNameStart >= ErrorList.FILENAME_PREFIX.length()) {
                                     fileName = text.substring(fileNameStart, fileNameEnd).trim();
                                 }
-                                if (fileName != null && !fileName.isEmpty()) {
+                                if (!fileName.isEmpty()) {
                                     selectEditorTextLine(fileName, line, column);
                                     selectErrorMessage(fileName, line, column);
                                 }
@@ -207,7 +207,7 @@ public class MessagesPane extends JTabbedPane {
         // If editPane == null, it means the desired file was not open.  Line selection
         // does not properly with the JEditTextArea editor in this situation (it works
         // fine for the original generic editor).  So we just won't do it. DPS 9-Aug-2010
-        if (editPane != null && currentPane != null) {
+        if (editPane != null) {
             currentPane.selectLine(line, column);
         }
     }

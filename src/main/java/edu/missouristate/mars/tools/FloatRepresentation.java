@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.util.Binary;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -141,6 +142,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
      * @param register     the attached register
      * @param accessNotice information provided by register in RegisterAccessNotice object
      */
+    @Override
     public void update(Observable register, Object accessNotice) {
         if (((AccessNotice) accessNotice).getAccessType() == AccessNotice.WRITE) {
             updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
@@ -320,6 +322,19 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
         String[] registerList = new String[fpRegisters.length + 1];
         registerList[0] = "None";
         for (int i = 0; i < fpRegisters.length; i++) registerList[i + 1] = fpRegisters[i].getName();
+        JComboBox<String> registerSelect = getRegisterSelectionList(registerList);
+
+        JPanel registerPanel = new JPanel(new BorderLayout(5, 5));
+        JPanel registerAndLabel = new JPanel();
+        registerAndLabel.add(new JLabel("MIPS floating point Register of interest: "));
+        registerAndLabel.add(registerSelect);
+        registerPanel.add(registerAndLabel, BorderLayout.WEST);
+        registerPanel.add(new JLabel(" "), BorderLayout.NORTH); // just for padding
+        mainPanel.add(registerPanel);
+        return mainPanel;
+    } // end of buildDisplayArea()
+
+    private @NotNull JComboBox<String> getRegisterSelectionList(String[] registerList) {
         JComboBox<String> registerSelect = new JComboBox<>(registerList);
         registerSelect.setSelectedIndex(0);  // No register attached
         registerSelect.setToolTipText("Attach to selected FP register");
@@ -342,17 +357,8 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
                 instructions.setText("The program and register " + attachedRegister.getName() + " will respond to each other when MIPS program connected or running.");
             }
         });
-
-        JPanel registerPanel = new JPanel(new BorderLayout(5, 5));
-        JPanel registerAndLabel = new JPanel();
-        registerAndLabel.add(new JLabel("MIPS floating point Register of interest: "));
-        registerAndLabel.add(registerSelect);
-        registerPanel.add(registerAndLabel, BorderLayout.WEST);
-        registerPanel.add(new JLabel(" "), BorderLayout.NORTH); // just for padding
-        mainPanel.add(registerPanel);
-        return mainPanel;
-    } // end of buildDisplayArea()
-
+        return registerSelect;
+    }
 
     // If display is attached to a register then update the register value.
     private synchronized void updateAnyAttachedRegister(int intValue) {

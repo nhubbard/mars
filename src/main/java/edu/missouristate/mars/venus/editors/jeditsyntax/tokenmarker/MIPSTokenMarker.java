@@ -140,13 +140,10 @@ public class MIPSTokenMarker extends TokenMarker {
                         case '#':
                             backslash = false;
                             doKeyword(line, i, c);
-                            if (length - i >= 1) {
-                                addToken(i - lastOffset, token);
-                                addToken(length - i, Token.COMMENT1);
-                                lastOffset = lastKeyword = length;
-                                break loop;
-                            }
-                            break;
+                            addToken(i - lastOffset, token);
+                            addToken(length - i, Token.COMMENT1);
+                            lastOffset = lastKeyword = length;
+                            break loop;
                         default:
                             backslash = false;
                             // . and $ added 4/6/10 DPS; % added 12/12 M.Sekhavat
@@ -315,9 +312,7 @@ public class MIPSTokenMarker extends TokenMarker {
             if (keywordType == Token.KEYWORD1) {
                 return getTextFromInstructionMatch(keywordTokenText, true);
             }
-            if (keywordType == Token.KEYWORD2) {
-                return getTextFromDirectiveMatch(keywordTokenText, true);
-            }
+            return getTextFromDirectiveMatch(keywordTokenText, true);
         }
 
         // CASE:  Current token is NULL, which can be any number of things.  Think of it as being either white space
@@ -335,13 +330,11 @@ public class MIPSTokenMarker extends TokenMarker {
 
             String trimmedTokenText = tokenText.trim();
 
-            // Subcase: no KEYWORD1 or KEYWORD2 but current token contains nothing but white space.  We're done.
-            if (keywordTokenText == null && trimmedTokenText.isEmpty()) {
+            if (trimmedTokenText.isEmpty()) {
+                // Subcase: no KEYWORD1 or KEYWORD2 but current token contains nothing but white space.  We're done.
                 return null;
-            }
-
-            // Subcase: no KEYWORD1 or KEYWORD2.  Generate text based on prefix match of trimmed current token.
-            if (keywordTokenText == null && !trimmedTokenText.isEmpty()) {
+            } else {
+                // Subcase: no KEYWORD1 or KEYWORD2.  Generate text based on prefix match of trimmed current token.
                 if (trimmedTokenText.charAt(0) == '.') {
                     return getTextFromDirectiveMatch(trimmedTokenText, false);
                 } else if (trimmedTokenText.length() >= Globals.getSettings().getEditorPopupPrefixLength()) {
@@ -400,7 +393,7 @@ public class MIPSTokenMarker extends TokenMarker {
         for (Instruction match : matches) {
             if (Globals.getSettings().getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED) || match instanceof BasicInstruction) {
                 if (exact) {
-                    results.add(new PopupHelpItem(tokenText, match.getExampleFormat(), match.getDescription(), exact));
+                    results.add(new PopupHelpItem(tokenText, match.getExampleFormat(), match.getDescription(), true));
                 } else {
                     String mnemonic = match.getExampleFormat().split(" ")[0];
                     if (!insts.containsKey(mnemonic)) {
@@ -413,7 +406,7 @@ public class MIPSTokenMarker extends TokenMarker {
         }
         if (realMatches == 0) {
             if (exact) {
-                results.add(new PopupHelpItem(tokenText, tokenText, "(not a basic instruction)", exact));
+                results.add(new PopupHelpItem(tokenText, tokenText, "(not a basic instruction)", true));
             } else {
                 return null;
             }
@@ -421,7 +414,7 @@ public class MIPSTokenMarker extends TokenMarker {
             if (!exact) {
                 for (String o : mnemonics) {
                     String info = insts.get(o);
-                    results.add(new PopupHelpItem(tokenText, o, info, exact));
+                    results.add(new PopupHelpItem(tokenText, o, info, false));
                 }
             }
         }

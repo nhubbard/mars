@@ -5,7 +5,6 @@ import edu.missouristate.mars.Globals;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import java.awt.*;
 
 /**

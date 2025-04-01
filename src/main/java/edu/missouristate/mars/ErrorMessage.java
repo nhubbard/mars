@@ -41,12 +41,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  **/
 
 public class ErrorMessage {
-    private boolean isWarning; // allow for warnings too (added Nov 2006)
-    private String filename; // name of source file  (added Oct 2006)
-    private int line;     // line in source code where error detected
-    private int position; // position in source line where error detected
-    private String message;
-    private String macroExpansionHistory;
+    private final boolean isWarning; // allow for warnings too (added Nov 2006)
+    private final String filename; // name of source file  (added Oct 2006)
+    private final int line;     // line in source code where error detected
+    private final int position; // position in source line where error detected
+    private final String message;
+    private final String macroExpansionHistory;
 
     /**
      * Constant to indicate this message is warning not error
@@ -82,8 +82,8 @@ public class ErrorMessage {
      * @param position              Position within line being processed when error occurred.  Normally is starting
      *                              position of source token.
      * @param message               String containing appropriate error message.
-     * @param macroExpansionHistory
-     * @deprecated Newer constructors replace the String filename parameter with a MIPSprogram parameter to provide more information.
+     * @param macroExpansionHistory The history of the macro expansion that led to this error
+     * @deprecated Newer constructors replace the String filename parameter with a MIPSProgram parameter to provide more information.
      **/
     // Added macroExpansionHistory Dec 2012
     @Deprecated
@@ -188,11 +188,11 @@ public class ErrorMessage {
         // for runtime error occurring in macro expansion (expansion->definition), need
         // to assign to the opposite variables.
         ArrayList<Integer> defineLine = parseMacroHistory(statement.getSource());
-        if (defineLine.size() == 0) {
+        if (defineLine.isEmpty()) {
             this.line = statement.getSourceLine();
             this.macroExpansionHistory = "";
         } else {
-            this.line = defineLine.get(0);
+            this.line = defineLine.getFirst();
             this.macroExpansionHistory = "" + statement.getSourceLine();
         }
     }
@@ -276,7 +276,7 @@ public class ErrorMessage {
      */
     // Method added by Mohammad Sekavat Dec 2012
     public String getMacroExpansionHistory() {
-        if (macroExpansionHistory == null || macroExpansionHistory.length() == 0)
+        if (macroExpansionHistory == null || macroExpansionHistory.isEmpty())
             return "";
         return macroExpansionHistory + "->";
     }

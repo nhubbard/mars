@@ -757,8 +757,8 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
         // Increment the given grid element and return incremented value.
         // Returns -1 if row or column is out of range.
-        private int incrementElement(int row, int column) {
-            return (row >= 0 && row <= rows && column >= 0 && column <= columns) ? ++grid[row][column] : -1;
+        private void incrementElement(int row, int column) {
+            if ((row >= 0 && row <= rows && column >= 0 && column <= columns)) {++grid[row][column];}
         }
 
         // Just set all grid elements to 0.

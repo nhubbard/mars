@@ -22,7 +22,7 @@ public class SyscallClose extends AbstractSyscall {
     /**
      * Performs syscall function to close file descriptor given in $a0.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    public void simulate(ProgramStatement statement) {
         SystemIO.closeFile(RegisterFile.getValue(4));
     }
 }

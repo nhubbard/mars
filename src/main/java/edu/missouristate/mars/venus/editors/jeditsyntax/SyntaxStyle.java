@@ -95,12 +95,12 @@ public class SyntaxStyle {
         if (font.equals(lastFont) && fontMetrics != null)
             return fontMetrics;
         lastFont = font;
-        lastStyledFont = new Font(font.getFamily(),
-                (bold ? Font.BOLD : 0)
-                        | (italic ? Font.ITALIC : 0),
-                font.getSize());
-        fontMetrics = Toolkit.getDefaultToolkit().getFontMetrics(
-                lastStyledFont);
+        int fontType = Font.PLAIN;
+        if (italic) fontType = fontType | Font.ITALIC;
+        if (bold) fontType = fontType | Font.BOLD;
+        //noinspection MagicConstant
+        lastStyledFont = new Font(font.getFamily(), fontType, font.getSize());
+        fontMetrics = Toolkit.getDefaultToolkit().getFontMetrics(lastStyledFont);
         return fontMetrics;
     }
 

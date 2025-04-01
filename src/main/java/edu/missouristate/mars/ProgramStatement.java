@@ -89,7 +89,7 @@ public class ProgramStatement {
             this.operands = null;
             this.numOperands = 0;
             this.instruction = (binaryStatement == 0) // this is a "nop" statement
-                    ? Globals.instructionSet.matchOperator("nop").get(0) : null;
+                    ? Globals.instructionSet.matchOperator("nop").getFirst() : null;
         } else {
             this.operands = new int[4];
             this.numOperands = 0;

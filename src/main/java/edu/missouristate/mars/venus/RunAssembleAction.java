@@ -106,20 +106,19 @@ public class RunAssembleAction extends GuiAction {
                 // Select editor line containing first error, and corresponding error message.
                 ArrayList<ErrorMessage> errorMessages = pe.errors().getErrorMessages();
                 for (ErrorMessage errorMessage : errorMessages) {
-                    ErrorMessage em = errorMessage;
                     // No line or position may mean File Not Found (e.g. exception file). Don't try to open. DPS 3-Oct-2010
-                    if (em.getLine() == 0 && em.getPosition() == 0) {
+                    if (errorMessage.getLine() == 0 && errorMessage.getPosition() == 0) {
                         continue;
                     }
-                    if (!em.isWarning() || warningsAreErrors) {
-                        Globals.getGui().getMessagesPane().selectErrorMessage(em.getFilename(), em.getLine(), em.getPosition());
+                    if (!errorMessage.isWarning() || warningsAreErrors) {
+                        Globals.getGui().getMessagesPane().selectErrorMessage(errorMessage.getFilename(), errorMessage.getLine(), errorMessage.getPosition());
                         // Bug workaround: Line selection does not work correctly for the JEditTextArea editor
                         // when the file is opened then automatically assembled (assemble-on-open setting).
                         // Automatic assemble happens in EditTabbedPane's openFile() method, by invoking
                         // this method (actionPerformed) explicitly with null argument.  Thus e!=null test.
                         // DPS 9-Aug-2010
                         if (e != null) {
-                            Globals.getGui().getMessagesPane().selectEditorTextLine(em.getFilename(), em.getLine(), em.getPosition());
+                            Globals.getGui().getMessagesPane().selectEditorTextLine(errorMessage.getFilename(), errorMessage.getLine(), errorMessage.getPosition());
                         }
                         break;
                     }

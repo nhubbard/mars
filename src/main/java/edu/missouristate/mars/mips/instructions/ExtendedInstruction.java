@@ -519,7 +519,7 @@ public class ExtendedInstruction extends Instruction {
                 // can only contain one label reference, its last operand, and (2) If the user's label
                 // contains the substring "LAB", then substitute() will go into an infinite loop because
                 // it will keep matching the substituted string!
-                instruction = substituteFirst(instruction, "LAB", sym.getName());
+                instruction = substituteFirst(instruction, sym.getName());
             }
         }
         return instruction;
@@ -543,14 +543,14 @@ public class ExtendedInstruction extends Instruction {
     // Performs a String substitution, but will only substitute for the first match.
     // Java 1.5 adds an overloaded String.replace method to do this directly but I
     // wanted to stay 1.4 compatible.
-    private static String substituteFirst(String original, String find, String replacement) {
-        if (!original.contains(find) || find.equals(replacement)) {
+    private static String substituteFirst(String original, String replacement) {
+        if (!original.contains("LAB") || "LAB".equals(replacement)) {
             return original;  // second condition prevents infinite loop below
         }
         int i;
         String modified = original;
-        if ((i = modified.indexOf(find)) >= 0) {
-            modified = modified.substring(0, i) + replacement + modified.substring(i + find.length());
+        if ((i = modified.indexOf("LAB")) >= 0) {
+            modified = modified.substring(0, i) + replacement + modified.substring(i + "LAB".length());
         }
         return modified;
     }

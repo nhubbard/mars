@@ -235,7 +235,7 @@ public class MIPSProgram {
         ArrayList<MIPSProgram> MIPSProgramsToAssemble = new ArrayList<>();
         int leadFilePosition = 0;
         if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
-            filenames.add(0, exceptionHandler);
+            filenames.addFirst(exceptionHandler);
             leadFilePosition = 1;
         }
         for (String s : filenames) {
@@ -340,13 +340,12 @@ public class MIPSProgram {
      * Begins simulation at current program counter address and executes one step.
      *
      * @param a the GUI component responsible for this call (STEP normally). Set to null if none.
-     * @return true if execution completed and false otherwise
      * @throws ProcessingException Will throw exception if errors occured while simulating.
      **/
-    public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
+    public void simulateStepAtPC(AbstractAction a) throws ProcessingException {
         steppedExecution = true;
         Simulator sim = Simulator.getInstance();
-        return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
+        sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
     }
 
     /**

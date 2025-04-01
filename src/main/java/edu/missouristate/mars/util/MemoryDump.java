@@ -5,7 +5,6 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class MemoryDump {
 

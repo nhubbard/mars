@@ -80,6 +80,7 @@ public class MarsBot implements Observer, MarsTool {
             double tempAngle;
             // infinite loop: move the bot according to the current directives
             // (which may be to NOT move)
+            //noinspection InfiniteLoopStatement
             do {
                 if (MarsBotMoving) {
                     //System.out.println("BotRunnable.run: bot IS moving.");

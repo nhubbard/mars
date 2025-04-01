@@ -511,17 +511,16 @@ public class Memory extends Observable {
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored starting at that address.  Only low order 16 bits used.
-     * @return old value that was replaced by setHalf operation.
      * @throws AddressErrorException If address is not on halfword boundary.
      **/
-    public int setHalf(int address, int value) throws AddressErrorException {
+    public void setHalf(int address, int value) throws AddressErrorException {
         if (address % 2 != 0) {
             throw new AddressErrorException("store address not aligned on halfword boundary ",
                     Exceptions.ADDRESS_EXCEPTION_STORE, address);
         }
-        return (Globals.getSettings().getBackSteppingEnabled())
-                ? Globals.program.getBackStepper().addMemoryRestoreHalf(address, set(address, value, 2))
-                : set(address, value, 2);
+        if ((Globals.getSettings().getBackSteppingEnabled())) {
+            Globals.program.getBackStepper().addMemoryRestoreHalf(address, set(address, value, 2));
+        } else {set(address, value, 2);}
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -531,13 +530,12 @@ public class Memory extends Observable {
      *
      * @param address Address of Memory byte to be set.
      * @param value   Value to be stored at that address.  Only low order 8 bits used.
-     * @return old value that was replaced by setByte operation.
      **/
 
-    public int setByte(int address, int value) throws AddressErrorException {
-        return (Globals.getSettings().getBackSteppingEnabled())
-                ? Globals.program.getBackStepper().addMemoryRestoreByte(address, set(address, value, 1))
-                : set(address, value, 1);
+    public void setByte(int address, int value) throws AddressErrorException {
+        if ((Globals.getSettings().getBackSteppingEnabled())) {
+            Globals.program.getBackStepper().addMemoryRestoreByte(address, set(address, value, 1));
+        } else {set(address, value, 1);}
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -549,14 +547,11 @@ public class Memory extends Observable {
      *
      * @param address Starting address of Memory address to be set.
      * @param value   Value to be stored at that address.
-     * @return old value that was replaced by setDouble operation.
      **/
-    public double setDouble(int address, double value) throws AddressErrorException {
-        int oldHighOrder, oldLowOrder;
+    public void setDouble(int address, double value) throws AddressErrorException {
         long longValue = Double.doubleToLongBits(value);
-        oldHighOrder = set(address + 4, Binary.highOrderLongToInt(longValue), 4);
-        oldLowOrder = set(address, Binary.lowOrderLongToInt(longValue), 4);
-        return Double.longBitsToDouble(Binary.twoIntsToLong(oldHighOrder, oldLowOrder));
+        set(address + 4, Binary.highOrderLongToInt(longValue), 4);
+        set(address, Binary.lowOrderLongToInt(longValue), 4);
     }
 
 
@@ -894,7 +889,7 @@ public class Memory extends Observable {
     //////////
 
     private ProgramStatement getStatement(int address, boolean notify) throws AddressErrorException {
-        if (!wordAligned(address)) {
+        if (isNotWordAligned(address)) {
             throw new AddressErrorException(
                     "fetch address for text segment not aligned to word boundary ",
                     Exceptions.ADDRESS_EXCEPTION_LOAD, address);
@@ -917,23 +912,23 @@ public class Memory extends Observable {
     /* ********************************  THE UTILITIES  *************************************/
 
     /**
-     * Utility to determine if given address is word-aligned.
+     * Utility to determine if the given address isn't word-aligned.
      *
      * @param address the address to check
-     * @return true if address is word-aligned, false otherwise
+     * @return true if address isn't word-aligned, false otherwise
      */
-    public static boolean wordAligned(int address) {
-        return (address % WORD_LENGTH_BYTES == 0);
+    public static boolean isNotWordAligned(int address) {
+        return (address % WORD_LENGTH_BYTES != 0);
     }
 
     /**
-     * Utility to determine if given address is doubleword-aligned.
+     * Utility to determine if the given address is not DWORD-aligned.
      *
      * @param address the address to check
-     * @return true if address is doubleword-aligned, false otherwise
+     * @return true if the address is not DWORD-aligned, false otherwise
      */
-    public static boolean doublewordAligned(int address) {
-        return (address % (WORD_LENGTH_BYTES + WORD_LENGTH_BYTES) == 0);
+    public static boolean isNotDoubleWordAligned(int address) {
+        return (address % (WORD_LENGTH_BYTES + WORD_LENGTH_BYTES) != 0);
     }
 
     /**
@@ -944,7 +939,7 @@ public class Memory extends Observable {
      * @return address aligned to next word boundary (divisible by 4)
      */
     public static int alignToWordBoundary(int address) {
-        if (!wordAligned(address)) {
+        if (isNotWordAligned(address)) {
             if (address > 0)
                 address += (4 - (address % WORD_LENGTH_BYTES));
             else

@@ -134,7 +134,7 @@ public class MemoryConfigurations {
             configurations.add(new MemoryConfiguration("Default", "Default", configurationItemNames, defaultConfigurationItemValues));
             configurations.add(new MemoryConfiguration("CompactDataAtZero", "Compact, Data at Address 0", configurationItemNames, dataBasedCompactConfigurationItemValues));
             configurations.add(new MemoryConfiguration("CompactTextAtZero", "Compact, Text at Address 0", configurationItemNames, textBasedCompactConfigurationItemValues));
-            defaultConfiguration = configurations.get(0);
+            defaultConfiguration = configurations.getFirst();
             currentConfiguration = defaultConfiguration;
             // Get current config from settings
             setCurrentConfiguration(getConfigurationByName(Globals.getSettings().getMemoryConfiguration()));

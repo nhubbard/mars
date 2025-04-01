@@ -21,7 +21,7 @@ public class SyscallPrintInt extends AbstractSyscall {
     /**
      * Performs syscall function to print on the console the integer stored in $a0.
      */
-    public void simulate(ProgramStatement statement) throws ProcessingException {
+    public void simulate(ProgramStatement statement) {
         SystemIO.printString(
                 Integer.valueOf(RegisterFile.getValue(4)).toString());
     }

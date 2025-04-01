@@ -47,7 +47,7 @@ public class BackStepper {
      */
     public BackStepper() {
         engaged = true;
-        backSteps = new BackstepStack(Globals.maximumBacksteps);
+        backSteps = new BackstepStack();
     }
 
     /**
@@ -69,12 +69,12 @@ public class BackStepper {
     }
 
     /**
-     * Test whether there are steps that can be undone.
+     * Test whether there aren't steps that can be undone.
      *
-     * @return true if there are no steps to be undone, false otherwise.
+     * @return true if there are steps to be undone, false otherwise.
      */
-    public boolean empty() {
-        return backSteps.empty();
+    public boolean isNotEmpty() {
+        return !backSteps.empty();
     }
 
     /**
@@ -86,7 +86,7 @@ public class BackStepper {
      */
     // Added 25 June 2007
     public boolean inDelaySlot() {
-        return !empty() && backSteps.peek().inDelaySlot;
+        return isNotEmpty() && backSteps.peek().inDelaySlot;
     }
 
     /**
@@ -170,11 +170,9 @@ public class BackStepper {
      *
      * @param address The affected memory address.
      * @param value   The "restore" value to be stored there.
-     * @return the argument value
      */
-    public int addMemoryRestoreRawWord(int address, int value) {
+    public void addMemoryRestoreRawWord(int address, int value) {
         backSteps.push(MEMORY_RESTORE_RAW_WORD, pc(), address, value);
-        return value;
     }
 
     /**
@@ -234,15 +232,13 @@ public class BackStepper {
      * is to restore the program counter.
      *
      * @param value The "restore" value to be stored there.
-     * @return the argument value
      */
-    public int addPCRestore(int value) {
+    public void addPCRestore(int value) {
         // adjust for value reflecting incremented PC.
         value -= Instruction.INSTRUCTION_LENGTH;
         // Use "value" insead of "pc()" for second arg because RegisterFile.getProgramCounter()
         // returns branch target address at this point.
         backSteps.push(PC_RESTORE, value, value);
-        return value;
     }
 
     /**
@@ -276,11 +272,9 @@ public class BackStepper {
      * is to set the given coprocessor 1 condition flag (to 1).
      *
      * @param flag The condition flag number.
-     * @return the argument value
      */
-    public int addConditionFlagSet(int flag) {
+    public void addConditionFlagSet(int flag) {
         backSteps.push(COPROC1_CONDITION_SET, pc(), flag);
-        return flag;
     }
 
     /**
@@ -288,26 +282,21 @@ public class BackStepper {
      * is to clear the given coprocessor 1 condition flag (to 0).
      *
      * @param flag The condition flag number.
-     * @return the argument value
      */
-    public int addConditionFlagClear(int flag) {
+    public void addConditionFlagClear(int flag) {
         backSteps.push(COPROC1_CONDITION_CLEAR, pc(), flag);
-        return flag;
     }
 
     /**
      * Add a new "back step" (the undo action) to the stack.  The action here
-     * is to do nothing!  This is just a place holder so when user is backstepping
-     * through the program no instructions will be skipped.  Cosmetic. If the top of the
+     * is to do nothing!  This is just a placeholder, so when the user is backstepping
+     * through the program, no instructions will be skipped.  Cosmetic. If the top of the
      * stack has the same PC counter, the do-nothing action will not be added.
-     *
-     * @return 0
      */
-    public int addDoNothing(int pc) {
+    public void addDoNothing(int pc) {
         if (backSteps.empty() || backSteps.peek().pc != pc) {
-            backSteps.push(DO_NOTHING, pc);
+            backSteps.push(pc);
         }
-        return 0;
     }
 
 
@@ -369,12 +358,12 @@ public class BackStepper {
         // creating all the BackStep objects will not be noticed by the user, and enhances
         // runtime performance by not having to create or recycle them during MIPS
         // program execution.
-        private BackstepStack(int capacity) {
-            this.capacity = capacity;
+        private BackstepStack() {
+            this.capacity = Globals.maximumBacksteps;
             this.size = 0;
             this.top = -1;
-            this.stack = new BackStep[capacity];
-            for (int i = 0; i < capacity; i++) {
+            this.stack = new BackStep[Globals.maximumBacksteps];
+            for (int i = 0; i < Globals.maximumBacksteps; i++) {
                 this.stack[i] = new BackStep();
             }
         }
@@ -402,8 +391,8 @@ public class BackStepper {
             push(act, programCounter, parm1, 0);
         }
 
-        private synchronized void push(int act, int programCounter) {
-            push(act, programCounter, 0, 0);
+        private synchronized void push(int programCounter) {
+            push(BackStepper.DO_NOTHING, programCounter, 0, 0);
         }
 
         // NO PROTECTION.  This class is used only within this file so there is no excuse

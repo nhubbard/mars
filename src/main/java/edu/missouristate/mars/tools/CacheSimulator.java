@@ -726,8 +726,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
                 if (!block.valid) {// it's a miss but I got it now because it is empty!
                     if (debug) //System.out.print
                         writeLog(" -- MISS\n");
-                    int MISS = 2;
-                    result = MISS;
+                    result = 2;
                     block.valid = true;
                     block.tag = getTag(address);
                     block.mostRecentAccessTime = memoryAccessCount;

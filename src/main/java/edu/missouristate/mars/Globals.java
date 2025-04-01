@@ -104,12 +104,12 @@ public class Globals {
     /**
      * MARS copyright years
      */
-    public static final String copyrightYears = getCopyrightYears();
+    public static final String copyrightYears = "2003-2025";
 
     /**
      * MARS copyright holders
      */
-    public static final String copyrightHolders = getCopyrightHolders();
+    public static final String copyrightHolders = "Pete Sanderson and Kenneth Vollmar";
 
     /**
      * Placeholder for non-printable ASCII codes
@@ -127,14 +127,6 @@ public class Globals {
     public static int exitCode = 0;
 
     public static boolean runSpeedPanelExists = false;
-
-    private static String getCopyrightYears() {
-        return "2003-2023";
-    }
-
-    private static String getCopyrightHolders() {
-        return "Pete Sanderson and Kenneth Vollmar";
-    }
 
     public static void setGui(VenusUI g) {
         gui = g;
@@ -192,21 +184,21 @@ public class Globals {
      * Read byte limit of Run I/O or MARS Messages text to buffer.
      */
     private static int getMessageLimit() {
-        return getIntegerProperty(configPropertiesFile, "MessageLimit", 1000000);
+        return getIntegerProperty("MessageLimit", 1000000);
     }
 
     /**
      * Read limit on number of error messages produced by one assemble operation.
      */
     private static int getErrorLimit() {
-        return getIntegerProperty(configPropertiesFile, "ErrorLimit", 200);
+        return getIntegerProperty("ErrorLimit", 200);
     }
 
     /**
      * Read backstep limit (number of operations to buffer) from properties file.
      */
     private static int getBackstepLimit() {
-        return getIntegerProperty(configPropertiesFile, "BackstepLimit", 1000);
+        return getIntegerProperty("BackstepLimit", 1000);
     }
 
     /**
@@ -242,9 +234,9 @@ public class Globals {
      * Read and return integer property value for given file and property name.
      * Default value is returned if property file or name not found.
      */
-    private static int getIntegerProperty(String propertiesFile, String propertyName, int defaultValue) {
+    private static int getIntegerProperty(String propertyName, int defaultValue) {
         int limit = defaultValue;  // just in case no entry is found
-        Properties properties = PropertiesFile.loadPropertiesFromFile(propertiesFile);
+        Properties properties = PropertiesFile.loadPropertiesFromFile(Globals.configPropertiesFile);
         try {
             limit = Integer.parseInt(properties.getProperty(propertyName, Integer.toString(defaultValue)));
         } catch (NumberFormatException ignored) {} // do nothing, I already have a default
