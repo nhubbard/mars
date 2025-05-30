@@ -31,7 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TestSegmentWindowDumpFormat : BaseDumpFormatTest() {
+class OldTestSegmentWindowDumpFormat : BaseDumpFormatTest() {
     private var tempFiles = mutableListOf<File>()
     
     @BeforeAll

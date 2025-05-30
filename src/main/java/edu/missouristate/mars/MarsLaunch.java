@@ -7,9 +7,7 @@ import edu.missouristate.mars.simulator.ProgramArgumentList;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.FilenameFinder;
 import edu.missouristate.mars.util.MemoryDump;
-import edu.missouristate.mars.venus.VenusUI;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -200,13 +198,6 @@ public class MarsLaunch {
     // launching the GUI-fronted integrated development environment.
 
     private void launchIDE() {
-        // System.setProperty("apple.laf.useScreenMenuBar", "true"); // Puts MARS menu on Mac OS menu bar
-        new MarsSplashScreen(splashDuration).showSplash();
-        SwingUtilities.invokeLater(() -> {
-            //Turn off metal's use of bold fonts
-            //UIManager.put("swing.boldMetal", Boolean.FALSE);
-            new VenusUI("MARS " + Globals.version);
-        });
     }
 
     //////////////////////////////////////////////////////////////////////

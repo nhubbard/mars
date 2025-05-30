@@ -1,7 +1,6 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
@@ -54,9 +53,6 @@ public class Simulator extends Observable {
 
     private Simulator() {
         simulatorThread = null;
-        if (Globals.getGui() != null) {
-            interactiveGUIUpdater = new UpdateGUI();
-        }
     }
 
 
@@ -153,14 +149,14 @@ public class Simulator extends Observable {
     // instruction count limit, by breakpoint, or by end of simulation (truly done).
     private void notifyObserversOfExecutionStart(int maxSteps, int programCounter) {
         this.setChanged();
-        this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_START,
-                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));
+        /*this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_START,
+                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));*/
     }
 
     private void notifyObserversOfExecutionStop(int maxSteps, int programCounter) {
         this.setChanged();
-        this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_STOP,
-                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));
+//        this.notifyObservers(new SimulatorNotice(SimulatorNotice.SIMULATOR_STOP,
+//                maxSteps, RunSpeedPanel.getInstance().getRunSpeed(), programCounter));
     }
 
 
@@ -196,7 +192,7 @@ public class Simulator extends Observable {
          * @param starter     the GUI component responsible for this call, usually GO or STEP.  null if none.
          */
         SimThread(MIPSProgram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
-            super(Globals.getGui() != null);
+            super(false);
             this.pc = pc;
             this.maxSteps = maxSteps;
             this.breakPoints = breakPoints;
@@ -392,17 +388,17 @@ public class Simulator extends Observable {
                 //                              using Run,  not Step (maxSteps > 1) AND
                 //                              running slowly enough for GUI to keep up
                 //if (Globals.getGui() != null && maxSteps != 1 &&
-                if (interactiveGUIUpdater != null && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
-                    SwingUtilities.invokeLater(interactiveGUIUpdater);
-                }
-                if (Globals.getGui() != null || Globals.runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
-                    if (RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
-                        try {
-                            Thread.sleep((int) (1000 / RunSpeedPanel.getInstance().getRunSpeed())); // make sure it's never zero!
-                        } catch (InterruptedException ignored) {
-                        }
-                    }
-                }
+//                if (interactiveGUIUpdater != null && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+//                    SwingUtilities.invokeLater(interactiveGUIUpdater);
+//                }
+//                if (Globals.getGui() != null || Globals.runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by stand-alone tool
+//                    if (RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+//                        try {
+//                            Thread.sleep((int) (1000 / RunSpeedPanel.getInstance().getRunSpeed())); // make sure it's never zero!
+//                        } catch (InterruptedException ignored) {
+//                        }
+//                    }
+//                }
 
 
                 // Get next instruction in preparation for next iteration.
@@ -455,43 +451,43 @@ public class Simulator extends Observable {
 
         public void finished() {
             // If running from the command-line, then there is no GUI to update.
-            if (Globals.getGui() == null) {
-                return;
-            }
-            String starterName = (String) starter.getValue(AbstractAction.NAME);
-            if (starterName.equals("Step")) {
-                ((RunStepAction) starter).stepped(done, constructReturnReason, pe);
-            }
-            if (starterName.equals("Go")) {
-                if (done) {
-                    ((RunGoAction) starter).stopped(pe, constructReturnReason);
-                } else if (constructReturnReason == BREAKPOINT) {
-                    ((RunGoAction) starter).paused(false, constructReturnReason, pe);
-                } else {
-                    String stopperName = (String) stopper.getValue(AbstractAction.NAME);
-                    if ("Pause".equals(stopperName)) {
-                        ((RunGoAction) starter).paused(done, constructReturnReason, pe);
-                    } else if ("Stop".equals(stopperName)) {
-                        ((RunGoAction) starter).stopped(pe, constructReturnReason);
-                    }
-                }
-            }
+//            if (Globals.getGui() == null) {
+//                return;
+//            }
+//            String starterName = (String) starter.getValue(AbstractAction.NAME);
+//            if (starterName.equals("Step")) {
+//                ((RunStepAction) starter).stepped(done, constructReturnReason, pe);
+//            }
+//            if (starterName.equals("Go")) {
+//                if (done) {
+//                    ((RunGoAction) starter).stopped(pe, constructReturnReason);
+//                } else if (constructReturnReason == BREAKPOINT) {
+//                    ((RunGoAction) starter).paused(false, constructReturnReason, pe);
+//                } else {
+//                    String stopperName = (String) stopper.getValue(AbstractAction.NAME);
+//                    if ("Pause".equals(stopperName)) {
+//                        ((RunGoAction) starter).paused(done, constructReturnReason, pe);
+//                    } else if ("Stop".equals(stopperName)) {
+//                        ((RunGoAction) starter).stopped(pe, constructReturnReason);
+//                    }
+//                }
+//            }
         }
 
     }
 
-    private static class UpdateGUI implements Runnable {
-        public void run() {
-            if (Globals.getGui().getRegistersPane().getSelectedComponent() ==
-                    Globals.getGui().getMainPane().getExecutePane().getRegistersWindow()) {
-                Globals.getGui().getMainPane().getExecutePane().getRegistersWindow().updateRegisters();
-            } else {
-                Globals.getGui().getMainPane().getExecutePane().getCoprocessor1Window().updateRegisters();
-            }
-            Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
-            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
-        }
-    }
+//    private static class UpdateGUI implements Runnable {
+//        public void run() {
+//            if (Globals.getGui().getRegistersPane().getSelectedComponent() ==
+//                    Globals.getGui().getMainPane().getExecutePane().getRegistersWindow()) {
+//                Globals.getGui().getMainPane().getExecutePane().getRegistersWindow().updateRegisters();
+//            } else {
+//                Globals.getGui().getMainPane().getExecutePane().getCoprocessor1Window().updateRegisters();
+//            }
+//            Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+//            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
+//            Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
+//        }
+//    }
 
 }

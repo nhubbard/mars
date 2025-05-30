@@ -4,7 +4,6 @@ import edu.missouristate.mars.mips.instructions.syscalls.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.venus.*;
 import edu.missouristate.mars.util.*;
 
 import java.util.*;
@@ -73,9 +72,6 @@ public class Globals {
     /** Flag that indicates whether or not instructionSet has been initialized. */
     private static boolean initialized = false;
 
-    /** The GUI being used (if any) with this simulator. */
-    static VenusUI gui = null;
-
     /**
      * The current MARS version number. Can't wait for "initialize()" call to get it.
      */
@@ -128,13 +124,7 @@ public class Globals {
 
     public static boolean runSpeedPanelExists = false;
 
-    public static void setGui(VenusUI g) {
-        gui = g;
-    }
-
-    public static VenusUI getGui() {
-        return gui;
-    }
+    public static Memory getMemory() { return memory; }
 
     public static Settings getSettings() {
         return settings;
