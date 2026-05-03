@@ -99,7 +99,7 @@ public class MarsSplashScreen extends JWindow {
     setVisible(false);
   }
 
-  class ImageBackgroundPanel extends JPanel {
+  static class ImageBackgroundPanel extends JPanel {
     Image image;
 
     public ImageBackgroundPanel() {

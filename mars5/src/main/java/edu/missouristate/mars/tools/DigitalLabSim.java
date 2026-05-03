@@ -256,7 +256,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
   }
 
-  public class SevenSegmentPanel extends JPanel {
+  public static class SevenSegmentPanel extends JPanel {
     public SevenSegmentDisplay[] display;
 
     public SevenSegmentPanel() {

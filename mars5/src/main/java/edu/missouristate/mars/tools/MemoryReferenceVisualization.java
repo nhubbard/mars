@@ -729,7 +729,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   ////////////////////////////////////////////////////////////////////////////////
   // Object that represents mapping from counter value to color it is displayed as.
   //
-  private class CounterColorScale {
+  private static class CounterColorScale {
     CounterColor[] counterColors;
 
     CounterColorScale(CounterColor[] colors) {

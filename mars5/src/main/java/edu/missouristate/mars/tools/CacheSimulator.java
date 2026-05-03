@@ -642,7 +642,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
   //////////////////////////////////////////////////////////////////////
   // Abstract Cache class.  Subclasses will implement specific policies.
-  private abstract class AbstractCache {
+  private static abstract class AbstractCache {
     private int numberOfBlocks, blockSizeInWords, setSizeInBlocks, numberOfSets;
     protected CacheBlock[] blocks;
 
