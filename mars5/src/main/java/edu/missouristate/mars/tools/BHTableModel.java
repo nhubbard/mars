@@ -27,7 +27,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package edu.missouristate.mars.tools; // .bhtsim;
 
-import java.util.Vector;
+import java.util.ArrayList;
 import javax.swing.table.AbstractTableModel;
 
 /**
@@ -61,7 +61,7 @@ import javax.swing.table.AbstractTableModel;
 public class BHTableModel extends AbstractTableModel {
 
   /** vector holding the entries of the BHT */
-  private Vector<BHTEntry> m_entries;
+  private ArrayList<BHTEntry> m_entries;
 
   /** number of entries in the BHT */
   private int m_entryCnt;
@@ -150,7 +150,7 @@ public class BHTableModel extends AbstractTableModel {
    */
   public Object getValueAt(int row, int col) {
 
-    BHTEntry e = m_entries.elementAt(row);
+    BHTEntry e = m_entries.get(row);
     if (e == null) return "";
 
     if (col == 0) return row;
@@ -180,7 +180,7 @@ public class BHTableModel extends AbstractTableModel {
       throw new IllegalArgumentException("Only history sizes of 1 or 2 supported.");
 
     m_entryCnt = numEntries;
-    m_entries = new Vector<>();
+    m_entries = new ArrayList<>();
 
     for (int i = 0; i < m_entryCnt; i++) {
       m_entries.add(new BHTEntry(historySize, initVal));
@@ -214,7 +214,7 @@ public class BHTableModel extends AbstractTableModel {
       throw new IllegalArgumentException(
           "Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
 
-    return m_entries.elementAt(index).getPrediction();
+    return m_entries.get(index).getPrediction();
   }
 
   /**
@@ -228,7 +228,7 @@ public class BHTableModel extends AbstractTableModel {
       throw new IllegalArgumentException(
           "Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
 
-    m_entries.elementAt(index).updatePrediction(branchTaken);
+    m_entries.get(index).updatePrediction(branchTaken);
     fireTableRowsUpdated(index, index);
   }
 }

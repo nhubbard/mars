@@ -42,7 +42,6 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Observable;
-import java.util.Vector;
 import javax.imageio.ImageIO;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
@@ -481,7 +480,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private boolean xIsMoving, yIsMoving; // flag for mouse movement.
 
     //	 private Vertex[][] inputGraph;
-    private Vector<Vector<Vertex>> outputGraph;
+    private ArrayList<ArrayList<Vertex>> outputGraph;
     private final ArrayList<Vertex> vertexList;
     private ArrayList<Vertex> vertexTraversed;
     // Screen Label variables
@@ -672,7 +671,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           }
         }
         // loading matrix of control of vertex.
-        outputGraph = new Vector<>();
+        outputGraph = new ArrayList<>();
         vertexTraversed = new ArrayList<>();
         int size = vertexList.size();
         Vertex vertex;
@@ -680,13 +679,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         for (Vertex value : vertexList) {
           vertex = value;
           targetList = vertex.getTargetVertex();
-          Vector<Vertex> vertexOfTargets = new Vector<>();
+          ArrayList<Vertex> vertexOfTargets = new ArrayList<>();
           for (Integer integer : targetList) {
             vertexOfTargets.add(vertexList.get(integer));
           }
           outputGraph.add(vertexOfTargets);
         }
-        for (Vector<Vertex> vert : outputGraph) {}
+        for (ArrayList<Vertex> vert : outputGraph) {}
 
         vertexList.getFirst().setActive(true);
         vertexTraversed.add(vertexList.getFirst());

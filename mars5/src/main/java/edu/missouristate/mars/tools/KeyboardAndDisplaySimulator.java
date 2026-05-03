@@ -1,19 +1,50 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Coprocessor0;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.venus.*;
+import edu.missouristate.mars.venus.AbstractFontSettingDialog;
 import edu.missouristate.mars.venus.VenusUI;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
+
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.DefaultCaret;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Random;
 
 /*
 Copyright (c) 2003-2014,  Pete Sanderson and Kenneth Vollmar

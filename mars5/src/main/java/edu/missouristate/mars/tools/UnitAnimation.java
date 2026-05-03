@@ -17,7 +17,6 @@ import java.io.Serial;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Vector;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -40,7 +39,7 @@ class UnitAnimation extends JPanel implements ActionListener {
   private boolean xIsMoving, yIsMoving; // flag for mouse movement.
 
   // private Vertex[][] inputGraph;
-  private Vector<Vector<Vertex>> outputGraph;
+  private ArrayList<ArrayList<Vertex>> outputGraph;
   private final ArrayList<Vertex> vertexList;
   private ArrayList<Vertex> vertexTraversed;
   // Screen Label variables
@@ -392,7 +391,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
       }
       // loading matrix of control of vertex.
-      outputGraph = new Vector<>();
+      outputGraph = new ArrayList<>();
       vertexTraversed = new ArrayList<>();
       int size = vertexList.size();
       Vertex vertex;
@@ -400,13 +399,13 @@ class UnitAnimation extends JPanel implements ActionListener {
       for (Vertex value : vertexList) {
         vertex = value;
         targetList = vertex.getTargetVertex();
-        Vector<Vertex> vertexOfTargets = new Vector<>();
+        ArrayList<Vertex> vertexOfTargets = new ArrayList<>();
         for (Integer integer : targetList) {
           vertexOfTargets.add(vertexList.get(integer));
         }
         outputGraph.add(vertexOfTargets);
       }
-      for (Vector<Vertex> vert : outputGraph) {}
+      for (ArrayList<Vertex> vert : outputGraph) {}
 
       vertexList.getFirst().setActive(true);
       vertexTraversed.add(vertexList.getFirst());
@@ -516,7 +515,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
       }
       // loading matrix of control of vertex.
-      outputGraph = new Vector<>();
+      outputGraph = new ArrayList<>();
       vertexTraversed = new ArrayList<>();
       int size = vertexList.size();
       Vertex vertex;
@@ -524,13 +523,13 @@ class UnitAnimation extends JPanel implements ActionListener {
       for (Vertex value : vertexList) {
         vertex = value;
         targetList = vertex.getTargetVertex();
-        Vector<Vertex> vertexOfTargets = new Vector<>();
+        ArrayList<Vertex> vertexOfTargets = new ArrayList<>();
         for (Integer integer : targetList) {
           vertexOfTargets.add(vertexList.get(integer));
         }
         outputGraph.add(vertexOfTargets);
       }
-      for (Vector<Vertex> vert : outputGraph) {}
+      for (ArrayList<Vertex> vert : outputGraph) {}
 
       vertexList.getFirst().setActive(true);
       vertexTraversed.add(vertexList.getFirst());

@@ -287,7 +287,7 @@ public class HelpHelpAction extends GuiAction {
 
   /////////////////////////////////////////////////////////////////////////////
   private JScrollPane createMipsDirectivesHelpPane() {
-    Vector<String> exampleList = new Vector<>();
+    ArrayList<String> exampleList = new ArrayList<>();
     String blanks = "            "; // 12 blanks
     Directives direct;
     for (Directives directives : Directives.getDirectiveList()) {
@@ -298,7 +298,7 @@ public class HelpHelpAction extends GuiAction {
               + direct.getDescription());
     }
     Collections.sort(exampleList);
-    JList<String> examples = new JList<>(exampleList);
+    JList<String> examples = new JList<>(exampleList.toArray(new String[0]));
     JScrollPane mipsScrollPane =
         new JScrollPane(
             examples,
@@ -311,7 +311,7 @@ public class HelpHelpAction extends GuiAction {
   ////////////////////////////////////////////////////////////////////////////
   private JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
     ArrayList<Instruction> instructionList = Globals.instructionSet.getInstructionList();
-    Vector<String> exampleList = new Vector<>(instructionList.size());
+    ArrayList<String> exampleList = new ArrayList<>(instructionList.size());
     Iterator<Instruction> it = instructionList.iterator();
     Instruction instr;
     String blanks = "                        "; // 24 blanks
@@ -330,7 +330,7 @@ public class HelpHelpAction extends GuiAction {
       }
     }
     Collections.sort(exampleList);
-    JList<String> examples = new JList<>(exampleList);
+    JList<String> examples = new JList<>(exampleList.toArray(new String[0]));
     JScrollPane mipsScrollPane =
         new JScrollPane(
             examples,

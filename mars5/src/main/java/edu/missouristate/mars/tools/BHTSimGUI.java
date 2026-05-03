@@ -33,7 +33,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.text.DecimalFormat;
-import java.util.Vector;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -212,22 +211,9 @@ public class BHTSimGUI extends JPanel {
   private JPanel buildConfigPanel() {
     JPanel panel = new JPanel();
 
-    Vector<Integer> sizes = new Vector<>();
-    sizes.add(8);
-    sizes.add(16);
-    sizes.add(32);
-
-    Vector<Integer> bits = new Vector<>();
-    bits.add(1);
-    bits.add(2);
-
-    Vector<String> initVals = new Vector<>();
-    initVals.add(BHTSimGUI.BHT_DO_NOT_TAKE_BRANCH);
-    initVals.add(BHTSimGUI.BHT_TAKE_BRANCH);
-
-    m_cbBHTentries = new JComboBox<>(sizes);
-    m_cbBHThistory = new JComboBox<>(bits);
-    m_cbBHTinitVal = new JComboBox<>(initVals);
+    m_cbBHTentries = new JComboBox<>(new Integer[]{8, 16, 32});
+    m_cbBHThistory = new JComboBox<>(new Integer[]{1, 2});
+    m_cbBHTinitVal = new JComboBox<>(new String[]{BHT_DO_NOT_TAKE_BRANCH, BHT_TAKE_BRANCH});
 
     panel.add(new JLabel("# of BHT entries"));
     panel.add(m_cbBHTentries);

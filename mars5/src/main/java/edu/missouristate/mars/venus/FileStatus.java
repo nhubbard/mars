@@ -1,7 +1,6 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import java.io.*;
+import java.io.File;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar

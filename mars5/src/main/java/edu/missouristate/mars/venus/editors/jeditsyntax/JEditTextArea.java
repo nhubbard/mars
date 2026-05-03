@@ -16,8 +16,7 @@ import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.event.*;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.Vector;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.text.*;
@@ -1388,7 +1387,7 @@ public class JEditTextArea extends JComponent {
         case CENTER -> center = comp;
         case RIGHT -> right = comp;
         case BOTTOM -> bottom = comp;
-        case LEFT_OF_SCROLLBAR -> leftOfScrollBar.addElement(comp);
+        case LEFT_OF_SCROLLBAR -> leftOfScrollBar.add(comp);
       }
     }
 
@@ -1396,7 +1395,7 @@ public class JEditTextArea extends JComponent {
       if (center == comp) center = null;
       if (right == comp) right = null;
       if (bottom == comp) bottom = null;
-      else leftOfScrollBar.removeElement(comp);
+      else leftOfScrollBar.remove(comp);
     }
 
     public Dimension preferredLayoutSize(Container parent) {
@@ -1451,9 +1450,7 @@ public class JEditTextArea extends JComponent {
       right.setBounds(ileft + centerWidth, itop, rightWidth, centerHeight);
 
       // Lay out all status components, in order
-      Enumeration<Component> status = leftOfScrollBar.elements();
-      while (status.hasMoreElements()) {
-        Component comp = status.nextElement();
+      for (Component comp : leftOfScrollBar) {
         Dimension dim = comp.getPreferredSize();
         comp.setBounds(ileft, itop + centerHeight, dim.width, bottomHeight);
         ileft += dim.width;
@@ -1467,7 +1464,7 @@ public class JEditTextArea extends JComponent {
     private Component center;
     private Component right;
     private Component bottom;
-    private final Vector<Component> leftOfScrollBar = new Vector<>();
+    private final ArrayList<Component> leftOfScrollBar = new ArrayList<>();
   }
 
   static class CaretBlinker implements ActionListener {

@@ -78,10 +78,10 @@ public abstract class InputHandler extends KeyAdapter {
   // Default action
   public static final ActionListener INSERT_CHAR = new insert_char();
 
-  private static final Hashtable<String, ActionListener> actions;
+  private static final HashMap<String, ActionListener> actions;
 
   static {
-    actions = new Hashtable<>();
+    actions = new HashMap<>();
     actions.put("backspace", BACKSPACE);
     actions.put("backspace-word", BACKSPACE_WORD);
     actions.put("delete", DELETE);
@@ -137,18 +137,15 @@ public abstract class InputHandler extends KeyAdapter {
    * @param listener The action
    */
   public static String getActionName(ActionListener listener) {
-    Enumeration<String> enumeration = getActions();
-    while (enumeration.hasMoreElements()) {
-      String name = enumeration.nextElement();
-      ActionListener _listener = getAction(name);
-      if (_listener == listener) return name;
+    for (String name : actions.keySet()) {
+      if (getAction(name) == listener) return name;
     }
     return null;
   }
 
-  /** Returns an enumeration of all available actions. */
-  public static Enumeration<String> getActions() {
-    return actions.keys();
+  /** Returns the names of all available actions. */
+  public static Set<String> getActions() {
+    return actions.keySet();
   }
 
   /**

@@ -1,10 +1,26 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Frame;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar

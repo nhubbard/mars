@@ -84,7 +84,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     // with a horizontal line separating the two groups.
     String[][] fullList = {commonFontFamilies, allFontFamilies};
 
-    fontFamilySelector = new JComboBox<>(makeVectorData(fullList));
+    fontFamilySelector = new JComboBox<>(makeListData(fullList).toArray(new String[0]));
     fontFamilySelector.setRenderer(new ComboBoxRenderer());
     fontFamilySelector.addActionListener(new BlockComboListener(fontFamilySelector));
     fontFamilySelector.setSelectedItem(currentFont.getFamily());
@@ -202,17 +202,15 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
   private static final String SEPARATOR = "___SEPARATOR____";
 
-  // Given an array of string arrays, will produce a Vector contenating
-  // the arrays with a separator between each.
-  private Vector<String> makeVectorData(String[][] str) {
+  private ArrayList<String> makeListData(String[][] str) {
     boolean needSeparator = false;
-    Vector<String> data = new Vector<>();
+    ArrayList<String> data = new ArrayList<>();
     for (String[] strings : str) {
       if (needSeparator) {
-        data.addElement(SEPARATOR);
+        data.add(SEPARATOR);
       }
       for (String string : strings) {
-        data.addElement(string);
+        data.add(string);
         needSeparator = true;
       }
     }

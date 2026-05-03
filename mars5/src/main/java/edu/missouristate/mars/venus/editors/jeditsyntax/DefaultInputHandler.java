@@ -12,7 +12,7 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 import edu.missouristate.mars.venus.VenusUI;
 import java.awt.Toolkit;
 import java.awt.event.*;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.StringTokenizer;
 import javax.swing.KeyStroke;
 
@@ -26,7 +26,7 @@ import javax.swing.KeyStroke;
 public class DefaultInputHandler extends InputHandler {
   /** Creates a new input handler with no key bindings defined. */
   public DefaultInputHandler() {
-    bindings = currentBindings = new Hashtable<>();
+    bindings = currentBindings = new HashMap<>();
   }
 
   /** Sets up the default key bindings. */
@@ -88,7 +88,7 @@ public class DefaultInputHandler extends InputHandler {
    * @param action The action
    */
   public void addKeyBinding(String keyBinding, ActionListener action) {
-    Hashtable<KeyStroke, Binding> current = bindings;
+    HashMap<KeyStroke, Binding> current = bindings;
 
     StringTokenizer st = new StringTokenizer(keyBinding);
     while (st.hasMoreTokens()) {
@@ -101,7 +101,7 @@ public class DefaultInputHandler extends InputHandler {
         if (b instanceof PrefixBinding existing) {
           pb = existing;
         } else {
-          pb = new PrefixBinding(new Hashtable<>());
+          pb = new PrefixBinding(new HashMap<>());
           current.put(keyStroke, pb);
         }
         current = pb.map();
@@ -184,7 +184,7 @@ public class DefaultInputHandler extends InputHandler {
           executeAction(action, evt.getSource(), null);
           evt.consume();
         }
-        case PrefixBinding(Hashtable<KeyStroke, Binding> map) -> {
+        case PrefixBinding(HashMap<KeyStroke, Binding> map) -> {
           currentBindings = map;
           evt.consume();
         }
@@ -247,7 +247,7 @@ public class DefaultInputHandler extends InputHandler {
         KeyStroke keyStroke = KeyStroke.getKeyStroke(Character.toUpperCase(c));
         Binding b = currentBindings.get(keyStroke);
 
-        if (b instanceof PrefixBinding(Hashtable<KeyStroke, Binding> map)) {
+        if (b instanceof PrefixBinding(HashMap<KeyStroke, Binding> map)) {
           currentBindings = map;
           return;
         } else if (b instanceof ActionBinding(ActionListener action)) {
@@ -335,10 +335,10 @@ public class DefaultInputHandler extends InputHandler {
 
   private record ActionBinding(ActionListener action) implements Binding {}
 
-  private record PrefixBinding(Hashtable<KeyStroke, Binding> map) implements Binding {}
+  private record PrefixBinding(HashMap<KeyStroke, Binding> map) implements Binding {}
 
-  private final Hashtable<KeyStroke, Binding> bindings;
-  private Hashtable<KeyStroke, Binding> currentBindings;
+  private final HashMap<KeyStroke, Binding> bindings;
+  private HashMap<KeyStroke, Binding> currentBindings;
 
   private DefaultInputHandler(DefaultInputHandler copy) {
     bindings = currentBindings = copy.bindings;

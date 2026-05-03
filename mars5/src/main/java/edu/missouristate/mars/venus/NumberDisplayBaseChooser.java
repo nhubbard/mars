@@ -1,9 +1,12 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.util.*;
-import java.awt.event.*;
-import javax.swing.*;
+import edu.missouristate.mars.util.Binary;
+
+import javax.swing.JCheckBox;
+import javax.swing.JCheckBoxMenuItem;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar

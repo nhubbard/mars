@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -1154,7 +1155,7 @@ public class Memory extends Observable {
   }
 
   private Collection<MemoryObservable> getNewMemoryObserversCollection() {
-    return new Vector<>(); // Vectors are thread-safe
+    return new CopyOnWriteArrayList<>();
   }
 
   /////////////////////////////////////////////////////////////////////////

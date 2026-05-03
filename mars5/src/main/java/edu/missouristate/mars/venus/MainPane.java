@@ -1,9 +1,10 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import java.awt.*;
-import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.JComponent;
+import javax.swing.JTabbedPane;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import java.awt.Component;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar

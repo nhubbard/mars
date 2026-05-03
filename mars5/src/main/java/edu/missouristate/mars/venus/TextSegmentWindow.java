@@ -60,8 +60,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    * consistent once set up, since address column is not editable.
    */
   private int[] intAddresses; // index is table model row, value is text address
-  private Hashtable<Integer, Integer> addressRows; // key is text address, value is table model row
-  private Hashtable<Integer, ModifiedCode>
+  private HashMap<Integer, Integer> addressRows; // key is text address, value is table model row
+  private HashMap<Integer, ModifiedCode>
       executeMods; // key is table model row, value is original code, basic, source.
   private final Container contentPane;
   private TextTableModel tableModel;
@@ -111,8 +111,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     ArrayList<ProgramStatement> sourceStatementList = Globals.program.getMachineList();
     data = new Object[sourceStatementList.size()][columnNames.length];
     intAddresses = new int[data.length];
-    addressRows = new Hashtable<>(data.length);
-    executeMods = new Hashtable<>(data.length);
+    addressRows = new HashMap<>(data.length);
+    executeMods = new HashMap<>(data.length);
     // Get highest source line number to determine #leading spaces so line numbers will vertically
     // align
     // In multi-file situation, this will not necessarily be the last line b/c sourceStatementList
@@ -415,9 +415,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    */
   void resetModifiedSourceCode() {
     if (executeMods != null && !executeMods.isEmpty()) {
-      for (Enumeration<ModifiedCode> elements = executeMods.elements();
-          elements.hasMoreElements(); ) {
-        ModifiedCode mc = elements.nextElement();
+      for (ModifiedCode mc : executeMods.values()) {
         tableModel.setValueAt(mc.code(), mc.row(), CODE_COLUMN);
         tableModel.setValueAt(mc.basic(), mc.row(), BASIC_COLUMN);
         tableModel.setValueAt(mc.source(), mc.row(), SOURCE_COLUMN);
