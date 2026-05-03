@@ -51,7 +51,7 @@ public class SyscallConfirmDialog extends AbstractSyscall {
     //   1: No
     //   2: Cancel
 
-    String message = new String(); // = "";
+    String message = ""; // = "";
     int byteAddress = RegisterFile.getValue(4);
     char ch[] = {' '}; // Need an array to convert to String
     try {

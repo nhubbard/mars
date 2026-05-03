@@ -585,7 +585,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
       return "<html><head></head><body>"
           + expansionFontTag
           + "-1<sup>"
-          + binaryString.substring(0, maxLengthBinarySign)
+          + binaryString.charAt(0)
           + "</sup> &nbsp;*&nbsp; 2<sup>"
           + stringExponent
           + HTMLspaces.substring(0, (5 - stringExponent.length()) * 6)

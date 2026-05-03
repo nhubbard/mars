@@ -54,7 +54,7 @@ public class SyscallInputDialogInt extends AbstractSyscall {
     //       -2: Cancel was chosen
     //       -3: OK was chosen but no data had been input into field
 
-    String message = new String(); // = "";
+    String message = ""; // = "";
     int byteAddress = RegisterFile.getValue(4);
     char ch[] = {' '}; // Need an array to convert to String
     try {

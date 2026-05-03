@@ -637,7 +637,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           init = datapath_mapItem.getElementsByTagName("init");
           end = datapath_mapItem.getElementsByTagName("end");
           // definition of colors line
-          if (instructionCode.substring(0, 6).equals("000000")) { // R-type instructions
+          if (instructionCode.startsWith("000000")) { // R-type instructions
             color = datapath_mapItem.getElementsByTagName("color_Rtype");
             // System.out.println("rtype");
           } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { // J-type instructions
@@ -718,8 +718,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
       TextLayout textVariable;
       if (instructionCode
-          .substring(0, 6)
-          .equals("000000")) { // R-type instructions description on screen definition.
+          .startsWith("000000")) { // R-type instructions description on screen definition.
         textVariable =
             new TextLayout("REGISTER TYPE INSTRUCTION", new Font("Arial", Font.BOLD, 25), frc);
         g2d.setColor(Color.black);
@@ -1388,7 +1387,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         actionInFunctionalBlock = new TextLayout(" ", new Font("Verdana", Font.BOLD, 13), frc);
       }
       if (v.getName().equals("ALUVALUE")) {
-        if (instructionCode.substring(0, 6).equals("000000")) // R-type instruction
+        if (instructionCode.startsWith("000000")) // R-type instruction
         actionInFunctionalBlock =
               new TextLayout(
                   functionEquivalenceTable.get(instructionCode.substring(26, 32)),
