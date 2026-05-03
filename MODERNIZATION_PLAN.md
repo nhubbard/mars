@@ -133,7 +133,7 @@ sourceSets {
 }
 
 tasks.jar {
-    manifest { attributes("Main-Class" to "Mars") }
+    manifest { attributes("Main-Class" to "edu.missouristate.mars.Mars") }
     from(sourceSets.main.get().output)
     archiveFileName = "mars.jar"
 }
@@ -200,7 +200,7 @@ Before touching any logic or writing tests, rename every Java package from the f
    grep -rn "^import mars\." src/
    ```
    Both should return zero results after the rename.
-3. Update `Mars.java`'s main-class reference in any manifest or launch script.
+3. Update `edu.missouristate.mars.Mars.java`'s main-class reference in any manifest or launch script.
 4. Update the `app/build.gradle.kts` bridge module if it references the old `mars/` directory name as a source root.
 5. Commit the rename as a single isolated commit with message `refactor: rename packages mars.* → edu.missouristate.mars.*`.
 
@@ -376,7 +376,7 @@ Only move files; do not change them. Use `git mv` to preserve history.
 | `edu/missouristate/mars/Globals.java` (facade) | `mars-core` (temporary) |
 | `edu/missouristate/mars/MarsLaunch.java` (CLI portion) | `mars-cli` |
 | `edu/missouristate/mars/venus/` | `mars-plugin` (temporary; eventually replaced) |
-| `Mars.java`, `mainclass.txt` | `mars-cli` |
+| `edu.missouristate.mars.Mars.java`, `mainclass.txt` | `mars-cli` |
 | `*.properties`, `PseudoOps.txt` | `mars-core/src/main/resources/edu/missouristate/mars/` |
 | `images/`, `help/` | `mars-plugin/src/main/resources/` |
 | XML data files | `mars-core/src/main/resources/edu/missouristate/mars/` |
