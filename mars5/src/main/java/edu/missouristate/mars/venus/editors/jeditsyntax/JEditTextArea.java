@@ -1890,15 +1890,8 @@ public class JEditTextArea extends JComponent {
     if (helpItems != null) {
       popupMenu = new JPopupMenu();
       int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
-      for (int i = 0; i < helpItems.size(); i++) {
-        PopupHelpItem item = helpItems.get(i);
-        JMenuItem menuItem =
-            new JMenuItem(
-                "<html><tt>"
-                    + item.getExamplePaddedToLength(length).replace(" ", "&nbsp;")
-                    + "</tt>"
-                    + item.getDescription()
-                    + "</html>");
+      for (PopupHelpItem item : helpItems) {
+        JMenuItem menuItem = new JMenuItem("<html><tt>" + item.getExamplePaddedToLength(length).replace(" ", "&nbsp;") + "</tt>" + item.getDescription() + "</html>");
         if (item.getExact()) {
           // The instruction name is completed so the role of the popup changes
           // to that of floating help to assist in operand specification.
@@ -1920,8 +1913,7 @@ public class JEditTextArea extends JComponent {
         } else {
           // Typing of instruction/directive name is still in progress; the action listener
           // will complete it when its menu item is selected.
-          menuItem.addActionListener(
-              new PopupHelpActionListener(item.getTokenText(), item.getExample()));
+          menuItem.addActionListener(new PopupHelpActionListener(item.getTokenText(), item.getExample()));
         }
         popupMenu.add(menuItem);
       }

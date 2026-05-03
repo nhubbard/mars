@@ -188,15 +188,11 @@ public class ErrorList {
   private String generateReport(boolean isWarning) {
     StringBuilder report = new StringBuilder();
     String reportLine;
-    for (int i = 0; i < messages.size(); i++) {
-      ErrorMessage m = messages.get(i);
+    for (ErrorMessage m : messages) {
       if ((isWarning && m.isWarning()) || (!isWarning && !m.isWarning())) {
-        reportLine =
-            ((isWarning) ? WARNING_MESSAGE_PREFIX : ERROR_MESSAGE_PREFIX) + FILENAME_PREFIX;
-        if (!m.getFilename().isEmpty())
-          reportLine = reportLine + (new File(m.getFilename()).getPath()); // .getName());
-        if (m.getLine() > 0)
-          reportLine = reportLine + LINE_PREFIX + m.getMacroExpansionHistory() + m.getLine();
+        reportLine = ((isWarning) ? WARNING_MESSAGE_PREFIX : ERROR_MESSAGE_PREFIX) + FILENAME_PREFIX;
+        if (!m.getFilename().isEmpty()) reportLine = reportLine + (new File(m.getFilename()).getPath()); // .getName());
+        if (m.getLine() > 0) reportLine = reportLine + LINE_PREFIX + m.getMacroExpansionHistory() + m.getLine();
         if (m.getPosition() > 0) reportLine = reportLine + POSITION_PREFIX + m.getPosition();
         reportLine = reportLine + MESSAGE_SEPARATOR + m.getMessage() + "\n";
         report.append(reportLine);

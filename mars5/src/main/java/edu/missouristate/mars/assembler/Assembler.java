@@ -174,9 +174,9 @@ public class Assembler {
     // TO SECOND PASS. THIS ASSURES ALL SYMBOL TABLES ARE CORRECTLY BUILT.
     // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
     // ONE LOCAL SYMBOL TABLE FOR EACH SOURCE FILE.
-    for (int fileIndex = 0; fileIndex < tokenizedProgramFiles.size(); fileIndex++) {
+    for (MIPSprogram programFile : tokenizedProgramFiles) {
       if (errors.errorLimitExceeded()) break;
-      this.fileCurrentlyBeingAssembled = tokenizedProgramFiles.get(fileIndex);
+      this.fileCurrentlyBeingAssembled = programFile;
       // List of labels declared ".globl". new list for each file assembled
       this.globalDeclarationList = new TokenList();
       // Parser begins by default in text segment until directed otherwise.
@@ -208,25 +208,15 @@ public class Assembler {
           Token t = tokenList.get(i).get(z);
           // record this token's original source program and line #. Differs from final, if .include
           // used
-          t.setOriginal(
-              sourceLineList.get(i).getMIPSprogram(), sourceLineList.get(i).getLineNumber());
+          t.setOriginal(sourceLineList.get(i).getMIPSprogram(), sourceLineList.get(i).getLineNumber());
         }
-        statements =
-            this.parseLine(tokenList.get(i),
-                sourceLineList.get(i).getSource(),
-                sourceLineList.get(i).getLineNumber(),
-                extendedAssemblerEnabled);
+        statements = this.parseLine(tokenList.get(i), sourceLineList.get(i).getSource(), sourceLineList.get(i).getLineNumber(), extendedAssemblerEnabled);
         if (statements != null) {
           parsedList.addAll(statements);
         }
       }
       if (inMacroSegment) {
-        errors.add(
-            new ErrorMessage(
-                fileCurrentlyBeingAssembled,
-                fileCurrentlyBeingAssembled.getLocalMacroPool().getCurrent().getFromLine(),
-                0,
-                "Macro started but not ended (no .end_macro directive)"));
+        errors.add(new ErrorMessage(fileCurrentlyBeingAssembled, fileCurrentlyBeingAssembled.getLocalMacroPool().getCurrent().getFromLine(), 0, "Macro started but not ended (no .end_macro directive)"));
       }
       // move ".globl" symbols from local symtab to global
       this.transferGlobals();
@@ -235,8 +225,7 @@ public class Assembler {
       // call are either references to global labels not seen yet, or are undefined.
       // Cannot determine which until all files are parsed, so copy unresolved entries
       // into accumulated list and clear out this one for re-use with the next source file.
-      currentFileDataSegmentForwardReferences.resolve(
-          fileCurrentlyBeingAssembled.getLocalSymbolTable());
+      currentFileDataSegmentForwardReferences.resolve(fileCurrentlyBeingAssembled.getLocalSymbolTable());
       accumulatedDataSegmentForwardReferences.add(currentFileDataSegmentForwardReferences);
       currentFileDataSegmentForwardReferences.clear();
     } // end of first-pass loop for each MIPSprogram
@@ -254,13 +243,13 @@ public class Assembler {
     if (Globals.debug) System.out.println("Assembler second pass begins");
     // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
     // Generates basic assembler statements...
-    for (int fileIndex = 0; fileIndex < tokenizedProgramFiles.size(); fileIndex++) {
+    for (MIPSprogram tokenizedProgramFile : tokenizedProgramFiles) {
       if (errors.errorLimitExceeded()) break;
-      this.fileCurrentlyBeingAssembled = tokenizedProgramFiles.get(fileIndex);
+      this.fileCurrentlyBeingAssembled = tokenizedProgramFile;
       ArrayList<ProgramStatement> parsedList = fileCurrentlyBeingAssembled.getParsedList();
       ProgramStatement statement;
-      for (int i = 0; i < parsedList.size(); i++) {
-        statement = parsedList.get(i);
+      for (ProgramStatement programStatement : parsedList) {
+        statement = programStatement;
         statement.buildBasicStatementFromBasicInstruction(errors);
         if (errors.errorsOccurred()) {
           throw new ProcessingException(errors);
@@ -292,8 +281,7 @@ public class Assembler {
           ExtendedInstruction inst = (ExtendedInstruction) statement.getInstruction();
           String basicAssembly = statement.getBasicAssemblyStatement();
           int sourceLine = statement.getSourceLine();
-          TokenList theTokenList =
-              new Tokenizer().tokenizeLine(sourceLine, basicAssembly, errors, false);
+          TokenList theTokenList = new Tokenizer().tokenizeLine(sourceLine, basicAssembly, errors, false);
 
           // ////////////////////////////////////////////////////////////////////////////
           // If we are using compact memory config and there is a compact expansion, use it
@@ -308,10 +296,7 @@ public class Assembler {
           textAddress.set(statement.getAddress());
           // Will generate one basic instruction for each template in the list.
           for (int instrNumber = 0; instrNumber < templateList.size(); instrNumber++) {
-            String instruction =
-                ExtendedInstruction.makeTemplateSubstitutions(
-                    this.fileCurrentlyBeingAssembled, templateList.get(instrNumber),
-                    theTokenList);
+            String instruction = ExtendedInstruction.makeTemplateSubstitutions(this.fileCurrentlyBeingAssembled, templateList.get(instrNumber), theTokenList);
             // 23 Jan 2008 by DPS. Template substitution may result in no instruction.
             // If this is the case, skip remainder of loop iteration. This should only
             // happen if template substitution was for "nop" instruction but delayed branching
@@ -325,20 +310,11 @@ public class Assembler {
             if (Globals.debug) System.out.println("PSEUDO generated: " + instruction);
             // For generated instruction: tokenize, build program
             // statement, add to list.
-            TokenList newTokenList =
-                new Tokenizer().tokenizeLine(sourceLine, instruction, errors, false);
+            TokenList newTokenList = new Tokenizer().tokenizeLine(sourceLine, instruction, errors, false);
             ArrayList<Instruction> instrMatches = this.matchInstruction(newTokenList.get(0));
             Instruction instr = OperandFormat.bestOperandMatch(newTokenList, instrMatches);
             // Only first generated instruction is linked to original source
-            ProgramStatement ps =
-                new ProgramStatement(
-                    this.fileCurrentlyBeingAssembled,
-                    (instrNumber == 0) ? statement.getSource() : "",
-                    newTokenList,
-                    newTokenList,
-                    instr,
-                    textAddress.get(),
-                    statement.getSourceLine());
+            ProgramStatement ps = new ProgramStatement(this.fileCurrentlyBeingAssembled, (instrNumber == 0) ? statement.getSource() : "", newTokenList, newTokenList, instr, textAddress.get(), statement.getSourceLine());
             textAddress.increment(Instruction.INSTRUCTION_LENGTH);
             ps.buildBasicStatementFromBasicInstruction(errors);
             machineList.add(ps);
@@ -351,21 +327,16 @@ public class Assembler {
     // Generates machine code statements from the list of basic assembler statements
     // and writes the statement to memory.
     ProgramStatement statement;
-    for (int i = 0; i < machineList.size(); i++) {
+    for (ProgramStatement programStatement : machineList) {
       if (errors.errorLimitExceeded()) break;
-      statement = machineList.get(i);
+      statement = programStatement;
       statement.buildMachineStatementFromBasicStatement(errors);
       if (Globals.debug) System.out.println(statement);
       try {
         Globals.memory.setStatement(statement.getAddress(), statement);
       } catch (AddressErrorException e) {
         Token t = statement.getOriginalTokenList().get(0);
-        errors.add(
-            new ErrorMessage(
-                t.getSourceMIPSprogram(),
-                t.getSourceLine(),
-                t.getStartPos(),
-                "Invalid address for text segment: " + e.getAddress()));
+        errors.add(new ErrorMessage(t.getSourceMIPSprogram(), t.getSourceLine(), t.getStartPos(), "Invalid address for text segment: " + e.getAddress()));
       }
     }
     // Aug. 24, 2005 Ken Vollmar
@@ -1580,14 +1551,9 @@ public class Assembler {
     // undefined labels.
     private void generateErrorMessages(ErrorList errors) {
       DataSegmentForwardReference entry;
-      for (int i = 0; i < forwardReferenceList.size(); i++) {
-        entry = forwardReferenceList.get(i);
-        errors.add(
-            new ErrorMessage(
-                entry.token.getSourceMIPSprogram(),
-                entry.token.getSourceLine(),
-                entry.token.getStartPos(),
-                "Symbol \"" + entry.token.getValue() + "\" not found in symbol table."));
+      for (DataSegmentForwardReference dataSegmentForwardReference : forwardReferenceList) {
+        entry = dataSegmentForwardReference;
+        errors.add(new ErrorMessage(entry.token.getSourceMIPSprogram(), entry.token.getSourceLine(), entry.token.getStartPos(), "Symbol \"" + entry.token.getValue() + "\" not found in symbol table."));
       }
     }
 

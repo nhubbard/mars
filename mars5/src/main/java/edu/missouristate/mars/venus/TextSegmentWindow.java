@@ -436,8 +436,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    */
   public int getBreakpointCount() {
     int breakpointCount = 0;
-    for (int i = 0; i < data.length; i++) {
-      if ((Boolean) data[i][BREAK_COLUMN]) {
+    for (Object[] datum : data) {
+      if ((Boolean) datum[BREAK_COLUMN]) {
         breakpointCount++;
       }
     }
@@ -615,8 +615,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             1,
             false);
     MouseListener[] mouseListeners = table.getMouseListeners();
-    for (int i = 0; i < mouseListeners.length; i++) {
-      mouseListeners[i].mousePressed(fakeMouseEvent);
+    for (MouseListener mouseListener : mouseListeners) {
+      mouseListener.mousePressed(fakeMouseEvent);
     }
   }
 
@@ -637,8 +637,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             1,
             false);
     MouseListener[] mouseListeners = ((MyTippedJTable) table).tableHeader.getMouseListeners();
-    for (int i = 0; i < mouseListeners.length; i++) {
-      mouseListeners[i].mouseClicked(fakeMouseEvent);
+    for (MouseListener mouseListener : mouseListeners) {
+      mouseListener.mouseClicked(fakeMouseEvent);
     }
   }
 
@@ -669,8 +669,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     int[] savedColumnOrder = Globals.getSettings().getTextColumnOrder();
     // Apply ordering only if correct number of columns.
     if (savedColumnOrder.length == table.getColumnCount()) {
-      for (int i = 0; i < savedColumnOrder.length; i++)
-        newtcm.addColumn(oldtcm.getColumn(savedColumnOrder[i]));
+      for (int j : savedColumnOrder) newtcm.addColumn(oldtcm.getColumn(j));
       table.setColumnModel(newtcm);
     }
   }

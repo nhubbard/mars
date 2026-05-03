@@ -209,12 +209,9 @@ public class MIPSTokenMarker extends TokenMarker {
       if (!instrMatches.isEmpty()) {
         int realMatches = 0;
         matches = new ArrayList<>();
-        for (int i = 0; i < instrMatches.size(); i++) {
-          Instruction inst = instrMatches.get(i);
-          if (Globals.getSettings().getExtendedAssemblerEnabled()
-              || inst instanceof BasicInstruction) {
-            matches.add(
-                new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
+        for (Instruction inst : instrMatches) {
+          if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
+            matches.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
             realMatches++;
           }
         }
@@ -374,8 +371,7 @@ public class MIPSTokenMarker extends TokenMarker {
     }
     if (directiveMatches != null) {
       matches = new ArrayList<>();
-      for (int i = 0; i < directiveMatches.size(); i++) {
-        Directives direct = directiveMatches.get(i);
+      for (Directives direct : directiveMatches) {
         matches.add(new PopupHelpItem(tokenText, direct.getName(), direct.getDescription(), exact));
       }
     }
@@ -400,12 +396,10 @@ public class MIPSTokenMarker extends TokenMarker {
     int realMatches = 0;
     HashMap<String, String> insts = new HashMap<>();
     TreeSet<String> mnemonics = new TreeSet<>();
-    for (int i = 0; i < matches.size(); i++) {
-      Instruction inst = matches.get(i);
+    for (Instruction inst : matches) {
       if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
         if (exact) {
-          results.add(
-              new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), true));
+          results.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), true));
         } else {
           String mnemonic = inst.getExampleFormat().split(" ")[0];
           if (!insts.containsKey(mnemonic)) {
@@ -445,13 +439,13 @@ public class MIPSTokenMarker extends TokenMarker {
       cKeywords = new KeywordMap(false);
       // add Instruction mnemonics
       ArrayList<Instruction> instructionSet = Globals.instructionSet.getInstructionList();
-      for (int i = 0; i < instructionSet.size(); i++) {
-        cKeywords.add(instructionSet.get(i).getName(), Token.KEYWORD1);
+      for (Instruction instruction : instructionSet) {
+        cKeywords.add(instruction.getName(), Token.KEYWORD1);
       }
       // add assembler directives
       ArrayList<Directives> directiveSet = Directives.getDirectiveList();
-      for (int i = 0; i < directiveSet.size(); i++) {
-        cKeywords.add(directiveSet.get(i).getName(), Token.KEYWORD2);
+      for (Directives directives : directiveSet) {
+        cKeywords.add(directives.getName(), Token.KEYWORD2);
       }
       // add integer register file
       Register[] registerFile = RegisterFile.getRegisters();
@@ -461,8 +455,8 @@ public class MIPSTokenMarker extends TokenMarker {
       }
       // add Coprocessor 1 (floating point) register file
       Register[] coprocessor1RegisterFile = Coprocessor1.getRegisters();
-      for (int i = 0; i < coprocessor1RegisterFile.length; i++) {
-        cKeywords.add(coprocessor1RegisterFile[i].getName(), Token.KEYWORD3);
+      for (Register register : coprocessor1RegisterFile) {
+        cKeywords.add(register.getName(), Token.KEYWORD3);
       }
       // Note: Coprocessor 0 registers referenced only by number: $8, $12, $13, $14. These are
       // already in the map

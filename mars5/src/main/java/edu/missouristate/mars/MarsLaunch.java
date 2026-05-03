@@ -178,8 +178,7 @@ public class MarsLaunch {
 
     if (dumpTriples == null) return;
 
-    for (int i = 0; i < dumpTriples.size(); i++) {
-      String[] triple = dumpTriples.get(i);
+    for (String[] triple : dumpTriples) {
       File file = new File(triple[2]);
       Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0]);
       // If not segment name, see if it is address range instead.  DPS 14-July-2008
@@ -196,10 +195,7 @@ public class MarsLaunch {
         }
       }
       if (segInfo == null) {
-        out.println(
-            "Error while attempting to save dump, segment/address-range "
-                + triple[0]
-                + " is invalid!");
+        out.println("Error while attempting to save dump, segment/address-range " + triple[0] + " is invalid!");
         continue;
       }
       DumpFormat format = DumpFormatLoader.findByCommandDescriptor(triple[1]);
@@ -208,9 +204,7 @@ public class MarsLaunch {
         continue;
       }
       try {
-        int highAddress =
-            Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1])
-                - Memory.WORD_LENGTH_BYTES;
+        int highAddress = Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1]) - Memory.WORD_LENGTH_BYTES;
         if (highAddress < segInfo[0]) {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
@@ -219,12 +213,7 @@ public class MarsLaunch {
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {
-        out.println(
-            "Error while attempting to save dump, file "
-                + file
-                + "!  Could not access address: "
-                + e.getAddress()
-                + "!");
+        out.println("Error while attempting to save dump, file " + file + "!  Could not access address: " + e.getAddress() + "!");
       } catch (IOException e) {
         out.println("Error while attempting to save dump, file " + file + "!  Disk IO failed!");
       }
@@ -469,8 +458,8 @@ public class MarsLaunch {
               FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
           // Remove any duplicates then merge the two lists.
           for (int index2 = 0; index2 < moreFilesToAssemble.size(); index2++) {
-            for (int index1 = 0; index1 < filesToAssemble.size(); index1++) {
-              if (filesToAssemble.get(index1).equals(moreFilesToAssemble.get(index2))) {
+            for (String s : filesToAssemble) {
+              if (s.equals(moreFilesToAssemble.get(index2))) {
                 moreFilesToAssemble.remove(index2);
                 index2--; // adjust for left shift in moreFilesToAssemble...
                 break; // break out of inner loop...
@@ -709,8 +698,8 @@ public class MarsLaunch {
   //  present, it must be processed before all others.  Since messages may
   //  be output as early as during the command parse.
   private void processDisplayMessagesToErrSwitch(String[] args, String displayMessagesToErrSwitch) {
-    for (int i = 0; i < args.length; i++) {
-      if (args[i].toLowerCase().equals(displayMessagesToErrSwitch)) {
+    for (String arg : args) {
+      if (arg.toLowerCase().equals(displayMessagesToErrSwitch)) {
         out = System.err;
         return;
       }
@@ -723,8 +712,8 @@ public class MarsLaunch {
 
   private void displayCopyright(String[] args, String noCopyrightSwitch) {
     boolean print = true;
-    for (int i = 0; i < args.length; i++) {
-      if (args[i].toLowerCase().equals(noCopyrightSwitch)) {
+    for (String arg : args) {
+      if (arg.toLowerCase().equals(noCopyrightSwitch)) {
         return;
       }
     }

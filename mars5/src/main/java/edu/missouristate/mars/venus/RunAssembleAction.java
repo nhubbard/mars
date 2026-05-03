@@ -136,26 +136,21 @@ public class RunAssembleAction extends GuiAction {
         mainUI.messagesPane.postMarsMessage(name + ": operation completed with errors.\n\n");
         // Select editor line containing first error, and corresponding error message.
         ArrayList<ErrorMessage> errorMessages = pe.errors().getErrorMessages();
-        for (int i = 0; i < errorMessages.size(); i++) {
-          ErrorMessage em = errorMessages.get(i);
+        for (ErrorMessage em : errorMessages) {
           // No line or position may mean File Not Found (e.g. exception file). Don't try to open.
           // DPS 3-Oct-2010
           if (em.getLine() == 0 && em.getPosition() == 0) {
             continue;
           }
           if (!em.isWarning() || warningsAreErrors) {
-            Globals.getGui()
-                .getMessagesPane()
-                .selectErrorMessage(em.getFilename(), em.getLine(), em.getPosition());
+            Globals.getGui().getMessagesPane().selectErrorMessage(em.getFilename(), em.getLine(), em.getPosition());
             // Bug workaround: Line selection does not work correctly for the JEditTextArea editor
             // when the file is opened then automatically assembled (assemble-on-open setting).
             // Automatic assemble happens in EditTabbedPane's openFile() method, by invoking
             // this method (actionPerformed) explicitly with null argument.  Thus e!=null test.
             // DPS 9-Aug-2010
             if (e != null) {
-              Globals.getGui()
-                  .getMessagesPane()
-                  .selectEditorTextLine(em.getFilename(), em.getLine(), em.getPosition());
+              Globals.getGui().getMessagesPane().selectEditorTextLine(em.getFilename(), em.getLine(), em.getPosition());
             }
             break;
           }

@@ -727,8 +727,7 @@ public class ProgramStatement {
               : NumberDisplayBaseChooser.DECIMAL;
 
       StringBuilder result = new StringBuilder();
-      for (int i = 0; i < list.size(); i++) {
-        ListElement e = list.get(i);
+      for (ListElement e : list) {
         switch (e.type) {
           case 0:
             result.append(e.sValue);
@@ -738,8 +737,7 @@ public class ProgramStatement {
             break;
           case 2:
             if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
-              result.append(
-                  Binary.intToHexString(e.iValue)); // 13-July-2011, was: intToHalfHexString()
+              result.append(Binary.intToHexString(e.iValue)); // 13-July-2011, was: intToHalfHexString()
             } else {
               result.append(NumberDisplayBaseChooser.formatNumber(e.iValue, valueBase));
             }

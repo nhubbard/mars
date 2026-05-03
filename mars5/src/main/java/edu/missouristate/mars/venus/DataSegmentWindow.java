@@ -172,8 +172,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     navButtons.add(nextButton);
     features.add(navButtons);
     features.add(baseAddressSelector);
-    for (int i = 0; i < choosers.length; i++) {
-      features.add(choosers[i]);
+    for (NumberDisplayBaseChooser chooser : choosers) {
+      features.add(chooser);
     }
     JCheckBox asciiDisplayCheckBox = new JCheckBox("ASCII", asciiDisplay);
     asciiDisplayCheckBox.setToolTipText(
@@ -233,8 +233,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
             1,
             false);
     MouseListener[] mouseListeners = dataTable.getMouseListeners();
-    for (int i = 0; i < mouseListeners.length; i++) {
-      mouseListeners[i].mousePressed(fakeMouseEvent);
+    for (MouseListener mouseListener : mouseListeners) {
+      mouseListener.mousePressed(fakeMouseEvent);
     }
   }
 

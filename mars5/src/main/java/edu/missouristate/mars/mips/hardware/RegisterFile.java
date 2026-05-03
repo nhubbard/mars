@@ -88,10 +88,10 @@ public class RegisterFile {
 
   /** Method for displaying the register values for debugging. */
   public static void showRegisters() {
-    for (int i = 0; i < regFile.length; i++) {
-      System.out.println("Name: " + regFile[i].getName());
-      System.out.println("Number: " + regFile[i].getNumber());
-      System.out.println("Value: " + regFile[i].getValue());
+    for (Register register : regFile) {
+      System.out.println("Name: " + register.getName());
+      System.out.println("Number: " + register.getNumber());
+      System.out.println("Value: " + register.getValue());
       System.out.println();
     }
   }
@@ -109,14 +109,9 @@ public class RegisterFile {
     if (num == 0) {
       // System.out.println("You can not change the value of the zero register.");
     } else {
-      for (int i = 0; i < regFile.length; i++) {
-        if (regFile[i].getNumber() == num) {
-          old =
-              (Globals.getSettings().getBackSteppingEnabled())
-                  ? Globals.program
-                      .getBackStepper()
-                      .addRegisterFileRestore(num, regFile[i].setValue(val))
-                  : regFile[i].setValue(val);
+      for (Register register : regFile) {
+        if (register.getNumber() == num) {
+          old = (Globals.getSettings().getBackSteppingEnabled()) ? Globals.program.getBackStepper().addRegisterFileRestore(num, register.setValue(val)) : register.setValue(val);
           break;
         }
       }
@@ -177,9 +172,9 @@ public class RegisterFile {
    */
   public static int getNumber(String n) {
     int j = -1;
-    for (int i = 0; i < regFile.length; i++) {
-      if (regFile[i].getName().equals(n)) {
-        j = regFile[i].getNumber();
+    for (Register register : regFile) {
+      if (register.getName().equals(n)) {
+        j = register.getNumber();
         break;
       }
     }
@@ -212,9 +207,9 @@ public class RegisterFile {
         // check for register mnemonic $zero thru $ra
         reg = null; // just to be sure
         // just do linear search; there aren't that many registers
-        for (int i = 0; i < regFile.length; i++) {
-          if (Rname.equals(regFile[i].getName())) {
-            reg = regFile[i];
+        for (Register register : regFile) {
+          if (Rname.equals(register.getName())) {
+            reg = register;
             break;
           }
         }
@@ -305,8 +300,8 @@ public class RegisterFile {
    * </code>.
    */
   public static void resetRegisters() {
-    for (int i = 0; i < regFile.length; i++) {
-      regFile[i].resetValue();
+    for (Register register : regFile) {
+      register.resetValue();
     }
     initializeProgramCounter(
         Globals.getSettings()
@@ -325,8 +320,8 @@ public class RegisterFile {
    * given Observer to each one. Currently does not apply to Program Counter.
    */
   public static void addRegistersObserver(Observer observer) {
-    for (int i = 0; i < regFile.length; i++) {
-      regFile[i].addObserver(observer);
+    for (Register register : regFile) {
+      register.addObserver(observer);
     }
     hi.addObserver(observer);
     lo.addObserver(observer);
@@ -337,8 +332,8 @@ public class RegisterFile {
    * given Observer from each one. Currently does not apply to Program Counter.
    */
   public static void deleteRegistersObserver(Observer observer) {
-    for (int i = 0; i < regFile.length; i++) {
-      regFile[i].deleteObserver(observer);
+    for (Register register : regFile) {
+      register.deleteObserver(observer);
     }
     hi.deleteObserver(observer);
     lo.deleteObserver(observer);

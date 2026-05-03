@@ -2880,15 +2880,13 @@ public class InstructionSet {
 
     // Initialization step.  Create token list for each instruction example.  This is
     // used by parser to determine user program correct syntax.
-    for (int i = 0; i < instructionList.size(); i++) {
-      Instruction inst = instructionList.get(i);
+    for (Instruction inst : instructionList) {
       inst.createExampleTokenList();
     }
 
     HashMap<Integer, HashMap<Integer, BasicInstruction>> maskMap = new HashMap<>();
     ArrayList<MatchMap> matchMaps = new ArrayList<>();
-    for (int i = 0; i < instructionList.size(); i++) {
-      Object rawInstr = instructionList.get(i);
+    for (Object rawInstr : instructionList) {
       if (rawInstr instanceof BasicInstruction basic) {
         Integer mask = basic.getOpcodeMask();
         Integer match = basic.getOpcodeMatch();
@@ -2907,8 +2905,7 @@ public class InstructionSet {
 
   public BasicInstruction findByBinaryCode(int binaryInstr) {
     ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
-    for (int i = 0; i < matchMaps.size(); i++) {
-      MatchMap map = matchMaps.get(i);
+    for (MatchMap map : matchMaps) {
       BasicInstruction ret = map.find(binaryInstr);
       if (ret != null) return ret;
     }
@@ -2992,10 +2989,10 @@ public class InstructionSet {
   public ArrayList<Instruction> matchOperator(String name) {
     ArrayList<Instruction> matchingInstructions = null;
     // Linear search for now...
-    for (int i = 0; i < instructionList.size(); i++) {
-      if (instructionList.get(i).getName().equalsIgnoreCase(name)) {
+    for (Instruction instruction : instructionList) {
+      if (instruction.getName().equalsIgnoreCase(name)) {
         if (matchingInstructions == null) matchingInstructions = new ArrayList<>();
-        matchingInstructions.add(instructionList.get(i));
+        matchingInstructions.add(instruction);
       }
     }
     return matchingInstructions;
@@ -3013,13 +3010,10 @@ public class InstructionSet {
     ArrayList<Instruction> matchingInstructions = null;
     // Linear search for now....
     if (name != null) {
-      for (int i = 0; i < instructionList.size(); i++) {
-        if (instructionList.get(i)
-            .getName()
-            .toLowerCase()
-            .startsWith(name.toLowerCase())) {
+      for (Instruction instruction : instructionList) {
+        if (instruction.getName().toLowerCase().startsWith(name.toLowerCase())) {
           if (matchingInstructions == null) matchingInstructions = new ArrayList<>();
-          matchingInstructions.add(instructionList.get(i));
+          matchingInstructions.add(instruction);
         }
       }
     }

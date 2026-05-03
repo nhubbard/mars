@@ -70,8 +70,8 @@ public class ToolLoader {
       menu.setMnemonic(KeyEvent.VK_T);
       // traverse array list and build menu
       MarsToolClassAndInstance listItem;
-      for (int i = 0; i < marsToolList.size(); i++) {
-        listItem = marsToolList.get(i);
+      for (MarsToolClassAndInstance marsToolClassAndInstance : marsToolList) {
+        listItem = marsToolClassAndInstance;
         menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
       }
     }
@@ -108,8 +108,7 @@ public class ToolLoader {
     // not be located in the mars.tools folder, the loop below will not process
     // it correctly.  Not sure how to create a Class object given an absolute
     HashMap<String, String> tools = new HashMap<>();
-    for (int i = 0; i < candidates.size(); i++) {
-      String file = candidates.get(i);
+    for (String file : candidates) {
       // Do not add class if already encountered (happens if run in MARS development directory)
       if (tools.containsKey(file)) {
         continue;
@@ -119,12 +118,9 @@ public class ToolLoader {
       if (!file.equals(MARSTOOL_INTERFACE)) {
         try {
           // grab the class, make sure it implements MarsTool, instantiate, add to menu
-          String toolClassName =
-              CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
+          String toolClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
           Class<?> clas = Class.forName(toolClassName);
-          if (!MarsTool.class.isAssignableFrom(clas)
-              || Modifier.isAbstract(clas.getModifiers())
-              || Modifier.isInterface(clas.getModifiers())) {
+          if (!MarsTool.class.isAssignableFrom(clas) || Modifier.isAbstract(clas.getModifiers()) || Modifier.isInterface(clas.getModifiers())) {
             continue;
           }
           toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
