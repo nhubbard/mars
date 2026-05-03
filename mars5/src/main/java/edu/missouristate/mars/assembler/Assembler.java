@@ -352,7 +352,7 @@ public class Assembler {
     // Such occurances will be flagged as errors.
     // Yes, I would not have to sort here if I used SortedSet rather than ArrayList
     // but in case of duplicate I like having both statements handy for error message.
-    Collections.sort(machineList, new ProgramStatementComparator());
+    machineList.sort(new ProgramStatementComparator());
     catchDuplicateAddresses(machineList, errors);
     if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
