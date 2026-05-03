@@ -416,8 +416,6 @@ public class EditPane extends JPanel implements Observer {
    * Given byte stream position in text being edited, calculate its column and line number
    * coordinates.
    *
-   * @param stream position of character
-   * @return position Its column and line number coordinate as a Point.
    */
   private static final char newline = '\n';
 

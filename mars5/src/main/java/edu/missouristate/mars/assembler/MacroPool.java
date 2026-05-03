@@ -125,7 +125,6 @@ public class MacroPool {
   }
 
   /**
-   * @param value
    * @return true if any macros have been defined with name <code>value</code> by now, not
    *     concerning arguments count.
    */

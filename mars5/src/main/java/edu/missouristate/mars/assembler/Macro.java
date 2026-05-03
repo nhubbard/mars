@@ -143,9 +143,7 @@ public class Macro {
    * </code>
    *
    * @param line source line number in macro definition to be substituted
-   * @param args
    * @param counter unique macro expansion id
-   * @param errors
    * @return <code>line</code>-th line of source code, with substituted arguments
    */
   public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
@@ -181,8 +179,6 @@ public class Macro {
   /**
    * returns true if <code>value</code> is name of a label defined in this macro's body.
    *
-   * @param value
-   * @return
    */
   private boolean tokenIsMacroLabel(String value) {
     return (Collections.binarySearch(labels, value) >= 0);
@@ -192,10 +188,6 @@ public class Macro {
    * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with
    * <code>substitute</code>.
    *
-   * @param source
-   * @param tokenToBeReplaced
-   * @param substitute
-   * @return
    */
   // Initially the position of the substitute was based on token position but that proved
   // problematic
@@ -217,9 +209,7 @@ public class Macro {
   /**
    * returns whether <code>tokenValue</code> is macro parameter or not
    *
-   * @param tokenValue
    * @param acceptSpimStyleParameters accepts SPIM-style parameters which begin with '$' if true
-   * @return
    */
   public static boolean tokenIsMacroParameter(
       String tokenValue, boolean acceptSpimStyleParameters) {

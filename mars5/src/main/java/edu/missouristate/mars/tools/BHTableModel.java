@@ -227,7 +227,6 @@ public class BHTableModel extends AbstractTableModel {
    * model and signals to update the connected table(s).
    *
    * @param index the index of the entry in the BHT
-   * @param branchTaken
    */
   public void updatePredictionAtIdx(int index, boolean branchTaken) {
     if (index < 0 || index > m_entryCnt)

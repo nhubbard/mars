@@ -426,10 +426,6 @@ public class Assembler {
    * source is also provided. It also carries out directives, which includes initializing the data
    * segment. This method is invoked in the assembler first pass.
    *
-   * @param tokenList
-   * @param source
-   * @param sourceLineNumber
-   * @param extendedAssemblerEnabled
    * @return ArrayList of ProgramStatements because parsing a macro expansion request will return a
    *     list of ProgramStatements expanded
    */
@@ -1096,7 +1092,7 @@ public class Assembler {
           }
         }
       } // WHAT ABOUT .KDATA SEGMENT?
-      /***************************************************************************
+      /* **************************************************************************
        * /****** NOTE of 11/20/06. Below will always throw exception b/c
        * you cannot use Memory.set() with text segment addresses and the
        * "not valid address" produced here is misleading. Added data
@@ -1105,7 +1101,7 @@ public class Assembler {
        * capability of writing to the text segment (e.g. ability to
        * de-assemble a binary value into its corresponding MIPS
        * instruction)
-       *
+       * <p>
        * else { // not in data segment...which we assume to mean in text
        * segment. try { for (int i=0; i < repetitions; i++) {
        * Globals.memory.set(this.textAddress.get(),
@@ -1165,7 +1161,7 @@ public class Assembler {
       if (this.inDataSegment) {
         writeToDataSegment(value, lengthInBytes, token, errors);
       }
-      /******
+      /* *****
        * NOTE of 11/20/06. "try" below will always throw exception b/c you
        * cannot use Memory.set() with text segment addresses and the
        * "not valid address" produced here is misleading. Added data

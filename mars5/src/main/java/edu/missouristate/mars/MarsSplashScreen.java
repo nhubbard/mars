@@ -33,7 +33,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Produces MARS splash screen.<br>
- * Adapted from http://www.java-tips.org/content/view/1267/2/<br>
+ * Adapted from <a href="http://www.java-tips.org/content/view/1267/2/">here</a><br>
  */
 public class MarsSplashScreen extends JWindow {
 
@@ -99,7 +99,7 @@ public class MarsSplashScreen extends JWindow {
     setVisible(false);
   }
 
-  static class ImageBackgroundPanel extends JPanel {
+  class ImageBackgroundPanel extends JPanel {
     Image image;
 
     public ImageBackgroundPanel() {

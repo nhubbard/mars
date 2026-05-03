@@ -280,9 +280,9 @@ public class ProgramStatement {
 
         int tempNumeric = Binary.stringToInt(tokenValue);
 
-        /***************************************************************************
+        /* **************************************************************************
          *  MODIFICATION AND COMMENT, DPS 3-July-2008
-         *
+         * <p>
          * The modifications of January 2005 documented below are being rescinded.
          * All hexadecimal immediate values are considered 32 bits in length and
          * their classification as INTEGER_5, INTEGER_16, INTEGER_16U (new)
@@ -291,10 +291,10 @@ public class ProgramStatement {
          * the introduction of INTEGER_16U (adopted from Greg Gibeling of Berkeley),
          * required extensive changes to instruction templates especially for
          * pseudo-instructions.
-         *
+         * <p>
          * This modification also appears inbuildBasicStatementFromBasicInstruction()
          * in mars.ProgramStatement.
-         *
+         * <p>
          *  ///// Begin modification 1/4/05 KENV   ///////////////////////////////////////////
          *  // We have decided to interpret non-signed (no + or -) 16-bit hexadecimal immediate
          *  // operands as signed values in the range -32768 to 32767. So 0xffff will represent
@@ -306,7 +306,7 @@ public class ProgramStatement {
          *  // not affected by this tweak.  32-bit immediates in data segment directives
          *  // are also processed elsewhere so are not affected either.
          *  ////////////////////////////////////////////////////////////////////////////////
-         *
+         * <p>
          *        if (tokenType != TokenTypes.INTEGER_16U) { // part of the Berkeley mod...
          *           if ( Binary.isHex(tokenValue) &&
          *             (tempNumeric >= 32768) &&

@@ -171,9 +171,6 @@ public class EditorFont {
    * string. The number of spaces generated is based on the position of the tab character and the
    * editor's current tab size setting.
    *
-   * @param string The original string
-   * @return New string in which spaces are substituted for tabs
-   * @throws NullPointerException if string is null
    */
   private static final String TAB_STRING = "\t";
 

@@ -79,7 +79,6 @@ public class JEditTextArea extends JComponent {
    * Creates a new JEditTextArea with the specified settings.
    *
    * @param defaults The default settings
-   * @param lineNumbers
    */
   public JEditTextArea(TextAreaDefaults defaults, JComponent lineNumbers) {
     // Enable the necessary events
@@ -158,12 +157,6 @@ public class JEditTextArea extends JComponent {
     // We don't seem to get the initial focus event?
     focusedComponent = this;
   }
-
-  /** Returns if this component can be traversed by pressing the Tab key. This returns false. */
-  //        public final boolean isManagingFocus()
-  //       {
-  //          return true;
-  //       }
 
   /** Returns the object responsible for painting this text area. */
   public final TextAreaPainter getPainter() {

@@ -469,9 +469,9 @@ public class Coprocessor1 {
   }
 
   /**
-   * Get array of condition flags (0-7).
+   * Get condition flags (0-7).
    *
-   * @return array of int condition flags
+   * @return bitflag of int condition flags
    */
   public static int getConditionFlags() {
     return condition.getValue();

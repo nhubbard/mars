@@ -921,7 +921,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       setHorizontalAlignment(SwingConstants.CENTER);
       setVerticalAlignment(SwingConstants.CENTER);
 
-      /**********************************************
+      /* *********************************************
        * Use this if you want to add "instant" recognition of breakpoint changes
        * during simulation run.  Currently, the simulator gets array of breakpoints
        * only when "Go" is selected.  Thus the system does not respond to breakpoints
@@ -931,7 +931,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
        * a fresh breakpoint array.  That would make SimThread an observer.  Synchronization
        * will come into play in the SimThread class?  It could get complicated, which
        * is why I'm dropping it for release 3.8.  DPS 31-dec-2009
-       *
+       * <p>
        * addItemListener(
        * new ItemListener(){
        * public void itemStateChanged(ItemEvent e) {
@@ -940,7 +940,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
        * if (e.getStateChange()==ItemEvent.DESELECTED) what = "deselected";
        * System.out.println("Item "+what);
        * }});
-       *
+       * <p>
        * For a different approach, see RunClearBreakpointsAction.java.  This menu item registers
        * as a TableModelListener by calling the TextSegmentWindow's registerTableModelListener
        * method.  Then it is notified when the table model changes, and this occurs whenever

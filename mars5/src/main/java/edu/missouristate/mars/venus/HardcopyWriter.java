@@ -102,12 +102,12 @@ public class HardcopyWriter extends Writer {
       // *******************************************
     }
     if (job == null) throw new PrintCanceledException("User cancelled print request");
-    /*******************************************************
+    /* ******************************************************
      * SANDERSON OVERRIDE 8-17-2004:
      * I didn't like the results produced by the code below, so am commenting
      * it out and just setting pagedpi to 72.  This assures, among other things,
      * that the client asking for 10 point font will really get 10 point font!
-     *
+     * <p>
      *
      * pagesize = job.getPageDimension( ); // query the page size
      * pagedpi = job.getPageResolution( ); // query the page resolution

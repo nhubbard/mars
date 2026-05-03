@@ -78,7 +78,6 @@ public class ErrorMessage {
    * @param position Position within line being processed when error occurred. Normally is starting
    *     position of source token.
    * @param message String containing appropriate error message.
-   * @param macroExpansionHistory
    * @deprecated Newer constructors replace the String filename parameter with a MIPSprogram
    *     parameter to provide more information.
    */

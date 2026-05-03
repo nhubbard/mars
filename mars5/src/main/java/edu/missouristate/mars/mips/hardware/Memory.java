@@ -632,7 +632,7 @@ public class Memory extends Observable {
     }
   }
 
-  /********************************  THE GETTER METHODS  ******************************/
+  /* *******************************  THE GETTER METHODS  ******************************/
 
   //////////////////////////////////////////////////////////////////////////////////////////
   /**
@@ -985,7 +985,7 @@ public class Memory extends Observable {
     else return new ProgramStatement(get(address, WORD_LENGTH_BYTES), address);
   }
 
-  /*********************************  THE UTILITIES  *************************************/
+  /* ********************************  THE UTILITIES  *************************************/
 
   /**
    * Utility to determine if given address is word-aligned.
@@ -1175,7 +1175,6 @@ public class Memory extends Observable {
    * Overridden to be unavailable. The notice that an Observer receives does not come from the
    * memory object itself, but instead from a delegate.
    *
-   * @throws UnsupportedOperationException
    */
   public void notifyObservers() {
     throw new UnsupportedOperationException();
@@ -1185,7 +1184,6 @@ public class Memory extends Observable {
    * Overridden to be unavailable. The notice that an Observer receives does not come from the
    * memory object itself, but instead from a delegate.
    *
-   * @throws UnsupportedOperationException
    */
   public void notifyObservers(Object obj) {
     throw new UnsupportedOperationException();

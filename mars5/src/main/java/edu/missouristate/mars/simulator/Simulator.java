@@ -253,8 +253,6 @@ public class Simulator extends Observable {
     /**
      * This is comparable to the Runnable "run" method (it is called by SwingWorker's "run" method).
      * It simulates the program execution in the backgorund.
-     *
-     * @return boolean value true if execution done, false otherwise
      */
     public Object construct() {
       // The next two statements are necessary for GUI to be consistently updated
