@@ -219,7 +219,7 @@ public class Macro {
       // should filter out register names.  Originally filtered those from regular set but not
       // from Coprocessor0 or Coprocessor1 register sets.  Expanded the condition.
       // DPS  7-July-2014.
-      if (tokenValue.length() > 0
+      if (!tokenValue.isEmpty()
           && tokenValue.charAt(0) == '$'
           && RegisterFile.getUserRegister(tokenValue) == null
           && Coprocessor0.getRegister(tokenValue) == null

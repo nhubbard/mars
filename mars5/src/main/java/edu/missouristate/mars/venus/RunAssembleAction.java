@@ -90,7 +90,7 @@ public class RunAssembleAction extends GuiAction {
         String exceptionHandler = null;
         if (Globals.getSettings().getExceptionHandlerEnabled()
             && Globals.getSettings().getExceptionHandler() != null
-            && Globals.getSettings().getExceptionHandler().length() > 0) {
+            && !Globals.getSettings().getExceptionHandler().isEmpty()) {
           exceptionHandler = Globals.getSettings().getExceptionHandler();
         }
         MIPSprogramsToAssemble =

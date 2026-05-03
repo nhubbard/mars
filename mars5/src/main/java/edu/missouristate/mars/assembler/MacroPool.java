@@ -111,7 +111,7 @@ public class MacroPool {
    * @return {@link Macro} object matching the name and argument count of tokens passed
    */
   public Macro getMatchingMacro(TokenList tokens, int callerLine) {
-    if (tokens.size() < 1) return null;
+    if (tokens.isEmpty()) return null;
     Macro ret = null;
     Token firstToken = tokens.get(0);
     for (Macro macro : macroList) {

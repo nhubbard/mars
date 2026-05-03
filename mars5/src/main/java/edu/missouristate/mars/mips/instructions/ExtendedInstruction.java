@@ -625,7 +625,7 @@ public class ExtendedInstruction extends Instruction {
   // instructions.  They are separated by '\n' character.
 
   private ArrayList buildTranslationList(String translation) {
-    if (translation == null || translation.length() == 0) {
+    if (translation == null || translation.isEmpty()) {
       return null;
     }
     ArrayList translationList = new ArrayList();
@@ -645,7 +645,7 @@ public class ExtendedInstruction extends Instruction {
    * Returns 0 if the ArrayList is null or empty.
    */
   private int getInstructionLength(ArrayList translationList) {
-    if (translationList == null || translationList.size() == 0) {
+    if (translationList == null || translationList.isEmpty()) {
       return 0;
     }
     // If instruction template is DBNOP, that means generate a "nop" instruction but only

@@ -199,7 +199,7 @@ public class RunGoAction extends GuiAction {
   private void processProgramArgumentsIfAny() {
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
-        || programArguments.length() == 0
+        || programArguments.isEmpty()
         || !Globals.getSettings().getProgramArguments()) {
       return;
     }

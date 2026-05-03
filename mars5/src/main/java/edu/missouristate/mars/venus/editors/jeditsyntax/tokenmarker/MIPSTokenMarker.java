@@ -206,7 +206,7 @@ public class MIPSTokenMarker extends TokenMarker {
     ArrayList matches = null;
     if (token != null && token.id == Token.KEYWORD1) {
       ArrayList instrMatches = Globals.instructionSet.matchOperator(tokenText);
-      if (instrMatches.size() > 0) {
+      if (!instrMatches.isEmpty()) {
         int realMatches = 0;
         matches = new ArrayList();
         for (int i = 0; i < instrMatches.size(); i++) {

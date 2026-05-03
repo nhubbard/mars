@@ -2950,7 +2950,7 @@ public class InstructionSet {
       StringTokenizer tokenizer;
       while ((line = in.readLine()) != null) {
         // skip over: comment lines, empty lines, lines starting with blank.
-        if (!line.startsWith("#") && !line.startsWith(" ") && line.length() > 0) {
+        if (!line.startsWith("#") && !line.startsWith(" ") && !line.isEmpty()) {
           description = "";
           tokenizer = new StringTokenizer(line, "\t");
           pseudoOp = tokenizer.nextToken();

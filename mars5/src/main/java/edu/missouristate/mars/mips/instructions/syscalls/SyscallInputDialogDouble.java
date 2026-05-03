@@ -82,7 +82,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
       if (inputValue == null) // Cancel was chosen
       {
         RegisterFile.updateRegister(5, -2); // set $a1 to -2 flag
-      } else if (inputValue.length() == 0) // OK was chosen but there was no input
+      } else if (inputValue.isEmpty()) // OK was chosen but there was no input
       {
         RegisterFile.updateRegister(5, -3); // set $a1 to -3 flag
       } else {

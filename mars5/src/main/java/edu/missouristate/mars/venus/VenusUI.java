@@ -712,7 +712,7 @@ public class VenusUI extends JFrame {
     file.add(fileSave);
     file.add(fileSaveAs);
     file.add(fileSaveAll);
-    if (new DumpFormatLoader().loadDumpFormats().size() > 0) {
+    if (!new DumpFormatLoader().loadDumpFormats().isEmpty()) {
       file.add(fileDumpMemory);
     }
     file.addSeparator();
@@ -953,7 +953,7 @@ public class VenusUI extends JFrame {
     toolBar.add(Open);
     toolBar.add(Save);
     toolBar.add(SaveAs);
-    if (new DumpFormatLoader().loadDumpFormats().size() > 0) {
+    if (!new DumpFormatLoader().loadDumpFormats().isEmpty()) {
       toolBar.add(DumpMemory);
     }
     toolBar.add(Print);

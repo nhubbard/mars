@@ -185,7 +185,7 @@ public class FilenameFinder {
       ClassLoader classLoader, String directoryPath, ArrayList fileExtensions) {
     ArrayList filenameList = new ArrayList();
     String fileExtension;
-    if (fileExtensions == null || fileExtensions.size() == 0) {
+    if (fileExtensions == null || fileExtensions.isEmpty()) {
       filenameList = getFilenameList(classLoader, directoryPath, "");
     } else {
       for (int i = 0; i < fileExtensions.size(); i++) {
@@ -238,7 +238,7 @@ public class FilenameFinder {
   public static ArrayList getFilenameList(String directoryPath, ArrayList fileExtensions) {
     ArrayList filenameList = new ArrayList();
     String fileExtension;
-    if (fileExtensions == null || fileExtensions.size() == 0) {
+    if (fileExtensions == null || fileExtensions.isEmpty()) {
       filenameList = getFilenameList(directoryPath, "");
     } else {
       for (int i = 0; i < fileExtensions.size(); i++) {
@@ -286,7 +286,7 @@ public class FilenameFinder {
   public static ArrayList getFilenameList(ArrayList nameList, ArrayList fileExtensions) {
     ArrayList filenameList = new ArrayList();
     String fileExtension;
-    if (fileExtensions == null || fileExtensions.size() == 0) {
+    if (fileExtensions == null || fileExtensions.isEmpty()) {
       filenameList = getFilenameList(nameList, "");
     } else {
       for (int i = 0; i < fileExtensions.size(); i++) {
@@ -388,7 +388,7 @@ public class FilenameFinder {
   // For assured results, make sure extension starts with "."	(will add it if not there)
   public static boolean fileExtensionMatch(String name, String extension) {
     return (extension == null
-        || extension.length() == 0
+        || extension.isEmpty()
         || name.endsWith(((extension.startsWith(".")) ? "" : ".") + extension));
   }
 
@@ -460,16 +460,16 @@ public class FilenameFinder {
     // generated here will be "Assembler Programs (*.s; *.asm)"
     private String buildFullDescription(String description, ArrayList extensions) {
       StringBuilder result = new StringBuilder((description == null) ? "" : description);
-      if (extensions.size() > 0) {
+      if (!extensions.isEmpty()) {
         result.append("  (");
       }
       for (int i = 0; i < extensions.size(); i++) {
         String extension = (String) extensions.get(i);
-        if (extension != null && extension.length() > 0) {
+        if (extension != null && !extension.isEmpty()) {
           result.append((i == 0) ? "" : "; ").append("*").append((extension.charAt(0) == '.') ? "" : ".").append(extension);
         }
       }
-      if (extensions.size() > 0) {
+      if (!extensions.isEmpty()) {
         result.append(")");
       }
       return result.toString();

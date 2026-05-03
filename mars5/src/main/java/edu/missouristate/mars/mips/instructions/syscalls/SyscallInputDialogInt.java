@@ -80,7 +80,7 @@ public class SyscallInputDialogInt extends AbstractSyscall {
     {
       RegisterFile.updateRegister(4, 0); // set $a0 to zero
       RegisterFile.updateRegister(5, -2); // set $a1 to -2 flag
-    } else if (inputValue.length() == 0) // OK was chosen but there was no input
+    } else if (inputValue.isEmpty()) // OK was chosen but there was no input
     {
       RegisterFile.updateRegister(4, 0); // set $a0 to zero
       RegisterFile.updateRegister(5, -3); // set $a1 to -3 flag

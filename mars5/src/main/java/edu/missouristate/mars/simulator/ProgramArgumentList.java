@@ -121,7 +121,7 @@ public class ProgramArgumentList {
   // to the argument count (argc), and $a1 is set to the stack
   // address holding the first argument pointer (argv).
   public void storeProgramArguments() {
-    if (programArgumentList == null || programArgumentList.size() == 0) {
+    if (programArgumentList == null || programArgumentList.isEmpty()) {
       return;
     }
     // Runtime stack initialization from stack top-down (each is 4 bytes) :

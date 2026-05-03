@@ -303,7 +303,7 @@ public class DefaultInputHandler extends InputHandler {
       char ch = Character.toUpperCase(key.charAt(0));
       if (modifiers == 0) return KeyStroke.getKeyStroke(ch);
       else return KeyStroke.getKeyStroke(ch, modifiers);
-    } else if (key.length() == 0) {
+    } else if (key.isEmpty()) {
       System.err.println("Invalid key stroke: " + keyStroke);
       return null;
     } else {

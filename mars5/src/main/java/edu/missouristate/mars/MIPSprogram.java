@@ -254,7 +254,7 @@ public class MIPSprogram {
       throws ProcessingException {
     ArrayList MIPSprogramsToAssemble = new ArrayList();
     int leadFilePosition = 0;
-    if (exceptionHandler != null && exceptionHandler.length() > 0) {
+    if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
       filenames.add(0, exceptionHandler);
       leadFilePosition = 1;
     }
@@ -264,7 +264,7 @@ public class MIPSprogram {
       preparee.readSource(filename);
       preparee.tokenize();
       // I want "this" MIPSprogram to be the first in the list...except for exception handler
-      if (preparee == this && MIPSprogramsToAssemble.size() > 0) {
+      if (preparee == this && !MIPSprogramsToAssemble.isEmpty()) {
         MIPSprogramsToAssemble.add(leadFilePosition, preparee);
       } else {
         MIPSprogramsToAssemble.add(preparee);

@@ -106,7 +106,7 @@ public class MessagesPane extends JTabbedPane {
             } catch (BadLocationException ble) {
               text = "";
             }
-            if (text.length() > 0) {
+            if (!text.isEmpty()) {
               // If error or warning, parse out the line and column number.
               if (text.startsWith(ErrorList.ERROR_MESSAGE_PREFIX)
                   || text.startsWith(ErrorList.WARNING_MESSAGE_PREFIX)) {

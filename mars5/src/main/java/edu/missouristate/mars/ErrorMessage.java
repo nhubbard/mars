@@ -196,7 +196,7 @@ public class ErrorMessage {
     // for runtime error occurring in macro expansion (expansion->definition), need
     // to assign to the opposite variables.
     ArrayList<Integer> defineLine = parseMacroHistory(statement.getSource());
-    if (defineLine.size() == 0) {
+    if (defineLine.isEmpty()) {
       this.line = statement.getSourceLine();
       this.macroExpansionHistory = "";
     } else {
@@ -283,7 +283,7 @@ public class ErrorMessage {
   // Method added by Mohammad Sekavat Dec 2012
 
   public String getMacroExpansionHistory() {
-    if (macroExpansionHistory == null || macroExpansionHistory.length() == 0) return "";
+    if (macroExpansionHistory == null || macroExpansionHistory.isEmpty()) return "";
     return macroExpansionHistory + "->";
   }
 

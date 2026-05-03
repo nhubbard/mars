@@ -161,7 +161,7 @@ public class Assembler {
       ArrayList tokenizedProgramFiles, boolean extendedAssemblerEnabled, boolean warningsAreErrors)
       throws ProcessingException {
 
-    if (tokenizedProgramFiles == null || tokenizedProgramFiles.size() == 0) return null;
+    if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) return null;
     textAddress = new UserKernelAddressSpace(Memory.textBaseAddress, Memory.kernelTextBaseAddress);
     dataAddress = new UserKernelAddressSpace(Memory.dataBaseAddress, Memory.kernelDataBaseAddress);
     externAddress = Memory.externBaseAddress;
@@ -513,7 +513,7 @@ public class Assembler {
           // the modified source.
           // Put it into the line to be parsed, so it will be displayed properly in text segment
           // display. DPS 23 Jan 2013
-          if (tokenList2.getProcessedLine().length() > 0)
+          if (!tokenList2.getProcessedLine().isEmpty())
             substituted = tokenList2.getProcessedLine();
 
           // recursively parse lines of expanded macro
@@ -985,7 +985,7 @@ public class Assembler {
         || direct == Directives.BYTE
         || direct == Directives.FLOAT
         || direct == Directives.DOUBLE) {
-      if (tokens.size() > 0) {
+      if (!tokens.isEmpty()) {
         storeNumeric(tokens, direct, errors);
       }
     } else if (direct == Directives.ASCII || direct == Directives.ASCIIZ) {

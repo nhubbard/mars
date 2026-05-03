@@ -102,7 +102,7 @@ public class Tokenizer {
       // not the same object as the original line.  Thus I can use != instead of !equals()
       // This IF statement will replace original source with source modified by .eqv substitution.
       // Not needed by assembler, but looks better in the Text Segment Display.
-      if (sourceLine.length() > 0 && !sourceLine.equals(currentLineTokens.getProcessedLine())) {
+      if (!sourceLine.isEmpty() && !sourceLine.equals(currentLineTokens.getProcessedLine())) {
         source.set(
             i,
             new SourceLine(
@@ -282,7 +282,7 @@ public class Tokenizer {
       MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes) {
     TokenTypes tokenType;
     TokenList result = new TokenList();
-    if (theLine.length() == 0) return result;
+    if (theLine.isEmpty()) return result;
     // will be faster to work with char arrays instead of strings
     char c;
     char[] line = theLine.toCharArray();
@@ -585,7 +585,7 @@ public class Tokenizer {
       int tokenStartPos,
       TokenList tokenList) {
     String value = new String(token, 0, tokenPos);
-    if (value.length() > 0 && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
+    if (!value.isEmpty() && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
     TokenTypes type = TokenTypes.matchTokenType(value);
     if (type == TokenTypes.ERROR) {
       errors.add(

@@ -1243,7 +1243,7 @@ public class Memory extends Observable {
   // The "|| Globals.getGui()==null" is a hack added 19 July 2012 DPS.  IF MIPS simulation
   // is from command mode, Globals.program is null but still want ability to observe.
   private void notifyAnyObservers(int type, int address, int length, int value) {
-    if ((Globals.program != null || Globals.getGui() == null) && this.observables.size() > 0) {
+    if ((Globals.program != null || Globals.getGui() == null) && !this.observables.isEmpty()) {
       Iterator it = this.observables.iterator();
       MemoryObservable mo;
       while (it.hasNext()) {
