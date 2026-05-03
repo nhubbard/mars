@@ -205,7 +205,7 @@ public class MIPSprogram {
   public void readSource(String file) throws ProcessingException {
     this.filename = file;
     this.sourceList = new ArrayList();
-    ErrorList errors = null;
+    ErrorList errors;
     BufferedReader inputFile;
     String line;
     int lengthSoFar = 0;

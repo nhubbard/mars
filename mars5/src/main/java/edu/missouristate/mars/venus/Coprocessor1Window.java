@@ -557,7 +557,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
 
     // Implement table cell tool tips.
     public String getToolTipText(MouseEvent e) {
-      String tip = null;
+      String tip;
       java.awt.Point p = e.getPoint();
       int rowIndex = rowAtPoint(p);
       int colIndex = columnAtPoint(p);

@@ -974,7 +974,7 @@ public class JEditTextArea extends JComponent {
         Element lineElement = map.getElement(i);
         int lineStart = lineElement.getStartOffset();
         int lineEnd = lineElement.getEndOffset() - 1;
-        int lineLen = lineEnd - lineStart;
+        int lineLen;
 
         lineStart = Math.min(lineStart + start, lineEnd);
         lineLen = Math.min(end - start, lineEnd - lineStart);
@@ -1338,7 +1338,7 @@ public class JEditTextArea extends JComponent {
   protected boolean rectSelect;
   // "unredoing" is mode used by DocumentHandler's insertUpdate() and removeUpdate()
   // to pleasingly select the text and location of the undo.   DPS 3-May-2010
-  protected boolean unredoing = false;
+  protected boolean unredoing;
 
   protected void fireCaretEvent() {
     Object[] listeners = listenerList.getListenerList();
@@ -1773,7 +1773,7 @@ public class JEditTextArea extends JComponent {
    */
   // Is used for tool tip only (not popup menu)
   public String getSyntaxSensitiveToolTipText(int x, int y) {
-    String result = null;
+    String result;
     int line = this.yToLine(y);
     ArrayList matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
     if (matches == null) {

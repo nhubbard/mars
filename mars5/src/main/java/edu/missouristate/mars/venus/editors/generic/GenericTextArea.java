@@ -226,7 +226,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
    */
   public int doFindText(String find, boolean caseSensitive) {
     int findPosn = sourceCode.getCaretPosition();
-    int nextPosn = 0;
+    int nextPosn;
     nextPosn = nextIndex(sourceCode.getText(), find, findPosn, caseSensitive);
     if (nextPosn >= 0) {
       sourceCode.requestFocus(); // guarantees visibility of the blue highlight
@@ -286,7 +286,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
    *     least one additional match.
    */
   public int doReplace(String find, String replace, boolean caseSensitive) {
-    int nextPosn = 0;
+    int nextPosn;
     int posn;
     // Will perform a "find" and return, unless positioned at the end of
     // a selected "find" result.

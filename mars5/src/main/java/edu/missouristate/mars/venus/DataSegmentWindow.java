@@ -444,7 +444,6 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     // Check distance from stack pointer.  Can be on either side of it...
     thisDistance = Math.abs(address - RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
     if (thisDistance < shortDistance) {
-      shortDistance = thisDistance;
       desiredComboBoxIndex = STACK_POINTER_BASE_ADDRESS_INDEX;
     }
     return desiredComboBoxIndex;
@@ -1011,7 +1010,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
      * value is valid, MIPS memory is updated.
      */
     public void setValueAt(Object value, int row, int col) {
-      int val = 0;
+      int val;
       int address = 0;
       try {
         val = Binary.stringToInt((String) value);

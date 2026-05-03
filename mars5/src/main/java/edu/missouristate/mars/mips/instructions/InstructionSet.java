@@ -1421,7 +1421,7 @@ public class InstructionSet {
               public void simulate(ProgramStatement statement) throws ProcessingException {
                 int[] operands = statement.getOperands();
                 float value = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-                int floatSqrt = 0;
+                int floatSqrt;
                 if (value < 0.0f) {
                   // This is subject to refinement later.  Release 4.0 defines floor, ceil, trunc,
                   // round
@@ -1502,7 +1502,7 @@ public class InstructionSet {
                 // carry out the MIPS and IEEE 754 standard.
                 int[] operands = statement.getOperands();
                 float floatValue = Float.intBitsToFloat(Coprocessor1.getValue(operands[1]));
-                int below = 0, above = 0, round = Math.round(floatValue);
+                int below, above, round = Math.round(floatValue);
                 // According to MIPS32 spec, if any of these conditions is true, set
                 // Invalid Operation in the FCSR (Floating point Control/Status Register) and
                 // set result to be 2^31-1.  MARS does not implement this register (as of release
@@ -1686,7 +1686,7 @@ public class InstructionSet {
                         Binary.twoIntsToLong(
                             Coprocessor1.getValue(operands[1] + 1),
                             Coprocessor1.getValue(operands[1])));
-                long longSqrt = 0;
+                long longSqrt;
                 if (value < 0.0) {
                   // This is subject to refinement later.  Release 4.0 defines floor, ceil, trunc,
                   // round
@@ -1787,7 +1787,7 @@ public class InstructionSet {
                         Binary.twoIntsToLong(
                             Coprocessor1.getValue(operands[1] + 1),
                             Coprocessor1.getValue(operands[1])));
-                int below = 0, above = 0;
+                int below, above;
                 int round = (int) Math.round(doubleValue);
                 // See comments in round.w.s above concerning FSCR...
                 if (Double.isNaN(doubleValue)
@@ -2932,7 +2932,7 @@ public class InstructionSet {
    */
 
   private void addPseudoInstructions() {
-    InputStream is = null;
+    InputStream is;
     BufferedReader in = null;
     try {
       // leading "/" prevents package name being prepended to filepath.

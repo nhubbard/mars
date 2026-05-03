@@ -828,7 +828,7 @@ public class Settings extends Observable {
    * @return int blink rate in milliseconds
    */
   public int getCaretBlinkRate() {
-    int rate = 500;
+    int rate;
     try {
       rate = Integer.parseInt(stringSettingsValues[CARET_BLINK_RATE]);
     } catch (NumberFormatException nfe) {
@@ -843,7 +843,7 @@ public class Settings extends Observable {
    * @return tab size in characters.
    */
   public int getEditorTabSize() {
-    int size = 8;
+    int size;
     try {
       size = Integer.parseInt(stringSettingsValues[EDITOR_TAB_SIZE]);
     } catch (NumberFormatException nfe) {

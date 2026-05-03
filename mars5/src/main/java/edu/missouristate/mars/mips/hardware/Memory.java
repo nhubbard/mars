@@ -650,7 +650,7 @@ public class Memory extends Observable {
 
   // Does the real work, but includes option to NOT notify observers.
   private int get(int address, int length, boolean notify) throws AddressErrorException {
-    int value = 0;
+    int value;
     int relativeByteAddress;
     if (inDataSegment(address)) {
       // in data segment.  Will read one byte at a time, w/o regard to boundaries.
@@ -712,7 +712,7 @@ public class Memory extends Observable {
   // Doing so would be detrimental to simulation runtime performance, so
   // I decided to keep the duplicate logic.
   public int getRawWord(int address) throws AddressErrorException {
-    int value = 0;
+    int value;
     int relative;
     if (address % WORD_LENGTH_BYTES != 0) {
       throw new AddressErrorException(
@@ -783,7 +783,7 @@ public class Memory extends Observable {
   // See note above, with getRawWord(), concerning duplicated logic.
 
   public Integer getRawWordOrNull(int address) throws AddressErrorException {
-    Integer value = null;
+    Integer value;
     int relative;
     if (address % WORD_LENGTH_BYTES != 0) {
       throw new AddressErrorException(
@@ -1367,7 +1367,7 @@ public class Memory extends Observable {
   //
 
   private synchronized int fetchWordFromTable(int[][] blockTable, int relative) {
-    int value = 0;
+    int value;
     int block, offset;
     block = relative / BLOCK_LENGTH_WORDS;
     offset = relative % BLOCK_LENGTH_WORDS;
@@ -1393,7 +1393,7 @@ public class Memory extends Observable {
   //
 
   private synchronized Integer fetchWordOrNullFromTable(int[][] blockTable, int relative) {
-    int value = 0;
+    int value;
     int block, offset;
     block = relative / BLOCK_LENGTH_WORDS;
     offset = relative % BLOCK_LENGTH_WORDS;

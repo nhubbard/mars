@@ -59,7 +59,7 @@ public class RunStepAction extends GuiAction {
       mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       try {
-        done = Globals.program.simulateStepAtPC(this);
+        Globals.program.simulateStepAtPC(this);
       } catch (ProcessingException ev) {
       }
     } else {

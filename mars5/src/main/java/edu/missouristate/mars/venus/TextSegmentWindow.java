@@ -127,7 +127,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       }
     }
     int sourceLineDigits = ("" + maxSourceLineNumber).length();
-    int leadingSpaces = 0;
+    int leadingSpaces;
     int lastLine = -1;
     for (int i = 0; i < sourceStatementList.size(); i++) {
       ProgramStatement statement = (ProgramStatement) sourceStatementList.get(i);
@@ -339,10 +339,10 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         int address = access.getAddress();
         int value = access.getValue();
         String strValue = Binary.intToHexString(access.getValue());
-        String strBasic = modifiedCodeMarker;
+        String strBasic;
         String strSource = modifiedCodeMarker;
         // Translate the address into table model row and modify the values in that row accordingly.
-        int row = 0;
+        int row;
         try {
           row = findRowForAddress(address);
         } catch (IllegalArgumentException e) {
@@ -540,7 +540,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   public void highlightStepAtAddress(int address, boolean inDelaySlot) {
     highlightAddress = address;
     // Scroll if necessary to assure highlighted row is visible.
-    int row = 0;
+    int row;
     try {
       row = findRowForAddress(address);
     } catch (IllegalArgumentException e) {
@@ -594,7 +594,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    * @param address text segment address of source code step.
    */
   void selectStepAtAddress(int address) {
-    int addressRow = 0;
+    int addressRow;
     try {
       addressRow = findRowForAddress(address);
     } catch (IllegalArgumentException e) {
@@ -689,7 +689,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    *  corresponding to this address.
    */
   private int findRowForAddress(int address) throws IllegalArgumentException {
-    int addressRow = 0;
+    int addressRow;
     try {
       addressRow = ((Integer) addressRows.get(address)).intValue();
     } catch (NullPointerException e) {
@@ -761,7 +761,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         return;
       }
       // Handle changes in the Code column.
-      int val = 0;
+      int val;
       int address = 0;
       if (value.equals(data[row][col])) return;
       try {

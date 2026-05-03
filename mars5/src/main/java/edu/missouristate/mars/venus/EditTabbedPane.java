@@ -320,7 +320,7 @@ public class EditTabbedPane extends JTabbedPane {
   private File saveAsFile(EditPane editPane) {
     File theFile = null;
     if (editPane != null) {
-      JFileChooser saveDialog = null;
+      JFileChooser saveDialog;
       boolean operationOK = false;
       while (!operationOK) {
         // Set Save As dialog directory in a logical way.  If file in

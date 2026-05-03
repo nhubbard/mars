@@ -540,7 +540,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
 
   // create and return a new cache object based on current specs
   private AbstractCache createNewCache() {
-    AbstractCache theNewCache = null;
+    AbstractCache theNewCache;
     int setSize = 1;
     try {
       setSize = Integer.parseInt((String) cacheSetSizeSelector.getSelectedItem());
@@ -794,7 +794,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
                 + lastBlock
                 + "\n");
       CacheBlock block;
-      int blockNumber = 0;
+      int blockNumber;
       // Will do a sequential instead of associative search!
       for (blockNumber = firstBlock; blockNumber <= lastBlock; blockNumber++) {
         block = blocks[blockNumber];

@@ -45,7 +45,7 @@ public class SyscallPrintString extends AbstractSyscall {
   /** Performs syscall function to print string stored starting at address in $a0. */
   public void simulate(ProgramStatement statement) throws ProcessingException {
     int byteAddress = RegisterFile.getValue(4);
-    char ch = 0;
+    char ch;
     try {
       ch = (char) Globals.memory.getByte(byteAddress);
       // won't stop until NULL byte reached!

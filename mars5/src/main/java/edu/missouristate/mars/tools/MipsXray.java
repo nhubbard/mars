@@ -235,7 +235,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     ProgramStatement stmt;
 
     try {
-      BasicInstruction instr = null;
+      BasicInstruction instr;
       stmt = Memory.getInstance().getStatement(currentAdress);
       if (stmt == null) {
         return;

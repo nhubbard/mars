@@ -97,7 +97,7 @@ public class RunSpeedPanel extends JPanel {
     UNLIMITED_SPEED // 38-40
   };
   private JLabel sliderLabel = null;
-  private JSlider runSpeedSlider = null;
+  private JSlider runSpeedSlider;
   private static RunSpeedPanel runSpeedPanel = null;
   private volatile int runSpeedIndex = SPEED_INDEX_MAX;
 

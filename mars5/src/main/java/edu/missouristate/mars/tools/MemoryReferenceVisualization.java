@@ -656,7 +656,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   private class ColorChooserControls {
     private JLabel sliderLabel = null;
-    private JSlider colorRangeSlider = null;
+    private JSlider colorRangeSlider;
     private JButton currentColorButton;
     private JPanel colorChooserRow;
     private JPanel countDisplayRow;

@@ -127,7 +127,7 @@ public class MIPSTokenMarker extends TokenMarker {
               // MIPS identifier (otherwise would catch, say, 0 (zero) in .word 0:10)
               backslash = false;
               // String lab = new String(array, lastOffset, i1-lastOffset-1).trim();
-              boolean validIdentifier = false;
+              boolean validIdentifier;
               try {
                 validIdentifier =
                     TokenTypes.isValidIdentifier(
@@ -395,7 +395,7 @@ public class MIPSTokenMarker extends TokenMarker {
   // of PopupHelpItem objects. If no matches, returns null.
   private ArrayList getTextFromInstructionMatch(String tokenText, boolean exact) {
     String text = null;
-    ArrayList matches = null;
+    ArrayList matches;
     ArrayList results = new ArrayList();
     if (exact) {
       matches = Globals.instructionSet.matchOperator(tokenText);

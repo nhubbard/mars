@@ -273,7 +273,7 @@ public class Simulator extends Observable {
       Simulator.getInstance().notifyObserversOfExecutionStart(maxSteps, pc);
 
       RegisterFile.initializeProgramCounter(pc);
-      ProgramStatement statement = null;
+      ProgramStatement statement;
       try {
         statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
       } catch (AddressErrorException e) {

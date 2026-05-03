@@ -362,7 +362,7 @@ public class Binary {
    */
   public static int stringToInt(String s) throws NumberFormatException {
     String work = s;
-    int result = 0;
+    int result;
     // First, use Integer.decode().  This will validate most, but it flags
     // valid hex two's complement values as exceptions.  We'll catch those and
     // do our own validation.
@@ -425,7 +425,7 @@ public class Binary {
    */
   public static long stringToLong(String s) throws NumberFormatException {
     String work = s;
-    long result = 0;
+    long result;
     // First, use Long.decode().  This will validate most, but it flags
     // valid hex two's complement values as exceptions.  We'll catch those and
     // do our own validation.

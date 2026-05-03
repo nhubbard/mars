@@ -498,9 +498,9 @@ public class SettingsHighlightingAction extends GuiAction {
     public void itemStateChanged(ItemEvent e) {
       // If selected: disable buttons, set their bg values from default setting, set sample bg & fg
       // If deselected: enable buttons, set their bg values from current setting, set sample bg & bg
-      Color newBackground = null;
-      Color newForeground = null;
-      Font newFont = null;
+      Color newBackground;
+      Color newForeground;
+      Font newFont;
       if (e.getStateChange() == ItemEvent.SELECTED) {
         backgroundButtons[position].setEnabled(false);
         foregroundButtons[position].setEnabled(false);

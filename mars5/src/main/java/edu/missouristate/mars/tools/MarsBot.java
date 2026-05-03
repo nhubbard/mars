@@ -251,11 +251,9 @@ public class MarsBot implements Observer, MarsTool {
       if (address < 0 && notice.getAccessType() == AccessNotice.WRITE) {
         String message = "";
         if (address == ADDR_HEADING) {
-          message = "MarsBot.update: got move heading value: ";
           MarsBotHeading = notice.getValue();
           // System.out.println(message + notice.getValue() );
         } else if (address == ADDR_LEAVETRACK) {
-          message = "MarsBot.update: got leave track directive value ";
 
           // If we HAD NOT been leaving a track, but we should NOW leave
           // a track, put start point into array.
@@ -287,7 +285,6 @@ public class MarsBot implements Observer, MarsTool {
 
           // System.out.println(message + notice.getValue() );
         } else if (address == ADDR_MOVE) {
-          message = "MarsBot.update: got move control value: ";
           if (notice.getValue() == 0) MarsBotMoving = false;
           else MarsBotMoving = true;
           // System.out.println(message + notice.getValue() );

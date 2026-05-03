@@ -410,7 +410,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     int cols = (int) size.getWidth();
     int rows = (int) size.getHeight();
     int caretPosition = display.getCaretPosition();
-    String stringCaretPosition = "";
+    String stringCaretPosition;
     // display position as stream or 2D depending on random access
     if (displayRandomAccessMode) {
       //             if ( caretPosition == rows*(columns+1)+1) {

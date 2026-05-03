@@ -52,7 +52,7 @@ public class SyscallWrite extends AbstractSyscall {
    */
   public void simulate(ProgramStatement statement) throws ProcessingException {
     int byteAddress = RegisterFile.getValue(5); // source of characters to write to file
-    byte b = 0;
+    byte b;
     int reqLength = RegisterFile.getValue(6); // user-requested length
     int index = 0;
     byte myBuffer[] =

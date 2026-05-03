@@ -330,7 +330,7 @@ public class RegistersWindow extends JPanel implements Observer {
      * value is valid, MIPS register is updated.
      */
     public void setValueAt(Object value, int row, int col) {
-      int val = 0;
+      int val;
       try {
         val = Binary.stringToInt((String) value);
       } catch (NumberFormatException nfe) {
@@ -424,7 +424,7 @@ public class RegistersWindow extends JPanel implements Observer {
 
     // Implement table cell tool tips.
     public String getToolTipText(MouseEvent e) {
-      String tip = null;
+      String tip;
       java.awt.Point p = e.getPoint();
       int rowIndex = rowAtPoint(p);
       int colIndex = columnAtPoint(p);

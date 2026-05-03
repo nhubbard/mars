@@ -103,7 +103,7 @@ public class PopupHelpItem {
 
   // for performance purposes, length limited to example length + 40
   public String getExamplePaddedToLength(int length) {
-    String result = null;
+    String result;
     if (length > this.exampleLength) {
       int numSpaces = length - this.exampleLength;
       if (numSpaces > spaces.length()) {

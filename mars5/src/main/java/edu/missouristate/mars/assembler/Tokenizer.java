@@ -190,7 +190,7 @@ public class Tokenizer {
    *     one or more lexical (i.e. token) errors.
    */
   public TokenList tokenizeExampleInstruction(String example) throws ProcessingException {
-    TokenList result = new TokenList();
+    TokenList result;
     result = tokenizeLine(sourceMIPSprogram, 0, example, false);
     if (errors.errorsOccurred()) {
       throw new ProcessingException(errors);
@@ -310,7 +310,6 @@ public class Tokenizer {
             if (tokenPos > 0) {
               this.processCandidateToken(
                   token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
-              tokenPos = 0;
             }
             tokenStartPos = linePos + 1;
             tokenPos = line.length - linePos;
@@ -453,7 +452,6 @@ public class Tokenizer {
     } // while
     if (tokenPos > 0) {
       this.processCandidateToken(token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
-      tokenPos = 0;
     }
     if (doEqvSubstitutes) {
       result = processEqv(program, lineNum, theLine, result); // DPS 11-July-2012

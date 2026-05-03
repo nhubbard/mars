@@ -31,7 +31,7 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
   public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
       throws AddressErrorException, IOException {
     PrintStream out = new PrintStream(new FileOutputStream(file));
-    String string = null;
+    String string;
     try {
       for (int address = firstAddress;
           address <= lastAddress;

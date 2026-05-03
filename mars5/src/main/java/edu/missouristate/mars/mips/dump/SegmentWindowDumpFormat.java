@@ -122,7 +122,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
     //           12345678901234567890123456789012345678901234567890
     //                    1         2         3         4         5
     out.println();
-    String string = null;
+    String string;
     try {
       for (int address = firstAddress;
           address <= lastAddress;

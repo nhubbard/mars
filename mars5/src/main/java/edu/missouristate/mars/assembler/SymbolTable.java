@@ -162,7 +162,7 @@ public class SymbolTable {
    * @return Symbol object having requested address, null if address not found in symbol table.
    */
   public Symbol getSymbolGivenAddress(String s) {
-    int address = 0;
+    int address;
     try {
       address = Binary.stringToInt(s); // DPS 2-Aug-2010: was Integer.parseInt(s) but croaked on hex
     } catch (NumberFormatException e) {

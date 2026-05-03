@@ -212,7 +212,7 @@ public class SystemIO {
    */
   public static int readChar(int serviceNumber) {
     String input = "0";
-    int returnValue = 0;
+    int returnValue;
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
@@ -305,7 +305,7 @@ public class SystemIO {
    * @return number of bytes read, 0 on EOF, or -1 on error
    */
   public static int readFromFile(int fd, byte[] myBuffer, int lengthRequested) {
-    int retValue = -1;
+    int retValue;
     /////////////// DPS 8-Jan-2013  //////////////////////////////////////////////////
     /// Read from STDIN file descriptor while using IDE - get input from Messages pane.
     if (fd == STDIN && Globals.getGui() != null) {
@@ -359,7 +359,7 @@ public class SystemIO {
     // of the filename, flag, and the File???putStream associated with
     // that file descriptor.
 
-    int retValue = -1;
+    int retValue;
     char ch[] = {' '}; // Need an array to convert to String
     FileInputStream inputStream;
     FileOutputStream outputStream;

@@ -126,8 +126,8 @@ public class MessagesPane extends JTabbedPane {
                   if (stringTokens[i].equals(columnToken) && i < stringTokens.length - 1)
                     columnString = stringTokens[i + 1];
                 }
-                int line = 0;
-                int column = 0;
+                int line;
+                int column;
                 try {
                   line = Integer.parseInt(lineString);
                 } catch (NumberFormatException nfe) {
@@ -211,9 +211,9 @@ public class MessagesPane extends JTabbedPane {
             + column;
     int textPosition = assemble.getText().lastIndexOf(errorReportSubstring);
     if (textPosition >= 0) {
-      int textLine = 0;
-      int lineStart = 0;
-      int lineEnd = 0;
+      int textLine;
+      int lineStart;
+      int lineEnd;
       try {
         textLine = assemble.getLineOfOffset(textPosition);
         lineStart = assemble.getLineStartOffset(textLine);

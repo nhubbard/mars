@@ -49,7 +49,7 @@ public class SyscallReadDouble extends AbstractSyscall {
   /** Performs syscall function to read the bits of input double into $f0 and $f1. */
   public void simulate(ProgramStatement statement) throws ProcessingException {
     //  Higher numbered reg contains high order word so order is $f1 - $f0.
-    double doubleValue = 0;
+    double doubleValue;
     try {
       doubleValue = SystemIO.readDouble(this.getNumber());
     } catch (NumberFormatException e) {

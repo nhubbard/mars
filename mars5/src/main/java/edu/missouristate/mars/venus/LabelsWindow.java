@@ -118,7 +118,7 @@ public class LabelsWindow extends JInternalFrame {
   };
 
   // Current sort state (0-7, see table above).  Will be set from saved Settings in construtor.
-  private int sortState = 0;
+  private int sortState;
 
   /** Constructor for the Labels (symbol table) window. */
   public LabelsWindow() {

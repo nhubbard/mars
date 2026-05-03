@@ -45,7 +45,7 @@ public class SyscallSbrk extends AbstractSyscall {
    * into $v0.
    */
   public void simulate(ProgramStatement statement) throws ProcessingException {
-    int address = 0;
+    int address;
     try {
       address = Globals.memory.allocateBytesFromHeap(RegisterFile.getValue(4));
     } catch (IllegalArgumentException iae) {
