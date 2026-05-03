@@ -224,9 +224,7 @@ public class SymbolTable {
    */
   public ArrayList getAllSymbols() {
     ArrayList list = new ArrayList();
-    for (int i = 0; i < table.size(); i++) {
-      list.add(table.get(i));
-    }
+    list.addAll(table);
     return list;
   }
 
