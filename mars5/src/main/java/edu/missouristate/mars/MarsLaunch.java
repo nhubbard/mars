@@ -5,7 +5,6 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.*;
-
 import java.io.*;
 import java.util.*;
 import javax.swing.*;
@@ -131,7 +130,7 @@ public class MarsLaunch {
 
   public MarsLaunch(String[] args) {
     boolean gui = (args.length == 0);
-    Globals.initialize(gui);
+    Globals.initialize();
     if (gui) {
       launchIDE();
     } else { // running from command line.
@@ -193,7 +192,10 @@ public class MarsLaunch {
         }
       }
       if (segInfo == null) {
-        out.println("Error while attempting to save dump, segment/address-range " + triple[0] + " is invalid!");
+        out.println(
+            "Error while attempting to save dump, segment/address-range "
+                + triple[0]
+                + " is invalid!");
         continue;
       }
       DumpFormat format = DumpFormatLoader.findByCommandDescriptor(triple[1]);
@@ -202,7 +204,8 @@ public class MarsLaunch {
         continue;
       }
       try {
-        int highAddress = Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1]) - Memory.WORD_LENGTH_BYTES;
+        int highAddress =
+            Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1]) - Memory.WORD_LENGTH_BYTES;
         if (highAddress < segInfo[0]) {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
@@ -211,7 +214,12 @@ public class MarsLaunch {
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {
-        out.println("Error while attempting to save dump, file " + file + "!  Could not access address: " + e.getAddress() + "!");
+        out.println(
+            "Error while attempting to save dump, file "
+                + file
+                + "!  Could not access address: "
+                + e.getAddress()
+                + "!");
       } catch (IOException e) {
         out.println("Error while attempting to save dump, file " + file + "!  Disk IO failed!");
       }
@@ -226,11 +234,12 @@ public class MarsLaunch {
     // System.setProperty("apple.laf.useScreenMenuBar", "true"); // Puts MARS menu on Mac OS menu
     // bar
     new MarsSplashScreen(splashDuration).showSplash();
-    SwingUtilities.invokeLater(() -> {
-      // Turn off metal's use of bold fonts
-      // UIManager.put("swing.boldMetal", Boolean.FALSE);
-      new VenusUI("MARS " + Globals.version);
-    });
+    SwingUtilities.invokeLater(
+        () -> {
+          // Turn off metal's use of bold fonts
+          // UIManager.put("swing.boldMetal", Boolean.FALSE);
+          new VenusUI("MARS " + Globals.version);
+        });
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -619,7 +628,10 @@ public class MarsLaunch {
         } else { // displayFormat == ASCII
           out.print(Binary.intToAscii(ivalue));
           if (hasDouble) {
-            out.println("\t" + Binary.intToAscii(Binary.highOrderLongToInt(lvalue)) + Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
+            out.println(
+                "\t"
+                    + Binary.intToAscii(Binary.highOrderLongToInt(lvalue))
+                    + Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
           } else {
             out.println();
           }
@@ -631,11 +643,12 @@ public class MarsLaunch {
   //////////////////////////////////////////////////////////////////////
   // Formats int value for display: decimal, hex, ascii
   private String formatIntForDisplay(int value) {
-    String strValue = switch (displayFormat) {
-      case DECIMAL -> "" + value;
-      case ASCII -> Binary.intToAscii(value);
-      default -> Binary.intToHexString(value);
-    };
+    String strValue =
+        switch (displayFormat) {
+          case DECIMAL -> "" + value;
+          case ASCII -> Binary.intToAscii(value);
+          default -> Binary.intToHexString(value);
+        };
     return strValue;
   }
 

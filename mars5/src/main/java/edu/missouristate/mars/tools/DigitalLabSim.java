@@ -122,7 +122,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   }
 
   protected JComponent getHelpComponent() {
-    final String helpContent = """
+    final String helpContent =
+        """
          This tool is composed of 3 parts : two seven-segment displays, an hexadecimal keyboard and counter\s
         Seven segment display
          Byte value at address 0xFFFF0010 : command right seven segment display\s
@@ -146,18 +147,19 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
          If counter interruption is enable, every 30 instructions, an exception is started with cause register bit number 10.
            (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)""";
     JButton help = new JButton("Help");
-    help.addActionListener(e -> {
-      JTextArea ja = new JTextArea(helpContent);
-      ja.setRows(20);
-      ja.setColumns(60);
-      ja.setLineWrap(true);
-      ja.setWrapStyleWord(true);
-      JOptionPane.showMessageDialog(
-          theWindow,
-          new JScrollPane(ja),
-          "Simulating the Hexa Keyboard and Seven segment display",
-          JOptionPane.INFORMATION_MESSAGE);
-    });
+    help.addActionListener(
+        e -> {
+          JTextArea ja = new JTextArea(helpContent);
+          ja.setRows(20);
+          ja.setColumns(60);
+          ja.setLineWrap(true);
+          ja.setWrapStyleWord(true);
+          JOptionPane.showMessageDialog(
+              theWindow,
+              new JScrollPane(ja),
+              "Simulating the Hexa Keyboard and Seven segment display",
+              JOptionPane.INFORMATION_MESSAGE);
+        });
     return help;
   } /* ....................Seven Segment display start here................................... */
 

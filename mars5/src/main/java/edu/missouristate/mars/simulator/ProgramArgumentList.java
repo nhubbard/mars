@@ -3,7 +3,6 @@ package edu.missouristate.mars.simulator;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 // FIXME(phase-2): gui-coupling — venus.*/java.awt/javax.swing used to push argv into GUI text field
-
 import java.util.*;
 
 /*

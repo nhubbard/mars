@@ -140,16 +140,17 @@ public class JEditTextArea extends JComponent {
     // but that seems heavy-handed.
     // DPS 12May2010
     KeyboardFocusManager.getCurrentKeyboardFocusManager()
-        .addKeyEventDispatcher(e -> {
-          if (JEditTextArea.this.isFocusOwner()
-              && e.getKeyCode() == KeyEvent.VK_TAB
-              && e.getModifiers() == 0) {
-            processKeyEvent(e);
-            return true;
-          } else {
-            return false;
-          }
-        });
+        .addKeyEventDispatcher(
+            e -> {
+              if (JEditTextArea.this.isFocusOwner()
+                  && e.getKeyCode() == KeyEvent.VK_TAB
+                  && e.getModifiers() == 0) {
+                processKeyEvent(e);
+                return true;
+              } else {
+                return false;
+              }
+            });
 
     // We don't seem to get the initial focus event?
     focusedComponent = this;
@@ -1496,10 +1497,11 @@ public class JEditTextArea extends JComponent {
       // If this is not done, mousePressed events accumulate
       // and the result is that scrolling doesn't stop after
       // the mouse is released
-      SwingUtilities.invokeLater(() -> {
-        if (evt.getAdjustable() == vertical) setFirstLine(vertical.getValue());
-        else setHorizontalOffset(-horizontal.getValue());
-      });
+      SwingUtilities.invokeLater(
+          () -> {
+            if (evt.getAdjustable() == vertical) setFirstLine(vertical.getValue());
+            else setHorizontalOffset(-horizontal.getValue());
+          });
     }
   }
 
@@ -1762,7 +1764,8 @@ public class JEditTextArea extends JComponent {
   public String getSyntaxSensitiveToolTipText(int x, int y) {
     StringBuilder result;
     int line = this.yToLine(y);
-    ArrayList<PopupHelpItem> matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
+    ArrayList<PopupHelpItem> matches =
+        getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
     if (matches == null) {
       return null;
     }
@@ -1770,7 +1773,12 @@ public class JEditTextArea extends JComponent {
     result = new StringBuilder("<html>");
     for (int i = 0; i < matches.size(); i++) {
       PopupHelpItem match = matches.get(i);
-      result.append((i == 0) ? "" : "<br>").append("<tt>").append(match.getExamplePaddedToLength(length).replace(" ", "&nbsp;")).append("</tt>").append(match.getDescription());
+      result
+          .append((i == 0) ? "" : "<br>")
+          .append("<tt>")
+          .append(match.getExamplePaddedToLength(length).replace(" ", "&nbsp;"))
+          .append("</tt>")
+          .append(match.getDescription());
     }
     return result + "</html>";
   }
@@ -1821,7 +1829,8 @@ public class JEditTextArea extends JComponent {
   // if exact is false.  The former is helpful for mouse-movement-based tool
   // tips (this is what you have).  The latter is helpful for caret-based tool
   // tips (this is what you can do).
-  private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
+  private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(
+      int line, int offset, boolean exact) {
     ArrayList<PopupHelpItem> matches = null;
     TokenMarker tokenMarker = this.getTokenMarker();
     if (tokenMarker != null) {
@@ -1885,7 +1894,13 @@ public class JEditTextArea extends JComponent {
       popupMenu = new JPopupMenu();
       int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
       for (PopupHelpItem item : helpItems) {
-        JMenuItem menuItem = new JMenuItem("<html><tt>" + item.getExamplePaddedToLength(length).replace(" ", "&nbsp;") + "</tt>" + item.getDescription() + "</html>");
+        JMenuItem menuItem =
+            new JMenuItem(
+                "<html><tt>"
+                    + item.getExamplePaddedToLength(length).replace(" ", "&nbsp;")
+                    + "</tt>"
+                    + item.getDescription()
+                    + "</html>");
         if (item.getExact()) {
           // The instruction name is completed so the role of the popup changes
           // to that of floating help to assist in operand specification.
@@ -1907,7 +1922,8 @@ public class JEditTextArea extends JComponent {
         } else {
           // Typing of instruction/directive name is still in progress; the action listener
           // will complete it when its menu item is selected.
-          menuItem.addActionListener(new PopupHelpActionListener(item.getTokenText(), item.getExample()));
+          menuItem.addActionListener(
+              new PopupHelpActionListener(item.getTokenText(), item.getExample()));
         }
         popupMenu.add(menuItem);
       }
@@ -2012,7 +2028,8 @@ public class JEditTextArea extends JComponent {
         final MenuElement[] newPath = new MenuElement[2];
         newPath[0] = path[0];
         newPath[1] = (MenuElement) popupMenu.getComponentAtIndex(index);
-        SwingUtilities.invokeLater(() -> MenuSelectionManager.defaultManager().setSelectedPath(newPath));
+        SwingUtilities.invokeLater(
+            () -> MenuSelectionManager.defaultManager().setSelectedPath(newPath));
         return true;
       } else {
         return false;

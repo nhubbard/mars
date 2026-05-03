@@ -175,10 +175,7 @@ public class Macro {
     return s;
   }
 
-  /**
-   * returns true if <code>value</code> is name of a label defined in this macro's body.
-   *
-   */
+  /** returns true if <code>value</code> is name of a label defined in this macro's body. */
   private boolean tokenIsMacroLabel(String value) {
     return (Collections.binarySearch(labels, value) >= 0);
   }
@@ -186,7 +183,6 @@ public class Macro {
   /**
    * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with
    * <code>substitute</code>.
-   *
    */
   // Initially the position of the substitute was based on token position but that proved
   // problematic

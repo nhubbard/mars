@@ -320,7 +320,12 @@ public class Coprocessor1 {
     int old = 0;
     for (Register register : registers) {
       if (register.getNumber() == num) {
-        old = (Globals.getSettings().getBackSteppingEnabled()) ? Globals.program.getBackStepper().addCoprocessor1Restore(num, register.setValue(val)) : register.setValue(val);
+        old =
+            (Globals.getSettings().getBackSteppingEnabled())
+                ? Globals.program
+                    .getBackStepper()
+                    .addCoprocessor1Restore(num, register.setValue(val))
+                : register.setValue(val);
         break;
       }
     }

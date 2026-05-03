@@ -227,7 +227,9 @@ public class Settings extends Observable {
    * the properties file work. If you wish to change, do so before instantiating the Settings
    * object. Must match key by list position.
    */
-  private static final String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
+  private static final String[] defaultStringSettingsValues = {
+    "", "0 1 2 3 4", "0", "", "500", "8", "2"
+  };
 
   // FONT SETTINGS.  Each array position has associated name.
   /** Font for the text editor */
@@ -390,18 +392,6 @@ public class Settings extends Observable {
    * stored in this class.
    */
   public Settings() {
-    this(true);
-  }
-
-  /**
-   * Create Settings object and set to saved values. If saved values not found, will set based on
-   * defaults stored in Settings.properties file. If file problems, will set based on defaults
-   * stored in this class.
-   *
-   * @param gui true if running the graphical IDE, false if running from command line. Ignored as of
-   *     release 3.6 but retained for compatability.
-   */
-  public Settings(boolean gui) {
     booleanSettingsValues = new boolean[booleanSettingsKeys.length];
     stringSettingsValues = new String[stringSettingsKeys.length];
     fontFamilySettingsValues = new String[fontFamilySettingsKeys.length];
@@ -435,13 +425,8 @@ public class Settings extends Observable {
         && Globals.program.getBackStepper().enabled());
   }
 
-  /**
-   * Reset settings to default values, as described in the constructor comments.
-   *
-   * @param gui true if running from GUI IDE and false if running from command mode. Ignored as of
-   *     release 3.6 but retained for compatibility.
-   */
-  public void reset(boolean gui) {
+  /** Reset settings to default values, as described in the constructor comments. */
+  public void reset() {
     initialize();
   }
 
@@ -1296,7 +1281,7 @@ public class Settings extends Observable {
 
   private void initialize() {
     applyDefaultSettings();
-    if (!readSettingsFromPropertiesFile(settingsFile)) {
+    if (!readSettingsFromPropertiesFile()) {
       System.out.println(
           "MARS System error: unable to read Settings.properties defaults. Using built-in defaults.");
     }
@@ -1305,12 +1290,30 @@ public class Settings extends Observable {
 
   // Default values.  Will be replaced if available from property file or Preferences object.
   private void applyDefaultSettings() {
-    System.arraycopy(defaultBooleanSettingsValues, 0, booleanSettingsValues, 0, booleanSettingsValues.length);
-    System.arraycopy(defaultStringSettingsValues, 0, stringSettingsValues, 0, stringSettingsValues.length);
-    System.arraycopy(defaultFontFamilySettingsValues, 0, fontFamilySettingsValues, 0, fontFamilySettingsValues.length);
-    System.arraycopy(defaultFontStyleSettingsValues, 0, fontStyleSettingsValues, 0, fontStyleSettingsValues.length);
-    System.arraycopy(defaultFontSizeSettingsValues, 0, fontStyleSettingsValues, 0, fontStyleSettingsValues.length);
-    System.arraycopy(defaultColorSettingsValues, 0, colorSettingsValues, 0, colorSettingsValues.length);
+    System.arraycopy(
+        defaultBooleanSettingsValues, 0, booleanSettingsValues, 0, booleanSettingsValues.length);
+    System.arraycopy(
+        defaultStringSettingsValues, 0, stringSettingsValues, 0, stringSettingsValues.length);
+    System.arraycopy(
+        defaultFontFamilySettingsValues,
+        0,
+        fontFamilySettingsValues,
+        0,
+        fontFamilySettingsValues.length);
+    System.arraycopy(
+        defaultFontStyleSettingsValues,
+        0,
+        fontStyleSettingsValues,
+        0,
+        fontStyleSettingsValues.length);
+    System.arraycopy(
+        defaultFontSizeSettingsValues,
+        0,
+        fontStyleSettingsValues,
+        0,
+        fontStyleSettingsValues.length);
+    System.arraycopy(
+        defaultColorSettingsValues, 0, colorSettingsValues, 0, colorSettingsValues.length);
     initializeEditorSyntaxStyles();
   }
 
@@ -1341,7 +1344,6 @@ public class Settings extends Observable {
   // either
   // the current or the default settings array).
   private Color getColorValueByKey(String key, String[] values) {
-    Color color = null;
     for (int i = 0; i < colorSettingsKeys.length; i++) {
       if (key.equals(colorSettingsKeys[i])) {
         return getColorValueByPosition(i, values);
@@ -1358,25 +1360,10 @@ public class Settings extends Observable {
     if (position >= 0 && position < colorSettingsKeys.length) {
       try {
         color = Color.decode(values[position]);
-      } catch (NumberFormatException nfe) {
-        color = null;
+      } catch (NumberFormatException ignored) {
       }
     }
     return color;
-  }
-
-  // Maybe someday I'll convert the whole shebang to use Maps.  In the meantime, we use
-  // linear search of array.  Not a huge deal as settings are little-used.
-  // Returns index or -1 if not found.
-  private int getIndexOfKey(String key, String[] array) {
-    int index = -1;
-    for (int i = 0; i < array.length; i++) {
-      if (array[i].equals(key)) {
-        index = i;
-        break;
-      }
-    }
-    return index;
   }
 
   // Establish the settings from the given properties file.  Return true if it worked,
@@ -1393,34 +1380,34 @@ public class Settings extends Observable {
   // In that case, this method will NOT make an assignment to the settings array!
   // So consider it a precondition of this method: the settings arrays must already be
   // initialized with last-resort default values.
-  private boolean readSettingsFromPropertiesFile(String filename) {
+  private boolean readSettingsFromPropertiesFile() {
     String settingValue;
     try {
       for (int i = 0; i < booleanSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(filename, booleanSettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, booleanSettingsKeys[i]);
         if (settingValue != null) {
           booleanSettingsValues[i] =
               defaultBooleanSettingsValues[i] = Boolean.parseBoolean(settingValue);
         }
       }
       for (int i = 0; i < stringSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(filename, stringSettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, stringSettingsKeys[i]);
         if (settingValue != null)
           stringSettingsValues[i] = defaultStringSettingsValues[i] = settingValue;
       }
       for (int i = 0; i < fontFamilySettingsValues.length; i++) {
-        settingValue = Globals.getPropertyEntry(filename, fontFamilySettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontFamilySettingsKeys[i]);
         if (settingValue != null)
           fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i] = settingValue;
-        settingValue = Globals.getPropertyEntry(filename, fontStyleSettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontStyleSettingsKeys[i]);
         if (settingValue != null)
           fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i] = settingValue;
-        settingValue = Globals.getPropertyEntry(filename, fontSizeSettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontSizeSettingsKeys[i]);
         if (settingValue != null)
           fontSizeSettingsValues[i] = defaultFontSizeSettingsValues[i] = settingValue;
       }
       for (int i = 0; i < colorSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(filename, colorSettingsKeys[i]);
+        settingValue = Globals.getPropertyEntry(Settings.settingsFile, colorSettingsKeys[i]);
         if (settingValue != null)
           colorSettingsValues[i] = defaultColorSettingsValues[i] = settingValue;
       }

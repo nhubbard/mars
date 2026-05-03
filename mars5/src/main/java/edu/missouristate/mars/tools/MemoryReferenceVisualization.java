@@ -94,7 +94,13 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   // This array of (count,color) pairs must be kept sorted! count is low end of subrange.
   // This array will grow if user adds colors at additional counter points (see below).
-  private final CounterColor[] defaultCounterColors = {new CounterColor(0, Color.black), new CounterColor(1, Color.blue), new CounterColor(2, Color.green), new CounterColor(3, Color.yellow), new CounterColor(5, Color.orange), new CounterColor(10, Color.red)
+  private final CounterColor[] defaultCounterColors = {
+    new CounterColor(0, Color.black),
+    new CounterColor(1, Color.blue),
+    new CounterColor(2, Color.green),
+    new CounterColor(3, Color.yellow),
+    new CounterColor(5, Color.orange),
+    new CounterColor(10, Color.red)
   };
   /*  Values for reference count color slider. These are all possible counter values for which
    *  colors can be assigned.  As you can see just above, not all these values are assigned
@@ -242,7 +248,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     // NOTE: Can't call "createNewGrid()" here because it uses settings from
     //       several combo boxes that have not been created yet.  But a default grid
     //       needs to be allocated for initial canvas display.
-    theGrid = new Grid(visualizationAreaHeightInPixels / unitPixelHeight, visualizationAreaWidthInPixels / unitPixelWidth);
+    theGrid =
+        new Grid(
+            visualizationAreaHeightInPixels / unitPixelHeight,
+            visualizationAreaWidthInPixels / unitPixelWidth);
   }
 
   /**
@@ -275,13 +284,14 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   /** Overrides default method, to provide a Help button for this tool/app. */
   protected JComponent getHelpComponent() {
-    final String helpContent = """
+    final String helpContent =
+        """
         Use this program to visualize dynamic memory reference
         patterns in MIPS assembly programs.  It may be run either
         from MARS' Tools menu or as a stand-alone application.  For
         the latter, simply write a small driver to instantiate a
         MemoryReferenceVisualization object and invoke its go() method.
-        
+
         You can easily learn to use this small program by playing with
         it!  For the best animation, set the MIPS program to run in
         timed mode using the Run Speed slider.  Each rectangular unit
@@ -293,7 +303,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         counter value then click on the color patch to change the color.
         This color will apply beginning at the selected count and
         extending up to the next slider-provided count.
-        
+
         Contact Pete Sanderson at psanderson@otterbein.edu with
         questions or comments.
         """;
@@ -320,84 +330,89 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     wordsPerUnitSelector.setSelectedIndex(defaultWordsPerUnitIndex);
     wordsPerUnitSelector.setToolTipText(
         "Number of memory words represented by one visualization element (rectangle)");
-    wordsPerUnitSelector.addActionListener(e -> {
-      wordsPerUnit = getIntComboBoxSelection(wordsPerUnitSelector);
-      reset();
-    });
+    wordsPerUnitSelector.addActionListener(
+        e -> {
+          wordsPerUnit = getIntComboBoxSelection(wordsPerUnitSelector);
+          reset();
+        });
     visualizationUnitPixelWidthSelector = new JComboBox<>(visualizationUnitPixelWidthChoices);
     visualizationUnitPixelWidthSelector.setEditable(false);
     visualizationUnitPixelWidthSelector.setBackground(backgroundColor);
     visualizationUnitPixelWidthSelector.setSelectedIndex(defaultVisualizationUnitPixelWidthIndex);
     visualizationUnitPixelWidthSelector.setToolTipText(
         "Width in pixels of rectangle representing memory access");
-    visualizationUnitPixelWidthSelector.addActionListener(e -> {
-      unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
-      theGrid = createNewGrid();
-      updateDisplay();
-    });
+    visualizationUnitPixelWidthSelector.addActionListener(
+        e -> {
+          unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
+          theGrid = createNewGrid();
+          updateDisplay();
+        });
     visualizationUnitPixelHeightSelector = new JComboBox<>(visualizationUnitPixelHeightChoices);
     visualizationUnitPixelHeightSelector.setEditable(false);
     visualizationUnitPixelHeightSelector.setBackground(backgroundColor);
     visualizationUnitPixelHeightSelector.setSelectedIndex(defaultVisualizationUnitPixelHeightIndex);
     visualizationUnitPixelHeightSelector.setToolTipText(
         "Height in pixels of rectangle representing memory access");
-    visualizationUnitPixelHeightSelector.addActionListener(e -> {
-      unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
-      theGrid = createNewGrid();
-      updateDisplay();
-    });
+    visualizationUnitPixelHeightSelector.addActionListener(
+        e -> {
+          unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
+          theGrid = createNewGrid();
+          updateDisplay();
+        });
     visualizationPixelWidthSelector = new JComboBox<>(displayAreaPixelWidthChoices);
     visualizationPixelWidthSelector.setEditable(false);
     visualizationPixelWidthSelector.setBackground(backgroundColor);
     visualizationPixelWidthSelector.setSelectedIndex(defaultDisplayWidthIndex);
     visualizationPixelWidthSelector.setToolTipText("Total width in pixels of visualization area");
-    visualizationPixelWidthSelector.addActionListener(e -> {
-      visualizationAreaWidthInPixels =
-          getIntComboBoxSelection(visualizationPixelWidthSelector);
-      canvas.setPreferredSize(getDisplayAreaDimension());
-      canvas.setSize(getDisplayAreaDimension());
-      theGrid = createNewGrid();
-      canvas.repaint();
-      updateDisplay();
-    });
+    visualizationPixelWidthSelector.addActionListener(
+        e -> {
+          visualizationAreaWidthInPixels = getIntComboBoxSelection(visualizationPixelWidthSelector);
+          canvas.setPreferredSize(getDisplayAreaDimension());
+          canvas.setSize(getDisplayAreaDimension());
+          theGrid = createNewGrid();
+          canvas.repaint();
+          updateDisplay();
+        });
     visualizationPixelHeightSelector = new JComboBox<>(displayAreaPixelHeightChoices);
     visualizationPixelHeightSelector.setEditable(false);
     visualizationPixelHeightSelector.setBackground(backgroundColor);
     visualizationPixelHeightSelector.setSelectedIndex(defaultDisplayHeightIndex);
     visualizationPixelHeightSelector.setToolTipText("Total height in pixels of visualization area");
-    visualizationPixelHeightSelector.addActionListener(e -> {
-      visualizationAreaHeightInPixels =
-          getIntComboBoxSelection(visualizationPixelHeightSelector);
-      canvas.setPreferredSize(getDisplayAreaDimension());
-      canvas.setSize(getDisplayAreaDimension());
-      theGrid = createNewGrid();
-      canvas.repaint();
-      updateDisplay();
-    });
+    visualizationPixelHeightSelector.addActionListener(
+        e -> {
+          visualizationAreaHeightInPixels =
+              getIntComboBoxSelection(visualizationPixelHeightSelector);
+          canvas.setPreferredSize(getDisplayAreaDimension());
+          canvas.setSize(getDisplayAreaDimension());
+          theGrid = createNewGrid();
+          canvas.repaint();
+          updateDisplay();
+        });
     displayBaseAddressSelector = new JComboBox<>(displayBaseAddressChoices);
     displayBaseAddressSelector.setEditable(false);
     displayBaseAddressSelector.setBackground(backgroundColor);
     displayBaseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
     displayBaseAddressSelector.setToolTipText(
         "Base address for visualization area (upper left corner)");
-    displayBaseAddressSelector.addActionListener(e -> {
-      // This may also affect what address range we should be registered as an Observer
-      // for.  The default (inherited) address range is the MIPS static data segment
-      // starting at 0x10010000. To change this requires override of
-      // AbstractMarsToolAndApplication.addAsObserver().  The no-argument version of
-      // that method is called automatically  when "Connect" button is clicked for MarsTool
-      // and when "Assemble and Run" button is clicked for Mars application.
-      updateBaseAddress();
-      // If display base address is changed while connected to MIPS (this can only occur
-      // when being used as a MarsTool), we have to delete ourselves as an observer and
-      // re-register.
-      if (connectButton != null && connectButton.isConnected()) {
-        deleteAsObserver();
-        addAsObserver();
-      }
-      theGrid = createNewGrid();
-      updateDisplay();
-    });
+    displayBaseAddressSelector.addActionListener(
+        e -> {
+          // This may also affect what address range we should be registered as an Observer
+          // for.  The default (inherited) address range is the MIPS static data segment
+          // starting at 0x10010000. To change this requires override of
+          // AbstractMarsToolAndApplication.addAsObserver().  The no-argument version of
+          // that method is called automatically  when "Connect" button is clicked for MarsTool
+          // and when "Assemble and Run" button is clicked for Mars application.
+          updateBaseAddress();
+          // If display base address is changed while connected to MIPS (this can only occur
+          // when being used as a MarsTool), we have to delete ourselves as an observer and
+          // re-register.
+          if (connectButton != null && connectButton.isConnected()) {
+            deleteAsObserver();
+            addAsObserver();
+          }
+          theGrid = createNewGrid();
+          updateDisplay();
+        });
 
     // ALL COMPONENTS FOR "ORGANIZATION" SECTION
 
@@ -623,7 +638,8 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     private ColorChooserControls() {
       // array element #10, arbitrary starting point
       int COUNT_INDEX_INIT = 10;
-      JSlider colorRangeSlider = new JSlider(JSlider.HORIZONTAL, 0, countTable.length - 1, COUNT_INDEX_INIT);
+      JSlider colorRangeSlider =
+          new JSlider(JSlider.HORIZONTAL, 0, countTable.length - 1, COUNT_INDEX_INIT);
       colorRangeSlider.setToolTipText(
           "View or change color associated with each reference count value");
       colorRangeSlider.setPaintTicks(false);
@@ -641,23 +657,24 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
       currentColorButton.setToolTipText(
           "Click here to change color for the reference count subrange based at current value");
       currentColorButton.setBackground(counterColorScale.getColor(countTable[counterIndex]));
-      currentColorButton.addActionListener(e -> {
-        int counterValue = countTable[counterIndex];
-        int highEnd = counterColorScale.getHighEndOfRange(counterValue);
-        String dialogLabel =
-            "Select color for reference count "
-                + ((counterValue == highEnd)
-                    ? "value " + counterValue
-                    : "range " + counterValue + "-" + highEnd);
-        Color newColor =
-            JColorChooser.showDialog(
-                theWindow, dialogLabel, counterColorScale.getColor(counterValue));
-        if (newColor != null && !newColor.equals(counterColorScale.getColor(counterValue))) {
-          counterColorScale.insertOrReplace(new CounterColor(counterValue, newColor));
-          currentColorButton.setBackground(newColor);
-          updateDisplay();
-        }
-      });
+      currentColorButton.addActionListener(
+          e -> {
+            int counterValue = countTable[counterIndex];
+            int highEnd = counterColorScale.getHighEndOfRange(counterValue);
+            String dialogLabel =
+                "Select color for reference count "
+                    + ((counterValue == highEnd)
+                        ? "value " + counterValue
+                        : "range " + counterValue + "-" + highEnd);
+            Color newColor =
+                JColorChooser.showDialog(
+                    theWindow, dialogLabel, counterColorScale.getColor(counterValue));
+            if (newColor != null && !newColor.equals(counterColorScale.getColor(counterValue))) {
+              counterColorScale.insertOrReplace(new CounterColor(counterValue, newColor));
+              currentColorButton.setBackground(newColor);
+              updateDisplay();
+            }
+          });
       colorChooserRow = new JPanel();
       countDisplayRow = new JPanel();
       colorChooserRow.add(colorRangeSlider);
@@ -750,15 +767,16 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   }
 
   /// ////////////////////////////////////////////////////////////////////////////////////
-    // Each object represents beginning of a counter value range (non-negative integer) and
-    // color for rendering the range.  High end of the range is defined as low end of the
-    // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
-    private record CounterColor(int colorRangeStart, Color associatedColor) implements Comparable<CounterColor> {
+  // Each object represents beginning of a counter value range (non-negative integer) and
+  // color for rendering the range.  High end of the range is defined as low end of the
+  // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
+  private record CounterColor(int colorRangeStart, Color associatedColor)
+      implements Comparable<CounterColor> {
     // Necessary for sorting in ascending order of range low end.
-      public int compareTo(CounterColor other) {
-        return this.colorRangeStart - other.colorRangeStart;
-      }
+    public int compareTo(CounterColor other) {
+      return this.colorRangeStart - other.colorRangeStart;
     }
+  }
 
   ////////////////////////////////////////////////////////////////////////
   // Represents grid of memory access counts

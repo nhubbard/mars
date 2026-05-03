@@ -4,7 +4,6 @@ import edu.missouristate.mars.*;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
-import javax.swing.plaf.basic.BasicTabbedPaneUI;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -40,7 +39,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Bumgarner
  */
 public class MainPane extends JTabbedPane {
-  EditPane editTab;
   final ExecutePane executeTab;
   final EditTabbedPane editTabbedPane;
 
@@ -53,8 +51,6 @@ public class MainPane extends JTabbedPane {
       Coprocessor0Window cop0Regs) {
     super();
     this.setTabPlacement(JTabbedPane.TOP); // LEFT);
-    if (this.getUI() instanceof BasicTabbedPaneUI ui) {
-    }
     editTabbedPane = new EditTabbedPane(appFrame, editor, this);
     executeTab = new ExecutePane(appFrame, regs, cop1Regs, cop0Regs);
     String editTabTitle =

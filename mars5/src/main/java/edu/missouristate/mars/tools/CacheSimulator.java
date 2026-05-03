@@ -162,19 +162,24 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     ltb.setTitleJustification(TitledBorder.CENTER);
     logPanel.setBorder(ltb);
     JCheckBox logShow = new JCheckBox("Enabled", debug);
-    logShow.addItemListener(e -> {
-      debug = e.getStateChange() == ItemEvent.SELECTED;
-      resetLogDisplay();
-      logText.setEnabled(debug);
-      logText.setBackground(debug ? Color.WHITE : logPanel.getBackground());
-    });
+    logShow.addItemListener(
+        e -> {
+          debug = e.getStateChange() == ItemEvent.SELECTED;
+          resetLogDisplay();
+          logText.setEnabled(debug);
+          logText.setBackground(debug ? Color.WHITE : logPanel.getBackground());
+        });
     logPanel.add(logShow);
     logText = new JTextArea(5, 70);
     logText.setEnabled(debug);
     logText.setBackground(debug ? Color.WHITE : logPanel.getBackground());
     logText.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
     logText.setToolTipText("Displays cache activity log if enabled");
-    JScrollPane logScroll = new JScrollPane(logText, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    JScrollPane logScroll =
+        new JScrollPane(
+            logText,
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     logPanel.add(logScroll);
     return logPanel;
   }
@@ -189,10 +194,11 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cachePlacementSelector.setEditable(false);
     cachePlacementSelector.setBackground(backgroundColor);
     cachePlacementSelector.setSelectedIndex(defaultPlacementPolicyIndex);
-    cachePlacementSelector.addActionListener(e -> {
-      updateCacheSetSizeSelector();
-      reset();
-    });
+    cachePlacementSelector.addActionListener(
+        e -> {
+          updateCacheSetSizeSelector();
+          reset();
+        });
 
     cacheReplacementSelector = new JComboBox<>(replacementPolicyChoices);
     cacheReplacementSelector.setEditable(false);
@@ -204,22 +210,24 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheBlockSizeSelector.setBackground(backgroundColor);
     int defaultCacheBlockSizeIndex = 2;
     cacheBlockSizeSelector.setSelectedIndex(defaultCacheBlockSizeIndex);
-    cacheBlockSizeSelector.addActionListener(e -> {
-      updateCacheSizeDisplay();
-      reset();
-    });
+    cacheBlockSizeSelector.addActionListener(
+        e -> {
+          updateCacheSizeDisplay();
+          reset();
+        });
     cacheBlockCountSelector = new JComboBox<>(cacheBlockCountChoices);
     cacheBlockCountSelector.setEditable(false);
     cacheBlockCountSelector.setBackground(backgroundColor);
     cacheBlockCountSelector.setSelectedIndex(defaultCacheBlockCountIndex);
-    cacheBlockCountSelector.addActionListener(e -> {
-      updateCacheSetSizeSelector();
-      theCache = createNewCache();
-      resetCounts();
-      updateDisplay();
-      updateCacheSizeDisplay();
-      animations.fillAnimationBoxWithCacheBlocks();
-    });
+    cacheBlockCountSelector.addActionListener(
+        e -> {
+          updateCacheSetSizeSelector();
+          theCache = createNewCache();
+          resetCounts();
+          updateDisplay();
+          updateCacheSizeDisplay();
+          animations.fillAnimationBoxWithCacheBlocks();
+        });
 
     cacheSetSizeSelector = new JComboBox<>(cacheSetSizeChoices);
     cacheSetSizeSelector.setEditable(false);
@@ -579,23 +587,23 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   }
 
   /// //////////////////////////////////////////////////////////////////////
-    // Represents the outcome of a cache access.  There are two parts:
-    // whether it was a hit or not, and in which block is the value stored.
-    // In the case of a hit, the block associated with address.  In the case of
-    // a miss, the block where new association is made.	DPS 23-Dec-2010
-    private record CacheAccessResult(boolean hitOrMiss, int blockNumber) {
+  // Represents the outcome of a cache access.  There are two parts:
+  // whether it was a hit or not, and in which block is the value stored.
+  // In the case of a hit, the block associated with address.  In the case of
+  // a miss, the block where new association is made.	DPS 23-Dec-2010
+  private record CacheAccessResult(boolean hitOrMiss, int blockNumber) {
     public boolean isHit() {
-        return hitOrMiss;
-      }
-
-      public int getBlock() {
-        return blockNumber;
-      }
+      return hitOrMiss;
     }
+
+    public int getBlock() {
+      return blockNumber;
+    }
+  }
 
   //////////////////////////////////////////////////////////////////////
   // Abstract Cache class.  Subclasses will implement specific policies.
-  private static abstract class AbstractCache {
+  private abstract static class AbstractCache {
     private final int numberOfBlocks;
     private final int blockSizeInWords;
     private final int setSizeInBlocks;
@@ -733,7 +741,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       int firstBlock = getFirstBlockToSearch(address);
       int lastBlock = getLastBlockToSearch(address);
       if (debug) // System.out.print
-        writeLog(
+      writeLog(
             "("
                 + memoryAccessCount
                 + ") address: "
@@ -753,20 +761,20 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       for (blockNumber = firstBlock; blockNumber <= lastBlock; blockNumber++) {
         block = blocks[blockNumber];
         if (debug) // System.out.print
-          writeLog(
+        writeLog(
               "   trying block "
                   + blockNumber
                   + ((block.valid) ? " tag " + Binary.intToHexString(block.tag) : " empty"));
         if (block.valid && block.tag == getTag(address)) { //  it's a hit!
           if (debug) // System.out.print
-            writeLog(" -- HIT\n");
+          writeLog(" -- HIT\n");
           result = HIT;
           block.mostRecentAccessTime = memoryAccessCount;
           break;
         }
         if (!block.valid) { // it's a miss but I got it now because it is empty!
           if (debug) // System.out.print
-            writeLog(" -- MISS\n");
+          writeLog(" -- MISS\n");
           result = 2;
           block.valid = true;
           block.tag = getTag(address);
@@ -774,12 +782,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           break;
         }
         if (debug) // System.out.print
-          writeLog(" -- OCCUPIED\n");
+        writeLog(" -- OCCUPIED\n");
       }
       if (result == SET_FULL) {
         // select one to replace and replace it...
         if (debug) // System.out.print
-          writeLog("   MISS due to FULL SET");
+        writeLog("   MISS due to FULL SET");
         int blockToReplace = selectBlockToReplace(firstBlock, lastBlock);
         block = blocks[blockToReplace];
         block.tag = getTag(address);
@@ -799,7 +807,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           case RANDOM:
             replaceBlock = first + randu.nextInt(last - first + 1);
             if (debug) // System.out.print
-              writeLog(" -- Random replace block " + replaceBlock + "\n");
+            writeLog(" -- Random replace block " + replaceBlock + "\n");
             break;
           case LRU:
           default:
@@ -811,7 +819,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
               }
             }
             if (debug) // System.out.print
-              writeLog(
+            writeLog(
                   " -- LRU replace block "
                       + replaceBlock
                       + "; unused since ("

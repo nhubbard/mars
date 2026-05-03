@@ -31,6 +31,7 @@ import java.awt.*;
 import java.io.*;
 import java.text.*;
 import java.util.*;
+import org.jspecify.annotations.NonNull;
 
 /* HardcopyWriter class from the book "Java Examples in a Nutshell,
  * 3rd Edition" by David Flanagan.  Publisher is O'Reilly, ISBN is
@@ -162,7 +163,7 @@ public class HardcopyWriter extends Writer {
    * This is the write( ) method of the stream. All Writer subclasses implement this. All other
    * versions of write( ) are variants of this one
    */
-  public void write(char[] buffer, int index, int len) {
+  public void write(char @NonNull [] buffer, int index, int len) {
     synchronized (this.lock) { // For thread safety
       // Loop through all the characters passed to us
       for (int i = index; i < index + len; i++) {

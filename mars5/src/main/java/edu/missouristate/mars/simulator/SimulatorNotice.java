@@ -31,6 +31,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // FIXME(phase-2): gui-coupling — RunSpeedPanel is a Venus Swing component used for execution speed
 // control
 import edu.missouristate.mars.venus.RunSpeedPanel;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Object provided to Observers of the Simulator. They are notified at important phases of the
@@ -47,8 +48,7 @@ public record SimulatorNotice(int action, int maxSteps, double runSpeed, int pro
    * Constructor will be called only within this package, so assume address and length are in valid
    * ranges.
    */
-  public SimulatorNotice {
-  }
+  public SimulatorNotice {}
 
   /** Fetch the memory address that was accessed. */
   @Override
@@ -75,7 +75,17 @@ public record SimulatorNotice(int action, int maxSteps, double runSpeed, int pro
   }
 
   /** String representation indicates access type, address and length in bytes */
+  @NonNull
   public String toString() {
-    return ((this.action() == SIMULATOR_START) ? "START " : "STOP  ") + "Max Steps " + this.maxSteps + " " + "Speed " + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED) ? "unlimited " : this.runSpeed + " inst/sec") + "Prog Ctr " + this.programCounter;
+    return ((this.action() == SIMULATOR_START) ? "START " : "STOP  ")
+        + "Max Steps "
+        + this.maxSteps
+        + " "
+        + "Speed "
+        + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)
+            ? "unlimited "
+            : this.runSpeed + " inst/sec")
+        + "Prog Ctr "
+        + this.programCounter;
   }
 }

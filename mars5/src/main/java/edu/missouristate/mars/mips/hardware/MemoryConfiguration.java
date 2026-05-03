@@ -37,8 +37,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2009
  */
-public record MemoryConfiguration(String configurationIdentifier, String configurationName, String[] configurationItemNames,
-                                  int[] configurationItemValues) {
+public record MemoryConfiguration(
+    String configurationIdentifier,
+    String configurationName,
+    String[] configurationItemNames,
+    int[] configurationItemValues) {
   public int getTextBaseAddress() {
     return configurationItemValues[0];
   }

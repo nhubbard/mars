@@ -369,30 +369,31 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     JComboBox<String> registerSelect = new JComboBox<>(registerList);
     registerSelect.setSelectedIndex(0); // No register attached
     registerSelect.setToolTipText("Attach to selected FP register");
-    registerSelect.addActionListener(e -> {
-      //noinspection unchecked
-      JComboBox<String> cb = (JComboBox<String>) e.getSource();
-      int selectedIndex = cb.getSelectedIndex();
-      if (isObserving()) {
-        deleteAsObserver();
-      }
-      if (selectedIndex == 0) {
-        attachedRegister = null;
-        updateDisplays(new FlavorsOfFloat());
-        instructions.setText(
-            "The program is not attached to any MIPS floating point registers.");
-      } else {
-        attachedRegister = fpRegisters[selectedIndex - 1];
-        updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
-        if (isObserving()) {
-          addAsObserver();
-        }
-        instructions.setText(
-            "The program and register "
-                + attachedRegister.getName()
-                + " will respond to each other when MIPS program connected or running.");
-      }
-    });
+    registerSelect.addActionListener(
+        e -> {
+          //noinspection unchecked
+          JComboBox<String> cb = (JComboBox<String>) e.getSource();
+          int selectedIndex = cb.getSelectedIndex();
+          if (isObserving()) {
+            deleteAsObserver();
+          }
+          if (selectedIndex == 0) {
+            attachedRegister = null;
+            updateDisplays(new FlavorsOfFloat());
+            instructions.setText(
+                "The program is not attached to any MIPS floating point registers.");
+          } else {
+            attachedRegister = fpRegisters[selectedIndex - 1];
+            updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
+            if (isObserving()) {
+              addAsObserver();
+            }
+            instructions.setText(
+                "The program and register "
+                    + attachedRegister.getName()
+                    + " will respond to each other when MIPS program connected or running.");
+          }
+        });
 
     JPanel registerPanel = new JPanel(new BorderLayout(5, 5));
     JPanel registerAndLabel = new JPanel();
@@ -656,11 +657,33 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility.
     private boolean isHexDigit(char digit) {
-      boolean result = switch (digit) {
-        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E',
-             'F' -> true;
-        default -> false;
-      };
+      boolean result =
+          switch (digit) {
+            case '0',
+                '1',
+                '2',
+                '3',
+                '4',
+                '5',
+                '6',
+                '7',
+                '8',
+                '9',
+                'a',
+                'b',
+                'c',
+                'd',
+                'e',
+                'f',
+                'A',
+                'B',
+                'C',
+                'D',
+                'E',
+                'F' ->
+                true;
+            default -> false;
+          };
       return result;
     }
   }
@@ -709,10 +732,11 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility
     private boolean isBinaryDigit(char digit) {
-      boolean result = switch (digit) {
-        case '0', '1' -> true;
-        default -> false;
-      };
+      boolean result =
+          switch (digit) {
+            case '0', '1' -> true;
+            default -> false;
+          };
       return result;
     }
   }
@@ -760,10 +784,11 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility
     private boolean isDecimalFloatDigit(char digit) {
-      boolean result = switch (digit) {
-        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '+', '.', 'e', 'E' -> true;
-        default -> false;
-      };
+      boolean result =
+          switch (digit) {
+            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '+', '.', 'e', 'E' -> true;
+            default -> false;
+          };
       return result;
     }
   }

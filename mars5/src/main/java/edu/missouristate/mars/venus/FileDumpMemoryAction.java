@@ -7,7 +7,12 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.MemoryDump;
-
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
 import javax.swing.Box;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -20,12 +25,6 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.File;
-import java.io.IOException;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -189,14 +188,15 @@ public class FileDumpMemoryAction extends GuiAction {
     // Bottom row - the control buttons for Dump and Cancel
     Box controlPanel = Box.createHorizontalBox();
     JButton dumpButton = new JButton("Dump To File...");
-    dumpButton.addActionListener(e -> {
-      if (performDump(
-          segmentListBaseArray[segmentListSelector.getSelectedIndex()],
-          segmentListHighArray[segmentListSelector.getSelectedIndex()],
-          (DumpFormat) formatListSelector.getSelectedItem())) {
-        closeDialog();
-      }
-    });
+    dumpButton.addActionListener(
+        e -> {
+          if (performDump(
+              segmentListBaseArray[segmentListSelector.getSelectedIndex()],
+              segmentListHighArray[segmentListSelector.getSelectedIndex()],
+              (DumpFormat) formatListSelector.getSelectedItem())) {
+            closeDialog();
+          }
+        });
     JButton cancelButton = new JButton("Cancel");
     cancelButton.addActionListener(e -> closeDialog());
     controlPanel.add(Box.createHorizontalGlue());

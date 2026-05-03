@@ -150,7 +150,7 @@ public class VenusUI extends JFrame {
     // I want to keep it large, with enough room for user to get handles
     // this.setSize((int)(screenWidth*.8),(int)(screenHeight*.8));
 
-    Globals.initialize(true);
+    Globals.initialize();
 
     //  image courtesy of NASA/JPL.
     URL im = this.getClass().getResource(Globals.imagesPath + "RedMars16.gif");
@@ -777,20 +777,24 @@ public class VenusUI extends JFrame {
         .setSettingsMenuItem(settingsAddressDisplayBase);
     JCheckBoxMenuItem settingsExtended = new JCheckBoxMenuItem(settingsExtendedAction);
     settingsExtended.setSelected(Globals.getSettings().getExtendedAssemblerEnabled());
-    JCheckBoxMenuItem settingsDelayedBranching = new JCheckBoxMenuItem(settingsDelayedBranchingAction);
+    JCheckBoxMenuItem settingsDelayedBranching =
+        new JCheckBoxMenuItem(settingsDelayedBranchingAction);
     settingsDelayedBranching.setSelected(Globals.getSettings().getDelayedBranchingEnabled());
-    JCheckBoxMenuItem settingsSelfModifyingCode = new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
+    JCheckBoxMenuItem settingsSelfModifyingCode =
+        new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
     settingsSelfModifyingCode.setSelected(
         Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     JCheckBoxMenuItem settingsAssembleOnOpen = new JCheckBoxMenuItem(settingsAssembleOnOpenAction);
     settingsAssembleOnOpen.setSelected(Globals.getSettings().getAssembleOnOpenEnabled());
     JCheckBoxMenuItem settingsAssembleAll = new JCheckBoxMenuItem(settingsAssembleAllAction);
     settingsAssembleAll.setSelected(Globals.getSettings().getAssembleAllEnabled());
-    JCheckBoxMenuItem settingsWarningsAreErrors = new JCheckBoxMenuItem(settingsWarningsAreErrorsAction);
+    JCheckBoxMenuItem settingsWarningsAreErrors =
+        new JCheckBoxMenuItem(settingsWarningsAreErrorsAction);
     settingsWarningsAreErrors.setSelected(Globals.getSettings().getWarningsAreErrors());
     JCheckBoxMenuItem settingsStartAtMain = new JCheckBoxMenuItem(settingsStartAtMainAction);
     settingsStartAtMain.setSelected(Globals.getSettings().getStartAtMain());
-    JCheckBoxMenuItem settingsProgramArguments = new JCheckBoxMenuItem(settingsProgramArgumentsAction);
+    JCheckBoxMenuItem settingsProgramArguments =
+        new JCheckBoxMenuItem(settingsProgramArgumentsAction);
     settingsProgramArguments.setSelected(Globals.getSettings().getProgramArguments());
     JMenuItem settingsEditor = new JMenuItem(settingsEditorAction);
     JMenuItem settingsHighlighting = new JMenuItem(settingsHighlightingAction);
@@ -1138,7 +1142,9 @@ public class VenusUI extends JFrame {
     runAssembleAction.setEnabled(true);
     runGoAction.setEnabled(true);
     runStepAction.setEnabled(true);
-    runBackstepAction.setEnabled(Globals.getSettings().getBackSteppingEnabled() && !Globals.program.getBackStepper().empty());
+    runBackstepAction.setEnabled(
+        Globals.getSettings().getBackSteppingEnabled()
+            && !Globals.program.getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);
@@ -1208,7 +1214,9 @@ public class VenusUI extends JFrame {
     runAssembleAction.setEnabled(true);
     runGoAction.setEnabled(false);
     runStepAction.setEnabled(false);
-    runBackstepAction.setEnabled(Globals.getSettings().getBackSteppingEnabled() && !Globals.program.getBackStepper().empty());
+    runBackstepAction.setEnabled(
+        Globals.getSettings().getBackSteppingEnabled()
+            && !Globals.program.getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);

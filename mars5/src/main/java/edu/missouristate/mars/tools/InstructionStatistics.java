@@ -221,15 +221,13 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
       return InstructionStatistics.CATEGORY_OTHER;
     }
     if (opCode == 0x01) {
-      if (funct <= 0x07)
-        return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
+      if (funct <= 0x07) return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
       if (0x10 <= funct && funct <= 0x13)
         return InstructionStatistics.CATEGORY_BRANCH; // bltzal, bgezal, bltzall, bgczall
       return InstructionStatistics.CATEGORY_OTHER;
     }
     if (opCode == 0x02 || opCode == 0x03) return InstructionStatistics.CATEGORY_JUMP; // j, jal
-    if (opCode <= 0x07)
-      return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
+    if (opCode <= 0x07) return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
     if (opCode <= 0x0F)
       return InstructionStatistics.CATEGORY_ALU; // addi, addiu, slti, sltiu, andi, ori, xori, lui
     if (0x14 <= opCode && opCode <= 0x17)
@@ -257,7 +255,8 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     if (!notice.accessIsFromMIPS()) return;
 
     // check for a read access in the text segment
-    if (notice.getAccessType() == AccessNotice.READ && notice instanceof MemoryAccessNotice memAccNotice) {
+    if (notice.getAccessType() == AccessNotice.READ
+        && notice instanceof MemoryAccessNotice memAccNotice) {
 
       // now it is safe to make a cast of the notice
 

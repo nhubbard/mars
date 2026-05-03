@@ -485,7 +485,7 @@ public class SystemIO {
       if (fd < 0 || fd >= SYSCALL_MAXFILES) {
         return false;
       } else // O_WRONLY write-only
-        if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) { // O_RDONLY read-only
+      if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) { // O_RDONLY read-only
         return true;
       } else return fileNames[fd] != null && ((fileFlags[fd] & flag & O_WRONLY) == O_WRONLY);
     }
@@ -539,7 +539,8 @@ public class SystemIO {
 
       if (i >= SYSCALL_MAXFILES) // no available file descriptors
       {
-        fileErrorString = "File name " + filename + " exceeds maximum open file limit of " + SYSCALL_MAXFILES;
+        fileErrorString =
+            "File name " + filename + " exceeds maximum open file limit of " + SYSCALL_MAXFILES;
         return -1;
       }
 

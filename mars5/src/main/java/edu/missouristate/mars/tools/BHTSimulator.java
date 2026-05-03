@@ -158,7 +158,9 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     m_gui.getTfAddress().setText("");
     m_gui.getTfIndex().setText("");
     m_gui.getTaLog().setText("");
-    m_bhtModel.initBHT((Integer) m_gui.getCbBHTentries().getSelectedItem(), (Integer) m_gui.getCbBHThistory().getSelectedItem(),
+    m_bhtModel.initBHT(
+        (Integer) m_gui.getCbBHTentries().getSelectedItem(),
+        (Integer) m_gui.getCbBHThistory().getSelectedItem(),
         m_gui.getCbBHTinitVal().getSelectedItem().equals(BHTSimGUI.BHT_TAKE_BRANCH));
 
     m_pendingBranchInstAddress = 0;
@@ -335,7 +337,8 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
 
     if (!notice.accessIsFromMIPS()) return;
 
-    if (notice.getAccessType() == AccessNotice.READ && notice instanceof MemoryAccessNotice memAccNotice) {
+    if (notice.getAccessType() == AccessNotice.READ
+        && notice instanceof MemoryAccessNotice memAccNotice) {
 
       // now it is safe to make a cast of the notice
 

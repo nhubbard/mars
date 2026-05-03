@@ -37,16 +37,17 @@ public class JEditBasedTextArea extends JEditTextArea
 
     // Needed to support unlimited undo/redo capability
     // Remember the edit and update the menus.
-    UndoableEditListener undoableEditListener = e -> {
-      // Remember the edit and update the menus.
-      if (isCompoundEdit) {
-        compoundEdit.addEdit(e.getEdit());
-      } else {
-        undoManager.addEdit(e.getEdit());
-        editPane.updateUndoState();
-        editPane.updateRedoState();
-      }
-    };
+    UndoableEditListener undoableEditListener =
+        e -> {
+          // Remember the edit and update the menus.
+          if (isCompoundEdit) {
+            compoundEdit.addEdit(e.getEdit());
+          } else {
+            undoManager.addEdit(e.getEdit());
+            editPane.updateUndoState();
+            editPane.updateRedoState();
+          }
+        };
     this.getDocument().addUndoableEditListener(undoableEditListener);
     this.setFont(Globals.getSettings().getEditorFont());
     this.setTokenMarker(new MIPSTokenMarker());

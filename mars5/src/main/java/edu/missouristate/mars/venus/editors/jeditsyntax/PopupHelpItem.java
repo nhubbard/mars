@@ -29,7 +29,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.HelpHelpAction;
-
 import java.util.ArrayList;
 
 /** Handly little class to contain help information for a popupMenu or tool tip item. */

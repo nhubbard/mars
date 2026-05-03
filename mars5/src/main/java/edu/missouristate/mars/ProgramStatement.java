@@ -411,10 +411,17 @@ public class ProgramStatement {
     StringBuilder result = new StringBuilder("[" + this.textAddress + "]");
     if (this.basicAssemblyStatement != null) {
       int firstSpace = this.basicAssemblyStatement.indexOf(" ");
-      result.append(blanks, 0, 16 - result.length()).append(this.basicAssemblyStatement, 0, firstSpace);
-      result.append(blanks, 0, 24 - result.length()).append(this.basicAssemblyStatement.substring(firstSpace + 1));
+      result
+          .append(blanks, 0, 16 - result.length())
+          .append(this.basicAssemblyStatement, 0, firstSpace);
+      result
+          .append(blanks, 0, 24 - result.length())
+          .append(this.basicAssemblyStatement.substring(firstSpace + 1));
     } else {
-      result.append(blanks, 0, 16 - result.length()).append("0x").append(Integer.toString(this.binaryStatement, 16));
+      result
+          .append(blanks, 0, 16 - result.length())
+          .append("0x")
+          .append(Integer.toString(this.binaryStatement, 16));
     }
     result.append(blanks, 0, 40 - result.length()).append(";  "); // this.source;
     if (operands != null) {
@@ -424,7 +431,19 @@ public class ProgramStatement {
     }
     if (this.machineStatement != null) {
       result.append("[").append(Binary.binaryStringToHexString(this.machineStatement)).append("]");
-      result.append("  ").append(this.machineStatement, 0, 6).append("|").append(this.machineStatement, 6, 11).append("|").append(this.machineStatement, 11, 16).append("|").append(this.machineStatement, 16, 21).append("|").append(this.machineStatement, 21, 26).append("|").append(this.machineStatement, 26, 32);
+      result
+          .append("  ")
+          .append(this.machineStatement, 0, 6)
+          .append("|")
+          .append(this.machineStatement, 6, 11)
+          .append("|")
+          .append(this.machineStatement, 11, 16)
+          .append("|")
+          .append(this.machineStatement, 16, 21)
+          .append("|")
+          .append(this.machineStatement, 21, 26)
+          .append("|")
+          .append(this.machineStatement, 26, 32);
     }
     return result.toString();
   } // toString()
@@ -737,7 +756,8 @@ public class ProgramStatement {
             break;
           case 2:
             if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
-              result.append(Binary.intToHexString(e.iValue)); // 13-July-2011, was: intToHalfHexString()
+              result.append(
+                  Binary.intToHexString(e.iValue)); // 13-July-2011, was: intToHalfHexString()
             } else {
               result.append(NumberDisplayBaseChooser.formatNumber(e.iValue, valueBase));
             }
@@ -748,7 +768,6 @@ public class ProgramStatement {
       return result.toString();
     }
 
-    private record ListElement(int type, String sValue, int iValue) {
-    }
+    private record ListElement(int type, String sValue, int iValue) {}
   }
 }

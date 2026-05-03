@@ -1140,7 +1140,6 @@ public class Memory extends Observable {
   /**
    * Overridden to be unavailable. The notice that an Observer receives does not come from the
    * memory object itself, but instead from a delegate.
-   *
    */
   public void notifyObservers() {
     throw new UnsupportedOperationException();
@@ -1149,7 +1148,6 @@ public class Memory extends Observable {
   /**
    * Overridden to be unavailable. The notice that an Observer receives does not come from the
    * memory object itself, but instead from a delegate.
-   *
    */
   public void notifyObservers(Object obj) {
     throw new UnsupportedOperationException();

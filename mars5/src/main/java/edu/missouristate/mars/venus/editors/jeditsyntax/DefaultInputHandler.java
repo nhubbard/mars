@@ -138,13 +138,13 @@ public class DefaultInputHandler extends InputHandler {
    */
   public void keyPressed(KeyEvent evt) {
     int keyCode = evt.getKeyCode();
-    int modifiers = evt.getModifiers();
+    int modifiers = evt.getModifiersEx();
     if (keyCode == KeyEvent.VK_CONTROL
         || keyCode == KeyEvent.VK_SHIFT
         || keyCode == KeyEvent.VK_ALT
         || keyCode == KeyEvent.VK_META) return;
 
-    if ((modifiers & ~KeyEvent.SHIFT_MASK) != 0
+    if ((modifiers & ~KeyEvent.SHIFT_DOWN_MASK) != 0
         || evt.isActionKey()
         || keyCode == KeyEvent.VK_BACK_SPACE
         || keyCode == KeyEvent.VK_DELETE
@@ -188,21 +188,20 @@ public class DefaultInputHandler extends InputHandler {
           currentBindings = map;
           evt.consume();
         }
-        default -> {
-        }
+        default -> {}
       }
     }
   }
 
   /** Handle a key typed event. This inserts the key into the text area. */
   public void keyTyped(KeyEvent evt) {
-    int modifiers = evt.getModifiers();
+    int modifiers = evt.getModifiersEx();
     char c = evt.getKeyChar();
     // This IF statement needed to prevent Macintosh shortcut keyChar from
     // being echoed to the text area.  E.g. Command-s, for Save, will echo
     // the 's' character unless filtered out here.  Command modifier
     // matches KeyEvent.META_MASK.   DPS 30-Nov-2010
-    if ((modifiers & KeyEvent.META_MASK) != 0) return;
+    if ((modifiers & KeyEvent.META_DOWN_MASK) != 0) return;
     // DPS 9-Jan-2013.  Umberto Villano from Italy describes Alt combinations
     // not working on Italian Mac keyboards, where # requires Alt (Option).
     // This is preventing him from writing comments.  Similar complaint from
@@ -242,7 +241,7 @@ public class DefaultInputHandler extends InputHandler {
     // Until this is resolved upstream, don't ignore characters
     // on OS X, which have been entered with the ALT modifier:
     if (c != KeyEvent.CHAR_UNDEFINED
-        && (((modifiers & KeyEvent.ALT_MASK) == 0)
+        && (((modifiers & KeyEvent.ALT_DOWN_MASK) == 0)
             || System.getProperty("os.name").contains("OS X"))) {
       if (c >= 0x20 && c != 0x7f) {
         KeyStroke keyStroke = KeyStroke.getKeyStroke(Character.toUpperCase(c));
@@ -293,16 +292,16 @@ public class DefaultInputHandler extends InputHandler {
       for (int i = 0; i < index; i++) {
         switch (Character.toUpperCase(keyStroke.charAt(i))) {
           case 'A':
-            modifiers |= InputEvent.ALT_MASK;
+            modifiers |= InputEvent.ALT_DOWN_MASK;
             break;
           case 'C':
-            modifiers |= InputEvent.CTRL_MASK;
+            modifiers |= InputEvent.CTRL_DOWN_MASK;
             break;
           case 'M':
-            modifiers |= InputEvent.META_MASK;
+            modifiers |= InputEvent.META_DOWN_MASK;
             break;
           case 'S':
-            modifiers |= InputEvent.SHIFT_MASK;
+            modifiers |= InputEvent.SHIFT_DOWN_MASK;
             break;
         }
       }
@@ -331,7 +330,8 @@ public class DefaultInputHandler extends InputHandler {
 
   // Discriminated union for binding tree nodes. A KeyStroke maps to either a
   // leaf action or a nested prefix map leading to more keystrokes.
-  private sealed interface Binding permits DefaultInputHandler.ActionBinding, DefaultInputHandler.PrefixBinding {}
+  private sealed interface Binding
+      permits DefaultInputHandler.ActionBinding, DefaultInputHandler.PrefixBinding {}
 
   private record ActionBinding(ActionListener action) implements Binding {}
 

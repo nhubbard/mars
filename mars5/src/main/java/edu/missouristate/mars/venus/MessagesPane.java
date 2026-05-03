@@ -304,20 +304,21 @@ public class MessagesPane extends JTabbedPane {
   // DPS, 23 Aug 2005.
   public void postRunMessage(String message) {
     final String mess = message;
-    SwingUtilities.invokeLater(() -> {
-      setSelectedComponent(runTab);
-      run.append(mess);
-      // can do some crude cutting here.  If the document gets "very large",
-      // let's cut off the oldest text. This will limit scrolling but the limit
-      // can be set reasonably high.
-      if (run.getDocument().getLength() > MAXIMUM_SCROLLED_CHARACTERS) {
-        try {
-          run.getDocument().remove(0, NUMBER_OF_CHARACTERS_TO_CUT);
-        } catch (BadLocationException ble) {
-          // only if NUMBER_OF_CHARACTERS_TO_CUT > MAXIMUM_SCROLLED_CHARACTERS
-        }
-      }
-    });
+    SwingUtilities.invokeLater(
+        () -> {
+          setSelectedComponent(runTab);
+          run.append(mess);
+          // can do some crude cutting here.  If the document gets "very large",
+          // let's cut off the oldest text. This will limit scrolling but the limit
+          // can be set reasonably high.
+          if (run.getDocument().getLength() > MAXIMUM_SCROLLED_CHARACTERS) {
+            try {
+              run.getDocument().remove(0, NUMBER_OF_CHARACTERS_TO_CUT);
+            } catch (BadLocationException ble) {
+              // only if NUMBER_OF_CHARACTERS_TO_CUT > MAXIMUM_SCROLLED_CHARACTERS
+            }
+          }
+        });
   }
 
   /** Make the assembler message tab current (up front) */
@@ -388,39 +389,40 @@ public class MessagesPane extends JTabbedPane {
     final DocumentListener listener =
         new DocumentListener() {
           public void insertUpdate(final DocumentEvent e) {
-            EventQueue.invokeLater(() -> {
-              try {
-                String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
-                int i = inserted.indexOf('\n');
-                if (i >= 0) {
-                  int offset = e.getOffset() + i;
-                  if (offset + 1 == e.getDocument().getLength()) {
+            EventQueue.invokeLater(
+                () -> {
+                  try {
+                    String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
+                    int i = inserted.indexOf('\n');
+                    if (i >= 0) {
+                      int offset = e.getOffset() + i;
+                      if (offset + 1 == e.getDocument().getLength()) {
+                        returnResponse();
+                      } else {
+                        // remove the '\n' and put it at the end
+                        e.getDocument().remove(offset, 1);
+                        e.getDocument().insertString(e.getDocument().getLength(), "\n", null);
+                        // insertUpdate will be called again, since we have inserted the '\n' at
+                        // the end
+                      }
+                    } else if (maxLen >= 0 && e.getDocument().getLength() - initialPos >= maxLen) {
+                      returnResponse();
+                    }
+                  } catch (BadLocationException ex) {
                     returnResponse();
-                  } else {
-                    // remove the '\n' and put it at the end
-                    e.getDocument().remove(offset, 1);
-                    e.getDocument().insertString(e.getDocument().getLength(), "\n", null);
-                    // insertUpdate will be called again, since we have inserted the '\n' at
-                    // the end
                   }
-                } else if (maxLen >= 0
-                    && e.getDocument().getLength() - initialPos >= maxLen) {
-                  returnResponse();
-                }
-              } catch (BadLocationException ex) {
-                returnResponse();
-              }
-            });
+                });
           }
 
           public void removeUpdate(final DocumentEvent e) {
-            EventQueue.invokeLater(() -> {
-              if ((e.getDocument().getLength() < initialPos || e.getOffset() < initialPos)
-                  && e instanceof UndoableEdit) {
-                ((UndoableEdit) e).undo();
-                run.setCaretPosition(e.getOffset() + e.getLength());
-              }
-            });
+            EventQueue.invokeLater(
+                () -> {
+                  if ((e.getDocument().getLength() < initialPos || e.getOffset() < initialPos)
+                      && e instanceof UndoableEdit) {
+                    ((UndoableEdit) e).undo();
+                    run.setCaretPosition(e.getOffset() + e.getLength());
+                  }
+                });
           }
 
           public void changedUpdate(DocumentEvent e) {}
@@ -455,13 +457,14 @@ public class MessagesPane extends JTabbedPane {
     }
 
     void cleanup() { // not required to be called from the GUI thread
-      EventQueue.invokeLater(() -> {
-        run.getDocument().removeDocumentListener(listener);
-        run.setEditable(false);
-        run.setNavigationFilter(null);
-        run.setCaretPosition(run.getDocument().getLength());
-        Simulator.getInstance().removeStopListener(stopListener);
-      });
+      EventQueue.invokeLater(
+          () -> {
+            run.getDocument().removeDocumentListener(listener);
+            run.setEditable(false);
+            run.setNavigationFilter(null);
+            run.setCaretPosition(run.getDocument().getLength());
+            Simulator.getInstance().removeStopListener(stopListener);
+          });
     }
 
     void returnResponse() {

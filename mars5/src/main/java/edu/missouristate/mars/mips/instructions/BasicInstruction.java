@@ -44,7 +44,8 @@ public class BasicInstruction extends Instruction {
 
   private final int
       opcodeMask; // integer with 1's where constants required (0/1 become 1, f/s/t become 0)
-  private final int opcodeMatch; // integer matching constants required (0/1 become 0/1, f/s/t become 0)
+  private final int
+      opcodeMatch; // integer matching constants required (0/1 become 0/1, f/s/t become 0)
 
   /**
    * BasicInstruction constructor.

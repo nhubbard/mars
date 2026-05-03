@@ -25,7 +25,7 @@ class MemoryTest {
 
   @BeforeAll
   static void initMars() {
-    Globals.initialize(false);
+    Globals.initialize();
   }
 
   @BeforeEach

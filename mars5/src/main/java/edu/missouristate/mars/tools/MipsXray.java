@@ -62,8 +62,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 public class MipsXray extends AbstractMarsToolAndApplication {
-  @Serial
-  private static final long serialVersionUID = -1L;
+  @Serial private static final long serialVersionUID = -1L;
   private static final String heading = "MIPS X-Ray - Animation of MIPS Datapath";
   private static final String version = " Version 2.0";
 
@@ -99,19 +98,20 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
   /** Overrides default method, to provide a Help button for this tool/app. */
   protected JComponent getHelpComponent() {
-    final String helpContent = """
+    final String helpContent =
+        """
         This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
         It reads the source code instruction and generates an animation representing the inputs and\s
         outputs of functional blocks and the interconnection between them.  The basic signals\s
         represented are, control signals, opcode bits and data of functional blocks.
-        
+
         Besides the datapath representation, information for each instruction is displayed below
         the datapath. That display includes opcode value, with the correspondent colors used to
         represent the signals in datapath, mnemonic of the instruction processed at the moment, registers
         used in the instruction and a label that indicates the color code used to represent control signals
-        
+
         To see the datapath of register bank and control units click inside the functional unit.
-        
+
         Version 2.0
         Developed by Márcio Roberto, Guilherme Sales, Fabrício Vivas, Flávio Cardeal and Fábio Lúcio
         Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.
@@ -468,8 +468,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   // selected instruction in memory.
   class DatapathAnimation extends JPanel implements ActionListener, MouseListener {
     /** */
-    @Serial
-    private static final long serialVersionUID = -2681757800180958534L;
+    @Serial private static final long serialVersionUID = -2681757800180958534L;
+
     private static final int PWIDTH = 1000; // size of this panel
     private static final int PHEIGHT = 574;
     private final GraphicsConfiguration gc;
@@ -558,7 +558,11 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     // import the list of opcodes of mips set of instructions
     public void importXmlStringData(
-        String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
+        String xmlName,
+        HashMap<String, String> table,
+        String elementTree,
+        String tagId,
+        String tagData) {
       DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
       dbf.setNamespaceAware(false);
       DocumentBuilder docBuilder;
@@ -653,7 +657,17 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           isText = datapath_mapItem.getElementsByTagName("is_text");
 
           for (int j = 0; j < index_vertex.getLength(); j++) {
-            Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
+            Vertex vert =
+                new Vertex(
+                    Integer.parseInt(index_vertex.item(j).getTextContent()),
+                    Integer.parseInt(init.item(j).getTextContent()),
+                    Integer.parseInt(end.item(j).getTextContent()),
+                    name.item(j).getTextContent(),
+                    Integer.parseInt(other_axis.item(j).getTextContent()),
+                    Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
+                    color.item(j).getTextContent(),
+                    targetVertex.item(j).getTextContent(),
+                    Boolean.parseBoolean(isText.item(j).getTextContent()));
             vertexList.add(vert);
           }
         }
@@ -672,8 +686,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           }
           outputGraph.add(vertexOfTargets);
         }
-        for (Vector<Vertex> vert : outputGraph) {
-        }
+        for (Vector<Vertex> vert : outputGraph) {}
 
         vertexList.getFirst().setActive(true);
         vertexTraversed.add(vertexList.getFirst());
@@ -691,8 +704,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       Font fontTitle = new Font("Verdana", Font.PLAIN, 10);
 
       TextLayout textVariable;
-      if (instructionCode
-          .startsWith("000000")) { // R-type instructions description on screen definition.
+      if (instructionCode.startsWith(
+          "000000")) { // R-type instructions description on screen definition.
         textVariable =
             new TextLayout("REGISTER TYPE INSTRUCTION", new Font("Arial", Font.BOLD, 25), frc);
         g2d.setColor(Color.black);
@@ -1371,7 +1384,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                   new Font("Verdana", Font.BOLD, 13),
                   frc);
         else // other instructions
-          actionInFunctionalBlock =
+        actionInFunctionalBlock =
               new TextLayout(
                   opcodeEquivalenceTable.get(instructionCode.substring(0, 6)),
                   new Font("Verdana", Font.BOLD, 13),
@@ -1380,7 +1393,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
       if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")
           && v.getName().equals("CP+4")) // branch code
-        actionInFunctionalBlock =
+      actionInFunctionalBlock =
             new TextLayout("PC+OFFSET", new Font("Verdana", Font.BOLD, 13), frc);
 
       if (v.getName().equals("WRITING")) {

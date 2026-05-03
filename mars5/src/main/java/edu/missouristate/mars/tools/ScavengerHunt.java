@@ -198,15 +198,16 @@ public class ScavengerHunt implements Observer, MarsTool {
       graphicArea = new ScavengerHuntDisplay(GRAPHIC_WIDTH, GRAPHIC_HEIGHT);
       JPanel buttonPanel = new JPanel();
       JButton resetButton = new JButton("Reset");
-      resetButton.addActionListener(e -> {
-        graphicArea.clear();
+      resetButton.addActionListener(
+          e -> {
+            graphicArea.clear();
 
-        // TBD ------- TBD
-        // Reset actions here
-        initializeScavengerData();
-        // JOptionPane.showMessageDialog(null, "Reset needs to be implemented!" );
+            // TBD ------- TBD
+            // Reset actions here
+            initializeScavengerData();
+            // JOptionPane.showMessageDialog(null, "Reset needs to be implemented!" );
 
-      });
+          });
       buttonPanel.add(resetButton);
 
       panel.add(graphicArea, BorderLayout.CENTER);
@@ -483,7 +484,8 @@ public class ScavengerHunt implements Observer, MarsTool {
     } else if (address == ADDR_NUM_TURNS) {
       // Anyone is allowed to write to the "number of turns" location
       // NO ACTION HERE
-    } else if (address == ADDR_PLAYER_ID) // if the data written will change the PlayerID, authenticate the
+    } else if (address
+        == ADDR_PLAYER_ID) // if the data written will change the PlayerID, authenticate the
     // write
     {
       // 2006 Oct 31  dummy validation scheme, suitable for distribution
@@ -505,12 +507,13 @@ public class ScavengerHunt implements Observer, MarsTool {
                 + Binary.intToHexString(toolGetWord(ADDR_AUTHENTICATION))
                 + "\n");
       }
-    } else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_MOVE_READY && data != 0) //  Player wrote data to his/her assigned MoveReady location
+    } else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_MOVE_READY
+        && data != 0) //  Player wrote data to his/her assigned MoveReady location
     {
 
       energyLevel = toolReadPlayerData(playerID, OFFSET_ENERGY); // find if player has energy
       if (energyLevel <= 0) // No energy. Player not allowed to move
-        return;
+      return;
 
       if (toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) < 0
           || toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) > GRAPHIC_WIDTH
@@ -584,7 +587,8 @@ public class ScavengerHunt implements Observer, MarsTool {
       }
 
     } // end if Player wrote nonzero data to his/her assigned MoveReady location
-    else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_TASK_COMPLETE && data != 0) //  Player wrote data to his/her assigned TaskComplete location
+    else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_TASK_COMPLETE
+        && data != 0) //  Player wrote data to his/her assigned TaskComplete location
     {
 
       // Player indicates he/she has completed a task. Check to see if task is completed correctly.
@@ -629,7 +633,8 @@ public class ScavengerHunt implements Observer, MarsTool {
     // TBD TBD TBD
     // Yet to be implemented: Enforce only one write of MoveRequest per player per turn
 
-    else if (address >= ADDR_BASE + playerID * MEM_PER_PLAYER && address < ADDR_BASE + (playerID + 1) * MEM_PER_PLAYER)
+    else if (address >= ADDR_BASE + playerID * MEM_PER_PLAYER
+        && address < ADDR_BASE + (playerID + 1) * MEM_PER_PLAYER)
     //  Player wrote data elsewhere within his/her assigned location
     {
       // Player can write to any location within his/her assigned location
@@ -802,7 +807,8 @@ public class ScavengerHunt implements Observer, MarsTool {
               (randomStream.nextDouble()
                   * (GRAPHIC_HEIGHT - 50)); // Y coord. (leave room for buttons in window)
     }
-    loc[NUM_LOCATIONS - 1] = new Location(); // The last location is a return to the starting position
+    loc[NUM_LOCATIONS - 1] =
+        new Location(); // The last location is a return to the starting position
     loc[NUM_LOCATIONS - 1].X = START_AND_END_LOCATION;
     loc[NUM_LOCATIONS - 1].Y = START_AND_END_LOCATION;
 

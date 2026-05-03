@@ -52,7 +52,7 @@ public class SyscallSleep extends AbstractSyscall {
     try {
       Thread.sleep(RegisterFile.getValue(4)); // units of milliseconds  1000 millisec = 1 sec.
     } catch (InterruptedException e) {
-        // no exception handling
+      // no exception handling
     }
   }
 }

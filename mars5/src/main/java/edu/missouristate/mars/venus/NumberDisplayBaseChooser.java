@@ -2,7 +2,6 @@ package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
-
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -56,25 +55,26 @@ public class NumberDisplayBaseChooser extends JCheckBox {
   public NumberDisplayBaseChooser(String text, boolean displayInHex) {
     super(text, displayInHex);
     base = getBase(displayInHex);
-    addItemListener(ie -> {
-      NumberDisplayBaseChooser choose = (NumberDisplayBaseChooser) ie.getItem();
-      if (ie.getStateChange() == ItemEvent.SELECTED) {
-        choose.setBase(NumberDisplayBaseChooser.HEXADECIMAL);
-      } else {
-        choose.setBase(NumberDisplayBaseChooser.DECIMAL);
-      }
-      // Better to use notify, but I am tired...
-      if (settingMenuItem != null) {
-        settingMenuItem.setSelected(choose.isSelected());
-        ActionListener[] listeners = settingMenuItem.getActionListeners();
-        ActionEvent event = new ActionEvent(settingMenuItem, 0, "chooser");
-        for (ActionListener listener : listeners) {
-          listener.actionPerformed(event);
-        }
-      }
-      // Better to use notify, but I am tired...
-      Globals.getGui().getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
-    });
+    addItemListener(
+        ie -> {
+          NumberDisplayBaseChooser choose = (NumberDisplayBaseChooser) ie.getItem();
+          if (ie.getStateChange() == ItemEvent.SELECTED) {
+            choose.setBase(NumberDisplayBaseChooser.HEXADECIMAL);
+          } else {
+            choose.setBase(NumberDisplayBaseChooser.DECIMAL);
+          }
+          // Better to use notify, but I am tired...
+          if (settingMenuItem != null) {
+            settingMenuItem.setSelected(choose.isSelected());
+            ActionListener[] listeners = settingMenuItem.getActionListeners();
+            ActionEvent event = new ActionEvent(settingMenuItem, 0, "chooser");
+            for (ActionListener listener : listeners) {
+              listener.actionPerformed(event);
+            }
+          }
+          // Better to use notify, but I am tired...
+          Globals.getGui().getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
+        });
   }
 
   /**
@@ -126,11 +126,12 @@ public class NumberDisplayBaseChooser extends JCheckBox {
    * @return a String equivalent of the value rendered appropriately.
    */
   public static String formatNumber(int value, int base) {
-    String result = switch (base) {
-      case HEXADECIMAL -> Binary.intToHexString(value);
-      case ASCII -> Binary.intToAscii(value);
-      default -> Integer.toString(value);
-    };
+    String result =
+        switch (base) {
+          case HEXADECIMAL -> Binary.intToHexString(value);
+          case ASCII -> Binary.intToAscii(value);
+          default -> Integer.toString(value);
+        };
     return result;
   }
 

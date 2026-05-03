@@ -118,12 +118,17 @@ public class ToolLoader {
       if (!file.equals(MARSTOOL_INTERFACE)) {
         try {
           // grab the class, make sure it implements MarsTool, instantiate, add to menu
-          String toolClassName = CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
+          String toolClassName =
+              CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
           Class<?> clas = Class.forName(toolClassName);
-          if (!MarsTool.class.isAssignableFrom(clas) || Modifier.isAbstract(clas.getModifiers()) || Modifier.isInterface(clas.getModifiers())) {
+          if (!MarsTool.class.isAssignableFrom(clas)
+              || Modifier.isAbstract(clas.getModifiers())
+              || Modifier.isInterface(clas.getModifiers())) {
             continue;
           }
-          toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
+          toolList.add(
+              new MarsToolClassAndInstance(
+                  clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
         } catch (Exception e) {
           System.out.println("Error instantiating MarsTool from file " + file + ": " + e);
         }
@@ -132,6 +137,5 @@ public class ToolLoader {
     return toolList;
   }
 
-  private record MarsToolClassAndInstance(Class<?> marsToolClass, MarsTool marsToolInstance) {
-  }
+  private record MarsToolClassAndInstance(Class<?> marsToolClass, MarsTool marsToolInstance) {}
 }

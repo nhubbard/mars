@@ -169,7 +169,6 @@ public class EditorFont {
    * Handy utility to produce a string that substitutes spaces for all tab characters in the given
    * string. The number of spaces generated is based on the position of the tab character and the
    * editor's current tab size setting.
-   *
    */
   private static final String TAB_STRING = "\t";
 

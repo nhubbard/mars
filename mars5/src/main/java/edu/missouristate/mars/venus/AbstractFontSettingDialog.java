@@ -106,20 +106,22 @@ public abstract class AbstractFontSettingDialog extends JDialog {
             + " to "
             + EditorFont.MAX_SIZE
             + ".");
-    fontSizeSelector.addChangeListener(e -> {
-      Integer value = ((JSlider) e.getSource()).getValue();
-      fontSizeSpinSelector.setValue(value);
-      fontSample.setFont(getFont());
-    });
+    fontSizeSelector.addChangeListener(
+        e -> {
+          Integer value = ((JSlider) e.getSource()).getValue();
+          fontSizeSpinSelector.setValue(value);
+          fontSample.setFont(getFont());
+        });
     SpinnerNumberModel fontSizeSpinnerModel =
         new SpinnerNumberModel(currentFont.getSize(), EditorFont.MIN_SIZE, EditorFont.MAX_SIZE, 1);
     fontSizeSpinSelector = new JSpinner(fontSizeSpinnerModel);
     fontSizeSpinSelector.setToolTipText("Current font size in points.");
-    fontSizeSpinSelector.addChangeListener(e -> {
-      Object value = ((JSpinner) e.getSource()).getValue();
-      fontSizeSelector.setValue((Integer) value);
-      fontSample.setFont(getFont());
-    });
+    fontSizeSpinSelector.addChangeListener(
+        e -> {
+          Object value = ((JSpinner) e.getSource()).getValue();
+          fontSizeSelector.setValue((Integer) value);
+          fontSample.setFont(getFont());
+        });
     // Action listener to update sample when family or style selected
     ActionListener updateSample = e -> fontSample.setFont(getFont());
     fontFamilySelector.addActionListener(updateSample);
@@ -148,7 +150,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
   }
 
   // Build component containing the buttons for dialog control
-  // Such as OK, Cancel, Reset, Apply, etc.  These may vary
+  // Such as OK, Cancel, Reset, Apply, etc. These may vary
   // by application
   protected abstract Component buildControlPanel();
 

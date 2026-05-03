@@ -78,16 +78,16 @@ public class LabelsWindow extends JInternalFrame {
   // "Click Addr" column shows which state to go to when Addr column is clicked.
   //////////////////////////////////////////////////////////////////////////////////////
   // The array of comparators; index corresponds to state in table above.
-  private final List<Comparator<Symbol>> tableSortingComparators = List.of(
-    /*  0  */ new LabelAddressAscendingComparator(),
-    /*  1  */ new DescendingComparator(new LabelAddressAscendingComparator()),
-    /*  2  */ new LabelAddressAscendingComparator(),
-    /*  3  */ new DescendingComparator(new LabelAddressAscendingComparator()),
-    /*  4  */ new LabelNameAscendingComparator(),
-    /*  5  */ new LabelNameAscendingComparator(),
-    /*  6  */ new DescendingComparator(new LabelNameAscendingComparator()),
-    /*  7  */ new DescendingComparator(new LabelNameAscendingComparator())
-  );
+  private final List<Comparator<Symbol>> tableSortingComparators =
+      List.of(
+          /*  0  */ new LabelAddressAscendingComparator(),
+          /*  1  */ new DescendingComparator(new LabelAddressAscendingComparator()),
+          /*  2  */ new LabelAddressAscendingComparator(),
+          /*  3  */ new DescendingComparator(new LabelAddressAscendingComparator()),
+          /*  4  */ new LabelNameAscendingComparator(),
+          /*  5  */ new LabelNameAscendingComparator(),
+          /*  6  */ new DescendingComparator(new LabelNameAscendingComparator()),
+          /*  7  */ new DescendingComparator(new LabelNameAscendingComparator()));
   // The array of state transitions; primary index corresponds to state in table above,
   // secondary index corresponds to table columns (0==label name, 1==address).
   private static final int[][] sortStateTransitions = {
@@ -205,7 +205,10 @@ public class LabelsWindow extends JInternalFrame {
     // the table beneath it -- the table column widths are stretched to attain the same width and
     // the address information requires scrolling to see.  All because of a long file name.
     for (JComponent nameLabel : tableNames) {
-      nameLabel.setMaximumSize(new Dimension(labelScrollPane.getViewport().getViewSize().width, (int) (1.5 * nameLabel.getFontMetrics(nameLabel.getFont()).getHeight())));
+      nameLabel.setMaximumSize(
+          new Dimension(
+              labelScrollPane.getViewport().getViewSize().width,
+              (int) (1.5 * nameLabel.getFontMetrics(nameLabel.getFont()).getHeight())));
     }
     labelScrollPane.setColumnHeaderView(tableHeader);
     return labelScrollPane;
@@ -501,15 +504,15 @@ public class LabelsWindow extends JInternalFrame {
   }
 
   /// /////////////////////////////////////////////////////////////////////////
-    //
-    //  Comparator class used to sort in descending order a List of symbols.  It will
-    //  sort either alphabetically by name or numerically by address, depending on the
-    //  Comparator object provided as the argument constructor.  This works because it
-    //  is implemented by returning the result of the Ascending comparator when
-    //  arguments are reversed.
-    private record DescendingComparator(Comparator<Symbol> opposite) implements Comparator<Symbol> {
+  //
+  //  Comparator class used to sort in descending order a List of symbols.  It will
+  //  sort either alphabetically by name or numerically by address, depending on the
+  //  Comparator object provided as the argument constructor.  This works because it
+  //  is implemented by returning the result of the Ascending comparator when
+  //  arguments are reversed.
+  private record DescendingComparator(Comparator<Symbol> opposite) implements Comparator<Symbol> {
     public int compare(Symbol a, Symbol b) {
-        return opposite.compare(b, a);
-      }
+      return opposite.compare(b, a);
     }
+  }
 }

@@ -89,12 +89,22 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
             address <= lastAddress;
             address += Memory.WORD_LENGTH_BYTES) {
           if (offset % 8 == 0) {
-            string = new StringBuilder(((hexAddresses) ? Binary.intToHexString(address) : Binary.unsignedIntToIntString(address)) + "    ");
+            string =
+                new StringBuilder(
+                    ((hexAddresses)
+                            ? Binary.intToHexString(address)
+                            : Binary.unsignedIntToIntString(address))
+                        + "    ");
           }
           offset++;
           Integer temp = Globals.memory.getRawWordOrNull(address);
           if (temp == null) break;
-          string.append((hexValues) ? Binary.intToHexString(temp) : ("           " + temp).substring(temp.toString().length())).append(" ");
+          string
+              .append(
+                  (hexValues)
+                      ? Binary.intToHexString(temp)
+                      : ("           " + temp).substring(temp.toString().length()))
+              .append(" ");
           if (offset % 8 == 0) {
             out.println(string);
             string = new StringBuilder();
@@ -131,7 +141,8 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
           ProgramStatement ps = Globals.memory.getStatement(address);
           string +=
               (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
-          string += (((ps.getSource().isEmpty()) ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
+          string +=
+              (((ps.getSource().isEmpty()) ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
           string += ps.getSource();
         } catch (AddressErrorException ignored) {
         }

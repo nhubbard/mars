@@ -88,8 +88,7 @@ public class Tokenizer {
     equivalents = new HashMap<>(); // DPS 11-July-2012
     ArrayList<TokenList> tokenList = new ArrayList<>();
     // ArrayList source = p.getSourceList();
-    ArrayList<SourceLine> source =
-        processIncludes(p, new HashMap<>()); // DPS 9-Jan-2013
+    ArrayList<SourceLine> source = processIncludes(p, new HashMap<>()); // DPS 9-Jan-2013
     p.setSourceLineList(source);
     TokenList currentLineTokens;
     String sourceLine;
@@ -605,9 +604,7 @@ public class Tokenizer {
     String quotesRemoved = value.substring(1, value.length() - 1);
     // if not escaped, then if one character left return its value else return original.
     if (quotesRemoved.charAt(0) != '\\') {
-      return (quotesRemoved.length() == 1)
-          ? Integer.toString(quotesRemoved.charAt(0))
-          : value;
+      return (quotesRemoved.length() == 1) ? Integer.toString(quotesRemoved.charAt(0)) : value;
     }
     // now we know it is escape sequence and have to decode which of the 8: ',",\,n,t,b,r,f
     if (quotesRemoved.length() == 2) {

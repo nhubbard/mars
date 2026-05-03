@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-
 import java.io.*;
 import java.util.*;
 import javax.swing.*;
@@ -282,7 +281,8 @@ public class MIPSprogram {
    * @throws ProcessingException Will throw exception if errors occured while assembling.
    * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
    */
-  public ErrorList assemble(ArrayList<MIPSprogram> MIPSprogramsToAssemble, boolean extendedAssemblerEnabled)
+  public ErrorList assemble(
+      ArrayList<MIPSprogram> MIPSprogramsToAssemble, boolean extendedAssemblerEnabled)
       throws ProcessingException {
     return assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, false);
   }
@@ -302,7 +302,9 @@ public class MIPSprogram {
    * @return ErrorList containing nothing or only warnings (otherwise would have thrown exception).
    */
   public ErrorList assemble(
-      ArrayList<MIPSprogram> MIPSprogramsToAssemble, boolean extendedAssemblerEnabled, boolean warningsAreErrors)
+      ArrayList<MIPSprogram> MIPSprogramsToAssemble,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors)
       throws ProcessingException {
     this.backStepper = null;
     Assembler asm = new Assembler();

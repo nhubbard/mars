@@ -10,7 +10,6 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
 import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
-
 import java.util.*;
 import javax.swing.text.Segment;
 

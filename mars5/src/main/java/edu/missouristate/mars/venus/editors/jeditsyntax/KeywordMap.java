@@ -108,8 +108,7 @@ public class KeywordMap {
   }
 
   // private members
-    record Keyword(char[] keyword, byte id, Keyword next) {
-  }
+  record Keyword(char[] keyword, byte id, Keyword next) {}
 
   private final Keyword[] map;
   private boolean ignoreCase;

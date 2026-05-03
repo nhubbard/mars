@@ -234,7 +234,8 @@ public class FilenameFinder {
    *     Arraylist or extension null or empty, all files are added.
    * @return array list of matching file names (absolute path). If none, list is empty.
    */
-  public static ArrayList<String> getFilenameList(String directoryPath, ArrayList<String> fileExtensions) {
+  public static ArrayList<String> getFilenameList(
+      String directoryPath, ArrayList<String> fileExtensions) {
     ArrayList<String> filenameList = new ArrayList<>();
     String fileExtension;
     if (fileExtensions == null || fileExtensions.isEmpty()) {
@@ -258,7 +259,8 @@ public class FilenameFinder {
    *     string, all files are added. Do NOT include "." in extension.
    * @return array list of matching file names (absolute path). If none, list is empty.
    */
-  public static ArrayList<String> getFilenameList(ArrayList<String> nameList, String fileExtension) {
+  public static ArrayList<String> getFilenameList(
+      ArrayList<String> nameList, String fileExtension) {
     fileExtension = checkFileExtension(fileExtension);
     ArrayList<String> filenameList = new ArrayList<>();
     FileFilter filter = getFileFilter(fileExtension, "", NO_DIRECTORIES);
@@ -282,7 +284,8 @@ public class FilenameFinder {
    *     Arraylist or extension null or empty, all files are added.
    * @return array list of matching file names (absolute path). If none, list is empty.
    */
-  public static ArrayList<String> getFilenameList(ArrayList<String> nameList, ArrayList<String> fileExtensions) {
+  public static ArrayList<String> getFilenameList(
+      ArrayList<String> nameList, ArrayList<String> fileExtensions) {
     ArrayList<String> filenameList = new ArrayList<>();
     String fileExtension;
     if (fileExtensions == null || fileExtensions.isEmpty()) {
@@ -446,7 +449,8 @@ public class FilenameFinder {
     private final String fullDescription;
     private final boolean acceptDirectories;
 
-    private MarsFileFilter(ArrayList<String> extensions, String description, boolean acceptDirectories) {
+    private MarsFileFilter(
+        ArrayList<String> extensions, String description, boolean acceptDirectories) {
       this.extensions = extensions;
       this.fullDescription = buildFullDescription(description, extensions);
       this.acceptDirectories = acceptDirectories;
@@ -464,7 +468,11 @@ public class FilenameFinder {
       for (int i = 0; i < extensions.size(); i++) {
         String extension = extensions.get(i);
         if (extension != null && !extension.isEmpty()) {
-          result.append((i == 0) ? "" : "; ").append("*").append((extension.charAt(0) == '.') ? "" : ".").append(extension);
+          result
+              .append((i == 0) ? "" : "; ")
+              .append("*")
+              .append((extension.charAt(0) == '.') ? "" : ".")
+              .append(extension);
         }
       }
       if (!extensions.isEmpty()) {

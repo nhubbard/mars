@@ -97,7 +97,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     private Component buildConfigChooser() {
       JPanel chooserPanel = new JPanel(new GridLayout(4, 1));
       ButtonGroup choices = new ButtonGroup();
-      Iterator<MemoryConfiguration> configurationsIterator = MemoryConfigurations.getConfigurationsIterator();
+      Iterator<MemoryConfiguration> configurationsIterator =
+          MemoryConfigurations.getConfigurationsIterator();
       while (configurationsIterator.hasNext()) {
         MemoryConfiguration config = configurationsIterator.next();
         ConfigurationButton button = new ConfigurationButton(config);
@@ -158,10 +159,11 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       Box controlPanel = Box.createHorizontalBox();
       JButton okButton = new JButton("Apply and Close");
       okButton.setToolTipText(SettingsHighlightingAction.CLOSE_TOOL_TIP_TEXT);
-      okButton.addActionListener(e -> {
-        performApply();
-        performClose();
-      });
+      okButton.addActionListener(
+          e -> {
+            performApply();
+            performClose();
+          });
       JButton applyButton = new JButton("Apply");
       applyButton.setToolTipText(SettingsHighlightingAction.APPLY_TOOL_TIP_TEXT);
       applyButton.addActionListener(e -> performApply());
@@ -237,7 +239,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
             Binary.intToHexString(configurationItemValues[i]) + configurationItemNames[i],
             configurationItemNames[i]);
       }
-      Iterator<Map.Entry<String, String>> setSortedByAddress = treeSortedByAddress.entrySet().iterator();
+      Iterator<Map.Entry<String, String>> setSortedByAddress =
+          treeSortedByAddress.entrySet().iterator();
       Map.Entry<String, String> pair;
       int addressStringLength = Binary.intToHexString(configurationItemValues[0]).length();
       for (int i = 0; i < configurationItemValues.length; i++) {
@@ -253,8 +256,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     private final MemoryConfiguration configuration;
 
     public ConfigurationButton(MemoryConfiguration config) {
-      super(
-          config.configurationName(), config == MemoryConfigurations.getCurrentConfiguration());
+      super(config.configurationName(), config == MemoryConfigurations.getCurrentConfiguration());
       this.configuration = config;
     }
 

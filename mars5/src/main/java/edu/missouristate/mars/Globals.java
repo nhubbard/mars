@@ -5,7 +5,6 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.*;
-
 import java.util.*;
 
 /*
@@ -139,13 +138,13 @@ public class Globals {
   }
 
   /** Method called once upon system initialization to create the global data structures. */
-  public static void initialize(boolean gui) {
+  public static void initialize() {
     if (!initialized) {
       memory = Memory.getInstance(); // clients can use Memory.getInstance instead of Globals.memory
       instructionSet = new InstructionSet();
       instructionSet.populate();
       symbolTable = new SymbolTable("global");
-      settings = new Settings(gui);
+      settings = new Settings();
       initialized = true;
       debug = false;
       memory.clear(); // will establish memory configuration from setting
@@ -254,5 +253,4 @@ public class Globals {
   public static String getPropertyEntry(String propertiesFile, String propertyName) {
     return PropertiesFile.loadPropertiesFromFile(propertiesFile).getProperty(propertyName);
   }
-
 }

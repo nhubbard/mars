@@ -210,8 +210,10 @@ public class MIPSTokenMarker extends TokenMarker {
         int realMatches = 0;
         matches = new ArrayList<>();
         for (Instruction inst : instrMatches) {
-          if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
-            matches.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
+          if (Globals.getSettings().getExtendedAssemblerEnabled()
+              || inst instanceof BasicInstruction) {
+            matches.add(
+                new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
             realMatches++;
           }
         }
@@ -399,7 +401,8 @@ public class MIPSTokenMarker extends TokenMarker {
     for (Instruction inst : matches) {
       if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
         if (exact) {
-          results.add(new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), true));
+          results.add(
+              new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), true));
         } else {
           String mnemonic = inst.getExampleFormat().split(" ")[0];
           if (!insts.containsKey(mnemonic)) {

@@ -26,7 +26,7 @@ class AssemblerSmokeTest {
 
   @BeforeAll
   static void initMars() {
-    Globals.initialize(false);
+    Globals.initialize();
   }
 
   @BeforeEach

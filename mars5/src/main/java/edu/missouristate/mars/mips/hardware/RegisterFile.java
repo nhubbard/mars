@@ -111,7 +111,12 @@ public class RegisterFile {
     } else {
       for (Register register : regFile) {
         if (register.getNumber() == num) {
-          old = (Globals.getSettings().getBackSteppingEnabled()) ? Globals.program.getBackStepper().addRegisterFileRestore(num, register.setValue(val)) : register.setValue(val);
+          old =
+              (Globals.getSettings().getBackSteppingEnabled())
+                  ? Globals.program
+                      .getBackStepper()
+                      .addRegisterFileRestore(num, register.setValue(val))
+                  : register.setValue(val);
           break;
         }
       }

@@ -352,7 +352,12 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
           if (tableModel.getValueAt(row, CODE_COLUMN).equals(strValue)) {
             return;
           }
-          mc = new ModifiedCode(row, tableModel.getValueAt(row, CODE_COLUMN), tableModel.getValueAt(row, BASIC_COLUMN), tableModel.getValueAt(row, SOURCE_COLUMN));
+          mc =
+              new ModifiedCode(
+                  row,
+                  tableModel.getValueAt(row, CODE_COLUMN),
+                  tableModel.getValueAt(row, BASIC_COLUMN),
+                  tableModel.getValueAt(row, SOURCE_COLUMN));
           executeMods.put(row, mc);
           // make a ProgramStatement and get basic code to display in BASIC_COLUMN
           strBasic = new ProgramStatement(value, address).getPrintableBasicAssemblyStatement();
@@ -732,7 +737,9 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     public boolean isCellEditable(int row, int col) {
       // Note that the data/cell address is constant,
       // no matter where the cell appears onscreen.
-      return col == BREAK_COLUMN || (col == CODE_COLUMN && Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
+      return col == BREAK_COLUMN
+          || (col == CODE_COLUMN
+              && Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     }
 
     /**
@@ -792,8 +799,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     }
   }
 
-  private record ModifiedCode(Integer row, Object code, Object basic, Object source) {
-  }
+  private record ModifiedCode(Integer row, Object code, Object basic, Object source) {}
 
   /*  a custom table cell renderer that we'll use to highlight the current line of
    *  source code when executing using Step or breakpoint.

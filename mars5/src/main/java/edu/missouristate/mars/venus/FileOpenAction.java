@@ -1,8 +1,8 @@
 package edu.missouristate.mars.venus;
 
+import java.awt.event.ActionEvent;
 import javax.swing.Icon;
 import javax.swing.KeyStroke;
-import java.awt.event.ActionEvent;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar

@@ -59,20 +59,21 @@ public class EditTabbedPane extends JTabbedPane {
     this.fileOpener = new FileOpener(editor);
     this.mainPane = mainPane;
     this.editor.setEditTabbedPane(this);
-    this.addChangeListener(e -> {
-      EditPane editPane = (EditPane) getSelectedComponent();
-      if (editPane != null) {
-        // New IF statement to permit free traversal of edit panes w/o invalidating
-        // assembly if assemble-all is selected.  DPS 9-Aug-2011
-        if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
-          EditTabbedPane.this.updateTitles(editPane);
-        } else {
-          EditTabbedPane.this.updateTitlesAndMenuState(editPane);
-          EditTabbedPane.this.mainPane.getExecutePane().clearPane();
-        }
-        editPane.tellEditingComponentToRequestFocusInWindow();
-      }
-    });
+    this.addChangeListener(
+        e -> {
+          EditPane editPane = (EditPane) getSelectedComponent();
+          if (editPane != null) {
+            // New IF statement to permit free traversal of edit panes w/o invalidating
+            // assembly if assemble-all is selected.  DPS 9-Aug-2011
+            if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+              EditTabbedPane.this.updateTitles(editPane);
+            } else {
+              EditTabbedPane.this.updateTitlesAndMenuState(editPane);
+              EditTabbedPane.this.mainPane.getExecutePane().clearPane();
+            }
+            editPane.tellEditingComponentToRequestFocusInWindow();
+          }
+        });
   }
 
   /**

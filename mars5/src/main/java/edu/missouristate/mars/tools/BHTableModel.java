@@ -65,6 +65,7 @@ public class BHTableModel extends AbstractTableModel {
 
   /** number of entries in the BHT */
   private int m_entryCnt;
+
   /** name of the table columns */
   private final String[] m_columnNames = {
     "Index", "History", "Prediction", "Correct", "Incorrect", "Precision"

@@ -1,7 +1,6 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
-
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -221,18 +220,19 @@ public class SettingsHighlightingAction extends GuiAction {
     dataHighlightButton = new JButton();
     dataHighlightButton.setText(getHighlightControlText(currentDataHighlightSetting));
     dataHighlightButton.setToolTipText(DATA_HIGHLIGHT_ENABLE_TOOL_TIP_TEXT);
-    dataHighlightButton.addActionListener(e -> {
-      currentDataHighlightSetting = !currentDataHighlightSetting;
-      dataHighlightButton.setText(getHighlightControlText(currentDataHighlightSetting));
-    });
+    dataHighlightButton.addActionListener(
+        e -> {
+          currentDataHighlightSetting = !currentDataHighlightSetting;
+          dataHighlightButton.setText(getHighlightControlText(currentDataHighlightSetting));
+        });
     registerHighlightButton = new JButton();
     registerHighlightButton.setText(getHighlightControlText(currentRegisterHighlightSetting));
     registerHighlightButton.setToolTipText(REGISTER_HIGHLIGHT_ENABLE_TOOL_TIP_TEXT);
-    registerHighlightButton.addActionListener(e -> {
-      currentRegisterHighlightSetting = !currentRegisterHighlightSetting;
-      registerHighlightButton.setText(
-          getHighlightControlText(currentRegisterHighlightSetting));
-    });
+    registerHighlightButton.addActionListener(
+        e -> {
+          currentRegisterHighlightSetting = !currentRegisterHighlightSetting;
+          registerHighlightButton.setText(getHighlightControlText(currentRegisterHighlightSetting));
+        });
     JPanel dataHighlightPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
     JPanel registerHighlightPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
     dataHighlightPanel.add(new JLabel("* Data Segment highlighting is"));
@@ -247,10 +247,11 @@ public class SettingsHighlightingAction extends GuiAction {
     Box controlPanel = Box.createHorizontalBox();
     JButton okButton = new JButton("Apply and Close");
     okButton.setToolTipText(CLOSE_TOOL_TIP_TEXT);
-    okButton.addActionListener(e -> {
-      setHighlightingSettings();
-      closeDialog();
-    });
+    okButton.addActionListener(
+        e -> {
+          setHighlightingSettings();
+          closeDialog();
+        });
     JButton applyButton = new JButton("Apply");
     applyButton.setToolTipText(APPLY_TOOL_TIP_TEXT);
     applyButton.addActionListener(e -> setHighlightingSettings());
@@ -445,7 +446,8 @@ public class SettingsHighlightingAction extends GuiAction {
 
     public void actionPerformed(ActionEvent e) {
       JButton button = (JButton) e.getSource();
-      FontSettingDialog fontDialog = new FontSettingDialog(null, "Select Text Font", samples[position].getFont());
+      FontSettingDialog fontDialog =
+          new FontSettingDialog(null, "Select Text Font", samples[position].getFont());
       Font newFont = fontDialog.showDialog();
       if (newFont != null) {
         // button.setFont(newFont);
@@ -536,15 +538,17 @@ public class SettingsHighlightingAction extends GuiAction {
     protected Component buildControlPanel() {
       Box controlPanel = Box.createHorizontalBox();
       JButton okButton = new JButton("OK");
-      okButton.addActionListener(e -> {
-        performOK();
-        closeDialog();
-      });
+      okButton.addActionListener(
+          e -> {
+            performOK();
+            closeDialog();
+          });
       JButton cancelButton = new JButton("Cancel");
-      cancelButton.addActionListener(e -> {
-        performCancel();
-        closeDialog();
-      });
+      cancelButton.addActionListener(
+          e -> {
+            performCancel();
+            closeDialog();
+          });
       JButton resetButton = new JButton("Reset");
       resetButton.addActionListener(e -> reset());
       controlPanel.add(Box.createHorizontalGlue());

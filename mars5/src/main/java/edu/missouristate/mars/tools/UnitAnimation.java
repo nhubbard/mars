@@ -28,8 +28,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 class UnitAnimation extends JPanel implements ActionListener {
-  @Serial
-  private static final long serialVersionUID = -2681757800180958534L;
+  @Serial private static final long serialVersionUID = -2681757800180958534L;
   private static final int PWIDTH = 1000; // size of this panel
   private static final int PHEIGHT = 574;
   private final GraphicsConfiguration gc;
@@ -278,7 +277,11 @@ class UnitAnimation extends JPanel implements ActionListener {
 
   // import the list of opcodes of mips set of instructions
   public void importXmlStringData(
-      String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
+      String xmlName,
+      HashMap<String, String> table,
+      String elementTree,
+      String tagId,
+      String tagData) {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     dbf.setNamespaceAware(false);
     DocumentBuilder docBuilder;
@@ -374,7 +377,17 @@ class UnitAnimation extends JPanel implements ActionListener {
         isText = datapath_mapItem.getElementsByTagName("is_text");
 
         for (int j = 0; j < index_vertex.getLength(); j++) {
-          Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
+          Vertex vert =
+              new Vertex(
+                  Integer.parseInt(index_vertex.item(j).getTextContent()),
+                  Integer.parseInt(init.item(j).getTextContent()),
+                  Integer.parseInt(end.item(j).getTextContent()),
+                  name.item(j).getTextContent(),
+                  Integer.parseInt(other_axis.item(j).getTextContent()),
+                  Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
+                  color.item(j).getTextContent(),
+                  targetVertex.item(j).getTextContent(),
+                  Boolean.parseBoolean(isText.item(j).getTextContent()));
           vertexList.add(vert);
         }
       }
@@ -393,8 +406,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
         outputGraph.add(vertexOfTargets);
       }
-      for (Vector<Vertex> vert : outputGraph) {
-      }
+      for (Vector<Vertex> vert : outputGraph) {}
 
       vertexList.getFirst().setActive(true);
       vertexTraversed.add(vertexList.getFirst());
@@ -489,7 +501,17 @@ class UnitAnimation extends JPanel implements ActionListener {
         isText = datapath_mapItem.getElementsByTagName("is_text");
 
         for (int j = 0; j < index_vertex.getLength(); j++) {
-          Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
+          Vertex vert =
+              new Vertex(
+                  Integer.parseInt(index_vertex.item(j).getTextContent()),
+                  Integer.parseInt(init.item(j).getTextContent()),
+                  Integer.parseInt(end.item(j).getTextContent()),
+                  name.item(j).getTextContent(),
+                  Integer.parseInt(other_axis.item(j).getTextContent()),
+                  Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
+                  color.item(j).getTextContent(),
+                  targetVertex.item(j).getTextContent(),
+                  Boolean.parseBoolean(isText.item(j).getTextContent()));
           vertexList.add(vert);
         }
       }
@@ -508,8 +530,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
         outputGraph.add(vertexOfTargets);
       }
-      for (Vector<Vertex> vert : outputGraph) {
-      }
+      for (Vector<Vertex> vert : outputGraph) {}
 
       vertexList.getFirst().setActive(true);
       vertexTraversed.add(vertexList.getFirst());

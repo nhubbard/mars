@@ -140,7 +140,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     theWindow = this;
     this.isBeingUsedAsAMarsTool = false;
     thisMarsApp.setTitle(this.title);
-    Globals.initialize(true);
+    Globals.initialize();
     // assure the dialog goes away if user clicks the X
     thisMarsApp.addWindowListener(
         new WindowAdapter() {
@@ -249,13 +249,14 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     buttonArea.setBorder(tc);
     connectButton = new ConnectButton();
     connectButton.setToolTipText("Control whether tool will respond to running MIPS program");
-    connectButton.addActionListener(e -> {
-      if (connectButton.isConnected()) {
-        connectButton.disconnect();
-      } else {
-        connectButton.connect();
-      }
-    });
+    connectButton.addActionListener(
+        e -> {
+          if (connectButton.isConnected()) {
+            connectButton.disconnect();
+          } else {
+            connectButton.connect();
+          }
+        });
     connectButton.addKeyListener(new EnterKeyListener(connectButton));
 
     JButton resetButton = new JButton("Reset");
@@ -304,38 +305,39 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     // text field to show filename, and run speed slider.
     openFileButton = new JButton("Open MIPS program...");
     openFileButton.setToolTipText("Select MIPS program file to assemble and run");
-    openFileButton.addActionListener(e -> {
-      JFileChooser fileChooser = new JFileChooser();
-      JCheckBox multiFileAssembleChoose =
-          new JCheckBox("Assemble all in selected file's directory", multiFileAssemble);
-      multiFileAssembleChoose.setToolTipText(
-          "If checked, selected file will be assembled first and all other assembly files in directory will be assembled also.");
-      fileChooser.setAccessory(multiFileAssembleChoose);
-      if (mostRecentlyOpenedFile != null) {
-        fileChooser.setSelectedFile(mostRecentlyOpenedFile);
-      }
-      // DPS 13 June 2007.  The next 4 lines add file filter to file chooser.
-      FileFilter defaultFileFilter =
-          FilenameFinder.getFileFilter(Globals.fileExtensions, "Assembler Files", true);
-      fileChooser.addChoosableFileFilter(defaultFileFilter);
-      fileChooser.addChoosableFileFilter(fileChooser.getAcceptAllFileFilter());
-      fileChooser.setFileFilter(defaultFileFilter);
+    openFileButton.addActionListener(
+        e -> {
+          JFileChooser fileChooser = new JFileChooser();
+          JCheckBox multiFileAssembleChoose =
+              new JCheckBox("Assemble all in selected file's directory", multiFileAssemble);
+          multiFileAssembleChoose.setToolTipText(
+              "If checked, selected file will be assembled first and all other assembly files in directory will be assembled also.");
+          fileChooser.setAccessory(multiFileAssembleChoose);
+          if (mostRecentlyOpenedFile != null) {
+            fileChooser.setSelectedFile(mostRecentlyOpenedFile);
+          }
+          // DPS 13 June 2007.  The next 4 lines add file filter to file chooser.
+          FileFilter defaultFileFilter =
+              FilenameFinder.getFileFilter(Globals.fileExtensions, "Assembler Files", true);
+          fileChooser.addChoosableFileFilter(defaultFileFilter);
+          fileChooser.addChoosableFileFilter(fileChooser.getAcceptAllFileFilter());
+          fileChooser.setFileFilter(defaultFileFilter);
 
-      if (fileChooser.showOpenDialog(thisMarsApp) == JFileChooser.APPROVE_OPTION) {
-        multiFileAssemble = multiFileAssembleChoose.isSelected();
-        File theFile = fileChooser.getSelectedFile();
-        try {
-          theFile = theFile.getCanonicalFile();
-        } catch (IOException ioe) {
-          // nothing to do, theFile will keep current value
-        }
-        String currentFilePath = theFile.getPath();
-        mostRecentlyOpenedFile = theFile;
-        operationStatusMessages.setText("File: " + currentFilePath);
-        operationStatusMessages.setCaretPosition(0);
-        assembleRunButton.setEnabled(true);
-      }
-    });
+          if (fileChooser.showOpenDialog(thisMarsApp) == JFileChooser.APPROVE_OPTION) {
+            multiFileAssemble = multiFileAssembleChoose.isSelected();
+            File theFile = fileChooser.getSelectedFile();
+            try {
+              theFile = theFile.getCanonicalFile();
+            } catch (IOException ioe) {
+              // nothing to do, theFile will keep current value
+            }
+            String currentFilePath = theFile.getPath();
+            mostRecentlyOpenedFile = theFile;
+            operationStatusMessages.setText("File: " + currentFilePath);
+            operationStatusMessages.setCaretPosition(0);
+            assembleRunButton.setEnabled(true);
+          }
+        });
     openFileButton.addKeyListener(new EnterKeyListener(openFileButton));
 
     operationStatusMessages = new MessageField("No file open.");
@@ -351,12 +353,13 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     assembleRunButton = new JButton("Assemble and Run");
     assembleRunButton.setToolTipText("Assemble and run the currently selected MIPS program");
     assembleRunButton.setEnabled(false);
-    assembleRunButton.addActionListener(e -> {
-      assembleRunButton.setEnabled(false);
-      openFileButton.setEnabled(false);
-      stopButton.setEnabled(true);
-      new Thread(new CreateAssembleRunMIPSprogram()).start();
-    });
+    assembleRunButton.addActionListener(
+        e -> {
+          assembleRunButton.setEnabled(false);
+          openFileButton.setEnabled(false);
+          stopButton.setEnabled(true);
+          new Thread(new CreateAssembleRunMIPSprogram()).start();
+        });
     assembleRunButton.addKeyListener(new EnterKeyListener(assembleRunButton));
 
     stopButton = new JButton("Stop");

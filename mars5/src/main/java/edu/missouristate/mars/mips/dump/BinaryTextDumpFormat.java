@@ -64,7 +64,9 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
       throws AddressErrorException, IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
       StringBuilder string;
-      for (int address = firstAddress; address <= lastAddress; address += Memory.WORD_LENGTH_BYTES) {
+      for (int address = firstAddress;
+          address <= lastAddress;
+          address += Memory.WORD_LENGTH_BYTES) {
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
         string = new StringBuilder(Integer.toBinaryString(temp));

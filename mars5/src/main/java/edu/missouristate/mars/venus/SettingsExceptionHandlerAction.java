@@ -1,7 +1,6 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -94,10 +93,11 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     // Bottom row - the control buttons for OK and Cancel
     Box controlPanel = Box.createHorizontalBox();
     JButton okButton = new JButton("OK");
-    okButton.addActionListener(e -> {
-      performOK();
-      closeDialog();
-    });
+    okButton.addActionListener(
+        e -> {
+          performOK();
+          closeDialog();
+        });
     JButton cancelButton = new JButton("Cancel");
     cancelButton.addActionListener(e -> closeDialog());
     controlPanel.add(Box.createHorizontalGlue());

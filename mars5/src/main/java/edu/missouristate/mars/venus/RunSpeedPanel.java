@@ -117,7 +117,8 @@ public class RunSpeedPanel extends JPanel {
    */
   private RunSpeedPanel() {
     super(new BorderLayout());
-    JSlider runSpeedSlider = new JSlider(JSlider.HORIZONTAL, SPEED_INDEX_MIN, SPEED_INDEX_MAX, SPEED_INDEX_INIT);
+    JSlider runSpeedSlider =
+        new JSlider(JSlider.HORIZONTAL, SPEED_INDEX_MIN, SPEED_INDEX_MAX, SPEED_INDEX_INIT);
     runSpeedSlider.setSize(new Dimension(100, (int) runSpeedSlider.getSize().getHeight()));
     runSpeedSlider.setMaximumSize(runSpeedSlider.getSize());
     runSpeedSlider.setMajorTickSpacing(5);
