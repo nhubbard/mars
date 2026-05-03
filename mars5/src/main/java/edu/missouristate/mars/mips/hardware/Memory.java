@@ -1126,9 +1126,8 @@ public class Memory extends Observable {
    * @param obs Observer to be removed
    */
   public void deleteObserver(Observer obs) {
-    Iterator<MemoryObservable> it = observables.iterator();
-    while (it.hasNext()) {
-      it.next().deleteObserver(obs);
+    for (MemoryObservable observable : observables) {
+      observable.deleteObserver(obs);
     }
   }
 

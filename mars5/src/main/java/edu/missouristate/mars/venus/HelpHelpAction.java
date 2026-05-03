@@ -292,13 +292,9 @@ public class HelpHelpAction extends GuiAction {
     Vector<String> exampleList = new Vector<>();
     String blanks = "            "; // 12 blanks
     Directives direct;
-    Iterator<Directives> it = Directives.getDirectiveList().iterator();
-    while (it.hasNext()) {
-      direct = it.next();
-      exampleList.add(
-          direct.toString()
-              + blanks.substring(0, Math.max(0, blanks.length() - direct.toString().length()))
-              + direct.getDescription());
+    for (Directives directives : Directives.getDirectiveList()) {
+      direct = directives;
+      exampleList.add(direct.toString() + blanks.substring(0, Math.max(0, blanks.length() - direct.toString().length())) + direct.getDescription());
     }
     Collections.sort(exampleList);
     JList<String> examples = new JList<>(exampleList);

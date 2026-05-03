@@ -595,9 +595,7 @@ public class MarsLaunch {
     String strValue;
     // Display requested register contents
     out.println();
-    Iterator<String> regIter = registerDisplayList.iterator();
-    while (regIter.hasNext()) {
-      String reg = regIter.next();
+    for (String reg : registerDisplayList) {
       if (RegisterFile.getUserRegister(reg) != null) {
         // integer register
         if (verbose) out.print(reg + "\t");
@@ -638,10 +636,7 @@ public class MarsLaunch {
         } else { // displayFormat == ASCII
           out.print(Binary.intToAscii(ivalue));
           if (hasDouble) {
-            out.println(
-                "\t"
-                    + Binary.intToAscii(Binary.highOrderLongToInt(lvalue))
-                    + Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
+            out.println("\t" + Binary.intToAscii(Binary.highOrderLongToInt(lvalue)) + Binary.intToAscii(Binary.lowOrderLongToInt(lvalue)));
           } else {
             out.println();
           }
