@@ -2192,8 +2192,7 @@ public class InstructionSet {
                 }
                 // convert single precision in $f1 to double stored in $f2
                 long result =
-                    Double.doubleToLongBits(
-                        (double) Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
+                    Double.doubleToLongBits(Float.intBitsToFloat(Coprocessor1.getValue(operands[1])));
                 Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
                 Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
               }
@@ -2211,7 +2210,7 @@ public class InstructionSet {
                   throw new ProcessingException(statement, "first register must be even-numbered");
                 }
                 // convert integer to double (interpret $f1 value as int?)
-                long result = Double.doubleToLongBits((double) Coprocessor1.getValue(operands[1]));
+                long result = Double.doubleToLongBits(Coprocessor1.getValue(operands[1]));
                 Coprocessor1.updateRegister(operands[0] + 1, Binary.highOrderLongToInt(result));
                 Coprocessor1.updateRegister(operands[0], Binary.lowOrderLongToInt(result));
               }

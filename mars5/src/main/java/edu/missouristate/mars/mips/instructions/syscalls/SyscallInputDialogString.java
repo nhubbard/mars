@@ -96,11 +96,11 @@ public class SyscallInputDialogString extends AbstractSyscall {
         }
         if (inputString.length() < maxLength - 1) {
           Globals.memory.setByte(
-              byteAddress + (int) Math.min(inputString.length(), maxLength - 2),
+              byteAddress + Math.min(inputString.length(), maxLength - 2),
               '\n'); // newline at string end
         }
         Globals.memory.setByte(
-            byteAddress + (int) Math.min((inputString.length() + 1), maxLength - 1),
+            byteAddress + Math.min((inputString.length() + 1), maxLength - 1),
             0); // null char to end string
 
         if (inputString.length() > maxLength - 1) {

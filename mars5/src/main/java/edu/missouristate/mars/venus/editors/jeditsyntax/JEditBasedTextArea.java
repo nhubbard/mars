@@ -132,7 +132,7 @@ public class JEditBasedTextArea extends JEditTextArea
    * @param e A CaretEvent
    */
   public void caretUpdate(CaretEvent e) {
-    editPane.displayCaretPosition(((MutableCaretEvent) e).getDot());
+    editPane.displayCaretPosition(e.getDot());
   }
 
   /**

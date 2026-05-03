@@ -355,7 +355,7 @@ public class Tokenizer {
             tokenStartPos = linePos + 1;
             token[tokenPos++] = c;
             if (!((result.isEmpty()
-                    || ((Token) result.get(result.size() - 1)).getType() != TokenTypes.IDENTIFIER)
+                    || result.get(result.size() - 1).getType() != TokenTypes.IDENTIFIER)
                 && (line.length >= linePos + 2 && Character.isDigit(line[linePos + 1])))) {
               // treat it as binary.....
               this.processCandidateToken(
@@ -609,7 +609,7 @@ public class Tokenizer {
     // if not escaped, then if one character left return its value else return original.
     if (quotesRemoved.charAt(0) != '\\') {
       return (quotesRemoved.length() == 1)
-          ? Integer.toString((int) quotesRemoved.charAt(0))
+          ? Integer.toString(quotesRemoved.charAt(0))
           : value;
     }
     // now we know it is escape sequence and have to decode which of the 8: ',",\,n,t,b,r,f
