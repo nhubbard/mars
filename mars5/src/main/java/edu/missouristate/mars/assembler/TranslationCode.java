@@ -42,5 +42,5 @@ public interface TranslationCode {
    * ExtendedInstruction constructor. It is called when assembler finds a program statement matching
    * that ExtendedInstruction,
    */
-  public void translate();
+  void translate();
 }

@@ -926,7 +926,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   //
 
   private interface TransmitterDelayTechnique {
-    public int generateDelay(double parameter);
+    int generateDelay(double parameter);
   }
 
   // Delay value is fixed, and equal to slider value.

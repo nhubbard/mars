@@ -808,7 +808,7 @@ class ScribblerSettings {
  * capture.
  */
 interface CaptureRectangleStrategy {
-  public Rectangle getCaptureRectangle(Rectangle magnifierRectangle);
+  Rectangle getCaptureRectangle(Rectangle magnifierRectangle);
 }
 
 /**
@@ -840,7 +840,7 @@ class CaptureScaledRectangle implements CaptureRectangleStrategy {
  * and scaled image.
  */
 interface CaptureDisplayAlignmentStrategy {
-  public void setScrollBarValue(JScrollBar scrollBar);
+  void setScrollBarValue(JScrollBar scrollBar);
 }
 
 /** Captured and scaled image should be displayed centerd in the panel. */
