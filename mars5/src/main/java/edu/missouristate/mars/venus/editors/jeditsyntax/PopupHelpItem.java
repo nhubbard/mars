@@ -30,6 +30,8 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.HelpHelpAction;
 
+import java.util.ArrayList;
+
 /** Handly little class to contain help information for a popupMenu or tool tip item. */
 public class PopupHelpItem {
   private final String tokenText;
@@ -129,13 +131,13 @@ public class PopupHelpItem {
 
   // Utility method.  Traverse ArrayList of PopupHelpItem objects
   // and return String length of longest example.
-  public static int maxExampleLength(java.util.ArrayList matches) {
+  public static int maxExampleLength(ArrayList<PopupHelpItem> matches) {
     int length = 0;
     if (matches != null) {
       for (int i = 0; i < matches.size(); i++) {
-        Object match = matches.get(i);
-        if (match instanceof PopupHelpItem) {
-          length = Math.max(length, ((PopupHelpItem) match).getExampleLength());
+        PopupHelpItem match = matches.get(i);
+        if (match != null) {
+          length = Math.max(length, match.getExampleLength());
         }
       }
     }

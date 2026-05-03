@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class MemoryConfigurations {
 
-  private static ArrayList configurations = null;
+  private static ArrayList<MemoryConfiguration> configurations = null;
   private static MemoryConfiguration defaultConfiguration;
   private static MemoryConfiguration currentConfiguration;
 
@@ -152,7 +152,7 @@ public class MemoryConfigurations {
 
   public static void buildConfigurationCollection() {
     if (configurations == null) {
-      configurations = new ArrayList();
+      configurations = new ArrayList<>();
       configurations.add(
           new MemoryConfiguration(
               "Default", "Default", configurationItemNames, defaultConfigurationItemValues));
@@ -168,7 +168,7 @@ public class MemoryConfigurations {
               "Compact, Text at Address 0",
               configurationItemNames,
               textBasedCompactConfigurationItemValues));
-      defaultConfiguration = (MemoryConfiguration) configurations.get(0);
+      defaultConfiguration = configurations.get(0);
       currentConfiguration = defaultConfiguration;
       // Get current config from settings
       // String currentConfigurationIdentifier = Globals.getSettings().getMemoryConfiguration();
@@ -177,7 +177,7 @@ public class MemoryConfigurations {
     }
   }
 
-  public static Iterator getConfigurationsIterator() {
+  public static Iterator<MemoryConfiguration> getConfigurationsIterator() {
     if (configurations == null) {
       buildConfigurationCollection();
     }
@@ -185,9 +185,9 @@ public class MemoryConfigurations {
   }
 
   public static MemoryConfiguration getConfigurationByName(String name) {
-    Iterator configurationsIterator = getConfigurationsIterator();
+    Iterator<MemoryConfiguration> configurationsIterator = getConfigurationsIterator();
     while (configurationsIterator.hasNext()) {
-      MemoryConfiguration config = (MemoryConfiguration) configurationsIterator.next();
+      MemoryConfiguration config = configurationsIterator.next();
       if (name.equals(config.getConfigurationIdentifier())) {
         return config;
       }

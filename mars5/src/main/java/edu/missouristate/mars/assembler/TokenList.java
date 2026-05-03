@@ -39,12 +39,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class TokenList implements Cloneable {
 
-  private ArrayList tokenList;
+  private ArrayList<Token> tokenList;
   private String processedLine; // DPS 03-Jan-2013
 
   /** Constructor for objects of class TokenList */
   public TokenList() {
-    tokenList = new ArrayList();
+    tokenList = new ArrayList<>();
     processedLine = ""; // DPS 03-Jan-2013
   }
 
@@ -78,7 +78,7 @@ public class TokenList implements Cloneable {
    * @return the requested token, or ArrayIndexOutOfBounds exception
    */
   public Token get(int pos) {
-    return (Token) tokenList.get(pos);
+    return tokenList.get(pos);
   }
 
   /**
@@ -151,7 +151,7 @@ public class TokenList implements Cloneable {
   public String toTypeString() {
     StringBuilder stringified = new StringBuilder();
     for (int i = 0; i < tokenList.size(); i++) {
-      stringified.append(((Token) tokenList.get(i)).getType().toString()).append(" ");
+      stringified.append(tokenList.get(i).getType().toString()).append(" ");
     }
     return stringified.toString();
   }
@@ -167,7 +167,8 @@ public class TokenList implements Cloneable {
   public Object clone() {
     try {
       TokenList t = (TokenList) super.clone();
-      t.tokenList = (ArrayList) tokenList.clone();
+      t.tokenList = new ArrayList<>();
+      t.tokenList.addAll(tokenList);
       return t;
     } catch (CloneNotSupportedException e) {
       return null;

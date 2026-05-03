@@ -280,7 +280,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   // set action in the menu bar.
   private void createActionObjects() {
     Toolkit tk = Toolkit.getDefaultToolkit();
-    Class cs = this.getClass();
+    Class<?> cs = this.getClass();
     try {
       runAssembleAction =
           new RunAssembleAction(
@@ -364,7 +364,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
         else direction = movingDownside;
       }
       String[] list = listTargetVertex.split("#");
-      targetVertex = new ArrayList<Integer>();
+      targetVertex = new ArrayList<>();
       for (int i = 0; i < list.length; i++) {
         targetVertex.add(Integer.parseInt(list[i]));
         //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
@@ -542,15 +542,15 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       // load and initialise the images
       initImages();
 
-      vertexList = new ArrayList<Vertex>();
+      vertexList = new ArrayList<>();
       counter = 0;
       justStarted = true;
       instructionCode = instructionBinary;
 
       // declaration of labels definition.
-      opcodeEquivalenceTable = new HashMap<String, String>();
-      functionEquivalenceTable = new HashMap<String, String>();
-      registerEquivalenceTable = new HashMap<String, String>();
+      opcodeEquivalenceTable = new HashMap<>();
+      functionEquivalenceTable = new HashMap<>();
+      registerEquivalenceTable = new HashMap<>();
 
       countRegLabel = 400;
       countALULabel = 380;
@@ -580,12 +580,16 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     // import the list of opcodes of mips set of instructions
     public void importXmlStringData(
-        String xmlName, HashMap table, String elementTree, String tagId, String tagData) {
+        String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
       DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
       dbf.setNamespaceAware(false);
       DocumentBuilder docBuilder;
       try {
         // System.out.println();
+        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
         docBuilder = dbf.newDocumentBuilder();
         Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
         Element root = doc.getDocumentElement();
@@ -672,15 +676,15 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           }
         }
         // loading matrix of control of vertex.
-        outputGraph = new Vector<Vector<Vertex>>();
-        vertexTraversed = new ArrayList<Vertex>();
+        outputGraph = new Vector<>();
+        vertexTraversed = new ArrayList<>();
         int size = vertexList.size();
         Vertex vertex;
         ArrayList<Integer> targetList;
         for (int i = 0; i < vertexList.size(); i++) {
           vertex = vertexList.get(i);
           targetList = vertex.getTargetVertex();
-          Vector<Vertex> vertexOfTargets = new Vector<Vertex>();
+          Vector<Vertex> vertexOfTargets = new Vector<>();
           for (int k = 0; k < targetList.size(); k++) {
             vertexOfTargets.add(vertexList.get(targetList.get(k)));
           }

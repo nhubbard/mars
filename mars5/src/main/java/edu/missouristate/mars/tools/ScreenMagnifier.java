@@ -382,7 +382,7 @@ class SettingsDialog extends JDialog {
   JCheckBox captureResizeCheckBox, captureMoveCheckBox, captureRescaleCheckBox;
   JRadioButton captureDisplayCenteredButton, captureDisplayUpperleftButton;
   final Integer[] scribblerLineWidthSettings = {1, 2, 3, 4, 5, 6, 7, 8};
-  JComboBox lineWidthSetting;
+  JComboBox<Integer> lineWidthSetting;
   JButton lineColorSetting;
   JCheckBox dialogCentered; // Whether or not dialog appears centered over the magnfier frame.
   final JDialog dialog;
@@ -535,7 +535,7 @@ class SettingsDialog extends JDialog {
     scribblerSettings.setBorder(new TitledBorder("Scribbler"));
     Box scribblerSettingsBox = Box.createHorizontalBox();
     scribblerSettings.add(scribblerSettingsBox);
-    lineWidthSetting = new JComboBox(scribblerLineWidthSettings);
+    lineWidthSetting = new JComboBox<>(scribblerLineWidthSettings);
     lineWidthSetting.setToolTipText(SETTINGS_SCRIBBLER_WIDTH_TOOLTIP_TEXT);
     lineWidthSetting.setSelectedIndex(
         ((Magnifier) getOwner()).scribblerSettings.getLineWidth() - 1);

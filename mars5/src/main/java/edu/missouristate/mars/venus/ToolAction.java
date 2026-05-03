@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2005
  */
 public class ToolAction extends AbstractAction {
-  private final Class toolClass; // MarsTool tool;
+  private final Class<?> toolClass; // MarsTool tool;
 
   /**
    * Simple constructor.
@@ -48,7 +48,7 @@ public class ToolAction extends AbstractAction {
    * @param toolClass Class object for the associated MarsTool subclass
    * @param toolName Name of this tool, for the menu.
    */
-  public ToolAction(Class toolClass, String toolName) {
+  public ToolAction(Class<?> toolClass, String toolName) {
     super(toolName, null);
     this.toolClass = toolClass;
   }
@@ -63,7 +63,7 @@ public class ToolAction extends AbstractAction {
       // An exception should not occur here because we got here only after
       // already successfully creating an instance from the same Class object
       // in ToolLoader's loadMarsTools() method.
-      ((MarsTool) this.toolClass.newInstance()).action();
+      ((MarsTool) this.toolClass.getDeclaredConstructor().newInstance()).action();
     } catch (Exception ignored) {
     }
   }

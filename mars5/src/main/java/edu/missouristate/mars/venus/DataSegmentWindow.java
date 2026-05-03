@@ -93,7 +93,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   // The combo box replaced the row of buttons when number of buttons expanded to 7!
   // We'll keep the button objects however and manually invoke their action listeners
   // when the corresponding combo box item is selected.  DPS 22-Nov-2006
-  final JComboBox baseAddressSelector;
+  final JComboBox<String> baseAddressSelector;
 
   // The next bunch are initialized dynamically in initializeBaseAddressChoices()
   private String[] displayBaseAddressChoices;
@@ -121,7 +121,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     tablePanel = new JPanel(new GridLayout(1, 2, 10, 0));
     JPanel features = new JPanel();
     Toolkit tk = Toolkit.getDefaultToolkit();
-    Class cs = this.getClass();
+    Class<?> cs = this.getClass();
     try {
       prevButton =
           new PrevButton(
@@ -153,7 +153,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     }
 
     initializeBaseAddressChoices();
-    baseAddressSelector = new JComboBox();
+    baseAddressSelector = new JComboBox<>();
     baseAddressSelector.setModel(new CustomComboBoxModel(displayBaseAddressChoices));
     baseAddressSelector.setEditable(false);
     baseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
@@ -937,8 +937,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   // setSelectedIndex to also call selectedItemChanged() did not help.  Only this
   // solution to extend the model class to call the protected
   // "fireContentsChanged()" method worked. DPS 25-Jan-2009
-  private static class CustomComboBoxModel extends DefaultComboBoxModel {
-    public CustomComboBoxModel(Object[] list) {
+  private static class CustomComboBoxModel extends DefaultComboBoxModel<String> {
+    public CustomComboBoxModel(String[] list) {
       super(list);
     }
 
@@ -993,7 +993,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
      * JTable uses this method to determine the default renderer/
      * editor for each cell.
      */
-    public Class getColumnClass(int c) {
+    public Class<?> getColumnClass(int c) {
       return getValueAt(0, c).getClass();
     }
 

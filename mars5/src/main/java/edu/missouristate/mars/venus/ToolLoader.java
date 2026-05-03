@@ -64,14 +64,14 @@ public class ToolLoader {
    */
   public JMenu buildToolsMenu() {
     JMenu menu = null;
-    ArrayList marsToolList = loadMarsTools();
+    ArrayList<MarsToolClassAndInstance> marsToolList = loadMarsTools();
     if (!marsToolList.isEmpty()) {
       menu = new JMenu(TOOLS_MENU_NAME);
       menu.setMnemonic(KeyEvent.VK_T);
       // traverse array list and build menu
       MarsToolClassAndInstance listItem;
       for (int i = 0; i < marsToolList.size(); i++) {
-        listItem = (MarsToolClassAndInstance) marsToolList.get(i);
+        listItem = marsToolList.get(i);
         menu.add(new ToolAction(listItem.marsToolClass, listItem.marsToolInstance.getName()));
       }
     }
@@ -97,9 +97,9 @@ public class ToolLoader {
    *  as a ZipFile, get the ZipEntry enumeration, find the class files in the tools
    *  folder, then continue as before.
    */
-  private ArrayList loadMarsTools() {
-    ArrayList toolList = new ArrayList();
-    ArrayList candidates =
+  private ArrayList<MarsToolClassAndInstance> loadMarsTools() {
+    ArrayList<MarsToolClassAndInstance> toolList = new ArrayList<>();
+    ArrayList<String> candidates =
         FilenameFinder.getFilenameList(
             this.getClass().getClassLoader(), TOOLS_DIRECTORY_PATH, CLASS_EXTENSION);
     // Add any tools stored externally, as listed in Config.properties file.
@@ -107,9 +107,9 @@ public class ToolLoader {
     // whatever is in the properties file entry.  Since the class file will
     // not be located in the mars.tools folder, the loop below will not process
     // it correctly.  Not sure how to create a Class object given an absolute
-    HashMap tools = new HashMap();
+    HashMap<String, String> tools = new HashMap<>();
     for (int i = 0; i < candidates.size(); i++) {
-      String file = (String) candidates.get(i);
+      String file = candidates.get(i);
       // Do not add class if already encountered (happens if run in MARS development directory)
       if (tools.containsKey(file)) {
         continue;
@@ -121,13 +121,13 @@ public class ToolLoader {
           // grab the class, make sure it implements MarsTool, instantiate, add to menu
           String toolClassName =
               CLASS_PREFIX + file.substring(0, file.indexOf(CLASS_EXTENSION) - 1);
-          Class clas = Class.forName(toolClassName);
+          Class<?> clas = Class.forName(toolClassName);
           if (!MarsTool.class.isAssignableFrom(clas)
               || Modifier.isAbstract(clas.getModifiers())
               || Modifier.isInterface(clas.getModifiers())) {
             continue;
           }
-          toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.newInstance()));
+          toolList.add(new MarsToolClassAndInstance(clas, (MarsTool) clas.getDeclaredConstructor().newInstance()));
         } catch (Exception e) {
           System.out.println("Error instantiating MarsTool from file " + file + ": " + e);
         }
@@ -137,10 +137,10 @@ public class ToolLoader {
   }
 
   private static class MarsToolClassAndInstance {
-    final Class marsToolClass;
+    final Class<?> marsToolClass;
     final MarsTool marsToolInstance;
 
-    MarsToolClassAndInstance(Class marsToolClass, MarsTool marsToolInstance) {
+    MarsToolClassAndInstance(Class<?> marsToolClass, MarsTool marsToolInstance) {
       this.marsToolClass = marsToolClass;
       this.marsToolInstance = marsToolInstance;
     }

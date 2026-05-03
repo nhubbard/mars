@@ -66,9 +66,9 @@ class AssemblerSmokeTest {
     program.readSource(path);
     program.tokenize();
 
-    ArrayList filenames = new ArrayList();
+    ArrayList<String> filenames = new ArrayList<>();
     filenames.add(path);
-    ArrayList programs = program.prepareFilesForAssembly(filenames, path, null);
+    ArrayList<MIPSprogram> programs = program.prepareFilesForAssembly(filenames, path, null);
 
     ErrorList errors = program.assemble(programs, /* extendedAssemblerEnabled= */ true, false);
 
@@ -88,9 +88,9 @@ class AssemblerSmokeTest {
     program.readSource(path);
     program.tokenize();
 
-    ArrayList filenames = new ArrayList();
+    ArrayList<String> filenames = new ArrayList<>();
     filenames.add(path);
-    ArrayList programs = program.prepareFilesForAssembly(filenames, path, null);
+    ArrayList<MIPSprogram> programs = program.prepareFilesForAssembly(filenames, path, null);
 
     // Extended assembler enabled (pseudo-instructions allowed) — should never throw
     assertThatCode(() -> program.assemble(programs, true, false)).doesNotThrowAnyException();

@@ -164,9 +164,9 @@ class SimulatorSmokeTest {
     program.readSource(path);
     program.tokenize();
 
-    ArrayList filenames = new ArrayList();
+    ArrayList<String> filenames = new ArrayList<>();
     filenames.add(path);
-    ArrayList programs = program.prepareFilesForAssembly(filenames, path, null);
+    ArrayList<MIPSprogram> programs = program.prepareFilesForAssembly(filenames, path, null);
     program.assemble(programs, true, false);
     return program.simulate(null);
   }

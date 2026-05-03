@@ -1451,9 +1451,9 @@ public class JEditTextArea extends JComponent {
       right.setBounds(ileft + centerWidth, itop, rightWidth, centerHeight);
 
       // Lay out all status components, in order
-      Enumeration status = leftOfScrollBar.elements();
+      Enumeration<Component> status = leftOfScrollBar.elements();
       while (status.hasMoreElements()) {
-        Component comp = (Component) status.nextElement();
+        Component comp = status.nextElement();
         Dimension dim = comp.getPreferredSize();
         comp.setBounds(ileft, itop + centerHeight, dim.width, bottomHeight);
         ileft += dim.width;
@@ -1467,7 +1467,7 @@ public class JEditTextArea extends JComponent {
     private Component center;
     private Component right;
     private Component bottom;
-    private final Vector leftOfScrollBar = new Vector();
+    private final Vector<Component> leftOfScrollBar = new Vector<>();
   }
 
   static class CaretBlinker implements ActionListener {
@@ -1768,14 +1768,14 @@ public class JEditTextArea extends JComponent {
   public String getSyntaxSensitiveToolTipText(int x, int y) {
     StringBuilder result;
     int line = this.yToLine(y);
-    ArrayList matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
+    ArrayList<PopupHelpItem> matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
     if (matches == null) {
       return null;
     }
     int length = PopupHelpItem.maxExampleLength(matches) + 2;
     result = new StringBuilder("<html>");
     for (int i = 0; i < matches.size(); i++) {
-      PopupHelpItem match = (PopupHelpItem) matches.get(i);
+      PopupHelpItem match = matches.get(i);
       result.append((i == 0) ? "" : "<br>").append("<tt>").append(match.getExamplePaddedToLength(length).replace(" ", "&nbsp;")).append("</tt>").append(match.getDescription());
     }
     return result + "</html>";
@@ -1827,8 +1827,8 @@ public class JEditTextArea extends JComponent {
   // if exact is false.  The former is helpful for mouse-movement-based tool
   // tips (this is what you have).  The latter is helpful for caret-based tool
   // tips (this is what you can do).
-  private ArrayList getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
-    ArrayList matches = null;
+  private ArrayList<PopupHelpItem> getSyntaxSensitiveHelpAtLineOffset(int line, int offset, boolean exact) {
+    ArrayList<PopupHelpItem> matches = null;
     TokenMarker tokenMarker = this.getTokenMarker();
     if (tokenMarker != null) {
       Segment lineSegment = new Segment();
@@ -1881,8 +1881,8 @@ public class JEditTextArea extends JComponent {
     }
     int line = getCaretLine();
     int lineStart = getLineStartOffset(line);
-    int offset = Math.max(1, Math.min(getLineLength(line), getCaretPosition() - lineStart));
-    ArrayList helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false);
+    int offset = Math.clamp(getCaretPosition() - lineStart, 1, getLineLength(line));
+    ArrayList<PopupHelpItem> helpItems = getSyntaxSensitiveHelpAtLineOffset(line, offset, false);
     if (helpItems == null && popupMenu != null) {
       popupMenu.setVisible(false);
       popupMenu = null;
@@ -1891,7 +1891,7 @@ public class JEditTextArea extends JComponent {
       popupMenu = new JPopupMenu();
       int length = PopupHelpItem.maxExampleLength(helpItems) + 2;
       for (int i = 0; i < helpItems.size(); i++) {
-        PopupHelpItem item = (PopupHelpItem) helpItems.get(i);
+        PopupHelpItem item = helpItems.get(i);
         JMenuItem menuItem =
             new JMenuItem(
                 "<html><tt>"

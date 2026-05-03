@@ -51,17 +51,15 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private static final String version = "Version 1.2";
   private static final String heading = "Simulate and illustrate data cache performance";
   // Major GUI components
-  private JComboBox cacheBlockSizeSelector,
-      cacheBlockCountSelector,
-      cachePlacementSelector,
-      cacheReplacementSelector,
-      cacheSetSizeSelector;
-  private JTextField memoryAccessCountDisplay,
-      cacheHitCountDisplay,
-      cacheMissCountDisplay,
-      replacementPolicyDisplay,
-      cachableAddressesDisplay,
-      cacheSizeDisplay;
+  private JComboBox<String> cacheBlockSizeSelector;
+  private JComboBox<String> cacheBlockCountSelector;
+  private JComboBox<String> cachePlacementSelector;
+  private JComboBox<String> cacheReplacementSelector;
+  private JComboBox<String> cacheSetSizeSelector;
+  private JTextField memoryAccessCountDisplay;
+  private JTextField cacheHitCountDisplay;
+  private JTextField cacheMissCountDisplay;
+  private JTextField cacheSizeDisplay;
   private JProgressBar cacheHitRateDisplay;
   private Animation animations;
 
@@ -195,7 +193,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     TitledBorder otb = new TitledBorder("Cache Organization");
     otb.setTitleJustification(TitledBorder.CENTER);
     organization.setBorder(otb);
-    cachePlacementSelector = new JComboBox(placementPolicyChoices);
+    cachePlacementSelector = new JComboBox<>(placementPolicyChoices);
     cachePlacementSelector.setEditable(false);
     cachePlacementSelector.setBackground(backgroundColor);
     cachePlacementSelector.setSelectedIndex(defaultPlacementPolicyIndex);
@@ -207,12 +205,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           }
         });
 
-    cacheReplacementSelector = new JComboBox(replacementPolicyChoices);
+    cacheReplacementSelector = new JComboBox<>(replacementPolicyChoices);
     cacheReplacementSelector.setEditable(false);
     cacheReplacementSelector.setBackground(backgroundColor);
     cacheReplacementSelector.setSelectedIndex(defaultReplacementPolicyIndex);
 
-    cacheBlockSizeSelector = new JComboBox(cacheBlockSizeChoices);
+    cacheBlockSizeSelector = new JComboBox<>(cacheBlockSizeChoices);
     cacheBlockSizeSelector.setEditable(false);
     cacheBlockSizeSelector.setBackground(backgroundColor);
     cacheBlockSizeSelector.setSelectedIndex(defaultCacheBlockSizeIndex);
@@ -223,7 +221,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
             reset();
           }
         });
-    cacheBlockCountSelector = new JComboBox(cacheBlockCountChoices);
+    cacheBlockCountSelector = new JComboBox<>(cacheBlockCountChoices);
     cacheBlockCountSelector.setEditable(false);
     cacheBlockCountSelector.setBackground(backgroundColor);
     cacheBlockCountSelector.setSelectedIndex(defaultCacheBlockCountIndex);
@@ -239,7 +237,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           }
         });
 
-    cacheSetSizeSelector = new JComboBox(cacheSetSizeChoices);
+    cacheSetSizeSelector = new JComboBox<>(cacheSetSizeChoices);
     cacheSetSizeSelector.setEditable(false);
     cacheSetSizeSelector.setBackground(backgroundColor);
     cacheSetSizeSelector.setSelectedIndex(defaultCacheSetSizeIndex);
@@ -514,7 +512,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   // Update the Set Size combo box selection in response to other selections..
   private void updateCacheSetSizeSelector() {
     cacheSetSizeSelector.setModel(
-        new DefaultComboBoxModel(
+        new DefaultComboBoxModel<>(
             determineSetSizeChoices(
                 cacheBlockCountSelector.getSelectedIndex(),
                 cachePlacementSelector.getSelectedIndex())));

@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.mips.instructions.syscalls.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.*;
 
@@ -46,7 +45,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Globals {
   // List these first because they are referenced by methods called at initialization.
   private static final String configPropertiesFile = "Config";
-  private static final String syscallPropertiesFile = "Syscall";
 
   /** The set of implemented MIPS instructions. * */
   public static InstructionSet instructionSet;
@@ -89,7 +87,7 @@ public class Globals {
   public static final String version = "4.6";
 
   /** List of accepted file extensions for MIPS assembly source files. */
-  public static final ArrayList fileExtensions = getFileExtensions();
+  public static final ArrayList<String> fileExtensions = getFileExtensions();
 
   /** Maximum length of scrolled message window (MARS Messages and Run I/O) */
   public static final int maximumMessageCharacters = getMessageLimit();
@@ -212,8 +210,8 @@ public class Globals {
 
   // Read assembly language file extensions from properties file.  Resulting
   // string is tokenized into array list (assume StringTokenizer default delimiters).
-  private static ArrayList getFileExtensions() {
-    ArrayList extensionsList = new ArrayList();
+  private static ArrayList<String> getFileExtensions() {
+    ArrayList<String> extensionsList = new ArrayList<>();
     String extensions = getPropertyEntry(configPropertiesFile, "Extensions");
     if (extensions != null) {
       StringTokenizer st = new StringTokenizer(extensions);
@@ -232,8 +230,8 @@ public class Globals {
    * @return ArrayList. Each item is file path to .class file of a class that implements MarsTool.
    *     If none, returns empty list.
    */
-  public static ArrayList getExternalTools() {
-    ArrayList toolsList = new ArrayList();
+  public static ArrayList<String> getExternalTools() {
+    ArrayList<String> toolsList = new ArrayList<>();
     String delimiter = ";";
     String tools = getPropertyEntry(configPropertiesFile, "ExternalTools");
     if (tools != null) {
@@ -257,19 +255,4 @@ public class Globals {
     return PropertiesFile.loadPropertiesFromFile(propertiesFile).getProperty(propertyName);
   }
 
-  /**
-   * Read any syscall number assignment overrides from config file.
-   *
-   * @return ArrayList of SyscallNumberOverride objects
-   */
-  public ArrayList getSyscallOverrides() {
-    ArrayList overrides = new ArrayList();
-    Properties properties = PropertiesFile.loadPropertiesFromFile(syscallPropertiesFile);
-    Enumeration keys = properties.keys();
-    while (keys.hasMoreElements()) {
-      String key = (String) keys.nextElement();
-      overrides.add(new SyscallNumberOverride(key, properties.getProperty(key)));
-    }
-    return overrides;
-  }
 }

@@ -24,10 +24,9 @@ class InstructionSetTest {
   private static List<ExtendedInstruction> extendedInstructions;
 
   @BeforeAll
-  @SuppressWarnings("unchecked")
   static void initMars() {
     Globals.initialize(false);
-    ArrayList raw = Globals.instructionSet.getInstructionList();
+    ArrayList<Instruction> raw = Globals.instructionSet.getInstructionList();
     allInstructions = new ArrayList<>(raw);
     basicInstructions = new ArrayList<>();
     extendedInstructions = new ArrayList<>();

@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public final class Directives {
 
-  private static final ArrayList directiveList = new ArrayList();
+  private static final ArrayList<Directives> directiveList = new ArrayList<>();
   public static final Directives DATA =
       new Directives(".data", "Subsequent items stored in Data segment at next available address");
   public static final Directives TEXT =
@@ -125,7 +125,7 @@ public final class Directives {
   public static Directives matchDirective(String str) {
     Directives match;
     for (int i = 0; i < directiveList.size(); i++) {
-      match = (Directives) directiveList.get(i);
+      match = directiveList.get(i);
       if (str.equalsIgnoreCase(match.descriptor)) {
         return match;
       }
@@ -141,15 +141,15 @@ public final class Directives {
    * @return If match is found, returns ArrayList of matching Directives objects, else returns
    *     <code>null</code>.
    */
-  public static ArrayList prefixMatchDirectives(String str) {
-    ArrayList matches = null;
+  public static ArrayList<Directives> prefixMatchDirectives(String str) {
+    ArrayList<Directives> matches = null;
     for (int i = 0; i < directiveList.size(); i++) {
-      if (((Directives) directiveList.get(i))
+      if (directiveList.get(i)
           .descriptor
           .toLowerCase()
           .startsWith(str.toLowerCase())) {
         if (matches == null) {
-          matches = new ArrayList();
+          matches = new ArrayList<>();
         }
         matches.add(directiveList.get(i));
       }
@@ -189,7 +189,7 @@ public final class Directives {
    *
    * @return MIPS Directive
    */
-  public static ArrayList getDirectiveList() {
+  public static ArrayList<Directives> getDirectiveList() {
     return directiveList;
   }
 

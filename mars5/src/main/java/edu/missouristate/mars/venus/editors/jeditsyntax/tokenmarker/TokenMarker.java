@@ -9,6 +9,8 @@
 
 package edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker;
 
+import edu.missouristate.mars.venus.editors.jeditsyntax.PopupHelpItem;
+
 import java.util.*;
 import javax.swing.text.Segment;
 
@@ -174,7 +176,7 @@ public abstract class TokenMarker {
    * @param tokenText the source String that matched to the token
    * @return ArrayList containing PopupHelpItem objects, one per match.
    */
-  public ArrayList getTokenExactMatchHelp(Token token, String tokenText) {
+  public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
     return null;
   }
 
@@ -189,7 +191,7 @@ public abstract class TokenMarker {
    * @param tokenText the source String that matched to the token
    * @return ArrayList containing PopupHelpItem objects, one per match.
    */
-  public ArrayList getTokenPrefixMatchHelp(
+  public ArrayList<PopupHelpItem> getTokenPrefixMatchHelp(
       String line, Token tokenList, Token tokenAtOffset, String tokenText) {
     return null;
   }

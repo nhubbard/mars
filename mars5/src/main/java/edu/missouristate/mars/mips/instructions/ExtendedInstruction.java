@@ -45,8 +45,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ExtendedInstruction extends Instruction {
 
-  private final ArrayList translationStrings;
-  private final ArrayList compactTranslationStrings;
+  private final ArrayList<String> translationStrings;
+  private final ArrayList<String> compactTranslationStrings;
 
   /**
    * Constructor for ExtendedInstruction.
@@ -116,7 +116,7 @@ public class ExtendedInstruction extends Instruction {
    *
    * @return ArrayList of Strings.
    */
-  public ArrayList getBasicIntructionTemplateList() {
+  public ArrayList<String> getBasicIntructionTemplateList() {
     return translationStrings;
   }
 
@@ -148,7 +148,7 @@ public class ExtendedInstruction extends Instruction {
    * @return ArrayList of Strings. Returns null if the instruction does not have a compact
    *     alternative.
    */
-  public ArrayList getCompactBasicIntructionTemplateList() {
+  public ArrayList<String> getCompactBasicIntructionTemplateList() {
     return compactTranslationStrings;
   }
 
@@ -624,11 +624,11 @@ public class ExtendedInstruction extends Instruction {
   // expands to, which is a string, and breaks out into separate
   // instructions.  They are separated by '\n' character.
 
-  private ArrayList buildTranslationList(String translation) {
+  private ArrayList<String> buildTranslationList(String translation) {
     if (translation == null || translation.isEmpty()) {
       return null;
     }
-    ArrayList translationList = new ArrayList();
+    ArrayList<String> translationList = new ArrayList<>();
     StringTokenizer st = new StringTokenizer(translation, "\n");
     while (st.hasMoreTokens()) {
       translationList.add(st.nextToken());
@@ -644,7 +644,7 @@ public class ExtendedInstruction extends Instruction {
    * Returns length in bytes of corresponding binary instruction(s).
    * Returns 0 if the ArrayList is null or empty.
    */
-  private int getInstructionLength(ArrayList translationList) {
+  private int getInstructionLength(ArrayList<String> translationList) {
     if (translationList == null || translationList.isEmpty()) {
       return 0;
     }
@@ -653,7 +653,7 @@ public class ExtendedInstruction extends Instruction {
     // then don't count the nop in the instruction length.   DPS 23-Jan-2008
     int instructionCount = 0;
     for (int i = 0; i < translationList.size(); i++) {
-      if (((String) translationList.get(i)).indexOf("DBNOP") >= 0
+      if (translationList.get(i).contains("DBNOP")
           && !Globals.getSettings().getDelayedBranchingEnabled()) continue;
       instructionCount++;
     }

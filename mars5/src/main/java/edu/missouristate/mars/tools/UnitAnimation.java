@@ -293,7 +293,7 @@ class UnitAnimation extends JPanel implements ActionListener {
 
   // import the list of opcodes of mips set of instructions
   public void importXmlStringData(
-      String xmlName, HashMap table, String elementTree, String tagId, String tagData) {
+      String xmlName, HashMap<String, String> table, String elementTree, String tagId, String tagData) {
     DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
     dbf.setNamespaceAware(false);
     DocumentBuilder docBuilder;

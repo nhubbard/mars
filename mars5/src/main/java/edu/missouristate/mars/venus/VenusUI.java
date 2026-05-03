@@ -299,7 +299,7 @@ public class VenusUI extends JFrame {
    */
   private void createActionObjects() {
     Toolkit tk = Toolkit.getDefaultToolkit();
-    Class cs = this.getClass();
+    Class<?> cs = this.getClass();
     try {
       fileNewAction =
           new FileNewAction(
@@ -656,7 +656,7 @@ public class VenusUI extends JFrame {
   private JMenuBar setUpMenuBar() {
 
     Toolkit tk = Toolkit.getDefaultToolkit();
-    Class cs = this.getClass();
+    Class<?> cs = this.getClass();
     JMenuBar menuBar = new JMenuBar();
     file = new JMenu("File");
     file.setMnemonic(KeyEvent.VK_F);
@@ -707,7 +707,7 @@ public class VenusUI extends JFrame {
     file.add(fileSave);
     file.add(fileSaveAs);
     file.add(fileSaveAll);
-    if (!new DumpFormatLoader().loadDumpFormats().isEmpty()) {
+    if (!DumpFormatLoader.FORMATS.isEmpty()) {
       file.add(fileDumpMemory);
     }
     file.addSeparator();
@@ -948,7 +948,7 @@ public class VenusUI extends JFrame {
     toolBar.add(Open);
     toolBar.add(Save);
     toolBar.add(SaveAs);
-    if (!new DumpFormatLoader().loadDumpFormats().isEmpty()) {
+    if (!DumpFormatLoader.FORMATS.isEmpty()) {
       toolBar.add(DumpMemory);
     }
     toolBar.add(Print);

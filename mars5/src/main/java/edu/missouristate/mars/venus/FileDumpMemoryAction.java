@@ -56,8 +56,8 @@ public class FileDumpMemoryAction extends GuiAction {
   private int[] segmentListBaseArray;
   private int[] segmentListHighArray;
 
-  private JComboBox segmentListSelector;
-  private JComboBox formatListSelector;
+  private JComboBox<String> segmentListSelector;
+  private JComboBox<DumpFormat> formatListSelector;
 
   public FileDumpMemoryAction(
       String name, Icon icon, String descrip, Integer mnemonic, KeyStroke accel, VenusUI gui) {
@@ -76,7 +76,6 @@ public class FileDumpMemoryAction extends GuiAction {
     dumpDialog.setLocationRelativeTo(Globals.getGui());
     dumpDialog.setVisible(true);
     return true;
-    /////////////////////////////////////////////////////////////////////
   }
 
   // The dump dialog that appears when menu item is selected.
@@ -167,7 +166,7 @@ public class FileDumpMemoryAction extends GuiAction {
     }
 
     // Create segment selector.  First element selected by default.
-    segmentListSelector = new JComboBox(segmentListArray);
+    segmentListSelector = new JComboBox<>(segmentListArray);
     segmentListSelector.setSelectedIndex(0);
     JPanel segmentPanel = new JPanel(new BorderLayout());
     segmentPanel.add(new Label("Memory Segment"), BorderLayout.NORTH);
@@ -175,8 +174,7 @@ public class FileDumpMemoryAction extends GuiAction {
     contents.add(segmentPanel, BorderLayout.WEST);
 
     // Next, create list of all available dump formats.
-    ArrayList dumpFormats = (new DumpFormatLoader()).loadDumpFormats();
-    formatListSelector = new JComboBox(dumpFormats.toArray());
+    formatListSelector = new JComboBox<>(DumpFormatLoader.FORMATS.toArray(new DumpFormat[0]));
     formatListSelector.setRenderer(new DumpFormatComboBoxRenderer(formatListSelector));
     formatListSelector.setSelectedIndex(0);
     JPanel formatPanel = new JPanel(new BorderLayout());
@@ -273,9 +271,9 @@ public class FileDumpMemoryAction extends GuiAction {
   // http://forum.java.sun.com/thread.jspa?threadID=488762&messageID=2292482
 
   private static class DumpFormatComboBoxRenderer extends BasicComboBoxRenderer {
-    private final JComboBox myMaster;
+    private final JComboBox<DumpFormat> myMaster;
 
-    public DumpFormatComboBoxRenderer(JComboBox myMaster) {
+    public DumpFormatComboBoxRenderer(JComboBox<DumpFormat> myMaster) {
       super();
       this.myMaster = myMaster;
     }
@@ -284,8 +282,8 @@ public class FileDumpMemoryAction extends GuiAction {
         JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
       super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
       setToolTipText(value.toString());
-      if (index >= 0 && ((DumpFormat) (myMaster.getItemAt(index))).getDescription() != null) {
-        setToolTipText(((DumpFormat) (myMaster.getItemAt(index))).getDescription());
+      if (index >= 0 && myMaster.getItemAt(index).getDescription() != null) {
+        setToolTipText(myMaster.getItemAt(index).getDescription());
       }
       return this;
     }

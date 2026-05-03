@@ -26,7 +26,7 @@ import javax.swing.KeyStroke;
 public class DefaultInputHandler extends InputHandler {
   /** Creates a new input handler with no key bindings defined. */
   public DefaultInputHandler() {
-    bindings = currentBindings = new Hashtable();
+    bindings = currentBindings = new Hashtable<KeyStroke, Binding>();
   }
 
   /** Sets up the default key bindings. */
@@ -88,7 +88,7 @@ public class DefaultInputHandler extends InputHandler {
    * @param action The action
    */
   public void addKeyBinding(String keyBinding, ActionListener action) {
-    Hashtable current = bindings;
+    Hashtable<KeyStroke, Binding> current = bindings;
 
     StringTokenizer st = new StringTokenizer(keyBinding);
     while (st.hasMoreTokens()) {
@@ -96,13 +96,18 @@ public class DefaultInputHandler extends InputHandler {
       if (keyStroke == null) return;
 
       if (st.hasMoreTokens()) {
-        Object o = current.get(keyStroke);
-        if (o instanceof Hashtable) {} else {
-          o = new Hashtable();
-          current.put(keyStroke, o);
+        Binding b = current.get(keyStroke);
+        PrefixBinding pb;
+        if (b instanceof PrefixBinding existing) {
+          pb = existing;
+        } else {
+          pb = new PrefixBinding(new Hashtable<>());
+          current.put(keyStroke, pb);
         }
-        current = (Hashtable) o;
-      } else current.put(keyStroke, action);
+        current = pb.map();
+      } else {
+        current.put(keyStroke, new ActionBinding(action));
+      }
     }
   }
 
@@ -152,9 +157,9 @@ public class DefaultInputHandler extends InputHandler {
       }
 
       KeyStroke keyStroke = KeyStroke.getKeyStroke(keyCode, modifiers);
-      Object o = currentBindings.get(keyStroke);
+      Binding b = currentBindings.get(keyStroke);
 
-      if (o == null) {
+      if (b == null) {
         // Don't beep if the user presses some
         // key we don't know about unless a
         // prefix is active. Otherwise it will
@@ -172,13 +177,12 @@ public class DefaultInputHandler extends InputHandler {
         // (mnemonic, accelerator).  DPS 4-may-2010
         Globals.getGui().dispatchEventToMenu(evt);
         evt.consume();
-      } else if (o instanceof ActionListener) {
+      } else if (b instanceof ActionBinding ab) {
         currentBindings = bindings;
-        executeAction(((ActionListener) o), evt.getSource(), null);
-
+        executeAction(ab.action(), evt.getSource(), null);
         evt.consume();
-      } else if (o instanceof Hashtable) {
-        currentBindings = (Hashtable) o;
+      } else if (b instanceof PrefixBinding pb) {
+        currentBindings = pb.map();
         evt.consume();
       }
     }
@@ -236,14 +240,14 @@ public class DefaultInputHandler extends InputHandler {
             || System.getProperty("os.name").contains("OS X"))) {
       if (c >= 0x20 && c != 0x7f) {
         KeyStroke keyStroke = KeyStroke.getKeyStroke(Character.toUpperCase(c));
-        Object o = currentBindings.get(keyStroke);
+        Binding b = currentBindings.get(keyStroke);
 
-        if (o instanceof Hashtable) {
-          currentBindings = (Hashtable) o;
+        if (b instanceof PrefixBinding pb) {
+          currentBindings = pb.map();
           return;
-        } else if (o instanceof ActionListener) {
+        } else if (b instanceof ActionBinding ab) {
           currentBindings = bindings;
-          executeAction((ActionListener) o, evt.getSource(), String.valueOf(c));
+          executeAction(ab.action(), evt.getSource(), String.valueOf(c));
           return;
         }
 
@@ -319,9 +323,16 @@ public class DefaultInputHandler extends InputHandler {
     }
   }
 
-  // private members
-  private final Hashtable bindings;
-  private Hashtable currentBindings;
+  // Discriminated union for binding tree nodes. A KeyStroke maps to either a
+  // leaf action or a nested prefix map leading to more keystrokes.
+  private sealed interface Binding permits DefaultInputHandler.ActionBinding, DefaultInputHandler.PrefixBinding {}
+
+  private record ActionBinding(ActionListener action) implements Binding {}
+
+  private record PrefixBinding(Hashtable<KeyStroke, Binding> map) implements Binding {}
+
+  private final Hashtable<KeyStroke, Binding> bindings;
+  private Hashtable<KeyStroke, Binding> currentBindings;
 
   private DefaultInputHandler(DefaultInputHandler copy) {
     bindings = currentBindings = copy.bindings;

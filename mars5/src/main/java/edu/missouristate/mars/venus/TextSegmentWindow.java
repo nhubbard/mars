@@ -60,7 +60,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    * consistent once set up, since address column is not editable.
    */
   private int[] intAddresses; // index is table model row, value is text address
-  private Hashtable addressRows; // key is text address, value is table model row
+  private Hashtable<Integer, Integer> addressRows; // key is text address, value is table model row
   private Hashtable<Integer, ModifiedCode>
       executeMods; // key is table model row, value is original code, basic, source.
   private final Container contentPane;
@@ -108,11 +108,11 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
     codeHighlighting = true;
     breakpointsEnabled = true;
-    ArrayList sourceStatementList = Globals.program.getMachineList();
+    ArrayList<ProgramStatement> sourceStatementList = Globals.program.getMachineList();
     data = new Object[sourceStatementList.size()][columnNames.length];
     intAddresses = new int[data.length];
-    addressRows = new Hashtable(data.length);
-    executeMods = new Hashtable<Integer, ModifiedCode>(data.length);
+    addressRows = new Hashtable<>(data.length);
+    executeMods = new Hashtable<>(data.length);
     // Get highest source line number to determine #leading spaces so line numbers will vertically
     // align
     // In multi-file situation, this will not necessarily be the last line b/c sourceStatementList
@@ -120,7 +120,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     // source lines from all files.  DPS 3-Oct-10
     int maxSourceLineNumber = 0;
     for (int i = sourceStatementList.size() - 1; i >= 0; i--) {
-      ProgramStatement statement = (ProgramStatement) sourceStatementList.get(i);
+      ProgramStatement statement = sourceStatementList.get(i);
       if (statement.getSourceLine() > maxSourceLineNumber) {
         maxSourceLineNumber = statement.getSourceLine();
       }
@@ -129,7 +129,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     int leadingSpaces;
     int lastLine = -1;
     for (int i = 0; i < sourceStatementList.size(); i++) {
-      ProgramStatement statement = (ProgramStatement) sourceStatementList.get(i);
+      ProgramStatement statement = sourceStatementList.get(i);
       intAddresses[i] = statement.getAddress();
       addressRows.put(intAddresses[i], i);
       data[i][BREAK_COLUMN] = Boolean.FALSE;
@@ -268,14 +268,14 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    */
   public void updateBasicStatements() {
     if (contentPane.getComponentCount() == 0) return; // ignore if no content to change
-    ArrayList sourceStatementList = Globals.program.getMachineList();
+    ArrayList<ProgramStatement> sourceStatementList = Globals.program.getMachineList();
     for (int i = 0; i < sourceStatementList.size(); i++) {
       // Loop has been extended to cover self-modifying code.  If code at this memory location has
       // been
       // modified at runtime, construct a ProgramStatement from the current address and binary code
       // then display its basic code.  DPS 11-July-2013
       if (executeMods.get(i) == null) { // not modified, so use original logic.
-        ProgramStatement statement = (ProgramStatement) sourceStatementList.get(i);
+        ProgramStatement statement = sourceStatementList.get(i);
         table
             .getModel()
             .setValueAt(statement.getPrintableBasicAssemblyStatement(), i, BASIC_COLUMN);
@@ -330,10 +330,9 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
         addAsTextSegmentObserver();
       }
-    } else if (obj instanceof MemoryAccessNotice) {
+    } else if (obj instanceof MemoryAccessNotice access) {
       // NOTE: observable != Memory.getInstance() because Memory class delegates notification duty.
       // This will occur only if running program has written to text segment (self-modifying code)
-      MemoryAccessNotice access = (MemoryAccessNotice) obj;
       if (access.getAccessType() == AccessNotice.WRITE) {
         int address = access.getAddress();
         int value = access.getValue();
@@ -685,7 +684,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   private int findRowForAddress(int address) throws IllegalArgumentException {
     int addressRow;
     try {
-      addressRow = ((Integer) addressRows.get(address)).intValue();
+      addressRow = addressRows.get(address).intValue();
     } catch (NullPointerException e) {
       throw new IllegalArgumentException(); // address not found in map
       // return addressRow;// if address not in map, do nothing.
@@ -723,7 +722,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
      * then the break column would contain text ("true"/"false"),
      * rather than a check box.
      */
-    public Class getColumnClass(int c) {
+    public Class<?> getColumnClass(int c) {
       return getValueAt(0, c).getClass();
     }
 
