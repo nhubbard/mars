@@ -104,9 +104,9 @@ public class LabelsWindow extends JInternalFrame {
   };
   // The array of column headings; index corresponds to state in table above.
   private static final char ASCENDING_SYMBOL =
-      '\u25b2'; // triangle with base at bottom ("points" up, to indicate ascending sort)
+      '▲'; // triangle with base at bottom ("points" up, to indicate ascending sort)
   private static final char DESCENDING_SYMBOL =
-      '\u25bc'; // triangle with base at top ("points" down, to indicate descending sort)
+      '▼'; // triangle with base at top ("points" down, to indicate descending sort)
   private static final String[][] sortColumnHeadings = {
     /*  0  */ {"Label", "Address  " + ASCENDING_SYMBOL},
     /*  1  */ {"Label", "Address  " + DESCENDING_SYMBOL},
