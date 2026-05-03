@@ -297,9 +297,8 @@ public abstract class InputHandler extends KeyAdapter {
   public static JEditTextArea getTextArea(EventObject evt) {
     if (evt != null) {
       Object o = evt.getSource();
-      if (o instanceof Component) {
+      if (o instanceof Component c) {
         // find the parent text area
-        Component c = (Component) o;
         for (; ; ) {
           if (c instanceof JEditTextArea) return (JEditTextArea) c;
           else if (c == null) break;
