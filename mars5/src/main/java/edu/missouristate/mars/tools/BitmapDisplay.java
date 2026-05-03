@@ -243,12 +243,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
             + "Contact Pete Sanderson at psanderson@otterbein.edu with\n"
             + "questions or comments.\n";
     JButton help = new JButton("Help");
-    help.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            JOptionPane.showMessageDialog(theWindow, helpContent);
-          }
-        });
+    help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;
   }
 
@@ -266,84 +261,69 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     visualizationUnitPixelWidthSelector.setSelectedIndex(defaultVisualizationUnitPixelWidthIndex);
     visualizationUnitPixelWidthSelector.setToolTipText(
         "Width in pixels of rectangle representing memory word");
-    visualizationUnitPixelWidthSelector.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
-            theGrid = createNewGrid();
-            updateDisplay();
-          }
-        });
+    visualizationUnitPixelWidthSelector.addActionListener(e -> {
+      unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
+      theGrid = createNewGrid();
+      updateDisplay();
+    });
     visualizationUnitPixelHeightSelector = new JComboBox<>(visualizationUnitPixelHeightChoices);
     visualizationUnitPixelHeightSelector.setEditable(false);
     visualizationUnitPixelHeightSelector.setBackground(backgroundColor);
     visualizationUnitPixelHeightSelector.setSelectedIndex(defaultVisualizationUnitPixelHeightIndex);
     visualizationUnitPixelHeightSelector.setToolTipText(
         "Height in pixels of rectangle representing memory word");
-    visualizationUnitPixelHeightSelector.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
-            theGrid = createNewGrid();
-            updateDisplay();
-          }
-        });
+    visualizationUnitPixelHeightSelector.addActionListener(e -> {
+      unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
+      theGrid = createNewGrid();
+      updateDisplay();
+    });
     visualizationPixelWidthSelector = new JComboBox<>(displayAreaPixelWidthChoices);
     visualizationPixelWidthSelector.setEditable(false);
     visualizationPixelWidthSelector.setBackground(backgroundColor);
     visualizationPixelWidthSelector.setSelectedIndex(defaultDisplayWidthIndex);
     visualizationPixelWidthSelector.setToolTipText("Total width in pixels of display area");
-    visualizationPixelWidthSelector.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            displayAreaWidthInPixels = getIntComboBoxSelection(visualizationPixelWidthSelector);
-            canvas.setPreferredSize(getDisplayAreaDimension());
-            canvas.setSize(getDisplayAreaDimension());
-            theGrid = createNewGrid();
-            updateDisplay();
-          }
-        });
+    visualizationPixelWidthSelector.addActionListener(e -> {
+      displayAreaWidthInPixels = getIntComboBoxSelection(visualizationPixelWidthSelector);
+      canvas.setPreferredSize(getDisplayAreaDimension());
+      canvas.setSize(getDisplayAreaDimension());
+      theGrid = createNewGrid();
+      updateDisplay();
+    });
     visualizationPixelHeightSelector = new JComboBox<>(displayAreaPixelHeightChoices);
     visualizationPixelHeightSelector.setEditable(false);
     visualizationPixelHeightSelector.setBackground(backgroundColor);
     visualizationPixelHeightSelector.setSelectedIndex(defaultDisplayHeightIndex);
     visualizationPixelHeightSelector.setToolTipText("Total height in pixels of display area");
-    visualizationPixelHeightSelector.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            displayAreaHeightInPixels = getIntComboBoxSelection(visualizationPixelHeightSelector);
-            canvas.setPreferredSize(getDisplayAreaDimension());
-            canvas.setSize(getDisplayAreaDimension());
-            theGrid = createNewGrid();
-            updateDisplay();
-          }
-        });
+    visualizationPixelHeightSelector.addActionListener(e -> {
+      displayAreaHeightInPixels = getIntComboBoxSelection(visualizationPixelHeightSelector);
+      canvas.setPreferredSize(getDisplayAreaDimension());
+      canvas.setSize(getDisplayAreaDimension());
+      theGrid = createNewGrid();
+      updateDisplay();
+    });
     displayBaseAddressSelector = new JComboBox<>(displayBaseAddressChoices);
     displayBaseAddressSelector.setEditable(false);
     displayBaseAddressSelector.setBackground(backgroundColor);
     displayBaseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
     displayBaseAddressSelector.setToolTipText("Base address for display area (upper left corner)");
-    displayBaseAddressSelector.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            // This may also affect what address range we should be registered as an Observer
-            // for.  The default (inherited) address range is the MIPS static data segment
-            // starting at 0x10010000. To change this requires override of
-            // AbstractMarsToolAndApplication.addAsObserver().  The no-argument version of
-            // that method is called automatically  when "Connect" button is clicked for MarsTool
-            // and when "Assemble and Run" button is clicked for Mars application.
-            updateBaseAddress();
-            // If display base address is changed while connected to MIPS (this can only occur
-            // when being used as a MarsTool), we have to delete ourselves as an observer and
-            // re-register.
-            if (connectButton != null && connectButton.isConnected()) {
-              deleteAsObserver();
-              addAsObserver();
-            }
-            theGrid = createNewGrid();
-            updateDisplay();
-          }
-        });
+    displayBaseAddressSelector.addActionListener(e -> {
+      // This may also affect what address range we should be registered as an Observer
+      // for.  The default (inherited) address range is the MIPS static data segment
+      // starting at 0x10010000. To change this requires override of
+      // AbstractMarsToolAndApplication.addAsObserver().  The no-argument version of
+      // that method is called automatically  when "Connect" button is clicked for MarsTool
+      // and when "Assemble and Run" button is clicked for Mars application.
+      updateBaseAddress();
+      // If display base address is changed while connected to MIPS (this can only occur
+      // when being used as a MarsTool), we have to delete ourselves as an observer and
+      // re-register.
+      if (connectButton != null && connectButton.isConnected()) {
+        deleteAsObserver();
+        addAsObserver();
+      }
+      theGrid = createNewGrid();
+      updateDisplay();
+    });
 
     // ALL COMPONENTS FOR "ORGANIZATION" SECTION
 

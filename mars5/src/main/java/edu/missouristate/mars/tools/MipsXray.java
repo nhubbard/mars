@@ -115,12 +115,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
             + "Developed by Márcio Roberto, Guilherme Sales, Fabrício Vivas, Flávio Cardeal and Fábio Lúcio\n"
             + "Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.\n";
     JButton help = new JButton("Help");
-    help.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            JOptionPane.showMessageDialog(theWindow, helpContent);
-          }
-        });
+    help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;
   }
 

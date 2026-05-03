@@ -115,13 +115,10 @@ public class ExecutePane extends JDesktopPane {
     if (fullWidth <= 0 || fullHeight <= 0) {
       if (!layoutPending) {
         layoutPending = true;
-        SwingUtilities.invokeLater(
-            new Runnable() {
-              public void run() {
-                layoutPending = false;
-                setWindowBounds();
-              }
-            });
+        SwingUtilities.invokeLater(() -> {
+          layoutPending = false;
+          setWindowBounds();
+        });
       }
       return;
     }

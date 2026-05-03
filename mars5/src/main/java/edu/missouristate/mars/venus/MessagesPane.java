@@ -78,12 +78,7 @@ public class MessagesPane extends JTabbedPane {
 
     JButton assembleTabClearButton = new JButton("Clear");
     assembleTabClearButton.setToolTipText("Clear the Mars Messages area");
-    assembleTabClearButton.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            assemble.setText("");
-          }
-        });
+    assembleTabClearButton.addActionListener(e -> assemble.setText(""));
     assembleTab = new JPanel(new BorderLayout());
     assembleTab.add(createBoxForButton(assembleTabClearButton), BorderLayout.WEST);
     assembleTab.add(
@@ -160,12 +155,7 @@ public class MessagesPane extends JTabbedPane {
 
     JButton runTabClearButton = new JButton("Clear");
     runTabClearButton.setToolTipText("Clear the Run I/O area");
-    runTabClearButton.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            run.setText("");
-          }
-        });
+    runTabClearButton.addActionListener(e -> run.setText(""));
     runTab = new JPanel(new BorderLayout());
     runTab.add(createBoxForButton(runTabClearButton), BorderLayout.WEST);
     runTab.add(
@@ -314,23 +304,20 @@ public class MessagesPane extends JTabbedPane {
   // DPS, 23 Aug 2005.
   public void postRunMessage(String message) {
     final String mess = message;
-    SwingUtilities.invokeLater(
-        new Runnable() {
-          public void run() {
-            setSelectedComponent(runTab);
-            run.append(mess);
-            // can do some crude cutting here.  If the document gets "very large",
-            // let's cut off the oldest text. This will limit scrolling but the limit
-            // can be set reasonably high.
-            if (run.getDocument().getLength() > MAXIMUM_SCROLLED_CHARACTERS) {
-              try {
-                run.getDocument().remove(0, NUMBER_OF_CHARACTERS_TO_CUT);
-              } catch (BadLocationException ble) {
-                // only if NUMBER_OF_CHARACTERS_TO_CUT > MAXIMUM_SCROLLED_CHARACTERS
-              }
-            }
-          }
-        });
+    SwingUtilities.invokeLater(() -> {
+      setSelectedComponent(runTab);
+      run.append(mess);
+      // can do some crude cutting here.  If the document gets "very large",
+      // let's cut off the oldest text. This will limit scrolling but the limit
+      // can be set reasonably high.
+      if (run.getDocument().getLength() > MAXIMUM_SCROLLED_CHARACTERS) {
+        try {
+          run.getDocument().remove(0, NUMBER_OF_CHARACTERS_TO_CUT);
+        } catch (BadLocationException ble) {
+          // only if NUMBER_OF_CHARACTERS_TO_CUT > MAXIMUM_SCROLLED_CHARACTERS
+        }
+      }
+    });
   }
 
   /** Make the assembler message tab current (up front) */
@@ -401,45 +388,39 @@ public class MessagesPane extends JTabbedPane {
     final DocumentListener listener =
         new DocumentListener() {
           public void insertUpdate(final DocumentEvent e) {
-            EventQueue.invokeLater(
-                new Runnable() {
-                  public void run() {
-                    try {
-                      String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
-                      int i = inserted.indexOf('\n');
-                      if (i >= 0) {
-                        int offset = e.getOffset() + i;
-                        if (offset + 1 == e.getDocument().getLength()) {
-                          returnResponse();
-                        } else {
-                          // remove the '\n' and put it at the end
-                          e.getDocument().remove(offset, 1);
-                          e.getDocument().insertString(e.getDocument().getLength(), "\n", null);
-                          // insertUpdate will be called again, since we have inserted the '\n' at
-                          // the end
-                        }
-                      } else if (maxLen >= 0
-                          && e.getDocument().getLength() - initialPos >= maxLen) {
-                        returnResponse();
-                      }
-                    } catch (BadLocationException ex) {
-                      returnResponse();
-                    }
+            EventQueue.invokeLater(() -> {
+              try {
+                String inserted = e.getDocument().getText(e.getOffset(), e.getLength());
+                int i = inserted.indexOf('\n');
+                if (i >= 0) {
+                  int offset = e.getOffset() + i;
+                  if (offset + 1 == e.getDocument().getLength()) {
+                    returnResponse();
+                  } else {
+                    // remove the '\n' and put it at the end
+                    e.getDocument().remove(offset, 1);
+                    e.getDocument().insertString(e.getDocument().getLength(), "\n", null);
+                    // insertUpdate will be called again, since we have inserted the '\n' at
+                    // the end
                   }
-                });
+                } else if (maxLen >= 0
+                    && e.getDocument().getLength() - initialPos >= maxLen) {
+                  returnResponse();
+                }
+              } catch (BadLocationException ex) {
+                returnResponse();
+              }
+            });
           }
 
           public void removeUpdate(final DocumentEvent e) {
-            EventQueue.invokeLater(
-                new Runnable() {
-                  public void run() {
-                    if ((e.getDocument().getLength() < initialPos || e.getOffset() < initialPos)
-                        && e instanceof UndoableEdit) {
-                      ((UndoableEdit) e).undo();
-                      run.setCaretPosition(e.getOffset() + e.getLength());
-                    }
-                  }
-                });
+            EventQueue.invokeLater(() -> {
+              if ((e.getDocument().getLength() < initialPos || e.getOffset() < initialPos)
+                  && e instanceof UndoableEdit) {
+                ((UndoableEdit) e).undo();
+                run.setCaretPosition(e.getOffset() + e.getLength());
+              }
+            });
           }
 
           public void changedUpdate(DocumentEvent e) {}
@@ -460,12 +441,7 @@ public class MessagesPane extends JTabbedPane {
             fb.setDot(dot, bias);
           }
         };
-    final Simulator.StopListener stopListener =
-        new Simulator.StopListener() {
-          public void stopped(Simulator s) {
-            returnResponse();
-          }
-        };
+    final Simulator.StopListener stopListener = s -> returnResponse();
 
     public void run() { // must be invoked from the GUI thread
       setSelectedComponent(runTab);
@@ -479,16 +455,13 @@ public class MessagesPane extends JTabbedPane {
     }
 
     void cleanup() { // not required to be called from the GUI thread
-      EventQueue.invokeLater(
-          new Runnable() {
-            public void run() {
-              run.getDocument().removeDocumentListener(listener);
-              run.setEditable(false);
-              run.setNavigationFilter(null);
-              run.setCaretPosition(run.getDocument().getLength());
-              Simulator.getInstance().removeStopListener(stopListener);
-            }
-          });
+      EventQueue.invokeLater(() -> {
+        run.getDocument().removeDocumentListener(listener);
+        run.setEditable(false);
+        run.setNavigationFilter(null);
+        run.setCaretPosition(run.getDocument().getLength());
+        Simulator.getInstance().removeStopListener(stopListener);
+      });
     }
 
     void returnResponse() {

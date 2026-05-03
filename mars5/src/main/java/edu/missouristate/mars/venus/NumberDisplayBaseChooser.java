@@ -56,28 +56,25 @@ public class NumberDisplayBaseChooser extends JCheckBox {
   public NumberDisplayBaseChooser(String text, boolean displayInHex) {
     super(text, displayInHex);
     base = getBase(displayInHex);
-    addItemListener(
-        new ItemListener() {
-          public void itemStateChanged(ItemEvent ie) {
-            NumberDisplayBaseChooser choose = (NumberDisplayBaseChooser) ie.getItem();
-            if (ie.getStateChange() == ItemEvent.SELECTED) {
-              choose.setBase(NumberDisplayBaseChooser.HEXADECIMAL);
-            } else {
-              choose.setBase(NumberDisplayBaseChooser.DECIMAL);
-            }
-            // Better to use notify, but I am tired...
-            if (settingMenuItem != null) {
-              settingMenuItem.setSelected(choose.isSelected());
-              ActionListener[] listeners = settingMenuItem.getActionListeners();
-              ActionEvent event = new ActionEvent(settingMenuItem, 0, "chooser");
-              for (ActionListener listener : listeners) {
-                listener.actionPerformed(event);
-              }
-            }
-            // Better to use notify, but I am tired...
-            Globals.getGui().getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
-          }
-        });
+    addItemListener(ie -> {
+      NumberDisplayBaseChooser choose = (NumberDisplayBaseChooser) ie.getItem();
+      if (ie.getStateChange() == ItemEvent.SELECTED) {
+        choose.setBase(NumberDisplayBaseChooser.HEXADECIMAL);
+      } else {
+        choose.setBase(NumberDisplayBaseChooser.DECIMAL);
+      }
+      // Better to use notify, but I am tired...
+      if (settingMenuItem != null) {
+        settingMenuItem.setSelected(choose.isSelected());
+        ActionListener[] listeners = settingMenuItem.getActionListeners();
+        ActionEvent event = new ActionEvent(settingMenuItem, 0, "chooser");
+        for (ActionListener listener : listeners) {
+          listener.actionPerformed(event);
+        }
+      }
+      // Better to use notify, but I am tired...
+      Globals.getGui().getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
+    });
   }
 
   /**

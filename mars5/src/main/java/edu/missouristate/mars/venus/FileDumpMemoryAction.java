@@ -158,12 +158,7 @@ public class FileDumpMemoryAction extends GuiAction {
     if (segmentCount == 0) {
       contents.add(new Label("There is nothing to dump!"), BorderLayout.NORTH);
       JButton OKButton = new JButton("OK");
-      OKButton.addActionListener(
-          new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-              closeDialog();
-            }
-          });
+      OKButton.addActionListener(e -> closeDialog());
       contents.add(OKButton, BorderLayout.SOUTH);
       return contents;
     }
@@ -195,24 +190,16 @@ public class FileDumpMemoryAction extends GuiAction {
     // Bottom row - the control buttons for Dump and Cancel
     Box controlPanel = Box.createHorizontalBox();
     JButton dumpButton = new JButton("Dump To File...");
-    dumpButton.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            if (performDump(
-                segmentListBaseArray[segmentListSelector.getSelectedIndex()],
-                segmentListHighArray[segmentListSelector.getSelectedIndex()],
-                (DumpFormat) formatListSelector.getSelectedItem())) {
-              closeDialog();
-            }
-          }
-        });
+    dumpButton.addActionListener(e -> {
+      if (performDump(
+          segmentListBaseArray[segmentListSelector.getSelectedIndex()],
+          segmentListHighArray[segmentListSelector.getSelectedIndex()],
+          (DumpFormat) formatListSelector.getSelectedItem())) {
+        closeDialog();
+      }
+    });
     JButton cancelButton = new JButton("Cancel");
-    cancelButton.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            closeDialog();
-          }
-        });
+    cancelButton.addActionListener(e -> closeDialog());
     controlPanel.add(Box.createHorizontalGlue());
     controlPanel.add(dumpButton);
     controlPanel.add(Box.createHorizontalGlue());

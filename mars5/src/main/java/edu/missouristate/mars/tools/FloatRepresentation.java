@@ -369,33 +369,30 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     JComboBox<String> registerSelect = new JComboBox<>(registerList);
     registerSelect.setSelectedIndex(0); // No register attached
     registerSelect.setToolTipText("Attach to selected FP register");
-    registerSelect.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            //noinspection unchecked
-            JComboBox<String> cb = (JComboBox<String>) e.getSource();
-            int selectedIndex = cb.getSelectedIndex();
-            if (isObserving()) {
-              deleteAsObserver();
-            }
-            if (selectedIndex == 0) {
-              attachedRegister = null;
-              updateDisplays(new FlavorsOfFloat());
-              instructions.setText(
-                  "The program is not attached to any MIPS floating point registers.");
-            } else {
-              attachedRegister = fpRegisters[selectedIndex - 1];
-              updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
-              if (isObserving()) {
-                addAsObserver();
-              }
-              instructions.setText(
-                  "The program and register "
-                      + attachedRegister.getName()
-                      + " will respond to each other when MIPS program connected or running.");
-            }
-          }
-        });
+    registerSelect.addActionListener(e -> {
+      //noinspection unchecked
+      JComboBox<String> cb = (JComboBox<String>) e.getSource();
+      int selectedIndex = cb.getSelectedIndex();
+      if (isObserving()) {
+        deleteAsObserver();
+      }
+      if (selectedIndex == 0) {
+        attachedRegister = null;
+        updateDisplays(new FlavorsOfFloat());
+        instructions.setText(
+            "The program is not attached to any MIPS floating point registers.");
+      } else {
+        attachedRegister = fpRegisters[selectedIndex - 1];
+        updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
+        if (isObserving()) {
+          addAsObserver();
+        }
+        instructions.setText(
+            "The program and register "
+                + attachedRegister.getName()
+                + " will respond to each other when MIPS program connected or running.");
+      }
+    });
 
     JPanel registerPanel = new JPanel(new BorderLayout(5, 5));
     JPanel registerAndLabel = new JPanel();

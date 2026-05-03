@@ -78,13 +78,10 @@ public class HelpHelpAction extends GuiAction {
         });
     // Add a "close" button to the non-modal help dialog.
     JButton closeButton = new JButton("Close");
-    closeButton.addActionListener(
-        new ActionListener() {
-          public void actionPerformed(ActionEvent e) {
-            dialog.setVisible(false);
-            dialog.dispose();
-          }
-        });
+    closeButton.addActionListener(e1 -> {
+      dialog.setVisible(false);
+      dialog.dispose();
+    });
     JPanel closePanel = new JPanel();
     closePanel.setLayout(new BoxLayout(closePanel, BoxLayout.LINE_AXIS));
     closePanel.add(Box.createHorizontalGlue());
@@ -394,26 +391,23 @@ public class HelpHelpAction extends GuiAction {
           } catch (Throwable t) {
             webpagePane = new JEditorPane("text/html", cannotDisplayMessage);
           }
-          webpagePane.addHyperlinkListener(
-              new HyperlinkListener() {
-                public void hyperlinkUpdate(HyperlinkEvent e) {
-                  if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                    JEditorPane pane = (JEditorPane) e.getSource();
-                    if (e instanceof HTMLFrameHyperlinkEvent) {
-                      HTMLFrameHyperlinkEvent evt = (HTMLFrameHyperlinkEvent) e;
-                      HTMLDocument doc = (HTMLDocument) pane.getDocument();
-                      doc.processHTMLFrameHyperlinkEvent(evt);
-                    } else {
-                      try {
-                        pane.setPage(e.getURL());
-                      } catch (Throwable t) {
-                        pane.setText(cannotDisplayMessage);
-                      }
-                      webpageURL.setText(e.getURL().toString());
-                    }
-                  }
+          webpagePane.addHyperlinkListener(e2 -> {
+            if (e2.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+              JEditorPane pane1 = (JEditorPane) e2.getSource();
+              if (e2 instanceof HTMLFrameHyperlinkEvent) {
+                HTMLFrameHyperlinkEvent evt = (HTMLFrameHyperlinkEvent) e2;
+                HTMLDocument doc = (HTMLDocument) pane1.getDocument();
+                doc.processHTMLFrameHyperlinkEvent(evt);
+              } else {
+                try {
+                  pane1.setPage(e2.getURL());
+                } catch (Throwable t) {
+                  pane1.setText(cannotDisplayMessage);
                 }
-              });
+                webpageURL.setText(e2.getURL().toString());
+              }
+            }
+          });
           webpagePane.setPreferredSize(
               new Dimension(mainUI.getSize().width * 2 / 3, mainUI.getSize().height * 2 / 3));
           webpagePane.setEditable(false);
@@ -432,13 +426,10 @@ public class HelpHelpAction extends GuiAction {
           webpageDisplay.add(URLPanel, BorderLayout.NORTH);
           webpageDisplay.add(webpageScrollPane);
           JButton closeButton = new JButton("Close");
-          closeButton.addActionListener(
-              new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                  webpageDisplay.setVisible(false);
-                  webpageDisplay.dispose();
-                }
-              });
+          closeButton.addActionListener(e1 -> {
+            webpageDisplay.setVisible(false);
+            webpageDisplay.dispose();
+          });
           JPanel closePanel = new JPanel();
           closePanel.setLayout(new BoxLayout(closePanel, BoxLayout.LINE_AXIS));
           closePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 5));
