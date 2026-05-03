@@ -1218,6 +1218,7 @@ public class Memory extends Observable {
 
     // Useful to have for future refactoring, if it actually becomes worthwhile to sort
     // these or put 'em in a tree (rather than sequential search through list).
+    // TODO: this comparison seems incorrect; we should be able to return 1
     public int compareTo(Object obj) {
       if (!(obj instanceof MemoryObservable)) {
         throw new ClassCastException();
