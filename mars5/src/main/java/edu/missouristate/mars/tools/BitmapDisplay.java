@@ -219,29 +219,30 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
   /** Overrides default method, to provide a Help button for this tool/app. */
   protected JComponent getHelpComponent() {
-    final String helpContent =
-        "Use this program to simulate a basic bitmap display where\n"
-            + "each memory word in a specified address space corresponds to\n"
-            + "one display pixel in row-major order starting at the upper left\n"
-            + "corner of the display.  This tool may be run either from the\n"
-            + "MARS Tools menu or as a stand-alone application.\n"
-            + "\n"
-            + "You can easily learn to use this small program by playing with\n"
-            + "it!   Each rectangular unit on the display represents one memory\n"
-            + "word in a contiguous address space starting with the specified\n"
-            + "base address.  The value stored in that word will be interpreted\n"
-            + "as a 24-bit RGB color value with the red component in bits 16-23,\n"
-            + "the green component in bits 8-15, and the blue component in bits 0-7.\n"
-            + "Each time a memory word within the display address space is written\n"
-            + "by the MIPS program, its position in the display will be rendered\n"
-            + "in the color that its value represents.\n"
-            + "\n"
-            + "Version 1.0 is very basic and was constructed from the Memory\n"
-            + "Reference Visualization tool's code.  Feel free to improve it and\n"
-            + "send me your code for consideration in the next MARS release.\n"
-            + "\n"
-            + "Contact Pete Sanderson at psanderson@otterbein.edu with\n"
-            + "questions or comments.\n";
+    final String helpContent = """
+        Use this program to simulate a basic bitmap display where
+        each memory word in a specified address space corresponds to
+        one display pixel in row-major order starting at the upper left
+        corner of the display.  This tool may be run either from the
+        MARS Tools menu or as a stand-alone application.
+        
+        You can easily learn to use this small program by playing with
+        it!   Each rectangular unit on the display represents one memory
+        word in a contiguous address space starting with the specified
+        base address.  The value stored in that word will be interpreted
+        as a 24-bit RGB color value with the red component in bits 16-23,
+        the green component in bits 8-15, and the blue component in bits 0-7.
+        Each time a memory word within the display address space is written
+        by the MIPS program, its position in the display will be rendered
+        in the color that its value represents.
+        
+        Version 1.0 is very basic and was constructed from the Memory
+        Reference Visualization tool's code.  Feel free to improve it and
+        send me your code for consideration in the next MARS release.
+        
+        Contact Pete Sanderson at psanderson@otterbein.edu with
+        questions or comments.
+        """;
     JButton help = new JButton("Help");
     help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;

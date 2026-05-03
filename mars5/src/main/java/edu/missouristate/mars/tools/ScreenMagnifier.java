@@ -215,34 +215,35 @@ class Magnifier extends JFrame implements ComponentListener {
 
   // A simple explanation of what the tool does.
   private JButton getHelpButton() {
-    final String helpContent =
-        "Use this utility tool to display a magnified image of a\n"
-            + "screen section and highlight things on the image.  This\n"
-            + "will be of interest mainly to instructors.\n"
-            + "\n"
-            + "To capture an image, size and position the Screen Magnifier\n"
-            + "over the screen segment to be magnified and click \"Capture\".\n"
-            + "The pixels beneath the magnifier will be captured, scaled,\n"
-            + "and displayed in a scrollable window.\n"
-            + "\n"
-            + "To highlight things in the image, just drag the mouse over\n"
-            + "the image to make a scribble line.  This line is ephemeral\n"
-            + "(is not repainted if covered then uncovered).\n"
-            + "\n"
-            + "The magnification scale can be adjusted using the spinner.\n"
-            + "Other settings can be adjusted through the Settings dialog.\n"
-            + "Settings include: justification of displayed image, automatic\n"
-            + "capture upon certain tool events, and the thickness and color\n"
-            + "of the scribble line.\n"
-            + "\n"
-            + "LIMITS: The image is static; it is not updated when the\n"
-            + "underlying pixels change.  Scale changes do not take effect\n"
-            + "until the next capture (but you can set auto-capture).  The\n"
-            + "Magnifier does not capture frame contents of other tools.\n"
-            + "Setting changes are not saved when the tool is closed.\n"
-            + "\n"
-            + "Contact Pete Sanderson at psanderson@otterbein.edu with\n"
-            + "questions or comments.\n";
+    final String helpContent = """
+        Use this utility tool to display a magnified image of a
+        screen section and highlight things on the image.  This
+        will be of interest mainly to instructors.
+        
+        To capture an image, size and position the Screen Magnifier
+        over the screen segment to be magnified and click "Capture".
+        The pixels beneath the magnifier will be captured, scaled,
+        and displayed in a scrollable window.
+        
+        To highlight things in the image, just drag the mouse over
+        the image to make a scribble line.  This line is ephemeral
+        (is not repainted if covered then uncovered).
+        
+        The magnification scale can be adjusted using the spinner.
+        Other settings can be adjusted through the Settings dialog.
+        Settings include: justification of displayed image, automatic
+        capture upon certain tool events, and the thickness and color
+        of the scribble line.
+        
+        LIMITS: The image is static; it is not updated when the
+        underlying pixels change.  Scale changes do not take effect
+        until the next capture (but you can set auto-capture).  The
+        Magnifier does not capture frame contents of other tools.
+        Setting changes are not saved when the tool is closed.
+        
+        Contact Pete Sanderson at psanderson@otterbein.edu with
+        questions or comments.
+        """;
     JButton help = new JButton("Help");
     help.addActionListener(e -> JOptionPane.showMessageDialog(frame, helpContent));
     return help;

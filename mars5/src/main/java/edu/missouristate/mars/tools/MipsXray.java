@@ -99,21 +99,23 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
   /** Overrides default method, to provide a Help button for this tool/app. */
   protected JComponent getHelpComponent() {
-    final String helpContent =
-        "This plugin is used to visualizate the behavior of mips processor using the default datapath. \n"
-            + "It reads the source code instruction and generates an animation representing the inputs and \n"
-            + "outputs of functional blocks and the interconnection between them.  The basic signals \n"
-            + "represented are, control signals, opcode bits and data of functional blocks.\n"
-            + "\n"
-            + "Besides the datapath representation, information for each instruction is displayed below\n"
-            + "the datapath. That display includes opcode value, with the correspondent colors used to\n"
-            + "represent the signals in datapath, mnemonic of the instruction processed at the moment, registers\n"
-            + "used in the instruction and a label that indicates the color code used to represent control signals\n"
-            + "\n"
-            + "To see the datapath of register bank and control units click inside the functional unit.\n\n"
-            + "Version 2.0\n"
-            + "Developed by Márcio Roberto, Guilherme Sales, Fabrício Vivas, Flávio Cardeal and Fábio Lúcio\n"
-            + "Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.\n";
+    final String helpContent = """
+        This plugin is used to visualizate the behavior of mips processor using the default datapath.\s
+        It reads the source code instruction and generates an animation representing the inputs and\s
+        outputs of functional blocks and the interconnection between them.  The basic signals\s
+        represented are, control signals, opcode bits and data of functional blocks.
+        
+        Besides the datapath representation, information for each instruction is displayed below
+        the datapath. That display includes opcode value, with the correspondent colors used to
+        represent the signals in datapath, mnemonic of the instruction processed at the moment, registers
+        used in the instruction and a label that indicates the color code used to represent control signals
+        
+        To see the datapath of register bank and control units click inside the functional unit.
+        
+        Version 2.0
+        Developed by Márcio Roberto, Guilherme Sales, Fabrício Vivas, Flávio Cardeal and Fábio Lúcio
+        Contact Marcio Roberto at marcio.rdaraujo@gmail.com with questions or comments.
+        """;
     JButton help = new JButton("Help");
     help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;

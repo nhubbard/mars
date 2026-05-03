@@ -276,27 +276,28 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   /** Overrides default method, to provide a Help button for this tool/app. */
   protected JComponent getHelpComponent() {
-    final String helpContent =
-        "Use this program to visualize dynamic memory reference\n"
-            + "patterns in MIPS assembly programs.  It may be run either\n"
-            + "from MARS' Tools menu or as a stand-alone application.  For\n"
-            + "the latter, simply write a small driver to instantiate a\n"
-            + "MemoryReferenceVisualization object and invoke its go() method.\n"
-            + "\n"
-            + "You can easily learn to use this small program by playing with\n"
-            + "it!  For the best animation, set the MIPS program to run in\n"
-            + "timed mode using the Run Speed slider.  Each rectangular unit\n"
-            + "on the display represents one or more memory words (default 1)\n"
-            + "and each time a memory word is accessed by the MIPS program,\n"
-            + "its reference count is incremented then rendered in the color\n"
-            + "assigned to the count value.  You can change the count-color\n"
-            + "assignments using the count slider and color patch.  Select a\n"
-            + "counter value then click on the color patch to change the color.\n"
-            + "This color will apply beginning at the selected count and\n"
-            + "extending up to the next slider-provided count.\n"
-            + "\n"
-            + "Contact Pete Sanderson at psanderson@otterbein.edu with\n"
-            + "questions or comments.\n";
+    final String helpContent = """
+        Use this program to visualize dynamic memory reference
+        patterns in MIPS assembly programs.  It may be run either
+        from MARS' Tools menu or as a stand-alone application.  For
+        the latter, simply write a small driver to instantiate a
+        MemoryReferenceVisualization object and invoke its go() method.
+        
+        You can easily learn to use this small program by playing with
+        it!  For the best animation, set the MIPS program to run in
+        timed mode using the Run Speed slider.  Each rectangular unit
+        on the display represents one or more memory words (default 1)
+        and each time a memory word is accessed by the MIPS program,
+        its reference count is incremented then rendered in the color
+        assigned to the count value.  You can change the count-color
+        assignments using the count slider and color patch.  Select a
+        counter value then click on the color patch to change the color.
+        This color will apply beginning at the selected count and
+        extending up to the next slider-provided count.
+        
+        Contact Pete Sanderson at psanderson@otterbein.edu with
+        questions or comments.
+        """;
     JButton help = new JButton("Help");
     help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;
