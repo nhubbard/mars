@@ -615,6 +615,10 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       dbf.setNamespaceAware(false);
       DocumentBuilder docBuilder;
       try {
+        dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        dbf.setXIncludeAware(false);
+        dbf.setExpandEntityReferences(false);
         docBuilder = dbf.newDocumentBuilder();
         Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
         Element root = doc.getDocumentElement();
