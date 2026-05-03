@@ -1,6 +1,7 @@
 plugins {
   id("java")
   id("idea")
+  id("com.diffplug.spotless") version "8.4.0"
 }
 
 group = "edu.missouristate"
