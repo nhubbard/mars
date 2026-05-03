@@ -1,12 +1,12 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.venus.*;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;

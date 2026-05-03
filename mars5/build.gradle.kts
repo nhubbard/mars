@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
   implementation("org.jspecify:jspecify:1.0.0")
-  implementation(project(":mars-core"))
+  implementation(project("mars-core"))
   testImplementation(platform("org.junit:junit-bom:6.0.0"))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation("org.assertj:assertj-core:3.27.7")

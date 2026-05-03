@@ -70,7 +70,11 @@ public class RunClearBreakpointsAction extends GuiAction implements TableModelLi
    */
   public void tableChanged(TableModelEvent e) {
     setEnabled(
-        VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow().getBreakpointCount()
+        VenusUI.instance()
+                .getMainPane()
+                .getExecutePane()
+                .getTextSegmentWindow()
+                .getBreakpointCount()
             > 0);
   }
 }

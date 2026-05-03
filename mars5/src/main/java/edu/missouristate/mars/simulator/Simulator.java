@@ -1,12 +1,12 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 // FIXME(phase-2): gui-coupling — venus.* (RunStepAction/RunGoAction/RunSpeedPanel in finished()),
 // javax.swing.SwingWorker — remaining GUI action coupling
-import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.venus.*;
 import java.util.*;
 import javax.swing.*;
@@ -531,5 +531,4 @@ public class Simulator extends Observable {
       }
     }
   }
-
 }

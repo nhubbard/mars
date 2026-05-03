@@ -4,8 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
-import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.mips.dump.*;
+import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
 import java.net.*;
@@ -255,21 +255,26 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     this.pack();
     this.setVisible(true);
 
-    Simulator.getInstance().setObserver(new SimulatorObserver() {
-      public void onStepComplete(int pc) {
-        SwingUtilities.invokeLater(() -> {
-          if (registersPane.getSelectedComponent() == mainPane.getExecutePane().getRegistersWindow()) {
-            mainPane.getExecutePane().getRegistersWindow().updateRegisters();
-          } else {
-            mainPane.getExecutePane().getCoprocessor1Window().updateRegisters();
-          }
-          mainPane.getExecutePane().getDataSegmentWindow().updateValues();
-          mainPane.getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
-          mainPane.getExecutePane().getTextSegmentWindow().highlightStepAtPC();
-        });
-      }
-      public void onSimulationStop(StopEvent event) {}
-    });
+    Simulator.getInstance()
+        .setObserver(
+            new SimulatorObserver() {
+              public void onStepComplete(int pc) {
+                SwingUtilities.invokeLater(
+                    () -> {
+                      if (registersPane.getSelectedComponent()
+                          == mainPane.getExecutePane().getRegistersWindow()) {
+                        mainPane.getExecutePane().getRegistersWindow().updateRegisters();
+                      } else {
+                        mainPane.getExecutePane().getCoprocessor1Window().updateRegisters();
+                      }
+                      mainPane.getExecutePane().getDataSegmentWindow().updateValues();
+                      mainPane.getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
+                      mainPane.getExecutePane().getTextSegmentWindow().highlightStepAtPC();
+                    });
+              }
+
+              public void onSimulationStop(StopEvent event) {}
+            });
   }
 
   /*

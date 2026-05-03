@@ -1,12 +1,12 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
-import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.simulator.Simulator;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;

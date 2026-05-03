@@ -78,14 +78,31 @@ public class Globals {
 
   /* Flag that indicates whether or not instructionSet has been initialized. */
   private static boolean initialized = false;
-  private static final MarsGuiProxy HEADLESS_DEFAULT = new MarsGuiProxy() {
-    public boolean isGuiMode() { return false; }
-    public void postMessage(String s) { System.err.print(s); }
-    public void postRunMessage(String s) { System.out.print(s); }
-    public String readInput(int maxLength) { return ""; }
-    public String readInputWithPrompt(String prompt) { System.err.print(prompt); return ""; }
-    public void clearRunConsole() {}
-  };
+  private static final MarsGuiProxy HEADLESS_DEFAULT =
+      new MarsGuiProxy() {
+        public boolean isGuiMode() {
+          return false;
+        }
+
+        public void postMessage(String s) {
+          System.err.print(s);
+        }
+
+        public void postRunMessage(String s) {
+          System.out.print(s);
+        }
+
+        public String readInput(int maxLength) {
+          return "";
+        }
+
+        public String readInputWithPrompt(String prompt) {
+          System.err.print(prompt);
+          return "";
+        }
+
+        public void clearRunConsole() {}
+      };
   static MarsGuiProxy gui = HEADLESS_DEFAULT;
 
   /** The current MARS version number. Can't wait for "initialize()" call to get it. */

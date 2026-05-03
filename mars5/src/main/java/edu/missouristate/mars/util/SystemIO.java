@@ -3,7 +3,6 @@ package edu.missouristate.mars.util;
 import edu.missouristate.mars.*;
 import java.io.*;
 
-
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
 
@@ -82,8 +81,9 @@ public class SystemIO {
       } catch (IOException ignored) {
       }
     } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-      input = Globals.getGui().readInputWithPrompt(
-          "Enter an integer value (syscall " + serviceNumber + ")");
+      input =
+          Globals.getGui()
+              .readInputWithPrompt("Enter an integer value (syscall " + serviceNumber + ")");
     } else {
       input = Globals.getGui().readInput(-1);
     }
@@ -107,8 +107,9 @@ public class SystemIO {
       } catch (IOException ignored) {
       }
     } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-      input = Globals.getGui().readInputWithPrompt(
-          "Enter a float value (syscall " + serviceNumber + ")");
+      input =
+          Globals.getGui()
+              .readInputWithPrompt("Enter a float value (syscall " + serviceNumber + ")");
     } else {
       input = Globals.getGui().readInput(-1);
     }
@@ -131,8 +132,9 @@ public class SystemIO {
       } catch (IOException ignored) {
       }
     } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-      input = Globals.getGui().readInputWithPrompt(
-          "Enter a double value (syscall " + serviceNumber + ")");
+      input =
+          Globals.getGui()
+              .readInputWithPrompt("Enter a double value (syscall " + serviceNumber + ")");
     } else {
       input = Globals.getGui().readInput(-1);
     }
@@ -163,8 +165,14 @@ public class SystemIO {
       } catch (IOException ignored) {
       }
     } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-      input = Globals.getGui().readInputWithPrompt(
-          "Enter a string of maximum length " + maxLength + " (syscall " + serviceNumber + ")");
+      input =
+          Globals.getGui()
+              .readInputWithPrompt(
+                  "Enter a string of maximum length "
+                      + maxLength
+                      + " (syscall "
+                      + serviceNumber
+                      + ")");
     } else {
       input = Globals.getGui().readInput(maxLength);
       if (input.endsWith("\n")) {
@@ -195,8 +203,9 @@ public class SystemIO {
       } catch (IOException ignored) {
       }
     } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-      input = Globals.getGui().readInputWithPrompt(
-          "Enter a character value (syscall " + serviceNumber + ")");
+      input =
+          Globals.getGui()
+              .readInputWithPrompt("Enter a character value (syscall " + serviceNumber + ")");
     } else {
       input = Globals.getGui().readInput(1);
     }

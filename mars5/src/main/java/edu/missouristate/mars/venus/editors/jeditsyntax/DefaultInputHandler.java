@@ -9,7 +9,6 @@
 
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.VenusUI;
 import java.awt.Toolkit;
 import java.awt.event.*;

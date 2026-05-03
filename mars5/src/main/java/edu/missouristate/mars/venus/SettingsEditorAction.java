@@ -52,7 +52,10 @@ public class SettingsEditorAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     editorDialog =
         new EditorFontDialog(
-            VenusUI.instance(), "Text Editor Settings", true, Globals.getSettings().getEditorFont());
+            VenusUI.instance(),
+            "Text Editor Settings",
+            true,
+            Globals.getSettings().getEditorFont());
     editorDialog.setVisible(true);
   }
 

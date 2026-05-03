@@ -1,6 +1,5 @@
 package edu.missouristate.mars.tools;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
