@@ -769,7 +769,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             Vertex tempVertex;
             for (int k = 0; k < j; k++) {
               tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-              Boolean hasThisVertex = false;
+              boolean hasThisVertex = false;
               for (int m = 0; m < vertexTraversed.size(); m++) {
                 if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex()) {
                   hasThisVertex = true;
@@ -789,7 +789,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             Vertex tempVertex;
             for (int k = 0; k < j; k++) {
               tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-              Boolean hasThisVertex = false;
+              boolean hasThisVertex = false;
               for (int m = 0; m < vertexTraversed.size(); m++) {
                 if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex()) {
                   hasThisVertex = true;
@@ -815,7 +815,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             Vertex tempVertex;
             for (int k = 0; k < j; k++) {
               tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-              Boolean hasThisVertex = false;
+              boolean hasThisVertex = false;
               for (int m = 0; m < vertexTraversed.size(); m++) {
                 if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex()) {
                   hasThisVertex = true;
@@ -836,7 +836,7 @@ class UnitAnimation extends JPanel implements ActionListener {
             Vertex tempVertex;
             for (int k = 0; k < j; k++) {
               tempVertex = outputGraph.get(vert.getNumIndex()).get(k);
-              Boolean hasThisVertex = false;
+              boolean hasThisVertex = false;
               for (int m = 0; m < vertexTraversed.size(); m++) {
                 if (tempVertex.getNumIndex() == vertexTraversed.get(m).getNumIndex()) {
                   hasThisVertex = true;
