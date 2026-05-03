@@ -987,11 +987,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     public boolean isCellEditable(int row, int col) {
       // Note that the data/cell address is constant,
       // no matter where the cell appears onscreen.
-      if (col != ADDRESS_COLUMN && !asciiDisplay) {
-        return true;
-      } else {
-        return false;
-      }
+      return col != ADDRESS_COLUMN && !asciiDisplay;
     }
 
     /*

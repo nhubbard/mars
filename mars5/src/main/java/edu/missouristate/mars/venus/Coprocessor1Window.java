@@ -219,7 +219,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
 
   private void updateConditionFlagDisplay() {
     for (int i = 0; i < conditionFlagCheckBox.length; i++) {
-      conditionFlagCheckBox[i].setSelected((Coprocessor1.getConditionFlag(i) == 0) ? false : true);
+      conditionFlagCheckBox[i].setSelected(Coprocessor1.getConditionFlag(i) != 0);
     }
   }
 
@@ -400,11 +400,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
     public boolean isCellEditable(int row, int col) {
       // Note that the data/cell address is constant,
       // no matter where the cell appears onscreen.
-      if (col == FLOAT_COLUMN || (col == DOUBLE_COLUMN && row % 2 == 0)) {
-        return true;
-      } else {
-        return false;
-      }
+      return col == FLOAT_COLUMN || (col == DOUBLE_COLUMN && row % 2 == 0);
     }
 
     /*

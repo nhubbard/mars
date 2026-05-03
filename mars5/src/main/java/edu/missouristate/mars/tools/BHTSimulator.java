@@ -271,9 +271,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     }
 
     if (0x04 <= opCode && opCode <= 0x07) return true; // beq, bne, blez, bgtz
-    if (0x14 <= opCode && opCode <= 0x17) return true; // beql, bnel, blezl, bgtzl
-
-    return false;
+    return 0x14 <= opCode && opCode <= 0x17; // beql, bnel, blezl, bgtzl
   }
 
   /**
