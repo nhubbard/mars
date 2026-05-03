@@ -11,10 +11,10 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="mars5.main" />
     <orderEntry type="library" name="Gradle: org.junit.jupiter:junit-jupiter:6.0.0" level="project" />
-    <orderEntry type="library" name="Gradle: org.assertj:assertj-core:3.26.3" level="project" />
+    <orderEntry type="library" name="Gradle: org.assertj:assertj-core:3.27.7" level="project" />
     <orderEntry type="library" name="Gradle: org.junit.jupiter:junit-jupiter-params:6.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.junit.jupiter:junit-jupiter-api:6.0.0" level="project" />
-    <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.14.18" level="project" />
+    <orderEntry type="library" name="Gradle: net.bytebuddy:byte-buddy:1.18.3" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: org.apiguardian:apiguardian-api:1.1.2" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: org.jspecify:jspecify:1.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.junit.platform:junit-platform-commons:6.0.0" level="project" />
