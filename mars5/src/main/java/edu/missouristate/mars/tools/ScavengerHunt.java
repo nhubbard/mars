@@ -505,7 +505,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     address = notice.getAddress();
     data = notice.getValue();
     isWrite = (notice.getAccessType() == AccessNotice.WRITE);
-    isRead = !isWrite;
 
     // If we are only interested in MIPS memory WRITES, then just return on READS.
     // That's a matter of policy: perhaps players should be prohibited from
