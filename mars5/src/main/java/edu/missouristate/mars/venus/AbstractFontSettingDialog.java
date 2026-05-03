@@ -210,8 +210,8 @@ public abstract class AbstractFontSettingDialog extends JDialog {
       if (needSeparator) {
         data.addElement(SEPARATOR);
       }
-      for (int j = 0; j < strings.length; j++) {
-        data.addElement(strings[j]);
+      for (String string : strings) {
+        data.addElement(string);
         needSeparator = true;
       }
     }
