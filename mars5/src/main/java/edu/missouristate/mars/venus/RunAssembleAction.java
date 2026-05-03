@@ -121,8 +121,8 @@ public class RunAssembleAction extends GuiAction {
         registersPane.getRegistersWindow().clearWindow();
         registersPane.getCoprocessor1Window().clearWindow();
         registersPane.getCoprocessor0Window().clearWindow();
-        mainUI.setReset(true);
-        mainUI.setStarted(false);
+        VenusUI.setReset(true);
+        VenusUI.setStarted(false);
         mainUI.getMainPane().setSelectedComponent(executePane);
 
         // Aug. 24, 2005 Ken Vollmar

@@ -651,7 +651,7 @@ public class InstructionSet {
                 try {
                   int address = RegisterFile.getValue(operands[2]) + operands[1];
                   int result = RegisterFile.getValue(operands[0]);
-                  for (int i = 0; i <= address % Globals.memory.WORD_LENGTH_BYTES; i++) {
+                  for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
                     result = Binary.setByte(result, 3 - i, Globals.memory.getByte(address - i));
                   }
                   RegisterFile.updateRegister(operands[0], result);
@@ -672,7 +672,7 @@ public class InstructionSet {
                 try {
                   int address = RegisterFile.getValue(operands[2]) + operands[1];
                   int result = RegisterFile.getValue(operands[0]);
-                  for (int i = 0; i <= 3 - (address % Globals.memory.WORD_LENGTH_BYTES); i++) {
+                  for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
                     result = Binary.setByte(result, i, Globals.memory.getByte(address + i));
                   }
                   RegisterFile.updateRegister(operands[0], result);
@@ -732,7 +732,7 @@ public class InstructionSet {
                 try {
                   int address = RegisterFile.getValue(operands[2]) + operands[1];
                   int source = RegisterFile.getValue(operands[0]);
-                  for (int i = 0; i <= address % Globals.memory.WORD_LENGTH_BYTES; i++) {
+                  for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
                     Globals.memory.setByte(address - i, Binary.getByte(source, 3 - i));
                   }
                 } catch (AddressErrorException e) {
@@ -752,7 +752,7 @@ public class InstructionSet {
                 try {
                   int address = RegisterFile.getValue(operands[2]) + operands[1];
                   int source = RegisterFile.getValue(operands[0]);
-                  for (int i = 0; i <= 3 - (address % Globals.memory.WORD_LENGTH_BYTES); i++) {
+                  for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
                     Globals.memory.setByte(address + i, Binary.getByte(source, i));
                   }
                 } catch (AddressErrorException e) {
@@ -2595,7 +2595,7 @@ public class InstructionSet {
                   throw new ProcessingException(statement, "first register must be even-numbered");
                 }
                 // IF statement added by DPS 13-July-2011.
-                if (!Globals.memory.doublewordAligned(
+                if (!Memory.doublewordAligned(
                     RegisterFile.getValue(operands[2]) + operands[1])) {
                   throw new ProcessingException(
                       statement,
@@ -2648,7 +2648,7 @@ public class InstructionSet {
                   throw new ProcessingException(statement, "first register must be even-numbered");
                 }
                 // IF statement added by DPS 13-July-2011.
-                if (!Globals.memory.doublewordAligned(
+                if (!Memory.doublewordAligned(
                     RegisterFile.getValue(operands[2]) + operands[1])) {
                   throw new ProcessingException(
                       statement,

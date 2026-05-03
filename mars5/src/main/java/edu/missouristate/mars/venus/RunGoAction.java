@@ -56,12 +56,12 @@ public class RunGoAction extends GuiAction {
     name = this.getValue(Action.NAME).toString();
     executePane = mainUI.getMainPane().getExecutePane();
     if (FileStatus.isAssembled()) {
-      if (!mainUI.getStarted()) {
+      if (!VenusUI.getStarted()) {
         processProgramArgumentsIfAny(); // DPS 17-July-2008
       }
-      if (mainUI.getReset() || mainUI.getStarted()) {
+      if (VenusUI.getReset() || VenusUI.getStarted()) {
 
-        mainUI.setStarted(true); // added 8/27/05
+        VenusUI.setStarted(true); // added 8/27/05
 
         mainUI.messagesPane.postMarsMessage(
             name + ": running " + FileStatus.getFile().getName() + "\n\n");
@@ -80,9 +80,9 @@ public class RunGoAction extends GuiAction {
         JOptionPane.showMessageDialog(
             mainUI,
             "reset "
-                + mainUI.getReset()
+                + VenusUI.getReset()
                 + " started "
-                + mainUI
+                + VenusUI
                     .getStarted()); // "You must reset before you can execute the program again.");
       }
     } else {
@@ -117,7 +117,7 @@ public class RunGoAction extends GuiAction {
     executePane.getCoprocessor0Window().updateRegisters();
     executePane.getDataSegmentWindow().updateValues();
     FileStatus.set(FileStatus.RUNNABLE);
-    mainUI.setReset(false);
+    VenusUI.setReset(false);
   }
 
   /**
@@ -183,7 +183,7 @@ public class RunGoAction extends GuiAction {
         break;
     }
     RunGoAction.resetMaxSteps();
-    mainUI.setReset(false);
+    VenusUI.setReset(false);
   }
 
   /** Reset max steps limit to default value at termination of a simulated execution. */

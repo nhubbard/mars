@@ -55,7 +55,7 @@ public class RunBackstepAction extends GuiAction {
       JOptionPane.showMessageDialog(mainUI, "The program must be assembled before it can be run.");
       return;
     }
-    mainUI.setStarted(true);
+    VenusUI.setStarted(true);
     mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
 
@@ -94,7 +94,7 @@ public class RunBackstepAction extends GuiAction {
          executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter()-4);
       }
       */
-      mainUI.setReset(false);
+      VenusUI.setReset(false);
     }
   }
 }
