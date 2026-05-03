@@ -38,7 +38,7 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
           address += Memory.WORD_LENGTH_BYTES) {
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
-        string = new StringBuilder(Integer.toHexString(temp.intValue()));
+        string = new StringBuilder(Integer.toHexString(temp));
         while (string.length() < 8) {
           string.insert(0, '0');
         }
@@ -51,10 +51,10 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
         tmp_chksum += 4;
         tmp_chksum += 0xFF & (address - firstAddress);
         tmp_chksum += 0xFF & ((address - firstAddress) >> 8);
-        tmp_chksum += 0xFF & temp.intValue();
-        tmp_chksum += 0xFF & (temp.intValue() >> 8);
-        tmp_chksum += 0xFF & (temp.intValue() >> 16);
-        tmp_chksum += 0xFF & (temp.intValue() >> 24);
+        tmp_chksum += 0xFF & temp;
+        tmp_chksum += 0xFF & (temp >> 8);
+        tmp_chksum += 0xFF & (temp >> 16);
+        tmp_chksum += 0xFF & (temp >> 24);
         tmp_chksum = tmp_chksum % 256;
         tmp_chksum = ~tmp_chksum + 1;
         chksum = Integer.toHexString(0xFF & tmp_chksum);

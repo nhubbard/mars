@@ -216,7 +216,7 @@ public class SettingsEditorAction extends GuiAction {
               Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING, lineHighlightCheck.isSelected());
       Globals.getSettings().setBooleanSetting(Settings.AUTO_INDENT, autoIndentCheck.isSelected());
       Globals.getSettings()
-          .setCaretBlinkRate(((Integer) blinkRateSpinSelector.getValue()).intValue());
+          .setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
       Globals.getSettings().setEditorTabSize(tabSizeSelector.getValue());
       if (syntaxStylesAction) {
         for (int i = 0; i < syntaxStyleIndex.length; i++) {
@@ -290,7 +290,7 @@ public class SettingsEditorAction extends GuiAction {
           new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
               Object value = ((JSpinner) e.getSource()).getValue();
-              tabSizeSelector.setValue(((Integer) value).intValue());
+              tabSizeSelector.setValue((Integer) value);
             }
           });
 
@@ -325,7 +325,7 @@ public class SettingsEditorAction extends GuiAction {
           new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
               Object value = ((JSpinner) e.getSource()).getValue();
-              blinkCaret.setBlinkRate(((Integer) value).intValue());
+              blinkCaret.setBlinkRate((Integer) value);
               blinkSample.requestFocus();
               blinkCaret.setVisible(true);
             }

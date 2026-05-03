@@ -94,7 +94,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
           offset++;
           Integer temp = Globals.memory.getRawWordOrNull(address);
           if (temp == null) break;
-          string.append((hexValues) ? Binary.intToHexString(temp.intValue()) : ("           " + temp).substring(temp.toString().length())).append(" ");
+          string.append((hexValues) ? Binary.intToHexString(temp) : ("           " + temp).substring(temp.toString().length())).append(" ");
           if (offset % 8 == 0) {
             out.println(string);
             string = new StringBuilder();
@@ -126,7 +126,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
                 + "  ";
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
-        string += Binary.intToHexString(temp.intValue()) + "  ";
+        string += Binary.intToHexString(temp) + "  ";
         try {
           ProgramStatement ps = Globals.memory.getStatement(address);
           string +=

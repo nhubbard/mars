@@ -123,7 +123,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
         new ChangeListener() {
           public void stateChanged(ChangeEvent e) {
             Object value = ((JSpinner) e.getSource()).getValue();
-            fontSizeSelector.setValue(((Integer) value).intValue());
+            fontSizeSelector.setValue((Integer) value);
             fontSample.setFont(getFont());
           }
         });

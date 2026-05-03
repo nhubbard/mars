@@ -1400,7 +1400,7 @@ public class Settings extends Observable {
         settingValue = Globals.getPropertyEntry(filename, booleanSettingsKeys[i]);
         if (settingValue != null) {
           booleanSettingsValues[i] =
-              defaultBooleanSettingsValues[i] = Boolean.valueOf(settingValue).booleanValue();
+              defaultBooleanSettingsValues[i] = Boolean.valueOf(settingValue);
         }
       }
       for (int i = 0; i < stringSettingsKeys.length; i++) {

@@ -172,7 +172,7 @@ class Magnifier extends JFrame implements ComponentListener {
     scaleAdjuster.addChangeListener(
         new ChangeListener() {
           public void stateChanged(ChangeEvent e) {
-            scale = ((Double) scaleAdjuster.getValue()).doubleValue();
+            scale = (Double) scaleAdjuster.getValue();
             if (captureRescale.isEnabled()) {
               captureActionListener.actionPerformed(new ActionEvent(frame, 0, "capture"));
             }
@@ -446,8 +446,7 @@ class SettingsDialog extends JDialog {
               ((Magnifier) getOwner()).alignment = new CaptureDisplayUpperleft();
             }
             ((Magnifier) getOwner())
-                .scribblerSettings.setLineWidth(
-                    scribblerLineWidthSettings[lineWidthSetting.getSelectedIndex()].intValue());
+                .scribblerSettings.setLineWidth(scribblerLineWidthSettings[lineWidthSetting.getSelectedIndex()]);
             ((Magnifier) getOwner())
                 .scribblerSettings.setLineColor(lineColorSetting.getBackground());
             dialog.dispose();

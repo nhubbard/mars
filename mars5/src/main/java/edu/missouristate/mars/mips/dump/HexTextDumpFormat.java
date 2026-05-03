@@ -70,7 +70,7 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
           address += Memory.WORD_LENGTH_BYTES) {
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
-        string = new StringBuilder(Integer.toHexString(temp.intValue()));
+        string = new StringBuilder(Integer.toHexString(temp));
         while (string.length() < 8) {
           string.insert(0, '0');
         }

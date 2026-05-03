@@ -70,7 +70,7 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
           address += Memory.WORD_LENGTH_BYTES) {
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
-        string = new StringBuilder(Integer.toBinaryString(temp.intValue()));
+        string = new StringBuilder(Integer.toBinaryString(temp));
         while (string.length() < 32) {
           string.insert(0, '0');
         }

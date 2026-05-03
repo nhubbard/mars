@@ -47,6 +47,17 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * access (where address found or stored). Also added log display to GUI (previously System.out).
  */
 public class CacheSimulator extends AbstractMarsToolAndApplication {
+  private enum PlacementPolicy {
+    DIRECT,
+    FULL,
+    SET
+  }
+
+  private enum ReplacementPolicy {
+    LRU,
+    RANDOM
+  }
+
   private static boolean debug = false; // controls display of debugging info
   private static final String version = "Version 1.2";
   private static final String heading = "Simulate and illustrate data cache performance";
@@ -81,12 +92,10 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private final String[] placementPolicyChoices = {
     "Direct Mapping", "Fully Associative", "N-way Set Associative"
   };
-  private final int DIRECT = 0;
   private final String[] replacementPolicyChoices = {"LRU", "Random"};
-  private final int LRU = 0;
   private String[] cacheSetSizeChoices; // will change dynamically based on the other selections
   private final int defaultCacheBlockCountIndex = 3;
-  private final int defaultPlacementPolicyIndex = DIRECT;
+  private final int defaultPlacementPolicyIndex = PlacementPolicy.DIRECT.ordinal();
   // Cache-related data structures
   private AbstractCache theCache;
   private int memoryAccessCount, cacheHitCount, cacheMissCount;
@@ -194,7 +203,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheReplacementSelector = new JComboBox<>(replacementPolicyChoices);
     cacheReplacementSelector.setEditable(false);
     cacheReplacementSelector.setBackground(backgroundColor);
-    cacheReplacementSelector.setSelectedIndex(LRU);
+    cacheReplacementSelector.setSelectedIndex(ReplacementPolicy.LRU.ordinal());
 
     cacheBlockSizeSelector = new JComboBox<>(cacheBlockSizeChoices);
     cacheBlockSizeSelector.setEditable(false);
@@ -481,9 +490,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     String[] choices;
     int firstBlockCountIndex = 0;
     // NOTE: these have to match placementPolicyChoices order!
-    int SET = 2;
-    int FULL = 1;
-    switch (placementPolicyIndex) {
+    switch (PlacementPolicy.values()[placementPolicyIndex]) {
       case DIRECT:
         choices = new String[1];
         choices[0] = cacheBlockCountChoices[firstBlockCountIndex]; // set size fixed at 1
@@ -785,8 +792,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         if (!block.valid) { // it's a miss but I got it now because it is empty!
           if (debug) // System.out.print
             writeLog(" -- MISS\n");
-          int MISS = 2;
-          result = MISS;
+          result = 2;
           block.valid = true;
           block.tag = getTag(address);
           block.mostRecentAccessTime = memoryAccessCount;
@@ -814,8 +820,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       int replaceBlock = first;
       if (first != last) {
         // NOTE: these have to match replacementPolicyChoices order!
-        int RANDOM = 1;
-        switch (cacheReplacementSelector.getSelectedIndex()) {
+        switch (ReplacementPolicy.values()[cacheReplacementSelector.getSelectedIndex()]) {
           case RANDOM:
             replaceBlock = first + randu.nextInt(last - first + 1);
             if (debug) // System.out.print
