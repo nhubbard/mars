@@ -37,6 +37,7 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.Serial;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,6 +62,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 public class MipsXray extends AbstractMarsToolAndApplication {
+  @Serial
   private static final long serialVersionUID = -1L;
   private static String heading = "MIPS X-Ray - Animation of MIPS Datapath";
   private static String version = " Version 2.0";

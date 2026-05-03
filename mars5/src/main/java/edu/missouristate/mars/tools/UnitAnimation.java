@@ -13,6 +13,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.Serial;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 class UnitAnimation extends JPanel implements ActionListener {
-  /** */
+  @Serial
   private static final long serialVersionUID = -2681757800180958534L;
 
   // config variables
