@@ -1,0 +1,22 @@
+package edu.missouristate.mars.mips.instructions.basic;
+
+import edu.missouristate.mars.*;
+import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.instructions.BasicInstruction;
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+import edu.missouristate.mars.simulator.*;
+import edu.missouristate.mars.util.*;
+
+public class InstrMovz extends BasicInstruction {
+    public InstrMovz() {
+        super("movz $t1,$t2,$t3",
+              "Move conditional zero : Set $t1 to $t2 if $t3 is zero",
+              BasicInstructionFormat.R_FORMAT,
+              "000000 sssss ttttt fffff 00000 001010",
+              statement -> {
+              int[] operands = statement.getOperands();
+              if (RegisterFile.getValue(operands[2]) == 0)
+                RegisterFile.updateRegister(operands[0], RegisterFile.getValue(operands[1]));
+            });
+    }
+}

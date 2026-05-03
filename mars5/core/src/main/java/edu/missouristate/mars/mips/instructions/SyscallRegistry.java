@@ -53,7 +53,7 @@ public final class SyscallRegistry {
           Map.entry(59, new SyscallMessageDialogString()),
           Map.entry(60, new SyscallClearScreen()));
 
-  static Syscall findByNumber(int number) {
+  public static Syscall findByNumber(int number) {
     return BY_NUMBER.get(number);
   }
 
