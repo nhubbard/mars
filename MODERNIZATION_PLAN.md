@@ -134,7 +134,7 @@ sourceSets {
 }
 
 tasks.jar {
-    manifest { attributes("Main-Class" to "edu.missouristate.mars.Mars") }
+    manifest { attributes("Main-Class" to "edu.missouristate.mars.plugin.Mars") }
     from(sourceSets.main.get().output)
     archiveFileName = "mars.jar"
 }
@@ -187,10 +187,10 @@ Before touching any logic or writing tests, rename every Java package from the f
 | `mars.mips.dump` | `edu.missouristate.mars.mips.dump` |
 | `mars.simulator` | `edu.missouristate.mars.simulator` |
 | `mars.util` | `edu.missouristate.mars.util` |
-| `mars.venus` | `edu.missouristate.mars.venus` |
-| `mars.venus.editors` | `edu.missouristate.mars.venus.editors` |
-| `mars.venus.editors.jeditsyntax` | `edu.missouristate.mars.venus.editors.jeditsyntax` |
-| `mars.tools` | `edu.missouristate.mars.tools` |
+| `mars.venus` | `edu.missouristate.mars.plugin.venus` |
+| `mars.venus.editors` | `edu.missouristate.mars.plugin.venus.editors` |
+| `mars.venus.editors.jeditsyntax` | `edu.missouristate.mars.plugin.venus.editors.jeditsyntax` |
+| `mars.tools` | `edu.missouristate.mars.plugin.tools` |
 
 **Procedure:**
 
@@ -201,7 +201,7 @@ Before touching any logic or writing tests, rename every Java package from the f
    grep -rn "^import mars\." src/
    ```
    Both should return zero results after the rename.
-3. Update `edu.missouristate.mars.Mars.java`'s main-class reference in any manifest or launch script.
+3. Update `edu.missouristate.mars.plugin.Mars.java`'s main-class reference in any manifest or launch script.
 4. Update the `app/build.gradle.kts` bridge module if it references the old `mars/` directory name as a source root.
 5. Commit the rename as a single isolated commit with message `refactor: rename packages mars.* → edu.missouristate.mars.*`.
 
@@ -277,7 +277,7 @@ None of these interfaces contain implementation — they are the contracts.
 Run a dependency audit:
 
 ```bash
-grep -rn "javax.swing\|java.awt\|edu.missouristate.mars.venus" \
+grep -rn "javax.swing\|java.awt\|edu.missouristate.mars.plugin.venus" \
   src/edu/missouristate/mars/assembler \
   src/edu/missouristate/mars/mips \
   src/edu/missouristate/mars/simulator \
@@ -311,7 +311,7 @@ For each: do NOT refactor yet. Add a `// FIXME(phase-2): gui-coupling` comment s
 - `Program program`
 - `Settings settings` (headless-safe subset only)
 
-**`edu.missouristate.mars.venus.VenusContext`** (stays in GUI layer):
+**`edu.missouristate.mars.plugin.venus.VenusContext`** (stays in GUI layer):
 - `VenusUI gui`
 - All font/color settings references
 - `ExternalTools externalTools`
@@ -332,7 +332,7 @@ Create two classes:
 - `int assemblerErrorLimit`
 - Backed by a `java.util.Properties` file
 
-**`edu.missouristate.mars.venus.EditorSettings`** (stays in GUI layer):
+**`edu.missouristate.mars.plugin.venus.EditorSettings`** (stays in GUI layer):
 - Font names, sizes
 - Syntax highlighting colors
 - Window geometry
@@ -377,7 +377,7 @@ Only move files; do not change them. Use `git mv` to preserve history.
 | `edu/missouristate/mars/Globals.java` (facade) | `mars-core` (temporary) |
 | `edu/missouristate/mars/MarsLaunch.java` (CLI portion) | `mars-cli` |
 | `edu/missouristate/mars/venus/` | `mars-plugin` (temporary; eventually replaced) |
-| `edu.missouristate.mars.Mars.java`, `mainclass.txt` | `mars-cli` |
+| `edu.missouristate.mars.plugin.Mars.java`, `mainclass.txt` | `mars-cli` |
 | `*.properties`, `PseudoOps.txt` | `mars-core/src/main/resources/edu/missouristate/mars/` |
 | `images/`, `help/` | `mars-plugin/src/main/resources/` |
 | XML data files | `mars-core/src/main/resources/edu/missouristate/mars/` |
@@ -429,7 +429,7 @@ Classify every call site into one of two categories:
 
 **Category B — Tools and venus packages (no abstraction needed; will move to `mars-plugin`):**
 
-All callers in `edu.missouristate.mars.tools.*` (`DigitalLabSim`, `FloatRepresentation`, `KeyboardAndDisplaySimulator`, `ScreenMagnifier`, `ScavengerHunt`, `MipsXray`, `AbstractMarsToolAndApplication`) and `edu.missouristate.mars.venus.*`. These classes are already GUI-only and will move to `mars-plugin` as a unit. They can continue calling `Globals.getGui()` returning `VenusUI` without any change until Phase 3 removes them.
+All callers in `edu.missouristate.mars.plugin.tools.*` (`DigitalLabSim`, `FloatRepresentation`, `KeyboardAndDisplaySimulator`, `ScreenMagnifier`, `ScavengerHunt`, `MipsXray`, `AbstractMarsToolAndApplication`) and `edu.missouristate.mars.plugin.venus.*`. These classes are already GUI-only and will move to `mars-plugin` as a unit. They can continue calling `Globals.getGui()` returning `VenusUI` without any change until Phase 3 removes them.
 
 Only Category A callers need to be fixed in this step.
 
@@ -644,21 +644,34 @@ In `Globals.java`:
 
 ```java
 // Before:
-import edu.missouristate.mars.venus.*;
+
+import edu.missouristate.mars.plugin.venus.*;
 ...
 static VenusUI gui = null;
-public static void setGui(VenusUI g) { gui = g; }
-public static VenusUI getGui() { return gui; }
+
+public static void setGui(VenusUI g) {
+   gui = g;
+}
+
+public static VenusUI getGui() {
+   return gui;
+}
 
 // After:
 import edu.missouristate.mars.api.MarsGuiProxy;
 ...
 static MarsGuiProxy gui = null;
-public static void setGui(MarsGuiProxy g) { gui = g; }
-public static MarsGuiProxy getGui() { return gui; }
+
+public static void setGui(MarsGuiProxy g) {
+   gui = g;
+}
+
+public static MarsGuiProxy getGui() {
+   return gui;
+}
 ```
 
-Remove `import edu.missouristate.mars.venus.*` from `Globals.java`. This is the commit that breaks the compile-time dependency between `mars-core` and `mars-plugin`. After this change, `Globals.java` can be moved to `mars-core`.
+Remove `import edu.missouristate.mars.plugin.venus.*` from `Globals.java`. This is the commit that breaks the compile-time dependency between `mars-core` and `mars-plugin`. After this change, `Globals.java` can be moved to `mars-core`.
 
 #### 2.0.7 — Update Category A callers to use `MarsGuiProxy`
 
@@ -719,7 +732,7 @@ After all sub-steps above are complete:
 
 ```bash
 # Must return zero results:
-grep -rn "import edu.missouristate.mars.venus" \
+grep -rn "import edu.missouristate.mars.plugin.venus" \
   src/main/java/edu/missouristate/mars/assembler \
   src/main/java/edu/missouristate/mars/mips \
   src/main/java/edu/missouristate/mars/simulator \
@@ -738,7 +751,7 @@ Run `./gradlew build` and verify all 60 characterization tests still pass. `Glob
 
 **Step 2.0 exit criteria:**
 - `Globals.getGui()` returns `MarsGuiProxy`, not `VenusUI`.
-- `Globals.java` has no `import edu.missouristate.mars.venus.*`.
+- `Globals.java` has no `import edu.missouristate.mars.plugin.venus.*`.
 - `Simulator.java` has no direct calls to any `mars.venus` method; all GUI updates are fired through `SimulatorObserver`.
 - `SystemIO.java`, `SyscallClearScreen.java`, `SyscallExit2.java`, `Memory.java` contain no `mars.venus` imports.
 - `VenusUI` implements `MarsGuiProxy`; the four methods delegate to `MessagesPane`.
