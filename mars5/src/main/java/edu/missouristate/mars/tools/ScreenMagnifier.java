@@ -122,8 +122,7 @@ class Magnifier extends JFrame implements ComponentListener {
     addComponentListener(this);
     try {
       robot = new Robot();
-    } catch (AWTException ignored) {
-    } catch (SecurityException ignored) {
+    } catch (AWTException | SecurityException ignored) {
     }
 
     close = new JButton("Close");

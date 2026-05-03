@@ -222,10 +222,8 @@ class Tone implements Runnable {
         player.close();
       }
 
-    } catch (MidiUnavailableException mue) {
+    } catch (MidiUnavailableException | InvalidMidiDataException mue) {
       mue.printStackTrace();
-    } catch (InvalidMidiDataException imde) {
-      imde.printStackTrace();
     }
   }
 }
