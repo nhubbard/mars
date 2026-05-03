@@ -330,7 +330,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     double cellHeight = addressCell.getHeight();
     double viewHeight = dataTableScroller.getViewport().getExtentSize().getHeight();
     int numberOfVisibleRows = (int) (viewHeight / cellHeight);
-    int newViewPositionY = Math.max((int) ((addrRow - (numberOfVisibleRows / 2)) * cellHeight), 0);
+    int newViewPositionY = Math.max((int) ((addrRow - (numberOfVisibleRows / 2f)) * cellHeight), 0);
     dataTableScroller.getViewport().setViewPosition(new Point(0, newViewPositionY));
     return new Point(addrRow, addrColumn);
   }

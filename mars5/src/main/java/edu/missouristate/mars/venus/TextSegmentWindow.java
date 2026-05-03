@@ -602,7 +602,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     double viewHeight = tableScroller.getViewport().getExtentSize().getHeight();
     int numberOfVisibleRows = (int) (viewHeight / cellHeight);
     int newViewPositionY =
-        Math.max((int) ((addressRow - (numberOfVisibleRows / 2)) * cellHeight), 0);
+        Math.max((int) ((addressRow - (numberOfVisibleRows / 2f)) * cellHeight), 0);
     tableScroller.getViewport().setViewPosition(new Point(0, newViewPositionY));
     // Select the source code cell for this row by generating a fake Mouse Pressed event
     // and explicitly invoking the table's mouse listener.
