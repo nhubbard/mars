@@ -19,7 +19,7 @@ public class SyscallClearScreen extends AbstractSyscall {
   }
 
   @Override
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement) {
     // Only works when GUI is active
     if (Globals.getGui() == null) return;
 
