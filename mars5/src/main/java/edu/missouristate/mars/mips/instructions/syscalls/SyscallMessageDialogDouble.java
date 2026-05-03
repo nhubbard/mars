@@ -70,7 +70,7 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
     try {
       JOptionPane.showMessageDialog(
           null,
-          message + Double.toString(Coprocessor1.getDoubleFromRegisterPair("$f12")),
+          message + Coprocessor1.getDoubleFromRegisterPair("$f12"),
           null,
           JOptionPane.INFORMATION_MESSAGE);
     } catch (InvalidRegisterAccessException e) // register ID error in this method
