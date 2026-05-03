@@ -517,9 +517,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         break;
       case SET:
         choices = new String[lastBlockCountIndex - firstBlockCountIndex + 1];
-        for (int i = 0; i < choices.length; i++) {
-          choices[i] = cacheBlockCountChoices[firstBlockCountIndex + i];
-        }
+        System.arraycopy(cacheBlockCountChoices, 0, choices, 0, choices.length);
         break;
       case FULL: // 1 set total, so set size fixed at current number of blocks
       default:

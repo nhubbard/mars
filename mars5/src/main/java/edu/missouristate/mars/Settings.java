@@ -1306,20 +1306,12 @@ public class Settings extends Observable {
 
   // Default values.  Will be replaced if available from property file or Preferences object.
   private void applyDefaultSettings() {
-    for (int i = 0; i < booleanSettingsValues.length; i++) {
-      booleanSettingsValues[i] = defaultBooleanSettingsValues[i];
-    }
-    for (int i = 0; i < stringSettingsValues.length; i++) {
-      stringSettingsValues[i] = defaultStringSettingsValues[i];
-    }
-    for (int i = 0; i < fontFamilySettingsValues.length; i++) {
-      fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i];
-      fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i];
-      fontSizeSettingsValues[i] = defaultFontSizeSettingsValues[i];
-    }
-    for (int i = 0; i < colorSettingsValues.length; i++) {
-      colorSettingsValues[i] = defaultColorSettingsValues[i];
-    }
+    System.arraycopy(defaultBooleanSettingsValues, 0, booleanSettingsValues, 0, booleanSettingsValues.length);
+    System.arraycopy(defaultStringSettingsValues, 0, stringSettingsValues, 0, stringSettingsValues.length);
+    System.arraycopy(defaultFontFamilySettingsValues, 0, fontFamilySettingsValues, 0, fontFamilySettingsValues.length);
+    System.arraycopy(defaultFontStyleSettingsValues, 0, fontStyleSettingsValues, 0, fontStyleSettingsValues.length);
+    System.arraycopy(defaultFontSizeSettingsValues, 0, fontStyleSettingsValues, 0, fontStyleSettingsValues.length);
+    System.arraycopy(defaultColorSettingsValues, 0, colorSettingsValues, 0, colorSettingsValues.length);
     initializeEditorSyntaxStyles();
   }
 
