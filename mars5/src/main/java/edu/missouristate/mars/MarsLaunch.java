@@ -440,7 +440,7 @@ public class MarsLaunch {
       Globals.getSettings()
           .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
       File mainFile =
-          new File(filenameList.get(0)).getAbsoluteFile(); // First file is "main" file
+          new File(filenameList.getFirst()).getAbsoluteFile(); // First file is "main" file
       ArrayList<String> filesToAssemble;
       if (assembleProject) {
         filesToAssemble =
@@ -448,7 +448,7 @@ public class MarsLaunch {
         if (filenameList.size() > 1) {
           // Using "p" project option PLUS listing more than one filename on command line.
           // Add the additional files, avoiding duplicates.
-          filenameList.remove(0); // first one has already been processed
+          filenameList.removeFirst(); // first one has already been processed
           ArrayList<String> moreFilesToAssemble =
               FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
           // Remove any duplicates then merge the two lists.

@@ -345,7 +345,7 @@ public class JEditTextArea extends JComponent {
   public boolean scrollToCaret() {
     int line = getCaretLine();
     int lineStart = getLineStartOffset(line);
-    int offset = Math.max(0, Math.min(getLineLength(line) - 1, getCaretPosition() - lineStart));
+    int offset = Math.clamp(getLineLength(line) - 1, 0, getCaretPosition() - lineStart);
 
     return scrollTo(line, offset);
   }
@@ -409,7 +409,7 @@ public class JEditTextArea extends JComponent {
   public int yToLine(int y) {
     FontMetrics fm = painter.getFontMetrics();
     int height = fm.getHeight();
-    return Math.max(0, Math.min(getLineCount() - 1, y / height + firstLine));
+    return Math.clamp(getLineCount() - 1, 0, y / height + firstLine);
   }
 
   /**
@@ -1216,7 +1216,7 @@ public class JEditTextArea extends JComponent {
 
       int repeatCount = inputHandler.getRepeatCount();
       StringBuilder buf = new StringBuilder();
-      for (int i = 0; i < repeatCount; i++) buf.append(selection);
+      buf.repeat(String.valueOf(selection), Math.max(0, repeatCount));
 
       clipboard.setContents(new StringSelection(buf.toString()), null);
     }
@@ -1235,7 +1235,7 @@ public class JEditTextArea extends JComponent {
 
         int repeatCount = inputHandler.getRepeatCount();
         StringBuilder buf = new StringBuilder();
-        for (int i = 0; i < repeatCount; i++) buf.append(selection);
+        buf.repeat(selection, Math.max(0, repeatCount));
         selection = buf.toString();
         setSelectedText(selection);
       } catch (Exception e) {
@@ -1383,10 +1383,12 @@ public class JEditTextArea extends JComponent {
 
   class ScrollLayout implements LayoutManager {
     public void addLayoutComponent(String name, Component comp) {
-      if (name.equals(CENTER)) center = comp;
-      else if (name.equals(RIGHT)) right = comp;
-      else if (name.equals(BOTTOM)) bottom = comp;
-      else if (name.equals(LEFT_OF_SCROLLBAR)) leftOfScrollBar.addElement(comp);
+      switch (name) {
+        case CENTER -> center = comp;
+        case RIGHT -> right = comp;
+        case BOTTOM -> bottom = comp;
+        case LEFT_OF_SCROLLBAR -> leftOfScrollBar.addElement(comp);
+      }
     }
 
     public void removeLayoutComponent(Component comp) {
@@ -1600,8 +1602,7 @@ public class JEditTextArea extends JComponent {
       } else {
         setFirstLine(
             getFirstLine()
-                + (Math.min(
-                    maxMotion, Math.max(0, getLineCount() - (getFirstLine() + visibleLines)))));
+                + (Math.clamp(getLineCount() - (getFirstLine() + visibleLines), 0, maxMotion)));
       }
     }
   }

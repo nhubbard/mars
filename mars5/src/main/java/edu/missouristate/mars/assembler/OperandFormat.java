@@ -66,11 +66,11 @@ public class OperandFormat {
    */
   static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
     if (instrMatches == null) return null;
-    if (instrMatches.size() == 1) return instrMatches.get(0);
+    if (instrMatches.size() == 1) return instrMatches.getFirst();
     for (Instruction potentialMatch : instrMatches) {
       if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList())) return potentialMatch;
     }
-    return instrMatches.get(0);
+    return instrMatches.getFirst();
   }
 
   // Simply check to see if numbers of operands are correct and generate error message if not.

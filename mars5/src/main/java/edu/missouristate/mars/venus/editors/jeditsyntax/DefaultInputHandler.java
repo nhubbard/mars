@@ -159,31 +159,37 @@ public class DefaultInputHandler extends InputHandler {
       KeyStroke keyStroke = KeyStroke.getKeyStroke(keyCode, modifiers);
       Binding b = currentBindings.get(keyStroke);
 
-      if (b == null) {
-        // Don't beep if the user presses some
-        // key we don't know about unless a
-        // prefix is active. Otherwise it will
-        // beep when caps lock is pressed, etc.
-        if (currentBindings != bindings) {
-          Toolkit.getDefaultToolkit().beep();
-          // F10 should be passed on, but C+e F10
-          // shouldn't
-          repeatCount = 0;
-          repeat = false;
+      switch (b) {
+        case null -> {
+          // Don't beep if the user presses some
+          // key we don't know about unless a
+          // prefix is active. Otherwise it will
+          // beep when caps lock is pressed, etc.
+          if (currentBindings != bindings) {
+            Toolkit.getDefaultToolkit().beep();
+            // F10 should be passed on, but C+e F10
+            // shouldn't
+            repeatCount = 0;
+            repeat = false;
+            evt.consume();
+          }
+          currentBindings = bindings;
+          // No binding for this keyStroke, pass it to menu
+          // (mnemonic, accelerator).  DPS 4-may-2010
+          Globals.getGui().dispatchEventToMenu(evt);
           evt.consume();
         }
-        currentBindings = bindings;
-        // No binding for this keyStroke, pass it to menu
-        // (mnemonic, accelerator).  DPS 4-may-2010
-        Globals.getGui().dispatchEventToMenu(evt);
-        evt.consume();
-      } else if (b instanceof ActionBinding ab) {
-        currentBindings = bindings;
-        executeAction(ab.action(), evt.getSource(), null);
-        evt.consume();
-      } else if (b instanceof PrefixBinding pb) {
-        currentBindings = pb.map();
-        evt.consume();
+        case ActionBinding(ActionListener action) -> {
+          currentBindings = bindings;
+          executeAction(action, evt.getSource(), null);
+          evt.consume();
+        }
+        case PrefixBinding(Hashtable<KeyStroke, Binding> map) -> {
+          currentBindings = map;
+          evt.consume();
+        }
+        default -> {
+        }
       }
     }
   }
@@ -242,12 +248,12 @@ public class DefaultInputHandler extends InputHandler {
         KeyStroke keyStroke = KeyStroke.getKeyStroke(Character.toUpperCase(c));
         Binding b = currentBindings.get(keyStroke);
 
-        if (b instanceof PrefixBinding pb) {
-          currentBindings = pb.map();
+        if (b instanceof PrefixBinding(Hashtable<KeyStroke, Binding> map)) {
+          currentBindings = map;
           return;
-        } else if (b instanceof ActionBinding ab) {
+        } else if (b instanceof ActionBinding(ActionListener action)) {
           currentBindings = bindings;
-          executeAction(ab.action(), evt.getSource(), String.valueOf(c));
+          executeAction(action, evt.getSource(), String.valueOf(c));
           return;
         }
 

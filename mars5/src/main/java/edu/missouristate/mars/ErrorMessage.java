@@ -200,7 +200,7 @@ public class ErrorMessage {
       this.line = statement.getSourceLine();
       this.macroExpansionHistory = "";
     } else {
-      this.line = defineLine.get(0);
+      this.line = defineLine.getFirst();
       this.macroExpansionHistory = "" + statement.getSourceLine();
     }
   }
