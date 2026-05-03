@@ -33,39 +33,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * starting memory addresses for the various memory segments. The default configuration is based on
  * SPIM. Starting with MARS 3.7, the configuration can be changed.
  *
+ * @param configurationIdentifier Identifier is used for saving setting; name is used for display
  * @author Pete Sanderson
  * @version August 2009
  */
-public class MemoryConfiguration {
-  // Identifier is used for saving setting; name is used for display
-  private final String configurationIdentifier;
-  private final String configurationName;
-  private final String[] configurationItemNames;
-  private final int[] configurationItemValues;
-
-  public MemoryConfiguration(String ident, String name, String[] items, int[] values) {
-    this.configurationIdentifier = ident;
-    this.configurationName = name;
-    this.configurationItemNames = items;
-    this.configurationItemValues = values;
-  }
-
-  public String getConfigurationIdentifier() {
-    return configurationIdentifier;
-  }
-
-  public String getConfigurationName() {
-    return configurationName;
-  }
-
-  public int[] getConfigurationItemValues() {
-    return configurationItemValues;
-  }
-
-  public String[] getConfigurationItemNames() {
-    return configurationItemNames;
-  }
-
+public record MemoryConfiguration(String configurationIdentifier, String configurationName, String[] configurationItemNames,
+                                  int[] configurationItemValues) {
   public int getTextBaseAddress() {
     return configurationItemValues[0];
   }

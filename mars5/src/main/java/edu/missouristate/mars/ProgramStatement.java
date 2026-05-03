@@ -748,16 +748,7 @@ public class ProgramStatement {
       return result.toString();
     }
 
-    private static class ListElement {
-      final int type;
-      final String sValue;
-      final int iValue;
-
-      ListElement(int type, String sValue, int iValue) {
-        this.type = type;
-        this.sValue = sValue;
-        this.iValue = iValue;
-      }
+    private record ListElement(int type, String sValue, int iValue) {
     }
   }
 }

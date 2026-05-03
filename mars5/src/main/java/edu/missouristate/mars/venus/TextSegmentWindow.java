@@ -308,7 +308,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     if (observable == Simulator.getInstance()) {
 
       SimulatorNotice notice = (SimulatorNotice) obj;
-      if (notice.getAction() == SimulatorNotice.SIMULATOR_START) {
+      if (notice.action() == SimulatorNotice.SIMULATOR_START) {
         // Simulated MIPS execution starts.  Respond to text segment changes only if self-modifying
         // code
         // enabled.  I commented out conditions that would further limit it to running in timed or
@@ -359,9 +359,9 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         } else {
           // If restored to original value, restore the basic and source
           // This will be the case upon backstepping.
-          if (mc.getCode().equals(strValue)) {
-            strBasic = (String) mc.getBasic();
-            strSource = (String) mc.getSource();
+          if (mc.code().equals(strValue)) {
+            strBasic = (String) mc.basic();
+            strSource = (String) mc.source();
             // remove from executeMods since we are back to original
             executeMods.remove(row);
           } else {
@@ -413,9 +413,9 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       for (Enumeration<ModifiedCode> elements = executeMods.elements();
           elements.hasMoreElements(); ) {
         ModifiedCode mc = elements.nextElement();
-        tableModel.setValueAt(mc.getCode(), mc.getRow(), CODE_COLUMN);
-        tableModel.setValueAt(mc.getBasic(), mc.getRow(), BASIC_COLUMN);
-        tableModel.setValueAt(mc.getSource(), mc.getRow(), SOURCE_COLUMN);
+        tableModel.setValueAt(mc.code(), mc.row(), CODE_COLUMN);
+        tableModel.setValueAt(mc.basic(), mc.row(), BASIC_COLUMN);
+        tableModel.setValueAt(mc.source(), mc.row(), SOURCE_COLUMN);
       }
       executeMods.clear();
     }
@@ -792,34 +792,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     }
   }
 
-  private static class ModifiedCode {
-    private final Integer row;
-    private final Object code;
-    private final Object basic;
-    private final Object source;
-
-    private ModifiedCode(Integer row, Object code, Object basic, Object source) {
-      this.row = row;
-      this.code = code;
-      this.basic = basic;
-      this.source = source;
-    }
-
-    private Integer getRow() {
-      return this.row;
-    }
-
-    private Object getCode() {
-      return this.code;
-    }
-
-    private Object getBasic() {
-      return this.basic;
-    }
-
-    private Object getSource() {
-      return this.source;
-    }
+  private record ModifiedCode(Integer row, Object code, Object basic, Object source) {
   }
 
   /*  a custom table cell renderer that we'll use to highlight the current line of

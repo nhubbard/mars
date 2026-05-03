@@ -132,13 +132,6 @@ public class ToolLoader {
     return toolList;
   }
 
-  private static class MarsToolClassAndInstance {
-    final Class<?> marsToolClass;
-    final MarsTool marsToolInstance;
-
-    MarsToolClassAndInstance(Class<?> marsToolClass, MarsTool marsToolInstance) {
-      this.marsToolClass = marsToolClass;
-      this.marsToolInstance = marsToolInstance;
-    }
+  private record MarsToolClassAndInstance(Class<?> marsToolClass, MarsTool marsToolInstance) {
   }
 }

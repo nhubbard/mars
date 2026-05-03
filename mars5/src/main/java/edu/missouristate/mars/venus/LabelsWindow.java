@@ -500,22 +500,16 @@ public class LabelsWindow extends JInternalFrame {
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  //  Comparator class used to sort in descending order a List of symbols.  It will
-  //  sort either alphabetically by name or numerically by address, depending on the
-  //  Comparator object provided as the argument constructor.  This works because it
-  //  is implemented by returning the result of the Ascending comparator when
-  //  arguments are reversed.
-  private static class DescendingComparator implements Comparator<Symbol> {
-    private final Comparator<Symbol> opposite;
-
-    private DescendingComparator(Comparator<Symbol> opposite) {
-      this.opposite = opposite;
-    }
-
+  /// /////////////////////////////////////////////////////////////////////////
+    //
+    //  Comparator class used to sort in descending order a List of symbols.  It will
+    //  sort either alphabetically by name or numerically by address, depending on the
+    //  Comparator object provided as the argument constructor.  This works because it
+    //  is implemented by returning the result of the Ascending comparator when
+    //  arguments are reversed.
+    private record DescendingComparator(Comparator<Symbol> opposite) implements Comparator<Symbol> {
     public int compare(Symbol a, Symbol b) {
-      return opposite.compare(b, a);
+        return opposite.compare(b, a);
+      }
     }
-  }
 }

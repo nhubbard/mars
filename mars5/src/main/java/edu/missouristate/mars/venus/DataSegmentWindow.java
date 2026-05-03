@@ -865,11 +865,11 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   public void update(Observable observable, Object obj) {
     if (observable == Simulator.getInstance()) {
       SimulatorNotice notice = (SimulatorNotice) obj;
-      if (notice.getAction() == SimulatorNotice.SIMULATOR_START) {
+      if (notice.action() == SimulatorNotice.SIMULATOR_START) {
 
         // Simulated MIPS execution starts.  Respond to memory changes if running in timed
         // or stepped mode.
-        if (notice.getRunSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.getMaxSteps() == 1) {
+        if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
           Memory.getInstance().addObserver(this);
           addressHighlighting = true;
         }

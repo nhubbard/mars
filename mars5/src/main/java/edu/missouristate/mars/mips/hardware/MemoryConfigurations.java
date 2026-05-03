@@ -188,7 +188,7 @@ public class MemoryConfigurations {
     Iterator<MemoryConfiguration> configurationsIterator = getConfigurationsIterator();
     while (configurationsIterator.hasNext()) {
       MemoryConfiguration config = configurationsIterator.next();
-      if (name.equals(config.getConfigurationIdentifier())) {
+      if (name.equals(config.configurationIdentifier())) {
         return config;
       }
     }

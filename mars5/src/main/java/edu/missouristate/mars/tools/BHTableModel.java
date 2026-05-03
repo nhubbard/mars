@@ -179,8 +179,6 @@ public class BHTableModel extends AbstractTableModel {
       throw new IllegalArgumentException("Only history sizes of 1 or 2 supported.");
 
     m_entryCnt = numEntries;
-    /** number of past branch events to remember */
-
     m_entries = new Vector<>();
 
     for (int i = 0; i < m_entryCnt; i++) {

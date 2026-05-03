@@ -16,7 +16,6 @@ import edu.missouristate.mars.util.SystemIO;
 // FIXME(phase-2): gui-coupling — NumberDisplayBaseChooser is a Venus Swing component
 import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 
 /*
@@ -1558,16 +1557,7 @@ public class Assembler {
     }
 
     // inner-inner class to hold each entry of the forward reference list.
-    private static class DataSegmentForwardReference {
-      final int patchAddress;
-      final int length;
-      final Token token;
-
-      DataSegmentForwardReference(int patchAddress, int length, Token token) {
-        this.patchAddress = patchAddress;
-        this.length = length;
-        this.token = token;
-      }
+        private record DataSegmentForwardReference(int patchAddress, int length, Token token) {
     }
   }
 }

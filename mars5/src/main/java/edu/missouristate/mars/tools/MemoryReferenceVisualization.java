@@ -750,24 +750,16 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////
-  // Each object represents beginning of a counter value range (non-negative integer) and
-  // color for rendering the range.  High end of the range is defined as low end of the
-  // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
-  private static class CounterColor implements Comparable<CounterColor> {
-    private final int colorRangeStart;
-    private final Color associatedColor;
-
-    public CounterColor(int start, Color color) {
-      this.colorRangeStart = start;
-      this.associatedColor = color;
-    }
-
+  /// ////////////////////////////////////////////////////////////////////////////////////
+    // Each object represents beginning of a counter value range (non-negative integer) and
+    // color for rendering the range.  High end of the range is defined as low end of the
+    // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
+    private record CounterColor(int colorRangeStart, Color associatedColor) implements Comparable<CounterColor> {
     // Necessary for sorting in ascending order of range low end.
-    public int compareTo(CounterColor other) {
-      return this.colorRangeStart - other.colorRangeStart;
+      public int compareTo(CounterColor other) {
+        return this.colorRangeStart - other.colorRangeStart;
+      }
     }
-  }
 
   ////////////////////////////////////////////////////////////////////////
   // Represents grid of memory access counts

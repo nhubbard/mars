@@ -578,28 +578,20 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////
-  // Represents the outcome of a cache access.  There are two parts:
-  // whether it was a hit or not, and in which block is the value stored.
-  // In the case of a hit, the block associated with address.  In the case of
-  // a miss, the block where new association is made.	DPS 23-Dec-2010
-  private static class CacheAccessResult {
-    private final boolean hitOrMiss;
-    private final int blockNumber;
-
-    public CacheAccessResult(boolean hitOrMiss, int blockNumber) {
-      this.hitOrMiss = hitOrMiss;
-      this.blockNumber = blockNumber;
-    }
-
+  /// //////////////////////////////////////////////////////////////////////
+    // Represents the outcome of a cache access.  There are two parts:
+    // whether it was a hit or not, and in which block is the value stored.
+    // In the case of a hit, the block associated with address.  In the case of
+    // a miss, the block where new association is made.	DPS 23-Dec-2010
+    private record CacheAccessResult(boolean hitOrMiss, int blockNumber) {
     public boolean isHit() {
-      return hitOrMiss;
-    }
+        return hitOrMiss;
+      }
 
-    public int getBlock() {
-      return blockNumber;
+      public int getBlock() {
+        return blockNumber;
+      }
     }
-  }
 
   //////////////////////////////////////////////////////////////////////
   // Abstract Cache class.  Subclasses will implement specific policies.
