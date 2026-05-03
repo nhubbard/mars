@@ -146,7 +146,7 @@ public class EditorFont {
     int result = DEFAULT_SIZE;
     try {
       result = Integer.parseInt(size);
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException ignored) {
     }
     return (result < MIN_SIZE) ? MIN_SIZE : Math.min(result, MAX_SIZE);
   }

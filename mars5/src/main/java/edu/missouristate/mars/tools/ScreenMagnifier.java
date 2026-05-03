@@ -116,15 +116,15 @@ class Magnifier extends JFrame implements ComponentListener {
     // If running withint MARS, set to its icon image; if not fuggetit.
     try {
       this.setIconImage(Globals.getGui().getIconImage());
-    } catch (Exception e) {
+    } catch (Exception ignored) {
     }
     getContentPane().setLayout(new BorderLayout());
     // Will capture an image each time frame is moved/resized.
     addComponentListener(this);
     try {
       robot = new Robot();
-    } catch (AWTException e) {
-    } catch (SecurityException e) {
+    } catch (AWTException ignored) {
+    } catch (SecurityException ignored) {
     }
 
     close = new JButton("Close");
@@ -293,7 +293,7 @@ class Magnifier extends JFrame implements ComponentListener {
     // are no alternatives so just let what would happen, happen.
     try {
       Globals.getGui().update(Globals.getGui().getGraphics());
-    } catch (Exception e) {
+    } catch (Exception ignored) {
     }
     // Perform the screen capture.
     BufferedImage imageOfSection;

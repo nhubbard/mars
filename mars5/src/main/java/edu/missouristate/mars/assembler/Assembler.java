@@ -1574,7 +1574,7 @@ public class Assembler {
           // patch address has to be valid b/c we already stored there...
           try {
             Globals.memory.set(entry.patchAddress, labelAddress, entry.length);
-          } catch (AddressErrorException aee) {
+          } catch (AddressErrorException ignored) {
           }
           forwardReferenceList.remove(i);
           i--; // needed because removal shifted the remaining list indices down

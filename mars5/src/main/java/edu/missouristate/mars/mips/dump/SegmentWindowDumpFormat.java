@@ -133,7 +133,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
               (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
           string += (((ps.getSource().isEmpty()) ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
           string += ps.getSource();
-        } catch (AddressErrorException aee) {
+        } catch (AddressErrorException ignored) {
         }
         out.println(string);
       }

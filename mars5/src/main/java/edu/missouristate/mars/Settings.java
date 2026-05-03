@@ -863,7 +863,7 @@ public class Settings extends Observable {
     int length = 2;
     try {
       length = Integer.parseInt(stringSettingsValues[EDITOR_POPUP_PREFIX_LENGTH]);
-    } catch (NumberFormatException nfe) {
+    } catch (NumberFormatException ignored) {
 
     }
     return length;

@@ -60,7 +60,7 @@ public class RunStepAction extends GuiAction {
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       try {
         Globals.program.simulateStepAtPC(this);
-      } catch (ProcessingException ev) {
+      } catch (ProcessingException ignored) {
       }
     } else {
       // note: this should never occur since "Step" is only enabled after successful assembly.

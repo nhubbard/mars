@@ -217,7 +217,7 @@ class Tone implements Runnable {
 
       try {
         eot.awaitEndOfTrack();
-      } catch (InterruptedException ex) {
+      } catch (InterruptedException ignored) {
       } finally {
         player.close();
       }

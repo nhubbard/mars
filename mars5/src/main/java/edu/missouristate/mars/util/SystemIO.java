@@ -82,7 +82,7 @@ public class SystemIO {
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
-      } catch (IOException e) {
+      } catch (IOException ignored) {
       }
     } else {
       if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
@@ -111,7 +111,7 @@ public class SystemIO {
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
-      } catch (IOException e) {
+      } catch (IOException ignored) {
       }
     } else {
       if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
@@ -139,7 +139,7 @@ public class SystemIO {
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
-      } catch (IOException e) {
+      } catch (IOException ignored) {
       }
     } else {
       if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
@@ -175,7 +175,7 @@ public class SystemIO {
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
-      } catch (IOException e) {
+      } catch (IOException ignored) {
       }
     } else {
       if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
@@ -216,7 +216,7 @@ public class SystemIO {
     if (Globals.getGui() == null) {
       try {
         input = getInputReader().readLine();
-      } catch (IOException e) {
+      } catch (IOException ignored) {
       }
     } else {
       if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {

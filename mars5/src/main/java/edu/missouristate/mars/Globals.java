@@ -205,7 +205,7 @@ public class Globals {
     try {
       limit =
           Integer.parseInt(properties.getProperty(propertyName, Integer.toString(defaultValue)));
-    } catch (NumberFormatException nfe) {
+    } catch (NumberFormatException ignored) {
     } // do nothing, I already have a default
     return limit;
   }

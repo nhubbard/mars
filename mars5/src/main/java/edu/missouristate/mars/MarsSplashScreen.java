@@ -94,7 +94,7 @@ public class MarsSplashScreen extends JWindow {
     // Wait a little while, maybe while loading resources
     try {
       Thread.sleep(duration);
-    } catch (Exception e) {
+    } catch (Exception ignored) {
     }
     setVisible(false);
   }

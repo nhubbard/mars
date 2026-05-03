@@ -243,7 +243,7 @@ public class EditPane extends JPanel implements Observer {
       while (bufStringReader.readLine() != null) {
         lineNums++;
       }
-    } catch (IOException e) {
+    } catch (IOException ignored) {
     }
     return lineNums;
   }

@@ -423,7 +423,7 @@ public class MarsLaunch {
         Integer.decode(args[i]);
         maxSteps = Integer.decode(args[i]).intValue(); // if we got here, it has to be OK
         continue;
-      } catch (NumberFormatException nfe) {
+      } catch (NumberFormatException ignored) {
       }
       // Check for integer address range (m-n)
       try {
@@ -617,7 +617,7 @@ public class MarsLaunch {
           dvalue = Coprocessor1.getDoubleFromRegisterPair(reg);
           lvalue = Coprocessor1.getLongFromRegisterPair(reg);
           hasDouble = true;
-        } catch (InvalidRegisterAccessException irae) {
+        } catch (InvalidRegisterAccessException ignored) {
         }
         if (verbose) {
           out.print(reg + "\t");
@@ -683,7 +683,7 @@ public class MarsLaunch {
       try { // This will succeed; error would have been caught during command arg parse
         addressStart = Binary.stringToInt(memIter.next().toString());
         addressEnd = Binary.stringToInt(memIter.next().toString());
-      } catch (NumberFormatException nfe) {
+      } catch (NumberFormatException ignored) {
       }
       int valuesDisplayed = 0;
       for (int addr = addressStart; addr <= addressEnd; addr += Memory.WORD_LENGTH_BYTES) {

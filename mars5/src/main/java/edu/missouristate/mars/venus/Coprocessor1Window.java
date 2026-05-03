@@ -159,7 +159,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         long longValue = 0;
         try {
           longValue = Coprocessor1.getLongFromRegisterPair(registers[i].getName());
-        } catch (InvalidRegisterAccessException e) {
+        } catch (InvalidRegisterAccessException ignored) {
         } // cannot happen since i must be even
         tableData[i][2] =
             NumberDisplayBaseChooser.formatDoubleNumber(
@@ -246,7 +246,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
     long val = 0;
     try {
       val = Coprocessor1.getLongFromRegisterPair(registers[number].getName());
-    } catch (InvalidRegisterAccessException e) {
+    } catch (InvalidRegisterAccessException ignored) {
     } // happens only if number is not even
     ((RegTableModel) table.getModel())
         .setDisplayAndModelValueAt(

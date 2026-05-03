@@ -622,7 +622,7 @@ public class Tokenizer {
         if (intValue >= 0 && intValue <= 255) {
           return Integer.toString(intValue);
         }
-      } catch (NumberFormatException nfe) {
+      } catch (NumberFormatException ignored) {
       } // if not valid octal, will fall through and reject
     }
     return value;

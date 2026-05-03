@@ -73,7 +73,7 @@ public class RunGoAction extends GuiAction {
         try {
           int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
           boolean done = Globals.program.simulateFromPC(breakPoints, maxSteps, this);
-        } catch (ProcessingException pe) {
+        } catch (ProcessingException ignored) {
         }
       } else {
         // This should never occur because at termination the Go and Step buttons are disabled.
