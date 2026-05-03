@@ -246,7 +246,6 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
    * the tool. According to the category the counter values are increased and the display gets
    * updated.
    *
-   * @param resource the observed resource
    * @param notice signals the type of access (memory, register etc.)
    */
   protected void processMIPSUpdate(AccessNotice notice) {

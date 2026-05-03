@@ -874,8 +874,7 @@ public class DataSegmentWindow extends JInternalFrame {
    * keeps us informed of when simulated MIPS execution is active. This is the only time we care
    * about memory operations.
    *
-   * @param observable The Observable object who is notifying us
-   * @param obj Auxiliary object with additional information.
+   * @param notice Auxiliary object with additional information.
    */
   private void handleSimulatorNotice(SimulatorNotice notice) {
     if (notice.action() == SimulatorNotice.SIMULATOR_START) {

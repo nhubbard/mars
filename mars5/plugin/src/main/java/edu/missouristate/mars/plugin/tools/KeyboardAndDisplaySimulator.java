@@ -257,7 +257,6 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   /**
    * Update display when connected MIPS program accesses (data) memory.
    *
-   * @param memory the attached memory
    * @param accessNotice information provided by memory in MemoryAccessNotice object
    */
   protected void processMIPSUpdate(AccessNotice accessNotice) {
