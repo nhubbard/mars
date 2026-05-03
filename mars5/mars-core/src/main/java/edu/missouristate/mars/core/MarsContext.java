@@ -1,9 +1,9 @@
 package edu.missouristate.mars.core;
 
 /**
- * Holds the complete state of one MIPS simulation session. Replaces the process-global {@link
- * edu.missouristate.mars.Globals} singleton so that two independent simulations can run in the same
- * JVM without interfering (needed for tests and parallel plugin simulations).
+ * Holds the complete state of one MIPS simulation session. Replaces the process-global Globals singleton so that two
+ * independent simulations can run in the same JVM without interfering (needed for tests and parallel plugin
+ * simulations).
  *
  * <p><b>Phase 1 stub.</b> Fields are populated as the corresponding singleton references in {@code
  * Globals} are migrated to constructor injection (Phase 2). The constructor currently delegates to

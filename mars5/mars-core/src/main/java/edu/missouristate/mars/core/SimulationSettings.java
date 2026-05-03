@@ -5,10 +5,9 @@ package edu.missouristate.mars.core;
  * GUI preferences (fonts, colors, window geometry) live in {@code EditorSettings} in the plugin
  * module.
  *
- * <p><b>Phase 1 stub.</b> This class currently reads values from the legacy {@link
- * edu.missouristate.mars.Settings} singleton so existing code paths are unaffected. In Phase 2 it
- * will be backed by a {@link java.util.Properties} file and the {@code Settings} class will be
- * deprecated.
+ * <p><b>Phase 1 stub.</b> This class currently reads values from the legacy Settings singleton
+ * so existing code paths are unaffected. In Phase 2 it will be backed by a {@link java.util.Properties}
+ * file and the {@code Settings} class will be deprecated.
  */
 public final class SimulationSettings {
 
