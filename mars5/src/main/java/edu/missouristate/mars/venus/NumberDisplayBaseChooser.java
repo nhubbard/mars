@@ -134,12 +134,10 @@ public class NumberDisplayBaseChooser extends JCheckBox {
       case HEXADECIMAL:
         result = Binary.intToHexString(value);
         break;
-      case DECIMAL:
-        result = Integer.toString(value);
-        break;
       case ASCII:
         result = Binary.intToAscii(value);
-        break;
+      break;
+        case DECIMAL:
       default:
         result = Integer.toString(value);
     }

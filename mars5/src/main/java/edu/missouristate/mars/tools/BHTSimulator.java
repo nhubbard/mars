@@ -305,21 +305,13 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     }
 
     switch (opCode) {
-      case 0x04:
+      case 0x04, 0x14:
         return valRS == valRT;
-      case 0x05:
+      case 0x05, 0x15:
         return valRS != valRT;
-      case 0x06:
+      case 0x06, 0x16:
         return valRS <= 0;
-      case 0x07:
-        return valRS >= 0;
-      case 0x14:
-        return valRS == valRT;
-      case 0x15:
-        return valRS != valRT;
-      case 0x16:
-        return valRS <= 0;
-      case 0x17:
+      case 0x07, 0x17:
         return valRS >= 0;
     }
 

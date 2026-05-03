@@ -994,10 +994,7 @@ public class VenusUI extends JFrame {
       case FileStatus.NO_FILE:
         setMenuStateInitial();
         break;
-      case FileStatus.NEW_NOT_EDITED:
-        setMenuStateEditingNew();
-        break;
-      case FileStatus.NEW_EDITED:
+      case FileStatus.NEW_NOT_EDITED, FileStatus.NEW_EDITED:
         setMenuStateEditingNew();
         break;
       case FileStatus.NOT_EDITED:

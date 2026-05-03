@@ -35,6 +35,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.Arrays;
 import java.util.Observable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -293,14 +294,14 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
   protected void initializePreGUI() {
     m_totalCounter = 0;
     lastAddress = -1; // from Felipe Lessa's instruction counter tool
-    for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) m_counters[i] = 0;
+    Arrays.fill(m_counters, 0);
   }
 
   /** resets the counter values of the tool and updates the display. */
   protected void reset() {
     m_totalCounter = 0;
     lastAddress = -1; // from Felipe Lessa's instruction counter tool
-    for (int i = 0; i < InstructionStatistics.MAX_CATEGORY; i++) m_counters[i] = 0;
+    Arrays.fill(m_counters, 0);
     updateDisplay();
   }
 
