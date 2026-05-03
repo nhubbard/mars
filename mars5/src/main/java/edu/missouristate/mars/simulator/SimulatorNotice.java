@@ -87,7 +87,7 @@ public class SimulatorNotice {
         + "Speed "
         + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)
             ? "unlimited "
-            : "" + this.runSpeed + " inst/sec")
+            : this.runSpeed + " inst/sec")
         + "Prog Ctr "
         + this.programCounter;
   }

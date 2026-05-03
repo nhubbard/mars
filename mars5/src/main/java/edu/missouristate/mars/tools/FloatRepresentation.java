@@ -214,7 +214,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     hexDisplay.setFont(hexDisplayFont);
     hexDisplay.setForeground(hexDisplayColor);
     hexDisplay.setHorizontalAlignment(JTextField.RIGHT);
-    hexDisplay.setToolTipText("" + maxLengthHex + "-digit hexadecimal (base 16) display");
+    hexDisplay.setToolTipText(maxLengthHex + "-digit hexadecimal (base 16) display");
     hexDisplay.setEditable(true);
     hexDisplay.revalidate();
     hexDisplay.addKeyListener(new HexDisplayKeystrokeListener(8));
@@ -243,7 +243,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     binaryExponentDisplay.setFont(binaryDisplayFont);
     binaryExponentDisplay.setForeground(binaryDisplayColor);
     binaryExponentDisplay.setHorizontalAlignment(JTextField.RIGHT);
-    binaryExponentDisplay.setToolTipText("" + maxLengthBinaryExponent + "-bit exponent");
+    binaryExponentDisplay.setToolTipText(maxLengthBinaryExponent + "-bit exponent");
     binaryExponentDisplay.setEditable(true);
     binaryExponentDisplay.revalidate();
 
@@ -252,7 +252,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     binaryFractionDisplay.setFont(binaryDisplayFont);
     binaryFractionDisplay.setForeground(binaryDisplayColor);
     binaryFractionDisplay.setHorizontalAlignment(JTextField.RIGHT);
-    binaryFractionDisplay.setToolTipText("" + maxLengthBinaryFraction + "-bit fraction");
+    binaryFractionDisplay.setToolTipText(maxLengthBinaryFraction + "-bit fraction");
     binaryFractionDisplay.setEditable(true);
     binaryFractionDisplay.revalidate();
 
