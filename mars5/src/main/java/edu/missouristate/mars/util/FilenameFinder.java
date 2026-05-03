@@ -400,8 +400,7 @@ public class FilenameFinder {
     if (jarName == null) {
       return nameList;
     }
-    try {
-      ZipFile zf = new ZipFile(new File(jarName));
+    try (ZipFile zf = new ZipFile(new File(jarName))) {
       Enumeration list = zf.entries();
       while (list.hasMoreElements()) {
         ZipEntry ze = (ZipEntry) list.nextElement();
