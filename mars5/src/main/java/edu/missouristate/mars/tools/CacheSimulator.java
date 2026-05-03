@@ -780,7 +780,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       int firstBlock = getFirstBlockToSearch(address);
       int lastBlock = getLastBlockToSearch(address);
       if (debug) // System.out.print
-      writeLog(
+        writeLog(
             "("
                 + memoryAccessCount
                 + ") address: "
@@ -799,20 +799,20 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       for (blockNumber = firstBlock; blockNumber <= lastBlock; blockNumber++) {
         block = blocks[blockNumber];
         if (debug) // System.out.print
-        writeLog(
+          writeLog(
               "   trying block "
                   + blockNumber
                   + ((block.valid) ? " tag " + Binary.intToHexString(block.tag) : " empty"));
         if (block.valid && block.tag == getTag(address)) { //  it's a hit!
           if (debug) // System.out.print
-          writeLog(" -- HIT\n");
+            writeLog(" -- HIT\n");
           result = HIT;
           block.mostRecentAccessTime = memoryAccessCount;
           break;
         }
         if (!block.valid) { // it's a miss but I got it now because it is empty!
           if (debug) // System.out.print
-          writeLog(" -- MISS\n");
+            writeLog(" -- MISS\n");
           result = MISS;
           block.valid = true;
           block.tag = getTag(address);
@@ -820,12 +820,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           break;
         }
         if (debug) // System.out.print
-        writeLog(" -- OCCUPIED\n");
+          writeLog(" -- OCCUPIED\n");
       }
       if (result == SET_FULL) {
         // select one to replace and replace it...
         if (debug) // System.out.print
-        writeLog("   MISS due to FULL SET");
+          writeLog("   MISS due to FULL SET");
         int blockToReplace = selectBlockToReplace(firstBlock, lastBlock);
         block = blocks[blockToReplace];
         block.tag = getTag(address);
@@ -844,7 +844,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
           case RANDOM:
             replaceBlock = first + randu.nextInt(last - first + 1);
             if (debug) // System.out.print
-            writeLog(" -- Random replace block " + replaceBlock + "\n");
+              writeLog(" -- Random replace block " + replaceBlock + "\n");
             break;
           case LRU:
           default:
@@ -856,7 +856,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
               }
             }
             if (debug) // System.out.print
-            writeLog(
+              writeLog(
                   " -- LRU replace block "
                       + replaceBlock
                       + "; unused since ("

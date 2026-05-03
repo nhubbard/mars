@@ -1396,7 +1396,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
                   new Font("Verdana", Font.BOLD, 13),
                   frc);
         else // other instructions
-        actionInFunctionalBlock =
+          actionInFunctionalBlock =
               new TextLayout(
                   opcodeEquivalenceTable.get(instructionCode.substring(0, 6)),
                   new Font("Verdana", Font.BOLD, 13),
@@ -1405,7 +1405,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
       if (instructionCode.substring(0, 6).matches("0001[0-1][0-1]")
           && v.getName().equals("CP+4")) // branch code
-      actionInFunctionalBlock =
+        actionInFunctionalBlock =
             new TextLayout("PC+OFFSET", new Font("Verdana", Font.BOLD, 13), frc);
 
       if (v.getName().equals("WRITING")) {
