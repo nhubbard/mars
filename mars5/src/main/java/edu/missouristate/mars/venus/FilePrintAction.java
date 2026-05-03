@@ -51,6 +51,7 @@ public class FilePrintAction extends GuiAction {
    *
    * @param e component triggering this call
    */
+  @SuppressWarnings("StringConcatenationInLoop")
   public void actionPerformed(ActionEvent e) {
     EditPane editPane = mainUI.getMainPane().getEditPane();
     if (editPane == null) return;

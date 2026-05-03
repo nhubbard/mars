@@ -476,6 +476,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   // selected instruction in memory.
   class DatapathAnimation extends JPanel implements ActionListener, MouseListener {
     /** */
+    @Serial
     private static final long serialVersionUID = -2681757800180958534L;
 
     // config variables
