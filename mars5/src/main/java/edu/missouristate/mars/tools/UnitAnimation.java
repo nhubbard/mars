@@ -64,7 +64,7 @@ class UnitAnimation extends JPanel implements ActionListener {
   private final int register = 1;
   private final int control = 2;
   private final int aluControl = 3;
-  private int alu = 4;
+  private final int alu = 4;
   private final int datapatTypeUsed;
 
   private final Boolean cursorInIM;

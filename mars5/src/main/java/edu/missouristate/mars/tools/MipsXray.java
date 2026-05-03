@@ -511,17 +511,17 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private final int countPCLabel;
 
     // Colors variables
-    private Color green1 = new Color(0, 153, 0);
-    private Color green2 = new Color(0, 77, 0);
-    private Color yellow2 = new Color(185, 182, 42);
+    private final Color green1 = new Color(0, 153, 0);
+    private final Color green2 = new Color(0, 77, 0);
+    private final Color yellow2 = new Color(185, 182, 42);
     private final Color orange1 = new Color(255, 102, 0);
-    private Color orange = new Color(119, 34, 34);
-    private Color blue2 = new Color(0, 153, 255);
+    private final Color orange = new Color(119, 34, 34);
+    private final Color blue2 = new Color(0, 153, 255);
 
     private final int register = 1;
     private final int control = 2;
     private final int aluControl = 3;
-    private int alu = 4;
+    private final int alu = 4;
     private int currentUnit;
     private Graphics2D g2d;
 

@@ -12,7 +12,7 @@ public class FunctionUnitVisualization extends JFrame {
   private final int register = 1;
   private final int control = 2;
   private final int aluControl = 3;
-  private int alu = 4;
+  private final int alu = 4;
   private int currentUnit;
 
   /** Create the frame. */

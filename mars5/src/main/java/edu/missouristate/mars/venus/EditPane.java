@@ -57,8 +57,8 @@ public class EditPane extends JPanel implements Observer {
   private final JLabel caretPositionLabel;
   private final JCheckBox showLineNumbers;
   private final JLabel lineNumbers;
-  private static int count = 0;
-  private boolean isCompoundEdit = false;
+  private static final int count = 0;
+  private final boolean isCompoundEdit = false;
   private CompoundEdit compoundEdit;
   private final FileStatus fileStatus;
 

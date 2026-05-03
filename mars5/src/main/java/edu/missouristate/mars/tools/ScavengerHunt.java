@@ -83,7 +83,7 @@ public class ScavengerHunt implements Observer, MarsTool {
   private int authenticationValue = 0;
   private boolean GameOn = false; // MIPS programs readiness
   private static int SetWordCounter = 0;
-  private static int accessCounter = 0;
+  private static final int accessCounter = 0;
   private static int playerID =
       ADMINISTRATOR_ID; // Range 0...(NUM_PLAYERS-1), plus ADMINISTRATOR_ID
   private final boolean KENVDEBUG = false;

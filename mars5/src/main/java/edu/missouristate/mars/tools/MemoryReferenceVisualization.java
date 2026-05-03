@@ -62,7 +62,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   // Some GUI settings
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
-  private Font countFonts = new Font("Times", Font.BOLD, 12);
+  private final Font countFonts = new Font("Times", Font.BOLD, 12);
   private final Color backgroundColor = Color.WHITE;
 
   // Values for Combo Boxes

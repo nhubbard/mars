@@ -73,7 +73,7 @@ public class JEditTextArea extends JComponent {
     this(TextAreaDefaults.getDefaults(), lineNumbers);
   }
 
-  private JScrollBar lineNumbersVertical; // ************************************
+  private final JScrollBar lineNumbersVertical; // ************************************
 
   /**
    * Creates a new JEditTextArea with the specified settings.

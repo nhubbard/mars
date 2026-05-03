@@ -80,7 +80,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
   // Several structures required for stand-alone use only (not MarsTool use)
   private File mostRecentlyOpenedFile = null;
-  private Runnable interactiveGUIUpdater = new GUIUpdater();
+  private final Runnable interactiveGUIUpdater = new GUIUpdater();
   private MessageField operationStatusMessages;
   private JButton openFileButton, assembleRunButton, stopButton;
   private boolean multiFileAssemble = false;

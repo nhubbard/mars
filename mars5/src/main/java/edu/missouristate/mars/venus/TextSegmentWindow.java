@@ -66,7 +66,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       executeMods; // key is table model row, value is original code, basic, source.
   private final Container contentPane;
   private TextTableModel tableModel;
-  private Font tableCellFont = new Font("Monospaced", Font.PLAIN, 12);
+  private final Font tableCellFont = new Font("Monospaced", Font.PLAIN, 12);
   private boolean codeHighlighting;
   private boolean breakpointsEnabled; // Added 31 Dec 2009
   private int highlightAddress;
