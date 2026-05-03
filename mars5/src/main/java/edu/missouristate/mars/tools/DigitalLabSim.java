@@ -11,7 +11,6 @@ import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
 
-@SuppressWarnings("serial")
 /* Add these two lines in exceptions.java file
  * public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; //Add for digital Lab Sim
  * public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200;// Add for digital Lab Sim
