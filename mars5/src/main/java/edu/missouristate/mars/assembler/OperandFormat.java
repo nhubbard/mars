@@ -194,6 +194,5 @@ public class OperandFormat {
             token.getSourceLine(),
             token.getStartPos(),
             "\"" + token.getValue() + "\": " + mess));
-    return;
   }
 }

@@ -791,7 +791,6 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
           return;
         }
       } // end synchronized block
-      return;
     }
 
     private void printDebugData() {

@@ -532,7 +532,6 @@ public class Simulator extends Observable {
           }
         }
       }
-      return;
     }
   }
 

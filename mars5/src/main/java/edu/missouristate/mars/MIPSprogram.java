@@ -221,7 +221,6 @@ public class MIPSprogram {
       errors.add(new ErrorMessage((MIPSprogram) null, 0, 0, e.toString()));
       throw new ProcessingException(errors);
     }
-    return;
   }
 
   /**
@@ -233,7 +232,6 @@ public class MIPSprogram {
     this.tokenizer = new Tokenizer();
     this.tokenList = tokenizer.tokenize(this);
     this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
-    return;
   }
 
   /**

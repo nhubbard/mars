@@ -346,7 +346,6 @@ public class RegistersWindow extends JPanel implements Observer {
       int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
-      return;
     }
 
     /** Update cell contents in table model. Does not affect MIPS register. */

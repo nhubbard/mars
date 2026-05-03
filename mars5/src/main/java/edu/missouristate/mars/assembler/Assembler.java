@@ -718,7 +718,6 @@ public class Assembler {
               token.getSourceLine(),
               token.getStartPos(),
               "\"" + token.getValue() + "\" directive is invalid or not implemented in MARS"));
-      return;
     } else if (direct == Directives.EQV) {
       /* EQV added by DPS 11 July 2012 */
       // Do nothing.  This was vetted and processed during tokenizing.
@@ -791,7 +790,6 @@ public class Assembler {
       fileCurrentlyBeingAssembled.getLocalMacroPool().commitMacro(token);
     } else if (inMacroSegment) {
       // should not parse lines even directives in macro segment
-      return;
     } else if (direct == Directives.DATA || direct == Directives.KDATA) {
       this.inDataSegment = true;
       this.autoAlign = true;
@@ -944,7 +942,6 @@ public class Assembler {
               token.getSourceLine(),
               token.getStartPos(),
               "\"" + token.getValue() + "\" directive recognized but not yet implemented."));
-      return;
     }
   } // executeDirective()
 
@@ -1131,7 +1128,6 @@ public class Assembler {
         storeRealNumber(token, directive, errors);
       }
     }
-    return;
   } // storeNumeric()
 
   // //////////////////////////////////////////////////////////////////////////////

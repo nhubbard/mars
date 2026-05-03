@@ -1045,7 +1045,6 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
       int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
-      return;
     }
 
     /*

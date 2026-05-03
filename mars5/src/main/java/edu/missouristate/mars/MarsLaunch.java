@@ -253,7 +253,6 @@ public class MarsLaunch {
             new VenusUI("MARS " + Globals.version);
           }
         });
-    return;
   }
 
   //////////////////////////////////////////////////////////////////////

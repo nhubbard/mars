@@ -111,7 +111,6 @@ public class SymbolTable {
         break;
       }
     }
-    return;
   }
 
   /**
@@ -260,7 +259,6 @@ public class SymbolTable {
       label.setAddress(replacementAddress);
       label = getSymbolGivenAddress(Integer.toString(originalAddress));
     }
-    return;
   }
 
   /**
