@@ -60,13 +60,13 @@ public class RunBackstepAction extends GuiAction {
 
     if (Globals.getSettings().getBackSteppingEnabled()) {
       boolean inDelaySlot = Globals.program.getBackStepper().inDelaySlot(); // Added 25 June 2007
-      Memory.getInstance().addObserver(executePane.getDataSegmentWindow());
-      RegisterFile.addRegistersObserver(executePane.getRegistersWindow());
-      Coprocessor0.addRegistersObserver(executePane.getCoprocessor0Window());
-      Coprocessor1.addRegistersObserver(executePane.getCoprocessor1Window());
+      Memory.getInstance().addObserver(executePane.getDataSegmentWindow().getMemoryListener());
+      RegisterFile.addRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
+      Coprocessor0.addRegistersObserver(executePane.getCoprocessor0Window().getRegistersListener());
+      Coprocessor1.addRegistersObserver(executePane.getCoprocessor1Window().getRegistersListener());
       Globals.program.getBackStepper().backStep();
-      Memory.getInstance().deleteObserver(executePane.getDataSegmentWindow());
-      RegisterFile.deleteRegistersObserver(executePane.getRegistersWindow());
+      Memory.getInstance().deleteObserver(executePane.getDataSegmentWindow().getMemoryListener());
+      RegisterFile.deleteRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
       executePane.getRegistersWindow().updateRegisters();
       executePane.getCoprocessor1Window().updateRegisters();
       executePane.getCoprocessor0Window().updateRegisters();

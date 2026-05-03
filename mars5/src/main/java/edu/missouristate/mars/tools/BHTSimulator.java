@@ -35,7 +35,6 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Observable;
 import javax.swing.JComponent;
 
 /**
@@ -330,10 +329,9 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
    * and visualized. In case the last instruction was a branch instruction, the outcome of the
    * branch prediction is analyzed and visualized.
    *
-   * @param resource the observed resource
    * @param notice signals the type of access (memory, register etc.)
    */
-  protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+  protected void processMIPSUpdate(AccessNotice notice) {
 
     if (!notice.accessIsFromMIPS()) return;
 

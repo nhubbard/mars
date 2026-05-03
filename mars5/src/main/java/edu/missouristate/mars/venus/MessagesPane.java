@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -196,7 +197,7 @@ public class MessagesPane extends JTabbedPane {
    */
   public void selectErrorMessage(String fileName, int line, int column) {
     String errorReportSubstring =
-        new java.io.File(fileName).getName()
+        new File(fileName).getName()
             + ErrorList.LINE_PREFIX
             + line
             + ErrorList.POSITION_PREFIX
@@ -233,14 +234,14 @@ public class MessagesPane extends JTabbedPane {
     EditTabbedPane editTabbedPane =
         (EditTabbedPane) VenusUI.instance().getMainPane().getEditTabbedPane();
     EditPane editPane, currentPane = null;
-    editPane = editTabbedPane.getEditPaneForFile(new java.io.File(fileName).getPath());
+    editPane = editTabbedPane.getEditPaneForFile(new File(fileName).getPath());
     if (editPane != null) {
       if (editPane != editTabbedPane.getCurrentEditTab()) {
         editTabbedPane.setCurrentEditTab(editPane);
       }
       currentPane = editPane;
     } else { // file is not open.  Try to open it.
-      if (editTabbedPane.openFile(new java.io.File(fileName))) {
+      if (editTabbedPane.openFile(new File(fileName))) {
         currentPane = editTabbedPane.getCurrentEditTab();
       }
     }

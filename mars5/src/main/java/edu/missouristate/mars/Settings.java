@@ -1,10 +1,12 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.*;
 import java.awt.Color;
 import java.awt.Font;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.prefs.*;
 
 /*
@@ -50,7 +52,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @author Pete Sanderson
  */
-public class Settings extends Observable {
+public class Settings {
+  private final EventEmitter<Settings> settingsEvents = new EventEmitter<>();
+
+  public void subscribeChange(Consumer<Settings> listener) { settingsEvents.subscribe(listener); }
+  public void unsubscribeChange(Consumer<Settings> listener) { settingsEvents.unsubscribe(listener); }
   /* Properties file used to hold default settings. */
   private static final String settingsFile = "Settings";
 
@@ -1212,8 +1218,7 @@ public class Settings extends Observable {
       saveFontSetting(fontSettingPosition, fontSizeSettingsKeys, fontSizeSettingsValues);
     }
     if (fontSettingPosition == EDITOR_FONT) {
-      setChanged();
-      notifyObservers();
+      settingsEvents.emit(this);
     }
   }
 
@@ -1322,8 +1327,7 @@ public class Settings extends Observable {
     if (value != booleanSettingsValues[settingIndex]) {
       booleanSettingsValues[settingIndex] = value;
       saveBooleanSetting(settingIndex);
-      setChanged();
-      notifyObservers();
+      settingsEvents.emit(this);
     }
   }
 

@@ -41,7 +41,6 @@ import java.io.Serial;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Observable;
 import javax.imageio.ImageIO;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
@@ -212,7 +211,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
   // Function that gets the current instruction in memory and start animation with the selected
   // instruction.
-  protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+  protected void processMIPSUpdate(AccessNotice notice) {
 
     if (!notice.accessIsFromMIPS()) return;
     if (notice.getAccessType() != AccessNotice.READ) return;

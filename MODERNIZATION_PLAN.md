@@ -565,6 +565,7 @@ package edu.missouristate.mars.cli;
 
 import edu.missouristate.mars.api.MarsGuiProxy;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 /** MarsGuiProxy implementation for headless / command-line execution. */
@@ -588,7 +589,7 @@ public final class HeadlessGuiProxy implements MarsGuiProxy {
             if (line == null) return "";
             return maxLength < 0 ? line
                 : line.substring(0, Math.min(line.length(), maxLength));
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             return "";
         }
     }

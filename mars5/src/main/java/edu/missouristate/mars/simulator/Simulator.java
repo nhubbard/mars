@@ -1,6 +1,7 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
@@ -9,6 +10,7 @@ import edu.missouristate.mars.util.*;
 // javax.swing.SwingWorker — remaining GUI action coupling
 import edu.missouristate.mars.venus.*;
 import java.util.*;
+import java.util.function.Consumer;
 import javax.swing.*;
 
 /*
@@ -45,10 +47,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2005
  */
-public class Simulator extends Observable {
+public class Simulator {
   private SimThread simulatorThread;
   private static Simulator simulator = null; // Singleton object
   private static volatile SimulatorObserver observer = null;
+  private final EventEmitter<SimulatorNotice> simulatorEvents = new EventEmitter<>();
   // Others can set this true to indicate external interrupt.  Initially used
   // to simulate keyboard and display interrupts.  The device is identified
   // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
@@ -85,6 +88,14 @@ public class Simulator extends Observable {
   /** Registers a callback for per-step and stop events. Called by VenusUI (GUI mode) on startup. */
   public void setObserver(SimulatorObserver obs) {
     observer = obs;
+  }
+
+  public void addSimulatorListener(Consumer<SimulatorNotice> listener) {
+    simulatorEvents.subscribe(listener);
+  }
+
+  public void removeSimulatorListener(Consumer<SimulatorNotice> listener) {
+    simulatorEvents.unsubscribe(listener);
   }
 
   /**
@@ -176,8 +187,7 @@ public class Simulator extends Observable {
   // by Stop button, by Pause button, by Step button, by runtime exception, by
   // instruction count limit, by breakpoint, or by end of simulation (truly done).
   private void notifyObserversOfExecutionStart(int maxSteps, int programCounter) {
-    this.setChanged();
-    this.notifyObservers(
+    simulatorEvents.emit(
         new SimulatorNotice(
             SimulatorNotice.SIMULATOR_START,
             maxSteps,
@@ -186,8 +196,7 @@ public class Simulator extends Observable {
   }
 
   private void notifyObserversOfExecutionStop(int maxSteps, int programCounter) {
-    this.setChanged();
-    this.notifyObservers(
+    simulatorEvents.emit(
         new SimulatorNotice(
             SimulatorNotice.SIMULATOR_STOP,
             maxSteps,

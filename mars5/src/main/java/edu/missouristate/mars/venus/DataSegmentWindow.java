@@ -7,6 +7,7 @@ import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
+import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
@@ -44,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @author Sanderson and Bumgarner
  */
-public class DataSegmentWindow extends JInternalFrame implements Observer {
+public class DataSegmentWindow extends JInternalFrame {
 
   private static final String[] dataSegmentNames = {"Data", "Stack", "Kernel"};
   private static Object[][] dataData;
@@ -89,6 +90,12 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   int homeAddress;
   boolean userOrKernelMode;
 
+  private final Consumer<MemoryAccessNotice> memoryListener = notice -> {
+    if (notice.getAccessType() == AccessNotice.WRITE) this.highlightCellForAddress(notice.getAddress());
+  };
+
+  Consumer<MemoryAccessNotice> getMemoryListener() { return memoryListener; }
+
   // The combo box replaced the row of buttons when number of buttons expanded to 7!
   // We'll keep the button objects however and manually invoke their action listeners
   // when the corresponding combo box item is selected.  DPS 22-Nov-2006
@@ -108,9 +115,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   public DataSegmentWindow(NumberDisplayBaseChooser[] choosers) {
     super("Data Segment", true, false, true, true);
 
-    Simulator.getInstance().addObserver(this);
+    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
     settings = Globals.getSettings();
-    settings.addObserver(this);
 
     homeAddress = Memory.dataBaseAddress; // address for Home button
     firstAddress = homeAddress; // first address to display at any given time
@@ -871,38 +877,14 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
    * @param observable The Observable object who is notifying us
    * @param obj Auxiliary object with additional information.
    */
-  @SuppressWarnings("StatementWithEmptyBody")
-  public void update(Observable observable, Object obj) {
-    if (observable == Simulator.getInstance()) {
-      SimulatorNotice notice = (SimulatorNotice) obj;
-      if (notice.action() == SimulatorNotice.SIMULATOR_START) {
-
-        // Simulated MIPS execution starts.  Respond to memory changes if running in timed
-        // or stepped mode.
-        if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-          Memory.getInstance().addObserver(this);
-          addressHighlighting = true;
-        }
-      } else {
-        // Simulated MIPS execution stops.  Stop responding.
-        Memory.getInstance().deleteObserver(this);
+  private void handleSimulatorNotice(SimulatorNotice notice) {
+    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
+      if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
+        Memory.getInstance().addObserver(memoryListener);
+        addressHighlighting = true;
       }
-    } else if (observable == settings) {
-      // Suspended work in progress. Intended to disable combobox item for text segment. DPS
-      // 9-July-2013.
-      // baseAddressSelector.getModel().getElementAt(TEXT_BASE_ADDRESS_INDEX)
-      // *.setEnabled(settings.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
-    } else if (obj
-        instanceof
-        MemoryAccessNotice
-            access) { // NOTE: observable != Memory.getInstance() because Memory class
-      // delegates notification duty.
-      if (access.getAccessType() == AccessNotice.WRITE) {
-        int address = access.getAddress();
-        // Use the same highlighting technique as for Text Segment -- see
-        // AddressCellRenderer class below.
-        this.highlightCellForAddress(address);
-      }
+    } else {
+      Memory.getInstance().deleteObserver(memoryListener);
     }
   }
 
@@ -1098,8 +1080,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     protected JTableHeader createDefaultTableHeader() {
       return new JTableHeader(columnModel) {
         public String getToolTipText(MouseEvent e) {
-          String tip = null;
-          java.awt.Point p = e.getPoint();
+          Point p = e.getPoint();
           int index = columnModel.getColumnIndexAtX(p.x);
           int realIndex = columnModel.getColumn(index).getModelIndex();
           return (realIndex < 2)

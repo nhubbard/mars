@@ -6,7 +6,7 @@ import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
+import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
@@ -44,21 +44,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @author Sanderson, Bumgarner
  */
-public class Coprocessor0Window extends JPanel implements Observer {
+public class Coprocessor0Window extends JPanel {
   private static JTable table;
   private static Register[] registers;
   private boolean highlighting;
   private int highlightRow;
-  private ExecutePane executePane;
   private int[] rowGivenRegNumber; // translate register number to table row.
   private static final int NAME_COLUMN = 0;
   private static final int NUMBER_COLUMN = 1;
   private static final int VALUE_COLUMN = 2;
   private static Settings settings;
 
+  private final Consumer<RegisterAccessNotice> registersListener = this::handleRegisterAccess;
+
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public Coprocessor0Window() {
-    Simulator.getInstance().addObserver(this);
+    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
     settings = Globals.getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
@@ -166,56 +167,30 @@ public class Coprocessor0Window extends JPanel implements Observer {
             NumberDisplayBaseChooser.formatNumber(val, base), rowGivenRegNumber[number], 2);
   }
 
-  /**
-   * Required by Observer interface. Called when notified by an Observable that we are registered
-   * with. Observables include: The Simulator object, which lets us know when it starts and stops
-   * running A register object, which lets us know of register operations The Simulator keeps us
-   * informed of when simulated MIPS execution is active. This is the only time we care about
-   * register operations.
-   *
-   * @param observable The Observable object who is notifying us
-   * @param obj Auxiliary object with additional information.
-   */
-  public void update(Observable observable, Object obj) {
-    if (observable == Simulator.getInstance()) {
-      SimulatorNotice notice = (SimulatorNotice) obj;
-      if (notice.action() == SimulatorNotice.SIMULATOR_START) {
-        // Simulated MIPS execution starts.  Respond to memory changes if running in timed
-        // or stepped mode.
-        if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-          Coprocessor0.addRegistersObserver(this);
-          this.highlighting = true;
-        }
-      } else {
-        // Simulated MIPS execution stops.  Stop responding.
-        Coprocessor0.deleteRegistersObserver(this);
-      }
-    } else if (obj instanceof RegisterAccessNotice access) {
-      // NOTE: each register is a separate Observable
-      if (access.getAccessType() == AccessNotice.WRITE) {
-        // For now, use highlighting technique used by Label Window feature to highlight
-        // memory cell corresponding to a selected label.  The highlighting is not
-        // as visually distinct as changing the background color, but will do for now.
-        // Ideally, use the same highlighting technique as for Text Segment -- see
-        // AddressCellRenderer class in DataSegmentWindow.java.
+  private void handleSimulatorNotice(SimulatorNotice notice) {
+    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
+      if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
+        Coprocessor0.addRegistersObserver(registersListener);
         this.highlighting = true;
-        this.highlightCellForRegister((Register) observable);
-        VenusUI.instance().getRegistersPane().setSelectedComponent(this);
       }
+    } else {
+      Coprocessor0.deleteRegistersObserver(registersListener);
     }
   }
 
-  /**
-   * Highlight the row corresponding to the given register.
-   *
-   * @param register Register object corresponding to row to be selected.
-   */
-  void highlightCellForRegister(Register register) {
-    int registerRow = Coprocessor0.getRegisterPosition(register);
-    if (registerRow < 0) return; // not valid coprocessor0 register
+  private void handleRegisterAccess(RegisterAccessNotice access) {
+    if (access.getAccessType() != AccessNotice.WRITE) return;
+    Register reg = Coprocessor0.getRegister(access.getRegisterName());
+    if (reg == null) return;
+    int registerRow = Coprocessor0.getRegisterPosition(reg);
+    if (registerRow < 0) return;
+    this.highlighting = true;
     this.highlightRow = registerRow;
     table.tableChanged(new TableModelEvent(table.getModel()));
+    VenusUI.instance().getRegistersPane().setSelectedComponent(this);
   }
+
+  Consumer<RegisterAccessNotice> getRegistersListener() { return registersListener; }
 
   /*
    * Cell renderer for displaying register entries.  This does highlighting, so if you
@@ -370,7 +345,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
     // Implement table cell tool tips.
     public String getToolTipText(MouseEvent e) {
       String tip;
-      java.awt.Point p = e.getPoint();
+      Point p = e.getPoint();
       int rowIndex = rowAtPoint(p);
       int colIndex = columnAtPoint(p);
       int realColumnIndex = convertColumnIndexToModel(colIndex);
@@ -400,7 +375,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
       return new JTableHeader(columnModel) {
         public String getToolTipText(MouseEvent e) {
           String tip = null;
-          java.awt.Point p = e.getPoint();
+          Point p = e.getPoint();
           int index = columnModel.getColumnIndexAtX(p.x);
           int realIndex = columnModel.getColumn(index).getModelIndex();
           return columnToolTips[realIndex];

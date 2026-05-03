@@ -6,9 +6,9 @@ import edu.missouristate.mars.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.venus.editors.jeditsyntax.JEditBasedTextArea;
 import java.awt.*;
 import java.io.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import javax.swing.text.Document;
 import javax.swing.undo.*;
 
 /*
@@ -47,7 +47,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @author Sanderson and Bumgarner
  */
-public class EditPane extends JPanel implements Observer {
+public class EditPane extends JPanel {
 
   private final MARSTextEditingArea sourceCode;
   private final VenusUI mainUI;
@@ -67,7 +67,7 @@ public class EditPane extends JPanel implements Observer {
     String currentDirectoryPath = System.getProperty("user.dir");
     // mainUI.editor = new Editor(mainUI);
     // We want to be notified of editor font changes! See update() below.
-    Globals.getSettings().addObserver(this);
+    Globals.getSettings().subscribeChange(s -> this.handleSettingsChange());
     this.fileStatus = new FileStatus();
     lineNumbers = new JLabel();
 
@@ -204,7 +204,7 @@ public class EditPane extends JPanel implements Observer {
    */
   private static final String spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 
-  public String getLineNumbersList(javax.swing.text.Document doc) {
+  public String getLineNumbersList(Document doc) {
     StringBuilder lineNumberList = new StringBuilder("<html>");
     int lineCount = doc.getDefaultRootElement().getElementCount(); // this.getSourceLineCount();
     int digits = Integer.toString(lineCount).length();
@@ -536,11 +536,7 @@ public class EditPane extends JPanel implements Observer {
     return sourceCode.doReplaceAll(find, replace, caseSensitive);
   }
 
-  /**
-   * Update, if source code is visible, when Font setting changes. This method is specified by the
-   * Observer interface.
-   */
-  public void update(Observable fontChanger, Object arg) {
+  private void handleSettingsChange() {
     sourceCode.setFont(Globals.getSettings().getEditorFont());
     sourceCode.setLineHighlightEnabled(
         Globals.getSettings().getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
@@ -548,14 +544,6 @@ public class EditPane extends JPanel implements Observer {
     sourceCode.setTabSize(Globals.getSettings().getEditorTabSize());
     sourceCode.updateSyntaxStyles();
     sourceCode.revalidate();
-    // We want line numbers to be displayed same size but always PLAIN style.
-    // Easiest way to get same pixel height as source code is to set to same
-    // font family as the source code! It can get a bit complicated otherwise
-    // because different fonts will render the same font size in different
-    // pixel heights.  This is a factor because the line numbers as displayed
-    // in the editor form a separate column from the source code and if the
-    // pixel height is not the same then the numbers will not line up with
-    // the source lines.
     lineNumbers.setFont(getLineNumberFont(sourceCode.getFont()));
     lineNumbers.revalidate();
   }

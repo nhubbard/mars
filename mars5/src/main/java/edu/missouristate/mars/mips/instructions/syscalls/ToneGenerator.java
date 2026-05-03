@@ -228,11 +228,11 @@ class Tone implements Runnable {
   }
 }
 
-class EndOfTrackListener implements javax.sound.midi.MetaEventListener {
+class EndOfTrackListener implements MetaEventListener {
 
   private boolean endedYet = false;
 
-  public synchronized void meta(javax.sound.midi.MetaMessage m) {
+  public synchronized void meta(MetaMessage m) {
     if (m.getType() == 47) {
       endedYet = true;
       notifyAll();

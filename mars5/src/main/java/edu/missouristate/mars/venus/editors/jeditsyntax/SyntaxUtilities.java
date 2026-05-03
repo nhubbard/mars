@@ -12,7 +12,6 @@ package edu.missouristate.mars.venus.editors.jeditsyntax;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.text.*;
 
@@ -174,18 +173,4 @@ public class SyntaxUtilities {
 
   // private members
   private SyntaxUtilities() {}
-}
-
-class InstructionMouseEvent extends MouseEvent {
-  private final Segment line;
-
-  public InstructionMouseEvent(Component component, int x, int y, Segment line) {
-    super(component, MouseEvent.MOUSE_MOVED, new java.util.Date().getTime(), 0, x, y, 0, false);
-    System.out.println("Create InstructionMouseEvent " + x + " " + y + " " + line);
-    this.line = line;
-  }
-
-  public Segment getLine() {
-    return this.line;
-  }
 }

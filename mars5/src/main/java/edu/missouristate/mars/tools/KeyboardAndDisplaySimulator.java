@@ -43,7 +43,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Arrays;
-import java.util.Observable;
 import java.util.Random;
 
 /*
@@ -261,7 +260,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
    * @param memory the attached memory
    * @param accessNotice information provided by memory in MemoryAccessNotice object
    */
-  protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
+  protected void processMIPSUpdate(AccessNotice accessNotice) {
     MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
     // If MIPS program has just read (loaded) the receiver (keyboard) data register,
     // then clear the Ready bit to indicate there is no longer a keystroke available.

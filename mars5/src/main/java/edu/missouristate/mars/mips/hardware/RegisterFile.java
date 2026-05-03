@@ -1,10 +1,11 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
-import java.util.Observer;
+import java.util.function.Consumer;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -44,6 +45,16 @@ public class RegisterFile {
 
   public static final int GLOBAL_POINTER_REGISTER = 28;
   public static final int STACK_POINTER_REGISTER = 29;
+
+  private static final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
+
+  public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.subscribe(listener);
+  }
+
+  public static void deleteRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.unsubscribe(listener);
+  }
 
   private static final Register[] regFile = {
     new Register("$zero", 0, 0),
@@ -85,6 +96,12 @@ public class RegisterFile {
       new Register("hi", 33, 0); // this is an internal register with arbitrary number
   private static final Register lo =
       new Register("lo", 34, 0); // this is an internal register with arbitrary number
+
+  static {
+    for (Register r : regFile) r.addObserver(registerEvents::emit);
+    hi.addObserver(registerEvents::emit);
+    lo.addObserver(registerEvents::emit);
+  }
 
   /** Method for displaying the register values for debugging. */
   public static void showRegisters() {
@@ -320,27 +337,4 @@ public class RegisterFile {
     programCounter.setValue(programCounter.getValue() + Instruction.INSTRUCTION_LENGTH);
   }
 
-  /**
-   * Each individual register is a separate object and Observable. This handy method will add the
-   * given Observer to each one. Currently does not apply to Program Counter.
-   */
-  public static void addRegistersObserver(Observer observer) {
-    for (Register register : regFile) {
-      register.addObserver(observer);
-    }
-    hi.addObserver(observer);
-    lo.addObserver(observer);
-  }
-
-  /**
-   * Each individual register is a separate object and Observable. This handy method will delete the
-   * given Observer from each one. Currently does not apply to Program Counter.
-   */
-  public static void deleteRegistersObserver(Observer observer) {
-    for (Register register : regFile) {
-      register.deleteObserver(observer);
-    }
-    hi.deleteObserver(observer);
-    lo.deleteObserver(observer);
-  }
 }

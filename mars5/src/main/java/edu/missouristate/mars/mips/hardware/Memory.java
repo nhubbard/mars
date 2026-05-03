@@ -6,6 +6,7 @@ import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -46,7 +47,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // NOTE: This implementation is purely big-endian.  MIPS can handle either one.
 /////////////////////////////////////////////////////////////////////
 
-public class Memory extends Observable {
+public class Memory {
 
   /** base address for (user) text segment: 0x00400000 * */
   public static int textBaseAddress =
@@ -131,19 +132,9 @@ public class Memory extends Observable {
 
   public static int heapAddress;
 
-  // Memory will maintain a collection of observables.  Each one is associated
-  // with a specific memory address or address range, and each will have at least
-  // one observer registered with it.  When memory access is made, make sure only
-  // observables associated with that address send notices to their observers.
-  // This assures that observers are not bombarded with notices from memory
-  // addresses they do not care about.
-  //
-  // Would like a tree-like implementation, but that is complicated by this fact:
-  // key for insertion into the tree would be based on Comparable using both low
-  // and high end of address range, but retrieval from the tree has to be based
-  // on target address being ANYWHERE IN THE RANGE (not an exact key match).
-
-  Collection<MemoryObservable> observables = getNewMemoryObserversCollection();
+  // Each listener is paired with an address range it wants to observe.
+  // Notification only fires for addresses that fall within a listener's range.
+  Collection<MemoryListener> listeners = new CopyOnWriteArrayList<>();
 
   // The data segment is allocated in blocks of 1024 ints (4096 bytes).  Each block is
   // referenced by a "block table" entry, and the table has 1024 entries.  The capacity
@@ -1052,45 +1043,25 @@ public class Memory extends Observable {
   //  USE A COLLECTION OF MemoryObserver OBJECTS, EACH OF WHICH IS COMBINATION
   //  OF AN OBSERVER WITH AN ADDRESS RANGE.
 
-  /**
-   * Method to accept registration from observer for any memory address. Overrides inherited method.
-   * Note to observers: this class delegates Observable operations so notices will come from the
-   * delegate, not the memory object.
-   *
-   * @param obs the observer
-   */
-  public void addObserver(Observer obs) {
-    try { // split so start address always >= end address
-      this.addObserver(obs, 0, 0x7ffffffc);
-      this.addObserver(obs, 0x80000000, 0xfffffffc);
+  /** Register a listener for any memory address (full address space). */
+  public void addObserver(Consumer<MemoryAccessNotice> callback) {
+    try {
+      this.addObserver(callback, 0, 0x7ffffffc);
+      this.addObserver(callback, 0x80000000, 0xfffffffc);
     } catch (AddressErrorException aee) {
       System.out.println("Internal Error in Memory.addObserver: " + aee);
     }
   }
 
-  /**
-   * Method to accept registration from observer for specific address. This includes the memory word
-   * starting at the given address. Note to observers: this class delegates Observable operations so
-   * notices will come from the delegate, not the memory object.
-   *
-   * @param obs the observer
-   * @param addr the memory address which must be on word boundary
-   */
-  public void addObserver(Observer obs, int addr) throws AddressErrorException {
-    this.addObserver(obs, addr, addr);
+  /** Register a listener for a single word address. */
+  public void addObserver(Consumer<MemoryAccessNotice> callback, int addr)
+      throws AddressErrorException {
+    this.addObserver(callback, addr, addr);
   }
 
-  /**
-   * Method to accept registration from observer for specific address range. The last byte included
-   * in the address range is the last byte of the word specified by the ending address. Note to
-   * observers: this class delegates Observable operations so notices will come from the delegate,
-   * not the memory object.
-   *
-   * @param obs the observer
-   * @param startAddr the low end of memory address range, must be on word boundary
-   * @param endAddr the high end of memory address range, must be on word boundary
-   */
-  public void addObserver(Observer obs, int startAddr, int endAddr) throws AddressErrorException {
+  /** Register a listener for a memory address range [startAddr, endAddr] (word-aligned). */
+  public void addObserver(Consumer<MemoryAccessNotice> callback, int startAddr, int endAddr)
+      throws AddressErrorException {
     if (startAddr % WORD_LENGTH_BYTES != 0) {
       throw new AddressErrorException(
           "address not aligned on word boundary ", Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
@@ -1099,8 +1070,6 @@ public class Memory extends Observable {
       throw new AddressErrorException(
           "address not aligned on word boundary ", Exceptions.ADDRESS_EXCEPTION_LOAD, startAddr);
     }
-    // upper half of address space (above 0x7fffffff) has sign bit 1 thus is seen as
-    // negative.
     if (startAddr >= 0 && endAddr < 0) {
       throw new AddressErrorException(
           "range cannot cross 0x8000000; please split it up",
@@ -1113,85 +1082,27 @@ public class Memory extends Observable {
           Exceptions.ADDRESS_EXCEPTION_LOAD,
           startAddr);
     }
-    observables.add(new MemoryObservable(obs, startAddr, endAddr));
+    listeners.add(new MemoryListener(callback, startAddr, endAddr));
   }
 
-  /** Return number of observers */
-  public int countObservers() {
-    return observables.size();
+  /** Remove all registrations for the given callback. */
+  public void deleteObserver(Consumer<MemoryAccessNotice> callback) {
+    ((CopyOnWriteArrayList<MemoryListener>) listeners).removeIf(ml -> ml.callback() == callback);
   }
 
-  /**
-   * Remove specified memory observers
-   *
-   * @param obs Observer to be removed
-   */
-  public void deleteObserver(Observer obs) {
-    for (MemoryObservable observable : observables) {
-      observable.deleteObserver(obs);
-    }
-  }
-
-  /** Remove all memory observers */
+  /** Remove all memory listeners. */
   public void deleteObservers() {
-    // just drop the collection
-    observables = getNewMemoryObserversCollection();
+    listeners = new CopyOnWriteArrayList<>();
   }
 
-  /**
-   * Overridden to be unavailable. The notice that an Observer receives does not come from the
-   * memory object itself, but instead from a delegate.
-   */
-  public void notifyObservers() {
-    throw new UnsupportedOperationException();
+  /** Return number of registered listeners. */
+  public int countObservers() {
+    return listeners.size();
   }
 
-  /**
-   * Overridden to be unavailable. The notice that an Observer receives does not come from the
-   * memory object itself, but instead from a delegate.
-   */
-  public void notifyObservers(Object obj) {
-    throw new UnsupportedOperationException();
-  }
-
-  private Collection<MemoryObservable> getNewMemoryObserversCollection() {
-    return new CopyOnWriteArrayList<>();
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  // Private class whose objects will represent an observable-observer pair
-  // for a given memory address or range.
-  private static class MemoryObservable extends Observable implements Comparable<MemoryObservable> {
-    private final int lowAddress;
-    private final int highAddress;
-
-    public MemoryObservable(Observer obs, int startAddr, int endAddr) {
-      lowAddress = startAddr;
-      highAddress = endAddr;
-      this.addObserver(obs);
-    }
-
-    public boolean match(int address) {
-      return (address >= lowAddress && address <= highAddress - 1 + WORD_LENGTH_BYTES);
-    }
-
-    public void notifyObserver(MemoryAccessNotice notice) {
-      this.setChanged();
-      this.notifyObservers(notice);
-    }
-
-    // Useful to have for future refactoring, if it actually becomes worthwhile to sort
-    // these or put 'em in a tree (rather than sequential search through list).
-    // TODO: this comparison seems incorrect; we should be able to return 1
-    public int compareTo(MemoryObservable mo) {
-      if (this.lowAddress < mo.lowAddress
-          || this.lowAddress == mo.lowAddress && this.highAddress < mo.highAddress) {
-        return -1;
-      }
-      if (this.lowAddress > mo.lowAddress || this.highAddress > mo.highAddress) {
-        return -1;
-      }
-      return 0; // they have to be equal at this point.
+  private record MemoryListener(Consumer<MemoryAccessNotice> callback, int lowAddress, int highAddress) {
+    boolean match(int address) {
+      return address >= lowAddress && address <= highAddress - 1 + WORD_LENGTH_BYTES;
     }
   }
 
@@ -1204,14 +1115,10 @@ public class Memory extends Observable {
   // The "|| !isGuiMode()" is a hack added 19 July 2012 DPS.  IF MIPS simulation
   // is from command mode, Globals.program is null but still want ability to observe.
   private void notifyAnyObservers(int type, int address, int length, int value) {
-    if ((Globals.program != null || !Globals.getGui().isGuiMode()) && !this.observables.isEmpty()) {
-      Iterator<MemoryObservable> it = this.observables.iterator();
-      MemoryObservable mo;
-      while (it.hasNext()) {
-        mo = it.next();
-        if (mo.match(address)) {
-          mo.notifyObserver(new MemoryAccessNotice(type, address, length, value));
-        }
+    if ((Globals.program != null || !Globals.getGui().isGuiMode()) && !this.listeners.isEmpty()) {
+      MemoryAccessNotice notice = new MemoryAccessNotice(type, address, length, value);
+      for (MemoryListener ml : listeners) {
+        if (ml.match(address)) ml.callback().accept(notice);
       }
     }
   }

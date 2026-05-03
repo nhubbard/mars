@@ -12,5 +12,8 @@
     <orderEntry type="module" module-name="mars5.main" />
     <orderEntry type="module" module-name="mars5.mars-core.main" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.jspecify:jspecify:1.0.0" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: com.google.dagger:dagger:2.52" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: jakarta.inject:jakarta.inject-api:2.0.1" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: javax.inject:javax.inject:1" level="project" />
   </component>
 </module>

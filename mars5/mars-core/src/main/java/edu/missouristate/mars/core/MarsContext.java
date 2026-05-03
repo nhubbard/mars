@@ -1,42 +1,42 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.api.MarsGuiProxy;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
 /**
- * Holds the complete state of one MIPS simulation session. Replaces the process-global Globals singleton so that two
- * independent simulations can run in the same JVM without interfering (needed for tests and parallel plugin
- * simulations).
+ * Holds the complete state of one MIPS simulation session. Replaces the process-global {@code
+ * Globals} singleton so that two independent simulations can run in the same JVM without
+ * interfering (needed for tests and parallel plugin simulations).
  *
- * <p><b>Phase 1 stub.</b> Fields are populated as the corresponding singleton references in {@code
- * Globals} are migrated to constructor injection (Phase 2). The constructor currently delegates to
- * the legacy singletons so callers can switch to {@code MarsContext} incrementally.
- *
- * <p>Usage pattern (Phase 2 target):
+ * <p>Obtain an instance via {@link edu.missouristate.mars.di.MarsComponent}:
  *
  * <pre>{@code
- * MarsContext ctx = new MarsContext(new SimulationSettings());
- * Assembler asm = new Assembler(ctx);
- * SimulatorEngine sim = new SimulatorEngine(ctx, new ConsoleSyscallEnvironment());
+ * MarsComponent component = DaggerMarsComponent.builder()
+ *     .guiProxy(new HeadlessGuiProxy())
+ *     .build();
+ * MarsContext ctx = component.context();
  * }</pre>
+ *
+ * <p><b>Migration note.</b> As core classes are moved from the legacy {@code Globals} statics to
+ * this context, add them as constructor parameters and expose them via final fields. The
+ * {@code MarsAssembler}, {@code MarsMemory}, {@code MarsSimulator}, and {@code MarsRegisterFile}
+ * fields will be added here in later migration phases.
  */
+@Singleton
 public final class MarsContext {
 
   /** Simulation settings (memory config, delayed branching, etc.). */
   public final SimulationSettings settings;
 
-  /**
-   * Creates a new, isolated simulation context backed by the given settings. Memory and registers
-   * are initialized to their standard reset values as defined by the memory configuration.
-   *
-   * @param settings the simulation settings to use; must not be {@code null}
-   */
-  public MarsContext(SimulationSettings settings) {
-    if (settings == null) throw new IllegalArgumentException("settings must not be null");
-    this.settings = settings;
-    // TODO(phase-2): instantiate Memory, RegisterFile, Coprocessor0, Coprocessor1,
-    //                InstructionSet here instead of relying on Globals singletons.
-  }
+  /** GUI/I/O bridge — routes syscall output and dialogs to the active frontend. */
+  public final MarsGuiProxy gui;
 
-  /** Creates a context using the default simulation settings. */
-  public MarsContext() {
-    this(new SimulationSettings());
+  @Inject
+  public MarsContext(SimulationSettings settings, MarsGuiProxy gui) {
+    this.settings = settings;
+    this.gui = gui;
+    // TODO(phase-2+): add Memory, RegisterFile, InstructionSet, Simulator as constructor params
+    //                 once their implementations live in mars-core.
   }
 }

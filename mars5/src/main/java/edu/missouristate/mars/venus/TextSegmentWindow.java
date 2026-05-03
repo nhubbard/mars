@@ -8,7 +8,10 @@ import edu.missouristate.mars.util.EditorFont;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
+import java.util.function.Consumer;
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.*;
 import javax.swing.table.*;
 
@@ -45,7 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * @author Team JSpim
  */
-public class TextSegmentWindow extends JInternalFrame implements Observer {
+public class TextSegmentWindow extends JInternalFrame {
   private final JPanel programArgumentsPanel; // DPS 17-July-2008
   private final JTextField programArgumentsTextField; // DPS 17-July-2008
   private static final int PROGRAM_ARGUMENT_TEXTFIELD_COLUMNS = 40;
@@ -79,6 +82,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   private static final int BASIC_COLUMN = 3;
   private static final int SOURCE_COLUMN = 4;
 
+  private final Consumer<MemoryAccessNotice> memoryListener = this::handleMemoryAccess;
+
   private static final Font monospacedPlain12Point = new Font("Monospaced", Font.PLAIN, 12);
   // The following is displayed in the Basic and Source columns if existing code is overwritten
   // using self-modifying code feature
@@ -87,8 +92,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   /** Constructor, sets up a new JInternalFrame. */
   public TextSegmentWindow() {
     super("Text Segment", true, false, true, true);
-    Simulator.getInstance().addObserver(this);
-    Globals.getSettings().addObserver(this);
+    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
+    Globals.getSettings().subscribeChange(s -> handleSettingsChange());
     contentPane = this.getContentPane();
     codeHighlighting = true;
     breakpointsEnabled = true;
@@ -295,45 +300,25 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     }
   }
 
-  /**
-   * Required by Observer interface. Called when notified by an Observable that we are registered
-   * with. The Observable here is a delegate of the Memory object, which lets us know of memory
-   * operations. More precisely, memory operations only in the text segment, since that is the only
-   * range of addresses we're registered for. And we're only interested in write operations.
-   *
-   * @param observable The Observable object who is notifying us
-   * @param obj Auxiliary object with additional information.
-   */
-  public void update(Observable observable, Object obj) {
-    if (observable == Simulator.getInstance()) {
-
-      SimulatorNotice notice = (SimulatorNotice) obj;
-      if (notice.action() == SimulatorNotice.SIMULATOR_START) {
-        // Simulated MIPS execution starts.  Respond to text segment changes only if self-modifying
-        // code
-        // enabled.  I commented out conditions that would further limit it to running in timed or
-        // stepped mode.
-        // Seems reasonable for text segment display to be accurate in cases where existing code is
-        // overwritten
-        // even when running at unlimited speed.  DPS 10-July-2013
-        deleteAsTextSegmentObserver();
-        if (Globals.getSettings()
-            .getBooleanSetting(
-                Settings.SELF_MODIFYING_CODE_ENABLED)) { // && (notice.getRunSpeed() !=
-          // RunSpeedPanel.UNLIMITED_SPEED ||
-          // notice.getMaxSteps()==1)) {
-          addAsTextSegmentObserver();
-        }
-      }
-    } else if (observable == Globals.getSettings()) {
+  private void handleSimulatorNotice(SimulatorNotice notice) {
+    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
       deleteAsTextSegmentObserver();
       if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
         addAsTextSegmentObserver();
       }
-    } else if (obj instanceof MemoryAccessNotice access) {
-      // NOTE: observable != Memory.getInstance() because Memory class delegates notification duty.
-      // This will occur only if running program has written to text segment (self-modifying code)
-      if (access.getAccessType() == AccessNotice.WRITE) {
+    }
+  }
+
+  private void handleSettingsChange() {
+    deleteAsTextSegmentObserver();
+    if (Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+      addAsTextSegmentObserver();
+    }
+  }
+
+  private void handleMemoryAccess(MemoryAccessNotice access) {
+    // This will occur only if running program has written to text segment (self-modifying code)
+    if (access.getAccessType() == AccessNotice.WRITE) {
         int address = access.getAddress();
         int value = access.getValue();
         String strValue = Binary.intToHexString(access.getValue());
@@ -399,13 +384,12 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
               .getMainPane()
               .getExecutePane()
               .getDataSegmentWindow()
-              .update(
-                  Memory.getInstance(), new MemoryAccessNotice(AccessNotice.WRITE, address, value));
+              .getMemoryListener()
+              .accept(new MemoryAccessNotice(AccessNotice.WRITE, address, value));
         } catch (Exception e) {
           // Not sure if anything bad can happen in this sequence, but if anything does we can let
           // it go.
         }
-      }
     }
   }
 
@@ -612,7 +596,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             table,
             MouseEvent.MOUSE_PRESSED,
             new Date().getTime(),
-            MouseEvent.BUTTON1_MASK,
+            MouseEvent.BUTTON1_DOWN_MASK,
             (int) sourceCell.getX() + 1,
             (int) sourceCell.getY() + 1,
             1,
@@ -634,7 +618,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             table,
             MouseEvent.MOUSE_CLICKED,
             new Date().getTime(),
-            MouseEvent.BUTTON1_MASK,
+            MouseEvent.BUTTON1_DOWN_MASK,
             (int) rect.getX(),
             (int) rect.getY(),
             1,
@@ -650,16 +634,13 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    */
   private void addAsTextSegmentObserver() {
     try {
-      Memory.getInstance().addObserver(this, Memory.textBaseAddress, Memory.dataSegmentBaseAddress);
+      Memory.getInstance().addObserver(memoryListener, Memory.textBaseAddress, Memory.dataSegmentBaseAddress);
     } catch (AddressErrorException ignored) {
     }
   }
 
-  /*
-   *  Little convenience method to remove this as observer of text segment
-   */
   private void deleteAsTextSegmentObserver() {
-    Memory.getInstance().deleteObserver(this);
+    Memory.getInstance().deleteObserver(memoryListener);
   }
 
   /*
@@ -781,20 +762,6 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         }
       } // end synchronized block
     }
-
-    private void printDebugData() {
-      int numRows = getRowCount();
-      int numCols = getColumnCount();
-
-      for (int i = 0; i < numRows; i++) {
-        System.out.print("    row " + i + ":");
-        for (int j = 0; j < numCols; j++) {
-          System.out.print("  " + data[i][j]);
-        }
-        System.out.println();
-      }
-      System.out.println("--------------------------");
-    }
   }
 
   private record ModifiedCode(Integer row, Object code, Object basic, Object source) {}
@@ -879,8 +846,8 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
 
   class CheckBoxTableCellRenderer extends JCheckBox implements TableCellRenderer {
 
-    javax.swing.border.Border noFocusBorder;
-    javax.swing.border.Border focusBorder;
+    Border noFocusBorder;
+    Border focusBorder;
 
     public CheckBoxTableCellRenderer() {
       super();
@@ -949,7 +916,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
             }
             if (focusBorder != null) {
               Insets n = focusBorder.getBorderInsets(this);
-              noFocusBorder = new javax.swing.border.EmptyBorder(n);
+              noFocusBorder = new EmptyBorder(n);
             }
           }
           setBorder(noFocusBorder);

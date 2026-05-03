@@ -1,7 +1,9 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.api.EventEmitter;
 import java.util.*;
+import java.util.function.Consumer;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -56,6 +58,20 @@ public class Coprocessor0 {
     new Register("$13 (cause)", 13, 0),
     new Register("$14 (epc)", 14, 0)
   };
+
+  private static final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
+
+  static {
+    for (Register r : registers) r.addObserver(registerEvents::emit);
+  }
+
+  public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.subscribe(listener);
+  }
+
+  public static void deleteRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.unsubscribe(listener);
+  }
 
   /** Method for displaying the register values for debugging. */
   public static void showRegisters() {
@@ -186,23 +202,4 @@ public class Coprocessor0 {
     }
   }
 
-  /**
-   * Each individual register is a separate object and Observable. This handy method will add the
-   * given Observer to each one.
-   */
-  public static void addRegistersObserver(Observer observer) {
-    for (Register register : registers) {
-      register.addObserver(observer);
-    }
-  }
-
-  /**
-   * Each individual register is a separate object and Observable. This handy method will delete the
-   * given Observer from each one.
-   */
-  public static void deleteRegistersObserver(Observer observer) {
-    for (Register register : registers) {
-      register.deleteObserver(observer);
-    }
-  }
 }

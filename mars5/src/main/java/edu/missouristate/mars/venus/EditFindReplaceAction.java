@@ -13,6 +13,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -110,7 +111,7 @@ public class EditFindReplaceAction extends GuiAction {
     // Constructs the dialog's main panel.
     private JPanel buildDialogPanel() {
       JPanel dialogPanel = new JPanel(new BorderLayout());
-      dialogPanel.setBorder(new javax.swing.border.EmptyBorder(10, 10, 10, 10));
+      dialogPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
       dialogPanel.add(buildInputPanel(), BorderLayout.NORTH);
       dialogPanel.add(buildOptionsPanel());
       dialogPanel.add(buildControlPanel(), BorderLayout.SOUTH);

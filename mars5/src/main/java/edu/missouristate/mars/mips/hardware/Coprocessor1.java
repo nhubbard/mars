@@ -1,8 +1,10 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.util.*;
 import java.util.*;
+import java.util.function.Consumer;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -87,6 +89,21 @@ public class Coprocessor1 {
   // The 8 condition flags will be stored in bits 0-7 for flags 0-7.
   private static final Register condition = new Register("cf", 32, 0);
   private static final int numConditionFlags = 8;
+
+  private static final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
+
+  static {
+    for (Register r : registers) r.addObserver(registerEvents::emit);
+    condition.addObserver(registerEvents::emit);
+  }
+
+  public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.subscribe(listener);
+  }
+
+  public static void deleteRegistersObserver(Consumer<RegisterAccessNotice> listener) {
+    registerEvents.unsubscribe(listener);
+  }
 
   /** Method for displaying the register values for debugging. */
   public static void showRegisters() {
@@ -265,7 +282,6 @@ public class Coprocessor1 {
    * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
    */
   public static double getDoubleFromRegisterPair(int reg) throws InvalidRegisterAccessException {
-    double result = 0.0;
     if (reg % 2 != 0) {
       throw new InvalidRegisterAccessException();
     }
@@ -291,7 +307,6 @@ public class Coprocessor1 {
    * @throws InvalidRegisterAccessException if register ID is invalid or odd-numbered.
    */
   public static long getLongFromRegisterPair(int reg) throws InvalidRegisterAccessException {
-    double result = 0.0;
     if (reg % 2 != 0) {
       throw new InvalidRegisterAccessException();
     }
@@ -383,7 +398,6 @@ public class Coprocessor1 {
         reg = registers[Binary.stringToInt(rName.substring(2))]; // KENV 1/6/05
       } catch (Exception e) {
         // handles both NumberFormat and ArrayIndexOutOfBounds
-        reg = null;
       }
     }
     return reg;
@@ -393,26 +407,6 @@ public class Coprocessor1 {
   public static void resetRegisters() {
     for (Register register : registers) register.resetValue();
     clearConditionFlags();
-  }
-
-  /**
-   * Each individual register is a separate object and Observable. This handy method will add the
-   * given Observer to each one.
-   */
-  public static void addRegistersObserver(Observer observer) {
-    for (Register register : registers) {
-      register.addObserver(observer);
-    }
-  }
-
-  /**
-   * Each individual register is a separate object and Observable. This handy method will delete the
-   * given Observer from each one.
-   */
-  public static void deleteRegistersObserver(Observer observer) {
-    for (Register register : registers) {
-      register.deleteObserver(observer);
-    }
   }
 
   /**

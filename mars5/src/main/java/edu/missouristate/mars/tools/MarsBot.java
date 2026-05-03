@@ -3,11 +3,11 @@ package edu.missouristate.mars.tools;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import java.awt.*;
-import java.util.*;
+import java.util.ArrayList;
 import javax.swing.*;
 
 /** Simple Demo of Mars tool capability */
-public class MarsBot implements Observer, MarsTool {
+public class MarsBot implements MarsTool {
   private static final int GRAPHIC_WIDTH = 512;
   private static final int GRAPHIC_HEIGHT = 512;
   private static final int ADDR_HEADING = 0xffff8010;
@@ -194,7 +194,7 @@ public class MarsBot implements Observer, MarsTool {
     t1.start();
     // New: DPS 27 Feb 2006.  Register observer for memory subrange.
     try {
-      Globals.memory.addObserver(this, 0xffff8000, 0xffff8060);
+      Globals.memory.addObserver(this::handleMemoryAccess, 0xffff8000, 0xffff8060);
     } catch (AddressErrorException aee) {
       System.out.println(aee);
     }
@@ -206,13 +206,9 @@ public class MarsBot implements Observer, MarsTool {
    * directive.
    */
   @SuppressWarnings("StatementWithEmptyBody")
-  public void update(Observable o, Object arg) {
-    MemoryAccessNotice notice;
-    int address;
-    if (arg instanceof MemoryAccessNotice) {
-      notice = (MemoryAccessNotice) arg;
-      address = notice.getAddress();
-      if (address < 0 && notice.getAccessType() == AccessNotice.WRITE) {
+  private void handleMemoryAccess(MemoryAccessNotice notice) {
+    int address = notice.getAddress();
+    if (address < 0 && notice.getAccessType() == AccessNotice.WRITE) {
         if (address == ADDR_HEADING) {
           MarsBotHeading = notice.getValue();
         } else if (address == ADDR_LEAVETRACK) {
@@ -249,7 +245,6 @@ public class MarsBot implements Observer, MarsTool {
           // manner, but the writes are already known to this tool.
           // NO ACTION
         }
-      }
     }
   }
 }

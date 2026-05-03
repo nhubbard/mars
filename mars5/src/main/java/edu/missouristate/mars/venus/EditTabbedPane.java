@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.*;
 import java.util.*;
@@ -272,7 +273,7 @@ public class EditTabbedPane extends JTabbedPane {
         BufferedWriter outFileStream = new BufferedWriter(new FileWriter(theFile));
         outFileStream.write(editPane.getSource(), 0, editPane.getSource().length());
         outFileStream.close();
-      } catch (java.io.IOException c) {
+      } catch (IOException c) {
         JOptionPane.showMessageDialog(
             null,
             "Save operation could not be completed due to an error:\n" + c,
@@ -366,7 +367,7 @@ public class EditTabbedPane extends JTabbedPane {
         BufferedWriter outFileStream = new BufferedWriter(new FileWriter(theFile));
         outFileStream.write(editPane.getSource(), 0, editPane.getSource().length());
         outFileStream.close();
-      } catch (java.io.IOException c) {
+      } catch (IOException c) {
         JOptionPane.showMessageDialog(
             null,
             "Save As operation could not be completed due to an error:\n" + c,
@@ -688,7 +689,7 @@ public class EditTabbedPane extends JTabbedPane {
     //  we will achieve a sort of persistence at least through the current activation of MARS.
 
     private class ChoosableFileFilterChangeListener implements PropertyChangeListener {
-      public void propertyChange(java.beans.PropertyChangeEvent e) {
+      public void propertyChange(PropertyChangeEvent e) {
         if (e.getPropertyName().equals(JFileChooser.CHOOSABLE_FILE_FILTER_CHANGED_PROPERTY)) {
           FileFilter[] newFilters = (FileFilter[]) e.getNewValue();
           FileFilter[] oldFilters = (FileFilter[]) e.getOldValue();

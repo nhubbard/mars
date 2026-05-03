@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
+import java.util.Date;
+
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
 
@@ -47,7 +49,7 @@ public class SyscallTime extends AbstractSyscall {
    * (high order 32 bits).
    */
   public void simulate(ProgramStatement statement) {
-    long value = new java.util.Date().getTime();
+    long value = new Date().getTime();
     RegisterFile.updateRegister(4, Binary.lowOrderLongToInt(value)); // $a0
     RegisterFile.updateRegister(5, Binary.highOrderLongToInt(value)); // $a1
   }

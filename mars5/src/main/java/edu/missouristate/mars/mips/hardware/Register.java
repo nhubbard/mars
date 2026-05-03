@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
-import java.util.*;
+import edu.missouristate.mars.api.EventEmitter;
+import java.util.function.Consumer;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -36,7 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Jason Bumgarner, Jason Shrewsbury, Ben Sherman
  * @version June 2003
  */
-public class Register extends Observable {
+public class Register {
   private final String name;
   private final int number;
   private int resetValue;
@@ -45,6 +46,10 @@ public class Register extends Observable {
   // are the only methods here used by the register collection
   // (RegisterFile, Coprocessor0, Coprocessor1) methods.
   private volatile int value;
+  private final EventEmitter<RegisterAccessNotice> events = new EventEmitter<>();
+
+  public void addObserver(Consumer<RegisterAccessNotice> listener) { events.subscribe(listener); }
+  public void deleteObserver(Consumer<RegisterAccessNotice> listener) { events.unsubscribe(listener); }
 
   /**
    * Creates a new register with specified name, number, and value.
@@ -70,17 +75,17 @@ public class Register extends Observable {
   }
 
   /**
-   * Returns the value of the Register. Observers are notified of the READ operation.
+   * Returns the value of the Register. Listeners are notified of the READ operation.
    *
    * @return value The value of the Register.
    */
   public synchronized int getValue() {
-    notifyAnyObservers(AccessNotice.READ);
+    notifyListeners(AccessNotice.READ);
     return value;
   }
 
   /**
-   * Returns the value of the Register. Observers are not notified. Added for release 3.8.
+   * Returns the value of the Register. Listeners are not notified. Added for release 3.8.
    *
    * @return value The value of the Register.
    */
@@ -107,7 +112,7 @@ public class Register extends Observable {
   }
 
   /**
-   * Sets the value of the register to the val passed to it. Observers are notified of the WRITE
+   * Sets the value of the register to the val passed to it. Listeners are notified of the WRITE
    * operation.
    *
    * @param val Value to set the Register to.
@@ -116,12 +121,12 @@ public class Register extends Observable {
   public synchronized int setValue(int val) {
     int old = value;
     value = val;
-    notifyAnyObservers(AccessNotice.WRITE);
+    notifyListeners(AccessNotice.WRITE);
     return old;
   }
 
   /**
-   * Resets the value of the register to the value it was constructed with. Observers are not
+   * Resets the value of the register to the value it was constructed with. Listeners are not
    * notified.
    */
   public synchronized void resetValue() {
@@ -136,14 +141,7 @@ public class Register extends Observable {
     resetValue = reset;
   }
 
-  //
-  // Method to notify any observers of register operation that has just occurred.
-  //
-  private void notifyAnyObservers(int type) {
-    if (this.countObservers()
-        > 0) { // && Globals.program != null) && Globals.program.inSteppedExecution()) {
-      this.setChanged();
-      this.notifyObservers(new RegisterAccessNotice(type, this.name));
-    }
+  private void notifyListeners(int type) {
+    events.emit(new RegisterAccessNotice(type, this.name));
   }
 }

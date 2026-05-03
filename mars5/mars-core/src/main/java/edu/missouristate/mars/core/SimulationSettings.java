@@ -1,15 +1,17 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.api.MarsSettings;
+
 /**
  * The headless-safe subset of MARS settings: only the settings that affect simulation behavior.
  * GUI preferences (fonts, colors, window geometry) live in {@code EditorSettings} in the plugin
  * module.
  *
- * <p><b>Phase 1 stub.</b> This class currently reads values from the legacy Settings singleton
- * so existing code paths are unaffected. In Phase 2 it will be backed by a {@link java.util.Properties}
- * file and the {@code Settings} class will be deprecated.
+ * <p><b>Phase 1 stub.</b> This class currently uses hardcoded defaults matching MARS 4.5 behavior.
+ * In a later phase it will be backed by a {@link java.util.Properties} file and the legacy
+ * {@code Settings} class will delegate to it.
  */
-public final class SimulationSettings {
+public final class SimulationSettings implements MarsSettings {
 
   // Defaults mirror MARS 4.5 behavior so headless users see no change.
   private String memoryConfiguration = "Default";

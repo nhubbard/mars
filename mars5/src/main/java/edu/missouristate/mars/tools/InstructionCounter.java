@@ -36,7 +36,6 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.Observable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -192,7 +191,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
   }
 
   //	@Override
-  protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+  protected void processMIPSUpdate(AccessNotice notice) {
     if (!notice.accessIsFromMIPS()) return;
     if (notice.getAccessType() != AccessNotice.READ) return;
     MemoryAccessNotice m = (MemoryAccessNotice) notice;

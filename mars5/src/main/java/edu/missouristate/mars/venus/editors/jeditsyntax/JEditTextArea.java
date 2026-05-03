@@ -18,6 +18,7 @@ import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.ArrayList;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.*;
 import javax.swing.text.*;
 import javax.swing.undo.*;
@@ -98,7 +99,7 @@ public class JEditTextArea extends JComponent {
             lineNumbers,
             ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-    lineNumberScroller.setBorder(new javax.swing.border.EmptyBorder(1, 1, 1, 1));
+    lineNumberScroller.setBorder(new EmptyBorder(1, 1, 1, 1));
     lineNumbersVertical = lineNumberScroller.getVerticalScrollBar();
 
     // Initialize the GUI

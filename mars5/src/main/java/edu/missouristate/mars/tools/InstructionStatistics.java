@@ -36,7 +36,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.Arrays;
-import java.util.Observable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -250,7 +249,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
    * @param resource the observed resource
    * @param notice signals the type of access (memory, register etc.)
    */
-  protected void processMIPSUpdate(Observable resource, AccessNotice notice) {
+  protected void processMIPSUpdate(AccessNotice notice) {
 
     if (!notice.accessIsFromMIPS()) return;
 

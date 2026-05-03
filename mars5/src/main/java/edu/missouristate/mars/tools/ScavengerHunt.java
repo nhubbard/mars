@@ -15,7 +15,7 @@ import javax.swing.*;
  * MIPS memory-mapped locations to move and regain energy. See accompanying documentation for
  * memory-mapped addresses, rules of the game, etc.
  */
-public class ScavengerHunt implements Observer, MarsTool {
+public class ScavengerHunt implements MarsTool {
   private static final int GRAPHIC_WIDTH = 712;
   private static final int GRAPHIC_HEIGHT = 652;
 
@@ -431,7 +431,7 @@ public class ScavengerHunt implements Observer, MarsTool {
     // Register as observer for a particular MIPS data range. Other ranges
     // are not used by this Tool.
     try {
-      Globals.memory.addObserver(this, 0xffff8000, 0xfffffff0); // must be on word boundaries
+      Globals.memory.addObserver(this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
     } catch (AddressErrorException e) {
       System.out.println(
           "\n\nScavengerHunt.action: Globals.memory.addObserver caused AddressErrorException.\n\n");
@@ -447,19 +447,13 @@ public class ScavengerHunt implements Observer, MarsTool {
    * This method observes certain locations and then may (and does) write to OTHER locations.
    */
   @SuppressWarnings("StatementWithEmptyBody")
-  public void update(Observable o, Object arg) {
-    MemoryAccessNotice notice;
+  private void handleMemoryAccess(MemoryAccessNotice notice) {
     int address;
     int data;
     boolean isWrite;
     boolean isRead;
     int energyLevel;
 
-    // Here we are only interested in MemoryAccessNotice. For anything else, just return.
-    if (!(arg instanceof MemoryAccessNotice)) return;
-
-    // Get pertinent information about this MemoryAccessNotice.
-    notice = (MemoryAccessNotice) arg;
     address = notice.getAddress();
     data = notice.getValue();
     isWrite = (notice.getAccessType() == AccessNotice.WRITE);
