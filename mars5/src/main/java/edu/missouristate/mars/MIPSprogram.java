@@ -3,8 +3,7 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.venus.*;
-import java.awt.event.*;
+
 import java.io.*;
 import java.util.*;
 import javax.swing.*;

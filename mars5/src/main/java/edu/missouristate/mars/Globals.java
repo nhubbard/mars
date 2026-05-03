@@ -6,7 +6,7 @@ import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.mips.instructions.syscalls.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.*;
-import java.io.*;
+
 import java.util.*;
 
 /*

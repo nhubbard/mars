@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.*;
 import java.util.*;
 
 /*

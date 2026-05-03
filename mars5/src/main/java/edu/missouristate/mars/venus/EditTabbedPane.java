@@ -4,15 +4,12 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
-import java.awt.event.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
-import java.text.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.filechooser.FileFilter;
-import javax.swing.undo.*;
 
 /*
 Copyright (c) 2003-2010,  Pete Sanderson and Kenneth Vollmar

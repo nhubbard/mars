@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.*;
-import java.awt.*;
+
 import java.io.*;
 import java.util.*;
 import javax.swing.*;

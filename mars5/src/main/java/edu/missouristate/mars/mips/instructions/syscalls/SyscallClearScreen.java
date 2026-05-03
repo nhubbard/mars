@@ -1,8 +1,6 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.ProcessingException;
-import edu.missouristate.mars.ProgramStatement;
 // FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
 // call in Phase 2
 import javax.swing.*;

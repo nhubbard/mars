@@ -5,7 +5,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
 import java.awt.image.*;
-import java.text.*;
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;

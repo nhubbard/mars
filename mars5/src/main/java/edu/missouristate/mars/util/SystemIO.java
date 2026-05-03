@@ -2,7 +2,6 @@ package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
 import java.io.*;
-import java.util.*;
 
 // FIXME(phase-2): gui-coupling — SystemIO calls Globals.getGui().getMessagesPane() for console I/O;
 //   replace with SyscallEnvironment injection when Globals singleton is removed.

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.*;
 import java.lang.reflect.*;
 import java.util.*;

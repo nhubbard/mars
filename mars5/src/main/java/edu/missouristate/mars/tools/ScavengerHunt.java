@@ -7,7 +7,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
-import javax.swing.JOptionPane;
 
 /**
  * Demo of Mars tool capability. Ken Vollmar, 27 Oct 2006 KenVollmar@missouristate.edu This tool

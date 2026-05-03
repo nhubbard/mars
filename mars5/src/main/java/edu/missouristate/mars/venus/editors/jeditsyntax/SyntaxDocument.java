@@ -10,7 +10,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
-import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.TokenMarker;
+
 import javax.swing.event.*;
 import javax.swing.text.*;
 import javax.swing.undo.UndoableEdit;

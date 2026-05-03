@@ -3,10 +3,8 @@ package edu.missouristate.mars.venus;
 import edu.missouristate.mars.tools.*;
 import edu.missouristate.mars.util.*;
 import java.awt.event.*;
-import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.zip.*;
 import javax.swing.*;
 
 /*

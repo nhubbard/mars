@@ -1,7 +1,6 @@
 package edu.missouristate.mars.venus.editors;
 
 import java.awt.*;
-import javax.swing.*;
 import javax.swing.text.*;
 import javax.swing.undo.*;
 

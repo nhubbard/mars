@@ -1,16 +1,11 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.util.*;
+
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
-import javax.swing.text.*;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar

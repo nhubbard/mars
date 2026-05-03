@@ -1,9 +1,6 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
 import javax.swing.*;
 
 /*

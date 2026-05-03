@@ -1,8 +1,6 @@
 package edu.missouristate.mars.tools;
 
-import edu.missouristate.mars.*;
 import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
 
 /*

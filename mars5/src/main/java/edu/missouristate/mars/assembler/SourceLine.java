@@ -1,7 +1,6 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
-import java.util.*;
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar

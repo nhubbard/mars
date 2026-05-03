@@ -4,7 +4,6 @@ import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.editors.jeditsyntax.*;
 import java.awt.Color;
 import java.awt.Font;
-import java.io.*;
 import java.util.*;
 import java.util.prefs.*;
 

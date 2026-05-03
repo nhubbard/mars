@@ -2,7 +2,6 @@ package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
 import java.awt.*;
-import java.awt.Font;
 import java.util.*;
 
 /*

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.util;
 
-import edu.missouristate.mars.*;
 import java.io.*;
 import java.util.*;
 

@@ -7,7 +7,6 @@ import edu.missouristate.mars.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
-import javax.swing.text.*;
 import javax.swing.undo.*;
 
 /**

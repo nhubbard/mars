@@ -4,7 +4,6 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.venus.EditPane;
 import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
 import java.awt.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.undo.*;
