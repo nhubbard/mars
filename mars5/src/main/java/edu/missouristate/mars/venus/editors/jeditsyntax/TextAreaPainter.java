@@ -617,8 +617,7 @@ public class TextAreaPainter extends JComponent implements TabExpander {
         x2 = getWidth();
       }
 
-      // "inlined" min/max()
-      gfx.fillRect(x1 > x2 ? x2 : x1, y, x1 > x2 ? (x1 - x2) : (x2 - x1), height);
+      gfx.fillRect(Math.min(x1, x2), y, x1 > x2 ? (x1 - x2) : (x2 - x1), height);
     }
   }
 
