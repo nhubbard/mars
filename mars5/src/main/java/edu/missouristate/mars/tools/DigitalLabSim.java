@@ -103,8 +103,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   }
 
   private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
-    if (!this.isBeingUsedAsAMarsTool
-        || (this.isBeingUsedAsAMarsTool && connectButton.isConnected())) {
+    if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
       synchronized (Globals.memoryAndRegistersLock) {
         try {
           Globals.memory.setByte(dataAddr, dataValue);

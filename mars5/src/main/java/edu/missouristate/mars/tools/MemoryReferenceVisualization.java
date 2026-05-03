@@ -712,7 +712,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     // set label wording depending on current speed setting
     private String setLabel(int value) {
       String spaces = "  ";
-      if (value >= 10) {
+      if (value >= 10 && value < 100) {
         spaces = " ";
       } else if (value >= 100) {
         spaces = "";

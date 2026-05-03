@@ -314,7 +314,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       // displays will replace, not append, in the text.
       if (!displayRandomAccessMode) {
         displayRandomAccessMode = true;
-        initializeDisplay(displayRandomAccessMode);
+        initializeDisplay(true);
       }
       // For SET_CURSOR_X_Y, we need data from the rest of the word.
       // High order 3 bytes are split in half to store (X,Y) value.
@@ -322,9 +322,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       int x = (intWithCharacterToDisplay & 0xFFF00000) >>> 20;
       int y = (intWithCharacterToDisplay & 0x000FFF00) >>> 8;
       // If X or Y values are outside current range, set to range limit.
-      if (x < 0) x = 0;
       if (x >= columns) x = columns - 1;
-      if (y < 0) y = 0;
       if (y >= rows) y = rows - 1;
       // display is a JTextArea whose character positioning in the text is linear.
       // Converting (row,column) to linear position requires knowing how many columns
@@ -717,8 +715,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Control and Data.
   private synchronized void updateMMIOControlAndData(
       int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
-    if (!this.isBeingUsedAsAMarsTool
-        || (this.isBeingUsedAsAMarsTool && connectButton.isConnected())) {
+    if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
       synchronized (Globals.memoryAndRegistersLock) {
         try {
           Globals.memory.setRawWord(controlAddr, controlValue);

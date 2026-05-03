@@ -70,20 +70,16 @@ public class MainPane extends JTabbedPane {
         "Edit"; // "<html><center>&nbsp;<br>E<br>d<br>i<br>t<br>&nbsp;</center></html>";
     String executeTabTitle =
         "Execute"; // "<html><center>&nbsp;<br>E<br>x<br>e<br>c<br>u<br>t<br>e<br>&nbsp;</center></html>";
-    Icon editTabIcon = null; // new
-    // ImageIcon(Toolkit.getDefaultToolkit().getImage(this.getClass().getResource(Globals.imagesPath+"Edit_tab.jpg")));
-    Icon executeTabIcon = null; // new
-    // ImageIcon(Toolkit.getDefaultToolkit().getImage(this.getClass().getResource(Globals.imagesPath+"Execute_tab.jpg")));
 
     this.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-    this.addTab(editTabTitle, editTabIcon, editTabbedPane);
+    this.addTab(editTabTitle, null, editTabbedPane);
 
     // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>1<br&nbsp;</center></html>", null, new JTabbedPane());
     // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>2<br&nbsp;</center></html>", null, new JTabbedPane());
     // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>3<br&nbsp;</center></html>", null, new JTabbedPane());
     // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>4<br&nbsp;</center></html>", null, new JTabbedPane());
 
-    this.addTab(executeTabTitle, executeTabIcon, executeTab);
+    this.addTab(executeTabTitle, null, executeTab);
 
     this.setToolTipTextAt(0, "Text editor for composing MIPS programs.");
     this.setToolTipTextAt(

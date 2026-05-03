@@ -214,23 +214,23 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
       if (0x02 <= funct && funct <= 0x07)
         return InstructionStatistics.CATEGORY_ALU; // srl, sra, sllv, srlv, srav
       if (funct == 0x08 || funct == 0x09) return InstructionStatistics.CATEGORY_JUMP; // jr, jalr
-      if (0x10 <= funct && funct <= 0x2F)
+      if (0x10 <= funct)
         return InstructionStatistics
             .CATEGORY_ALU; // mfhi, mthi, mflo, mtlo, mult, multu, div, divu, add, addu, sub, subu,
       // and, or, xor, nor, slt, sltu
       return InstructionStatistics.CATEGORY_OTHER;
     }
     if (opCode == 0x01) {
-      if (0x00 <= funct && funct <= 0x07)
+      if (funct <= 0x07)
         return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
       if (0x10 <= funct && funct <= 0x13)
         return InstructionStatistics.CATEGORY_BRANCH; // bltzal, bgezal, bltzall, bgczall
       return InstructionStatistics.CATEGORY_OTHER;
     }
     if (opCode == 0x02 || opCode == 0x03) return InstructionStatistics.CATEGORY_JUMP; // j, jal
-    if (0x04 <= opCode && opCode <= 0x07)
+    if (opCode <= 0x07)
       return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
-    if (0x08 <= opCode && opCode <= 0x0F)
+    if (opCode <= 0x0F)
       return InstructionStatistics.CATEGORY_ALU; // addi, addiu, slti, sltiu, andi, ori, xori, lui
     if (0x14 <= opCode && opCode <= 0x17)
       return InstructionStatistics.CATEGORY_BRANCH; // beql, bnel, blezl, bgtzl

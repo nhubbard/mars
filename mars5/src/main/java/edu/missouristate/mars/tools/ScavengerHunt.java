@@ -528,7 +528,7 @@ public class ScavengerHunt implements Observer, MarsTool {
     // TBD TBD DEBUGGING SPECIAL
 
     // Take the appropriate action, depending on data written and priority of user.
-    if (isWrite && playerID == ADMINISTRATOR_ID && address == ADDR_GAME_ON) {
+    if (playerID == ADMINISTRATOR_ID && address == ADDR_GAME_ON) {
 
       // ADMINISTRATOR_ID can write to any location, because it's trusted software
       // System.out.println( "ScavengerHunt.update(): Administrator wrote to  Mem[ " +
@@ -540,16 +540,14 @@ public class ScavengerHunt implements Observer, MarsTool {
       // System.out.println( "ScavengerHunt.update(): Administrator wrote GAME_ON!" );
 
       initializeScavengerData();
-    } else if (isWrite && address == ADDR_AUTHENTICATION) {
+    } else if (address == ADDR_AUTHENTICATION) {
       // Anyone is allowed to write to the authentication location -- but if that value is not
       // correct (authentic) then action can be taken.
       // NO ACTION HERE
-    } else if (isWrite && address == ADDR_NUM_TURNS) {
+    } else if (address == ADDR_NUM_TURNS) {
       // Anyone is allowed to write to the "number of turns" location
       // NO ACTION HERE
-    } else if (isWrite
-        && address
-            == ADDR_PLAYER_ID) // if the data written will change the PlayerID, authenticate the
+    } else if (address == ADDR_PLAYER_ID) // if the data written will change the PlayerID, authenticate the
     // write
     {
       // 2006 Oct 31  dummy validation scheme, suitable for distribution
@@ -572,9 +570,7 @@ public class ScavengerHunt implements Observer, MarsTool {
                 + Binary.intToHexString(toolGetWord(ADDR_AUTHENTICATION))
                 + "\n");
       }
-    } else if (isWrite
-        && address == (ADDR_BASE + (playerID * MEM_PER_PLAYER) + OFFSET_MOVE_READY)
-        && data != 0) //  Player wrote data to his/her assigned MoveReady location
+    } else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_MOVE_READY && data != 0) //  Player wrote data to his/her assigned MoveReady location
     {
       /*
       System.out.println(" ******** ScavengerHunt.update: Player " + playerID + " requests move to (" +
@@ -667,9 +663,7 @@ public class ScavengerHunt implements Observer, MarsTool {
       }
 
     } // end if Player wrote nonzero data to his/her assigned MoveReady location
-    else if (isWrite
-        && address == (ADDR_BASE + (playerID * MEM_PER_PLAYER) + OFFSET_TASK_COMPLETE)
-        && data != 0) //  Player wrote data to his/her assigned TaskComplete location
+    else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_TASK_COMPLETE && data != 0) //  Player wrote data to his/her assigned TaskComplete location
     {
 
       //  System.out.println(" ******** ScavengerHunt.update: Player " + playerID + " requests more
@@ -706,7 +700,7 @@ public class ScavengerHunt implements Observer, MarsTool {
       pd[playerID].setEnergy(ENERGY_AWARD);
 
     } // end if Player wrote nonzero data to his/her assigned TaskComplete location
-    else if (isWrite && address == (ADDR_BASE + (playerID * MEM_PER_PLAYER) + OFFSET_PLAYER_COLOR))
+    else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_PLAYER_COLOR)
     //  Player wrote data to his/her assigned PlayerColor location
     {
       // PPlayer indicates he/she has changed the color of display
@@ -718,19 +712,17 @@ public class ScavengerHunt implements Observer, MarsTool {
     // TBD TBD TBD
     // Yet to be implemented: Enforce only one write of MoveRequest per player per turn
 
-    else if (isWrite
-        && address >= (ADDR_BASE + (playerID * MEM_PER_PLAYER))
-        && address < (ADDR_BASE + ((playerID + 1) * MEM_PER_PLAYER)))
+    else if (address >= ADDR_BASE + playerID * MEM_PER_PLAYER && address < ADDR_BASE + (playerID + 1) * MEM_PER_PLAYER)
     //  Player wrote data elsewhere within his/her assigned location
     {
       // Player can write to any location within his/her assigned location
       // System.out.println( "ScavengerHunt.update(): Player " + playerID + " wrote to valid
       // location");
-    } else if (isWrite && playerID == ADMINISTRATOR_ID) {
+    } else if (playerID == ADMINISTRATOR_ID) {
       // ADMINISTRATOR_ID can write to any location, because it's trusted software
       // System.out.println( "ScavengerHunt.update(): Administrator wrote to  Mem[ " +
       //     Binary.intToHexString(address) + " ] == " + Binary.intToHexString(data) );
-    } else if (isWrite) {
+    } else {
       // This player is writing outside his/her assigned memory location
       /*
       System.out.println("ScavengerHunt.update(): Player " + playerID + " writing outside assigned mem. loc. at address " +
@@ -745,8 +737,6 @@ public class ScavengerHunt implements Observer, MarsTool {
               + " writing outside assigned mem. loc. at address "
               + Binary.intToHexString(address)
               + " -- not implemented!");
-    } else if (isRead) {
-      // Policy: anyone can read any location.
     }
   } // end ScavengerHunt.update()
 

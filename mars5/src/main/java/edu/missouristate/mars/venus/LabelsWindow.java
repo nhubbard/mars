@@ -317,9 +317,9 @@ public class LabelsWindow extends JInternalFrame {
       int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
       if (textLabels.isSelected() && dataLabels.isSelected()) {
         symbols = symbolTable.getAllSymbols();
-      } else if (textLabels.isSelected() && !dataLabels.isSelected()) {
+      } else if (textLabels.isSelected()) {
         symbols = symbolTable.getTextSymbols();
-      } else if (!textLabels.isSelected() && dataLabels.isSelected()) {
+      } else if (dataLabels.isSelected()) {
         symbols = symbolTable.getDataSymbols();
       } else {
         symbols = new ArrayList();

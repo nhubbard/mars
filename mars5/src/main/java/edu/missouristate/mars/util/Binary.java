@@ -616,10 +616,8 @@ public class Binary {
 
       if (isHex(v)) return false; // String starts with "0" but continues "0x", so not octal
 
-      if ((v.charAt(0) == '-')
-          && // sign is optional but if present can only be -
-          (v.charAt(1) == '0')
-          && (v.length() > 1)) // Has to have more digits than the leading zero
+      // sign is optional but if present can only be -
+      if (v.charAt(0) == '-' && v.charAt(1) == '0') // Has to have more digits than the leading zero
       return true; // Form is Sign 0.... and the entire string is parseable as a number
       else if ((v.charAt(0) == '0')
           && (v.length() > 1)) // Has to have more digits than the leading zero

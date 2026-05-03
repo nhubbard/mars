@@ -522,7 +522,7 @@ public class Simulator extends Observable {
         if (done) {
           ((RunGoAction) starter).stopped(pe, constructReturnReason);
         } else if (constructReturnReason == BREAKPOINT) {
-          ((RunGoAction) starter).paused(done, constructReturnReason, pe);
+          ((RunGoAction) starter).paused(false, constructReturnReason, pe);
         } else {
           String stopperName = (String) stopper.getValue(AbstractAction.NAME);
           if ("Pause".equals(stopperName)) {

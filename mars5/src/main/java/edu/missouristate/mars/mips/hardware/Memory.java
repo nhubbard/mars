@@ -1228,8 +1228,7 @@ public class Memory extends Observable {
           || this.lowAddress == mo.lowAddress && this.highAddress < mo.highAddress) {
         return -1;
       }
-      if (this.lowAddress > mo.lowAddress
-          || this.lowAddress == mo.lowAddress && this.highAddress > mo.highAddress) {
+      if (this.lowAddress > mo.lowAddress || this.highAddress > mo.highAddress) {
         return -1;
       }
       return 0; // they have to be equal at this point.

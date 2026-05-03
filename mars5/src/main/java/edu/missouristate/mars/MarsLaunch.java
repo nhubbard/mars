@@ -450,8 +450,8 @@ public class MarsLaunch {
 
   private boolean runCommand() {
     boolean programRan = false;
-    if (filenameList.size() == 0) {
-      return programRan;
+    if (filenameList.isEmpty()) {
+      return false;
     }
     try {
       Globals.getSettings()
