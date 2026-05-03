@@ -81,9 +81,7 @@ public class ProgramArgumentList {
    */
   public ProgramArgumentList(String[] list, int startPosition) {
     programArgumentList = new ArrayList(list.length - startPosition);
-    for (int i = startPosition; i < list.length; i++) {
-      programArgumentList.add(list[i]);
-    }
+    programArgumentList.addAll(Arrays.asList(list).subList(startPosition, list.length));
   }
 
   /**
