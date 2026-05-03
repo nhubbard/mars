@@ -13,6 +13,7 @@ import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.SystemIO;
+// FIXME(phase-2): gui-coupling — NumberDisplayBaseChooser is a Venus Swing component
 import edu.missouristate.mars.venus.NumberDisplayBaseChooser;
 import java.util.ArrayList;
 import java.util.Collections;

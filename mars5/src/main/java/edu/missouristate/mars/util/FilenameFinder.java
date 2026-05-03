@@ -9,6 +9,8 @@ import java.util.Enumeration;
 import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+// FIXME(phase-2): gui-coupling — FileFilter is a Swing type used for file chooser filtering;
+// replace with java.io.FileFilter
 import javax.swing.filechooser.FileFilter;
 
 /*

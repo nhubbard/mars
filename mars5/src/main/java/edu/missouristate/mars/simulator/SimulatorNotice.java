@@ -28,6 +28,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
+// FIXME(phase-2): gui-coupling — RunSpeedPanel is a Venus Swing component used for execution speed
+// control
 import edu.missouristate.mars.venus.RunSpeedPanel;
 
 /**

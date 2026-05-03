@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
+// FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
+// call in Phase 2
 import javax.swing.JOptionPane;
 
 /*

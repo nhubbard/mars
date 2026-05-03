@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
+// FIXME(phase-2): gui-coupling — venus.*, java.awt.event.*, javax.swing.* — SwingWorker threading
+// and GUI update hooks
 import edu.missouristate.mars.venus.*;
 import java.awt.event.*;
 import java.util.*;

@@ -81,7 +81,8 @@ public class Globals {
 
   /* Flag that indicates whether or not instructionSet has been initialized. */
   private static boolean initialized = false;
-  /* The GUI being used (if any) with this simulator. */
+  // FIXME(phase-2): extract a MarsGuiProxy interface from VenusUI so Globals can live in mars-core
+  //   without a compile-time dep on mars-plugin. Replace VenusUI here with that interface.
   static VenusUI gui = null;
 
   /** The current MARS version number. Can't wait for "initialize()" call to get it. */

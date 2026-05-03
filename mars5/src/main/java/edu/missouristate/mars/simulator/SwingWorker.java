@@ -1,5 +1,7 @@
 package edu.missouristate.mars.simulator;
 
+// FIXME(phase-2): gui-coupling — SwingUtilities.invokeLater used to dispatch finished() to EDT;
+// replace with ExecutorService in Phase 2
 import javax.swing.SwingUtilities;
 
 /*-----------------------------------------------------
