@@ -664,10 +664,6 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   // called when the Assemble and Run button is pressed.  Used only by stand-alone app.
   private class CreateAssembleRunMIPSprogram implements Runnable {
     public void run() {
-      String noSupportForExceptionHandler = null; // no auto-loaded exception handlers.
-      // boolean extendedAssemblerEnabled = true;     // In this context, no reason to constrain.
-      // boolean warningsAreErrors = false;           // Ditto.
-
       String exceptionHandler = null;
       if (Globals.getSettings().getExceptionHandlerEnabled()
           && Globals.getSettings().getExceptionHandler() != null

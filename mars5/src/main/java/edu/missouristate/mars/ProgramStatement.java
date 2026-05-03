@@ -258,9 +258,6 @@ public class ProgramStatement {
         if (instruction instanceof BasicInstruction) {
           BasicInstructionFormat format = ((BasicInstruction) instruction).getInstructionFormat();
           if (format == BasicInstructionFormat.I_BRANCH_FORMAT) {
-            // address = (address -
-            // (this.textAddress+((Globals.getSettings().getDelayedBranchingEnabled())?
-            // Instruction.INSTRUCTION_LENGTH : 0))) >> 2;
             address = (address - (this.textAddress + Instruction.INSTRUCTION_LENGTH)) >> 2;
             absoluteAddress = false;
           }

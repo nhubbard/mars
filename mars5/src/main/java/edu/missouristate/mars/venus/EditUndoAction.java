@@ -56,7 +56,5 @@ public class EditUndoAction extends GuiAction {
   void updateUndoState() {
     EditPane editPane = mainUI.getMainPane().getEditPane();
     setEnabled(editPane != null && editPane.getUndoManager().canUndo());
-    // new Throwable("update undo state: "+(editPane != null &&
-    // editPane.getUndoManager().canUndo())).printStackTrace();
   }
 }

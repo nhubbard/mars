@@ -230,10 +230,7 @@ public class VenusUI extends JFrame {
     registersPane = new RegistersPane(mainUI, registersTab, coprocessor1Tab, coprocessor0Tab);
     registersPane.setPreferredSize(registersPanePreferredSize);
 
-    // Insets defaultTabInsets = (Insets)UIManager.get("TabbedPane.tabInsets");
-    // UIManager.put("TabbedPane.tabInsets", new Insets(1, 1, 1, 1));
     mainPane = new MainPane(mainUI, editor, registersTab, coprocessor1Tab, coprocessor0Tab);
-    // UIManager.put("TabbedPane.tabInsets", defaultTabInsets);
 
     mainPane.setPreferredSize(mainPanePreferredSize);
     messagesPane = new MessagesPane();

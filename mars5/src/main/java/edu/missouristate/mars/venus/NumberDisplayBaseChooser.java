@@ -142,12 +142,6 @@ public class NumberDisplayBaseChooser extends JCheckBox {
         result = Integer.toString(value);
     }
     return result;
-    //          if (base == NumberDisplayBaseChooser.HEXADECIMAL) {
-    //             return Binary.intToHexString(value);
-    //          }
-    //          else {
-    //             return Integer.toString(value);
-    //          }
   }
 
   /**

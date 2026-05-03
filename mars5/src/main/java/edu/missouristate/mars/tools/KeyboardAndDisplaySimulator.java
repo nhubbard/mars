@@ -410,16 +410,6 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     String stringCaretPosition;
     // display position as stream or 2D depending on random access
     if (displayRandomAccessMode) {
-      //             if ( caretPosition == rows*(columns+1)+1) {
-      //                stringCaretPosition = "(0,0)";
-      //             }
-      //             else if ( (caretPosition+1) % (columns+1) == 0) {
-      //                stringCaretPosition = "(0,"+((caretPosition/(columns+1))+1)+")";
-      //             }
-      //             else {
-      //                stringCaretPosition =
-      // "("+(caretPosition%(columns+1))+","+(caretPosition/(columns+1))+")";
-      //             }
       if (((caretPosition + 1) % (columns + 1) != 0)) {
         stringCaretPosition =
             "(" + (caretPosition % (columns + 1)) + "," + (caretPosition / (columns + 1)) + ")";
@@ -550,6 +540,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             + "\n"
             + "Contact Pete Sanderson at psanderson@otterbein.edu with questions or comments.\n";
     JButton help = new JButton("Help");
+    // TODO: Fix weird Java 1.5 backport/constraint.
     help.addActionListener(
         new ActionListener() {
           public void actionPerformed(ActionEvent e) {

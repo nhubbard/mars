@@ -527,11 +527,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     private BufferedImage datapath;
 
-    public void mousePressed(MouseEvent e) {
-      PointerInfo a = MouseInfo.getPointerInfo();
-      //	System.out.println("olha, capturado x=" + a.getLocation().getX() + " y = " +
-      // a.getLocation().getY());
-    }
+    public void mousePressed(MouseEvent e) {}
 
     public DatapathAnimation(String instructionBinary) {
       df = new DecimalFormat("0.0"); // 1 dp

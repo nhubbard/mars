@@ -38,9 +38,6 @@ import java.awt.event.ActionListener;
 import java.util.Observable;
 import javax.swing.JComponent;
 
-// import edu.missouristate.mars.tools.bhtsim.BHTSimGUI;
-// import edu.missouristate.mars.tools.bhtsim.BHTableModel;
-
 /**
  * A MARS tool for simulating branch prediction with a Branch History Table (BHT)
  *

@@ -74,11 +74,6 @@ public class MainPane extends JTabbedPane {
     this.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
     this.addTab(editTabTitle, null, editTabbedPane);
 
-    // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>1<br&nbsp;</center></html>", null, new JTabbedPane());
-    // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>2<br&nbsp;</center></html>", null, new JTabbedPane());
-    // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>3<br&nbsp;</center></html>", null, new JTabbedPane());
-    // this.addTab("<html><center>&nbsp;<br>P<br>r<br>o<br>j<br>&nbsp;<br>4<br&nbsp;</center></html>", null, new JTabbedPane());
-
     this.addTab(executeTabTitle, null, executeTab);
 
     this.setToolTipTextAt(0, "Text editor for composing MIPS programs.");

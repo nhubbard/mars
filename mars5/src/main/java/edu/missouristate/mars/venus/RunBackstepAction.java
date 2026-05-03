@@ -76,24 +76,6 @@ public class RunBackstepAction extends GuiAction {
           .getTextSegmentWindow()
           .highlightStepAtPC(inDelaySlot); // Argument aded 25 June 2007
       FileStatus.set(FileStatus.RUNNABLE);
-      // if we've backed all the way, disable the button
-      //    if (Globals.program.getBackStepper().empty()) {
-      //     ((AbstractAction)((AbstractButton)e.getSource()).getAction()).setEnabled(false);
-      // }
-      /*
-      if (pe !=null) {
-         RunGoAction.resetMaxSteps();
-         mainUI.getMessagesPane().postMarsMessage(
-                             pe.errors().generateErrorReport());
-         mainUI.getMessagesPane().postMarsMessage(
-                             "\n"+name+": execution terminated with errors.\n\n");
-         mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
-         FileStatus.set(FileStatus.TERMINATED); // should be redundant.
-      					executePane.getTextSegmentWindow().setCodeHighlighting(true);
-      	executePane.getTextSegmentWindow().unhighlightAllSteps();
-         executePane.getTextSegmentWindow().highlightStepAtAddress(RegisterFile.getProgramCounter()-4);
-      }
-      */
       VenusUI.setReset(false);
     }
   }

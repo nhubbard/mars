@@ -99,10 +99,6 @@ public class ScavengerHunt implements Observer, MarsTool {
   private static class PlayerData {
     int whereAmIX = START_AND_END_LOCATION; // Read only. Memory Address:  Base
     int whereAmIY = START_AND_END_LOCATION; // Read only. Memory Address:  Base + 0x4
-    // int moveToX;    //  Memory Address:  Base + 0x8
-    // int moveToY;    //  Memory Address:  Base + 0xc
-    // int goalX;     // Read only. Memory Address:  Base + 0x10
-    // int goalY;     // Read only. Memory Address:  Base + 0x14
     int energy = 20; // Read only. Memory Address:  Base + 0x18
     int color = 0; // Memory Address:  Base + 0x1c
     long finishTime;
@@ -176,14 +172,9 @@ public class ScavengerHunt implements Observer, MarsTool {
       finishTime = t;
     }
 
-    // public int getGoalX() {  return goalX; }
-    // public int getGoalY() {  return goalY; }
-    // public int getMoveToX() {  return moveToX; }
-    // public int getMoveToY() {  return moveToY; }
     public int getEnergy() {
       return energy;
     }
-    // public int getLocationID() {  return locID; }
   } // end class PlayerData
 
   private static final PlayerData[] pd = new PlayerData[NUM_PLAYERS];
@@ -256,8 +247,6 @@ public class ScavengerHunt implements Observer, MarsTool {
         // the execution speed of the MIPS program, so the display may lag behind
         // the state of the MIPS program.
         try {
-          // System.out.println(" Hello from the ScavengerHuntRunnable runner, sleeping here ...");
-          // System.out.print(".");
           Thread.sleep(100); // millisec
         } catch (InterruptedException exception) { // no action
         }
@@ -334,18 +323,7 @@ public class ScavengerHunt implements Observer, MarsTool {
         g2.setColor(Color.white);
         g2.drawString(
             " " + i, xCoord + 4, yCoord + 15); // coord is lower left corner of string text box
-
-        /*
-        System.out.println("ScavengerHuntDisplay.paintComponent: drew loc " + i + " at (" +
-                            xCoord +
-                            ", " +
-                            yCoord +
-                            ")" );
-        */
       }
-
-      // System.out.println("ScavengerHuntDisplay.paintComponent: special exit!");
-      // System.exit(0);
 
       // Draw scoreboard
       g2.setColor(Color.black);
@@ -401,9 +379,6 @@ public class ScavengerHunt implements Observer, MarsTool {
                   pd[i].getFinishMillisec(), // Milliseconds
               width - 115,
               50 + (i * 15));
-          // System.out.println("Time is " +  pd[i].getFinishTime());
-          // g2.drawString (" " + pd[i].getFinishTime(),
-          //               width - 255, 50 + (i*15));
         } else // player either has not finished or is just now finishing
         {
           int visCount = 0;
@@ -430,20 +405,6 @@ public class ScavengerHunt implements Observer, MarsTool {
           }
         } // end player had not previously finished
       } // end display score/results for each player
-
-      // System.out.println("paintComponent: Player " + 0 + " is at (" + pd[0].getWhereAmIX() + ", "
-      // + pd[0].getWhereAmIY() + ")" );
-
-      /*
-      g2.setColor(Color.blue);
-      g2.setFont(new Font(g2.getFont().getName(), g2.getFont().getStyle(), 20) );  // same font and style in larger size
-      g2.drawOval( width/2 - 30,  // TBD Hardcoded oval size
-      height/2 - 30,
-      60,
-      60);
-      g2.drawString(" " + n, width/2, height/2);
-      */
-
     }
   } // end private inner class ScavengerHuntDisplay
 
@@ -511,33 +472,14 @@ public class ScavengerHunt implements Observer, MarsTool {
     // reading each other's memory spaces.
     if (!isWrite) return;
 
-    // System.out.println("ScavengerHunt.update: observed write access by player " + playerID + " on
-    // Mem[ " +
-    //            Binary.intToHexString(address) + " ]");
-
-    // TBD TBD DEBUGGING SPECIAL
-    /*
-    accessCounter++;
-    if (accessCounter > 100000)
-    {
-      System.out.println("\n\nScavengerHunt.update: hardcoded exit to prevent runaway" );
-      System.exit(0);
-    }
-    */
-    // TBD TBD DEBUGGING SPECIAL
-
     // Take the appropriate action, depending on data written and priority of user.
     if (playerID == ADMINISTRATOR_ID && address == ADDR_GAME_ON) {
 
       // ADMINISTRATOR_ID can write to any location, because it's trusted software
-      // System.out.println( "ScavengerHunt.update(): Administrator wrote to  Mem[ " +
-      //   Binary.intToHexString(address) + " ] == " + Binary.intToHexString(data) );
 
       // No need to authenticate since administrator runs first, then
       // this location has no effect thereafter.
       GameOn = true;
-      // System.out.println( "ScavengerHunt.update(): Administrator wrote GAME_ON!" );
-
       initializeScavengerData();
     } else if (address == ADDR_AUTHENTICATION) {
       // Anyone is allowed to write to the authentication location -- but if that value is not
@@ -558,7 +500,6 @@ public class ScavengerHunt implements Observer, MarsTool {
           == authenticationValue) // Compare to "client's" version of the authenticationValue
       {
         playerID = toolGetWord(ADDR_PLAYER_ID); // Use the new player ID
-        // System.out.println( "ScavengerHunt.update(): New playerID of " + playerID);
       } else {
         System.out.println(
             "ScavengerHunt.update(): Invalid write of player ID! \nPlayer "
@@ -571,21 +512,10 @@ public class ScavengerHunt implements Observer, MarsTool {
       }
     } else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_MOVE_READY && data != 0) //  Player wrote data to his/her assigned MoveReady location
     {
-      /*
-      System.out.println(" ******** ScavengerHunt.update: Player " + playerID + " requests move to (" +
-                     toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) + ", " +
-                     toolReadPlayerData(playerID, OFFSET_MOVE_TO_Y) + ")" );
-         */
 
       energyLevel = toolReadPlayerData(playerID, OFFSET_ENERGY); // find if player has energy
       if (energyLevel <= 0) // No energy. Player not allowed to move
-      {
-        // JOptionPane.showMessageDialog(null, "Player " + playerID + " can't move -- no energy.\n"
-        // +
-        //                                    "(This msg. in ScavengerHunt.update()" );
-        // System.out.println("Player " + playerID + " can't move -- no energy.");
         return;
-      }
 
       if (toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) < 0
           || toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) > GRAPHIC_WIDTH
@@ -593,9 +523,6 @@ public class ScavengerHunt implements Observer, MarsTool {
           || toolReadPlayerData(playerID, OFFSET_MOVE_TO_Y)
               > GRAPHIC_HEIGHT) // Out of bounds. Player not allowed to move
       {
-        // JOptionPane.showMessageDialog(null, "Player " + playerID + " can't move -- out of
-        // bounds.\n" +
-        //                                    "(This msg. in ScavengerHunt.update()" );
         System.out.println("Player " + playerID + " can't move -- out of bounds.");
         return;
       }
@@ -665,9 +592,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     else if (address == ADDR_BASE + playerID * MEM_PER_PLAYER + OFFSET_TASK_COMPLETE && data != 0) //  Player wrote data to his/her assigned TaskComplete location
     {
 
-      //  System.out.println(" ******** ScavengerHunt.update: Player " + playerID + " requests more
-      // energy (task complete)" );
-
       // Player indicates he/she has completed a task. Check to see if task is completed correctly.
       // Task for this assignment: Numbers are sorted in ascending order.
       int prevData, currentData;
@@ -695,7 +619,6 @@ public class ScavengerHunt implements Observer, MarsTool {
                 (randomStream.nextDouble()
                     * Integer.MAX_VALUE)); // Set a random number for the task (sort them)
       }
-      // System.out.println("Player has  completed task correctly and been awarded energy");
       pd[playerID].setEnergy(ENERGY_AWARD);
 
     } // end if Player wrote nonzero data to his/her assigned TaskComplete location
@@ -715,19 +638,10 @@ public class ScavengerHunt implements Observer, MarsTool {
     //  Player wrote data elsewhere within his/her assigned location
     {
       // Player can write to any location within his/her assigned location
-      // System.out.println( "ScavengerHunt.update(): Player " + playerID + " wrote to valid
-      // location");
     } else if (playerID == ADMINISTRATOR_ID) {
       // ADMINISTRATOR_ID can write to any location, because it's trusted software
-      // System.out.println( "ScavengerHunt.update(): Administrator wrote to  Mem[ " +
-      //     Binary.intToHexString(address) + " ] == " + Binary.intToHexString(data) );
     } else {
       // This player is writing outside his/her assigned memory location
-      /*
-      System.out.println("ScavengerHunt.update(): Player " + playerID + " writing outside assigned mem. loc. at address " +
-                          Binary.intToHexString(address) +
-                          " -- not implemented!");
-              */
 
       JOptionPane.showMessageDialog(
           null,
@@ -790,26 +704,10 @@ public class ScavengerHunt implements Observer, MarsTool {
 
   // Read one word from MIPS memory. This is a wrapper to isolate the try..catch blocks.
   private int toolGetWord(int address) {
-
     int returnValue;
 
-    // System.out.println("ScavengerHunt.toolGetWord: called with address " +
-    //   Binary.intToHexString(address) );
-
     try {
-      /*
-      System.out.println("ScavengerHunt.toolGetWord: returning " +
-        Binary.intToHexString(Globals.memory.getWord(address)) +
-        " which is at MIPS Memory[" + Binary.intToHexString(address) + "]" );
-      */
       returnValue = Globals.memory.getWord(address);
-
-      /*
-      System.out.println("ScavengerHunt.toolGetWord: Mem[" +
-       Binary.intToHexString(address) + "] = " +
-       Binary.intToHexString(returnValue) + " --- returning normally");
-      */
-
       return returnValue;
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolGetWord: deliberate exit on AEE exception.");
@@ -843,16 +741,6 @@ public class ScavengerHunt implements Observer, MarsTool {
     int returnValue = toolGetWord(ADDR_BASE + (p * MEM_PER_PLAYER) + offset);
 
     if (KENVDEBUG) {
-      // if ((ADDR_BASE + (p * MEM_PER_PLAYER) + offset) >= 0xffff8000 &&
-      //     (ADDR_BASE + (p * MEM_PER_PLAYER) + offset) < 0xffff8800)  // Show debug for player 0
-      // and 1 only
-      // {
-      // System.out.println("   ScavengerHunt.toolReadPlayerData: Reading MIPS Memory[" +
-      //    Binary.intToHexString(ADDR_BASE + (p * MEM_PER_PLAYER) + offset) +
-      //    "] which is " + Binary.intToHexString(returnValue) +
-      //   " = " + Binary.intToHexString( returnValue) );
-      // }
-
       System.out.println(
           "ScavengerHunt.toolReadPlayerData: Mem["
               + Binary.intToHexString(ADDR_BASE + (p * MEM_PER_PLAYER) + offset)
@@ -918,15 +806,6 @@ public class ScavengerHunt implements Observer, MarsTool {
           (int)
               (randomStream.nextDouble()
                   * (GRAPHIC_HEIGHT - 50)); // Y coord. (leave room for buttons in window)
-
-      /*
-      System.out.println("ScavengerHunt.update(): set up a location at (" +
-                          loc[j].X +
-                          ", " +
-                          loc[j].Y +
-                          ")" );
-      */
-
     }
     loc[NUM_LOCATIONS - 1] = new Location(); // The last location is a return to the starting position
     loc[NUM_LOCATIONS - 1].X = START_AND_END_LOCATION;
@@ -934,8 +813,6 @@ public class ScavengerHunt implements Observer, MarsTool {
 
     for (int i = 0; i < NUM_PLAYERS; i++) // Initialize data for each player
     {
-
-      // System.out.println("ScavengerHunt.update(): Player loop " + i);
 
       pd[i] = new PlayerData(); // Initialize each player data structure.
 

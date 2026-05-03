@@ -109,8 +109,6 @@ public class ToolLoader {
     // whatever is in the properties file entry.  Since the class file will
     // not be located in the mars.tools folder, the loop below will not process
     // it correctly.  Not sure how to create a Class object given an absolute
-    // pathname.
-    // candidates.addAll(mars.Globals.getExternalTools());  // this by itself is not enough...
     HashMap tools = new HashMap();
     for (int i = 0; i < candidates.size(); i++) {
       String file = (String) candidates.get(i);

@@ -474,14 +474,10 @@ public class SystemIO {
     private static boolean filenameInUse(String requestedFilename) {
       for (int i = 0; i < SYSCALL_MAXFILES; i++) {
         if (fileNames[i] != null && fileNames[i].equals(requestedFilename)) {
-          // System.out.println("Mars.SystemIO.FileIOData.filenameInUse: rtng TRUE for " +
-          // requestedFilename);
           return true;
         }
       }
 
-      // System.out.println("Mars.SystemIO.FileIOData.filenameInUse: rtng TRUE for " +
-      // requestedFilename);
       return false;
     }
 

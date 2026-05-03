@@ -99,15 +99,6 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
     int numFlags = Coprocessor1.getConditionFlagCount();
     conditionFlagCheckBox = new JCheckBox[numFlags];
     JPanel checksPane = new JPanel(new GridLayout(2, numFlags / 2));
-    // Tried to get interior of checkboxes to be white while its label and
-    // remaining background stays same background color.  Found example
-    // like the following on the web, but does not appear to have any
-    // affect.  Might be worth further study but for now I'll just set
-    // background to white.  I want white so the checkbox appears
-    // "responsive" to user clicking on it (it is responsive anyway but looks
-    // dead when drawn in gray.
-    // Object saveBG = UIManager.getColor("CheckBox.interiorBackground");
-    // UIManager.put("CheckBox.interiorBackground", Color.WHITE);
     for (int i = 0; i < numFlags; i++) {
       conditionFlagCheckBox[i] = new JCheckBox(Integer.toString(i));
       conditionFlagCheckBox[i].addActionListener(this);
@@ -301,21 +292,6 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
   void highlightCellForRegister(Register register) {
     this.highlightRow = register.getNumber();
     table.tableChanged(new TableModelEvent(table.getModel()));
-    /*
-      int registerColumn = FLOAT_COLUMN;
-      registerColumn = table.convertColumnIndexToView(registerColumn);
-      Rectangle registerCell = table.getCellRect(registerRow, registerColumn, true);
-      // STEP 2:  Select the cell by generating a fake Mouse Pressed event and
-    // explicitly invoking the table's mouse listener.
-      MouseEvent fakeMouseEvent = new MouseEvent(table, MouseEvent.MOUSE_PRESSED,
-                                                 new Date().getTime(), MouseEvent.BUTTON1_MASK,
-         													 (int)registerCell.getX()+1,
-         													 (int)registerCell.getY()+1, 1, false);
-      MouseListener[] mouseListeners = table.getMouseListeners();
-      for (int i=0; i<mouseListeners.length; i++) {
-         mouseListeners[i].mousePressed(fakeMouseEvent);
-      }
-    */
   }
 
   /*

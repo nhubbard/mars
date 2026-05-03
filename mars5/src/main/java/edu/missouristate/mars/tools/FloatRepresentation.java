@@ -1,18 +1,13 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
-import javax.swing.text.html.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -247,7 +242,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     binaryExponentDisplay.setEditable(true);
     binaryExponentDisplay.revalidate();
 
-    binaryFractionDisplay = new BinaryFractionDisplayTextField(defaultBinaryFraction, maxLengthBinaryFraction + 1);
+    binaryFractionDisplay = new JTextField(defaultBinaryFraction, maxLengthBinaryFraction + 1);
     binaryFractionDisplay.setFont(binaryDisplayFont);
     binaryFractionDisplay.setForeground(binaryDisplayColor);
     binaryFractionDisplay.setHorizontalAlignment(JTextField.RIGHT);
@@ -981,9 +976,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   //  Handly little class defined only to allow client to use "setText()" without
   //  needing to know how/whether the text needs to be formatted.  This one is
   //  used to display instructions.
-
   class InstructionsPane extends JLabel {
-
     InstructionsPane(Component parent) {
       super(defaultInstructions);
       this.setFont(instructionsFont);
@@ -992,70 +985,6 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     public void setText(String text) {
       super.setText(text);
-    }
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  //  Use this to draw custom background in the binary fraction display.
-  //
-  static class BinaryFractionDisplayTextField extends JTextField {
-
-    public BinaryFractionDisplayTextField(String value, int columns) {
-      super(value, columns);
-    }
-
-    // This overrides inherited JPanel method.  Override is necessary to
-    // assure my drawn graphics get painted immediately after painting the
-    // underlying JPanel (see first statement).
-    public void paintComponent(Graphics g) {
-      super.paintComponent(g);
-      // The code below is commented out because I decided to abandon
-      // my effort to provide "striped" background that alternates colors
-      // for every 4 characters (bits) of the display.  This would make
-      // the correspondence between bits and hex digits very clear.
-      // NOTE: this is the only reason for subclassing JTextField.
-
-      /*
-         int columnWidth = getWidth()/getColumns();
-         Color shadedColor = Color.red;
-         Polygon p;
-         // loop will handle the lower order 5 "nibbles" (hex digits)
-         for (int i=3; i<20; i+=8) {
-            p = new Polygon();
-            p.addPoint(getX()+columnWidth*i, getY());
-            p.addPoint(getX()+columnWidth*i, getY()+getHeight());
-            p.addPoint(getX()+columnWidth*(i+4), getY()+getHeight());
-            p.addPoint(getX()+columnWidth*(i+4), getY());
-      //			System.out.println("Polygon vertices are:"+
-      //			" ("+(getX()+columnWidth*i)    +","+getY()              +") "+
-      //			" ("+(getX()+columnWidth*i)    +","+(getY()+getHeight())+") "+
-      //			" ("+(getX()+columnWidth*(i+4))+","+(getY()+getHeight())+") "+
-      //			" ("+(getX()+columnWidth*(i+4))+","+getY()              +") "
-      //			);
-            g.setColor(shadedColor);
-            g.fillPolygon(p);
-         }*/
-      /*
-        // Nibble 5 straddles binary display of exponent and fraction.
-        p = new Polygon();
-        p.addPoint(hexDisplay.getX()+hexColumnWidth*(hexDisplay.getColumns()-6)+hexColumnWidth/2, upperY);
-        p.addPoint(binaryFractionDisplay.getX()+binaryColumnWidth*(binaryFractionDisplay.getColumns()-20), lowerY);
-        p.addPoint(binaryExponentDisplay.getX()+binaryColumnWidth*(binaryExponentDisplay.getColumns()-1), lowerY);
-        g.fillPolygon(p);
-      // Nibble 6 maps to binary display of exponent.
-        p = new Polygon();
-        p.addPoint(hexDisplay.getX()+hexColumnWidth*(hexDisplay.getColumns()-7)+hexColumnWidth/2, upperY);
-        p.addPoint(binaryExponentDisplay.getX()+binaryColumnWidth*(binaryExponentDisplay.getColumns()-1), lowerY);
-        p.addPoint(binaryExponentDisplay.getX()+binaryColumnWidth*(binaryExponentDisplay.getColumns()-5), lowerY);
-        g.fillPolygon(p);
-      // Nibble 7 straddles binary display of sign and exponent.
-        p = new Polygon();
-        p.addPoint(hexDisplay.getX()+hexColumnWidth*(hexDisplay.getColumns()-8)+hexColumnWidth/2, upperY);
-        p.addPoint(binaryExponentDisplay.getX()+binaryColumnWidth*(binaryExponentDisplay.getColumns()-5), lowerY);
-        p.addPoint(binarySignDisplay.getX(), lowerY);
-        g.fillPolygon(p);
-      */
     }
   }
 }
