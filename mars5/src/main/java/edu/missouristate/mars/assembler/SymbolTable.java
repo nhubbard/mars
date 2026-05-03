@@ -223,8 +223,7 @@ public class SymbolTable {
    * @return An ArrayList of Symbol objects.
    */
   public ArrayList getAllSymbols() {
-    ArrayList list = new ArrayList(table);
-    return list;
+    return new ArrayList(table);
   }
 
   /**

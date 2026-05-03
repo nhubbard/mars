@@ -136,8 +136,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
    * controls are in the SOUTH area.
    */
   protected JComponent buildAnimationSequence() {
-    JPanel image = new JPanel(new GridBagLayout());
-    return image;
+    return new JPanel(new GridBagLayout());
   }
 
   // Insert image in the panel and configure the parameters to run animation.

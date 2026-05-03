@@ -368,8 +368,7 @@ public class MIPSprogram {
   public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
     steppedExecution = true;
     Simulator sim = Simulator.getInstance();
-    boolean done = sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
-    return done;
+    return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
   }
 
   /**

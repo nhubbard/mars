@@ -509,20 +509,19 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private String[] determineSetSizeChoices(int cacheBlockCountIndex, int placementPolicyIndex) {
     String[] choices;
     int firstBlockCountIndex = 0;
-    int lastBlockCountIndex = cacheBlockCountIndex;
     switch (placementPolicyIndex) {
       case DIRECT:
         choices = new String[1];
         choices[0] = cacheBlockCountChoices[firstBlockCountIndex]; // set size fixed at 1
         break;
       case SET:
-        choices = new String[lastBlockCountIndex - firstBlockCountIndex + 1];
+        choices = new String[cacheBlockCountIndex - firstBlockCountIndex + 1];
         System.arraycopy(cacheBlockCountChoices, 0, choices, 0, choices.length);
         break;
       case FULL: // 1 set total, so set size fixed at current number of blocks
       default:
         choices = new String[1];
-        choices[0] = cacheBlockCountChoices[lastBlockCountIndex];
+        choices[0] = cacheBlockCountChoices[cacheBlockCountIndex];
     }
     return choices;
   }
