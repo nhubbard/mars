@@ -1476,7 +1476,7 @@ public class JEditTextArea extends JComponent {
     }
   }
 
-  class MutableCaretEvent extends CaretEvent {
+  public class MutableCaretEvent extends CaretEvent {
     MutableCaretEvent() {
       super(JEditTextArea.this);
     }
@@ -1514,7 +1514,7 @@ public class JEditTextArea extends JComponent {
     }
   }
 
-  class DocumentHandler implements DocumentListener {
+  public class DocumentHandler implements DocumentListener {
     public void insertUpdate(DocumentEvent evt) {
       documentChanged(evt);
 
