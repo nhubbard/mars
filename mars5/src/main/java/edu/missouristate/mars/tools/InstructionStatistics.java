@@ -84,10 +84,10 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
   private JTextField m_tfTotalCounter;
 
   /** array of text field - one for each instruction category */
-  private JTextField m_tfCounters[];
+  private JTextField[] m_tfCounters;
 
   /** array of progress pars - one for each instruction category */
-  private JProgressBar m_pbCounters[];
+  private JProgressBar[] m_pbCounters;
 
   /** counter for the total number of instructions processed */
   private int m_totalCounter = 0;

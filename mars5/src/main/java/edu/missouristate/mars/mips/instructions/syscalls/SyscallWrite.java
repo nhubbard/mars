@@ -55,7 +55,7 @@ public class SyscallWrite extends AbstractSyscall {
     byte b;
     int reqLength = RegisterFile.getValue(6); // user-requested length
     int index = 0;
-    byte myBuffer[] =
+    byte[] myBuffer =
         new byte[RegisterFile.getValue(6) + 1]; // specified length plus null termination
     try {
       b = (byte) Globals.memory.getByte(byteAddress);
