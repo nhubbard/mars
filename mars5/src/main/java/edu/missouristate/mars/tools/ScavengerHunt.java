@@ -488,6 +488,7 @@ public class ScavengerHunt implements Observer, MarsTool {
    * must not write to those memory locations in order to prevent an infinite cycle of events.
    * This method observes certain locations and then may (and does) write to OTHER locations.
    */
+  @SuppressWarnings("StatementWithEmptyBody")
   public void update(Observable o, Object arg) {
     MemoryAccessNotice notice;
     int address;

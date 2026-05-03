@@ -162,40 +162,6 @@ public class SyntaxUtilities {
       } else styles[id].setGraphicsFlags(gfx, defaultFont);
       line.count = length;
 
-      if (id == Token.KEYWORD1) {
-        // System.out.println("Instruction: "+line);
-        if (!popupShowing) { // System.out.println("creating popup");
-          //                   JComponent paintArea = (JComponent) expander;
-          //                   JToolTip tip = paintArea.createToolTip();
-          //                   tip.setTipText("Instruction: "+line);
-          //                   Point screenLocation = paintArea.getLocationOnScreen();
-          //                   PopupFactory popupFactory = PopupFactory.getSharedInstance();
-          //                   popup = popupFactory.getPopup(paintArea, tip, screenLocation.x + x,
-          // screenLocation.y + y);
-          //                   popupShowing = true;
-          //                   popup.show();
-          //                   int delay = 200; //milliseconds
-          //                   ActionListener taskPerformer =
-          //                       new ActionListener() {
-          //                          public void actionPerformed(ActionEvent evt) {
-          //                            //popupShowing = false;
-          //                            if (popup!= null) {
-          //                               popup.hide();
-          //                            }
-          //                         }
-          //                      };
-          //                   Timer popupTimer = new Timer(delay, taskPerformer);
-          //                   popupTimer.setRepeats(false);
-          //                   popupTimer.start();
-
-        }
-
-        // ToolTipManager.sharedInstance().mouseMoved(
-        //	   new MouseEvent((Component)expander, MouseEvent.MOUSE_MOVED, new
-        // java.util.Date().getTime(), 0, x, y, 0, false));
-        //    new InstructionMouseEvent((Component)expander, x, y, line));
-      }
-
       x = Utilities.drawTabbedText(line, x, y, gfx, expander, 0);
       line.offset += length;
       offset += length;

@@ -755,6 +755,7 @@ class UnitAnimation extends JPanel implements ActionListener {
   // animation,
   // verifies the previous status of the animation and increment the position of each line that
   // interconnect the unit function.
+  @SuppressWarnings("StatementWithEmptyBody")
   private void executeAnimation(Graphics g) {
     g2d = (Graphics2D) g;
     Vertex vert;

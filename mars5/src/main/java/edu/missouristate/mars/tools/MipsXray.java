@@ -712,6 +712,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
 
     // Set up the information showed in the screen of the current instruction.
+    @SuppressWarnings("StatementWithEmptyBody")
     public void setUpInstructionInfo(Graphics2D g2d) {
 
       FontRenderContext frc = g2d.getFontRenderContext();

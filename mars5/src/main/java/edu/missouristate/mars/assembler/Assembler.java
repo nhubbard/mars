@@ -706,6 +706,7 @@ public class Assembler {
 
   // //////////////////////////////////////////////////////////////////////////////////
   // This source code line is a directive, not a MIPS instruction. Let's carry it out.
+  @SuppressWarnings("StatementWithEmptyBody")
   private void executeDirective(TokenList tokens) {
     Token token = tokens.get(0);
     Directives direct = Directives.matchDirective(token.getValue());

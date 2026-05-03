@@ -76,6 +76,7 @@ public class MarsBot implements Observer, MarsTool {
       frame.setVisible(true); // show();
     } // end BotRunnable() constructor
 
+    @SuppressWarnings("StatementWithEmptyBody")
     public void run() {
 
       double tempAngle;
@@ -242,6 +243,7 @@ public class MarsBot implements Observer, MarsTool {
    * MIPS program write to MMIO) and updates instance variables to reflect that
    * directive.
    */
+  @SuppressWarnings("StatementWithEmptyBody")
   public void update(Observable o, Object arg) {
     MemoryAccessNotice notice;
     int address;

@@ -896,6 +896,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
    * @param observable The Observable object who is notifying us
    * @param obj Auxiliary object with additional information.
    */
+  @SuppressWarnings("StatementWithEmptyBody")
   public void update(Observable observable, Object obj) {
     if (observable == Simulator.getInstance()) {
       SimulatorNotice notice = (SimulatorNotice) obj;

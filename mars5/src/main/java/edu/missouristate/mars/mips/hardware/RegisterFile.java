@@ -103,6 +103,7 @@ public class RegisterFile {
    * @param num Register to set the value of.
    * @param val The desired value for the register.
    */
+  @SuppressWarnings("StatementWithEmptyBody")
   public static int updateRegister(int num, int val) {
     int old = 0;
     if (num == 0) {
@@ -140,6 +141,7 @@ public class RegisterFile {
    * @param reg Name of register to set the value of.
    * @param val The desired value for the register.
    */
+  @SuppressWarnings("StatementWithEmptyBody")
   public static void updateRegister(String reg, int val) {
     if (reg.equals("zero")) {
       // System.out.println("You can not change the value of the zero register.");

@@ -956,6 +956,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
        *****************************************************/
     }
 
+    @SuppressWarnings("StatementWithEmptyBody")
     public Component getTableCellRendererComponent(
         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 
