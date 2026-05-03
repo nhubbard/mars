@@ -221,7 +221,6 @@ public class MarsLaunch {
         format.dumpMemoryRange(file, segInfo[0].intValue(), highAddress);
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
-        continue;
       } catch (AddressErrorException e) {
         out.println(
             "Error while attempting to save dump, file "
@@ -229,10 +228,8 @@ public class MarsLaunch {
                 + "!  Could not access address: "
                 + e.getAddress()
                 + "!");
-        continue;
       } catch (IOException e) {
         out.println("Error while attempting to save dump, file " + file + "!  Disk IO failed!");
-        continue;
       }
     }
   }
