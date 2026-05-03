@@ -389,7 +389,7 @@ public class MessagesPane extends JTabbedPane {
   // Thread class for obtaining user input in the Run I/O window (MessagesPane)
   // Written by Ricardo Fernández Pascual [rfernandez@ditec.um.es] December 2009.
   class Asker implements Runnable {
-    final ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(1);
+    final ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<>(1);
     int initialPos;
     final int maxLen;
 

@@ -109,7 +109,7 @@ class UnitAnimation extends JPanel implements ActionListener {
         else direction = movingDownside;
       }
       String[] list = listTargetVertex.split("#");
-      targetVertex = new ArrayList<Integer>();
+      targetVertex = new ArrayList<>();
       for (String s : list) {
         targetVertex.add(Integer.parseInt(s));
         //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
@@ -233,13 +233,13 @@ class UnitAnimation extends JPanel implements ActionListener {
     // load and initialise the images
     initImages();
 
-    vertexList = new ArrayList<Vertex>();
+    vertexList = new ArrayList<>();
     counter = 0;
     justStarted = true;
     instructionCode = instructionBinary;
 
     // declaration of labels definition.
-    registerEquivalenceTable = new HashMap<String, String>();
+    registerEquivalenceTable = new HashMap<>();
 
     int countRegLabel = 400;
     int countALULabel = 380;
@@ -379,15 +379,15 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
       }
       // loading matrix of control of vertex.
-      outputGraph = new Vector<Vector<Vertex>>();
-      vertexTraversed = new ArrayList<Vertex>();
+      outputGraph = new Vector<>();
+      vertexTraversed = new ArrayList<>();
       int size = vertexList.size();
       Vertex vertex;
       ArrayList<Integer> targetList;
       for (Vertex value : vertexList) {
         vertex = value;
         targetList = vertex.getTargetVertex();
-        Vector<Vertex> vertexOfTargets = new Vector<Vertex>();
+        Vector<Vertex> vertexOfTargets = new Vector<>();
         for (Integer integer : targetList) {
           vertexOfTargets.add(vertexList.get(integer));
         }
@@ -494,15 +494,15 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
       }
       // loading matrix of control of vertex.
-      outputGraph = new Vector<Vector<Vertex>>();
-      vertexTraversed = new ArrayList<Vertex>();
+      outputGraph = new Vector<>();
+      vertexTraversed = new ArrayList<>();
       int size = vertexList.size();
       Vertex vertex;
       ArrayList<Integer> targetList;
       for (Vertex value : vertexList) {
         vertex = value;
         targetList = vertex.getTargetVertex();
-        Vector<Vertex> vertexOfTargets = new Vector<Vertex>();
+        Vector<Vertex> vertexOfTargets = new Vector<>();
         for (Integer integer : targetList) {
           vertexOfTargets.add(vertexList.get(integer));
         }

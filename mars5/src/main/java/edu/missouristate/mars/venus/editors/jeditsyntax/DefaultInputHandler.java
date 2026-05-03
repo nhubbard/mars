@@ -26,7 +26,7 @@ import javax.swing.KeyStroke;
 public class DefaultInputHandler extends InputHandler {
   /** Creates a new input handler with no key bindings defined. */
   public DefaultInputHandler() {
-    bindings = currentBindings = new Hashtable<KeyStroke, Binding>();
+    bindings = currentBindings = new Hashtable<>();
   }
 
   /** Sets up the default key bindings. */
