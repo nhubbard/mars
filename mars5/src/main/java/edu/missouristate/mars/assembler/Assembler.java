@@ -320,7 +320,7 @@ public class Assembler {
             // If this is the case, skip remainder of loop iteration. This should only
             // happen if template substitution was for "nop" instruction but delayed branching
             // is disabled so the "nop" is not generated.
-            if (instruction == null || instruction == "") {
+            if (instruction == null || instruction.isEmpty()) {
               continue;
             }
 

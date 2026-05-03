@@ -139,7 +139,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
           ProgramStatement ps = Globals.memory.getStatement(address);
           string +=
               (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
-          string += (((ps.getSource() == "") ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
+          string += (((ps.getSource().isEmpty()) ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
           string += ps.getSource();
         } catch (AddressErrorException aee) {
         }
