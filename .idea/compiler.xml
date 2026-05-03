@@ -2,9 +2,18 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel>
-      <module name="mars5" target="25" />
-      <module name="mars5.main" target="25" />
-      <module name="mars5.test" target="25" />
+      <module name="mars5" target="21" />
+      <module name="mars5.main" target="21" />
+      <module name="mars5.mars-cli" target="25" />
+      <module name="mars5.mars-cli.main" target="25" />
+      <module name="mars5.mars-cli.test" target="25" />
+      <module name="mars5.mars-core" target="25" />
+      <module name="mars5.mars-core.main" target="25" />
+      <module name="mars5.mars-core.test" target="25" />
+      <module name="mars5.mars-plugin" target="25" />
+      <module name="mars5.mars-plugin.main" target="25" />
+      <module name="mars5.mars-plugin.test" target="25" />
+      <module name="mars5.test" target="21" />
     </bytecodeTargetLevel>
   </component>
 </project>

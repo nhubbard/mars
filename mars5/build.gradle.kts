@@ -21,6 +21,12 @@ tasks.test {
   useJUnitPlatform()
 }
 
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
 spotless {
   java {
     googleJavaFormat()
