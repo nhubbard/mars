@@ -165,7 +165,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
   public void clearWindow() {
     this.clearHighlighting();
     Coprocessor1.resetRegisters();
-    this.updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
     Coprocessor1.clearConditionFlags();
     this.updateConditionFlagDisplay();
   }
@@ -188,7 +188,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
 
   /** Redisplay registers using current display number base (10 or 16) */
   public void updateRegisters() {
-    updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -277,7 +277,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
         // AddressCellRenderer class in DataSegmentWindow.java.
         this.highlighting = true;
         this.highlightCellForRegister((Register) observable);
-        Globals.getGui().getRegistersPane().setSelectedComponent(this);
+        VenusUI.instance().getRegistersPane().setSelectedComponent(this);
       }
     }
   }
@@ -383,7 +383,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
      * value is valid, MIPS register is updated.
      */
     public void setValueAt(Object value, int row, int col) {
-      int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       float fVal;
       double dVal;
       String sVal = (String) value;

@@ -231,7 +231,7 @@ public class MessagesPane extends JTabbedPane {
    */
   public void selectEditorTextLine(String fileName, int line, int column) {
     EditTabbedPane editTabbedPane =
-        (EditTabbedPane) Globals.getGui().getMainPane().getEditTabbedPane();
+        (EditTabbedPane) VenusUI.instance().getMainPane().getEditTabbedPane();
     EditPane editPane, currentPane = null;
     editPane = editTabbedPane.getEditPaneForFile(new java.io.File(fileName).getPath());
     if (editPane != null) {
@@ -348,7 +348,7 @@ public class MessagesPane extends JTabbedPane {
     JOptionPane pane =
         new JOptionPane(prompt, JOptionPane.QUESTION_MESSAGE, JOptionPane.DEFAULT_OPTION);
     pane.setWantsInput(true);
-    JDialog dialog = pane.createDialog(Globals.getGui(), "MIPS Keyboard Input");
+    JDialog dialog = pane.createDialog(VenusUI.instance(), "MIPS Keyboard Input");
     dialog.setVisible(true);
     input = (String) pane.getInputValue();
     this.postRunMessage(Globals.userInputAlert + input + "\n");

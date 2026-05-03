@@ -80,10 +80,10 @@ public class MainPane extends JTabbedPane {
             JTabbedPane tabbedPane = (JTabbedPane) ce.getSource();
             int index = tabbedPane.getSelectedIndex();
             Component c = tabbedPane.getComponentAt(index);
-            ExecutePane executePane = Globals.getGui().getMainPane().getExecutePane();
+            ExecutePane executePane = VenusUI.instance().getMainPane().getExecutePane();
             if (c == executePane) {
               executePane.setWindowBounds();
-              Globals.getGui().getMainPane().removeChangeListener(this);
+              VenusUI.instance().getMainPane().removeChangeListener(this);
             }
           }
         });

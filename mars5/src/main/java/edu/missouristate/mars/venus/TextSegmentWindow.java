@@ -105,7 +105,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    * to the table rows and columns.
    */
   public void setupTable() {
-    int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     codeHighlighting = true;
     breakpointsEnabled = true;
     ArrayList<ProgramStatement> sourceStatementList = Globals.program.getMachineList();
@@ -252,7 +252,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    */
   public void updateCodeAddresses() {
     if (contentPane.getComponentCount() == 0) return; // ignore if no content to change
-    int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address;
     String formattedAddress;
     for (int i = 0; i < intAddresses.length; i++) {
@@ -395,7 +395,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
         // for that.  So we'll pretend to be Memory observable and send it a fake memory write
         // update.
         try {
-          Globals.getGui()
+          VenusUI.instance()
               .getMainPane()
               .getExecutePane()
               .getDataSegmentWindow()
@@ -812,7 +812,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
           super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       // cell.setFont(tableCellFont);
       TextSegmentWindow textSegment =
-          Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow();
+          VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow();
       Settings settings = Globals.getSettings();
       boolean highlighting = textSegment.getCodeHighlighting();
 

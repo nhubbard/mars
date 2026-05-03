@@ -42,7 +42,7 @@ public class SettingsLabelAction extends GuiAction {
 
   public void actionPerformed(ActionEvent e) {
     boolean visibility = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-    Globals.getGui().getMainPane().getExecutePane().setLabelWindowVisibility(visibility);
+    VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(visibility);
     Globals.getSettings().setLabelWindowVisibility(visibility);
   }
 }

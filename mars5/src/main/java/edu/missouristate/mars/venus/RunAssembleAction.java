@@ -143,7 +143,7 @@ public class RunAssembleAction extends GuiAction {
             continue;
           }
           if (!em.isWarning() || warningsAreErrors) {
-            Globals.getGui()
+            VenusUI.instance()
                 .getMessagesPane()
                 .selectErrorMessage(em.getFilename(), em.getLine(), em.getPosition());
             // Bug workaround: Line selection does not work correctly for the JEditTextArea editor
@@ -152,7 +152,7 @@ public class RunAssembleAction extends GuiAction {
             // this method (actionPerformed) explicitly with null argument.  Thus e!=null test.
             // DPS 9-Aug-2010
             if (e != null) {
-              Globals.getGui()
+              VenusUI.instance()
                   .getMessagesPane()
                   .selectEditorTextLine(em.getFilename(), em.getLine(), em.getPosition());
             }

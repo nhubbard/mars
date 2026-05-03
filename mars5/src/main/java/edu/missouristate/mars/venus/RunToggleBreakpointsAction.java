@@ -54,6 +54,6 @@ public class RunToggleBreakpointsAction extends GuiAction {
    * When this option is selected, tell text segment window to clear breakpoints in its table model.
    */
   public void actionPerformed(ActionEvent e) {
-    Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().toggleBreakpoints();
+    VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow().toggleBreakpoints();
   }
 }

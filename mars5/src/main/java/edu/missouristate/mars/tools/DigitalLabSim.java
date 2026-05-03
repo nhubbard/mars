@@ -1,6 +1,7 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Memory;
@@ -110,13 +111,13 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
           System.exit(0);
         }
       }
-      if (Globals.getGui() != null
-          && Globals.getGui()
+      if (VenusUI.instance() != null
+          && VenusUI.instance()
               .getMainPane()
               .getExecutePane()
               .getTextSegmentWindow()
               .getCodeHighlighting()) {
-        Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+        VenusUI.instance().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
       }
     }
   }

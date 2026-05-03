@@ -10,6 +10,7 @@
 package edu.missouristate.mars.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.Toolkit;
 import java.awt.event.*;
 import java.util.Hashtable;
@@ -176,7 +177,7 @@ public class DefaultInputHandler extends InputHandler {
           currentBindings = bindings;
           // No binding for this keyStroke, pass it to menu
           // (mnemonic, accelerator).  DPS 4-may-2010
-          Globals.getGui().dispatchEventToMenu(evt);
+          VenusUI.instance().dispatchEventToMenu(evt);
           evt.consume();
         }
         case ActionBinding(ActionListener action) -> {

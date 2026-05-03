@@ -1,10 +1,10 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.venus.*;
 import java.util.*;
 
 /*
@@ -78,9 +78,15 @@ public class Globals {
 
   /* Flag that indicates whether or not instructionSet has been initialized. */
   private static boolean initialized = false;
-  // FIXME(phase-2): extract a MarsGuiProxy interface from VenusUI so Globals can live in mars-core
-  //   without a compile-time dep on mars-plugin. Replace VenusUI here with that interface.
-  static VenusUI gui = null;
+  private static final MarsGuiProxy HEADLESS_DEFAULT = new MarsGuiProxy() {
+    public boolean isGuiMode() { return false; }
+    public void postMessage(String s) { System.err.print(s); }
+    public void postRunMessage(String s) { System.out.print(s); }
+    public String readInput(int maxLength) { return ""; }
+    public String readInputWithPrompt(String prompt) { System.err.print(prompt); return ""; }
+    public void clearRunConsole() {}
+  };
+  static MarsGuiProxy gui = HEADLESS_DEFAULT;
 
   /** The current MARS version number. Can't wait for "initialize()" call to get it. */
   public static final String version = "4.6";
@@ -125,11 +131,11 @@ public class Globals {
     return "Pete Sanderson and Kenneth Vollmar";
   }
 
-  public static void setGui(VenusUI g) {
+  public static void setGui(MarsGuiProxy g) {
     gui = g;
   }
 
-  public static VenusUI getGui() {
+  public static MarsGuiProxy getGui() {
     return gui;
   }
 

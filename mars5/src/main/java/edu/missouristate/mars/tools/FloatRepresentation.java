@@ -3,6 +3,7 @@ package edu.missouristate.mars.tools;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -414,8 +415,8 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
       // HERE'S A HACK!!  Want to immediately display the updated register value in MARS
       // but that code was not written for event-driven update (e.g. Observer) --
       // it was written to poll the registers for their values.  So we force it to do so.
-      if (Globals.getGui() != null) {
-        Globals.getGui().getRegistersPane().getCoprocessor1Window().updateRegisters();
+      if (VenusUI.instance() != null) {
+        VenusUI.instance().getRegistersPane().getCoprocessor1Window().updateRegisters();
       }
     }
   }

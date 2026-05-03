@@ -10,5 +10,7 @@
     <orderEntry type="jdk" jdkName="homebrew-25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="mars5.main" />
+    <orderEntry type="module" module-name="mars5.mars-core.main" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: org.jspecify:jspecify:1.0.0" level="project" />
   </component>
 </module>

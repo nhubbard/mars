@@ -4,8 +4,9 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-// FIXME(phase-2): gui-coupling — venus.*, java.awt.event.*, javax.swing.* — SwingWorker threading
-// and GUI update hooks
+// FIXME(phase-2): gui-coupling — venus.* (RunStepAction/RunGoAction/RunSpeedPanel in finished()),
+// javax.swing.SwingWorker — remaining GUI action coupling
+import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.venus.*;
 import java.util.*;
 import javax.swing.*;
@@ -47,7 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Simulator extends Observable {
   private SimThread simulatorThread;
   private static Simulator simulator = null; // Singleton object
-  private static Runnable interactiveGUIUpdater = null;
+  private static volatile SimulatorObserver observer = null;
   // Others can set this true to indicate external interrupt.  Initially used
   // to simulate keyboard and display interrupts.  The device is identified
   // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
@@ -70,10 +71,7 @@ public class Simulator extends Observable {
    * @return the Simulator object in use
    */
   public static Simulator getInstance() {
-    // Do NOT change this to create the Simulator at load time (in declaration above)!
-    // Its constructor looks for the GUI, which at load time is not created yet,
-    // and incorrectly leaves interactiveGUIUpdater null!  This causes runtime
-    // exceptions while running in timed mode.
+    // Lazily instantiated so VenusUI can register its SimulatorObserver after construction.
     if (simulator == null) {
       simulator = new Simulator();
     }
@@ -82,9 +80,11 @@ public class Simulator extends Observable {
 
   private Simulator() {
     simulatorThread = null;
-    if (Globals.getGui() != null) {
-      interactiveGUIUpdater = new UpdateGUI();
-    }
+  }
+
+  /** Registers a callback for per-step and stop events. Called by VenusUI (GUI mode) on startup. */
+  public void setObserver(SimulatorObserver obs) {
+    observer = obs;
   }
 
   /**
@@ -226,7 +226,7 @@ public class Simulator extends Observable {
      * @param starter the GUI component responsible for this call, usually GO or STEP. null if none.
      */
     SimThread(MIPSprogram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
-      super(Globals.getGui() != null);
+      super(Globals.getGui().isGuiMode());
       this.pc = pc;
       this.maxSteps = maxSteps;
       this.breakPoints = breakPoints;
@@ -430,12 +430,13 @@ public class Simulator extends Observable {
         //                              using Run,  not Step (maxSteps > 1) AND
         //                              running slowly enough for GUI to keep up
         // if (Globals.getGui() != null && maxSteps != 1 &&
-        if (interactiveGUIUpdater != null
+        if (observer != null
             && maxSteps != 1
             && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
-          SwingUtilities.invokeLater(interactiveGUIUpdater);
+          final int stepPc = pc;
+          SwingUtilities.invokeLater(() -> observer.onStepComplete(stepPc));
         }
-        if (Globals.getGui() != null
+        if (Globals.getGui().isGuiMode()
             || Globals
                 .runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by
           // stand-alone tool
@@ -507,7 +508,7 @@ public class Simulator extends Observable {
      */
     public void finished() {
       // If running from the command-line, then there is no GUI to update.
-      if (Globals.getGui() == null) {
+      if (!Globals.getGui().isGuiMode()) {
         return;
       }
       String starterName = (String) starter.getValue(AbstractAction.NAME);
@@ -531,21 +532,4 @@ public class Simulator extends Observable {
     }
   }
 
-  private static class UpdateGUI implements Runnable {
-    public void run() {
-      if (Globals.getGui().getRegistersPane().getSelectedComponent()
-          == Globals.getGui().getMainPane().getExecutePane().getRegistersWindow()) {
-        Globals.getGui().getMainPane().getExecutePane().getRegistersWindow().updateRegisters();
-      } else {
-        Globals.getGui().getMainPane().getExecutePane().getCoprocessor1Window().updateRegisters();
-      }
-      Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
-      Globals.getGui()
-          .getMainPane()
-          .getExecutePane()
-          .getTextSegmentWindow()
-          .setCodeHighlighting(true);
-      Globals.getGui().getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
-    }
-  }
 }

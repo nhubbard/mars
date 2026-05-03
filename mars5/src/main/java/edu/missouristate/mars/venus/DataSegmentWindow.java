@@ -448,8 +448,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   //   Returns the JScrollPane for the Address/Data part of the Data Segment window.
   private JScrollPane generateDataPanel() {
     dataData = new Object[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
-    int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
-    int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address = this.homeAddress;
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
       dataData[row][ADDRESS_COLUMN] =
@@ -527,7 +527,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   private int getValueDisplayFormat() {
     return (asciiDisplay)
         ? NumberDisplayBaseChooser.ASCII
-        : Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+        : VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
   }
 
   /**
@@ -539,7 +539,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   public void updateModelForMemoryRange(int firstAddr) {
     if (tablePanel.getComponentCount() == 0) return; // ignore if no content to change
     int valueBase = getValueDisplayFormat();
-    int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address = firstAddr;
     TableModel dataModel = dataTable.getModel();
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
@@ -611,7 +611,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     }
     int row = offset / BYTES_PER_ROW;
     int column = (offset % BYTES_PER_ROW) / BYTES_PER_VALUE + 1; // column 0 reserved for address
-    int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
     ((DataTableModel) dataTable.getModel())
         .setDisplayAndModelValueAt(
             NumberDisplayBaseChooser.formatNumber(value, valueBase), row, column);
@@ -623,7 +623,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
    */
   public void updateDataAddresses() {
     if (tablePanel.getComponentCount() == 0) return; // ignore if no content to change
-    int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address = this.firstAddress;
     String formattedAddress;
     for (int i = 0; i < NUMBER_OF_ROWS; i++) {
@@ -656,7 +656,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
   /** Reset all data display values to 0 */
   public void resetValues() {
-    int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
     TableModel dataModel = dataTable.getModel();
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
       for (int column = 1; column < NUMBER_OF_COLUMNS; column++) {
@@ -1013,7 +1013,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
           return;
         }
       } // end synchronized block
-      int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }

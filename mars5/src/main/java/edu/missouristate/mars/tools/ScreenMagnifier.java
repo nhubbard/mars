@@ -1,6 +1,7 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -107,7 +108,7 @@ class Magnifier extends JFrame implements ComponentListener {
     createSettings();
     // If running withint MARS, set to its icon image; if not fuggetit.
     try {
-      this.setIconImage(Globals.getGui().getIconImage());
+      this.setIconImage(VenusUI.instance().getIconImage());
     } catch (Exception ignored) {
     }
     getContentPane().setLayout(new BorderLayout());
@@ -266,7 +267,7 @@ class Magnifier extends JFrame implements ComponentListener {
     // If this doesn't work, e.g. getGui() returns null, then there
     // are no alternatives so just let what would happen, happen.
     try {
-      Globals.getGui().update(Globals.getGui().getGraphics());
+      VenusUI.instance().update(VenusUI.instance().getGraphics());
     } catch (Exception ignored) {
     }
     // Perform the screen capture.

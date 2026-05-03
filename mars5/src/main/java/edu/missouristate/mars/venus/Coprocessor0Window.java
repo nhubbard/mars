@@ -118,7 +118,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
   public void clearWindow() {
     this.clearHighlighting();
     Coprocessor0.resetRegisters();
-    this.updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /** Clear highlight background color from any row currently highlighted. */
@@ -139,7 +139,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
 
   /** Update register display using current display base (10 or 16) */
   public void updateRegisters() {
-    this.updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -200,7 +200,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
         // AddressCellRenderer class in DataSegmentWindow.java.
         this.highlighting = true;
         this.highlightCellForRegister((Register) observable);
-        Globals.getGui().getRegistersPane().setSelectedComponent(this);
+        VenusUI.instance().getRegistersPane().setSelectedComponent(this);
       }
     }
   }
@@ -319,7 +319,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
       synchronized (Globals.memoryAndRegistersLock) {
         Coprocessor0.updateRegister(registers[row].getNumber(), val);
       }
-      int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }

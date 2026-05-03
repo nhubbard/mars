@@ -263,13 +263,13 @@ public class LabelsWindow extends JInternalFrame {
       }
       // Scroll to this address, either in Text Segment display or Data Segment display
       if (Memory.inTextSegment(address) || Memory.inKernelTextSegment(address)) {
-        Globals.getGui()
+        VenusUI.instance()
             .getMainPane()
             .getExecutePane()
             .getTextSegmentWindow()
             .selectStepAtAddress(address);
       } else {
-        Globals.getGui()
+        VenusUI.instance()
             .getMainPane()
             .getExecutePane()
             .getDataSegmentWindow()
@@ -310,7 +310,7 @@ public class LabelsWindow extends JInternalFrame {
     private JTable generateLabelTable() {
       SymbolTable symbolTable =
           (myMIPSprogram == null) ? Globals.symbolTable : myMIPSprogram.getLocalSymbolTable();
-      int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+      int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
       if (textLabels.isSelected() && dataLabels.isSelected()) {
         symbols = symbolTable.getAllSymbols();
       } else if (textLabels.isSelected()) {
@@ -344,7 +344,7 @@ public class LabelsWindow extends JInternalFrame {
 
     public void updateLabelAddresses() {
       if (labelPanel.getComponentCount() == 0) return; // ignore if no content to change
-      int addressBase = Globals.getGui().getMainPane().getExecutePane().getAddressDisplayBase();
+      int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
       int address;
       String formattedAddress;
       int numSymbols = (labelData == null) ? 0 : labelData.length;
@@ -462,8 +462,8 @@ public class LabelsWindow extends JInternalFrame {
           columnNames = sortColumnHeadings[sortState];
           Globals.getSettings().setLabelSortState(Integer.toString(sortState));
           setupTable();
-          Globals.getGui().getMainPane().getExecutePane().setLabelWindowVisibility(false);
-          Globals.getGui().getMainPane().getExecutePane().setLabelWindowVisibility(true);
+          VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(false);
+          VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(true);
         }
 
         public void mouseEntered(MouseEvent e) {}

@@ -3,6 +3,7 @@ package edu.missouristate.mars.tools;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -190,7 +191,7 @@ public class ScavengerHunt implements Observer, MarsTool {
       // final JFrame frame = new JFrame("ScavengerHunt");
       // Recommended by Pete Sanderson, 2 Nov. 2006, so that the Tool window and
       // MARS window can be on the screen at the same time.
-      final JDialog frame = new JDialog(Globals.getGui(), "ScavengerHunt");
+      final JDialog frame = new JDialog(VenusUI.instance(), "ScavengerHunt");
 
       // System.out.println("ScavengerHuntRunnable.constructor: starting....");
 

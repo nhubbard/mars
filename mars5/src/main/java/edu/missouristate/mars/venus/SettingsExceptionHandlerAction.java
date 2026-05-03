@@ -55,7 +55,7 @@ public class SettingsExceptionHandlerAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     initialSelected = Globals.getSettings().getExceptionHandlerEnabled();
     initialPathname = Globals.getSettings().getExceptionHandler();
-    exceptionHandlerDialog = new JDialog(Globals.getGui(), "Exception Handler", true);
+    exceptionHandlerDialog = new JDialog(VenusUI.instance(), "Exception Handler", true);
     exceptionHandlerDialog.setContentPane(buildDialogPanel());
     exceptionHandlerDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     exceptionHandlerDialog.addWindowListener(
@@ -65,7 +65,7 @@ public class SettingsExceptionHandlerAction extends GuiAction {
           }
         });
     exceptionHandlerDialog.pack();
-    exceptionHandlerDialog.setLocationRelativeTo(Globals.getGui());
+    exceptionHandlerDialog.setLocationRelativeTo(VenusUI.instance());
     exceptionHandlerDialog.setVisible(true);
   }
 
@@ -150,7 +150,7 @@ public class SettingsExceptionHandlerAction extends GuiAction {
         File file = new File(pathname);
         if (file.exists()) chooser.setSelectedFile(file);
       }
-      int result = chooser.showOpenDialog(Globals.getGui());
+      int result = chooser.showOpenDialog(VenusUI.instance());
       if (result == JFileChooser.APPROVE_OPTION) {
         pathname = chooser.getSelectedFile().getPath(); // .replaceAll("\\\\","/");
         exceptionHandlerDisplay.setText(pathname);

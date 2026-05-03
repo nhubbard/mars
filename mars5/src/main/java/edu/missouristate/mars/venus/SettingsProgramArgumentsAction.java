@@ -47,13 +47,13 @@ public class SettingsProgramArgumentsAction extends GuiAction {
     boolean selected = ((JCheckBoxMenuItem) e.getSource()).isSelected();
     Globals.getSettings().setProgramArguments(selected);
     if (selected) {
-      Globals.getGui()
+      VenusUI.instance()
           .getMainPane()
           .getExecutePane()
           .getTextSegmentWindow()
           .addProgramArgumentsPanel();
     } else {
-      Globals.getGui()
+      VenusUI.instance()
           .getMainPane()
           .getExecutePane()
           .getTextSegmentWindow()

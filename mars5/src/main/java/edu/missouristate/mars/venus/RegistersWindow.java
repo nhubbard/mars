@@ -126,7 +126,7 @@ public class RegistersWindow extends JPanel implements Observer {
   public void clearWindow() {
     this.clearHighlighting();
     RegisterFile.resetRegisters();
-    this.updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /** Clear highlight background color from any cell currently highlighted. */
@@ -147,7 +147,7 @@ public class RegistersWindow extends JPanel implements Observer {
 
   /** update register display using current number base (10 or 16) */
   public void updateRegisters() {
-    updateRegisters(Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase());
+    updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -213,7 +213,7 @@ public class RegistersWindow extends JPanel implements Observer {
         // AddressCellRenderer class in DataSegmentWindow.java.
         this.highlighting = true;
         this.highlightCellForRegister((Register) observable);
-        Globals.getGui().getRegistersPane().setSelectedComponent(this);
+        VenusUI.instance().getRegistersPane().setSelectedComponent(this);
       }
     }
   }
@@ -336,7 +336,7 @@ public class RegistersWindow extends JPanel implements Observer {
       synchronized (Globals.memoryAndRegistersLock) {
         RegisterFile.updateRegister(row, val);
       }
-      int valueBase = Globals.getGui().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }

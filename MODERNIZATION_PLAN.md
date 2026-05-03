@@ -13,6 +13,7 @@
 3. [Phase 0 — Gradle Migration](#phase-0--gradle-migration)
 4. [Phase 1 — Core Isolation and Interface Design](#phase-1--core-isolation-and-interface-design)
 5. [Phase 2 — Core Rewrite](#phase-2--core-rewrite)
+   - [2.0 — Decouple Globals from VenusUI](#20--decouple-globals-from-venusui-prerequisite-for-all-module-moves)
 6. [Phase 3 — IntelliJ Plugin](#phase-3--intellij-plugin)
 7. [Cross-Cutting Concerns](#cross-cutting-concerns)
 8. [Risk Register](#risk-register)
@@ -402,6 +403,349 @@ Update `build.gradle.kts` in each subproject to declare the right dependencies:
 **Prerequisites:** Phase 1 complete (clean module boundaries, characterization tests passing).
 
 Work through the core subsystems in this order (each is a separate PR):
+
+### 2.0 — Decouple `Globals` from `VenusUI` (prerequisite for all module moves)
+
+This is the single most important step in Phase 2 and must be completed before any source file can physically move from the root module into `mars-core`. The blocker is `Globals.java`, which holds a direct compile-time reference to `VenusUI` — a Swing class that will live in `mars-plugin`. Until that reference is replaced by an interface defined in `mars-core`, the compiler dependency graph prevents the split.
+
+#### 2.0.1 — Audit all `Globals.getGui()` call sites
+
+Run:
+```bash
+grep -rn "Globals.getGui()" src/main/java --include="*.java"
+```
+
+Classify every call site into one of two categories:
+
+**Category A — Core packages (need abstraction; currently preventing module move):**
+
+| Class | Call | Why it is a problem |
+|---|---|---|
+| `simulator.Simulator` | `.getRegistersPane()`, `.getMainPane()`, `.getExecutePane()`, `.getTextSegmentWindow()`, `.highlightStepAtPC()` | 8+ distinct GUI calls; drives register/memory panel repaints directly from the sim loop |
+| `util.SystemIO` | `.getMessagesPane().getInputString()`, `.getMessagesPane().postRunMessage()` | Console I/O routing for 5 read/write methods |
+| `mips.instructions.syscalls.SyscallClearScreen` | `.getMessagesPane().getRunTextArea().setText("")` | Direct JTextArea manipulation from a syscall |
+| `mips.instructions.syscalls.SyscallExit2` | `== null` null-check | Used only as a headless-mode flag |
+| `mips.hardware.Memory` | `== null` null-check | Used only as a headless-mode flag |
+
+**Category B — Tools and venus packages (no abstraction needed; will move to `mars-plugin`):**
+
+All callers in `edu.missouristate.mars.tools.*` (`DigitalLabSim`, `FloatRepresentation`, `KeyboardAndDisplaySimulator`, `ScreenMagnifier`, `ScavengerHunt`, `MipsXray`, `AbstractMarsToolAndApplication`) and `edu.missouristate.mars.venus.*`. These classes are already GUI-only and will move to `mars-plugin` as a unit. They can continue calling `Globals.getGui()` returning `VenusUI` without any change until Phase 3 removes them.
+
+Only Category A callers need to be fixed in this step.
+
+#### 2.0.2 — Define `MarsGuiProxy` in `mars-core`
+
+Create `mars-core/src/main/java/edu/missouristate/mars/api/MarsGuiProxy.java`:
+
+```java
+package edu.missouristate.mars.api;
+
+/**
+ * Minimal GUI abstraction visible to mars-core. Implementations:
+ *   - VenusUI (mars-plugin) — wraps MessagesPane and window panes
+ *   - HeadlessGuiProxy (mars-cli) — routes to System.in / System.out
+ */
+public interface MarsGuiProxy {
+    /** True when running with a Swing GUI; false in headless/CLI mode. */
+    boolean isGuiMode();
+
+    /**
+     * Post a message to the "MARS Messages" console (the non-program output area).
+     * In headless mode, writes to System.err.
+     */
+    void postMessage(String message);
+
+    /**
+     * Post a string to the "Run I/O" console (the program stdout area).
+     * In headless mode, writes to System.out.
+     */
+    void postRunMessage(String message);
+
+    /**
+     * Read a string from the "Run I/O" console (program stdin).
+     * @param maxLength Maximum characters to read; -1 means read until newline.
+     * In headless mode, reads from System.in.
+     */
+    String readInput(int maxLength);
+
+    /**
+     * Clear the "Run I/O" console. No-op in headless mode.
+     */
+    void clearRunConsole();
+}
+```
+
+This interface deliberately does not expose any Swing types. It covers exactly the operations used by Category A callers.
+
+#### 2.0.3 — Define `SimulatorObserver` in `mars-core`
+
+`Simulator.java` is the deepest coupling: it calls 8+ different GUI methods to repaint register windows, memory segments, and highlight the current PC line after each simulation step. These cannot be routed through `MarsGuiProxy` without making the interface GUI-aware.
+
+Instead, introduce a callback interface that `Simulator` fires after each step, and let `VenusUI` subscribe to it and do its own repainting:
+
+Create `mars-core/src/main/java/edu/missouristate/mars/api/SimulatorObserver.java`:
+
+```java
+package edu.missouristate.mars.api;
+
+/**
+ * Receives notifications from the simulator after each step and on stop.
+ * VenusUI registers itself to refresh the register, memory, and text
+ * segment windows. The CLI implementation is a no-op.
+ */
+public interface SimulatorObserver {
+    /**
+     * Called after each instruction is executed.
+     * @param pc The program counter value of the instruction just executed.
+     */
+    void onStepComplete(int pc);
+
+    /**
+     * Called when the simulation halts for any reason (normal exit, exception,
+     * pause, max-steps reached).
+     * @param reason One of: NORMAL_EXIT, EXCEPTION, PAUSE, MAX_STEPS
+     */
+    void onSimulationStop(StopEvent reason);
+}
+```
+
+Add registration to `Simulator`:
+
+```java
+// In Simulator.java — replacing the eight direct GUI calls in the inner run loop
+private SimulatorObserver observer = null;
+
+public void setObserver(SimulatorObserver observer) {
+    this.observer = observer;
+}
+
+// In the step-execution loop, replace all getGui().getRegistersPane()... calls with:
+if (observer != null) {
+    observer.onStepComplete(RegisterFile.getProgramCounter());
+}
+```
+
+In `VenusUI`, after creating the `Simulator` instance:
+
+```java
+Simulator.getInstance().setObserver(new SimulatorObserver() {
+    @Override
+    public void onStepComplete(int pc) {
+        SwingUtilities.invokeLater(() -> {
+            // All the repaint calls that used to be inside Simulator:
+            if (getRegistersPane().getSelectedComponent() == getMainPane()
+                    .getExecutePane().getRegistersWindow()) {
+                getMainPane().getExecutePane().getRegistersWindow().updateRegisters();
+            } else {
+                getMainPane().getExecutePane().getCoprocessor1Window().updateRegisters();
+            }
+            getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+            getMainPane().getExecutePane().getLabelsWindow().updateLabelAddresses();
+            getMainPane().getExecutePane().getTextSegmentWindow().highlightStepAtPC();
+        });
+    }
+
+    @Override
+    public void onSimulationStop(StopEvent reason) {
+        SwingUtilities.invokeLater(() -> {
+            // Any teardown repaints — e.g. clear step highlight on normal exit
+        });
+    }
+});
+```
+
+After this change, `Simulator.java` contains zero references to any `mars.venus` class.
+
+#### 2.0.4 — Provide `HeadlessGuiProxy` in `mars-cli`
+
+Create `mars-cli/src/main/java/edu/missouristate/mars/cli/HeadlessGuiProxy.java`:
+
+```java
+package edu.missouristate.mars.cli;
+
+import edu.missouristate.mars.api.MarsGuiProxy;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+/** MarsGuiProxy implementation for headless / command-line execution. */
+public final class HeadlessGuiProxy implements MarsGuiProxy {
+    private final BufferedReader stdin = new BufferedReader(
+        new InputStreamReader(System.in));
+
+    @Override public boolean isGuiMode() { return false; }
+
+    @Override public void postMessage(String message) {
+        System.err.print(message);
+    }
+
+    @Override public void postRunMessage(String message) {
+        System.out.print(message);
+    }
+
+    @Override public String readInput(int maxLength) {
+        try {
+            String line = stdin.readLine();
+            if (line == null) return "";
+            return maxLength < 0 ? line
+                : line.substring(0, Math.min(line.length(), maxLength));
+        } catch (java.io.IOException e) {
+            return "";
+        }
+    }
+
+    @Override public void clearRunConsole() { /* no-op */ }
+}
+```
+
+In `MarsLaunch` (CLI entry point), set this before calling `Globals.initialize()`:
+
+```java
+Globals.setGui(new HeadlessGuiProxy());
+```
+
+#### 2.0.5 — Make `VenusUI` implement `MarsGuiProxy`
+
+In `VenusUI.java`:
+
+```java
+public class VenusUI extends JFrame implements MarsGuiProxy {
+
+    @Override
+    public boolean isGuiMode() { return true; }
+
+    @Override
+    public void postMessage(String message) {
+        getMessagesPane().postMarsMessage(message);
+    }
+
+    @Override
+    public void postRunMessage(String message) {
+        getMessagesPane().postRunMessage(message);
+    }
+
+    @Override
+    public String readInput(int maxLength) {
+        return getMessagesPane().getInputString(maxLength);
+    }
+
+    @Override
+    public void clearRunConsole() {
+        getMessagesPane().getRunTextArea().setText("");
+    }
+}
+```
+
+`VenusUI` gains the interface but loses nothing — all four methods delegate to the existing `MessagesPane` calls that were previously scattered across `SystemIO` and `SyscallClearScreen`.
+
+#### 2.0.6 — Change `Globals.gui` from `VenusUI` to `MarsGuiProxy`
+
+In `Globals.java`:
+
+```java
+// Before:
+import edu.missouristate.mars.venus.*;
+...
+static VenusUI gui = null;
+public static void setGui(VenusUI g) { gui = g; }
+public static VenusUI getGui() { return gui; }
+
+// After:
+import edu.missouristate.mars.api.MarsGuiProxy;
+...
+static MarsGuiProxy gui = null;
+public static void setGui(MarsGuiProxy g) { gui = g; }
+public static MarsGuiProxy getGui() { return gui; }
+```
+
+Remove `import edu.missouristate.mars.venus.*` from `Globals.java`. This is the commit that breaks the compile-time dependency between `mars-core` and `mars-plugin`. After this change, `Globals.java` can be moved to `mars-core`.
+
+#### 2.0.7 — Update Category A callers to use `MarsGuiProxy`
+
+Fix each core caller in turn. After each fix, run `./gradlew compileJava` to confirm no regressions.
+
+**`util.SystemIO`:**
+
+Replace every `Globals.getGui().getMessagesPane().*` call with the corresponding `MarsGuiProxy` method:
+
+```java
+// Before:
+if (Globals.getGui() == null) {
+    // stdin path
+} else {
+    Globals.getGui().getMessagesPane().postRunMessage(string);
+}
+
+// After:
+MarsGuiProxy proxy = Globals.getGui();
+if (!proxy.isGuiMode()) {
+    // stdin path (unchanged)
+} else {
+    proxy.postRunMessage(string);
+}
+```
+
+Apply the same pattern to all five read/write methods in `SystemIO`.
+
+**`mips.instructions.syscalls.SyscallClearScreen`:**
+
+```java
+// Before:
+if (Globals.getGui() == null) return;
+JTextArea runConsole = Globals.getGui().getMessagesPane().getRunTextArea();
+runConsole.setText("");
+
+// After:
+Globals.getGui().clearRunConsole();
+```
+
+**`mips.instructions.syscalls.SyscallExit2` and `mips.hardware.Memory`:**
+
+Both use `Globals.getGui() == null` purely as a headless-mode flag. Replace with:
+
+```java
+// Before:
+if (Globals.getGui() == null) { /* headless path */ }
+
+// After:
+if (!Globals.getGui().isGuiMode()) { /* headless path */ }
+```
+
+Note: `Globals.getGui()` will never be null after this change — `HeadlessGuiProxy` is registered before `Globals.initialize()` in both CLI and GUI startup paths. The null check becomes a mode check.
+
+#### 2.0.8 — Verify the dependency cut is complete
+
+After all sub-steps above are complete:
+
+```bash
+# Must return zero results:
+grep -rn "import edu.missouristate.mars.venus" \
+  src/main/java/edu/missouristate/mars/assembler \
+  src/main/java/edu/missouristate/mars/mips \
+  src/main/java/edu/missouristate/mars/simulator \
+  src/main/java/edu/missouristate/mars/util \
+  src/main/java/edu/missouristate/mars/Globals.java
+
+# Must return zero results:
+grep -rn "javax.swing\|java.awt" \
+  src/main/java/edu/missouristate/mars/assembler \
+  src/main/java/edu/missouristate/mars/mips \
+  src/main/java/edu/missouristate/mars/simulator \
+  src/main/java/edu/missouristate/mars/Globals.java
+```
+
+Run `./gradlew build` and verify all 60 characterization tests still pass. `Globals.java`, all of `simulator.*`, `util.SystemIO`, and the syscall classes are now ready to move to `mars-core` in step 1.8 (or its Phase 2 equivalent if the move was deferred).
+
+**Step 2.0 exit criteria:**
+- `Globals.getGui()` returns `MarsGuiProxy`, not `VenusUI`.
+- `Globals.java` has no `import edu.missouristate.mars.venus.*`.
+- `Simulator.java` has no direct calls to any `mars.venus` method; all GUI updates are fired through `SimulatorObserver`.
+- `SystemIO.java`, `SyscallClearScreen.java`, `SyscallExit2.java`, `Memory.java` contain no `mars.venus` imports.
+- `VenusUI` implements `MarsGuiProxy`; the four methods delegate to `MessagesPane`.
+- `HeadlessGuiProxy` is instantiated in the CLI launch path before `Globals.initialize()`.
+- All 60 characterization tests pass.
+- Build is clean with zero new warnings.
+
+---
 
 ### 2.1 — Replace `Vector` and `Hashtable` with modern collections
 

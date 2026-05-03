@@ -113,7 +113,7 @@ public class SettingsHighlightingAction extends GuiAction {
   /** When this action is triggered, launch a dialog to view and modify editor settings. */
   public void actionPerformed(ActionEvent e) {
     highlightDialog =
-        new JDialog(Globals.getGui(), "Runtime Table Highlighting Colors and Fonts", true);
+        new JDialog(VenusUI.instance(), "Runtime Table Highlighting Colors and Fonts", true);
     highlightDialog.setContentPane(buildDialogPanel());
     highlightDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     highlightDialog.addWindowListener(
@@ -123,7 +123,7 @@ public class SettingsHighlightingAction extends GuiAction {
           }
         });
     highlightDialog.pack();
-    highlightDialog.setLocationRelativeTo(Globals.getGui());
+    highlightDialog.setLocationRelativeTo(VenusUI.instance());
     highlightDialog.setVisible(true);
   }
 
@@ -337,7 +337,7 @@ public class SettingsHighlightingAction extends GuiAction {
     }
     settings.setDataSegmentHighlighting(currentDataHighlightSetting);
     settings.setRegistersHighlighting(currentRegisterHighlightSetting);
-    ExecutePane executePane = Globals.getGui().getMainPane().getExecutePane();
+    ExecutePane executePane = VenusUI.instance().getMainPane().getExecutePane();
     executePane.getRegistersWindow().refresh();
     executePane.getCoprocessor0Window().refresh();
     executePane.getCoprocessor1Window().refresh();

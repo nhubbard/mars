@@ -3,8 +3,6 @@ package edu.missouristate.mars.util;
 import edu.missouristate.mars.*;
 import java.io.*;
 
-// FIXME(phase-2): gui-coupling — SystemIO calls Globals.getGui().getMessagesPane() for console I/O;
-//   replace with SyscallEnvironment injection when Globals singleton is removed.
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -78,20 +76,16 @@ public class SystemIO {
    */
   public static int readInteger(int serviceNumber) {
     String input = "0";
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
+    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+      input = Globals.getGui().readInputWithPrompt(
+          "Enter an integer value (syscall " + serviceNumber + ")");
     } else {
-      if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-        input =
-            Globals.getGui()
-                .getMessagesPane()
-                .getInputString("Enter an integer value (syscall " + serviceNumber + ")");
-      } else {
-        input = Globals.getGui().getMessagesPane().getInputString(-1);
-      }
+      input = Globals.getGui().readInput(-1);
     }
 
     // Client is responsible for catching NumberFormatException
@@ -107,20 +101,16 @@ public class SystemIO {
    */
   public static float readFloat(int serviceNumber) {
     String input = "0";
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
+    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+      input = Globals.getGui().readInputWithPrompt(
+          "Enter a float value (syscall " + serviceNumber + ")");
     } else {
-      if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-        input =
-            Globals.getGui()
-                .getMessagesPane()
-                .getInputString("Enter a float value (syscall " + serviceNumber + ")");
-      } else {
-        input = Globals.getGui().getMessagesPane().getInputString(-1);
-      }
+      input = Globals.getGui().readInput(-1);
     }
     return Float.parseFloat(input.trim());
   }
@@ -135,30 +125,26 @@ public class SystemIO {
    */
   public static double readDouble(int serviceNumber) {
     String input = "0";
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
+    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+      input = Globals.getGui().readInputWithPrompt(
+          "Enter a double value (syscall " + serviceNumber + ")");
     } else {
-      if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-        input =
-            Globals.getGui()
-                .getMessagesPane()
-                .getInputString("Enter a double value (syscall " + serviceNumber + ")");
-      } else {
-        input = Globals.getGui().getMessagesPane().getInputString(-1);
-      }
+      input = Globals.getGui().readInput(-1);
     }
     return Double.parseDouble(input.trim());
   }
 
   /** Implements syscall having 4 in $v0, to print a string. */
   public static void printString(String string) {
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       System.out.print(string);
     } else {
-      Globals.getGui().getMessagesPane().postRunMessage(string);
+      Globals.getGui().postRunMessage(string);
     }
   }
 
@@ -171,27 +157,18 @@ public class SystemIO {
    */
   public static String readString(int serviceNumber, int maxLength) {
     String input = "";
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
+    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+      input = Globals.getGui().readInputWithPrompt(
+          "Enter a string of maximum length " + maxLength + " (syscall " + serviceNumber + ")");
     } else {
-      if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-        input =
-            Globals.getGui()
-                .getMessagesPane()
-                .getInputString(
-                    "Enter a string of maximum length "
-                        + maxLength
-                        + " (syscall "
-                        + serviceNumber
-                        + ")");
-      } else {
-        input = Globals.getGui().getMessagesPane().getInputString(maxLength);
-        if (input.endsWith("\n")) {
-          input = input.substring(0, input.length() - 1);
-        }
+      input = Globals.getGui().readInput(maxLength);
+      if (input.endsWith("\n")) {
+        input = input.substring(0, input.length() - 1);
       }
     }
 
@@ -212,20 +189,16 @@ public class SystemIO {
   public static int readChar(int serviceNumber) {
     String input = "0";
     int returnValue;
-    if (Globals.getGui() == null) {
+    if (!Globals.getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
+    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+      input = Globals.getGui().readInputWithPrompt(
+          "Enter a character value (syscall " + serviceNumber + ")");
     } else {
-      if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
-        input =
-            Globals.getGui()
-                .getMessagesPane()
-                .getInputString("Enter a character value (syscall " + serviceNumber + ")");
-      } else {
-        input = Globals.getGui().getMessagesPane().getInputString(1);
-      }
+      input = Globals.getGui().readInput(1);
     }
     returnValue = input.charAt(0);
 
@@ -243,9 +216,9 @@ public class SystemIO {
   public static int writeToFile(int fd, byte[] myBuffer, int lengthRequested) {
     /////////////// DPS 8-Jan-2013  ////////////////////////////////////////////////////
     /// Write to STDOUT or STDERR file descriptor while using IDE - write to Messages pane.
-    if ((fd == STDOUT || fd == STDERR) && Globals.getGui() != null) {
+    if ((fd == STDOUT || fd == STDERR) && Globals.getGui().isGuiMode()) {
       String data = new String(myBuffer);
-      Globals.getGui().getMessagesPane().postRunMessage(data);
+      Globals.getGui().postRunMessage(data);
       return data.length();
     }
     ///////////////////////////////////////////////////////////////////////////////////
@@ -299,8 +272,8 @@ public class SystemIO {
     int retValue;
     /////////////// DPS 8-Jan-2013  //////////////////////////////////////////////////
     /// Read from STDIN file descriptor while using IDE - get input from Messages pane.
-    if (fd == STDIN && Globals.getGui() != null) {
-      String input = Globals.getGui().getMessagesPane().getInputString(lengthRequested);
+    if (fd == STDIN && Globals.getGui().isGuiMode()) {
+      String input = Globals.getGui().readInput(lengthRequested);
       byte[] bytesRead = input.getBytes();
       for (int i = 0; i < myBuffer.length; i++) {
         myBuffer[i] = (i < bytesRead.length) ? bytesRead[i] : 0;

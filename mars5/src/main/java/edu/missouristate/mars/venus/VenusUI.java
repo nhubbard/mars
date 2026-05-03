@@ -1,6 +1,10 @@
 package edu.missouristate.mars.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.api.SimulatorObserver;
+import edu.missouristate.mars.api.StopEvent;
+import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.mips.dump.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -46,7 +50,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * here primarily so both can share the Action objects.
  */
 
-public class VenusUI extends JFrame {
+public class VenusUI extends JFrame implements MarsGuiProxy {
+  private static VenusUI INSTANCE;
+
+  /** Returns the running VenusUI instance. Only valid in GUI mode; null otherwise. */
+  public static VenusUI instance() {
+    return INSTANCE;
+  }
+
   final VenusUI mainUI;
   public final JMenuBar menu;
   final JToolBar toolbar;
@@ -123,6 +134,7 @@ public class VenusUI extends JFrame {
    */
   public VenusUI(String s) {
     super(s);
+    INSTANCE = this;
     mainUI = this;
     Globals.setGui(this);
     this.editor = new Editor(this);
@@ -242,6 +254,22 @@ public class VenusUI extends JFrame {
 
     this.pack();
     this.setVisible(true);
+
+    Simulator.getInstance().setObserver(new SimulatorObserver() {
+      public void onStepComplete(int pc) {
+        SwingUtilities.invokeLater(() -> {
+          if (registersPane.getSelectedComponent() == mainPane.getExecutePane().getRegistersWindow()) {
+            mainPane.getExecutePane().getRegistersWindow().updateRegisters();
+          } else {
+            mainPane.getExecutePane().getCoprocessor1Window().updateRegisters();
+          }
+          mainPane.getExecutePane().getDataSegmentWindow().updateValues();
+          mainPane.getExecutePane().getTextSegmentWindow().setCodeHighlighting(true);
+          mainPane.getExecutePane().getTextSegmentWindow().highlightStepAtPC();
+        });
+      }
+      public void onSimulationStop(StopEvent event) {}
+    });
   }
 
   /*
@@ -1297,6 +1325,40 @@ public class VenusUI extends JFrame {
    */
   public MessagesPane getMessagesPane() {
     return messagesPane;
+  }
+
+  // -------------------------------------------------------------------------
+  // MarsGuiProxy implementation
+  // -------------------------------------------------------------------------
+
+  @Override
+  public boolean isGuiMode() {
+    return true;
+  }
+
+  @Override
+  public void postMessage(String message) {
+    messagesPane.postMarsMessage(message);
+  }
+
+  @Override
+  public void postRunMessage(String message) {
+    messagesPane.postRunMessage(message);
+  }
+
+  @Override
+  public String readInput(int maxLength) {
+    return messagesPane.getInputString(maxLength);
+  }
+
+  @Override
+  public String readInputWithPrompt(String prompt) {
+    return messagesPane.getInputString(prompt);
+  }
+
+  @Override
+  public void clearRunConsole() {
+    messagesPane.getRunTextArea().setText("");
   }
 
   /**

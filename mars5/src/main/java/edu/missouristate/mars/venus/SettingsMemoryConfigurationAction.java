@@ -54,7 +54,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
   /** When this action is triggered, launch a dialog to view and modify editor settings. */
   public void actionPerformed(ActionEvent e) {
     configDialog =
-        new MemoryConfigurationDialog(Globals.getGui(), "MIPS Memory Configuration", true);
+        new MemoryConfigurationDialog(VenusUI.instance(), "MIPS Memory Configuration", true);
     configDialog.setVisible(true);
   }
 
@@ -191,9 +191,9 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
         Globals.getSettings()
             .setMemoryConfiguration(
                 this.selectedConfigurationButton.getConfiguration().configurationIdentifier());
-        Globals.getGui().getRegistersPane().getRegistersWindow().clearHighlighting();
-        Globals.getGui().getRegistersPane().getRegistersWindow().updateRegisters();
-        Globals.getGui()
+        VenusUI.instance().getRegistersPane().getRegistersWindow().clearHighlighting();
+        VenusUI.instance().getRegistersPane().getRegistersWindow().updateRegisters();
+        VenusUI.instance()
             .getMainPane()
             .getExecutePane()
             .getDataSegmentWindow()
@@ -207,7 +207,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
           if (FileStatus.get() == FileStatus.RUNNING) {
             Simulator.getInstance().stopExecution(thisAction);
           }
-          Globals.getGui().getRunAssembleAction().actionPerformed(null);
+          VenusUI.instance().getRunAssembleAction().actionPerformed(null);
         }
       }
     }

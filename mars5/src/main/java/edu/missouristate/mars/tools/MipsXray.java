@@ -132,7 +132,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
   // Insert image in the panel and configure the parameters to run animation.
   protected JComponent buildMainDisplayArea() {
-    mainUI = Globals.getGui();
+    mainUI = VenusUI.instance();
     this.createActionObjects();
     toolbar = this.setUpToolBar();
 
@@ -170,7 +170,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   }
 
   protected JComponent buildMainDisplayArea(String figure) {
-    mainUI = Globals.getGui();
+    mainUI = VenusUI.instance();
     this.createActionObjects();
     toolbar = this.setUpToolBar();
 

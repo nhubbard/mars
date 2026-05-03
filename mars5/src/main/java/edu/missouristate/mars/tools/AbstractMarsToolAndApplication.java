@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.venus.RunSpeedPanel;
+import edu.missouristate.mars.venus.VenusUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -179,7 +180,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
    */
   public void action() {
     this.isBeingUsedAsAMarsTool = true;
-    dialog = new JDialog(Globals.getGui(), this.title);
+    dialog = new JDialog(VenusUI.instance(), this.title);
     // assure the dialog goes away if user clicks the X
     dialog.addWindowListener(
         new WindowAdapter() {
@@ -198,7 +199,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     initializePostGUI();
     dialog.setContentPane(contentPane);
     dialog.pack();
-    dialog.setLocationRelativeTo(Globals.getGui());
+    dialog.setLocationRelativeTo(VenusUI.instance());
     dialog.setVisible(true);
   }
 

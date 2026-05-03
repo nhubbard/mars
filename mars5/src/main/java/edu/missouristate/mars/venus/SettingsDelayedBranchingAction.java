@@ -52,7 +52,7 @@ public class SettingsDelayedBranchingAction extends GuiAction {
     Globals.getSettings()
         .setDelayedBranchingEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
     // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
-    if (Globals.getGui() != null
+    if (VenusUI.instance() != null
         && (FileStatus.get() == FileStatus.RUNNABLE
             || FileStatus.get() == FileStatus.RUNNING
             || FileStatus.get() == FileStatus.TERMINATED)) {
@@ -61,7 +61,7 @@ public class SettingsDelayedBranchingAction extends GuiAction {
       if (FileStatus.get() == FileStatus.RUNNING) {
         Simulator.getInstance().stopExecution(this);
       }
-      Globals.getGui().getRunAssembleAction().actionPerformed(null);
+      VenusUI.instance().getRunAssembleAction().actionPerformed(null);
     }
   }
 }

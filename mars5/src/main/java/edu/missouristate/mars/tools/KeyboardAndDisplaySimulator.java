@@ -1,6 +1,7 @@
 package edu.missouristate.mars.tools;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.venus.VenusUI;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.simulator.Simulator;
@@ -697,13 +698,13 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       // but that code was not written for event-driven update (e.g. Observer) --
       // it was written to poll the memory cells for their values.  So we force it to do so.
 
-      if (Globals.getGui() != null
-          && Globals.getGui()
+      if (VenusUI.instance() != null
+          && VenusUI.instance()
               .getMainPane()
               .getExecutePane()
               .getTextSegmentWindow()
               .getCodeHighlighting()) {
-        Globals.getGui().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+        VenusUI.instance().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
       }
     }
   }

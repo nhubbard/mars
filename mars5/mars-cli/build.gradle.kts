@@ -10,9 +10,8 @@ repositories {
 }
 
 dependencies {
-  // Phase 1: all source still lives in the root module; mars-cli is a thin launch wrapper.
-  // Phase 2: this dependency will be replaced by implementation(project(":mars-core")).
   implementation(project(":"))
+  implementation(project(":mars-core"))
   testImplementation(platform("org.junit:junit-bom:6.0.0"))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
