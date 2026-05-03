@@ -63,16 +63,16 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
   public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
       throws AddressErrorException, IOException {
     PrintStream out = new PrintStream(new FileOutputStream(file));
-    String string;
+    StringBuilder string;
     try {
       for (int address = firstAddress;
           address <= lastAddress;
           address += Memory.WORD_LENGTH_BYTES) {
         Integer temp = Globals.memory.getRawWordOrNull(address);
         if (temp == null) break;
-        string = Integer.toHexString(temp.intValue());
+        string = new StringBuilder(Integer.toHexString(temp.intValue()));
         while (string.length() < 8) {
-          string = '0' + string;
+          string.insert(0, '0');
         }
         out.println(string);
       }

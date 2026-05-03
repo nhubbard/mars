@@ -135,11 +135,11 @@ public class TokenList implements Cloneable {
    * @return String version of the token list (a blank is inserted after each token).
    */
   public String toString() {
-    String stringified = "";
+    StringBuilder stringified = new StringBuilder();
     for (int i = 0; i < tokenList.size(); i++) {
-      stringified += tokenList.get(i).toString() + " ";
+      stringified.append(tokenList.get(i).toString()).append(" ");
     }
-    return stringified;
+    return stringified.toString();
   }
 
   /**
@@ -149,11 +149,11 @@ public class TokenList implements Cloneable {
    *     type).
    */
   public String toTypeString() {
-    String stringified = "";
+    StringBuilder stringified = new StringBuilder();
     for (int i = 0; i < tokenList.size(); i++) {
-      stringified += ((Token) tokenList.get(i)).getType().toString() + " ";
+      stringified.append(((Token) tokenList.get(i)).getType().toString()).append(" ");
     }
-    return stringified;
+    return stringified.toString();
   }
 
   /**

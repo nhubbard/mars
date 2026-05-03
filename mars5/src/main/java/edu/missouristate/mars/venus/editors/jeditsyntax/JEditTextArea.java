@@ -1773,22 +1773,17 @@ public class JEditTextArea extends JComponent {
    */
   // Is used for tool tip only (not popup menu)
   public String getSyntaxSensitiveToolTipText(int x, int y) {
-    String result;
+    StringBuilder result;
     int line = this.yToLine(y);
     ArrayList matches = getSyntaxSensitiveHelpAtLineOffset(line, this.xToOffset(line, x), true);
     if (matches == null) {
       return null;
     }
     int length = PopupHelpItem.maxExampleLength(matches) + 2;
-    result = "<html>";
+    result = new StringBuilder("<html>");
     for (int i = 0; i < matches.size(); i++) {
       PopupHelpItem match = (PopupHelpItem) matches.get(i);
-      result +=
-          ((i == 0) ? "" : "<br>")
-              + "<tt>"
-              + match.getExamplePaddedToLength(length).replace(" ", "&nbsp;")
-              + "</tt>"
-              + match.getDescription();
+      result.append((i == 0) ? "" : "<br>").append("<tt>").append(match.getExamplePaddedToLength(length).replace(" ", "&nbsp;")).append("</tt>").append(match.getDescription());
     }
     return result + "</html>";
   }

@@ -169,14 +169,14 @@ public class RunAssembleAction extends GuiAction {
   // Handy little utility for building comma-separated list of filenames
   // while not letting line length get out of hand.
   private String buildFileNameList(String preamble, ArrayList programList) {
-    String result = preamble;
+    StringBuilder result = new StringBuilder(preamble);
     int lineLength = result.length();
     for (int i = 0; i < programList.size(); i++) {
       String filename = ((MIPSprogram) programList.get(i)).getFilename();
-      result += filename + ((i < programList.size() - 1) ? ", " : "");
+      result.append(filename).append((i < programList.size() - 1) ? ", " : "");
       lineLength += filename.length();
       if (lineLength > LINE_LENGTH_LIMIT) {
-        result += "\n";
+        result.append("\n");
         lineLength = 0;
       }
     }
