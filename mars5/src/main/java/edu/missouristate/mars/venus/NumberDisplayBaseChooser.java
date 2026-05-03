@@ -126,18 +126,11 @@ public class NumberDisplayBaseChooser extends JCheckBox {
    * @return a String equivalent of the value rendered appropriately.
    */
   public static String formatNumber(int value, int base) {
-    String result;
-    switch (base) {
-      case HEXADECIMAL:
-        result = Binary.intToHexString(value);
-        break;
-      case ASCII:
-        result = Binary.intToAscii(value);
-      break;
-        case DECIMAL:
-      default:
-        result = Integer.toString(value);
-    }
+    String result = switch (base) {
+      case HEXADECIMAL -> Binary.intToHexString(value);
+      case ASCII -> Binary.intToAscii(value);
+      default -> Integer.toString(value);
+    };
     return result;
   }
 

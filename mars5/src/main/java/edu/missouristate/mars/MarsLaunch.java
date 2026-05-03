@@ -632,18 +632,11 @@ public class MarsLaunch {
   //////////////////////////////////////////////////////////////////////
   // Formats int value for display: decimal, hex, ascii
   private String formatIntForDisplay(int value) {
-    String strValue;
-    switch (displayFormat) {
-      case DECIMAL:
-        strValue = "" + value;
-        break;
-      case ASCII:
-        strValue = Binary.intToAscii(value);
-        break;
-      case HEXADECIMAL:
-        default:
-        strValue = Binary.intToHexString(value);
-    }
+    String strValue = switch (displayFormat) {
+      case DECIMAL -> "" + value;
+      case ASCII -> Binary.intToAscii(value);
+      default -> Binary.intToHexString(value);
+    };
     return strValue;
   }
 

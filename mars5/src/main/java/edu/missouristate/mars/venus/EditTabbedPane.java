@@ -482,16 +482,13 @@ public class EditTabbedPane extends JTabbedPane {
   public boolean editsSavedOrAbandoned() {
     EditPane currentPane = getCurrentEditTab();
     if (currentPane != null && currentPane.hasUnsavedEdits()) {
-      switch (confirm(currentPane.getFilename())) {
-        case JOptionPane.YES_OPTION:
-          return saveCurrentFile();
-        case JOptionPane.NO_OPTION:
-          return true;
-        case JOptionPane.CANCEL_OPTION:
-          return false;
-        default: // should never occur
-          return false;
-      }
+      return switch (confirm(currentPane.getFilename())) {
+        case JOptionPane.YES_OPTION -> saveCurrentFile();
+        case JOptionPane.NO_OPTION -> true;
+        case JOptionPane.CANCEL_OPTION -> false;
+        default -> // should never occur
+            false;
+      };
     } else {
       return true;
     }
