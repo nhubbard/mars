@@ -95,7 +95,7 @@ public class MarsBot implements Observer, MarsTool {
           MarsBotXPosition +=
               Math.cos(Math.toRadians(tempAngle)); // Math.cos parameter unit is radians
           MarsBotYPosition +=
-              -Math.sin(Math.toRadians(tempAngle)); // Negate value because Y coord grows down
+              -1 * Math.sin(Math.toRadians(tempAngle)); // Negate value because Y coord grows down
 
           // Write this new information to MARS memory area
           try {
