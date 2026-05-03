@@ -97,12 +97,11 @@ public class DefaultInputHandler extends InputHandler {
 
       if (st.hasMoreTokens()) {
         Object o = current.get(keyStroke);
-        if (o instanceof Hashtable) current = (Hashtable) o;
-        else {
+        if (o instanceof Hashtable) {} else {
           o = new Hashtable();
           current.put(keyStroke, o);
-          current = (Hashtable) o;
         }
+        current = (Hashtable) o;
       } else current.put(keyStroke, action);
     }
   }
