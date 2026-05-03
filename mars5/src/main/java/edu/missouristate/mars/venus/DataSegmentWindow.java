@@ -63,8 +63,6 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
       extnButton,
       mmioButton,
       textButton;
-  private final JCheckBox asciiDisplayCheckBox;
-
   static final int VALUES_PER_ROW = 8;
   static final int NUMBER_OF_ROWS = 16; // with 8 value columns, this shows 512 bytes;
   static final int NUMBER_OF_COLUMNS = VALUES_PER_ROW + 1; // 1 for address and 8 for values
@@ -83,7 +81,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
   private boolean addressHighlighting = false;
   private boolean asciiDisplay = false;
-  private int addressRow, addressColumn, addressRowFirstAddress;
+  private int addressColumn;
+  private int addressRowFirstAddress;
   private final Settings settings;
 
   int firstAddress;
@@ -176,7 +175,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     for (int i = 0; i < choosers.length; i++) {
       features.add(choosers[i]);
     }
-    asciiDisplayCheckBox = new JCheckBox("ASCII", asciiDisplay);
+    JCheckBox asciiDisplayCheckBox = new JCheckBox("ASCII", asciiDisplay);
     asciiDisplayCheckBox.setToolTipText(
         "Display data segment values in ASCII (overrides Hexadecimal Values setting)");
     asciiDisplayCheckBox.addItemListener(
@@ -250,10 +249,10 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     if (rowColumn == null || rowColumn.x < 0 || rowColumn.y < 0) {
       return;
     }
-    this.addressRow = rowColumn.x;
+    int addressRow = rowColumn.x;
     this.addressColumn = rowColumn.y;
     this.addressRowFirstAddress =
-        Binary.stringToInt(dataTable.getValueAt(this.addressRow, ADDRESS_COLUMN).toString());
+        Binary.stringToInt(dataTable.getValueAt(addressRow, ADDRESS_COLUMN).toString());
     // System.out.println("Address "+Binary.intToHexString(address)+" becomes row "+ addressRow + "
     // column "+addressColumn+
     // " starting addr "+dataTable.getValueAt(this.addressRow,ADDRESS_COLUMN));

@@ -64,10 +64,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private Animation animations;
 
   private JPanel logPanel;
-  private JScrollPane logScroll;
   private JTextArea logText;
-  private JCheckBox logShow;
-
   // Some GUI settings
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Font countFonts = new Font("Times", Font.BOLD, 12);
@@ -84,19 +81,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private final String[] placementPolicyChoices = {
     "Direct Mapping", "Fully Associative", "N-way Set Associative"
   };
-  private final int DIRECT = 0,
-      FULL = 1,
-      SET = 2; // NOTE: these have to match placementPolicyChoices order!
+  private final int DIRECT = 0;
   private final String[] replacementPolicyChoices = {"LRU", "Random"};
-  private final int LRU = 0,
-      RANDOM = 1; // NOTE: these have to match replacementPolicyChoices order!
+  private final int LRU = 0;
   private String[] cacheSetSizeChoices; // will change dynamically based on the other selections
-  private final int defaultCacheBlockSizeIndex = 2;
   private final int defaultCacheBlockCountIndex = 3;
   private final int defaultPlacementPolicyIndex = DIRECT;
-  private final int defaultReplacementPolicyIndex = LRU;
-  private final int defaultCacheSetSizeIndex = 0;
-
   // Cache-related data structures
   private AbstractCache theCache;
   private int memoryAccessCount, cacheHitCount, cacheMissCount;
@@ -162,7 +152,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     TitledBorder ltb = new TitledBorder("Runtime Log");
     ltb.setTitleJustification(TitledBorder.CENTER);
     logPanel.setBorder(ltb);
-    logShow = new JCheckBox("Enabled", debug);
+    JCheckBox logShow = new JCheckBox("Enabled", debug);
     logShow.addItemListener(
         new ItemListener() {
           public void itemStateChanged(ItemEvent e) {
@@ -178,11 +168,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     logText.setBackground(debug ? Color.WHITE : logPanel.getBackground());
     logText.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
     logText.setToolTipText("Displays cache activity log if enabled");
-    logScroll =
-        new JScrollPane(
-            logText,
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    JScrollPane logScroll = new JScrollPane(logText, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     logPanel.add(logScroll);
     return logPanel;
   }
@@ -208,11 +194,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheReplacementSelector = new JComboBox<>(replacementPolicyChoices);
     cacheReplacementSelector.setEditable(false);
     cacheReplacementSelector.setBackground(backgroundColor);
-    cacheReplacementSelector.setSelectedIndex(defaultReplacementPolicyIndex);
+    cacheReplacementSelector.setSelectedIndex(LRU);
 
     cacheBlockSizeSelector = new JComboBox<>(cacheBlockSizeChoices);
     cacheBlockSizeSelector.setEditable(false);
     cacheBlockSizeSelector.setBackground(backgroundColor);
+    int defaultCacheBlockSizeIndex = 2;
     cacheBlockSizeSelector.setSelectedIndex(defaultCacheBlockSizeIndex);
     cacheBlockSizeSelector.addActionListener(
         new ActionListener() {
@@ -240,6 +227,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheSetSizeSelector = new JComboBox<>(cacheSetSizeChoices);
     cacheSetSizeSelector.setEditable(false);
     cacheSetSizeSelector.setBackground(backgroundColor);
+    int defaultCacheSetSizeIndex = 0;
     cacheSetSizeSelector.setSelectedIndex(defaultCacheSetSizeIndex);
     cacheSetSizeSelector.addActionListener(
         new ActionListener() {
@@ -492,6 +480,9 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private String[] determineSetSizeChoices(int cacheBlockCountIndex, int placementPolicyIndex) {
     String[] choices;
     int firstBlockCountIndex = 0;
+    // NOTE: these have to match placementPolicyChoices order!
+    int SET = 2;
+    int FULL = 1;
     switch (placementPolicyIndex) {
       case DIRECT:
         choices = new String[1];
@@ -588,13 +579,11 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
   private static class CacheBlock {
     private boolean valid;
     private int tag;
-    private final int sizeInWords;
     private int mostRecentAccessTime;
 
     public CacheBlock(int sizeInWords) {
       this.valid = false;
       this.tag = 0;
-      this.sizeInWords = sizeInWords;
       this.mostRecentAccessTime = -1;
     }
   }
@@ -754,11 +743,10 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       super(numberOfBlocks, blockSizeInWords, setSizeInBlocks);
     }
 
-    private final int SET_FULL = 0, HIT = 1, MISS = 2;
-
     // This method works for any of the placement policies:
     // direct mapped, full associative or n-way set associative.
     public CacheAccessResult isItAHitThenReadOnMiss(int address) {
+      int SET_FULL = 0;
       int result = SET_FULL;
       int firstBlock = getFirstBlockToSearch(address);
       int lastBlock = getLastBlockToSearch(address);
@@ -779,6 +767,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
       CacheBlock block;
       int blockNumber;
       // Will do a sequential instead of associative search!
+      int HIT = 1;
       for (blockNumber = firstBlock; blockNumber <= lastBlock; blockNumber++) {
         block = blocks[blockNumber];
         if (debug) // System.out.print
@@ -796,6 +785,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         if (!block.valid) { // it's a miss but I got it now because it is empty!
           if (debug) // System.out.print
             writeLog(" -- MISS\n");
+          int MISS = 2;
           result = MISS;
           block.valid = true;
           block.tag = getTag(address);
@@ -823,6 +813,8 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     private int selectBlockToReplace(int first, int last) {
       int replaceBlock = first;
       if (first != last) {
+        // NOTE: these have to match replacementPolicyChoices order!
+        int RANDOM = 1;
         switch (cacheReplacementSelector.getSelectedIndex()) {
           case RANDOM:
             replaceBlock = first + randu.nextInt(last - first + 1);

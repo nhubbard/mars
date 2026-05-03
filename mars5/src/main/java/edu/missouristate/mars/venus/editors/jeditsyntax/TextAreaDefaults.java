@@ -20,8 +20,6 @@ import javax.swing.JPopupMenu;
  * methods after creating the text area is that this method is faster.
  */
 public class TextAreaDefaults {
-  private static TextAreaDefaults DEFAULTS;
-
   public InputHandler inputHandler;
   public SyntaxDocument document;
   public boolean editable;
@@ -50,7 +48,7 @@ public class TextAreaDefaults {
 
   /** Returns a new TextAreaDefaults object with the default values filled in. */
   public static TextAreaDefaults getDefaults() {
-    DEFAULTS = new TextAreaDefaults();
+    TextAreaDefaults DEFAULTS = new TextAreaDefaults();
 
     DEFAULTS.inputHandler = new DefaultInputHandler();
     DEFAULTS.inputHandler.addDefaultKeyBindings();

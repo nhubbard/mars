@@ -98,15 +98,14 @@ public class SettingsEditorAction extends GuiAction {
     private int[] syntaxStyleIndex;
     private SyntaxStyle[] defaultStyles, initialStyles, currentStyles;
     private Font previewFont;
-
-    private JPanel dialogPanel, syntaxStylePanel, otherSettingsPanel; // ///4 Aug 2010
+    private JPanel syntaxStylePanel;
+    private JPanel otherSettingsPanel; // ///4 Aug 2010
 
     private JSlider tabSizeSelector;
     private JSpinner tabSizeSpinSelector, blinkRateSpinSelector, popupPrefixLengthSpinSelector;
     private JCheckBox lineHighlightCheck, genericEditorCheck, autoIndentCheck;
     private Caret blinkCaret;
     private JTextField blinkSample;
-    private ButtonGroup popupGuidanceButtons;
     private JRadioButton[] popupGuidanceOptions;
     // Flag to indicate whether any syntax style buttons have been clicked
     // since dialog created or most recent "apply".
@@ -135,7 +134,6 @@ public class SettingsEditorAction extends GuiAction {
       dialog.add(fontDialogPanel, BorderLayout.WEST);
       dialog.add(syntaxStylePanel, BorderLayout.CENTER);
       dialog.add(otherSettingsPanel, BorderLayout.SOUTH);
-      this.dialogPanel = dialog; // ///4 Aug 2010
       this.syntaxStylePanel = syntaxStylePanel; // ///4 Aug 2010
       this.otherSettingsPanel = otherSettingsPanel; // ///4 Aug 2010
       return dialog;
@@ -352,7 +350,7 @@ public class SettingsEditorAction extends GuiAction {
 
       // Combine instruction guide off/on and instruction prefix length into radio buttons
       JPanel rightColumnSettingsPanel = new JPanel(new GridLayout(4, 1));
-      popupGuidanceButtons = new ButtonGroup();
+      ButtonGroup popupGuidanceButtons = new ButtonGroup();
       popupGuidanceOptions = new JRadioButton[3];
       popupGuidanceOptions[0] = new JRadioButton("No popup instruction or directive guide");
       popupGuidanceOptions[1] = new JRadioButton("Display instruction guide after 1 letter typed");

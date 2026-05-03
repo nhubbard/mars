@@ -1,16 +1,32 @@
 package edu.missouristate.mars.venus;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.dump.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.mips.dump.DumpFormat;
+import edu.missouristate.mars.mips.dump.DumpFormatLoader;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.util.Binary;
+import edu.missouristate.mars.util.MemoryDump;
+
+import javax.swing.Box;
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.KeyStroke;
+import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
-import java.util.*;
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.plaf.basic.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -45,14 +61,6 @@ public class FileDumpMemoryAction extends GuiAction {
 
   private JDialog dumpDialog;
   private static final String title = "Dump Memory To File";
-
-  // A series of parallel arrays representing the memory segments that can be dumped.
-  private String[] segmentArray;
-  private int[] baseAddressArray;
-  private int[] limitAddressArray;
-  private int[] highAddressArray;
-  // These three are allocated and filled by buildDialogPanel() and used by action listeners.
-  private String[] segmentListArray;
   private int[] segmentListBaseArray;
   private int[] segmentListHighArray;
 
@@ -97,12 +105,14 @@ public class FileDumpMemoryAction extends GuiAction {
     JPanel contents = new JPanel(new BorderLayout(20, 20));
     contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-    segmentArray = MemoryDump.getSegmentNames();
-    baseAddressArray = MemoryDump.getBaseAddresses(segmentArray);
-    limitAddressArray = MemoryDump.getLimitAddresses(segmentArray);
-    highAddressArray = new int[segmentArray.length];
+    // A series of parallel arrays representing the memory segments that can be dumped.
+    String[] segmentArray = MemoryDump.getSegmentNames();
+    int[] baseAddressArray = MemoryDump.getBaseAddresses(segmentArray);
+    int[] limitAddressArray = MemoryDump.getLimitAddresses(segmentArray);
+    int[] highAddressArray = new int[segmentArray.length];
 
-    segmentListArray = new String[segmentArray.length];
+    // These three are allocated and filled by buildDialogPanel() and used by action listeners.
+    String[] segmentListArray = new String[segmentArray.length];
     segmentListBaseArray = new int[segmentArray.length];
     segmentListHighArray = new int[segmentArray.length];
 

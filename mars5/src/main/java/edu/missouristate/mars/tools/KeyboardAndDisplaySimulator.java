@@ -99,20 +99,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   private int rows, columns;
   private DisplayResizeAdapter updateDisplayBorder;
   private final KeyboardAndDisplaySimulator simulator;
-
-  // Major GUI components
-  private JPanel keyboardAndDisplay;
-  private JScrollPane displayScrollPane;
   private JTextArea display;
-  private JPanel displayPanel, displayOptions;
+  private JPanel displayPanel;
   private JComboBox<TransmitterDelayTechnique> delayTechniqueChooser;
   private DelayLengthPanel delayLengthPanel;
-  private JSlider delayLengthSlider;
   private JCheckBox displayAfterDelayCheckBox;
-  private JPanel keyboardPanel;
-  private JScrollPane keyAccepterScrollPane;
   private JTextArea keyEventAccepter;
-  private JButton fontButton;
   private final Font defaultFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
   /**
@@ -216,7 +208,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // display positioning feature.  Previously, both the display and the keyboard
     // text areas were equal in size and there was no way for the user to change that.
     // DPS 17-July-2014
-    keyboardAndDisplay = new JPanel(new BorderLayout());
+    // Major GUI components
+    JPanel keyboardAndDisplay = new JPanel(new BorderLayout());
     JSplitPane both = new JSplitPane(JSplitPane.VERTICAL_SPLIT, buildDisplay(), buildKeyboard());
     both.setResizeWeight(0.5);
     keyboardAndDisplay.add(both);
@@ -631,11 +624,11 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
     // end added autoscrolling
 
-    displayScrollPane = new JScrollPane(display);
+    JScrollPane displayScrollPane = new JScrollPane(display);
     displayScrollPane.setPreferredSize(preferredTextAreaDimension);
 
     displayPanel.add(displayScrollPane);
-    displayOptions = new JPanel();
+    JPanel displayOptions = new JPanel();
     delayTechniqueChooser = new JComboBox<>(delayTechniques);
     delayTechniqueChooser.setToolTipText(
         "Technique for determining simulated transmitter device processing delay");
@@ -657,7 +650,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         });
 
     // font button to display font
-    fontButton = new JButton("Font");
+    JButton fontButton = new JButton("Font");
     fontButton.setToolTipText("Select the font for the display panel");
     fontButton.addActionListener(new FontChanger());
     displayOptions.add(fontButton);
@@ -671,12 +664,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   //////////////////////////////////////////////////////////////////////////////////////
   // UI components and layout for lower part of GUI, where simulated keyboard is located.
   private JComponent buildKeyboard() {
-    keyboardPanel = new JPanel(new BorderLayout());
+    JPanel keyboardPanel = new JPanel(new BorderLayout());
     keyEventAccepter = new JTextArea();
     keyEventAccepter.setEditable(true);
     keyEventAccepter.setFont(defaultFont);
     keyEventAccepter.setMargin(textAreaInsets);
-    keyAccepterScrollPane = new JScrollPane(keyEventAccepter);
+    JScrollPane keyAccepterScrollPane = new JScrollPane(keyEventAccepter);
     keyAccepterScrollPane.setPreferredSize(preferredTextAreaDimension);
     keyEventAccepter.addKeyListener(new KeyboardKeyListener());
     keyboardPanel.add(keyAccepterScrollPane);
@@ -873,8 +866,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
 
     public DelayLengthPanel() {
       super(new BorderLayout());
-      delayLengthSlider =
-          new JSlider(JSlider.HORIZONTAL, DELAY_INDEX_MIN, DELAY_INDEX_MAX, DELAY_INDEX_INIT);
+      JSlider delayLengthSlider = new JSlider(JSlider.HORIZONTAL, DELAY_INDEX_MIN, DELAY_INDEX_MAX, DELAY_INDEX_INIT);
       delayLengthSlider.setSize(new Dimension(100, (int) delayLengthSlider.getSize().getHeight()));
       delayLengthSlider.setMaximumSize(delayLengthSlider.getSize());
       delayLengthSlider.addChangeListener(new DelayLengthListener());

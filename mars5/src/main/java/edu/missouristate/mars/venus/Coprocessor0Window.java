@@ -47,7 +47,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Coprocessor0Window extends JPanel implements Observer {
   private static JTable table;
   private static Register[] registers;
-  private Object[][] tableData;
   private boolean highlighting;
   private int highlightRow;
   private ExecutePane executePane;
@@ -101,7 +100,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
    */
   public Object[][] setupWindow() {
     registers = Coprocessor0.getRegisters();
-    tableData = new Object[registers.length][3];
+    Object[][] tableData = new Object[registers.length][3];
     rowGivenRegNumber = new int[32]; // maximum number of registers
     for (int i = 0; i < registers.length; i++) {
       rowGivenRegNumber[registers[i].getNumber()] = i;

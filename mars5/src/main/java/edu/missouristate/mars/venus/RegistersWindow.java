@@ -47,7 +47,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class RegistersWindow extends JPanel implements Observer {
   private static JTable table;
   private static Register[] registers;
-  private Object[][] tableData;
   private boolean highlighting;
   private int highlightRow;
   private ExecutePane executePane;
@@ -100,7 +99,7 @@ public class RegistersWindow extends JPanel implements Observer {
    */
   public Object[][] setupWindow() {
     int valueBase = NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex());
-    tableData = new Object[35][3];
+    Object[][] tableData = new Object[35][3];
     registers = RegisterFile.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       tableData[i][0] = registers[i].getName();

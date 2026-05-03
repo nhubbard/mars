@@ -56,7 +56,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003
  */
 public class Assembler {
-  private ArrayList<ProgramStatement> machineList;
   private ErrorList errors;
   private boolean inDataSegment; // status maintained by parser
   private boolean inMacroSegment; // status maintained by parser, true if in
@@ -69,8 +68,7 @@ public class Assembler {
   private TokenList globalDeclarationList;
   private UserKernelAddressSpace textAddress;
   private UserKernelAddressSpace dataAddress;
-  private DataSegmentForwardReferences currentFileDataSegmentForwardReferences,
-      accumulatedDataSegmentForwardReferences;
+  private DataSegmentForwardReferences currentFileDataSegmentForwardReferences;
 
   /**
    * Parse and generate machine code for the given MIPS program. It must have already been
@@ -166,10 +164,10 @@ public class Assembler {
     dataAddress = new UserKernelAddressSpace(Memory.dataBaseAddress, Memory.kernelDataBaseAddress);
     externAddress = Memory.externBaseAddress;
     currentFileDataSegmentForwardReferences = new DataSegmentForwardReferences();
-    accumulatedDataSegmentForwardReferences = new DataSegmentForwardReferences();
+    DataSegmentForwardReferences accumulatedDataSegmentForwardReferences = new DataSegmentForwardReferences();
     Globals.symbolTable.clear();
     Globals.memory.clear();
-    this.machineList = new ArrayList<>();
+    ArrayList<ProgramStatement> machineList = new ArrayList<>();
     this.errors = new ErrorList();
     if (Globals.debug) System.out.println("Assembler first pass begins:");
     // PROCESS THE FIRST ASSEMBLY PASS FOR ALL SOURCE FILES BEFORE PROCEEDING
@@ -268,7 +266,7 @@ public class Assembler {
           throw new ProcessingException(errors);
         }
         if (statement.getInstruction() instanceof BasicInstruction) {
-          this.machineList.add(statement);
+          machineList.add(statement);
         } else {
           // It is a pseudo-instruction:
           // 1. Fetch its basic instruction template list
@@ -343,7 +341,7 @@ public class Assembler {
                     statement.getSourceLine());
             textAddress.increment(Instruction.INSTRUCTION_LENGTH);
             ps.buildBasicStatementFromBasicInstruction(errors);
-            this.machineList.add(ps);
+            machineList.add(ps);
           } // end of FOR loop, repeated for each template in list.
         } // end of ELSE part for extended instruction.
       } // end of assembler second pass.
@@ -353,9 +351,9 @@ public class Assembler {
     // Generates machine code statements from the list of basic assembler statements
     // and writes the statement to memory.
     ProgramStatement statement;
-    for (int i = 0; i < this.machineList.size(); i++) {
+    for (int i = 0; i < machineList.size(); i++) {
       if (errors.errorLimitExceeded()) break;
-      statement = this.machineList.get(i);
+      statement = machineList.get(i);
       statement.buildMachineStatementFromBasicStatement(errors);
       if (Globals.debug) System.out.println(statement);
       try {
@@ -383,12 +381,12 @@ public class Assembler {
     // Such occurances will be flagged as errors.
     // Yes, I would not have to sort here if I used SortedSet rather than ArrayList
     // but in case of duplicate I like having both statements handy for error message.
-    Collections.sort(this.machineList, new ProgramStatementComparator());
-    catchDuplicateAddresses(this.machineList, errors);
+    Collections.sort(machineList, new ProgramStatementComparator());
+    catchDuplicateAddresses(machineList, errors);
     if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
     }
-    return this.machineList;
+    return machineList;
   } // assemble()
 
   // //////////////////////////////////////////////////////////////////////

@@ -603,9 +603,6 @@ class CaptureModel {
 
 /** This class defines a specialized panel for displaying a captured image. */
 class MagnifierImage extends JPanel {
-
-  // Enclosing JFrame for this panel -- the Screen Magnifier itself.
-  private final Magnifier frame;
   // Rectangle representing screen pixels to be magnified.
   private Rectangle screenRectangle;
   // Robot used to perform the screen capture.
@@ -617,7 +614,7 @@ class MagnifierImage extends JPanel {
 
   /** Construct an MagnifierImage component. */
   public MagnifierImage(Magnifier frame) {
-    this.frame = frame;
+    // Enclosing JFrame for this panel -- the Screen Magnifier itself.
     this.scribbler = new Scribbler(frame.scribblerSettings);
 
     addMouseListener(

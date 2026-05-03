@@ -58,8 +58,6 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   private JCheckBox drawHashMarksSelector;
   private Graphics drawingArea;
   private JPanel canvas;
-  private JPanel results;
-
   // Some GUI settings
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Font countFonts = new Font("Times", Font.BOLD, 12);
@@ -79,7 +77,6 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   private final int defaultDisplayWidthIndex = 2;
   private final String[] displayAreaPixelHeightChoices = {"64", "128", "256", "512", "1024"};
   private final int defaultDisplayHeightIndex = 2;
-  private final boolean defaultDrawHashMarks = true;
 
   // Values for display canvas.  Note their initialization uses the identifiers just above.
 
@@ -136,8 +133,6 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     500000,
     1000000 // 21-29
   };
-  private final int COUNT_INDEX_INIT = 10; // array element #10, arbitrary starting point
-
   // The next four are initialized dynamically in initializeDisplayBaseChoices()
   private String[] displayBaseAddressChoices;
   private int[] displayBaseAddresses;
@@ -216,7 +211,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
    * @return the GUI component containing these two areas
    */
   protected JComponent buildMainDisplayArea() {
-    results = new JPanel();
+    JPanel results = new JPanel();
     results.add(buildOrganizationArea());
     results.add(buildVisualizationArea());
     return results;
@@ -321,6 +316,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     JPanel organization = new JPanel(new GridLayout(9, 1));
 
     drawHashMarksSelector = new JCheckBox();
+    boolean defaultDrawHashMarks = true;
     drawHashMarksSelector.setSelected(defaultDrawHashMarks);
     drawHashMarksSelector.addActionListener(
         new ActionListener() {
@@ -647,15 +643,15 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   private class ColorChooserControls {
     private JLabel sliderLabel = null;
-    private final JSlider colorRangeSlider;
     private final JButton currentColorButton;
     private final JPanel colorChooserRow;
     private final JPanel countDisplayRow;
     private volatile int counterIndex;
 
     private ColorChooserControls() {
-      colorRangeSlider =
-          new JSlider(JSlider.HORIZONTAL, 0, countTable.length - 1, COUNT_INDEX_INIT);
+      // array element #10, arbitrary starting point
+      int COUNT_INDEX_INIT = 10;
+      JSlider colorRangeSlider = new JSlider(JSlider.HORIZONTAL, 0, countTable.length - 1, COUNT_INDEX_INIT);
       colorRangeSlider.setToolTipText(
           "View or change color associated with each reference count value");
       colorRangeSlider.setPaintTicks(false);

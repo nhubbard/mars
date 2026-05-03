@@ -24,7 +24,6 @@ public class JEditBasedTextArea extends JEditTextArea
 
   private final EditPane editPane;
   private final UndoManager undoManager;
-  private final UndoableEditListener undoableEditListener;
   private boolean isCompoundEdit = false;
   private CompoundEdit compoundEdit;
   private final JEditBasedTextArea sourceCode;
@@ -37,19 +36,19 @@ public class JEditBasedTextArea extends JEditTextArea
     this.sourceCode = this;
 
     // Needed to support unlimited undo/redo capability
-    undoableEditListener =
-        new UndoableEditListener() {
-          public void undoableEditHappened(UndoableEditEvent e) {
-            // Remember the edit and update the menus.
-            if (isCompoundEdit) {
-              compoundEdit.addEdit(e.getEdit());
-            } else {
-              undoManager.addEdit(e.getEdit());
-              editPane.updateUndoState();
-              editPane.updateRedoState();
-            }
-          }
-        };
+    // Remember the edit and update the menus.
+    UndoableEditListener undoableEditListener = new UndoableEditListener() {
+      public void undoableEditHappened(UndoableEditEvent e) {
+        // Remember the edit and update the menus.
+        if (isCompoundEdit) {
+          compoundEdit.addEdit(e.getEdit());
+        } else {
+          undoManager.addEdit(e.getEdit());
+          editPane.updateUndoState();
+          editPane.updateRedoState();
+        }
+      }
+    };
     this.getDocument().addUndoableEditListener(undoableEditListener);
     this.setFont(Globals.getSettings().getEditorFont());
     this.setTokenMarker(new MIPSTokenMarker());

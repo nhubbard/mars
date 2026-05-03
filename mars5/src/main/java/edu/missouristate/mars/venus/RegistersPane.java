@@ -41,13 +41,10 @@ public class RegistersPane extends JTabbedPane {
   final Coprocessor1Window cop1Tab;
   final Coprocessor0Window cop0Tab;
 
-  private final VenusUI mainUI;
-
   /** Constructor for the RegistersPane class. */
   public RegistersPane(
       VenusUI appFrame, RegistersWindow regs, Coprocessor1Window cop1, Coprocessor0Window cop0) {
     super();
-    this.mainUI = appFrame;
     regsTab = regs;
     cop1Tab = cop1;
     cop0Tab = cop0;

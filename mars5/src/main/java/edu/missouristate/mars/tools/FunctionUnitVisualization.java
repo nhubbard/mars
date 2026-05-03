@@ -6,12 +6,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 public class FunctionUnitVisualization extends JFrame {
-
-  private final JPanel contentPane;
   private final String instruction;
-  private final int register = 1;
-  private final int control = 2;
-  private final int aluControl = 3;
   private final int alu = 4;
   private int currentUnit;
 
@@ -20,10 +15,13 @@ public class FunctionUnitVisualization extends JFrame {
     this.instruction = instruction;
     // setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     setBounds(100, 100, 840, 575);
-    contentPane = new JPanel();
+    JPanel contentPane = new JPanel();
     contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
     contentPane.setLayout(new BorderLayout(0, 0));
     setContentPane(contentPane);
+    int aluControl = 3;
+    int control = 2;
+    int register = 1;
     if (functionalUnit == register) {
       currentUnit = register;
       UnitAnimation reg = new UnitAnimation(instruction, register);

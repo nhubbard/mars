@@ -31,9 +31,6 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; // Add for digital Lab Sim
   public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200; // Add for digital Lab Sim
-
-  // GUI Interface.
-  private static JPanel panelTools;
   // Seven Segment display
   private SevenSegmentPanel sevenSegPanel;
   // Keyboard
@@ -93,7 +90,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   }
 
   protected JComponent buildMainDisplayArea() {
-    panelTools = new JPanel(new GridLayout(1, 2));
+    // GUI Interface.
+    JPanel panelTools = new JPanel(new GridLayout(1, 2));
     sevenSegPanel = new SevenSegmentPanel();
     panelTools.add(sevenSegPanel);
     hexaKeyPanel = new HexaKeyboard();

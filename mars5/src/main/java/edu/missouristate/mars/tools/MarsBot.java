@@ -143,13 +143,7 @@ public class MarsBot implements Observer, MarsTool {
 
   /* ------------------------------------------------------------------------- */
   private class MarsBotDisplay extends JPanel {
-    private final int width;
-    private final int height;
-    private boolean clearTheDisplay = true;
-
     public MarsBotDisplay(int tw, int th) {
-      width = tw;
-      height = th;
     }
 
     public void redraw() {
@@ -158,7 +152,7 @@ public class MarsBot implements Observer, MarsTool {
 
     public void clear() {
       // clear the graphic display
-      clearTheDisplay = true;
+      boolean clearTheDisplay = true;
       // System.out.println("MarsBotDisplay.clear: called to clear the display");
       repaint();
     }

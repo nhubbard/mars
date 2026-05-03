@@ -79,7 +79,6 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
   private Register attachedRegister = null;
   private Register[] fpRegisters;
-  private final FloatRepresentation thisFloatTool;
   // Panels to hold binary displays and decorations (labels, arrows)
   private JPanel binarySignDecoratedDisplay,
       binaryExponentDecoratedDisplay,
@@ -107,7 +106,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
    */
   public FloatRepresentation(String title, String heading) {
     super(title, heading);
-    thisFloatTool = this;
+    FloatRepresentation thisFloatTool = this;
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */

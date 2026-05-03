@@ -96,7 +96,6 @@ public class RunSpeedPanel extends JPanel {
     UNLIMITED_SPEED // 38-40
   };
   private JLabel sliderLabel = null;
-  private final JSlider runSpeedSlider;
   private static RunSpeedPanel runSpeedPanel = null;
   private volatile int runSpeedIndex = SPEED_INDEX_MAX;
 
@@ -118,8 +117,7 @@ public class RunSpeedPanel extends JPanel {
    */
   private RunSpeedPanel() {
     super(new BorderLayout());
-    runSpeedSlider =
-        new JSlider(JSlider.HORIZONTAL, SPEED_INDEX_MIN, SPEED_INDEX_MAX, SPEED_INDEX_INIT);
+    JSlider runSpeedSlider = new JSlider(JSlider.HORIZONTAL, SPEED_INDEX_MIN, SPEED_INDEX_MAX, SPEED_INDEX_INIT);
     runSpeedSlider.setSize(new Dimension(100, (int) runSpeedSlider.getSize().getHeight()));
     runSpeedSlider.setMaximumSize(runSpeedSlider.getSize());
     runSpeedSlider.setMajorTickSpacing(5);

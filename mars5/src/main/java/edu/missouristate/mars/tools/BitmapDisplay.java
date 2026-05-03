@@ -54,8 +54,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
   private JComboBox<String> visualizationPixelHeightSelector;
   private JComboBox<String> displayBaseAddressSelector;
   private JPanel canvas;
-  private JPanel results;
-
   // Some GUI settings
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Color backgroundColor = Color.WHITE;
@@ -157,7 +155,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
    * @return the GUI component containing these two areas
    */
   protected JComponent buildMainDisplayArea() {
-    results = new JPanel();
+    JPanel results = new JPanel();
     results.add(buildOrganizationArea());
     results.add(buildVisualizationArea());
     return results;

@@ -44,8 +44,6 @@ public class MainPane extends JTabbedPane {
   final ExecutePane executeTab;
   final EditTabbedPane editTabbedPane;
 
-  private final VenusUI mainUI;
-
   /** Constructor for the MainPane class. */
   public MainPane(
       VenusUI appFrame,
@@ -54,7 +52,6 @@ public class MainPane extends JTabbedPane {
       Coprocessor1Window cop1Regs,
       Coprocessor0Window cop0Regs) {
     super();
-    this.mainUI = appFrame;
     this.setTabPlacement(JTabbedPane.TOP); // LEFT);
     if (this.getUI() instanceof BasicTabbedPaneUI) {
       BasicTabbedPaneUI ui = (BasicTabbedPaneUI) this.getUI();

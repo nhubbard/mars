@@ -71,19 +71,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   protected int lastAddress = -1; // address of instruction in memory
   protected JLabel label;
   private final Container painel = this.getContentPane();
-  private DatapathAnimation datapathAnimation; // class panel that runs datapath animation.
-
   private GraphicsConfiguration gc;
   private BufferedImage datapath;
   private String instructionBinary;
-
-  // Components to add menu bar in the plugin window.
-  private JButton Assemble, Step, runBackStep;
   private Action runAssembleAction, runStepAction, runBackstepAction;
 
   private VenusUI mainUI;
   private JToolBar toolbar;
-  private Timer time;
 
   public MipsXray(String title, String heading) {
     super(title, heading);
@@ -245,7 +239,8 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       BasicInstructionFormat format = instr.getInstructionFormat();
 
       painel.removeAll();
-      datapathAnimation = new DatapathAnimation(instructionBinary);
+      // class panel that runs datapath animation.
+      DatapathAnimation datapathAnimation = new DatapathAnimation(instructionBinary);
       this.createActionObjects();
       toolbar = this.setUpToolBar();
       painel.add(toolbar, BorderLayout.NORTH);
@@ -264,15 +259,16 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   // set the tool bar that controls the step in a time instruction running.
   private JToolBar setUpToolBar() {
     JToolBar toolBar = new JToolBar();
-    Assemble = new JButton(runAssembleAction);
-    Assemble.setText("");
-    runBackStep = new JButton(runBackstepAction);
+    // Components to add menu bar in the plugin window.
+    JButton assemble = new JButton(runAssembleAction);
+    assemble.setText("");
+    JButton runBackStep = new JButton(runBackstepAction);
     runBackStep.setText("");
 
-    Step = new JButton(runStepAction);
-    Step.setText("");
-    toolBar.add(Assemble);
-    toolBar.add(Step);
+    JButton step = new JButton(runStepAction);
+    step.setText("");
+    toolBar.add(assemble);
+    toolBar.add(step);
 
     return toolBar;
   }
@@ -477,16 +473,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     /** */
     @Serial
     private static final long serialVersionUID = -2681757800180958534L;
-
-    // config variables
-    private final int PERIOD = 5; // velocity of frames in ms
     private static final int PWIDTH = 1000; // size of this panel
     private static final int PHEIGHT = 574;
     private final GraphicsConfiguration gc;
-    private final GraphicsDevice gd; // for reporting accl. memory usage
-    private final int accelMemory;
-    private final DecimalFormat df;
-
     private int counter; // verify then remove.
     private boolean justStarted; // flag to start movement
 
@@ -505,11 +494,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private final HashMap<String, String> registerEquivalenceTable;
 
     private String instructionCode;
-
-    private final int countRegLabel;
-    private final int countALULabel;
-    private final int countPCLabel;
-
     // Colors variables
     private final Color green1 = new Color(0, 153, 0);
     private final Color green2 = new Color(0, 77, 0);
@@ -517,10 +501,6 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private final Color orange1 = new Color(255, 102, 0);
     private final Color orange = new Color(119, 34, 34);
     private final Color blue2 = new Color(0, 153, 255);
-
-    private final int register = 1;
-    private final int control = 2;
-    private final int aluControl = 3;
     private final int alu = 4;
     private int currentUnit;
     private Graphics2D g2d;
@@ -530,12 +510,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     public void mousePressed(MouseEvent e) {}
 
     public DatapathAnimation(String instructionBinary) {
-      df = new DecimalFormat("0.0"); // 1 dp
+      DecimalFormat df = new DecimalFormat("0.0"); // 1 dp
       GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-      gd = ge.getDefaultScreenDevice();
+      // for reporting accl. memory usage
+      GraphicsDevice gd = ge.getDefaultScreenDevice();
       gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
 
-      accelMemory = gd.getAvailableAcceleratedMemory(); // in bytes
+      int accelMemory = gd.getAvailableAcceleratedMemory(); // in bytes
       setBackground(Color.white);
       setPreferredSize(new Dimension(PWIDTH, PHEIGHT));
 
@@ -552,9 +533,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       functionEquivalenceTable = new HashMap<>();
       registerEquivalenceTable = new HashMap<>();
 
-      countRegLabel = 400;
-      countALULabel = 380;
-      countPCLabel = 380;
+      int countRegLabel = 400;
+      int countALULabel = 380;
+      int countPCLabel = 380;
       loadHashMapValues();
       addMouseListener(this);
     } // end of ImagesTests()
@@ -1186,7 +1167,10 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     // triggers the animation.
     public void startAnimation(String codeInstruction) {
       instructionCode = codeInstruction;
-      time = new Timer(PERIOD, this); // start timer
+      // config variables
+      // velocity of frames in ms
+      int PERIOD = 5;
+      Timer time = new Timer(PERIOD, this); // start timer
       time.start();
       // 	this.repaint();
     }
@@ -1542,6 +1526,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           && e.getPoint().getY() > 300
           && e.getPoint().getY() < 425) {
         buildMainDisplayArea("register.png");
+        int register = 1;
         FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, register);
         fu.run();
       }
@@ -1551,6 +1536,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           && e.getPoint().getY() > 180
           && e.getPoint().getY() < 280) {
         buildMainDisplayArea("control.png");
+        int control = 2;
         FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, control);
         fu.run();
       }
@@ -1560,6 +1546,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           && e.getPoint().getY() > 450
           && e.getPoint().getY() < 520) {
         buildMainDisplayArea("ALUcontrol.png");
+        int aluControl = 3;
         FunctionUnitVisualization fu = new FunctionUnitVisualization(instructionBinary, aluControl);
         fu.run();
       }

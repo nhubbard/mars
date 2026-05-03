@@ -206,7 +206,6 @@ public class Simulator extends Observable {
    * Microsystems for download and is not part of the Swing library.
    */
   static class SimThread extends SwingWorker {
-    private final MIPSprogram p;
     private final int pc;
     private final int maxSteps;
     private int[] breakPoints;
@@ -229,7 +228,6 @@ public class Simulator extends Observable {
      */
     SimThread(MIPSprogram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
       super(Globals.getGui() != null);
-      this.p = p;
       this.pc = pc;
       this.maxSteps = maxSteps;
       this.breakPoints = breakPoints;

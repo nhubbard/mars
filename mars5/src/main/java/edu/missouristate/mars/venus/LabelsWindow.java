@@ -47,12 +47,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Team JSpim
  */
 public class LabelsWindow extends JInternalFrame {
-  private final Container contentPane;
   private final JPanel labelPanel; // holds J
   private final JCheckBox dataLabels;
   private final JCheckBox textLabels;
   private ArrayList<LabelsForSymbolTable> listOfLabelsForSymbolTable;
-  private final LabelsWindow labelsWindow;
   private static final int MAX_DISPLAYED_CHARS = 24;
   private static final int PREFERRED_NAME_COLUMN_WIDTH = 60;
   private static final int PREFERRED_ADDRESS_COLUMN_WIDTH = 60;
@@ -131,8 +129,8 @@ public class LabelsWindow extends JInternalFrame {
     }
     columnNames = sortColumnHeadings[sortState];
     tableSortComparator = tableSortingComparators.get(sortState);
-    labelsWindow = this;
-    contentPane = this.getContentPane();
+    LabelsWindow labelsWindow = this;
+    Container contentPane = this.getContentPane();
     labelPanel = new JPanel(new GridLayout(1, 2, 10, 0));
     JPanel features = new JPanel();
     dataLabels = new JCheckBox("Data", true);

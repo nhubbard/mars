@@ -264,7 +264,6 @@ public class ScavengerHunt implements Observer, MarsTool {
   private class ScavengerHuntDisplay extends JPanel {
     private final int width;
     private final int height;
-    private boolean clearTheDisplay = true;
 
     public ScavengerHuntDisplay(int tw, int th) {
       // System.out.println("ScavengerHuntDisplay.constructor: starting....");
@@ -278,7 +277,7 @@ public class ScavengerHunt implements Observer, MarsTool {
 
     public void clear() {
       // clear the graphic display
-      clearTheDisplay = true;
+      boolean clearTheDisplay = true;
       // System.out.println("ScavengerHuntDisplay.clear: called to clear the display");
       repaint();
     }

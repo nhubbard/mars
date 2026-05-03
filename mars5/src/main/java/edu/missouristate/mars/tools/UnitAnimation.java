@@ -30,16 +30,9 @@ import org.w3c.dom.NodeList;
 class UnitAnimation extends JPanel implements ActionListener {
   @Serial
   private static final long serialVersionUID = -2681757800180958534L;
-
-  // config variables
-  private final int PERIOD = 8; // velocity of frames in ms
   private static final int PWIDTH = 1000; // size of this panel
   private static final int PHEIGHT = 574;
   private final GraphicsConfiguration gc;
-  private final GraphicsDevice gd; // for reporting accl. memory usage
-  private final int accelMemory;
-  private final DecimalFormat df;
-
   private int counter; // verify then remove.
   private boolean justStarted; // flag to start movement
 
@@ -56,20 +49,11 @@ class UnitAnimation extends JPanel implements ActionListener {
   private final HashMap<String, String> registerEquivalenceTable;
 
   private String instructionCode;
-
-  private final int countRegLabel;
-  private final int countALULabel;
-  private final int countPCLabel;
-
   private final int register = 1;
   private final int control = 2;
   private final int aluControl = 3;
   private final int alu = 4;
   private final int datapatTypeUsed;
-
-  private final Boolean cursorInIM;
-  private final Boolean cursorInALU;
-  private final Boolean cursorInDataMem;
   private Boolean cursorInReg;
 
   private Graphics2D g2d;
@@ -233,15 +217,16 @@ class UnitAnimation extends JPanel implements ActionListener {
 
   public UnitAnimation(String instructionBinary, int datapathType) {
     datapatTypeUsed = datapathType;
-    cursorInIM = false;
-    cursorInALU = false;
-    cursorInDataMem = false;
-    df = new DecimalFormat("0.0"); // 1 dp
+    Boolean cursorInIM = false;
+    Boolean cursorInALU = false;
+    Boolean cursorInDataMem = false;
+    DecimalFormat df = new DecimalFormat("0.0"); // 1 dp
     GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-    gd = ge.getDefaultScreenDevice();
+    // for reporting accl. memory usage
+    GraphicsDevice gd = ge.getDefaultScreenDevice();
     gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
 
-    accelMemory = gd.getAvailableAcceleratedMemory(); // in bytes
+    int accelMemory = gd.getAvailableAcceleratedMemory(); // in bytes
     setBackground(Color.white);
     setPreferredSize(new Dimension(PWIDTH, PHEIGHT));
 
@@ -256,9 +241,9 @@ class UnitAnimation extends JPanel implements ActionListener {
     // declaration of labels definition.
     registerEquivalenceTable = new HashMap<String, String>();
 
-    countRegLabel = 400;
-    countALULabel = 380;
-    countPCLabel = 380;
+    int countRegLabel = 400;
+    int countALULabel = 380;
+    int countPCLabel = 380;
     loadHashMapValues();
   } // end of ImagesTests()
 
@@ -539,6 +524,9 @@ class UnitAnimation extends JPanel implements ActionListener {
   // triggers the animation.
   public void startAnimation(String codeInstruction) {
     instructionCode = codeInstruction;
+    // config variables
+    // velocity of frames in ms
+    int PERIOD = 8;
     new Timer(PERIOD, this).start(); // start timer
     this.repaint();
   }

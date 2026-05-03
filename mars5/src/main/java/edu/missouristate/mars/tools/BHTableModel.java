@@ -65,10 +65,6 @@ public class BHTableModel extends AbstractTableModel {
 
   /** number of entries in the BHT */
   private int m_entryCnt;
-
-  /** number of past branch events to remember */
-  private int m_historySize;
-
   /** name of the table columns */
   private final String[] m_columnNames = {
     "Index", "History", "Prediction", "Correct", "Incorrect", "Precision"
@@ -183,12 +179,12 @@ public class BHTableModel extends AbstractTableModel {
       throw new IllegalArgumentException("Only history sizes of 1 or 2 supported.");
 
     m_entryCnt = numEntries;
-    m_historySize = historySize;
+    /** number of past branch events to remember */
 
     m_entries = new Vector<>();
 
     for (int i = 0; i < m_entryCnt; i++) {
-      m_entries.add(new BHTEntry(m_historySize, initVal));
+      m_entries.add(new BHTEntry(historySize, initVal));
     }
 
     // refresh the table(s)
