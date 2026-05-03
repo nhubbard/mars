@@ -228,15 +228,7 @@ public class SystemIO {
         input = Globals.getGui().getMessagesPane().getInputString(1);
       }
     }
-    // The whole try-catch is not really necessary in this case since I'm
-    // just propagating the runtime exception (the default behavior), but
-    // I want to make it explicit.  The client needs to catch it.
-    try {
-      returnValue = input.charAt(0); // first character input
-    } catch (IndexOutOfBoundsException e) // no chars present
-    {
-      throw e; // was: returnValue = 0;
-    }
+    returnValue = input.charAt(0);
 
     return returnValue;
   }
