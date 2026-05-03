@@ -38,6 +38,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2003
  */
+// TODO: Maybe this should be an enum instead.
 public class BasicInstructionFormat {
   public static final BasicInstructionFormat R_FORMAT = new BasicInstructionFormat();
   public static final BasicInstructionFormat I_FORMAT = new BasicInstructionFormat();
