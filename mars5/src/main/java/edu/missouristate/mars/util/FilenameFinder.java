@@ -434,7 +434,7 @@ public class FilenameFinder {
 
   // make sure file extension, if it is real, does not start with '.' -- remove it.
   private static String checkFileExtension(String fileExtension) {
-    return (fileExtension == null || fileExtension.length() == 0 || !fileExtension.startsWith("."))
+    return (fileExtension == null || !fileExtension.startsWith("."))
         ? fileExtension
         : fileExtension.substring(1);
   }
