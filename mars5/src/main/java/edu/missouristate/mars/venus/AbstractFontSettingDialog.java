@@ -241,7 +241,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
     public Component getListCellRendererComponent(
         JList list, String value, int index, boolean isSelected, boolean cellHasFocus) {
-      String str = (value == null) ? "" : value.toString();
+      String str = (value == null) ? "" : value;
       if (SEPARATOR.equals(str)) {
         return separator;
       }
