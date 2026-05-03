@@ -316,7 +316,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     }
   }
 
-  class Vertex {
+  static class Vertex {
     private int numIndex;
     private int init;
     private int end;
@@ -671,17 +671,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           isText = datapath_mapItem.getElementsByTagName("is_text");
 
           for (int j = 0; j < index_vertex.getLength(); j++) {
-            Vertex vert =
-                new Vertex(
-                    Integer.parseInt(index_vertex.item(j).getTextContent()),
-                    Integer.parseInt(init.item(j).getTextContent()),
-                    Integer.parseInt(end.item(j).getTextContent()),
-                    name.item(j).getTextContent(),
-                    Integer.parseInt(other_axis.item(j).getTextContent()),
-                    Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
-                    color.item(j).getTextContent(),
-                    targetVertex.item(j).getTextContent(),
-                    Boolean.parseBoolean(isText.item(j).getTextContent()));
+            Vertex vert = new Vertex(Integer.parseInt(index_vertex.item(j).getTextContent()), Integer.parseInt(init.item(j).getTextContent()), Integer.parseInt(end.item(j).getTextContent()), name.item(j).getTextContent(), Integer.parseInt(other_axis.item(j).getTextContent()), Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()), color.item(j).getTextContent(), targetVertex.item(j).getTextContent(), Boolean.parseBoolean(isText.item(j).getTextContent()));
             vertexList.add(vert);
           }
         }

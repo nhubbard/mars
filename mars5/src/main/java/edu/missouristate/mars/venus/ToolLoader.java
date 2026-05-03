@@ -140,7 +140,7 @@ public class ToolLoader {
     return toolList;
   }
 
-  private class MarsToolClassAndInstance {
+  private static class MarsToolClassAndInstance {
     Class marsToolClass;
     MarsTool marsToolInstance;
 

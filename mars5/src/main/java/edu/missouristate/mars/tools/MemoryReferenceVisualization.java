@@ -98,13 +98,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   // This array of (count,color) pairs must be kept sorted! count is low end of subrange.
   // This array will grow if user adds colors at additional counter points (see below).
-  private CounterColor[] defaultCounterColors = {
-    new CounterColor(0, Color.black),
-    new CounterColor(1, Color.blue),
-    new CounterColor(2, Color.green),
-    new CounterColor(3, Color.yellow),
-    new CounterColor(5, Color.orange),
-    new CounterColor(10, Color.red)
+  private CounterColor[] defaultCounterColors = {new CounterColor(0, Color.black), new CounterColor(1, Color.blue), new CounterColor(2, Color.green), new CounterColor(3, Color.yellow), new CounterColor(5, Color.orange), new CounterColor(10, Color.red)
   };
   /*  Values for reference count color slider. These are all possible counter values for which
    *  colors can be assigned.  As you can see just above, not all these values are assigned
@@ -254,10 +248,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     // NOTE: Can't call "createNewGrid()" here because it uses settings from
     //       several combo boxes that have not been created yet.  But a default grid
     //       needs to be allocated for initial canvas display.
-    theGrid =
-        new Grid(
-            visualizationAreaHeightInPixels / unitPixelHeight,
-            visualizationAreaWidthInPixels / unitPixelWidth);
+    theGrid = new Grid(visualizationAreaHeightInPixels / unitPixelHeight, visualizationAreaWidthInPixels / unitPixelWidth);
   }
 
   /**
@@ -797,7 +788,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   // Each object represents beginning of a counter value range (non-negative integer) and
   // color for rendering the range.  High end of the range is defined as low end of the
   // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
-  private class CounterColor implements Comparable {
+  private static class CounterColor implements Comparable {
     private int colorRangeStart;
     private Color associatedColor;
 
@@ -818,7 +809,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   ////////////////////////////////////////////////////////////////////////
   // Represents grid of memory access counts
-  private class Grid {
+  private static class Grid {
 
     int[][] grid;
     int rows, columns;

@@ -247,7 +247,7 @@ public class LabelsWindow extends JInternalFrame {
   //  Suggested by Ken Vollmar, implemented by Pete Sanderson
   //  July 2007.
 
-  private class LabelDisplayMouseListener extends MouseAdapter {
+  private static class LabelDisplayMouseListener extends MouseAdapter {
     public void mouseClicked(MouseEvent e) {
       JTable table = (JTable) e.getSource();
       int row = table.rowAtPoint(e.getPoint());
@@ -364,7 +364,7 @@ public class LabelsWindow extends JInternalFrame {
 
   ///////////////////////////////////////////////////////////////
   // Class representing label table data
-  class LabelTableModel extends AbstractTableModel {
+  static class LabelTableModel extends AbstractTableModel {
     String[] columns;
     Object[][] data;
 
@@ -499,7 +499,7 @@ public class LabelsWindow extends JInternalFrame {
   ////////////////////////////////////////////////////////////////////////////
   //
   //  Comparator class used to sort in ascending order a List of symbols alphabetically by name
-  private class LabelNameAscendingComparator implements java.util.Comparator {
+  private static class LabelNameAscendingComparator implements java.util.Comparator {
     public int compare(Object a, Object b) {
       return ((Symbol) a).getName().toLowerCase().compareTo(((Symbol) b).getName().toLowerCase());
     }
@@ -514,7 +514,7 @@ public class LabelsWindow extends JInternalFrame {
   //  Remember, if not equal then any value with correct sign will work.
   //  If both have same sign, a-b will yield correct result.
   //  If signs differ, b will yield correct result (think about it).
-  private class LabelAddressAscendingComparator implements java.util.Comparator {
+  private static class LabelAddressAscendingComparator implements java.util.Comparator {
     public int compare(Object a, Object b) {
       int addrA = ((Symbol) a).getAddress();
       int addrB = ((Symbol) b).getAddress();
@@ -529,7 +529,7 @@ public class LabelsWindow extends JInternalFrame {
   //  Comparator object provided as the argument constructor.  This works because it
   //  is implemented by returning the result of the Ascending comparator when
   //  arguments are reversed.
-  private class DescendingComparator implements java.util.Comparator {
+  private static class DescendingComparator implements java.util.Comparator {
     private Comparator opposite;
 
     private DescendingComparator(Comparator opposite) {

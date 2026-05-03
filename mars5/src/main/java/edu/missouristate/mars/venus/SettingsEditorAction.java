@@ -61,9 +61,7 @@ public class SettingsEditorAction extends GuiAction {
 
   /** When this action is triggered, launch a dialog to view and modify editor settings. */
   public void actionPerformed(ActionEvent e) {
-    editorDialog =
-        new EditorFontDialog(
-            Globals.getGui(), "Text Editor Settings", true, Globals.getSettings().getEditorFont());
+    editorDialog = new EditorFontDialog(Globals.getGui(), "Text Editor Settings", true, Globals.getSettings().getEditorFont());
     editorDialog.setVisible(true);
   }
 
@@ -100,7 +98,7 @@ public class SettingsEditorAction extends GuiAction {
   };
 
   // Concrete font chooser class.
-  private class EditorFontDialog extends AbstractFontSettingDialog {
+  private static class EditorFontDialog extends AbstractFontSettingDialog {
 
     private JButton[] foregroundButtons;
     private JLabel[] samples;

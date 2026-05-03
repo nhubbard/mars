@@ -247,8 +247,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     binaryExponentDisplay.setEditable(true);
     binaryExponentDisplay.revalidate();
 
-    binaryFractionDisplay =
-        new BinaryFractionDisplayTextField(defaultBinaryFraction, maxLengthBinaryFraction + 1);
+    binaryFractionDisplay = new BinaryFractionDisplayTextField(defaultBinaryFraction, maxLengthBinaryFraction + 1);
     binaryFractionDisplay.setFont(binaryDisplayFont);
     binaryFractionDisplay.setForeground(binaryDisplayColor);
     binaryFractionDisplay.setHorizontalAlignment(JTextField.RIGHT);
@@ -1000,7 +999,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   //
   //  Use this to draw custom background in the binary fraction display.
   //
-  class BinaryFractionDisplayTextField extends JTextField {
+  static class BinaryFractionDisplayTextField extends JTextField {
 
     public BinaryFractionDisplayTextField(String value, int columns) {
       super(value, columns);

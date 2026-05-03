@@ -192,9 +192,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     // NOTE: Can't call "createNewGrid()" here because it uses settings from
     //       several combo boxes that have not been created yet.  But a default grid
     //       needs to be allocated for initial canvas display.
-    theGrid =
-        new Grid(
-            displayAreaHeightInPixels / unitPixelHeight, displayAreaWidthInPixels / unitPixelWidth);
+    theGrid = new Grid(displayAreaHeightInPixels / unitPixelHeight, displayAreaWidthInPixels / unitPixelWidth);
   }
 
   /**
@@ -516,7 +514,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 
   ////////////////////////////////////////////////////////////////////////
   // Represents grid of colors
-  private class Grid {
+  private static class Grid {
 
     Color[][] grid;
     int rows, columns;

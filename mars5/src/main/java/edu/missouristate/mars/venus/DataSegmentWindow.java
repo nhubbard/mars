@@ -941,7 +941,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   // setSelectedIndex to also call selectedItemChanged() did not help.  Only this
   // solution to extend the model class to call the protected
   // "fireContentsChanged()" method worked. DPS 25-Jan-2009
-  private class CustomComboBoxModel extends DefaultComboBoxModel {
+  private static class CustomComboBoxModel extends DefaultComboBoxModel {
     public CustomComboBoxModel(Object[] list) {
       super(list);
     }

@@ -260,7 +260,7 @@ public class Coprocessor0Window extends JPanel implements Observer {
     }
   }
 
-  class RegTableModel extends AbstractTableModel {
+  static class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Number", "Value"};
     Object[][] data;
 

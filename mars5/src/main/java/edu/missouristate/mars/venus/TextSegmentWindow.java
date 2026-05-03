@@ -354,12 +354,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
           if (tableModel.getValueAt(row, CODE_COLUMN).equals(strValue)) {
             return;
           }
-          mc =
-              new ModifiedCode(
-                  row,
-                  tableModel.getValueAt(row, CODE_COLUMN),
-                  tableModel.getValueAt(row, BASIC_COLUMN),
-                  tableModel.getValueAt(row, SOURCE_COLUMN));
+          mc = new ModifiedCode(row, tableModel.getValueAt(row, CODE_COLUMN), tableModel.getValueAt(row, BASIC_COLUMN), tableModel.getValueAt(row, SOURCE_COLUMN));
           executeMods.put(row, mc);
           // make a ProgramStatement and get basic code to display in BASIC_COLUMN
           strBasic = new ProgramStatement(value, address).getPrintableBasicAssemblyStatement();
@@ -700,7 +695,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   }
 
   /** Inner class to implement the Table model for this JTable. */
-  class TextTableModel extends AbstractTableModel {
+  static class TextTableModel extends AbstractTableModel {
     Object[][] data;
 
     public TextTableModel(Object[][] d) {
@@ -808,7 +803,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
     }
   }
 
-  private class ModifiedCode {
+  private static class ModifiedCode {
     private Integer row;
     private Object code, basic, source;
 
@@ -884,7 +879,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
    * Cell renderer for Machine Code column.  Alternates background color by row but otherwise is
    * same as MonoRightCellRenderer.
    */
-  class MachineCodeCellRenderer extends DefaultTableCellRenderer {
+  static class MachineCodeCellRenderer extends DefaultTableCellRenderer {
     public Component getTableCellRendererComponent(
         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
       JLabel cell =

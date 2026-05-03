@@ -474,8 +474,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
     public void actionPerformed(ActionEvent e) {
       JButton button = (JButton) e.getSource();
-      FontSettingDialog fontDialog =
-          new FontSettingDialog(null, "Select Text Font", samples[position].getFont());
+      FontSettingDialog fontDialog = new FontSettingDialog(null, "Select Text Font", samples[position].getFont());
       Font newFont = fontDialog.showDialog();
       if (newFont != null) {
         // button.setFont(newFont);
@@ -536,7 +535,7 @@ public class SettingsHighlightingAction extends GuiAction {
   //
   // Modal dialog to set a font.
   //
-  private class FontSettingDialog extends AbstractFontSettingDialog {
+  private static class FontSettingDialog extends AbstractFontSettingDialog {
     private boolean resultOK;
 
     public FontSettingDialog(Frame owner, String title, Font currentFont) {

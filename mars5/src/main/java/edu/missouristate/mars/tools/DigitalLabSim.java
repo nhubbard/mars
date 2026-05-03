@@ -167,7 +167,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     sevenSegPanel.display[number].modifyDisplay(value);
   }
 
-  public class SevenSegmentDisplay extends JComponent {
+  public static class SevenSegmentDisplay extends JComponent {
     public char aff;
 
     public SevenSegmentDisplay(char aff) {
@@ -363,7 +363,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
   }
 
-  public class OneSecondCounter {
+  public static class OneSecondCounter {
     public OneSecondCounter() {
       CounterInterruptOnOff = false;
     }

@@ -700,7 +700,7 @@ public class ProgramStatement {
   //
   //  DPS 29-July-2010
 
-  private class BasicStatementList {
+  private static class BasicStatementList {
 
     private ArrayList list;
 
@@ -754,7 +754,7 @@ public class ProgramStatement {
       return result.toString();
     }
 
-    private class ListElement {
+    private static class ListElement {
       int type;
       String sValue;
       int iValue;

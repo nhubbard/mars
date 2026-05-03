@@ -345,7 +345,7 @@ public class HelpHelpAction extends GuiAction {
     return mipsScrollPane;
   }
 
-  private class MyCellRenderer extends JLabel implements ListCellRenderer {
+  private static class MyCellRenderer extends JLabel implements ListCellRenderer {
     // This is the only method defined by ListCellRenderer.
     // We just reconfigure the JLabel each time we're called.
     public Component getListCellRendererComponent(
