@@ -605,7 +605,7 @@ public class EditTabbedPane extends JTabbedPane {
         // StringBuffer is preallocated to full filelength to eliminate dynamic
         // expansion as lines are added to it. Previously, each line was appended
         // to the Edit pane as it was read, way slower due to dynamic string alloc.
-        StringBuffer fileContents = new StringBuffer((int) theFile.length());
+        StringBuilder fileContents = new StringBuilder((int) theFile.length());
         int lineNumber = 1;
         String line = Globals.program.getSourceLine(lineNumber++);
         while (line != null) {

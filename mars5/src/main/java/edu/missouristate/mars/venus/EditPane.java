@@ -208,7 +208,7 @@ public class EditPane extends JPanel implements Observer {
   private static final String spaces = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 
   public String getLineNumbersList(javax.swing.text.Document doc) {
-    StringBuffer lineNumberList = new StringBuffer("<html>");
+    StringBuilder lineNumberList = new StringBuilder("<html>");
     int lineCount = doc.getDefaultRootElement().getElementCount(); // this.getSourceLineCount();
     int digits = Integer.toString(lineCount).length();
     for (int i = 1; i <= lineCount; i++) {

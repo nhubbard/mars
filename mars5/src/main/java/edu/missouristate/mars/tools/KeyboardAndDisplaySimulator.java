@@ -383,7 +383,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       char[] charArray = new char[columns];
       Arrays.fill(charArray, VT_FILL);
       String row = new String(charArray);
-      StringBuffer str = new StringBuffer(row);
+      StringBuilder str = new StringBuilder(row);
       for (int i = 1; i < rows; i++) {
         str.append("\n").append(row);
       }

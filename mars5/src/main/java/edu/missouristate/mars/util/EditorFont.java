@@ -192,7 +192,7 @@ public class EditorFont {
    */
   public static String substituteSpacesForTabs(String string, int tabSize) {
     if (!string.contains(TAB_STRING)) return string;
-    StringBuffer result = new StringBuffer(string);
+    StringBuilder result = new StringBuilder(string);
     for (int i = 0; i < result.length(); i++) {
       if (result.charAt(i) == TAB_CHAR) {
         result.replace(i, i + 1, SPACES.substring(0, tabSize - (i % tabSize)));

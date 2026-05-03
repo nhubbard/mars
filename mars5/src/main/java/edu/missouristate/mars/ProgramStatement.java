@@ -726,7 +726,7 @@ public class ProgramStatement {
               ? NumberDisplayBaseChooser.HEXADECIMAL
               : NumberDisplayBaseChooser.DECIMAL;
 
-      StringBuffer result = new StringBuffer();
+      StringBuilder result = new StringBuilder();
       for (int i = 0; i < list.size(); i++) {
         ListElement e = list.get(i);
         switch (e.type) {

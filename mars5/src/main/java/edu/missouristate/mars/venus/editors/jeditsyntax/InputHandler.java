@@ -849,7 +849,7 @@ public abstract class InputHandler extends KeyAdapter {
       int repeatCount = textArea.getInputHandler().getRepeatCount();
 
       if (textArea.isEditable()) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (int i = 0; i < repeatCount; i++) buf.append(str);
         textArea.overwriteSetSelectedText(buf.toString());
       } else {

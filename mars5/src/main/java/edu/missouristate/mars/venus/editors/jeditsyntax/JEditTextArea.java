@@ -960,7 +960,7 @@ public class JEditTextArea extends JComponent {
         start = tmp;
       }
 
-      StringBuffer buf = new StringBuffer();
+      StringBuilder buf = new StringBuilder();
       Segment seg = new Segment();
 
       for (int i = selectionStartLine; i <= selectionEndLine; i++) {
@@ -1218,7 +1218,7 @@ public class JEditTextArea extends JComponent {
       String selection = getSelectedText();
 
       int repeatCount = inputHandler.getRepeatCount();
-      StringBuffer buf = new StringBuffer();
+      StringBuilder buf = new StringBuilder();
       for (int i = 0; i < repeatCount; i++) buf.append(selection);
 
       clipboard.setContents(new StringSelection(buf.toString()), null);
@@ -1237,7 +1237,7 @@ public class JEditTextArea extends JComponent {
                 .replace('\r', '\n');
 
         int repeatCount = inputHandler.getRepeatCount();
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (int i = 0; i < repeatCount; i++) buf.append(selection);
         selection = buf.toString();
         setSelectedText(selection);
