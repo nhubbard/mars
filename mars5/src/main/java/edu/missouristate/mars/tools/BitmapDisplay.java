@@ -3,7 +3,6 @@ package edu.missouristate.mars.tools;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
-import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;

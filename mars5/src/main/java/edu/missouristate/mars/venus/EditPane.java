@@ -5,7 +5,6 @@ import edu.missouristate.mars.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.venus.editors.jeditsyntax.JEditBasedTextArea;
 import java.awt.*;
-import java.awt.event.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.*;

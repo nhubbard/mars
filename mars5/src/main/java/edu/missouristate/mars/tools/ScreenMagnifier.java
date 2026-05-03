@@ -7,7 +7,6 @@ import java.awt.geom.*;
 import java.awt.image.*;
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
 
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
