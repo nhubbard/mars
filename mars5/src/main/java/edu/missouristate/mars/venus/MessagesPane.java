@@ -46,8 +46,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Team JSpim
  */
 public class MessagesPane extends JTabbedPane {
-  JTextArea assemble, run;
-  JPanel assembleTab, runTab;
+  final JTextArea assemble;
+  final JTextArea run;
+  final JPanel assembleTab;
+  final JPanel runTab;
   // These constants are designed to keep scrolled contents of the
   // two message areas from becoming overwhelmingly large (which
   // seems to slow things down as new text is appended).  Once it
@@ -387,9 +389,9 @@ public class MessagesPane extends JTabbedPane {
   // Thread class for obtaining user input in the Run I/O window (MessagesPane)
   // Written by Ricardo Fernández Pascual [rfernandez@ditec.um.es] December 2009.
   class Asker implements Runnable {
-    ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(1);
+    final ArrayBlockingQueue<String> resultQueue = new ArrayBlockingQueue<String>(1);
     int initialPos;
-    int maxLen;
+    final int maxLen;
 
     Asker(int maxLen) {
       this.maxLen = maxLen;

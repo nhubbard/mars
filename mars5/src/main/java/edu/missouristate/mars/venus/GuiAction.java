@@ -33,7 +33,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /** parent class for Action subclasses to be defined for every menu/toolbar option. */
 public class GuiAction extends AbstractAction {
-  protected VenusUI mainUI;
+  protected final VenusUI mainUI;
 
   protected GuiAction(
       String name, Icon icon, String descrip, Integer mnemonic, KeyStroke accel, VenusUI gui) {

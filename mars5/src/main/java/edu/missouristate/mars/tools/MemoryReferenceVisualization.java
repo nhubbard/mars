@@ -45,8 +45,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication {
 
-  private static String version = "Version 1.0";
-  private static String heading = "Visualizing memory reference patterns";
+  private static final String version = "Version 1.0";
+  private static final String heading = "Visualizing memory reference patterns";
 
   // Major GUI components
   private JComboBox wordsPerUnitSelector,
@@ -61,9 +61,9 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   private JPanel results;
 
   // Some GUI settings
-  private EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
+  private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private Font countFonts = new Font("Times", Font.BOLD, 12);
-  private Color backgroundColor = Color.WHITE;
+  private final Color backgroundColor = Color.WHITE;
 
   // Values for Combo Boxes
 
@@ -98,13 +98,13 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   // This array of (count,color) pairs must be kept sorted! count is low end of subrange.
   // This array will grow if user adds colors at additional counter points (see below).
-  private CounterColor[] defaultCounterColors = {new CounterColor(0, Color.black), new CounterColor(1, Color.blue), new CounterColor(2, Color.green), new CounterColor(3, Color.yellow), new CounterColor(5, Color.orange), new CounterColor(10, Color.red)
+  private final CounterColor[] defaultCounterColors = {new CounterColor(0, Color.black), new CounterColor(1, Color.blue), new CounterColor(2, Color.green), new CounterColor(3, Color.yellow), new CounterColor(5, Color.orange), new CounterColor(10, Color.red)
   };
   /*  Values for reference count color slider. These are all possible counter values for which
    *  colors can be assigned.  As you can see just above, not all these values are assigned
    *  a default color.
    */
-  private int[] countTable = {
+  private final int[] countTable = {
     0,
     1,
     2,
@@ -647,10 +647,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
 
   private class ColorChooserControls {
     private JLabel sliderLabel = null;
-    private JSlider colorRangeSlider;
-    private JButton currentColorButton;
-    private JPanel colorChooserRow;
-    private JPanel countDisplayRow;
+    private final JSlider colorRangeSlider;
+    private final JButton currentColorButton;
+    private final JPanel colorChooserRow;
+    private final JPanel countDisplayRow;
     private volatile int counterIndex;
 
     private ColorChooserControls() {
@@ -789,8 +789,8 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   // color for rendering the range.  High end of the range is defined as low end of the
   // next range minus 1.  For last range, high end is Integer.MAX_VALUE.
   private static class CounterColor implements Comparable {
-    private int colorRangeStart;
-    private Color associatedColor;
+    private final int colorRangeStart;
+    private final Color associatedColor;
 
     public CounterColor(int start, Color color) {
       this.colorRangeStart = start;
@@ -811,8 +811,9 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   // Represents grid of memory access counts
   private static class Grid {
 
-    int[][] grid;
-    int rows, columns;
+    final int[][] grid;
+    final int rows;
+    final int columns;
 
     private Grid(int rows, int columns) {
       grid = new int[rows][columns];

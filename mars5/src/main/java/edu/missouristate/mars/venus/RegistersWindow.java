@@ -240,8 +240,8 @@ public class RegistersWindow extends JPanel implements Observer {
    * all columns.
    */
   private class RegisterCellRenderer extends DefaultTableCellRenderer {
-    private Font font;
-    private int alignment;
+    private final Font font;
+    private final int alignment;
 
     public RegisterCellRenderer(Font font, int alignment) {
       super();
@@ -278,7 +278,7 @@ public class RegistersWindow extends JPanel implements Observer {
   ////////////////////////////////////////////////////////////////////////////
   static class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Number", "Value"};
-    Object[][] data;
+    final Object[][] data;
 
     public RegTableModel(Object[][] d) {
       data = d;
@@ -383,7 +383,7 @@ public class RegistersWindow extends JPanel implements Observer {
       this.setSelectionBackground(Color.GREEN);
     }
 
-    private String[] regToolTips = {
+    private final String[] regToolTips = {
       /* $zero */ "constant 0",
       /* $at   */ "reserved for assembler",
       /* $v0   */ "expression evaluation and results of a function",
@@ -443,7 +443,7 @@ public class RegistersWindow extends JPanel implements Observer {
       return tip;
     }
 
-    private String[] columnToolTips = {
+    private final String[] columnToolTips = {
       /* name */ "Each register has a tool tip describing its usage convention",
       /* number */ "Corresponding register number",
       /* value */ "Current 32 bit value"

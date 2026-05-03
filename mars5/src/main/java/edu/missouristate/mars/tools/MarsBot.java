@@ -30,12 +30,12 @@ public class MarsBot implements Observer, MarsTool {
   // the end point of a path that should leave a track.
   private final int trackPts =
       256; // TBD Hardcoded. Array contains start-end points for segments in track.
-  private Point[] arrayOfTrack = new Point[trackPts];
+  private final Point[] arrayOfTrack = new Point[trackPts];
   private int trackIndex = 0;
 
   // private inner class
   private class BotRunnable implements Runnable {
-    JPanel panel;
+    final JPanel panel;
 
     public BotRunnable() // constructor
         {
@@ -143,8 +143,8 @@ public class MarsBot implements Observer, MarsTool {
 
   /* ------------------------------------------------------------------------- */
   private class MarsBotDisplay extends JPanel {
-    private int width;
-    private int height;
+    private final int width;
+    private final int height;
     private boolean clearTheDisplay = true;
 
     public MarsBotDisplay(int tw, int th) {

@@ -66,13 +66,13 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication {
 
-  private static String version = "Version 1.4";
-  private static String heading = "Keyboard and Display MMIO Simulator";
+  private static final String version = "Version 1.4";
+  private static final String heading = "Keyboard and Display MMIO Simulator";
   private static String displayPanelTitle, keyboardPanelTitle;
-  private static char VT_FILL = ' '; // fill character for virtual terminal (random access mode)
+  private static final char VT_FILL = ' '; // fill character for virtual terminal (random access mode)
 
-  public static Dimension preferredTextAreaDimension = new Dimension(400, 200);
-  private static Insets textAreaInsets = new Insets(4, 4, 4, 4);
+  public static final Dimension preferredTextAreaDimension = new Dimension(400, 200);
+  private static final Insets textAreaInsets = new Insets(4, 4, 4, 4);
 
   // Time delay to process Transmitter Data is simulated by counting instruction executions.
   // After this many executions, the Transmitter Controller Ready bit set to 1.
@@ -98,7 +98,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   private boolean displayRandomAccessMode = false;
   private int rows, columns;
   private DisplayResizeAdapter updateDisplayBorder;
-  private KeyboardAndDisplaySimulator simulator;
+  private final KeyboardAndDisplaySimulator simulator;
 
   // Major GUI components
   private JPanel keyboardAndDisplay;
@@ -113,7 +113,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   private JScrollPane keyAccepterScrollPane;
   private JTextArea keyEventAccepter;
   private JButton fontButton;
-  private Font defaultFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+  private final Font defaultFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
   /**
    * Simple constructor, likely used to run a stand-alone keyboard/display simulator.
@@ -834,7 +834,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     private static final int DELAY_INDEX_MIN = 0;
     private static final int DELAY_INDEX_MAX = 40;
     private static final int DELAY_INDEX_INIT = 4;
-    private double[] delayTable = {
+    private final double[] delayTable = {
       1,
       2,
       3,
@@ -943,7 +943,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Randomly pick value from range 1 to slider setting, uniform distribution
   // (each value has equal probability of being chosen).
   private static class UniformlyDistributedDelay implements TransmitterDelayTechnique {
-    Random randu;
+    final Random randu;
 
     public UniformlyDistributedDelay() {
       randu = new Random();
@@ -963,7 +963,7 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // value, take absolute value to make sure we don't get negative,
   // add 1 to make sure we don't get 0.
   private static class NormallyDistributedDelay implements TransmitterDelayTechnique {
-    Random randn;
+    final Random randn;
 
     public NormallyDistributedDelay() {
       randn = new Random();

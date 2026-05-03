@@ -64,13 +64,13 @@ import org.w3c.dom.NodeList;
 public class MipsXray extends AbstractMarsToolAndApplication {
   @Serial
   private static final long serialVersionUID = -1L;
-  private static String heading = "MIPS X-Ray - Animation of MIPS Datapath";
-  private static String version = " Version 2.0";
+  private static final String heading = "MIPS X-Ray - Animation of MIPS Datapath";
+  private static final String version = " Version 2.0";
 
   protected Graphics g;
   protected int lastAddress = -1; // address of instruction in memory
   protected JLabel label;
-  private Container painel = this.getContentPane();
+  private final Container painel = this.getContentPane();
   private DatapathAnimation datapathAnimation; // class panel that runs datapath animation.
 
   private GraphicsConfiguration gc;
@@ -326,14 +326,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     public static final int movingDownside = 2;
     public static final int movingLeft = 3;
     public static final int movingRight = 4;
-    public int direction;
+    public final int direction;
     public int oppositeAxis;
     private boolean isMovingXaxis;
     private Color color;
     private boolean first_interaction;
     private boolean active;
-    private boolean isText;
-    private ArrayList<Integer> targetVertex;
+    private final boolean isText;
+    private final ArrayList<Integer> targetVertex;
 
     public Vertex(
         int index,
@@ -479,13 +479,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private static final long serialVersionUID = -2681757800180958534L;
 
     // config variables
-    private int PERIOD = 5; // velocity of frames in ms
+    private final int PERIOD = 5; // velocity of frames in ms
     private static final int PWIDTH = 1000; // size of this panel
     private static final int PHEIGHT = 574;
-    private GraphicsConfiguration gc;
-    private GraphicsDevice gd; // for reporting accl. memory usage
-    private int accelMemory;
-    private DecimalFormat df;
+    private final GraphicsConfiguration gc;
+    private final GraphicsDevice gd; // for reporting accl. memory usage
+    private final int accelMemory;
+    private final DecimalFormat df;
 
     private int counter; // verify then remove.
     private boolean justStarted; // flag to start movement
@@ -496,31 +496,31 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     //	 private Vertex[][] inputGraph;
     private Vector<Vector<Vertex>> outputGraph;
-    private ArrayList<Vertex> vertexList;
+    private final ArrayList<Vertex> vertexList;
     private ArrayList<Vertex> vertexTraversed;
     // Screen Label variables
 
-    private HashMap<String, String> opcodeEquivalenceTable;
-    private HashMap<String, String> functionEquivalenceTable;
-    private HashMap<String, String> registerEquivalenceTable;
+    private final HashMap<String, String> opcodeEquivalenceTable;
+    private final HashMap<String, String> functionEquivalenceTable;
+    private final HashMap<String, String> registerEquivalenceTable;
 
     private String instructionCode;
 
-    private int countRegLabel;
-    private int countALULabel;
-    private int countPCLabel;
+    private final int countRegLabel;
+    private final int countALULabel;
+    private final int countPCLabel;
 
     // Colors variables
     private Color green1 = new Color(0, 153, 0);
     private Color green2 = new Color(0, 77, 0);
     private Color yellow2 = new Color(185, 182, 42);
-    private Color orange1 = new Color(255, 102, 0);
+    private final Color orange1 = new Color(255, 102, 0);
     private Color orange = new Color(119, 34, 34);
     private Color blue2 = new Color(0, 153, 255);
 
-    private int register = 1;
-    private int control = 2;
-    private int aluControl = 3;
+    private final int register = 1;
+    private final int control = 2;
+    private final int aluControl = 3;
     private int alu = 4;
     private int currentUnit;
     private Graphics2D g2d;

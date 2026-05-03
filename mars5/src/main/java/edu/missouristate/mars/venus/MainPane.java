@@ -46,10 +46,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class MainPane extends JTabbedPane {
   EditPane editTab;
-  ExecutePane executeTab;
-  EditTabbedPane editTabbedPane;
+  final ExecutePane executeTab;
+  final EditTabbedPane editTabbedPane;
 
-  private VenusUI mainUI;
+  private final VenusUI mainUI;
 
   /** Constructor for the MainPane class. */
   public MainPane(

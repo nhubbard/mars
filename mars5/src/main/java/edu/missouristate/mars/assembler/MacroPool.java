@@ -43,18 +43,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author M.H.Sekhavat {@literal <sekhavat17@gmail.com>}
  */
 public class MacroPool {
-  private MIPSprogram program;
+  private final MIPSprogram program;
 
   /** List of macros defined by now */
-  private ArrayList<Macro> macroList;
+  private final ArrayList<Macro> macroList;
 
   /**
    * @see #beginMacro(Token)
    */
   private Macro current;
 
-  private ArrayList<Integer> callStack;
-  private ArrayList<Integer> callStackOrigLines;
+  private final ArrayList<Integer> callStack;
+  private final ArrayList<Integer> callStackOrigLines;
 
   /**
    * @see #getNextCounter()

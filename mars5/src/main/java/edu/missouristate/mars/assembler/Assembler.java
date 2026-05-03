@@ -1476,7 +1476,7 @@ public class Assembler {
   // address spaces.
   // Instantiate one for data segment and one for text segment.
   private static class UserKernelAddressSpace {
-    int[] address;
+    final int[] address;
     int currentAddressSpace;
     private final int USER = 0, KERNEL = 1;
 
@@ -1526,7 +1526,7 @@ public class Assembler {
   // the integer directives: .word, .half, .byte)
   // - the label's token. Normally need only the name but error message needs more.
   private static class DataSegmentForwardReferences {
-    private ArrayList forwardReferenceList;
+    private final ArrayList forwardReferenceList;
 
     private DataSegmentForwardReferences() {
       forwardReferenceList = new ArrayList();
@@ -1601,9 +1601,9 @@ public class Assembler {
 
     // inner-inner class to hold each entry of the forward reference list.
     private static class DataSegmentForwardReference {
-      int patchAddress;
-      int length;
-      Token token;
+      final int patchAddress;
+      final int length;
+      final Token token;
 
       DataSegmentForwardReference(int patchAddress, int length, Token token) {
         this.patchAddress = patchAddress;

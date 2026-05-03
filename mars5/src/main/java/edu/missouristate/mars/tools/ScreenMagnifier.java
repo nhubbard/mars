@@ -81,13 +81,15 @@ public class ScreenMagnifier implements MarsTool {
 
 class Magnifier extends JFrame implements ComponentListener {
   static Robot robot;
-  JButton close, capture, settings;
-  JSpinner scaleAdjuster;
-  JScrollPane view;
+  final JButton close;
+  final JButton capture;
+  final JButton settings;
+  final JSpinner scaleAdjuster;
+  final JScrollPane view;
   Dimension frameSize;
-  Dimension viewSize;
-  MagnifierImage magnifierImage;
-  ActionListener captureActionListener;
+  final Dimension viewSize;
+  final MagnifierImage magnifierImage;
+  final ActionListener captureActionListener;
   CaptureModel captureResize, captureMove, captureRescale;
   CaptureModel captureDisplayCenter, captureDisplayUpperleft;
   CaptureModel dialogDisplayCenter;
@@ -98,8 +100,8 @@ class Magnifier extends JFrame implements ComponentListener {
   static final double SCALE_DEFAULT = 2.0;
   double scale = SCALE_DEFAULT;
   CaptureDisplayAlignmentStrategy alignment;
-  CaptureRectangleStrategy captureLocationSize = new CaptureMagnifierRectangle();
-  JFrame frame;
+  final CaptureRectangleStrategy captureLocationSize = new CaptureMagnifierRectangle();
+  final JFrame frame;
   static final String CAPTURE_TOOLTIP_TEXT =
       "Capture, scale, and display pixels that lay beneath the Magnifier.";
   static final String SETTINGS_TOOLTIP_TEXT = "Show dialog for changing tool settings.";
@@ -380,11 +382,11 @@ class SettingsDialog extends JDialog {
   JButton applyButton, cancelButton;
   JCheckBox captureResizeCheckBox, captureMoveCheckBox, captureRescaleCheckBox;
   JRadioButton captureDisplayCenteredButton, captureDisplayUpperleftButton;
-  Integer[] scribblerLineWidthSettings = {1, 2, 3, 4, 5, 6, 7, 8};
+  final Integer[] scribblerLineWidthSettings = {1, 2, 3, 4, 5, 6, 7, 8};
   JComboBox lineWidthSetting;
   JButton lineColorSetting;
   JCheckBox dialogCentered; // Whether or not dialog appears centered over the magnfier frame.
-  JDialog dialog;
+  final JDialog dialog;
   // temporary storage until committed with "Apply".  Needed because it is returned
   // by same call that shows the color selection dialog, so cannot be retrieved
   // later from the model (as you can with buttons, checkboxes, etc).
@@ -604,7 +606,7 @@ class CaptureModel {
 class MagnifierImage extends JPanel {
 
   // Enclosing JFrame for this panel -- the Screen Magnifier itself.
-  private Magnifier frame;
+  private final Magnifier frame;
   // Rectangle representing screen pixels to be magnified.
   private Rectangle screenRectangle;
   // Robot used to perform the screen capture.
@@ -612,7 +614,7 @@ class MagnifierImage extends JPanel {
   // Displayed image's Image object, which is actually a BufferedImage.
   private Image image;
   // Scribbler for highlighting image using mouse.
-  private Scribbler scribbler;
+  private final Scribbler scribbler;
 
   /** Construct an MagnifierImage component. */
   public MagnifierImage(Magnifier frame) {
@@ -710,7 +712,7 @@ class MagnifierImage extends JPanel {
    *  are not saved.
    */
   private static class Scribbler {
-    private ScribblerSettings scribblerSettings;
+    private final ScribblerSettings scribblerSettings;
     private BasicStroke drawingStroke;
     // coordinates of previous mouse position
     protected int last_x, last_y;

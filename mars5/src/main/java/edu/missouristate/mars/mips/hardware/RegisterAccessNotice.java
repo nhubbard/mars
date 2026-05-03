@@ -36,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version July 2005
  */
 public class RegisterAccessNotice extends AccessNotice {
-  private String registerName;
+  private final String registerName;
 
   /**
    * Constructor will be called only within this package, so assume register number is in valid

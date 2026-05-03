@@ -52,8 +52,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
 
   private static JTable dataTable;
   private JScrollPane dataTableScroller;
-  private Container contentPane;
-  private JPanel tablePanel;
+  private final Container contentPane;
+  private final JPanel tablePanel;
   private JButton dataButton,
       nextButton,
       prevButton,
@@ -64,7 +64,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
       extnButton,
       mmioButton,
       textButton;
-  private JCheckBox asciiDisplayCheckBox;
+  private final JCheckBox asciiDisplayCheckBox;
 
   static final int VALUES_PER_ROW = 8;
   static final int NUMBER_OF_ROWS = 16; // with 8 value columns, this shows 512 bytes;
@@ -85,7 +85,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   private boolean addressHighlighting = false;
   private boolean asciiDisplay = false;
   private int addressRow, addressColumn, addressRowFirstAddress;
-  private Settings settings;
+  private final Settings settings;
 
   int firstAddress;
   int homeAddress;
@@ -94,7 +94,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   // The combo box replaced the row of buttons when number of buttons expanded to 7!
   // We'll keep the button objects however and manually invoke their action listeners
   // when the corresponding combo box item is selected.  DPS 22-Nov-2006
-  JComboBox baseAddressSelector;
+  final JComboBox baseAddressSelector;
 
   // The next bunch are initialized dynamically in initializeBaseAddressChoices()
   private String[] displayBaseAddressChoices;
@@ -347,7 +347,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   private static final int KERNEL_DATA_BASE_ADDRESS_INDEX = 6;
   private static final int MMIO_BASE_ADDRESS_INDEX = 7;
   // Must agree with above in number and order...
-  private int[] displayBaseAddressArray = {
+  private final int[] displayBaseAddressArray = {
     Memory.externBaseAddress,
     Memory.dataBaseAddress,
     Memory.heapBaseAddress,
@@ -358,7 +358,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
     Memory.memoryMapBaseAddress,
   };
   // Must agree with above in number and order...
-  String[] descriptions = {
+  final String[] descriptions = {
     " (.extern)",
     " (.data)",
     " (heap)",
@@ -952,8 +952,8 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
   // Class representing memory data table data
 
   class DataTableModel extends AbstractTableModel {
-    String[] columnNames;
-    Object[][] data;
+    final String[] columnNames;
+    final Object[][] data;
 
     public DataTableModel(Object[][] d, String[] n) {
       data = d;
@@ -1113,7 +1113,7 @@ public class DataSegmentWindow extends JInternalFrame implements Observer {
       super(m);
     }
 
-    private String[] columnToolTips = {
+    private final String[] columnToolTips = {
       /* address  */ "Base MIPS memory address for this row of the table.",
       /* value +0 */ "32-bit value stored at base address for its row.",
       /* value +n */ "32-bit value stored ",

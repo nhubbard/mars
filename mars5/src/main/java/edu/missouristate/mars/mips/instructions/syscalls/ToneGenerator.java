@@ -71,7 +71,7 @@ class ToneGenerator {
   /** The default volume of the tone: 100 (of 127). */
   public static final byte DEFAULT_VOLUME = 100;
 
-  private static Executor threadPool = Executors.newCachedThreadPool();
+  private static final Executor threadPool = Executors.newCachedThreadPool();
 
   /**
    * Produces a Tone with the specified pitch, duration, and instrument, and volume.
@@ -121,10 +121,10 @@ class Tone implements Runnable {
   /** The default MIDI channel of the tone: 0 (channel 1). */
   public static final int DEFAULT_CHANNEL = 0;
 
-  private byte pitch;
-  private int duration;
-  private byte instrument;
-  private byte volume;
+  private final byte pitch;
+  private final int duration;
+  private final byte instrument;
+  private final byte volume;
 
   /**
    * Instantiates a new Tone object, initializing the tone's pitch, duration, instrument (patch),
@@ -168,7 +168,7 @@ class Tone implements Runnable {
    * cause other, less severe, problems), so that case should be
    * double covered. */
 
-  private static Lock openLock = new ReentrantLock();
+  private static final Lock openLock = new ReentrantLock();
 
   private void playTone() {
 

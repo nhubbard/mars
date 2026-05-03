@@ -54,13 +54,13 @@ import javax.swing.JTextField;
 public class InstructionStatistics extends AbstractMarsToolAndApplication {
 
   /** name of the tool */
-  private static String NAME = "Instruction Statistics";
+  private static final String NAME = "Instruction Statistics";
 
   /** version and author information of the tool */
-  private static String VERSION = "Version 1.0 (Ingo Kofler)";
+  private static final String VERSION = "Version 1.0 (Ingo Kofler)";
 
   /** heading of the tool */
-  private static String HEADING = "";
+  private static final String HEADING = "";
 
   /** number of instruction categories used by this tool */
   private static final int MAX_CATEGORY = 5;
@@ -93,10 +93,10 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
   private int m_totalCounter = 0;
 
   /** array of counter variables - one for each instruction category */
-  private int m_counters[] = new int[MAX_CATEGORY];
+  private final int[] m_counters = new int[MAX_CATEGORY];
 
   /** names of the instruction categories as array */
-  private String m_categoryLabels[] = {"ALU", "Jump", "Branch", "Memory", "Other"};
+  private final String[] m_categoryLabels = {"ALU", "Jump", "Branch", "Memory", "Other"};
 
   // From Felipe Lessa's instruction counter.  Prevent double-counting of instructions
   // which happens because 2 read events are generated.

@@ -159,7 +159,7 @@ public class Simulator extends Observable {
     void stopped(Simulator s);
   }
 
-  private ArrayList<StopListener> stopListeners = new ArrayList<StopListener>(1);
+  private final ArrayList<StopListener> stopListeners = new ArrayList<StopListener>(1);
 
   public void addStopListener(StopListener l) {
     stopListeners.add(l);
@@ -206,14 +206,15 @@ public class Simulator extends Observable {
    * Microsystems for download and is not part of the Swing library.
    */
   static class SimThread extends SwingWorker {
-    private MIPSprogram p;
-    private int pc, maxSteps;
+    private final MIPSprogram p;
+    private final int pc;
+    private final int maxSteps;
     private int[] breakPoints;
     private boolean done;
     private ProcessingException pe;
     private volatile boolean stop = false;
     private volatile AbstractAction stopper;
-    private AbstractAction starter;
+    private final AbstractAction starter;
     private int constructReturnReason;
 
     /**

@@ -56,7 +56,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public abstract class AbstractMarsToolAndApplication extends JFrame implements MarsTool, Observer {
   protected boolean isBeingUsedAsAMarsTool =
       false; // can use to determine whether invoked as MarsTool or stand-alone.
-  protected AbstractMarsToolAndApplication thisMarsApp;
+  protected final AbstractMarsToolAndApplication thisMarsApp;
   private JDialog
       dialog; // used only for MarsTool use.  This is the pop-up dialog that appears when menu item
   // selected.
@@ -65,15 +65,15 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
   // Major GUI components
   JLabel headingLabel;
-  private String title; // descriptive title for title bar provided to constructor.
-  private String heading; // Text to be displayed in the top portion of the main window.
+  private final String title; // descriptive title for title bar provided to constructor.
+  private final String heading; // Text to be displayed in the top portion of the main window.
 
   // Some GUI settings
-  private EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
-  private Color backgroundColor = Color.WHITE;
+  private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
+  private final Color backgroundColor = Color.WHITE;
 
-  private int lowMemoryAddress = Memory.dataSegmentBaseAddress;
-  private int highMemoryAddress = Memory.stackBaseAddress;
+  private final int lowMemoryAddress = Memory.dataSegmentBaseAddress;
+  private final int highMemoryAddress = Memory.stackBaseAddress;
   // For MarsTool, is set true when "Connect" clicked, false when "Disconnect" clicked.
   // For app, is set true when "Assemble and Run" clicked, false when program terminates.
   private volatile boolean observing = false;
@@ -641,7 +641,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   //  it will call actionPerformed for the first action listener in the
   //  button's list.
   protected static class EnterKeyListener extends KeyAdapter {
-    AbstractButton myButton;
+    final AbstractButton myButton;
 
     public EnterKeyListener(AbstractButton who) {
       myButton = who;
@@ -759,8 +759,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     // Little inner-inner class to display processing error message on AWT thread.
     // Used only by stand-alone app.
     private class MessageWriter implements Runnable {
-      private String text;
-      private boolean terminatingMessage;
+      private final String text;
+      private final boolean terminatingMessage;
 
       public MessageWriter(String text, boolean terminating) {
         this.text = text;

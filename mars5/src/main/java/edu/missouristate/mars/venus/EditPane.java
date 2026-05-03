@@ -51,16 +51,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class EditPane extends JPanel implements Observer {
 
-  private MARSTextEditingArea sourceCode;
-  private VenusUI mainUI;
-  private String currentDirectoryPath;
-  private JLabel caretPositionLabel;
-  private JCheckBox showLineNumbers;
-  private JLabel lineNumbers;
+  private final MARSTextEditingArea sourceCode;
+  private final VenusUI mainUI;
+  private final String currentDirectoryPath;
+  private final JLabel caretPositionLabel;
+  private final JCheckBox showLineNumbers;
+  private final JLabel lineNumbers;
   private static int count = 0;
   private boolean isCompoundEdit = false;
   private CompoundEdit compoundEdit;
-  private FileStatus fileStatus;
+  private final FileStatus fileStatus;
 
   /** Constructor for the EditPane class. */
   public EditPane(VenusUI appFrame) {

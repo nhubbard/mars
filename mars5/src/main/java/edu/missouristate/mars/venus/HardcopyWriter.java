@@ -43,7 +43,7 @@ import java.util.*;
  **/
 public class HardcopyWriter extends Writer {
   // These are the instance variables for the class
-  protected PrintJob job; // The PrintJob object in use
+  protected final PrintJob job; // The PrintJob object in use
   protected Graphics page; // Graphics object for current page
   protected String jobname; // The name of the print job
   protected int fontsize; // Point size of the font
@@ -61,7 +61,7 @@ public class HardcopyWriter extends Writer {
   protected int lineascent; // Offset of font baseline
   protected int chars_per_line; // Number of characters per line
   protected int lines_per_page; // Number of lines per page
-  protected int chars_per_tab = 4; // Added by Pete Sanderson 8-17-04
+  protected final int chars_per_tab = 4; // Added by Pete Sanderson 8-17-04
   protected int charnum = 0, linenum = 0; // Current column and line position
   protected int pagenum = 0; // Current page number
   // A field to save state between invocations of the write( ) method

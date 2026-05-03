@@ -23,12 +23,12 @@ import javax.swing.undo.*;
 public class JEditBasedTextArea extends JEditTextArea
     implements MARSTextEditingArea, CaretListener {
 
-  private EditPane editPane;
-  private UndoManager undoManager;
-  private UndoableEditListener undoableEditListener;
+  private final EditPane editPane;
+  private final UndoManager undoManager;
+  private final UndoableEditListener undoableEditListener;
   private boolean isCompoundEdit = false;
   private CompoundEdit compoundEdit;
-  private JEditBasedTextArea sourceCode;
+  private final JEditBasedTextArea sourceCode;
 
   public JEditBasedTextArea(EditPane editPain, JComponent lineNumbers) {
     super(lineNumbers);

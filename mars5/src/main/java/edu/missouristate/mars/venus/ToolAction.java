@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2005
  */
 public class ToolAction extends AbstractAction {
-  private Class toolClass; // MarsTool tool;
+  private final Class toolClass; // MarsTool tool;
 
   /**
    * Simple constructor.

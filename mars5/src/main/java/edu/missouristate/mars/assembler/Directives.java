@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public final class Directives {
 
-  private static ArrayList directiveList = new ArrayList();
+  private static final ArrayList directiveList = new ArrayList();
   public static final Directives DATA =
       new Directives(".data", "Subsequent items stored in Data segment at next available address");
   public static final Directives TEXT =
@@ -100,8 +100,8 @@ public final class Directives {
       new Directives(
           ".include", "Insert the contents of the specified file.  Put filename in quotes.");
 
-  private String descriptor;
-  private String description; // help text
+  private final String descriptor;
+  private final String description; // help text
 
   private Directives() {
     // private ctor assures no objects can be created other than those above.

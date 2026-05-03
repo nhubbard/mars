@@ -86,7 +86,7 @@ public class ScavengerHunt implements Observer, MarsTool {
   private static int accessCounter = 0;
   private static int playerID =
       ADMINISTRATOR_ID; // Range 0...(NUM_PLAYERS-1), plus ADMINISTRATOR_ID
-  private boolean KENVDEBUG = false;
+  private final boolean KENVDEBUG = false;
 
   // Used to define (X,Y) coordinate of a location to which ScavengerHunt players
   // will travel.
@@ -108,7 +108,7 @@ public class ScavengerHunt implements Observer, MarsTool {
     long finishTime;
     // int locID;  // ID of the location to which ScavengerHunt players are headed. Not used by
     // player.
-    boolean hasVisitedLoc[] =
+    final boolean[] hasVisitedLoc =
         new boolean[NUM_LOCATIONS]; // boolean: player has visited each location
     boolean finis = false;
 
@@ -186,14 +186,14 @@ public class ScavengerHunt implements Observer, MarsTool {
     // public int getLocationID() {  return locID; }
   } // end class PlayerData
 
-  private static PlayerData[] pd = new PlayerData[NUM_PLAYERS];
-  private static Location[] loc = new Location[NUM_LOCATIONS];
+  private static final PlayerData[] pd = new PlayerData[NUM_PLAYERS];
+  private static final Location[] loc = new Location[NUM_LOCATIONS];
   private Random randomStream;
   private long startTime;
 
   // private inner class
   private class ScavengerHuntRunnable implements Runnable {
-    JPanel panel;
+    final JPanel panel;
 
     public ScavengerHuntRunnable() // constructor
         {
@@ -274,8 +274,8 @@ public class ScavengerHunt implements Observer, MarsTool {
    * ScavengerHunt.
    */
   private class ScavengerHuntDisplay extends JPanel {
-    private int width;
-    private int height;
+    private final int width;
+    private final int height;
     private boolean clearTheDisplay = true;
 
     public ScavengerHuntDisplay(int tw, int th) {

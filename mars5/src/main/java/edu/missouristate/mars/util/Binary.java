@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Binary {
 
   // Using int value 0-15 as index, yields equivalent hex digit as char.
-  private static char[] chars = {
+  private static final char[] chars = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
   };
   // Use this to produce String equivalent of unsigned int value (add it to int value, result is

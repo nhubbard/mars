@@ -36,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * the config.txt file read when MARS starts up.
  */
 public class SyscallNumberOverride {
-  private String serviceName;
+  private final String serviceName;
   private int newServiceNumber;
 
   /**

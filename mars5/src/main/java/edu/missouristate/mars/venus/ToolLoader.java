@@ -141,8 +141,8 @@ public class ToolLoader {
   }
 
   private static class MarsToolClassAndInstance {
-    Class marsToolClass;
-    MarsTool marsToolInstance;
+    final Class marsToolClass;
+    final MarsTool marsToolInstance;
 
     MarsToolClassAndInstance(Class marsToolClass, MarsTool marsToolInstance) {
       this.marsToolClass = marsToolClass;

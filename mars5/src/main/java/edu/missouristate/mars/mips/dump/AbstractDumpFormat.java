@@ -40,7 +40,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public abstract class AbstractDumpFormat implements DumpFormat {
 
-  private String name, commandDescriptor, description, extension;
+  private final String name;
+  private final String commandDescriptor;
+  private final String description;
+  private final String extension;
 
   /**
    * Typical constructor. Note you cannot creates objects from this class but subclass constructor

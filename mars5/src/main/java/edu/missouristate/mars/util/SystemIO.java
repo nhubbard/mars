@@ -437,13 +437,13 @@ public class SystemIO {
   // Ken Vollmar, August 2005
 
   private static class FileIOData {
-    private static String[] fileNames =
+    private static final String[] fileNames =
         new String
             [SYSCALL_MAXFILES]; // The filenames in use. Null if file descriptor i is not in use.
-    private static int[] fileFlags =
+    private static final int[] fileFlags =
         new int[SYSCALL_MAXFILES]; // The flags of this file, 0=READ, 1=WRITE. Invalid if this file
     // descriptor is not in use.
-    private static Object[] streams =
+    private static final Object[] streams =
         new Object[SYSCALL_MAXFILES]; // The streams in use, associated with the filenames
 
     // Reset all file information. Closes any open files and resets the arrays

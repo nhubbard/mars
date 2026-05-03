@@ -51,7 +51,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
   private boolean highlighting;
   private int highlightRow;
   private ExecutePane executePane;
-  private JCheckBox[] conditionFlagCheckBox;
+  private final JCheckBox[] conditionFlagCheckBox;
   private static final int NAME_COLUMN = 0;
   private static final int FLOAT_COLUMN = 1;
   private static final int DOUBLE_COLUMN = 2;
@@ -324,8 +324,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
    * all columns.
    */
   private class RegisterCellRenderer extends DefaultTableCellRenderer {
-    private Font font;
-    private int alignment;
+    private final Font font;
+    private final int alignment;
 
     public RegisterCellRenderer(Font font, int alignment) {
       super();
@@ -364,7 +364,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
 
   static class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Float", "Double"};
-    Object[][] data;
+    final Object[][] data;
 
     public RegTableModel(Object[][] d) {
       data = d;
@@ -520,7 +520,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
       this.setSelectionBackground(Color.GREEN);
     }
 
-    private String[] regToolTips = {
+    private final String[] regToolTips = {
       /* $f0  */ "floating point subprogram return value",
       /* $f1  */ "should not be referenced explicitly in your program",
       /* $f2  */ "floating point subprogram return value",
@@ -577,7 +577,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener, Observ
       return tip;
     }
 
-    private String[] columnToolTips = {
+    private final String[] columnToolTips = {
       /* name */ "Each register has a tool tip describing its usage convention",
       /* float */ "32-bit single precision IEEE 754 floating point register",
       /* double */ "64-bit double precision IEEE 754 floating point register (uses a pair of 32-bit registers)"

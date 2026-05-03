@@ -49,8 +49,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * few constants.
  */
 public class FloatRepresentation extends AbstractMarsToolAndApplication {
-  private static String version = "Version 1.1";
-  private static String heading = "32-bit IEEE 754 Floating Point Representation";
+  private static final String version = "Version 1.1";
+  private static final String heading = "32-bit IEEE 754 Floating Point Representation";
   private static final String title = "Floating Point Representation, ";
 
   private static final String defaultHex = "00000000";
@@ -84,7 +84,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
   private Register attachedRegister = null;
   private Register[] fpRegisters;
-  private FloatRepresentation thisFloatTool;
+  private final FloatRepresentation thisFloatTool;
   // Panels to hold binary displays and decorations (labels, arrows)
   private JPanel binarySignDecoratedDisplay,
       binaryExponentDecoratedDisplay,
@@ -97,11 +97,11 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
       binaryFractionDisplay;
   // Non-editable fields to display formula translating binary to decimal.
   private JLabel expansionDisplay;
-  private JLabel significandLabel = new JLabel(denormalizedLabel, JLabel.CENTER);
+  private final JLabel significandLabel = new JLabel(denormalizedLabel, JLabel.CENTER);
   private BinaryToDecimalFormulaGraphic binaryToDecimalFormulaGraphic;
   // Non-editable field to display instructions
   private InstructionsPane instructions;
-  private String defaultInstructions =
+  private final String defaultInstructions =
       "Modify any value then press the Enter key to update all values.";
 
   /**
@@ -626,7 +626,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   //
   private class HexDisplayKeystrokeListener extends KeyAdapter {
 
-    private int digitLength; // maximum number of digits long
+    private final int digitLength; // maximum number of digits long
 
     public HexDisplayKeystrokeListener(int length) {
       digitLength = length;
@@ -700,7 +700,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   //
   private class BinaryDisplayKeystrokeListener extends KeyAdapter {
 
-    private int bitLength; // maximum number of bits permitted
+    private final int bitLength; // maximum number of bits permitted
 
     public BinaryDisplayKeystrokeListener(int length) {
       bitLength = length;
@@ -904,8 +904,8 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     final int upperY = 50;
     int centerX, exponentCenterX;
     int subtractLabelWidth, subtractLabelHeight;
-    int centerY = (upperY - lowerY) / 2;
-    int upperYArrowHead = upperY - arrowHeadOffset;
+    final int centerY = (upperY - lowerY) / 2;
+    final int upperYArrowHead = upperY - arrowHeadOffset;
     int currentExponent = Binary.binaryStringToInt(defaultBinaryExponent);
 
     public void paintComponent(Graphics g) {

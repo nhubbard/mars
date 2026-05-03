@@ -52,7 +52,7 @@ public class HelpHelpAction extends GuiAction {
   }
 
   // Light gray background color for alternating lines of the instruction lists
-  static Color altBackgroundColor = new Color(0xEE, 0xEE, 0xEE);
+  static final Color altBackgroundColor = new Color(0xEE, 0xEE, 0xEE);
 
   /** Separates Instruction name descriptor from detailed (operation) description in help string. */
   public static final String descriptionDetailSeparator = ":";

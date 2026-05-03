@@ -53,9 +53,9 @@ import javax.swing.JTextField;
  */
 // @SuppressWarnings("serial")
 public class InstructionCounter extends AbstractMarsToolAndApplication {
-  private static String name = "Instruction Counter";
-  private static String version = "Version 1.0 (Felipe Lessa)";
-  private static String heading = "Counting the number of instructions executed";
+  private static final String name = "Instruction Counter";
+  private static final String version = "Version 1.0 (Felipe Lessa)";
+  private static final String heading = "Counting the number of instructions executed";
 
   /** Number of instructions executed until now. */
   protected int counter = 0;

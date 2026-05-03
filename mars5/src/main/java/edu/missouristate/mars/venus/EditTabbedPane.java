@@ -49,11 +49,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class EditTabbedPane extends JTabbedPane {
   EditPane editTab;
-  MainPane mainPane;
+  final MainPane mainPane;
 
-  private VenusUI mainUI;
-  private Editor editor;
-  private FileOpener fileOpener;
+  private final VenusUI mainUI;
+  private final Editor editor;
+  private final FileOpener fileOpener;
 
   /** Constructor for the EditTabbedPane class. */
   public EditTabbedPane(VenusUI appFrame, Editor editor, MainPane mainPane) {
@@ -516,11 +516,11 @@ public class EditTabbedPane extends JTabbedPane {
 
   private class FileOpener {
     private File mostRecentlyOpenedFile;
-    private JFileChooser fileChooser;
+    private final JFileChooser fileChooser;
     private int fileFilterCount;
-    private ArrayList fileFilterList;
-    private PropertyChangeListener listenForUserAddedFileFilter;
-    private Editor theEditor;
+    private final ArrayList fileFilterList;
+    private final PropertyChangeListener listenForUserAddedFileFilter;
+    private final Editor theEditor;
 
     public FileOpener(Editor theEditor) {
       this.mostRecentlyOpenedFile = null;

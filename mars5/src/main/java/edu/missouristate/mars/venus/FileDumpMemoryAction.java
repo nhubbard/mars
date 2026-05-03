@@ -273,7 +273,7 @@ public class FileDumpMemoryAction extends GuiAction {
   // http://forum.java.sun.com/thread.jspa?threadID=488762&messageID=2292482
 
   private static class DumpFormatComboBoxRenderer extends BasicComboBoxRenderer {
-    private JComboBox myMaster;
+    private final JComboBox myMaster;
 
     public DumpFormatComboBoxRenderer(JComboBox myMaster) {
       super();

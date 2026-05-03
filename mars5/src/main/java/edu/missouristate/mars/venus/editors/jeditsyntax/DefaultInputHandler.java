@@ -321,7 +321,7 @@ public class DefaultInputHandler extends InputHandler {
   }
 
   // private members
-  private Hashtable bindings;
+  private final Hashtable bindings;
   private Hashtable currentBindings;
 
   private DefaultInputHandler(DefaultInputHandler copy) {

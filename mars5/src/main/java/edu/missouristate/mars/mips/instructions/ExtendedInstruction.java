@@ -45,7 +45,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ExtendedInstruction extends Instruction {
 
-  private ArrayList translationStrings, compactTranslationStrings;
+  private final ArrayList translationStrings;
+  private final ArrayList compactTranslationStrings;
 
   /**
    * Constructor for ExtendedInstruction.

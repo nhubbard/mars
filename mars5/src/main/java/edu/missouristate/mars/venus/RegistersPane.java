@@ -45,11 +45,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2005
  */
 public class RegistersPane extends JTabbedPane {
-  RegistersWindow regsTab;
-  Coprocessor1Window cop1Tab;
-  Coprocessor0Window cop0Tab;
+  final RegistersWindow regsTab;
+  final Coprocessor1Window cop1Tab;
+  final Coprocessor0Window cop0Tab;
 
-  private VenusUI mainUI;
+  private final VenusUI mainUI;
 
   /** Constructor for the RegistersPane class. */
   public RegistersPane(

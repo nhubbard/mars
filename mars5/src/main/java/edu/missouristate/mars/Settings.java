@@ -53,7 +53,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class Settings extends Observable {
   /* Properties file used to hold default settings. */
-  private static String settingsFile = "Settings";
+  private static final String settingsFile = "Settings";
 
   /////////////////////////////  PROPERTY ARRAY INDEXES /////////////////////////////
   // Because MARS is programmed to Java 1.4, we cannot use an enumerated type.
@@ -153,7 +153,7 @@ public class Settings extends Observable {
   public static final int SELF_MODIFYING_CODE_ENABLED = 20;
 
   // NOTE: key sequence must match up with labels above which are used for array indexes!
-  private static String[] booleanSettingsKeys = {
+  private static final String[] booleanSettingsKeys = {
     "ExtendedAssembler",
     "BareMachine",
     "AssembleOnOpen",
@@ -182,7 +182,7 @@ public class Settings extends Observable {
    * the properties file work. If you wish to change them, do so before instantiating the Settings
    * object. Values are matched to keys by list position.
    */
-  public static boolean[] defaultBooleanSettingsValues = { // match the above list by position
+  public static final boolean[] defaultBooleanSettingsValues = { // match the above list by position
     true, false, false, false, false, true, true, false, false, true, false, false, true, true,
     false, true, true, false, false, true, false
   };
@@ -228,7 +228,7 @@ public class Settings extends Observable {
    * the properties file work. If you wish to change, do so before instantiating the Settings
    * object. Must match key by list position.
    */
-  private static String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
+  private static final String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
 
   // FONT SETTINGS.  Each array position has associated name.
   /** Font for the text editor */
@@ -361,7 +361,7 @@ public class Settings extends Observable {
    * properties file work. If you wish to change, do so before instantiating the Settings object.
    * Must match key by list position.
    */
-  private static String[] defaultColorSettingsValues = {
+  private static final String[] defaultColorSettingsValues = {
     "0x00e0e0e0",
     "0",
     "0x00ffffff",
@@ -376,14 +376,14 @@ public class Settings extends Observable {
     "0"
   };
 
-  private boolean[] booleanSettingsValues;
-  private String[] stringSettingsValues;
-  private String[] fontFamilySettingsValues;
-  private String[] fontStyleSettingsValues;
-  private String[] fontSizeSettingsValues;
-  private String[] colorSettingsValues;
+  private final boolean[] booleanSettingsValues;
+  private final String[] stringSettingsValues;
+  private final String[] fontFamilySettingsValues;
+  private final String[] fontStyleSettingsValues;
+  private final String[] fontSizeSettingsValues;
+  private final String[] colorSettingsValues;
 
-  private Preferences preferences;
+  private final Preferences preferences;
 
   /**
    * Create Settings object and set to saved values. If saved values not found, will set based on

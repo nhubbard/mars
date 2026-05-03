@@ -47,8 +47,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Team JSpim
  */
 public class TextSegmentWindow extends JInternalFrame implements Observer {
-  private JPanel programArgumentsPanel; // DPS 17-July-2008
-  private JTextField programArgumentsTextField; // DPS 17-July-2008
+  private final JPanel programArgumentsPanel; // DPS 17-July-2008
+  private final JTextField programArgumentsTextField; // DPS 17-July-2008
   private static final int PROGRAM_ARGUMENT_TEXTFIELD_COLUMNS = 40;
   private JTable table;
   private JScrollPane tableScroller;
@@ -64,7 +64,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   private Hashtable addressRows; // key is text address, value is table model row
   private Hashtable<Integer, ModifiedCode>
       executeMods; // key is table model row, value is original code, basic, source.
-  private Container contentPane;
+  private final Container contentPane;
   private TextTableModel tableModel;
   private Font tableCellFont = new Font("Monospaced", Font.PLAIN, 12);
   private boolean codeHighlighting;
@@ -73,7 +73,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   private TableModelListener tableModelListener;
   private boolean inDelaySlot; // Added 25 June 2007
 
-  private static String[] columnNames = {"Bkpt", "Address", "Code", "Basic", "Source"};
+  private static final String[] columnNames = {"Bkpt", "Address", "Code", "Basic", "Source"};
   private static final int BREAK_COLUMN = 0;
   private static final int ADDRESS_COLUMN = 1;
   private static final int CODE_COLUMN = 2;
@@ -696,7 +696,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
 
   /** Inner class to implement the Table model for this JTable. */
   static class TextTableModel extends AbstractTableModel {
-    Object[][] data;
+    final Object[][] data;
 
     public TextTableModel(Object[][] d) {
       data = d;
@@ -802,8 +802,10 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
   }
 
   private static class ModifiedCode {
-    private Integer row;
-    private Object code, basic, source;
+    private final Integer row;
+    private final Object code;
+    private final Object basic;
+    private final Object source;
 
     private ModifiedCode(Integer row, Object code, Object basic, Object source) {
       this.row = row;
@@ -1003,7 +1005,7 @@ public class TextSegmentWindow extends JInternalFrame implements Observer {
       super(m);
     }
 
-    private String[] columnToolTips = {
+    private final String[] columnToolTips = {
       /* break */ "If checked, will set an execution breakpoint. Click header to disable/enable breakpoints",
       /* address */ "Text segment address of binary instruction code",
       /* code */ "32-bit binary MIPS instruction",

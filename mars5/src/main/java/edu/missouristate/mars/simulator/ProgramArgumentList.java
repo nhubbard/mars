@@ -47,7 +47,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ProgramArgumentList {
 
-  ArrayList programArgumentList;
+  final ArrayList programArgumentList;
 
   /**
    * Constructor that parses string to produce list. Delimiters are the default Java StringTokenizer

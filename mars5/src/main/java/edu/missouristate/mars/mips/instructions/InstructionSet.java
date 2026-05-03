@@ -45,7 +45,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003-5
  */
 public class InstructionSet {
-  private ArrayList instructionList;
+  private final ArrayList instructionList;
   private ArrayList opcodeMatchMaps;
   private SyscallLoader syscallLoader;
 
@@ -3124,9 +3124,9 @@ public class InstructionSet {
   }
 
   private static class MatchMap implements Comparable {
-    private int mask;
-    private int maskLength; // number of 1 bits in mask
-    private HashMap matchMap;
+    private final int mask;
+    private final int maskLength; // number of 1 bits in mask
+    private final HashMap matchMap;
 
     public MatchMap(int mask, HashMap matchMap) {
       this.mask = mask;

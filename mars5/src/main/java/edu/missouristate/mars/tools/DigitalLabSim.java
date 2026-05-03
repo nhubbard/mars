@@ -21,8 +21,8 @@ import javax.swing.*;
  * didier.teifreto@univ-fcomte.fr
  */
 public class DigitalLabSim extends AbstractMarsToolAndApplication {
-  private static String heading = "Digital Lab Sim";
-  private static String version = " Version 1.0 (Didier Teifreto)";
+  private static final String heading = "Digital Lab Sim";
+  private static final String version = " Version 1.0 (Didier Teifreto)";
   private static final int IN_ADRESS_DISPLAY_1 = Memory.memoryMapBaseAddress + 0x10;
   private static final int IN_ADRESS_DISPLAY_2 = Memory.memoryMapBaseAddress + 0x11;
   private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x12;
@@ -41,7 +41,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   private HexaKeyboard hexaKeyPanel;
   private static boolean KeyboardInterruptOnOff = false;
   // Counter
-  private static int CounterValueMax = 30;
+  private static final int CounterValueMax = 30;
   private static int CounterValue = CounterValueMax;
   private static boolean CounterInterruptOnOff = false;
   private static OneSecondCounter SecondCounter;
@@ -257,7 +257,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   }
 
   public static class SevenSegmentPanel extends JPanel {
-    public SevenSegmentDisplay[] display;
+    public final SevenSegmentDisplay[] display;
 
     public SevenSegmentPanel() {
       int i;
@@ -296,7 +296,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
   }
 
   public class HexaKeyboard extends JPanel {
-    public JButton[] button;
+    public final JButton[] button;
 
     public HexaKeyboard() {
       int i;
@@ -321,7 +321,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
 
     public class EcouteurClick implements MouseListener {
-      private int buttonValue;
+      private final int buttonValue;
 
       public EcouteurClick(int val) {
         buttonValue = val;

@@ -71,7 +71,7 @@ public final class TokenTypes {
   public static final TokenTypes ERROR = new TokenTypes("ERROR");
   public static final TokenTypes MACRO_PARAMETER = new TokenTypes("MACRO_PARAMETER");
 
-  private String descriptor;
+  private final String descriptor;
 
   private TokenTypes() {
     // private ctor assures no objects can be created other than those above.

@@ -39,11 +39,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
 
-  private EditPane editPane;
-  private UndoManager undoManager;
-  private UndoableEditListener undoableEditListener;
-  private JTextArea sourceCode;
-  private JScrollPane editAreaScrollPane;
+  private final EditPane editPane;
+  private final UndoManager undoManager;
+  private final UndoableEditListener undoableEditListener;
+  private final JTextArea sourceCode;
+  private final JScrollPane editAreaScrollPane;
 
   private boolean isCompoundEdit = false;
   private CompoundEdit compoundEdit;

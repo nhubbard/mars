@@ -42,7 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Macro {
   private String name;
   private MIPSprogram program;
-  private ArrayList<String> labels;
+  private final ArrayList<String> labels;
 
   /**
    * first and last line number of macro definition. first line starts with .macro directive and

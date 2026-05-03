@@ -40,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003
  */
 public class ProcessingException extends Exception {
-  private ErrorList errs;
+  private final ErrorList errs;
 
   /**
    * Constructor for ProcessingException.

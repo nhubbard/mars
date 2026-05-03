@@ -48,7 +48,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
   JSlider fontSizeSelector;
   JSpinner fontSizeSpinSelector;
   JLabel fontSample;
-  protected Font currentFont;
+  protected final Font currentFont;
 
   // Used to determine upon OK, whether or not anything has changed.
   String initialFontFamily, initialFontStyle, initialFontSize;
@@ -216,7 +216,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
   //
   /////////////////////////////////////////////////////////////////////
 
-  private static String SEPARATOR = "___SEPARATOR____";
+  private static final String SEPARATOR = "___SEPARATOR____";
 
   // Given an array of string arrays, will produce a Vector contenating
   // the arrays with a separator between each.
@@ -237,7 +237,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
   // Required renderer for handling the separator bar.
   private static class ComboBoxRenderer extends JLabel implements ListCellRenderer {
-    JSeparator separator;
+    final JSeparator separator;
 
     public ComboBoxRenderer() {
       setOpaque(true);
@@ -266,7 +266,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
 
   // Required listener to handle the separator bar.
   private static class BlockComboListener implements ActionListener {
-    JComboBox combo;
+    final JComboBox combo;
     Object currentItem;
 
     BlockComboListener(JComboBox combo) {

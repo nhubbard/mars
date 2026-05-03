@@ -236,7 +236,7 @@ public class Memory extends Observable {
   // (greedy rather than lazy instantiation).  The constructor is private and getInstance()
   // always returns this instance.
 
-  private static Memory uniqueMemoryInstance = new Memory();
+  private static final Memory uniqueMemoryInstance = new Memory();
 
   /*
    * Private constructor for Memory.  Separate data structures for text and data segments.
@@ -1197,7 +1197,8 @@ public class Memory extends Observable {
   // Private class whose objects will represent an observable-observer pair
   // for a given memory address or range.
   private static class MemoryObservable extends Observable implements Comparable {
-    private int lowAddress, highAddress;
+    private final int lowAddress;
+    private final int highAddress;
 
     public MemoryObservable(Observer obs, int startAddr, int endAddr) {
       lowAddress = startAddr;

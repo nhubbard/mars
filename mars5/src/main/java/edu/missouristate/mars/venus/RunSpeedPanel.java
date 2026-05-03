@@ -53,7 +53,7 @@ public class RunSpeedPanel extends JPanel {
   private static final int SPEED_INDEX_MAX = 40;
   private static final int SPEED_INDEX_INIT = 40;
   private static final int SPEED_INDEX_INTERACTION_LIMIT = 35;
-  private double[] speedTable = {
+  private final double[] speedTable = {
     .05,
     .1,
     .2,
@@ -97,7 +97,7 @@ public class RunSpeedPanel extends JPanel {
     UNLIMITED_SPEED // 38-40
   };
   private JLabel sliderLabel = null;
-  private JSlider runSpeedSlider;
+  private final JSlider runSpeedSlider;
   private static RunSpeedPanel runSpeedPanel = null;
   private volatile int runSpeedIndex = SPEED_INDEX_MAX;
 

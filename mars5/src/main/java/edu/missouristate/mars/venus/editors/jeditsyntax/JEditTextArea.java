@@ -59,7 +59,7 @@ public class JEditTextArea extends JComponent {
    * Adding components with this name to the text area will place them left of the horizontal scroll
    * bar. In jEdit, the status bar is added this way.
    */
-  public static String LEFT_OF_SCROLLBAR = "los";
+  public static final String LEFT_OF_SCROLLBAR = "los";
 
   public static Color POPUP_HELP_TEXT_COLOR = Color.BLACK; // DPS 11-July-2014
 
@@ -1280,12 +1280,12 @@ public class JEditTextArea extends JComponent {
   }
 
   // protected members
-  protected static String CENTER = "center";
-  protected static String RIGHT = "right";
-  protected static String BOTTOM = "bottom";
+  protected static final String CENTER = "center";
+  protected static final String RIGHT = "right";
+  protected static final String BOTTOM = "bottom";
 
   protected static JEditTextArea focusedComponent;
-  protected static Timer caretTimer;
+  protected static final Timer caretTimer;
 
   protected TextAreaPainter painter;
 
@@ -1467,7 +1467,7 @@ public class JEditTextArea extends JComponent {
     private Component center;
     private Component right;
     private Component bottom;
-    private Vector leftOfScrollBar = new Vector();
+    private final Vector leftOfScrollBar = new Vector();
   }
 
   static class CaretBlinker implements ActionListener {
@@ -1947,7 +1947,8 @@ public class JEditTextArea extends JComponent {
   // Carries out the instruction/directive completion when popup menu
   // item is selected.
   private class PopupHelpActionListener implements ActionListener {
-    private String tokenText, text;
+    private final String tokenText;
+    private final String text;
 
     public PopupHelpActionListener(String tokenText, String text) {
       this.tokenText = tokenText;

@@ -53,7 +53,7 @@ public class FilenameFinder {
   private static final String FILE_URL = "file:";
   private static final String JAR_URI_PREFIX = "jar:";
   private static final boolean NO_DIRECTORIES = false;
-  public static String MATCH_ALL_EXTENSIONS = "*";
+  public static final String MATCH_ALL_EXTENSIONS = "*";
 
   /**
    * Locate files and return list of file names. Given a known relative directory path, it will
@@ -444,9 +444,9 @@ public class FilenameFinder {
 
   private static class MarsFileFilter extends FileFilter {
 
-    private ArrayList extensions;
-    private String fullDescription;
-    private boolean acceptDirectories;
+    private final ArrayList extensions;
+    private final String fullDescription;
+    private final boolean acceptDirectories;
 
     private MarsFileFilter(ArrayList extensions, String description, boolean acceptDirectories) {
       this.extensions = extensions;
