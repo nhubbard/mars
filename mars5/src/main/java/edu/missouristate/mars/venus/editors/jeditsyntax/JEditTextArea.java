@@ -1786,7 +1786,7 @@ public class JEditTextArea extends JComponent {
       result +=
           ((i == 0) ? "" : "<br>")
               + "<tt>"
-              + match.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;")
+              + match.getExamplePaddedToLength(length).replace(" ", "&nbsp;")
               + "</tt>"
               + match.getDescription();
     }
@@ -1908,7 +1908,7 @@ public class JEditTextArea extends JComponent {
         JMenuItem menuItem =
             new JMenuItem(
                 "<html><tt>"
-                    + item.getExamplePaddedToLength(length).replaceAll(" ", "&nbsp;")
+                    + item.getExamplePaddedToLength(length).replace(" ", "&nbsp;")
                     + "</tt>"
                     + item.getDescription()
                     + "</html>");

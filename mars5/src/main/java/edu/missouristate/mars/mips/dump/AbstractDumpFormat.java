@@ -57,7 +57,7 @@ public abstract class AbstractDumpFormat implements DumpFormat {
       String name, String commandDescriptor, String description, String extension) {
     this.name = name;
     this.commandDescriptor =
-        (commandDescriptor == null) ? null : commandDescriptor.replaceAll(" ", "");
+        (commandDescriptor == null) ? null : commandDescriptor.replace(" ", "");
     this.description = description;
     this.extension = extension;
   }

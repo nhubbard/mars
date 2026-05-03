@@ -82,7 +82,7 @@ public class BasicInstruction extends Instruction {
     this.mnemonic = this.extractOperator(example);
     this.description = description;
     this.instructionFormat = instrFormat;
-    this.operationMask = operMask.replaceAll(" ", ""); // squeeze out any/all spaces
+    this.operationMask = operMask.replace(" ", ""); // squeeze out any/all spaces
     if (operationMask.length() != Instruction.INSTRUCTION_LENGTH_BITS) {
       System.out.println(example + " mask not " + Instruction.INSTRUCTION_LENGTH_BITS + " bits!");
     }
