@@ -28,9 +28,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-// FIXME(phase-2): gui-coupling — RunSpeedPanel is a Venus Swing component used for execution speed
-// control
-import edu.missouristate.mars.plugin.venus.RunSpeedPanel;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -82,7 +79,7 @@ public record SimulatorNotice(int action, int maxSteps, double runSpeed, int pro
         + this.maxSteps
         + " "
         + "Speed "
-        + ((this.runSpeed == RunSpeedPanel.UNLIMITED_SPEED)
+        + ((this.runSpeed >= Simulator.UNLIMITED_SPEED)
             ? "unlimited "
             : this.runSpeed + " inst/sec")
         + "Prog Ctr "

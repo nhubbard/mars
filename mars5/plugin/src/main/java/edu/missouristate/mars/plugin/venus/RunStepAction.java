@@ -35,7 +35,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** Action for the Run -&gt; Step menu item */
-public class RunStepAction extends GuiAction {
+public class RunStepAction extends GuiAction implements Simulator.SimFinishCallback {
 
   String name;
   ExecutePane executePane;
@@ -118,6 +118,12 @@ public class RunStepAction extends GuiAction {
     }
     VenusUI.setReset(false);
   }
+
+  @Override
+  public void stopped(ProcessingException pe, int reason) {}
+
+  @Override
+  public void paused(boolean done, int reason, ProcessingException pe) {}
 
   ////////////////////////////////////////////////////////////////////////////////////
   // Method to store any program arguments into MIPS memory and registers before

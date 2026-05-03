@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin;
 
+import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;

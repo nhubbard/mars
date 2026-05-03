@@ -5,6 +5,8 @@ import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.mips.dump.*;
+import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxStyle;
+import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxUtilities;
 import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
@@ -163,6 +165,21 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     // this.setSize((int)(screenWidth*.8),(int)(screenHeight*.8));
 
     Globals.initialize();
+
+    // Push jeditsyntax defaults into core Settings (decouples core from Swing/jeditsyntax)
+    SyntaxStyle[] syntaxDefaults = SyntaxUtilities.getDefaultSyntaxStyles();
+    String[] syntaxColors = new String[syntaxDefaults.length];
+    boolean[] syntaxBolds = new boolean[syntaxDefaults.length];
+    boolean[] syntaxItalics = new boolean[syntaxDefaults.length];
+    for (int i = 0; i < syntaxDefaults.length; i++) {
+      syntaxColors[i] = syntaxDefaults[i].getColorAsHexString();
+      syntaxBolds[i] = syntaxDefaults[i].isBold();
+      syntaxItalics[i] = syntaxDefaults[i].isItalic();
+    }
+    Globals.getSettings().initializeSyntaxStyleDefaults(syntaxColors, syntaxBolds, syntaxItalics);
+
+    // Wire run-speed slider into simulator (decouples core from RunSpeedPanel)
+    Simulator.getInstance().setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
 
     //  image courtesy of NASA/JPL.
     URL im = this.getClass().getResource(Globals.imagesPath + "RedMars16.gif");

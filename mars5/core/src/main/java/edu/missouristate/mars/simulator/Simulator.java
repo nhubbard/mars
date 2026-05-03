@@ -6,12 +6,11 @@ import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-// FIXME(phase-2): gui-coupling — venus.* (RunStepAction/RunGoAction/RunSpeedPanel in finished()),
-// javax.swing.SwingWorker — remaining GUI action coupling
-import edu.missouristate.mars.plugin.venus.*;
 import java.util.*;
 import java.util.function.Consumer;
-import javax.swing.*;
+import java.util.function.Supplier;
+import javax.swing.AbstractAction;
+import javax.swing.SwingUtilities;
 
 /*
 Copyright (c) 2003-2010,  Pete Sanderson and Kenneth Vollmar
@@ -52,6 +51,35 @@ public class Simulator {
   private static Simulator simulator = null; // Singleton object
   private static volatile SimulatorObserver observer = null;
   private final EventEmitter<SimulatorNotice> simulatorEvents = new EventEmitter<>();
+
+  /**
+   * Run-speed value that means "execute as fast as possible, no inter-instruction delay."
+   * Matches {@code RunSpeedPanel.UNLIMITED_SPEED} in the Venus UI.
+   */
+  public static final double UNLIMITED_SPEED = 40.0;
+
+  /**
+   * Provides the current execution speed (instructions/second). Defaults to unlimited.
+   * The Venus UI sets this to {@code RunSpeedPanel.getInstance()::getRunSpeed} on startup so
+   * the simulator respects the speed slider without importing any Swing class.
+   */
+  private Supplier<Double> runSpeedSource = () -> UNLIMITED_SPEED;
+
+  public void setRunSpeedSource(Supplier<Double> source) {
+    this.runSpeedSource = source;
+  }
+
+  /**
+   * Callback interface used by {@link SimThread#finished()} to notify the originating GUI action
+   * (Go or Step) of the simulation outcome without importing plugin-specific action classes.
+   * {@code RunGoAction} and {@code RunStepAction} in the plugin module implement this interface.
+   */
+  public interface SimFinishCallback {
+    void stepped(boolean done, int reason, ProcessingException pe);
+    void stopped(ProcessingException pe, int reason);
+    void paused(boolean done, int reason, ProcessingException pe);
+  }
+
   // Others can set this true to indicate external interrupt.  Initially used
   // to simulate keyboard and display interrupts.  The device is identified
   // by the address of its MMIO control register.  keyboard 0xFFFF0000 and
@@ -191,7 +219,7 @@ public class Simulator {
         new SimulatorNotice(
             SimulatorNotice.SIMULATOR_START,
             maxSteps,
-            RunSpeedPanel.getInstance().getRunSpeed(),
+            runSpeedSource.get(),
             programCounter));
   }
 
@@ -200,7 +228,7 @@ public class Simulator {
         new SimulatorNotice(
             SimulatorNotice.SIMULATOR_STOP,
             maxSteps,
-            RunSpeedPanel.getInstance().getRunSpeed(),
+            runSpeedSource.get(),
             programCounter));
   }
 
@@ -435,28 +463,16 @@ public class Simulator {
           }
         }
 
-        // schedule GUI update only if: there is in fact a GUI! AND
-        //                              using Run,  not Step (maxSteps > 1) AND
-        //                              running slowly enough for GUI to keep up
-        // if (Globals.getGui() != null && maxSteps != 1 &&
-        if (observer != null
-            && maxSteps != 1
-            && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+        // Schedule a GUI update when running (not stepping) below the unlimited-speed threshold.
+        double currentSpeed = Simulator.getInstance().runSpeedSource.get();
+        if (observer != null && maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
           final int stepPc = pc;
           SwingUtilities.invokeLater(() -> observer.onStepComplete(stepPc));
         }
-        if (Globals.getGui().isGuiMode()
-            || Globals
-                .runSpeedPanelExists) { // OR added by DPS 24 July 2008 to enable speed control by
-          // stand-alone tool
-          if (maxSteps != 1
-              && RunSpeedPanel.getInstance().getRunSpeed() < RunSpeedPanel.UNLIMITED_SPEED) {
+        if (Globals.getGui().isGuiMode() || Globals.runSpeedPanelExists) {
+          if (maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
             try {
-              Thread.sleep(
-                  (int)
-                      (1000
-                          / RunSpeedPanel.getInstance()
-                              .getRunSpeed())); // make sure it's never zero!
+              Thread.sleep((int) (1000 / currentSpeed)); // make sure it's never zero!
             } catch (InterruptedException ignored) {
             }
           }
@@ -516,25 +532,27 @@ public class Simulator {
      * call of construct() in the first place.
      */
     public void finished() {
-      // If running from the command-line, then there is no GUI to update.
       if (!Globals.getGui().isGuiMode()) {
         return;
       }
-      String starterName = (String) starter.getValue(AbstractAction.NAME);
-      if (starterName.equals("Step")) {
-        ((RunStepAction) starter).stepped(done, constructReturnReason, pe);
+      if (!(starter instanceof SimFinishCallback cb)) {
+        return;
       }
-      if (starterName.equals("Go")) {
+      String starterName = (String) starter.getValue(AbstractAction.NAME);
+      if ("Step".equals(starterName)) {
+        cb.stepped(done, constructReturnReason, pe);
+      } else if ("Go".equals(starterName)) {
         if (done) {
-          ((RunGoAction) starter).stopped(pe, constructReturnReason);
+          cb.stopped(pe, constructReturnReason);
         } else if (constructReturnReason == BREAKPOINT) {
-          ((RunGoAction) starter).paused(false, constructReturnReason, pe);
+          cb.paused(false, constructReturnReason, pe);
         } else {
-          String stopperName = (String) stopper.getValue(AbstractAction.NAME);
+          String stopperName = stopper != null
+              ? (String) stopper.getValue(AbstractAction.NAME) : "";
           if ("Pause".equals(stopperName)) {
-            ((RunGoAction) starter).paused(done, constructReturnReason, pe);
+            cb.paused(done, constructReturnReason, pe);
           } else if ("Stop".equals(stopperName)) {
-            ((RunGoAction) starter).stopped(pe, constructReturnReason);
+            cb.stopped(pe, constructReturnReason);
           }
         }
       }

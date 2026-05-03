@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin;
 
+import edu.missouristate.mars.*;
 import java.awt.*;
 import javax.swing.*;
 

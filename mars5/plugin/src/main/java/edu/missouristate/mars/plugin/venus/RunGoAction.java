@@ -36,7 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** Action class for the Run -&gt; Go menu item (and toolbar icon) */
-public class RunGoAction extends GuiAction {
+public class RunGoAction extends GuiAction implements Simulator.SimFinishCallback {
 
   public static final int defaultMaxSteps = -1; // "forever", formerly 10000000; // 10 million
   public static int maxSteps = defaultMaxSteps;
@@ -182,6 +182,9 @@ public class RunGoAction extends GuiAction {
     RunGoAction.resetMaxSteps();
     VenusUI.setReset(false);
   }
+
+  @Override
+  public void stepped(boolean done, int reason, ProcessingException pe) {}
 
   /** Reset max steps limit to default value at termination of a simulated execution. */
   public static void resetMaxSteps() {

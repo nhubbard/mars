@@ -207,8 +207,9 @@ public class SettingsEditorAction extends GuiAction {
           Globals.getSettings()
               .setEditorSyntaxStyleByPosition(
                   syntaxStyleIndex[i],
-                  new SyntaxStyle(
-                      samples[i].getForeground(), italic[i].isSelected(), bold[i].isSelected()));
+                  samples[i].getForeground(),
+                  italic[i].isSelected(),
+                  bold[i].isSelected());
         }
         syntaxStylesAction = false; // reset
       }

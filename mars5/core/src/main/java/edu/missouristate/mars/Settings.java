@@ -2,7 +2,6 @@ package edu.missouristate.mars;
 
 import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import java.awt.Color;
 import java.awt.Font;
 import java.util.*;
@@ -461,25 +460,44 @@ public class Settings {
   private static boolean[] defaultSyntaxStyleBoldSettingsValues;
   private static boolean[] defaultSyntaxStyleItalicSettingsValues;
 
-  public void setEditorSyntaxStyleByPosition(int index, SyntaxStyle syntaxStyle) {
-    syntaxStyleColorSettingsValues[index] = syntaxStyle.getColorAsHexString();
-    syntaxStyleItalicSettingsValues[index] = syntaxStyle.isItalic();
-    syntaxStyleBoldSettingsValues[index] = syntaxStyle.isBold();
+  public void setEditorSyntaxStyleByPosition(int index, Color color, boolean italic, boolean bold) {
+    syntaxStyleColorSettingsValues[index] =
+        Binary.intToHexString(color.getRed() << 16 | color.getGreen() << 8 | color.getBlue());
+    syntaxStyleItalicSettingsValues[index] = italic;
+    syntaxStyleBoldSettingsValues[index] = bold;
     saveEditorSyntaxStyle(index);
   }
 
-  public SyntaxStyle getEditorSyntaxStyleByPosition(int index) {
-    return new SyntaxStyle(
-        getColorValueByPosition(index, syntaxStyleColorSettingsValues),
-        syntaxStyleItalicSettingsValues[index],
-        syntaxStyleBoldSettingsValues[index]);
+  public Color getEditorSyntaxStyleColorByPosition(int index) {
+    return decodeSyntaxStyleColor(syntaxStyleColorSettingsValues[index]);
   }
 
-  public SyntaxStyle getDefaultEditorSyntaxStyleByPosition(int index) {
-    return new SyntaxStyle(
-        getColorValueByPosition(index, defaultSyntaxStyleColorSettingsValues),
-        defaultSyntaxStyleItalicSettingsValues[index],
-        defaultSyntaxStyleBoldSettingsValues[index]);
+  public boolean getEditorSyntaxStyleItalicByPosition(int index) {
+    return syntaxStyleItalicSettingsValues[index];
+  }
+
+  public boolean getEditorSyntaxStyleBoldByPosition(int index) {
+    return syntaxStyleBoldSettingsValues[index];
+  }
+
+  public Color getDefaultEditorSyntaxStyleColorByPosition(int index) {
+    return decodeSyntaxStyleColor(defaultSyntaxStyleColorSettingsValues[index]);
+  }
+
+  public boolean getDefaultEditorSyntaxStyleItalicByPosition(int index) {
+    return defaultSyntaxStyleItalicSettingsValues[index];
+  }
+
+  public boolean getDefaultEditorSyntaxStyleBoldByPosition(int index) {
+    return defaultSyntaxStyleBoldSettingsValues[index];
+  }
+
+  private static Color decodeSyntaxStyleColor(String hex) {
+    try {
+      return Color.decode(hex);
+    } catch (NumberFormatException ignored) {
+      return Color.BLACK;
+    }
   }
 
   private void saveEditorSyntaxStyle(int index) {
@@ -497,40 +515,33 @@ public class Settings {
     }
   }
 
-  // For syntax styles, need to initialize from SyntaxUtilities defaults.
-  // Taking care not to explicitly create a Color object, since it may trigger
-  // Swing initialization (that caused problems for UC Berkeley when we
-  // created Font objects here).  It shouldn't, but then again Font shouldn't
-  // either but they said it did.  (see HeadlessException)
-  // On othe other hand, the first statement of this method causes Color objects
-  // to be created!  It is possible but a real pain in the rear to avoid using
-  // Color objects totally.  Requires new methods for the SyntaxUtilities class.
-  private void initializeEditorSyntaxStyles() {
-    SyntaxStyle[] syntaxStyle = SyntaxUtilities.getDefaultSyntaxStyles();
-    int tokens = syntaxStyle.length;
+  /**
+   * Initialize editor syntax style defaults from externally-supplied arrays. Must be called by the
+   * UI layer (Venus) before the editor is displayed. The arrays must all have the same length and
+   * must use the same hex-color encoding as {@link Binary#intToHexString}.
+   */
+  public void initializeSyntaxStyleDefaults(
+      String[] colors, boolean[] bolds, boolean[] italics) {
+    int tokens = colors.length;
     syntaxStyleColorSettingsKeys = new String[tokens];
     syntaxStyleBoldSettingsKeys = new String[tokens];
     syntaxStyleItalicSettingsKeys = new String[tokens];
-    defaultSyntaxStyleColorSettingsValues = new String[tokens];
-    defaultSyntaxStyleBoldSettingsValues = new boolean[tokens];
-    defaultSyntaxStyleItalicSettingsValues = new boolean[tokens];
-    syntaxStyleColorSettingsValues = new String[tokens];
-    syntaxStyleBoldSettingsValues = new boolean[tokens];
-    syntaxStyleItalicSettingsValues = new boolean[tokens];
+    defaultSyntaxStyleColorSettingsValues = colors.clone();
+    defaultSyntaxStyleBoldSettingsValues = bolds.clone();
+    defaultSyntaxStyleItalicSettingsValues = italics.clone();
+    syntaxStyleColorSettingsValues = colors.clone();
+    syntaxStyleBoldSettingsValues = bolds.clone();
+    syntaxStyleItalicSettingsValues = italics.clone();
     for (int i = 0; i < tokens; i++) {
       syntaxStyleColorSettingsKeys[i] = SYNTAX_STYLE_COLOR_PREFIX + i;
       syntaxStyleBoldSettingsKeys[i] = SYNTAX_STYLE_BOLD_PREFIX + i;
       syntaxStyleItalicSettingsKeys[i] = SYNTAX_STYLE_ITALIC_PREFIX + i;
-      syntaxStyleColorSettingsValues[i] =
-          defaultSyntaxStyleColorSettingsValues[i] = syntaxStyle[i].getColorAsHexString();
-      syntaxStyleBoldSettingsValues[i] =
-          defaultSyntaxStyleBoldSettingsValues[i] = syntaxStyle[i].isBold();
-      syntaxStyleItalicSettingsValues[i] =
-          defaultSyntaxStyleItalicSettingsValues[i] = syntaxStyle[i].isItalic();
     }
+    getEditorSyntaxStyleSettingsFromPreferences();
   }
 
   private void getEditorSyntaxStyleSettingsFromPreferences() {
+    if (syntaxStyleColorSettingsKeys == null) return;
     for (int i = 0; i < syntaxStyleColorSettingsKeys.length; i++) {
       syntaxStyleColorSettingsValues[i] =
           preferences.get(syntaxStyleColorSettingsKeys[i], syntaxStyleColorSettingsValues[i]);
@@ -1319,7 +1330,8 @@ public class Settings {
         fontStyleSettingsValues.length);
     System.arraycopy(
         defaultColorSettingsValues, 0, colorSettingsValues, 0, colorSettingsValues.length);
-    initializeEditorSyntaxStyles();
+    // Syntax style defaults are initialized later via initializeSyntaxStyleDefaults(),
+    // called by the UI layer once jeditsyntax defaults are available.
   }
 
   // Used by all the boolean setting "setter" methods.

@@ -4,7 +4,7 @@ import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.plugin.venus.NumberDisplayBaseChooser;
+import edu.missouristate.mars.util.NumberDisplayBase;
 import java.util.*;
 
 /*
@@ -738,12 +738,12 @@ public class ProgramStatement {
     public String toString() {
       int addressBase =
           (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX))
-              ? NumberDisplayBaseChooser.HEXADECIMAL
-              : NumberDisplayBaseChooser.DECIMAL;
+              ? NumberDisplayBase.HEXADECIMAL
+              : NumberDisplayBase.DECIMAL;
       int valueBase =
           (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX))
-              ? NumberDisplayBaseChooser.HEXADECIMAL
-              : NumberDisplayBaseChooser.DECIMAL;
+              ? NumberDisplayBase.HEXADECIMAL
+              : NumberDisplayBase.DECIMAL;
 
       StringBuilder result = new StringBuilder();
       for (ListElement e : list) {
@@ -752,14 +752,14 @@ public class ProgramStatement {
             result.append(e.sValue);
             break;
           case 1:
-            result.append(NumberDisplayBaseChooser.formatNumber(e.iValue, addressBase));
+            result.append(NumberDisplayBase.formatNumber(e.iValue, addressBase));
             break;
           case 2:
-            if (valueBase == NumberDisplayBaseChooser.HEXADECIMAL) {
+            if (valueBase == NumberDisplayBase.HEXADECIMAL) {
               result.append(
                   Binary.intToHexString(e.iValue)); // 13-July-2011, was: intToHalfHexString()
             } else {
-              result.append(NumberDisplayBaseChooser.formatNumber(e.iValue, valueBase));
+              result.append(NumberDisplayBase.formatNumber(e.iValue, valueBase));
             }
           default:
             break;

@@ -106,19 +106,12 @@ public class SyntaxUtilities {
    */
   public static SyntaxStyle[] getCurrentSyntaxStyles() {
     SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
-
-    styles[Token.NULL] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.NULL);
-    styles[Token.COMMENT1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.COMMENT1);
-    styles[Token.COMMENT2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.COMMENT2);
-    styles[Token.KEYWORD1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD1);
-    styles[Token.KEYWORD2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD2);
-    styles[Token.KEYWORD3] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.KEYWORD3);
-    styles[Token.LITERAL1] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LITERAL1);
-    styles[Token.LITERAL2] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LITERAL2);
-    styles[Token.LABEL] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.LABEL);
-    styles[Token.OPERATOR] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.OPERATOR);
-    styles[Token.INVALID] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.INVALID);
-    styles[Token.MACRO_ARG] = Globals.getSettings().getEditorSyntaxStyleByPosition(Token.MACRO_ARG);
+    for (int i = 0; i < Token.ID_COUNT; i++) {
+      styles[i] = new SyntaxStyle(
+          Globals.getSettings().getEditorSyntaxStyleColorByPosition(i),
+          Globals.getSettings().getEditorSyntaxStyleItalicByPosition(i),
+          Globals.getSettings().getEditorSyntaxStyleBoldByPosition(i));
+    }
     return styles;
   }
 

@@ -13,8 +13,7 @@ import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.SystemIO;
-// FIXME(phase-2): gui-coupling — NumberDisplayBaseChooser is a Venus Swing component
-import edu.missouristate.mars.plugin.venus.NumberDisplayBaseChooser;
+import edu.missouristate.mars.util.NumberDisplayBase;
 import java.util.ArrayList;
 import java.util.Comparator;
 
@@ -406,7 +405,7 @@ public class Assembler {
                 ps2.getSourceLine(),
                 0,
                 "Duplicate text segment address: "
-                    + NumberDisplayBaseChooser.formatUnsignedInteger(
+                    + NumberDisplayBase.formatUnsignedInteger(
                         ps2.getAddress(),
                         (Globals.getSettings().getDisplayAddressesInHex()) ? 16 : 10)
                     + " already occupied by "
