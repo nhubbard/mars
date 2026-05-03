@@ -165,7 +165,6 @@ public class ProgramStatement {
   public void buildBasicStatementFromBasicInstruction(ErrorList errors) {
     Token token = strippedTokenList.get(0);
     String basicStatementElement = token.getValue() + " ";
-    ;
     StringBuilder basic = new StringBuilder(basicStatementElement);
     basicStatementList.addString(basicStatementElement); // the operator
     TokenTypes tokenType, nextTokenType;
@@ -417,7 +416,6 @@ public class ProgramStatement {
       int firstSpace = this.basicAssemblyStatement.indexOf(" ");
       result.append(blanks, 0, 16 - result.length()).append(this.basicAssemblyStatement, 0, firstSpace);
       result.append(blanks, 0, 24 - result.length()).append(this.basicAssemblyStatement.substring(firstSpace + 1));
-      ;
     } else {
       result.append(blanks, 0, 16 - result.length()).append("0x").append(Integer.toString(this.binaryStatement, 16));
     }
