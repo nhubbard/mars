@@ -2,9 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-// FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
-// call in Phase 2
-import javax.swing.JOptionPane;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -70,6 +67,6 @@ public class SyscallConfirmDialog extends AbstractSyscall {
     //    0 ---> meaning Yes
     //    1 ---> meaning No
     //    2 ---> meaning Cancel
-    RegisterFile.updateRegister(4, JOptionPane.showConfirmDialog(null, message));
+    RegisterFile.updateRegister(4, env.showConfirmDialog(message));
   }
 }

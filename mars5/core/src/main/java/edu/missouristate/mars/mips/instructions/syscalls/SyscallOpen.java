@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -80,7 +79,7 @@ public class SyscallOpen extends AbstractSyscall {
     } catch (AddressErrorException e) {
       throw new ProcessingException(statement, e);
     }
-    int retValue = SystemIO.openFile(filename, RegisterFile.getValue(5));
+    int retValue = env.openFile(filename, RegisterFile.getValue(5));
     RegisterFile.updateRegister(2, retValue); // set returned fd value in register
   }
 }

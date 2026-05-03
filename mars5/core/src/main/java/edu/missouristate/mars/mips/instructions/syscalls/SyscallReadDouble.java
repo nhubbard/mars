@@ -3,7 +3,7 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.util.*;
+import edu.missouristate.mars.util.Binary;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -51,7 +51,7 @@ public class SyscallReadDouble extends AbstractSyscall {
     //  Higher numbered reg contains high order word so order is $f1 - $f0.
     double doubleValue;
     try {
-      doubleValue = SystemIO.readDouble(this.getNumber());
+      doubleValue = env.readDouble();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
           statement,

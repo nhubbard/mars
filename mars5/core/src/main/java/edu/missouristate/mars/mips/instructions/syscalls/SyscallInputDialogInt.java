@@ -2,9 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-// FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
-// call in Phase 2
-import javax.swing.JOptionPane;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -73,7 +70,7 @@ public class SyscallInputDialogInt extends AbstractSyscall {
     // An empty string returned (that is, inputValue.length() of zero)
     // means that OK was chosen but no string was input.
     String inputValue;
-    inputValue = JOptionPane.showInputDialog(message);
+    inputValue = env.showInputDialog(message);
     if (inputValue == null) // Cancel was chosen
     {
       RegisterFile.updateRegister(4, 0); // set $a0 to zero

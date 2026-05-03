@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -72,7 +71,7 @@ public class SyscallWrite extends AbstractSyscall {
       throw new ProcessingException(statement, e);
     }
     int retValue =
-        SystemIO.writeToFile(
+        env.writeToFile(
             RegisterFile.getValue(4), // fd
             myBuffer, // buffer
             RegisterFile.getValue(6)); // length

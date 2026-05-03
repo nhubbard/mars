@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.SyscallEnvironment;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -42,6 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public abstract class AbstractSyscall implements Syscall {
   private int serviceNumber;
   private final String serviceName;
+  protected SyscallEnvironment env;
 
   /**
    * Constructor is provided so subclass may initialize instance variables.
@@ -82,6 +84,11 @@ public abstract class AbstractSyscall implements Syscall {
    */
   public int getNumber() {
     return serviceNumber;
+  }
+
+  @Override
+  public void setEnvironment(SyscallEnvironment env) {
+    this.env = env;
   }
 
   /**

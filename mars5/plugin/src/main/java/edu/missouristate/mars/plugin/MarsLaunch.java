@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
@@ -137,6 +138,7 @@ public class MarsLaunch {
     } else { // running from command line.
       // assure command mode works in headless environment (generates exception if not)
       System.setProperty("java.awt.headless", "true");
+      Globals.setSyscallEnvironment(new HeadlessSyscallEnvironment());
       simulate = true;
       displayFormat = HEXADECIMAL;
       verbose = true;

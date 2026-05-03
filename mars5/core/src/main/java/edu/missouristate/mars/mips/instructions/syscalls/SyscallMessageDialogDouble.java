@@ -3,9 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-// FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
-// call in Phase 2
-import javax.swing.JOptionPane;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -67,11 +64,7 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
 
     // Display the dialog.
     try {
-      JOptionPane.showMessageDialog(
-          null,
-          message + Coprocessor1.getDoubleFromRegisterPair("$f12"),
-          null,
-          JOptionPane.INFORMATION_MESSAGE);
+      env.showMessageDialog(message + Coprocessor1.getDoubleFromRegisterPair("$f12"), null, 1);
     } catch (InvalidRegisterAccessException e) // register ID error in this method
     {
       RegisterFile.updateRegister(5, -1); // set $a1 to -1 flag

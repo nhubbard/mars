@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -44,6 +43,6 @@ public class SyscallPrintInt extends AbstractSyscall {
 
   /** Performs syscall function to print on the console the integer stored in $a0. */
   public void simulate(ProgramStatement statement) {
-    SystemIO.printString(Integer.toString(RegisterFile.getValue(4)));
+    env.printInt(RegisterFile.getValue(4));
   }
 }

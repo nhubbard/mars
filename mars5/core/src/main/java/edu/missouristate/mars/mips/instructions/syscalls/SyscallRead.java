@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -56,7 +55,7 @@ public class SyscallRead extends AbstractSyscall {
     byte[] myBuffer = new byte[RegisterFile.getValue(6)]; // specified length
     // Call to SystemIO.xxxx.read(xxx,xxx,xxx)  returns actual length
     int retLength =
-        SystemIO.readFromFile(
+        env.readFromFile(
             RegisterFile.getValue(4), // fd
             myBuffer, // buffer
             RegisterFile.getValue(6)); // length

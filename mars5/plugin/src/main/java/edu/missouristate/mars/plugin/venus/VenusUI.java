@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
@@ -180,6 +181,9 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     // Wire run-speed slider into simulator (decouples core from RunSpeedPanel)
     Simulator.getInstance().setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
+
+    // Wire GUI syscall environment (JOptionPane dialogs, clearConsole)
+    Globals.setSyscallEnvironment(new VenusSyscallEnvironment());
 
     //  image courtesy of NASA/JPL.
     URL im = this.getClass().getResource(Globals.imagesPath + "RedMars16.gif");

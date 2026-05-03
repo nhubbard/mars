@@ -47,6 +47,6 @@ public class SyscallPrintIntUnsigned extends AbstractSyscall {
    * treated as unsigned.
    */
   public void simulate(ProgramStatement statement) {
-    SystemIO.printString(Binary.unsignedIntToIntString(RegisterFile.getValue(4)));
+    env.printString(Binary.unsignedIntToIntString(RegisterFile.getValue(4)));
   }
 }

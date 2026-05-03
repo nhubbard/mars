@@ -59,29 +59,26 @@ public interface SyscallEnvironment {
    * Opens a file.
    *
    * @param path file path
-   * @param flags O_RDONLY=0, O_WRONLY=1, O_RDWR=2; OR'd with O_CREAT=0x200, O_TRUNC=0x400, etc.
-   * @return a non-negative file descriptor on success, or a negative error code on failure
+   * @param flags O_RDONLY=0, O_WRONLY=1; O_WRONLY|O_APPEND=9
+   * @return a non-negative file descriptor on success, or -1 on failure
    */
   int openFile(String path, int flags);
 
   /**
-   * Reads up to {@code maxBytes} bytes from the open file identified by {@code fd} into a
-   * byte-array buffer returned as a {@code String}.
+   * Reads up to {@code lengthRequested} bytes from {@code fd} into {@code buffer}.
    *
-   * @return string of bytes read, or {@code null} on error
+   * @return number of bytes read, 0 on EOF, or -1 on error
    */
-  String readFile(int fd, int maxBytes);
+  int readFromFile(int fd, byte[] buffer, int lengthRequested);
 
   /**
-   * Writes the given bytes to the open file identified by {@code fd}.
+   * Writes {@code lengthRequested} bytes from {@code buffer} to {@code fd}.
    *
-   * @return number of bytes written, or negative error code
+   * @return number of bytes written, or -1 on error
    */
-  int writeFile(int fd, byte[] data);
+  int writeToFile(int fd, byte[] buffer, int lengthRequested);
 
-  /**
-   * Closes the open file identified by {@code fd}.
-   */
+  /** Closes the open file identified by {@code fd}. */
   void closeFile(int fd);
 
   // -------------------------------------------------------------------------
@@ -94,4 +91,24 @@ public interface SyscallEnvironment {
    * @return the base address of the allocated region
    */
   int sbrk(int bytes);
+
+  // -------------------------------------------------------------------------
+  // Dialog I/O (GUI: modal dialog; headless: stderr/stdin)
+  // -------------------------------------------------------------------------
+
+  /** Shows a message dialog. {@code messageType}: 0=ERROR, 1=INFO, 2=WARNING, 3=QUESTION, -1=PLAIN */
+  void showMessageDialog(String message, String title, int messageType);
+
+  /** Shows an input dialog. Returns the entered string, or {@code null} if cancelled. */
+  String showInputDialog(String message);
+
+  /** Shows a YES/NO/CANCEL confirm dialog. Returns 0=YES, 1=NO, 2=CANCEL. */
+  int showConfirmDialog(String message);
+
+  // -------------------------------------------------------------------------
+  // Console control
+  // -------------------------------------------------------------------------
+
+  /** Clears the run I/O console (no-op in headless mode). */
+  void clearConsole();
 }

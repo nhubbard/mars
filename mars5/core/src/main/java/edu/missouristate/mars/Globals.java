@@ -1,6 +1,9 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.api.SyscallEnvironment;
+import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
@@ -156,6 +159,10 @@ public class Globals {
     return gui;
   }
 
+  public static void setSyscallEnvironment(SyscallEnvironment env) {
+    SyscallRegistry.setEnvironment(env);
+  }
+
   public static Settings getSettings() {
     return settings;
   }
@@ -168,6 +175,7 @@ public class Globals {
       instructionSet.populate();
       symbolTable = new SymbolTable("global");
       settings = new Settings();
+      SyscallRegistry.setEnvironment(new HeadlessSyscallEnvironment());
       initialized = true;
       debug = false;
       memory.clear(); // will establish memory configuration from setting

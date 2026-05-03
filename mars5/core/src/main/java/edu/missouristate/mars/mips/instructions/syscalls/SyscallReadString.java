@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -58,7 +57,7 @@ public class SyscallReadString extends AbstractSyscall {
       maxLength = 0;
       addNullByte = false;
     }
-    inputString = SystemIO.readString(this.getNumber(), maxLength);
+    inputString = env.readString(maxLength);
     int stringLength = Math.min(maxLength, inputString.length());
     try {
       for (int index = 0; index < stringLength; index++) {

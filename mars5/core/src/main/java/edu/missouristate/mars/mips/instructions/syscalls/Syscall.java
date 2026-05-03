@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.SyscallEnvironment;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -62,6 +63,9 @@ public interface Syscall {
    * @return assigned service number
    */
   int getNumber();
+
+  /** Sets the I/O environment this syscall should use for all I/O operations. */
+  void setEnvironment(SyscallEnvironment env);
 
   /**
    * Performs syscall function. It will be invoked when the service is invoked at simulation time.

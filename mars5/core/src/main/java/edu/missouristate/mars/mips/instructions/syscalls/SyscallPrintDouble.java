@@ -48,9 +48,8 @@ public class SyscallPrintDouble extends AbstractSyscall {
   /** Performs syscall function to print double whose bits are stored in $f12 &amp; $f13. */
   public void simulate(ProgramStatement statement) {
     // Note: Higher numbered reg contains high order word so concat 13-12.
-    SystemIO.printString(
-        Double.toString(
-            Double.longBitsToDouble(
-                Binary.twoIntsToLong(Coprocessor1.getValue(13), Coprocessor1.getValue(12)))));
+    env.printDouble(
+        Double.longBitsToDouble(
+            Binary.twoIntsToLong(Coprocessor1.getValue(13), Coprocessor1.getValue(12))));
   }
 }

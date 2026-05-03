@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -47,7 +46,7 @@ public class SyscallReadFloat extends AbstractSyscall {
   public void simulate(ProgramStatement statement) throws ProcessingException {
     float floatValue;
     try {
-      floatValue = SystemIO.readFloat(this.getNumber());
+      floatValue = env.readFloat();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
           statement,

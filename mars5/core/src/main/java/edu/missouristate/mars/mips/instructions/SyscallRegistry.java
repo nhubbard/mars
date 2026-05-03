@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.instructions;
 
+import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.mips.instructions.syscalls.*;
 import java.util.Map;
 
@@ -7,7 +8,7 @@ import java.util.Map;
  * Static registry of all MIPS syscall implementations, keyed by service number. Replaces the
  * reflection-based {@code SyscallLoader} that scanned the classpath at runtime.
  */
-final class SyscallRegistry {
+public final class SyscallRegistry {
 
   static final Map<Integer, Syscall> BY_NUMBER =
       Map.ofEntries(
@@ -54,6 +55,10 @@ final class SyscallRegistry {
 
   static Syscall findByNumber(int number) {
     return BY_NUMBER.get(number);
+  }
+
+  public static void setEnvironment(SyscallEnvironment env) {
+    BY_NUMBER.values().forEach(s -> s.setEnvironment(env));
   }
 
   private SyscallRegistry() {}

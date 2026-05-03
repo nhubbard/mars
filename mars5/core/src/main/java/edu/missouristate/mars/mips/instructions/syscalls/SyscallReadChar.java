@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -47,7 +46,7 @@ public class SyscallReadChar extends AbstractSyscall {
   public void simulate(ProgramStatement statement) throws ProcessingException {
     int value;
     try {
-      value = SystemIO.readChar(this.getNumber());
+      value = env.readChar();
     } catch (IndexOutOfBoundsException e) // means null input
     {
       throw new ProcessingException(

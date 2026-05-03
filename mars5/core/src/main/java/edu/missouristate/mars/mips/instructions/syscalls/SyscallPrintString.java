@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -50,7 +49,7 @@ public class SyscallPrintString extends AbstractSyscall {
       ch = (char) Globals.memory.getByte(byteAddress);
       // won't stop until NULL byte reached!
       while (ch != 0) {
-        SystemIO.printString(Character.toString(ch));
+        env.printChar(ch);
         byteAddress++;
         ch = (char) Globals.memory.getByte(byteAddress);
       }

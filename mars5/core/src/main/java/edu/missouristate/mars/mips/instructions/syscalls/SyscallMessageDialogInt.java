@@ -2,9 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-// FIXME(phase-2): gui-coupling — JOptionPane/Swing dialog syscall; replace with SyscallEnvironment
-// call in Phase 2
-import javax.swing.JOptionPane;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -65,7 +62,6 @@ public class SyscallMessageDialogInt extends AbstractSyscall {
     }
 
     // Display the dialog.
-    JOptionPane.showMessageDialog(
-        null, message + RegisterFile.getValue(5), null, JOptionPane.INFORMATION_MESSAGE);
+    env.showMessageDialog(message + RegisterFile.getValue(5), null, 1);
   }
 }

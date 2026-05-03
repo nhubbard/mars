@@ -15,6 +15,6 @@ public class SyscallClearScreen extends AbstractSyscall {
 
   @Override
   public void simulate(ProgramStatement statement) {
-    Globals.getGui().clearRunConsole();
+    env.clearConsole();
   }
 }
