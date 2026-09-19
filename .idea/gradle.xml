@@ -5,6 +5,7 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$/mars5" />
+        <option name="gradleJvm" value="homebrew-25 (3)" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/mars5" />
@@ -13,7 +14,6 @@
             <option value="$PROJECT_DIR$/mars5/plugin" />
           </set>
         </option>
-        <option name="myGradleHome" value="" />
       </GradleProjectSettings>
     </option>
   </component>

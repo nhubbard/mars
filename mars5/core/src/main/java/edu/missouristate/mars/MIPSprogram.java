@@ -1,11 +1,11 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import java.io.*;
 import java.util.*;
-import javax.swing.*;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -346,11 +346,11 @@ public class MIPSprogram {
    *
    * @param breakPoints int array of breakpoints (PC addresses). Can be null.
    * @param maxSteps maximum number of instruction executions. Default -1 means no maximum.
-   * @param a the GUI component responsible for this call (GO normally). set to null if none.
+   * @param a the caller responsible for this call (GO normally). set to null if none.
    * @return true if execution completed and false otherwise
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
-  public boolean simulateFromPC(int[] breakPoints, int maxSteps, AbstractAction a)
+  public boolean simulateFromPC(int[] breakPoints, int maxSteps, SimulatorActionSource a)
       throws ProcessingException {
     steppedExecution = false;
     Simulator sim = Simulator.getInstance();
@@ -361,11 +361,11 @@ public class MIPSprogram {
    * Simulates execution of the MIPS program. Program must have already been assembled. Begins
    * simulation at current program counter address and executes one step.
    *
-   * @param a the GUI component responsible for this call (STEP normally). Set to null if none.
+   * @param a the caller responsible for this call (STEP normally). Set to null if none.
    * @return true if execution completed and false otherwise
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
-  public boolean simulateStepAtPC(AbstractAction a) throws ProcessingException {
+  public boolean simulateStepAtPC(SimulatorActionSource a) throws ProcessingException {
     steppedExecution = true;
     Simulator sim = Simulator.getInstance();
     return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);

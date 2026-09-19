@@ -2,6 +2,7 @@ package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.EventEmitter;
+import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
@@ -9,8 +10,6 @@ import edu.missouristate.mars.util.*;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import javax.swing.AbstractAction;
-import javax.swing.SwingUtilities;
 
 /*
 Copyright (c) 2003-2010,  Pete Sanderson and Kenneth Vollmar
@@ -146,12 +145,12 @@ public class Simulator {
    * @param maxSteps maximum number of steps to perform before returning false (0 or less means no
    *     max)
    * @param breakPoints array of breakpoint program counter values, use null if none
-   * @param actor the GUI component responsible for this call, usually GO or STEP. null if none.
+   * @param actor the caller responsible for this call, usually GO or STEP. null if none.
    * @return true if execution completed, false otherwise
    * @throws ProcessingException Throws exception if run-time exception occurs.
    */
   public boolean simulate(
-      MIPSprogram p, int pc, int maxSteps, int[] breakPoints, AbstractAction actor)
+      MIPSprogram p, int pc, int maxSteps, int[] breakPoints, SimulatorActionSource actor)
       throws ProcessingException {
     simulatorThread = new SimThread(p, pc, maxSteps, breakPoints, actor);
     simulatorThread.start();
@@ -178,7 +177,7 @@ public class Simulator {
    * gracefully so the main thread handling the GUI can take over. This is used by both STOP and
    * PAUSE features.
    */
-  public void stopExecution(AbstractAction actor) {
+  public void stopExecution(SimulatorActionSource actor) {
 
     if (simulatorThread != null) {
       simulatorThread.setStop(actor);
@@ -248,8 +247,8 @@ public class Simulator {
     private boolean done;
     private ProcessingException pe;
     private volatile boolean stop = false;
-    private volatile AbstractAction stopper;
-    private final AbstractAction starter;
+    private volatile SimulatorActionSource stopper;
+    private final SimulatorActionSource starter;
     private int constructReturnReason;
 
     /**
@@ -260,9 +259,9 @@ public class Simulator {
      * @param maxSteps maximum number of instruction steps to simulate. Default of -1 means no
      *     maximum
      * @param breakPoints array of breakpoints (instruction addresses) specified by user
-     * @param starter the GUI component responsible for this call, usually GO or STEP. null if none.
+     * @param starter the caller responsible for this call, usually GO or STEP. null if none.
      */
-    SimThread(MIPSprogram p, int pc, int maxSteps, int[] breakPoints, AbstractAction starter) {
+    SimThread(MIPSprogram p, int pc, int maxSteps, int[] breakPoints, SimulatorActionSource starter) {
       super(Globals.getGui().isGuiMode());
       this.pc = pc;
       this.maxSteps = maxSteps;
@@ -278,9 +277,9 @@ public class Simulator {
      * executed. After calling this method, the next test will yield "true" and "construct" will
      * return.
      *
-     * @param actor the Swing component responsible for this call.
+     * @param actor the caller responsible for this call.
      */
-    public void setStop(AbstractAction actor) {
+    public void setStop(SimulatorActionSource actor) {
       stop = true;
       stopper = actor;
     }
@@ -463,11 +462,12 @@ public class Simulator {
           }
         }
 
-        // Schedule a GUI update when running (not stepping) below the unlimited-speed threshold.
+        // Notify the observer when running (not stepping) below the unlimited-speed threshold.
+        // Observers (e.g. VenusUI) are responsible for dispatching their own UI work to the EDT;
+        // this callback happens synchronously on the simulator thread.
         double currentSpeed = Simulator.getInstance().runSpeedSource.get();
         if (observer != null && maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
-          final int stepPc = pc;
-          SwingUtilities.invokeLater(() -> observer.onStepComplete(stepPc));
+          observer.onStepComplete(pc);
         }
         if (Globals.getGui().isGuiMode() || Globals.runSpeedPanelExists) {
           if (maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
@@ -538,7 +538,7 @@ public class Simulator {
       if (!(starter instanceof SimFinishCallback cb)) {
         return;
       }
-      String starterName = (String) starter.getValue(AbstractAction.NAME);
+      String starterName = starter.getActionName();
       if ("Step".equals(starterName)) {
         cb.stepped(done, constructReturnReason, pe);
       } else if ("Go".equals(starterName)) {
@@ -547,8 +547,7 @@ public class Simulator {
         } else if (constructReturnReason == BREAKPOINT) {
           cb.paused(false, constructReturnReason, pe);
         } else {
-          String stopperName = stopper != null
-              ? (String) stopper.getValue(AbstractAction.NAME) : "";
+          String stopperName = stopper != null ? stopper.getActionName() : "";
           if ("Pause".equals(stopperName)) {
             cb.paused(done, constructReturnReason, pe);
           } else if ("Stop".equals(stopperName)) {

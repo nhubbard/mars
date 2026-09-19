@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+import edu.missouristate.mars.api.SimulatorActionSource;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -32,7 +33,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** parent class for Action subclasses to be defined for every menu/toolbar option. */
-public class GuiAction extends AbstractAction {
+public class GuiAction extends AbstractAction implements SimulatorActionSource {
   protected final VenusUI mainUI;
 
   protected GuiAction(
@@ -46,4 +47,9 @@ public class GuiAction extends AbstractAction {
 
   /** does nothing by default. Should be over-ridden by subclass */
   public void actionPerformed(ActionEvent e) {}
+
+  @Override
+  public String getActionName() {
+    return (String) getValue(NAME);
+  }
 }
