@@ -1087,7 +1087,7 @@ public class Memory {
 
   /** Remove all registrations for the given callback. */
   public void deleteObserver(Consumer<MemoryAccessNotice> callback) {
-    ((CopyOnWriteArrayList<MemoryListener>) listeners).removeIf(ml -> ml.callback() == callback);
+    listeners.removeIf(ml -> ml.callback() == callback);
   }
 
   /** Remove all memory listeners. */

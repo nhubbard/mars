@@ -349,7 +349,7 @@ public class Assembler {
       } // end of assembler second pass.
     }
     if (Globals.debug) System.out.println("Code generation begins");
-    ///////////// THIRD MAJOR STEP IS PRODUCE MACHINE CODE FROM ASSEMBLY //////////
+    // THIRD MAJOR STEP IS PRODUCE MACHINE CODE FROM ASSEMBLY //////////
     // Generates machine code statements from the list of basic assembler statements
     // and writes the statement to memory.
     ProgramStatement statement;

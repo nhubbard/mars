@@ -1,11 +1,5 @@
 package edu.missouristate.mars.mips.instructions;
 
-import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.syscalls.*;
-import edu.missouristate.mars.mips.instructions.InstructionRegistry;
-import edu.missouristate.mars.simulator.*;
-import edu.missouristate.mars.util.*;
 import java.io.*;
 import java.util.*;
 
@@ -70,7 +64,7 @@ public class InstructionSet {
   public void populate() {
     instructionList.addAll(InstructionRegistry.getAll());
 
-    ////////////// READ PSEUDO-INSTRUCTION SPECS FROM DATA FILE AND ADD //////////////////////
+    // READ PSEUDO-INSTRUCTION SPECS FROM DATA FILE AND ADD //////////////////////
     addPseudoInstructions();
 
     // Initialization step.  Create token list for each instruction example.  This is

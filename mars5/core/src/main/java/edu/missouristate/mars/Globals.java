@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SyscallEnvironment;
-import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;

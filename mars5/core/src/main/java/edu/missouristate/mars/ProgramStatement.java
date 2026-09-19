@@ -4,7 +4,7 @@ import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.util.NumberDisplayBase;
+
 import java.util.*;
 
 /*

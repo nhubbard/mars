@@ -2,7 +2,7 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.api.EventEmitter;
-import java.util.*;
+
 import java.util.function.Consumer;
 
 /*

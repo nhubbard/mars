@@ -2,7 +2,6 @@ package edu.missouristate.mars;
 
 import org.assertj.core.api.Assertions;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
