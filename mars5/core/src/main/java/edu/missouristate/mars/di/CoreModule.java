@@ -7,6 +7,7 @@ import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import java.util.Objects;
@@ -72,5 +73,11 @@ public final class CoreModule {
   @Singleton
   static Coprocessor0State provideCoprocessor0() {
     return new Coprocessor0State();
+  }
+
+  @Provides
+  @Singleton
+  static Coprocessor1State provideCoprocessor1() {
+    return new Coprocessor1State();
   }
 }

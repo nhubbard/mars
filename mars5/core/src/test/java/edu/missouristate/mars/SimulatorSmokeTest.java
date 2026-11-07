@@ -1,6 +1,5 @@
 package edu.missouristate.mars;
 
-import org.assertj.core.api.Assertions;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import edu.missouristate.mars.assembler.SymbolTable;
@@ -12,6 +11,7 @@ import java.io.PrintStream;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -153,6 +153,14 @@ class SimulatorSmokeTest {
     // Last SLL: 4 << 2 = 16 — but after the program runs more instructions, $s0 is overwritten.
     // Verify that the program ran without error and produced output (register state is complex).
     Assertions.assertThat(capturedOut.toString()).isNotEmpty();
+  }
+
+  @Test
+  void floatingPointArithmeticConversionAndComparisonStillExecute() throws Exception {
+    assertThat(runProgram("16_floating_point.asm")).isTrue();
+    assertThat(Coprocessor1.getFloatFromRegister(4)).isEqualTo(4.0f);
+    assertThat(Coprocessor1.getDoubleFromRegisterPair(6)).isEqualTo(4.0);
+    assertThat(Coprocessor1.getConditionFlag(0)).isEqualTo(1);
   }
 
   // -------------------------------------------------------------------------

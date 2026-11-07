@@ -123,6 +123,22 @@ class SettingsReconciliationTest {
   }
 
   @Test
+  void daggerOwnsIndependentCoprocessor1RegistersAndFlags() {
+    var first = component(new Settings(new MemoryPreferences()));
+    var second = component(new Settings(new MemoryPreferences()));
+    assertThat(first.context().coprocessor1).isNotSameAs(second.context().coprocessor1);
+    first.context().coprocessor1.updateRegister(12, 42);
+    first.context().coprocessor1.setConditionFlag(7);
+    assertThat(second.context().coprocessor1.getValue(12)).isZero();
+    assertThat(second.context().coprocessor1.getConditionFlag(7)).isZero();
+    second.context().coprocessor1.updateRegister(12, 99);
+    first.context().coprocessor1.resetRegisters();
+    assertThat(first.context().coprocessor1.getValue(12)).isZero();
+    assertThat(first.context().coprocessor1.getConditionFlags()).isZero();
+    assertThat(second.context().coprocessor1.getValue(12)).isEqualTo(99);
+  }
+
+  @Test
   void legacyGlobalsCanShareTheirSettingsWithTheGraphAndErrorList() {
     var original = Globals.settings;
     try {
