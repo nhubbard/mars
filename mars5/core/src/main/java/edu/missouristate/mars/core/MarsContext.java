@@ -1,6 +1,7 @@
 package edu.missouristate.mars.core;
 
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -35,12 +36,19 @@ public final class MarsContext {
   /** Integer register state owned exclusively by this simulation. */
   public final IntegerRegisterFile registerFile;
 
+  /** Interrupt and exception register state owned exclusively by this simulation. */
+  public final Coprocessor0State coprocessor0;
+
   @Inject
   public MarsContext(
-      SimulationSettings settings, MarsGuiProxy gui, IntegerRegisterFile registerFile) {
+      SimulationSettings settings,
+      MarsGuiProxy gui,
+      IntegerRegisterFile registerFile,
+      Coprocessor0State coprocessor0) {
     this.settings = settings;
     this.gui = gui;
     this.registerFile = registerFile;
+    this.coprocessor0 = coprocessor0;
     // TODO(phase-2+): add Memory, InstructionSet, Simulator as constructor params
     //                 once their implementations live in mars-core.
   }

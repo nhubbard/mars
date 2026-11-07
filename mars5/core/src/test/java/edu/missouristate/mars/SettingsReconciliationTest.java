@@ -110,6 +110,19 @@ class SettingsReconciliationTest {
   }
 
   @Test
+  void daggerOwnsIndependentCoprocessor0State() {
+    var first = component(new Settings(new MemoryPreferences()));
+    var second = component(new Settings(new MemoryPreferences()));
+    assertThat(first.context().coprocessor0).isNotSameAs(second.context().coprocessor0);
+    first.context().coprocessor0.updateRegister(12, 42);
+    assertThat(second.context().coprocessor0.getValue(12))
+        .isEqualTo(edu.missouristate.mars.mips.hardware.Coprocessor0State.DEFAULT_STATUS_VALUE);
+    first.context().coprocessor0.resetRegisters();
+    assertThat(first.context().coprocessor0.getValue(12))
+        .isEqualTo(edu.missouristate.mars.mips.hardware.Coprocessor0State.DEFAULT_STATUS_VALUE);
+  }
+
+  @Test
   void legacyGlobalsCanShareTheirSettingsWithTheGraphAndErrorList() {
     var original = Globals.settings;
     try {
