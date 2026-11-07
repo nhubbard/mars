@@ -1,7 +1,7 @@
 plugins {
   id("java")
   id("idea")
-  id("com.diffplug.spotless") version "8.4.0"
+  id("com.diffplug.spotless") version "8.11.0"
 }
 
 group = "edu.missouristate"
@@ -25,7 +25,7 @@ tasks.test {
 
 java {
   toolchain {
-    languageVersion = JavaLanguageVersion.of(21)
+    languageVersion = JavaLanguageVersion.of(25)
   }
 }
 

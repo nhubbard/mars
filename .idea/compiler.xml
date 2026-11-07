@@ -35,14 +35,14 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="mars5" target="21" />
-      <module name="mars5.cli" target="25" />
-      <module name="mars5.cli.main" target="25" />
-      <module name="mars5.cli.test" target="25" />
-      <module name="mars5.core" target="25" />
-      <module name="mars5.core.main" target="25" />
-      <module name="mars5.core.test" target="25" />
-      <module name="mars5.main" target="21" />
+      <module name="mars5" target="25" />
+      <module name="mars5.cli" target="27" />
+      <module name="mars5.cli.main" target="27" />
+      <module name="mars5.cli.test" target="27" />
+      <module name="mars5.core" target="27" />
+      <module name="mars5.core.main" target="27" />
+      <module name="mars5.core.test" target="27" />
+      <module name="mars5.main" target="25" />
       <module name="mars5.mars-cli.main" target="25" />
       <module name="mars5.mars-cli.test" target="25" />
       <module name="mars5.mars-core" target="25" />
@@ -51,10 +51,10 @@
       <module name="mars5.mars-plugin" target="25" />
       <module name="mars5.mars-plugin.main" target="25" />
       <module name="mars5.mars-plugin.test" target="25" />
-      <module name="mars5.plugin" target="25" />
-      <module name="mars5.plugin.main" target="25" />
-      <module name="mars5.plugin.test" target="25" />
-      <module name="mars5.test" target="21" />
+      <module name="mars5.plugin" target="27" />
+      <module name="mars5.plugin.main" target="27" />
+      <module name="mars5.plugin.test" target="27" />
+      <module name="mars5.test" target="25" />
     </bytecodeTargetLevel>
   </component>
 </project>
