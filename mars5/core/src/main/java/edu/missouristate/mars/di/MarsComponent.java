@@ -4,6 +4,7 @@ import dagger.BindsInstance;
 import dagger.Component;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.core.MarsContext;
 import javax.inject.Singleton;
@@ -49,6 +50,9 @@ public interface MarsComponent {
 
   /** Interface view of the same simulation settings used by the context. */
   MarsSettings simulationSettings();
+
+  /** Interface view of this simulation's integer registers. */
+  MarsRegisterFile registerFile();
 
   @Component.Builder
   interface Builder {

@@ -86,6 +86,30 @@ class SettingsReconciliationTest {
   }
 
   @Test
+  void daggerOwnsIndependentRegistersWithSessionSpecificResetAddresses() {
+    var firstSettings = new Settings(new MemoryPreferences());
+    firstSettings.getSimulationSettings().setMemoryConfiguration("CompactDataAtZero");
+    var secondSettings = new Settings(new MemoryPreferences());
+    secondSettings.getSimulationSettings().setMemoryConfiguration("Default");
+    var first = component(firstSettings);
+    var second = component(secondSettings);
+    assertThat(first.registerFile()).isSameAs(first.context().registerFile);
+    first.registerFile().setValue(8, 123);
+    first.registerFile().setValue(33, 45);
+    assertThat(second.registerFile().getValue(8)).isZero();
+    assertThat(second.registerFile().getValue(33)).isZero();
+    var configuration =
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
+            "CompactDataAtZero");
+    assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
+    assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
+    assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());
+    assertThat(first.registerFile().getPC()).isNotEqualTo(second.registerFile().getPC());
+    first.registerFile().reset();
+    assertThat(first.registerFile().getValue(8)).isZero();
+  }
+
+  @Test
   void legacyGlobalsCanShareTheirSettingsWithTheGraphAndErrorList() {
     var original = Globals.settings;
     try {

@@ -150,6 +150,30 @@ public class MemoryConfigurations {
 
   public MemoryConfigurations() {}
 
+  /**
+   * Creates a configuration snapshot without selecting it globally or initializing Globals. Empty
+   * or unknown identifiers select the default, matching legacy startup behavior.
+   */
+  public static MemoryConfiguration createConfiguration(String identifier) {
+    String id;
+    String name;
+    int[] values;
+    if ("CompactDataAtZero".equals(identifier)) {
+      id = "CompactDataAtZero";
+      name = "Compact, Data at Address 0";
+      values = dataBasedCompactConfigurationItemValues;
+    } else if ("CompactTextAtZero".equals(identifier)) {
+      id = "CompactTextAtZero";
+      name = "Compact, Text at Address 0";
+      values = textBasedCompactConfigurationItemValues;
+    } else {
+      id = "Default";
+      name = "Default";
+      values = defaultConfigurationItemValues;
+    }
+    return new MemoryConfiguration(id, name, configurationItemNames.clone(), values.clone());
+  }
+
   public static void buildConfigurationCollection() {
     if (configurations == null) {
       configurations = new ArrayList<>();

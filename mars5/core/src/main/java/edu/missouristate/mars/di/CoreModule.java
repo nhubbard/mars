@@ -3,8 +3,11 @@ package edu.missouristate.mars.di;
 import dagger.Module;
 import dagger.Provides;
 import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.core.SimulationSettings;
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import java.util.Objects;
 import javax.inject.Singleton;
 
@@ -46,5 +49,21 @@ public final class CoreModule {
   @Singleton
   static MarsSettings provideMarsSettings(SimulationSettings settings) {
     return settings;
+  }
+
+  @Provides
+  @Singleton
+  static IntegerRegisterFile provideRegisterFile(SimulationSettings settings) {
+    var configuration = MemoryConfigurations.createConfiguration(settings.getMemoryConfiguration());
+    return new IntegerRegisterFile(
+        configuration.getGlobalPointer(),
+        configuration.getStackPointer(),
+        configuration.getTextBaseAddress());
+  }
+
+  @Provides
+  @Singleton
+  static MarsRegisterFile provideMarsRegisterFile(IntegerRegisterFile registers) {
+    return registers;
   }
 }

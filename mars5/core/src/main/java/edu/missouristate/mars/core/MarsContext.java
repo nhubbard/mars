@@ -1,6 +1,7 @@
 package edu.missouristate.mars.core;
 
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -19,9 +20,8 @@ import javax.inject.Singleton;
  * }</pre>
  *
  * <p><b>Migration note.</b> As core classes are moved from the legacy {@code Globals} statics to
- * this context, add them as constructor parameters and expose them via final fields. The
- * {@code MarsAssembler}, {@code MarsMemory}, {@code MarsSimulator}, and {@code MarsRegisterFile}
- * fields will be added here in later migration phases.
+ * this context, add them as constructor parameters and expose them via final fields. The assembler,
+ * memory, and simulator fields will be added here in later migration phases.
  */
 @Singleton
 public final class MarsContext {
@@ -32,11 +32,16 @@ public final class MarsContext {
   /** GUI/I/O bridge — routes syscall output and dialogs to the active frontend. */
   public final MarsGuiProxy gui;
 
+  /** Integer register state owned exclusively by this simulation. */
+  public final IntegerRegisterFile registerFile;
+
   @Inject
-  public MarsContext(SimulationSettings settings, MarsGuiProxy gui) {
+  public MarsContext(
+      SimulationSettings settings, MarsGuiProxy gui, IntegerRegisterFile registerFile) {
     this.settings = settings;
     this.gui = gui;
-    // TODO(phase-2+): add Memory, RegisterFile, InstructionSet, Simulator as constructor params
+    this.registerFile = registerFile;
+    // TODO(phase-2+): add Memory, InstructionSet, Simulator as constructor params
     //                 once their implementations live in mars-core.
   }
 }
