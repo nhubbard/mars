@@ -7,7 +7,10 @@ package edu.missouristate.mars.api;
  */
 public interface MarsSettings {
 
-  /** Returns the active memory configuration identifier (e.g. {@code "Default"}). */
+  /**
+   * Returns the active memory configuration identifier (e.g. {@code "Default"}; empty selects the
+   * default).
+   */
   String getMemoryConfiguration();
 
   /** Returns {@code true} if delayed branching is enabled. */

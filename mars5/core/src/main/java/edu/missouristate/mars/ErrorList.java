@@ -154,7 +154,8 @@ public class ErrorList {
    * @return error limit.
    */
   public int getErrorLimit() {
-    return Globals.maximumErrorMessages;
+    Settings settings = Globals.getSettings();
+    return settings == null ? Globals.maximumErrorMessages : settings.getAssemblerErrorLimit();
   }
 
   /**

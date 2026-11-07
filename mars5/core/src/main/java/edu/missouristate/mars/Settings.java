@@ -1,6 +1,7 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.api.EventEmitter;
+import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.util.*;
 import java.awt.Color;
 import java.awt.Font;
@@ -54,8 +55,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Settings {
   private final EventEmitter<Settings> settingsEvents = new EventEmitter<>();
 
-  public void subscribeChange(Consumer<Settings> listener) { settingsEvents.subscribe(listener); }
-  public void unsubscribeChange(Consumer<Settings> listener) { settingsEvents.unsubscribe(listener); }
+  public void subscribeChange(Consumer<Settings> listener) {
+    settingsEvents.subscribe(listener);
+  }
+
+  public void unsubscribeChange(Consumer<Settings> listener) {
+    settingsEvents.unsubscribe(listener);
+  }
+
   /* Properties file used to hold default settings. */
   private static final String settingsFile = "Settings";
 
@@ -390,6 +397,28 @@ public class Settings {
   private final String[] colorSettingsValues;
 
   private final Preferences preferences;
+  private final SimulationSettings simulationSettings = new SimulationSettings(this);
+  private int assemblerErrorLimit = Globals.maximumErrorMessages;
+
+  /** Returns the live simulation view of these settings. */
+  public SimulationSettings getSimulationSettings() {
+    return simulationSettings;
+  }
+
+  /** Returns the session's assembler error limit, initially read from Config.properties. */
+  public int getAssemblerErrorLimit() {
+    return assemblerErrorLimit;
+  }
+
+  /** Changes the assembler error limit for this session without saving a preference. */
+  public void setAssemblerErrorLimit(int limit) {
+    assemblerErrorLimit = limit;
+  }
+
+  /** Changes the memory configuration for this session without saving a preference. */
+  public void setMemoryConfigurationNonPersistent(String config) {
+    stringSettingsValues[MEMORY_CONFIGURATION] = config;
+  }
 
   /**
    * Create Settings object and set to saved values. If saved values not found, will set based on
@@ -397,6 +426,11 @@ public class Settings {
    * stored in this class.
    */
   public Settings() {
+    this(Preferences.userNodeForPackage(Settings.class));
+  }
+
+  // Allows tests to use isolated preferences without reading or writing the user's settings.
+  Settings(Preferences preferences) {
     booleanSettingsValues = new boolean[booleanSettingsKeys.length];
     stringSettingsValues = new String[stringSettingsKeys.length];
     fontFamilySettingsValues = new String[fontFamilySettingsKeys.length];
@@ -406,7 +440,7 @@ public class Settings {
     // This determines where the values are actually stored.  Actual implementation
     // is platform-dependent.  For Windows, they are stored in Registry.  To see,
     // run regedit and browse to: HKEY_CURRENT_USER\Software\JavaSoft\Prefs\mars
-    preferences = Preferences.userNodeForPackage(this.getClass());
+    this.preferences = Objects.requireNonNull(preferences);
     // The gui parameter, formerly passed to initialize(), is no longer needed
     // because I removed (1/21/09) the call to generate the Font object for the text editor.
     // Font objects are now generated only on demand so the "if (gui)" guard
@@ -520,8 +554,7 @@ public class Settings {
    * UI layer (Venus) before the editor is displayed. The arrays must all have the same length and
    * must use the same hex-color encoding as {@link Binary#intToHexString}.
    */
-  public void initializeSyntaxStyleDefaults(
-      String[] colors, boolean[] bolds, boolean[] italics) {
+  public void initializeSyntaxStyleDefaults(String[] colors, boolean[] bolds, boolean[] italics) {
     int tokens = colors.length;
     syntaxStyleColorSettingsKeys = new String[tokens];
     syntaxStyleBoldSettingsKeys = new String[tokens];
@@ -1326,10 +1359,12 @@ public class Settings {
   //           In either case, use these values as defaults in call to Preferences.
 
   private void initialize() {
+    assemblerErrorLimit = Globals.maximumErrorMessages;
     applyDefaultSettings();
     if (!readSettingsFromPropertiesFile()) {
       System.out.println(
-          "MARS System error: unable to read Settings.properties defaults. Using built-in defaults.");
+          "MARS System error: unable to read Settings.properties defaults. Using built-in"
+              + " defaults.");
     }
     getSettingsFromPreferences();
   }

@@ -15,10 +15,12 @@ import javax.inject.Singleton;
  * application-level service that owns the MARS tool window):
  *
  * <pre>{@code
- * PluginComponent component = DaggerPluginComponent.create();
+ * Globals.initialize();
+ * PluginComponent component = DaggerPluginComponent.builder()
+ *     .coreModule(new CoreModule(Globals.getSettings()))
+ *     .build();
  * MarsContext ctx = component.context();
  * Globals.setGui(ctx.gui);          // bridge to legacy code during migration
- * Globals.initialize();
  * }</pre>
  *
  * <p>The {@link VenusMarsGuiProxy} returned by {@link #guiProxy()} is the same instance registered

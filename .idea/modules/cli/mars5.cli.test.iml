@@ -7,7 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/cli/src/test/java" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/cli/src/test/resources" type="java-test-resource" />
     </content>
-    <orderEntry type="jdk" jdkName="homebrew-25 (3)" jdkType="JavaSDK" />
+    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="mars5.cli.main" />
     <orderEntry type="module" module-name="mars5.core.main" />

@@ -1,17 +1,19 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsSettings;
+import java.util.Objects;
 
 /**
- * The headless-safe subset of MARS settings: only the settings that affect simulation behavior.
- * GUI preferences (fonts, colors, window geometry) live in {@code EditorSettings} in the plugin
- * module.
+ * Simulation-only settings. A view constructed from {@link Settings} reads its current values
+ * directly, including preference reloads and temporary CLI overrides. Setters on the view are
+ * session-only: persistent changes continue to go through the legacy Settings API.
  *
- * <p><b>Phase 1 stub.</b> This class currently uses hardcoded defaults matching MARS 4.5 behavior.
- * In a later phase it will be backed by a {@link java.util.Properties} file and the legacy
- * {@code Settings} class will delegate to it.
+ * <p>The no-argument constructor retains independent, in-memory MARS defaults for standalone use.
  */
 public final class SimulationSettings implements MarsSettings {
+
+  private final Settings legacySettings;
 
   // Defaults mirror MARS 4.5 behavior so headless users see no change.
   private String memoryConfiguration = "Default";
@@ -22,59 +24,102 @@ public final class SimulationSettings implements MarsSettings {
   private int assemblerErrorLimit = 200;
 
   /** Creates settings with MARS default values. */
-  public SimulationSettings() {}
+  public SimulationSettings() {
+    legacySettings = null;
+  }
+
+  /** Creates a live, writable simulation view over the supplied settings owner. */
+  public SimulationSettings(Settings settings) {
+    legacySettings = Objects.requireNonNull(settings);
+  }
 
   public String getMemoryConfiguration() {
-    return memoryConfiguration;
+    return legacySettings == null ? memoryConfiguration : legacySettings.getMemoryConfiguration();
   }
 
   public SimulationSettings setMemoryConfiguration(String memoryConfiguration) {
-    this.memoryConfiguration = memoryConfiguration;
+    if (legacySettings == null) {
+      this.memoryConfiguration = memoryConfiguration;
+    } else {
+      legacySettings.setMemoryConfigurationNonPersistent(memoryConfiguration);
+    }
     return this;
   }
 
   public boolean isDelayedBranchingEnabled() {
-    return delayedBranchingEnabled;
+    return legacySettings == null
+        ? delayedBranchingEnabled
+        : legacySettings.getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED);
   }
 
   public SimulationSettings setDelayedBranchingEnabled(boolean delayedBranchingEnabled) {
-    this.delayedBranchingEnabled = delayedBranchingEnabled;
+    if (legacySettings == null) {
+      this.delayedBranchingEnabled = delayedBranchingEnabled;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(
+          Settings.DELAYED_BRANCHING_ENABLED, delayedBranchingEnabled);
+    }
     return this;
   }
 
   public boolean isSelfModifyingCodeEnabled() {
-    return selfModifyingCodeEnabled;
+    return legacySettings == null
+        ? selfModifyingCodeEnabled
+        : legacySettings.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED);
   }
 
   public SimulationSettings setSelfModifyingCodeEnabled(boolean selfModifyingCodeEnabled) {
-    this.selfModifyingCodeEnabled = selfModifyingCodeEnabled;
+    if (legacySettings == null) {
+      this.selfModifyingCodeEnabled = selfModifyingCodeEnabled;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(
+          Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCodeEnabled);
+    }
     return this;
   }
 
   public boolean isWarningsAreErrors() {
-    return warningsAreErrors;
+    return legacySettings == null
+        ? warningsAreErrors
+        : legacySettings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS);
   }
 
   public SimulationSettings setWarningsAreErrors(boolean warningsAreErrors) {
-    this.warningsAreErrors = warningsAreErrors;
+    if (legacySettings == null) {
+      this.warningsAreErrors = warningsAreErrors;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(
+          Settings.WARNINGS_ARE_ERRORS, warningsAreErrors);
+    }
     return this;
   }
 
   public boolean isExtendedAssemblerEnabled() {
-    return extendedAssemblerEnabled;
+    return legacySettings == null
+        ? extendedAssemblerEnabled
+        : legacySettings.getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED);
   }
 
   public SimulationSettings setExtendedAssemblerEnabled(boolean extendedAssemblerEnabled) {
-    this.extendedAssemblerEnabled = extendedAssemblerEnabled;
+    if (legacySettings == null) {
+      this.extendedAssemblerEnabled = extendedAssemblerEnabled;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(
+          Settings.EXTENDED_ASSEMBLER_ENABLED, extendedAssemblerEnabled);
+    }
     return this;
   }
 
   public int getAssemblerErrorLimit() {
-    return assemblerErrorLimit;
+    return legacySettings == null ? assemblerErrorLimit : legacySettings.getAssemblerErrorLimit();
   }
 
   public SimulationSettings setAssemblerErrorLimit(int assemblerErrorLimit) {
-    this.assemblerErrorLimit = assemblerErrorLimit;
+    if (legacySettings == null) {
+      this.assemblerErrorLimit = assemblerErrorLimit;
+    } else {
+      legacySettings.setAssemblerErrorLimit(assemblerErrorLimit);
+    }
     return this;
   }
 }
