@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.SyscallEnvironment;
+import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -74,4 +75,12 @@ public interface Syscall {
    * @param statement ProgramStatement for this syscall statement.
    */
   void simulate(ProgramStatement statement) throws ProcessingException;
+
+  /**
+   * Context-aware entry point; old external syscall implementations retain their legacy behavior.
+   */
+  default void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    simulate(statement);
+  }
 }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -46,18 +47,19 @@ public class SyscallReadString extends AbstractSyscall {
    * Follows semantics of UNIX 'fgets'. For specified length n, string can be no longer than n-1. If
    * less than that, add newline to end. In either case, then pad with null byte.
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
 
     String inputString;
-    int buf = RegisterFile.getValue(4); // buf addr in $a0
-    int maxLength = RegisterFile.getValue(5) - 1; // $a1
+    int buf = context.registerFile.getValue(4); // buf addr in $a0
+    int maxLength = context.registerFile.getValue(5) - 1; // $a1
     boolean addNullByte = true;
     // Guard against negative maxLength.  DPS 13-July-2011
     if (maxLength < 0) {
       maxLength = 0;
       addNullByte = false;
     }
-    inputString = env.readString(maxLength);
+    inputString = context.environment(env).readString(maxLength);
     int stringLength = Math.min(maxLength, inputString.length());
     try {
       for (int index = 0; index < stringLength; index++) {
@@ -69,7 +71,7 @@ public class SyscallReadString extends AbstractSyscall {
       }
       if (addNullByte) Globals.memory.setByte(buf + stringLength, 0);
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
   }
 }

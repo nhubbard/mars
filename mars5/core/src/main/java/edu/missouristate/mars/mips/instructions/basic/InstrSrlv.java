@@ -5,18 +5,20 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 
 public class InstrSrlv extends BasicInstruction {
-    public InstrSrlv() {
-        super("srlv $t1,$t2,$t3",
-              "Shift right logical variable : Set $t1 to result of shifting $t2 right by number of bits specified by value in low-order 5 bits of $t3",
-              BasicInstructionFormat.R_FORMAT,
-              "000000 ttttt sssss fffff 00000 000110",
-              statement -> {
-              int[] operands = statement.getOperands();
-              
-              RegisterFile.updateRegister(
-                  operands[0],
-                  RegisterFile.getValue(operands[1])
-                      >>> (RegisterFile.getValue(operands[2]) & 0x0000001F));
-            });
-    }
+  public InstrSrlv() {
+    super(
+        "srlv $t1,$t2,$t3",
+        "Shift right logical variable : Set $t1 to result of shifting $t2 right by number of bits"
+            + " specified by value in low-order 5 bits of $t3",
+        BasicInstructionFormat.R_FORMAT,
+        "000000 ttttt sssss fffff 00000 000110",
+        (statement, context) -> {
+          int[] operands = statement.getOperands();
+
+          context.updateRegister(
+              operands[0],
+              context.registerFile.getValue(operands[1])
+                  >>> (context.registerFile.getValue(operands[2]) & 0x0000001F));
+        });
+  }
 }

@@ -5,15 +5,17 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 
 public class InstrAddiu extends BasicInstruction {
-    public InstrAddiu() {
-        super("addiu $t1,$t2,-100",
-              "Addition immediate unsigned without overflow : set $t1 to ($t2 plus signed 16-bit immediate), no overflow",
-              BasicInstructionFormat.I_FORMAT,
-              "001001 sssss fffff tttttttttttttttt",
-              statement -> {
-              int[] operands = statement.getOperands();
-              RegisterFile.updateRegister(
-                  operands[0], RegisterFile.getValue(operands[1]) + (operands[2] << 16 >> 16));
-            });
-    }
+  public InstrAddiu() {
+    super(
+        "addiu $t1,$t2,-100",
+        "Addition immediate unsigned without overflow : set $t1 to ($t2 plus signed 16-bit"
+            + " immediate), no overflow",
+        BasicInstructionFormat.I_FORMAT,
+        "001001 sssss fffff tttttttttttttttt",
+        (statement, context) -> {
+          int[] operands = statement.getOperands();
+          context.updateRegister(
+              operands[0], context.registerFile.getValue(operands[1]) + (operands[2] << 16 >> 16));
+        });
+  }
 }

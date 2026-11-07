@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -39,7 +40,8 @@ public class SyscallConfirmDialog extends AbstractSyscall {
   }
 
   /** System call to display a message to user. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments: $a0 = address of null-terminated string that is the message to user
     // Output: $a0 contains value of user-chosen option
     //   0: Yes
@@ -47,7 +49,7 @@ public class SyscallConfirmDialog extends AbstractSyscall {
     //   2: Cancel
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -59,7 +61,7 @@ public class SyscallConfirmDialog extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // update register $a0 with the value from showConfirmDialog.
@@ -67,6 +69,6 @@ public class SyscallConfirmDialog extends AbstractSyscall {
     //    0 ---> meaning Yes
     //    1 ---> meaning No
     //    2 ---> meaning Cancel
-    RegisterFile.updateRegister(4, env.showConfirmDialog(message));
+    context.updateRegister(4, context.environment(env).showConfirmDialog(message));
   }
 }

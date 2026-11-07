@@ -48,6 +48,11 @@ public class Coprocessor0 {
 
   private static final Coprocessor0State legacy = new Coprocessor0State();
 
+  /** Transitional access for the legacy instruction execution context. */
+  public static Coprocessor0State legacyState() {
+    return legacy;
+  }
+
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
     legacy.addRegistersObserver(listener);
   }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -40,7 +41,8 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
   }
 
   /** System call to input data. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments: $a0 = address of null-terminated string that is the message to user
     // Outputs:
     //    $f0 and $f1 contains value of double read. $f1 contains high order word of the double.
@@ -51,7 +53,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
     //       -3: OK was chosen but no data had been input into field
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -63,7 +65,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // Values returned by Java's InputDialog:
@@ -71,37 +73,38 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
     // An empty string returned (that is, inputValue.length() of zero)
     // means that OK was chosen but no string was input.
     String inputValue;
-    inputValue = env.showInputDialog(message);
+    inputValue = context.environment(env).showInputDialog(message);
 
     try {
-      Coprocessor1.setRegisterPairToDouble(0, 0.0); // set $f0 to zero
+      context.coprocessor1.setRegisterPairToDouble(0, 0.0); // set $f0 to zero
       if (inputValue == null) // Cancel was chosen
       {
-        RegisterFile.updateRegister(5, -2); // set $a1 to -2 flag
+        context.updateRegister(5, -2); // set $a1 to -2 flag
       } else if (inputValue.isEmpty()) // OK was chosen but there was no input
       {
-        RegisterFile.updateRegister(5, -3); // set $a1 to -3 flag
+        context.updateRegister(5, -3); // set $a1 to -3 flag
       } else {
         double doubleValue = Double.parseDouble(inputValue);
 
         // Successful parse of valid input data
-        Coprocessor1.setRegisterPairToDouble(0, doubleValue); // set $f0 to input data
-        RegisterFile.updateRegister(5, 0); // set $a1 to valid flag
+        context.coprocessor1.setRegisterPairToDouble(0, doubleValue); // set $f0 to input data
+        context.updateRegister(5, 0); // set $a1 to valid flag
       }
 
     } // end try block
     catch (InvalidRegisterAccessException e) // register ID error in this method
     {
-      RegisterFile.updateRegister(5, -1); // set $a1 to -1 flag
+      context.updateRegister(5, -1); // set $a1 to -1 flag
       throw new ProcessingException(
+          context,
           statement,
           "invalid int reg. access during double input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     } catch (NumberFormatException e) // Unsuccessful parse of input data
     {
-      RegisterFile.updateRegister(5, -1); // set $a1 to -1 flag
+      context.updateRegister(5, -1); // set $a1 to -1 flag
       /*  Don't throw exception because returning a status flag
-         throw new ProcessingException(statement,
+         throw new ProcessingException(context, statement,
             "invalid float input (syscall "+this.getNumber()+")",
       Exceptions.SYSCALL_EXCEPTION);
          */

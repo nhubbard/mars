@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.Binary;
@@ -47,19 +48,21 @@ public class SyscallReadDouble extends AbstractSyscall {
   }
 
   /** Performs syscall function to read the bits of input double into $f0 and $f1. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     //  Higher numbered reg contains high order word so order is $f1 - $f0.
     double doubleValue;
     try {
-      doubleValue = env.readDouble();
+      doubleValue = context.environment(env).readDouble();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
+          context,
           statement,
           "invalid double input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     }
     long longValue = Double.doubleToRawLongBits(doubleValue);
-    Coprocessor1.updateRegister(1, Binary.highOrderLongToInt(longValue));
-    Coprocessor1.updateRegister(0, Binary.lowOrderLongToInt(longValue));
+    context.updateCoprocessor1(1, Binary.highOrderLongToInt(longValue));
+    context.updateCoprocessor1(0, Binary.lowOrderLongToInt(longValue));
   }
 }

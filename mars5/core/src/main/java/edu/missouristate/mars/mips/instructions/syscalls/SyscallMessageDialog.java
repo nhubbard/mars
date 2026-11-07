@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -39,7 +40,8 @@ public class SyscallMessageDialog extends AbstractSyscall {
   }
 
   /** System call to display a message to user. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments:
     //   $a0 = address of null-terminated string that is the message to user
     //   $a1 = the type of the message to the user, which is one of:
@@ -51,7 +53,7 @@ public class SyscallMessageDialog extends AbstractSyscall {
     // Output: none
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -63,13 +65,13 @@ public class SyscallMessageDialog extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // Display the dialog.
-    int msgType = RegisterFile.getValue(5);
+    int msgType = context.registerFile.getValue(5);
     if (msgType < 0 || msgType > 3)
       msgType = -1; // See values in http://java.sun.com/j2se/1.5.0/docs/api/constant-values.html
-    env.showMessageDialog(message, null, msgType);
+    context.environment(env).showMessageDialog(message, null, msgType);
   }
 }

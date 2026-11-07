@@ -51,6 +51,17 @@ class LegacyRegisterFileTest {
       assertThat(RegisterFile.getValue(34)).isEqualTo(previousLo);
       assertThat(independent.getValue(8)).isEqualTo(99);
 
+      // The original one-argument instruction entry must keep recording undo history.
+      RegisterFile.initializeProgramCounter(pc + 4);
+      var add = new edu.missouristate.mars.mips.instructions.basic.InstrAddi();
+      var statement = new ProgramStatement(null, "addi $t0,$zero,42", null, null, add, pc, 1);
+      System.arraycopy(new int[] {8, 0, 42}, 0, statement.getOperands(), 0, 3);
+      add.getSimulationCode().simulate(statement);
+      assertThat(RegisterFile.getValue(8)).isEqualTo(42);
+      assertThat(backStepper.empty()).isFalse();
+      backStepper.backStep();
+      assertThat(RegisterFile.getValue(8)).isEqualTo(previousT0);
+
       RegisterFile.initializeProgramCounter(pc + 4);
       assertThat(RegisterFile.setProgramCounter(pc + 8)).isEqualTo(pc + 4);
       backStepper.backStep();

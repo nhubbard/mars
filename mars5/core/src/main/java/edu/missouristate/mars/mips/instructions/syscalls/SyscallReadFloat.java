@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -43,16 +44,18 @@ public class SyscallReadFloat extends AbstractSyscall {
   }
 
   /** Performs syscall function to read the bits of input float into $f0 */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     float floatValue;
     try {
-      floatValue = env.readFloat();
+      floatValue = context.environment(env).readFloat();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
+          context,
           statement,
           "invalid float input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     }
-    Coprocessor1.updateRegister(0, Float.floatToRawIntBits(floatValue));
+    context.updateCoprocessor1(0, Float.floatToRawIntBits(floatValue));
   }
 }

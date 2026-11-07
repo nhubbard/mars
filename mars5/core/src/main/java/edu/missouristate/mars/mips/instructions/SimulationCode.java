@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -47,4 +48,10 @@ public interface SimulationCode {
    * @throws ProcessingException This is a run-time exception generated during simulation.
    */
   void simulate(ProgramStatement statement) throws ProcessingException;
+
+  /** Context-aware entry point; existing external implementations retain their legacy behavior. */
+  default void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    simulate(statement);
+  }
 }

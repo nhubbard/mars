@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.*;
@@ -118,6 +119,34 @@ public class ProcessingException extends Exception {
    */
   public ProcessingException() {
     errs = null;
+  }
+
+  /** Runtime error whose program counter comes from the supplied execution context. */
+  public ProcessingException(InstructionContext context, ProgramStatement ps, String message) {
+    errs = new ErrorList();
+    errs.add(
+        new ErrorMessage(
+            ps,
+            "Runtime exception at "
+                + Binary.intToHexString(
+                    context.registerFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH)
+                + ": "
+                + message));
+  }
+
+  /** Runtime error that updates only this execution context's exception registers. */
+  public ProcessingException(
+      InstructionContext context, ProgramStatement ps, String message, int cause) {
+    this(context, ps, message);
+    context.setExceptionRegisters(cause);
+  }
+
+  /** Address error that updates only this execution context's exception registers. */
+  public ProcessingException(
+      InstructionContext context, ProgramStatement ps, AddressErrorException error) {
+    this(context, ps, error.getMessage());
+    context.updateCoprocessor0(Coprocessor0State.VADDR, error.getAddress());
+    context.setExceptionRegisters(error.getType());
   }
 
   /**

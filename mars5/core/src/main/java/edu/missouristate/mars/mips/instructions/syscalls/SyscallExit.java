@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -38,7 +39,9 @@ public class SyscallExit extends AbstractSyscall {
   }
 
   /** Performs syscall function to exit the MIPS program. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    context.exit();
     throw new ProcessingException(); // empty exception list.
   }
 }

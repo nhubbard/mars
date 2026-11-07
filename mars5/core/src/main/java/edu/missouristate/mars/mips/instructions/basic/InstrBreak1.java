@@ -6,19 +6,19 @@ import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.simulator.*;
 
 public class InstrBreak1 extends BasicInstruction {
-    public InstrBreak1() {
-        super("break 100",
-              "Break execution with code : Terminate program execution with specified exception code",
-              BasicInstructionFormat.R_FORMAT,
-              "000000 ffffffffffffffffffff 001101",
-              statement -> { 
-              
-              
-              int[] operands = statement.getOperands();
-              throw new ProcessingException(
-                  statement,
-                  "break instruction executed; code = " + operands[0] + ".",
-                  Exceptions.BREAKPOINT_EXCEPTION);
-            });
-    }
+  public InstrBreak1() {
+    super(
+        "break 100",
+        "Break execution with code : Terminate program execution with specified exception code",
+        BasicInstructionFormat.R_FORMAT,
+        "000000 ffffffffffffffffffff 001101",
+        (statement, context) -> {
+          int[] operands = statement.getOperands();
+          throw new ProcessingException(
+              context,
+              statement,
+              "break instruction executed; code = " + operands[0] + ".",
+              Exceptions.BREAKPOINT_EXCEPTION);
+        });
+  }
 }

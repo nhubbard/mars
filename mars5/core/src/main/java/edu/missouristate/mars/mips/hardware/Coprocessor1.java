@@ -41,6 +41,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Coprocessor1 {
   private static final Coprocessor1State legacy = new Coprocessor1State();
 
+  /** Transitional access for the legacy instruction execution context. */
+  public static Coprocessor1State legacyState() {
+    return legacy;
+  }
+
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
     legacy.addRegistersObserver(listener);
   }

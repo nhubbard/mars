@@ -103,6 +103,26 @@ public class BasicInstruction extends Instruction {
   }
 
   /**
+   * Context-aware instruction constructor; the one-argument callback constructor remains supported.
+   */
+  public BasicInstruction(
+      String example,
+      String description,
+      BasicInstructionFormat instrFormat,
+      String operMask,
+      ContextualSimulationCode simCode) {
+    this(example, description, instrFormat, operMask, (SimulationCode) simCode);
+  }
+
+  public BasicInstruction(
+      String example,
+      BasicInstructionFormat instrFormat,
+      String operMask,
+      ContextualSimulationCode simCode) {
+    this(example, "", instrFormat, operMask, (SimulationCode) simCode);
+  }
+
+  /**
    * Gets the 32-character operation mask. Each mask position represents a bit position in the
    * 32-bit machine instruction. Operation codes and unused bits are represented in the mask by 1's
    * and 0's. Operand codes are represented by 'f', 's', and 't' for bits occupied by first, secon

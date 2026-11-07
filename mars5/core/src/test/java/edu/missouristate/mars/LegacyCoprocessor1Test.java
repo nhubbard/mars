@@ -45,6 +45,18 @@ class LegacyCoprocessor1Test {
       assertThat(independent.getValue(12)).isEqualTo(101);
       assertThat(independent.getConditionFlag(flag)).isEqualTo(1);
 
+      Coprocessor1.setRegisterToFloat(12, 1.5f);
+      RegisterFile.initializeProgramCounter(pc);
+      var add = new edu.missouristate.mars.mips.instructions.basic.InstrAddS();
+      var statement =
+          new ProgramStatement(null, "add.s $f14,$f12,$f12", null, null, add, pc - 4, 1);
+      System.arraycopy(new int[] {14, 12, 12}, 0, statement.getOperands(), 0, 3);
+      add.getSimulationCode().simulate(statement);
+      assertThat(Coprocessor1.getFloatFromRegister(14)).isEqualTo(3.0f);
+      assertThat(backStepper.empty()).isFalse();
+      backStepper.backStep();
+      assertThat(Coprocessor1.getValue(14)).isEqualTo(previousValues[14]);
+
       for (int initial = 0; initial <= 1; initial++) {
         for (boolean set : new boolean[] {true, false}) {
           // Whole-flag setters have historically bypassed undo recording.

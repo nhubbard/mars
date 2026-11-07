@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -48,25 +49,28 @@ public class SyscallRead extends AbstractSyscall {
    * Performs syscall function to read from file descriptor given in $a0. $a1 specifies buffer and
    * $a2 specifies length. Number of characters read is returned in $v0 (starting MARS 3.7).
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
-    int byteAddress = RegisterFile.getValue(5); // destination of characters read from file
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    int byteAddress = context.registerFile.getValue(5); // destination of characters read from file
     byte b = 0;
     int index = 0;
-    byte[] myBuffer = new byte[RegisterFile.getValue(6)]; // specified length
+    byte[] myBuffer = new byte[context.registerFile.getValue(6)]; // specified length
     // Call to SystemIO.xxxx.read(xxx,xxx,xxx)  returns actual length
     int retLength =
-        env.readFromFile(
-            RegisterFile.getValue(4), // fd
-            myBuffer, // buffer
-            RegisterFile.getValue(6)); // length
-    RegisterFile.updateRegister(2, retLength); // set returned value in register
+        context
+            .environment(env)
+            .readFromFile(
+                context.registerFile.getValue(4), // fd
+                myBuffer, // buffer
+                context.registerFile.getValue(6)); // length
+    context.updateRegister(2, retLength); // set returned value in register
     // copy bytes from returned buffer into MARS memory
     try {
       while (index < retLength) {
         Globals.memory.setByte(byteAddress++, myBuffer[index++]);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
   }
 }

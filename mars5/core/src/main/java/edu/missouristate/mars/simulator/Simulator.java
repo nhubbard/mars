@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.api.SimulatorObserver;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
@@ -52,15 +53,15 @@ public class Simulator {
   private final EventEmitter<SimulatorNotice> simulatorEvents = new EventEmitter<>();
 
   /**
-   * Run-speed value that means "execute as fast as possible, no inter-instruction delay."
-   * Matches {@code RunSpeedPanel.UNLIMITED_SPEED} in the Venus UI.
+   * Run-speed value that means "execute as fast as possible, no inter-instruction delay." Matches
+   * {@code RunSpeedPanel.UNLIMITED_SPEED} in the Venus UI.
    */
   public static final double UNLIMITED_SPEED = 40.0;
 
   /**
-   * Provides the current execution speed (instructions/second). Defaults to unlimited.
-   * The Venus UI sets this to {@code RunSpeedPanel.getInstance()::getRunSpeed} on startup so
-   * the simulator respects the speed slider without importing any Swing class.
+   * Provides the current execution speed (instructions/second). Defaults to unlimited. The Venus UI
+   * sets this to {@code RunSpeedPanel.getInstance()::getRunSpeed} on startup so the simulator
+   * respects the speed slider without importing any Swing class.
    */
   private Supplier<Double> runSpeedSource = () -> UNLIMITED_SPEED;
 
@@ -70,12 +71,14 @@ public class Simulator {
 
   /**
    * Callback interface used by {@link SimThread#finished()} to notify the originating GUI action
-   * (Go or Step) of the simulation outcome without importing plugin-specific action classes.
-   * {@code RunGoAction} and {@code RunStepAction} in the plugin module implement this interface.
+   * (Go or Step) of the simulation outcome without importing plugin-specific action classes. {@code
+   * RunGoAction} and {@code RunStepAction} in the plugin module implement this interface.
    */
   public interface SimFinishCallback {
     void stepped(boolean done, int reason, ProcessingException pe);
+
     void stopped(ProcessingException pe, int reason);
+
     void paused(boolean done, int reason, ProcessingException pe);
   }
 
@@ -216,19 +219,13 @@ public class Simulator {
   private void notifyObserversOfExecutionStart(int maxSteps, int programCounter) {
     simulatorEvents.emit(
         new SimulatorNotice(
-            SimulatorNotice.SIMULATOR_START,
-            maxSteps,
-            runSpeedSource.get(),
-            programCounter));
+            SimulatorNotice.SIMULATOR_START, maxSteps, runSpeedSource.get(), programCounter));
   }
 
   private void notifyObserversOfExecutionStop(int maxSteps, int programCounter) {
     simulatorEvents.emit(
         new SimulatorNotice(
-            SimulatorNotice.SIMULATOR_STOP,
-            maxSteps,
-            runSpeedSource.get(),
-            programCounter));
+            SimulatorNotice.SIMULATOR_STOP, maxSteps, runSpeedSource.get(), programCounter));
   }
 
   /**
@@ -261,7 +258,8 @@ public class Simulator {
      * @param breakPoints array of breakpoints (instruction addresses) specified by user
      * @param starter the caller responsible for this call, usually GO or STEP. null if none.
      */
-    SimThread(MIPSprogram p, int pc, int maxSteps, int[] breakPoints, SimulatorActionSource starter) {
+    SimThread(
+        MIPSprogram p, int pc, int maxSteps, int[] breakPoints, SimulatorActionSource starter) {
       super(Globals.getGui().isGuiMode());
       this.pc = pc;
       this.maxSteps = maxSteps;
@@ -389,7 +387,7 @@ public class Simulator {
                   Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
             }
             // THIS IS WHERE THE INSTRUCTION EXECUTION IS ACTUALLY SIMULATED!
-            instruction.getSimulationCode().simulate(statement);
+            instruction.getSimulationCode().simulate(statement, InstructionContext.legacy());
 
             // IF statement added 7/26/06 (explanation above)
             if (Globals.getSettings().getBackSteppingEnabled()) {

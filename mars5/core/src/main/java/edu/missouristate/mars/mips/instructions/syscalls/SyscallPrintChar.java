@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -42,10 +43,10 @@ public class SyscallPrintChar extends AbstractSyscall {
   }
 
   /** Performs syscall function to print on the console the character stored in $a0. */
-  public void simulate(ProgramStatement statement) {
+  public void simulate(ProgramStatement statement, InstructionContext context) {
     // mask off the lower byte of register $a0.
     // Convert to a one-character string and use the string technique.
-    char t = (char) (RegisterFile.getValue(4) & 0x000000ff);
-    env.printChar(t);
+    char t = (char) (context.registerFile.getValue(4) & 0x000000ff);
+    context.environment(env).printChar(t);
   }
 }

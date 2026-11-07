@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -39,14 +40,15 @@ public class SyscallMessageDialogString extends AbstractSyscall {
   }
 
   /** System call to display a message to user. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments:
     //   $a0 = address of null-terminated string that is an information-type message to user
     //   $a1 = address of null-terminated string to display after the first message
     // Output: none
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -58,11 +60,11 @@ public class SyscallMessageDialogString extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     String message2 = ""; // = "";
-    byteAddress = RegisterFile.getValue(5);
+    byteAddress = context.registerFile.getValue(5);
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
       while (ch[0] != 0) // only uses single location ch[0]
@@ -73,10 +75,10 @@ public class SyscallMessageDialogString extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // Display the dialog.
-    env.showMessageDialog(message + message2, null, 1);
+    context.environment(env).showMessageDialog(message + message2, null, 1);
   }
 }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -42,7 +43,7 @@ public class SyscallPrintFloat extends AbstractSyscall {
   }
 
   /** Performs syscall function to display float whose bits are stored in $f12 */
-  public void simulate(ProgramStatement statement) {
-    env.printFloat(Float.intBitsToFloat(Coprocessor1.getValue(12)));
+  public void simulate(ProgramStatement statement, InstructionContext context) {
+    context.environment(env).printFloat(Float.intBitsToFloat(context.coprocessor1.getValue(12)));
   }
 }

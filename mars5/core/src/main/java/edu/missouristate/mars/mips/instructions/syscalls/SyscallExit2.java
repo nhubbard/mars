@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -42,10 +43,9 @@ public class SyscallExit2 extends AbstractSyscall {
    * Performs syscall function to exit the MIPS program with return value given in $a0. If running
    * in command mode, MARS will exit with that value. If running under GUI, return value is ignored.
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
-    if (!Globals.getGui().isGuiMode()) {
-      Globals.exitCode = RegisterFile.getValue(4);
-    }
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    context.exit(context.registerFile.getValue(4));
     throw new ProcessingException(); // empty error list
   }
 }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
@@ -46,10 +47,13 @@ public class SyscallPrintDouble extends AbstractSyscall {
   }
 
   /** Performs syscall function to print double whose bits are stored in $f12 &amp; $f13. */
-  public void simulate(ProgramStatement statement) {
+  public void simulate(ProgramStatement statement, InstructionContext context) {
     // Note: Higher numbered reg contains high order word so concat 13-12.
-    env.printDouble(
-        Double.longBitsToDouble(
-            Binary.twoIntsToLong(Coprocessor1.getValue(13), Coprocessor1.getValue(12))));
+    context
+        .environment(env)
+        .printDouble(
+            Double.longBitsToDouble(
+                Binary.twoIntsToLong(
+                    context.coprocessor1.getValue(13), context.coprocessor1.getValue(12))));
   }
 }

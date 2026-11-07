@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -43,16 +44,18 @@ public class SyscallSbrk extends AbstractSyscall {
    * Performs syscall function to allocate amount of heap memory specified in $a0, putting address
    * into $v0.
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     int address;
     try {
-      address = Globals.memory.allocateBytesFromHeap(RegisterFile.getValue(4));
+      address = Globals.memory.allocateBytesFromHeap(context.registerFile.getValue(4));
     } catch (IllegalArgumentException iae) {
       throw new ProcessingException(
+          context,
           statement,
           iae.getMessage() + " (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     }
-    RegisterFile.updateRegister(2, address);
+    context.updateRegister(2, address);
   }
 }

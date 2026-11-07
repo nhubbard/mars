@@ -5,16 +5,17 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 
 public class InstrAndi extends BasicInstruction {
-    public InstrAndi() {
-        super("andi $t1,$t2,100",
-              "Bitwise AND immediate : Set $t1 to bitwise AND of $t2 and zero-extended 16-bit immediate",
-              BasicInstructionFormat.I_FORMAT,
-              "001100 sssss fffff tttttttttttttttt",
-              statement -> {
-              int[] operands = statement.getOperands();
-              
-              RegisterFile.updateRegister(
-                  operands[0], RegisterFile.getValue(operands[1]) & (operands[2] & 0x0000FFFF));
-            });
-    }
+  public InstrAndi() {
+    super(
+        "andi $t1,$t2,100",
+        "Bitwise AND immediate : Set $t1 to bitwise AND of $t2 and zero-extended 16-bit immediate",
+        BasicInstructionFormat.I_FORMAT,
+        "001100 sssss fffff tttttttttttttttt",
+        (statement, context) -> {
+          int[] operands = statement.getOperands();
+
+          context.updateRegister(
+              operands[0], context.registerFile.getValue(operands[1]) & (operands[2] & 0x0000FFFF));
+        });
+  }
 }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -43,16 +44,18 @@ public class SyscallReadInt extends AbstractSyscall {
   }
 
   /** Performs syscall function to read an integer from input console into $v0 */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     int value;
     try {
-      value = env.readInt();
+      value = context.environment(env).readInt();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
+          context,
           statement,
           "invalid integer input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     }
-    RegisterFile.updateRegister(2, value);
+    context.updateRegister(2, value);
   }
 }

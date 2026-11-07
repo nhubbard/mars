@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.simulator.DelayedBranchState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -43,18 +44,23 @@ public final class MarsContext {
   /** Floating-point register and condition-flag state owned by this simulation. */
   public final Coprocessor1State coprocessor1;
 
+  /** Pending branch and delay-slot state owned by this simulation. */
+  public final DelayedBranchState delayedBranch;
+
   @Inject
   public MarsContext(
       SimulationSettings settings,
       MarsGuiProxy gui,
       IntegerRegisterFile registerFile,
       Coprocessor0State coprocessor0,
-      Coprocessor1State coprocessor1) {
+      Coprocessor1State coprocessor1,
+      DelayedBranchState delayedBranch) {
     this.settings = settings;
     this.gui = gui;
     this.registerFile = registerFile;
     this.coprocessor0 = coprocessor0;
     this.coprocessor1 = coprocessor1;
+    this.delayedBranch = delayedBranch;
     // TODO(phase-2+): add Memory, InstructionSet, Simulator as constructor params
     //                 once their implementations live in mars-core.
   }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 
@@ -46,7 +47,9 @@ public class SyscallPrintIntUnsigned extends AbstractSyscall {
    * Performs syscall function to print on the console the integer stored in $a0. The value is
    * treated as unsigned.
    */
-  public void simulate(ProgramStatement statement) {
-    env.printString(Binary.unsignedIntToIntString(RegisterFile.getValue(4)));
+  public void simulate(ProgramStatement statement, InstructionContext context) {
+    context
+        .environment(env)
+        .printString(Binary.unsignedIntToIntString(context.registerFile.getValue(4)));
   }
 }

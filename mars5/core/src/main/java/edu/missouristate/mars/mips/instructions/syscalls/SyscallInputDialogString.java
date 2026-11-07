@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -39,7 +40,8 @@ public class SyscallInputDialogString extends AbstractSyscall {
   }
 
   /** System call to input data. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments:
     //    $a0 = address of null-terminated string that is the message to user
     //    $a1 = address of input buffer for the input string
@@ -52,7 +54,7 @@ public class SyscallInputDialogString extends AbstractSyscall {
     //       -3: OK was chosen but no data had been input into field
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4); // byteAddress of string is in $a0
+    int byteAddress = context.registerFile.getValue(4); // byteAddress of string is in $a0
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -64,7 +66,7 @@ public class SyscallInputDialogString extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // Values returned by Java's InputDialog:
@@ -72,17 +74,18 @@ public class SyscallInputDialogString extends AbstractSyscall {
     // An empty string returned (that is, inputString.length() of zero)
     // means that OK was chosen but no string was input.
     String inputString;
-    inputString = env.showInputDialog(message);
-    byteAddress = RegisterFile.getValue(5); // byteAddress of string is in $a1
-    int maxLength = RegisterFile.getValue(6); // input buffer size for input string is in $a2
+    inputString = context.environment(env).showInputDialog(message);
+    byteAddress = context.registerFile.getValue(5); // byteAddress of string is in $a1
+    int maxLength =
+        context.registerFile.getValue(6); // input buffer size for input string is in $a2
 
     try {
       if (inputString == null) // Cancel was chosen
       {
-        RegisterFile.updateRegister(5, -2); // set $a1 to -2 flag
+        context.updateRegister(5, -2); // set $a1 to -2 flag
       } else if (inputString.isEmpty()) // OK was chosen but there was no input
       {
-        RegisterFile.updateRegister(5, -3); // set $a1 to -3 flag
+        context.updateRegister(5, -3); // set $a1 to -3 flag
       } else {
         // The buffer will contain characters, a '\n' character, and the null character
         // Copy the input data to buffer as space permits
@@ -100,15 +103,15 @@ public class SyscallInputDialogString extends AbstractSyscall {
 
         if (inputString.length() > maxLength - 1) {
           //  length of the input string exceeded the specified maximum
-          RegisterFile.updateRegister(5, -4); // set $a1 to -4 flag
+          context.updateRegister(5, -4); // set $a1 to -4 flag
         } else {
-          RegisterFile.updateRegister(5, 0); // set $a1 to 0 flag
+          context.updateRegister(5, 0); // set $a1 to 0 flag
         }
       } // end else
 
     } // end try
     catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
   }
 }

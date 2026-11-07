@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -39,7 +40,7 @@ public class SyscallClose extends AbstractSyscall {
   }
 
   /** Performs syscall function to close file descriptor given in $a0. */
-  public void simulate(ProgramStatement statement) {
-    env.closeFile(RegisterFile.getValue(4));
+  public void simulate(ProgramStatement statement, InstructionContext context) {
+    context.environment(env).closeFile(context.registerFile.getValue(4));
   }
 }

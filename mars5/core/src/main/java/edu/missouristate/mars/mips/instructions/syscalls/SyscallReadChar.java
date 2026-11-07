@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -43,18 +44,20 @@ public class SyscallReadChar extends AbstractSyscall {
   }
 
   /** Performs syscall function to read a character from input console into $a0 */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     int value;
     try {
-      value = env.readChar();
+      value = context.environment(env).readChar();
     } catch (IndexOutOfBoundsException e) // means null input
     {
       throw new ProcessingException(
+          context,
           statement,
           "invalid char input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);
     }
     // DPS 20 June 2008: changed from 4 ($a0) to 2 ($v0)
-    RegisterFile.updateRegister(2, value);
+    context.updateRegister(2, value);
   }
 }

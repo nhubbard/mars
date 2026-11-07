@@ -10,6 +10,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
+import edu.missouristate.mars.simulator.DelayedBranchState;
 import java.util.Objects;
 import javax.inject.Singleton;
 
@@ -79,5 +80,11 @@ public final class CoreModule {
   @Singleton
   static Coprocessor1State provideCoprocessor1() {
     return new Coprocessor1State();
+  }
+
+  @Provides
+  @Singleton
+  static DelayedBranchState provideDelayedBranch() {
+    return new DelayedBranchState();
   }
 }

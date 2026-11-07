@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.util.Random;
 
@@ -43,16 +44,16 @@ public class SyscallRandInt extends AbstractSyscall {
    * System call to the random number generator. Return in $a0 the next pseudorandom, uniformly
    * distributed int value from this random number generator's sequence.
    */
-  public void simulate(ProgramStatement statement) {
+  public void simulate(ProgramStatement statement, InstructionContext context) {
     // Input arguments: $a0 = index of pseudorandom number generator
     // Return: $a0 = the next pseudorandom, uniformly distributed int value from this random number
     // generator's sequence.
-    Integer index = RegisterFile.getValue(4);
+    Integer index = context.registerFile.getValue(4);
     Random stream = RandomStreams.randomStreams.get(index);
     if (stream == null) {
       stream = new Random(); // create a non-seeded stream
       RandomStreams.randomStreams.put(index, stream);
     }
-    RegisterFile.updateRegister(4, stream.nextInt());
+    context.updateRegister(4, stream.nextInt());
   }
 }

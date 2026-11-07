@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.util.Random;
 
@@ -43,18 +44,18 @@ public class SyscallRandSeed extends AbstractSyscall {
   }
 
   /** Set the seed of the underlying Java pseudorandom number generator. */
-  public void simulate(ProgramStatement statement) {
+  public void simulate(ProgramStatement statement, InstructionContext context) {
     // Arguments: $a0 = index of pseudorandom number generator
     //   $a1 = seed for pseudorandom number generator.
     // Result: No values are returned. Sets the seed of the underlying Java pseudorandom number
     // generator.
 
-    Integer index = RegisterFile.getValue(4);
+    Integer index = context.registerFile.getValue(4);
     Random stream = RandomStreams.randomStreams.get(index);
     if (stream == null) {
-      RandomStreams.randomStreams.put(index, new Random(RegisterFile.getValue(5)));
+      RandomStreams.randomStreams.put(index, new Random(context.registerFile.getValue(5)));
     } else {
-      stream.setSeed(RegisterFile.getValue(5));
+      stream.setSeed(context.registerFile.getValue(5));
     }
   }
 }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -63,11 +64,11 @@ public class SyscallMidiOut extends AbstractSyscall {
    * instrument and volume value ranges 0-127 are from javax.sound.midi; actual MIDI instruments use
    * the range 1-128.
    */
-  public void simulate(ProgramStatement statement) {
-    int pitch = RegisterFile.getValue(4); // $a0
-    int duration = RegisterFile.getValue(5); // $a1
-    int instrument = RegisterFile.getValue(6); // $a2
-    int volume = RegisterFile.getValue(7); // $a3
+  public void simulate(ProgramStatement statement, InstructionContext context) {
+    int pitch = context.registerFile.getValue(4); // $a0
+    int duration = context.registerFile.getValue(5); // $a1
+    int instrument = context.registerFile.getValue(6); // $a2
+    int volume = context.registerFile.getValue(7); // $a3
     if (pitch < rangeLowEnd || pitch > rangeHighEnd) pitch = ToneGenerator.DEFAULT_PITCH;
     if (duration < 0) duration = ToneGenerator.DEFAULT_DURATION;
     if (instrument < rangeLowEnd || instrument > rangeHighEnd)

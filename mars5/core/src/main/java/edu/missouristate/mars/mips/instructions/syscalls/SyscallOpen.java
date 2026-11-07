@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -49,7 +50,8 @@ public class SyscallOpen extends AbstractSyscall {
    * flag creates file if it does not exist, so it is technically write-create. write-append will
    * start writing at end of existing file. Mode ($a2) is ignored.
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // NOTE: with MARS 3.7, return changed from $a0 to $v0 and the terminology
     // of 'flags' and 'mode' was corrected (they had been reversed).
     //
@@ -65,7 +67,7 @@ public class SyscallOpen extends AbstractSyscall {
     // Returns in $v0: a "file descriptor" in the range 0 to SystemIO.SYSCALL_MAXFILES-1,
     // or -1 if error
     String filename = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -77,9 +79,9 @@ public class SyscallOpen extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
-    int retValue = env.openFile(filename, RegisterFile.getValue(5));
-    RegisterFile.updateRegister(2, retValue); // set returned fd value in register
+    int retValue = context.environment(env).openFile(filename, context.registerFile.getValue(5));
+    context.updateRegister(2, retValue); // set returned fd value in register
   }
 }

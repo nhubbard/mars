@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.SyscallEnvironment;
+import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -97,5 +98,10 @@ public abstract class AbstractSyscall implements Syscall {
    *
    * @param statement ProgramStatement object for this syscall instruction.
    */
-  public abstract void simulate(ProgramStatement statement) throws ProcessingException;
+  @Override
+  public void simulate(ProgramStatement statement) throws ProcessingException {
+    simulate(statement, InstructionContext.legacy());
+  }
+
+  // Subclasses override either the context-aware overload or the original legacy overload.
 }

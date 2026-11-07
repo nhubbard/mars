@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 
@@ -40,14 +41,15 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
   }
 
   /** System call to display a message to user. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments:
     //   $a0 = address of null-terminated string that is an information-type message to user
     //   $f12 = double value to display in string form after the first message
     // Output: none
 
     String message = ""; // = "";
-    int byteAddress = RegisterFile.getValue(4);
+    int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
       ch[0] = (char) Globals.memory.getByte(byteAddress);
@@ -59,16 +61,20 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
         ch[0] = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
 
     // Display the dialog.
     try {
-      env.showMessageDialog(message + Coprocessor1.getDoubleFromRegisterPair("$f12"), null, 1);
+      context
+          .environment(env)
+          .showMessageDialog(
+              message + context.coprocessor1.getDoubleFromRegisterPair("$f12"), null, 1);
     } catch (InvalidRegisterAccessException e) // register ID error in this method
     {
-      RegisterFile.updateRegister(5, -1); // set $a1 to -1 flag
+      context.updateRegister(5, -1); // set $a1 to -1 flag
       throw new ProcessingException(
+          context,
           statement,
           "invalid int reg. access during double input (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);

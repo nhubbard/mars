@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import java.util.Random;
@@ -44,20 +45,22 @@ public class SyscallRandDouble extends AbstractSyscall {
    * System call to the random number generator. Return in $f0 the next pseudorandom, uniformly
    * distributed double value between 0.0 and 1.0 from this random number generator's sequence.
    */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
     // Input arguments: $a0 = index of pseudorandom number generator
     // Return: $f0 = the next pseudorandom, uniformly distributed double value between 0.0 and 1.0
     // from this random number generator's sequence.
-    Integer index = RegisterFile.getValue(4);
+    Integer index = context.registerFile.getValue(4);
     Random stream = RandomStreams.randomStreams.get(index);
     if (stream == null) {
       stream = new Random(); // create a non-seeded stream
       RandomStreams.randomStreams.put(index, stream);
     }
     try {
-      Coprocessor1.setRegisterPairToDouble(0, stream.nextDouble());
+      context.coprocessor1.setRegisterPairToDouble(0, stream.nextDouble());
     } catch (InvalidRegisterAccessException e) { // register ID error in this method
       throw new ProcessingException(
+          context,
           statement,
           "Internal error storing double to register (syscall " + this.getNumber() + ")",
           Exceptions.SYSCALL_EXCEPTION);

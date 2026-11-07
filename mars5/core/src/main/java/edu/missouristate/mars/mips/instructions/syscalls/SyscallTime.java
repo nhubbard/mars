@@ -1,9 +1,9 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
-
 import java.util.Date;
 
 /*
@@ -48,9 +48,9 @@ public class SyscallTime extends AbstractSyscall {
    * Performs syscall function to place current system time into $a0 (low order 32 bits) and $a1
    * (high order 32 bits).
    */
-  public void simulate(ProgramStatement statement) {
+  public void simulate(ProgramStatement statement, InstructionContext context) {
     long value = new Date().getTime();
-    RegisterFile.updateRegister(4, Binary.lowOrderLongToInt(value)); // $a0
-    RegisterFile.updateRegister(5, Binary.highOrderLongToInt(value)); // $a1
+    context.updateRegister(4, Binary.lowOrderLongToInt(value)); // $a0
+    context.updateRegister(5, Binary.highOrderLongToInt(value)); // $a1
   }
 }

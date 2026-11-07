@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 
 /*
@@ -42,19 +43,20 @@ public class SyscallPrintString extends AbstractSyscall {
   }
 
   /** Performs syscall function to print string stored starting at address in $a0. */
-  public void simulate(ProgramStatement statement) throws ProcessingException {
-    int byteAddress = RegisterFile.getValue(4);
+  public void simulate(ProgramStatement statement, InstructionContext context)
+      throws ProcessingException {
+    int byteAddress = context.registerFile.getValue(4);
     char ch;
     try {
       ch = (char) Globals.memory.getByte(byteAddress);
       // won't stop until NULL byte reached!
       while (ch != 0) {
-        env.printChar(ch);
+        context.environment(env).printChar(ch);
         byteAddress++;
         ch = (char) Globals.memory.getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
-      throw new ProcessingException(statement, e);
+      throw new ProcessingException(context, statement, e);
     }
   }
 }

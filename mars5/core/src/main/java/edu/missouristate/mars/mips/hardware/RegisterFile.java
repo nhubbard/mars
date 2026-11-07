@@ -46,6 +46,11 @@ public class RegisterFile {
   private static final IntegerRegisterFile legacy =
       new IntegerRegisterFile(Memory.globalPointer, Memory.stackPointer, Memory.textBaseAddress);
 
+  /** Transitional access for the legacy instruction execution context. */
+  public static IntegerRegisterFile legacyState() {
+    return legacy;
+  }
+
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
     legacy.addRegistersObserver(listener);
   }
