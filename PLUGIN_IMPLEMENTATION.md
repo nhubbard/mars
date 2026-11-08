@@ -175,10 +175,24 @@ example still produces structured instruction PSI.
 The clean sandbox launch ran 1,261 tests and opened the smoke project with the plugin loaded.
 The rebuilt plugin archive passed its integrity check. Visual editor acceptance remains open.
 
+## Operands completed by substitution
+
+The grammar prefers a complete structured operand list. If that parse cannot consume the line
+and the line contains a symbol or parameter that can expand, the parser preserves an
+`OPERAND_FRAGMENT`. Lines without an expandable token keep ordinary syntax recovery. The lexer
+uses the core register catalog to distinguish dollar-prefixed identifiers from registers, and the
+declaration index version advances to rebuild affected label and macro candidates.
+
+Assembler-backed fixtures verify equivalent load instructions when `.eqv`, a percent parameter,
+or a SPIM parameter supplies a parenthesis. The fixtures check that ordinary addresses still
+produce structured address PSI and that the fragments retain their exact operand text.
+The clean sandbox launch ran 1,262 tests and loaded the plugin in the smoke project. The rebuilt
+plugin archive passed its integrity check. Visual editor acceptance remains open.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler, including operand syntax formed
-by macro and equivalence substitution. Then add symbol reference sentinels,
+Continue checking parser edge cases against the Java assembler, including physical lines replaced
+by the include prepass. Then add symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

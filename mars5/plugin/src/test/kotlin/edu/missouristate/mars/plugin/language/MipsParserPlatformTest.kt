@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.lang.ASTNode
 import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
@@ -8,6 +9,7 @@ import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -105,11 +107,11 @@ class MipsParserPlatformTest {
         }
     }
 
-    private fun assertAssembles(directory: Path, source: String) {
+    private fun assertAssembles(directory: Path, source: String, expectedInstruction: Int = 0x24080007) {
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
         val program = context.assemble(listOf(entry), null, true, false)
-        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+        assertEquals(listOf(expectedInstruction), program.machineList.map { it.binaryStatement })
     }
 
     @Test
@@ -151,6 +153,33 @@ class MipsParserPlatformTest {
         """.trimIndent()
         assertAssembles(directory, source)
         readAction { assertParses(source) }
+    }
+
+    @Test
+    fun `expandable operand fragments preserve load syntax supplied by equivalences and macros`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val cases = listOf(
+            ".eqv OPEN (\nlw \$t0,0 OPEN \$sp)" to "\$t0,0 OPEN \$sp)",
+            ".eqv CLOSE )\nlw \$t0,0(\$sp CLOSE" to "\$t0,0(\$sp CLOSE",
+            ".macro read (%close)\nlw \$t0,0(\$sp %close\n.end_macro\nread())" to "\$t0,0(\$sp %close",
+            ".macro read (\$close)\nlw \$t0,0(\$sp \$close\n.end_macro\nread())" to "\$t0,0(\$sp \$close",
+        )
+        for ((source, operands) in cases) {
+            assertAssembles(directory, source, expectedInstruction = 0x8fa80000.toInt())
+            readAction {
+                val fragments = descendants(assertParses(source).node, "OPERAND_FRAGMENT")
+                assertEquals(listOf(operands), fragments.map { it.text.trimStart() }.toList())
+            }
+        }
+        readAction {
+            val ordinary = assertParses("lw \$t0,label+4(\$sp)\n")
+            assertEquals(1, descendants(ordinary.node, "ADDRESS_EXPR").count())
+            assertTrue(descendants(ordinary.node, "OPERAND_FRAGMENT").none())
+        }
+    }
+
+    private fun descendants(node: ASTNode, type: String): SyntaxTraverser<ASTNode> {
+        val elementType = MipsTypes.psi(type)
+        return SyntaxTraverser.astTraverser(node).filterTypes { it == elementType }
     }
 
     @Test
