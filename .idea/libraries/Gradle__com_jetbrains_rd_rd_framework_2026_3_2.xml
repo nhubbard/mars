@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.rd:rd-framework:2026.3.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.rd" artifactId="rd-framework" version="2026.3.2" baseVersion="2026.3.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.rd/rd-framework/2026.3.2/b70f384060e1bff9a1c65dedf42c52299bf6074f/rd-framework-2026.3.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.rd/rd-framework/2026.3.2/4a6339851e1e1370de8fd38a22d83415547e8668/rd-framework-2026.3.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

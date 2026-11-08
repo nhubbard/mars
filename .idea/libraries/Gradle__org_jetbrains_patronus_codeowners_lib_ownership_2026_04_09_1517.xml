@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.jetbrains.patronus:codeowners-lib-ownership:2026.04.09-1517" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.jetbrains.patronus" artifactId="codeowners-lib-ownership" version="2026.04.09-1517" baseVersion="2026.04.09-1517" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.patronus/codeowners-lib-ownership/2026.04.09-1517/21c5eb0b0a1de6c3b8703363c1d7d48ab37c056a/codeowners-lib-ownership-2026.04.09-1517.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.patronus/codeowners-lib-ownership/2026.04.09-1517/4e6268e8e2015d83785c3adc8ed701c7fea3a109/codeowners-lib-ownership-2026.04.09-1517-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

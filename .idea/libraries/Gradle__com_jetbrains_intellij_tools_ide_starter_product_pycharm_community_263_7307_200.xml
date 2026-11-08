@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.tools:ide-starter-product-pycharm-community:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.tools" artifactId="ide-starter-product-pycharm-community" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-pycharm-community/263.7307.200/820f072513008002b3b1e96752a6977e92e1e0ca/ide-starter-product-pycharm-community-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-pycharm-community/263.7307.200/fd074fce5eec384e85bacb5e64f2599029e09fe3/ide-starter-product-pycharm-community-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

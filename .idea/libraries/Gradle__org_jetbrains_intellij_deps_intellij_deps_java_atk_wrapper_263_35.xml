@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.jetbrains.intellij.deps:intellij-deps-java-atk-wrapper:263.35" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.jetbrains.intellij.deps" artifactId="intellij-deps-java-atk-wrapper" version="263.35" baseVersion="263.35" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.intellij.deps/intellij-deps-java-atk-wrapper/263.35/792f9c20c84362ca9eea8524c43613c7ad225baf/intellij-deps-java-atk-wrapper-263.35.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains.intellij.deps/intellij-deps-java-atk-wrapper/263.35/37c224991bbaf64e042caee84921e9e235441569/intellij-deps-java-atk-wrapper-263.35-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

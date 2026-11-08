@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.driver:driver-client:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.driver" artifactId="driver-client" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.driver/driver-client/263.7307.200/1b7b97a038c720b13704e70aae4dbe7ee8d39ba0/driver-client-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.driver/driver-client/263.7307.200/1088395e76fe3905a5632f24ea749d2367619a2c/driver-client-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

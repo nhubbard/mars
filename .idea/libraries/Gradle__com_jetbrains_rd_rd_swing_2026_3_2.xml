@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.rd:rd-swing:2026.3.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.rd" artifactId="rd-swing" version="2026.3.2" baseVersion="2026.3.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.rd/rd-swing/2026.3.2/8176aaad1ae9e320d147962aec6a6df2ca45d9d4/rd-swing-2026.3.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.rd/rd-swing/2026.3.2/fa7a6c074d8e8a7e31f6237ab7f1356045cba03b/rd-swing-2026.3.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

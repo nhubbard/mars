@@ -1,0 +1,7 @@
+<idea-plugin>
+  <id>edu.missouristate.mars</id>
+  <name>MARS MIPS</name>
+  <vendor>MARS contributors</vendor>
+  <description>MIPS assembly and simulation services backed by an independent session per project.</description>
+  <depends>com.intellij.modules.platform</depends>
+</idea-plugin>

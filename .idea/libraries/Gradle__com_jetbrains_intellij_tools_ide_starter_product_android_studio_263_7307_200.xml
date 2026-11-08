@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.tools:ide-starter-product-android-studio:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.tools" artifactId="ide-starter-product-android-studio" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-android-studio/263.7307.200/485a674d39e4483ae8f80a0399441b5677d5dc76/ide-starter-product-android-studio-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-android-studio/263.7307.200/79a46348ef122836e2d8678ab8b327f717b98a35/ide-starter-product-android-studio-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -86,57 +86,35 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
     message.setFont(new Font("Ariel", Font.PLAIN, 12));
     message.setText(
         """
-        Hello!  This Tool does not do anything but you may use its \
-        source code as a starting point to build your own MARS Tool \
-        or Application.
+        This example provides a starting point for a MARS desktop tool or standalone application.
 
-        A MARS Tool is a program listed in the MARS Tools menu.  It is launched \
-        when you select its menu item and typically interacts with executing MIPS \
-        programs to do something exciting and informative or at least interesting.
+        Desktop tools appear in the Tools menu and interact with the session owned by that window.
+        Implement MarsTool, provide getName() and action(), and accept a DesktopSession in your
+        tool's constructor. Reuse that session for memory, registers, settings, and simulation.
 
-        A MARS Application is a stand-alone program for similarly interacting with \
-        executing MIPS programs.  It uses MARS' MIPS assembler and \
-        runtime simulator in the background to control MIPS execution.
+        For the standard display and connection controls, extend
+        edu.missouristate.mars.desktop.tools.AbstractMarsToolAndApplication.
+        Pass the supplied session, title, and heading to its constructor, and implement getName()
+        and buildMainDisplayArea(). Typed memory and register callbacks update your model;
+        processMIPSUpdate(AccessNotice) receives accesses from instruction execution.
 
-        The basic requirements for building a MARS Tool are:
-          1. It must be a class that implements the MarsTool interface.  \
-        This has only two methods: 'String getName()' to return the \
-        name to be displayed in its Tools menu item, and \
-        'void action()' which is invoked when that menu item \
-        is selected by the MARS user.
-          2. It must be stored in the mars.tools package (in folder \
-        mars/tools)
-          3. It must be successfully compiled in that package.  This \
-        normally means the MARS distribution needs to be extracted from the \
-        JAR file before you can develop your Tool.
+        To add a tool to the menu, implement MarsToolProvider. Its name() supplies the menu label;
+        create(DesktopSession) constructs the tool only when selected. Register the provider's
+        class name in META-INF/services/edu.missouristate.mars.desktop.tools.MarsToolProvider
+        in your extension JAR. The extension JAR must be on the desktop application's classpath.
+        Listing tools does not create their windows or simulation state.
 
-        If these requirements are met, MARS will recognize and load \
-        your Tool into its Tools menu the next time it runs.
+        A standalone application's main method creates its own session with
+        DesktopApplication.createSession(), constructs the tool with that session, and calls go().
+        Close an independently owned session when its application is finished. A tool opened from
+        a desktop menu shares the window's session and leaves its lifetime to that window.
 
-        There are no fixed requirements for building a MARS Application, a \
-        stand-alone program that utilizes the MARS API.
+        Use session.instructionContext() for writes that need undo recording, and use the owning
+        session's hardware for reads and typed event subscriptions. Memory notices include an
+        explicit origin so execution can be distinguished from editor and application accesses.
 
-        You can build a program that may be run as either a MARS Tool or an Application.  \
-        The easiest way is to extend an abstract class provided in the MARS distribution: \
-        mars.tools.AbstractMarsToolAndApplication.
-          1. It defines a suite of methods and provides default definitions for \
-        all but two: getName() and buildMainDisplayArea().
-          2.  String getName() was introduced above.
-          3.  JComponent buildMainDisplayArea() returns the JComponent to be placed in the \
-        BorderLayout.CENTER region of the tool/app's user interface.  The NORTH and \
-        SOUTH are defined to contain a heading and a set of button controls, respectively.
-          4. It defines a default 'void go()' method to launch the application.
-          5. Conventional usage is to define your application as a subclass then launch it \
-        by invoking its go() method.
-
-        The frame/dialog you are reading right now is an example of an \
-        AbstractMarsToolAndApplication subclass.  If you run it as an application, you \
-        will notice the set of controls at the bottom of the window differ from those \
-        you get when running it from MARS' Tools menu.  It includes additional controls \
-        to load and control the execution of pre-existing MIPS programs.
-
-        See the mars.tools.AbstractMarsToolAndApplication API or the source code of \
-        existing tool/apps for further information.
+        The IntelliJ plugin has its own project-scoped integration in the plugin module. These
+        desktop extension points continue to support the standalone application.
         """);
     message.setCaretPosition(0); // Assure first line is visible and at top of scroll pane.
     return new JScrollPane(message);

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.spullara.cli-parser:cli-parser:1.1.6" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.github.spullara.cli-parser" artifactId="cli-parser" version="1.1.6" baseVersion="1.1.6" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.spullara.cli-parser/cli-parser/1.1.6/c994ab79b612e8f4f394bd208ee19eee0191e806/cli-parser-1.1.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.spullara.cli-parser/cli-parser/1.1.6/9b7ba9d12b7825b1421f7972a466d5bfa655de76/cli-parser-1.1.6-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

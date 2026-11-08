@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: jaxen:jaxen:1.2.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="jaxen" artifactId="jaxen" version="1.2.0" baseVersion="1.2.0" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jaxen/jaxen/1.2.0/c10535a925bd35129a4329bc75065cc6b5293f2c/jaxen-1.2.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/jaxen/jaxen/1.2.0/6c420545d72198d569e6cad3e4cd86ebb68d353/jaxen-1.2.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

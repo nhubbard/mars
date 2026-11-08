@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.squareup.okio:okio-jvm:3.18.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.squareup.okio" artifactId="okio-jvm" version="3.18.2" baseVersion="3.18.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.squareup.okio/okio-jvm/3.18.2/4cd37b59c55955e8706a9fd09e22a903efb47641/okio-jvm-3.18.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.squareup.okio/okio-jvm/3.18.2/503eb3c429cad4d054a2940ec8568b04eacdd39e/okio-jvm-3.18.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

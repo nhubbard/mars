@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.stephenc.monte:monte-screen-recorder:0.7.7.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.github.stephenc.monte" artifactId="monte-screen-recorder" version="0.7.7.0" baseVersion="0.7.7.0" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.stephenc.monte/monte-screen-recorder/0.7.7.0/f7a01b7febc191ec5b38ea02d13d0f18da96e443/monte-screen-recorder-0.7.7.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.stephenc.monte/monte-screen-recorder/0.7.7.0/7f0e843143b3b366df4a8590bd6842ecb31ba2a8/monte-screen-recorder-0.7.7.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

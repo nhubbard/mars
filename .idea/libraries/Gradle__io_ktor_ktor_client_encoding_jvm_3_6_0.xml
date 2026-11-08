@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: io.ktor:ktor-client-encoding-jvm:3.6.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="io.ktor" artifactId="ktor-client-encoding-jvm" version="3.6.0" baseVersion="3.6.0" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-client-encoding-jvm/3.6.0/fbc8c57fc76849646b092592b6134bd31f93f222/ktor-client-encoding-jvm-3.6.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-client-encoding-jvm/3.6.0/d04f4f17592b649a4a96342d5b35a98d10af7293/ktor-client-encoding-jvm-3.6.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

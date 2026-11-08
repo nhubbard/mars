@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.platform:ide-util-io-native:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.platform" artifactId="ide-util-io-native" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/ide-util-io-native/263.7307.200/85892ada0a3e549ccd5e9da67a1f65079a28b176/ide-util-io-native-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/ide-util-io-native/263.7307.200/7403cda7f842581bbfe581e2020640283f7c6d2f/ide-util-io-native-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

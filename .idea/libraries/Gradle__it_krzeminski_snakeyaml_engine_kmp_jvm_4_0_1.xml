@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: it.krzeminski:snakeyaml-engine-kmp-jvm:4.0.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="it.krzeminski" artifactId="snakeyaml-engine-kmp-jvm" version="4.0.1" baseVersion="4.0.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/it.krzeminski/snakeyaml-engine-kmp-jvm/4.0.1/eeb6f2c936e8651699d993c64df6642d6c45b9a9/snakeyaml-engine-kmp-jvm-4.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/it.krzeminski/snakeyaml-engine-kmp-jvm/4.0.1/bf547f4578caf6d53086e68b5bb0cfab44933e1b/snakeyaml-engine-kmp-jvm-4.0.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.fus.reporting:ap-validation-all:2.0.250" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.fus.reporting" artifactId="ap-validation-all" version="2.0.250" baseVersion="2.0.250" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.fus.reporting/ap-validation-all/2.0.250/f300e138b50ac8f7ddcd4c6c0d8a101f87b06128/ap-validation-all-2.0.250.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.fus.reporting/ap-validation-all/2.0.250/287e3320018c98c6858d4fa8f21d370c961333c6/ap-validation-all-2.0.250-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

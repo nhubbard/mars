@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: io.ktor:ktor-openapi-schema-jvm:3.6.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="io.ktor" artifactId="ktor-openapi-schema-jvm" version="3.6.0" baseVersion="3.6.0" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-openapi-schema-jvm/3.6.0/33ddd3f25472a66910b828d805d9570be288f94f/ktor-openapi-schema-jvm-3.6.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-openapi-schema-jvm/3.6.0/c72382557ea1ff074853f37219576f67f6356cbf/ktor-openapi-schema-jvm-3.6.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

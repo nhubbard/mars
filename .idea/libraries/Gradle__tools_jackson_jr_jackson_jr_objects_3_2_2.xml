@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: tools.jackson.jr:jackson-jr-objects:3.2.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="tools.jackson.jr" artifactId="jackson-jr-objects" version="3.2.2" baseVersion="3.2.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/tools.jackson.jr/jackson-jr-objects/3.2.2/d9410b0bd69350942c8675a82220f28c6aa14e6/jackson-jr-objects-3.2.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/tools.jackson.jr/jackson-jr-objects/3.2.2/2da5ddbde13d9fa04c294c95121e1874f273a4fa/jackson-jr-objects-3.2.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

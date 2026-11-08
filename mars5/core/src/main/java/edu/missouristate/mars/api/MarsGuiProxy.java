@@ -1,13 +1,13 @@
 package edu.missouristate.mars.api;
 
 /**
- * Minimal GUI abstraction visible to mars-core. Decouples the simulator core from VenusUI so The
+ * Minimal GUI abstraction visible to mars-core. Decouples the simulator core from VenusUI so the
  * core can communicate with frontends without depending on a UI implementation.
  *
- * <p>Two implementations are provided:
+ * <p>Frontends supply their own implementation, including:
  *
  * <ul>
- *   <li>{@code VenusUI} (mars-plugin) — routes to {@code MessagesPane}
+ *   <li>{@code VenusUI} (mars-desktop) — routes to {@code MessagesPane}
  *   <li>{@code HeadlessGuiProxy} (mars-cli) — routes to {@code System.in} / {@code System.out}
  * </ul>
  *

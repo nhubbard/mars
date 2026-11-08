@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.tools:ide-starter-product-goland:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.tools" artifactId="ide-starter-product-goland" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-goland/263.7307.200/144ef6ab8797b19ac97e726e3f691a07812a240b/ide-starter-product-goland-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.tools/ide-starter-product-goland/263.7307.200/f66b6ef1c5b5ac3ecc6c89166a0d3549d3a32179/ide-starter-product-goland-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: tools.jackson.core:jackson-core:3.2.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="tools.jackson.core" artifactId="jackson-core" version="3.2.2" baseVersion="3.2.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/tools.jackson.core/jackson-core/3.2.2/33448a192d5b662438c859a57daf0f3e8ad9da4b/jackson-core-3.2.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/tools.jackson.core/jackson-core/3.2.2/121ace4304d1e511c2f2e39482463a6be4c82f45/jackson-core-3.2.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

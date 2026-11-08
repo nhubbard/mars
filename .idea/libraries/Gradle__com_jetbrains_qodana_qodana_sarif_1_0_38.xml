@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.qodana:qodana-sarif:1.0.38" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.qodana" artifactId="qodana-sarif" version="1.0.38" baseVersion="1.0.38" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.qodana/qodana-sarif/1.0.38/48d2d57c19d80588429ac0abe3a4d8d080887797/qodana-sarif-1.0.38.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.qodana/qodana-sarif/1.0.38/dfc71d48af9cf2663660d9faed2efde4a0616a7f/qodana-sarif-1.0.38-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

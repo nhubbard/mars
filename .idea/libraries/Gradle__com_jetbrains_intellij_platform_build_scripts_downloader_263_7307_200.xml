@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.platform:build-scripts-downloader:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.platform" artifactId="build-scripts-downloader" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/build-scripts-downloader/263.7307.200/1a6efb72ef9aaeb1bf7bbdcf8437f3b0c0282427/build-scripts-downloader-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/build-scripts-downloader/263.7307.200/74eb3f6da96fc75e60f52f2bf25982a6193aea8a/build-scripts-downloader-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

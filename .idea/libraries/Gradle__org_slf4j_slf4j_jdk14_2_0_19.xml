@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.slf4j:slf4j-jdk14:2.0.19" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.slf4j" artifactId="slf4j-jdk14" version="2.0.19" baseVersion="2.0.19" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-jdk14/2.0.19/87b514b0ddcd37132339a3aed159e0a486008ac0/slf4j-jdk14-2.0.19.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-jdk14/2.0.19/12f5319d8cd3154993b4df9911b8a7de713a20d4/slf4j-jdk14-2.0.19-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

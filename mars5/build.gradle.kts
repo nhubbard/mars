@@ -48,9 +48,10 @@ subprojects {
 // Retired global facades must not return to production sources.
 val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
   val sources = files(
-    fileTree("core/src") { include("**/*.java") },
-    fileTree("cli/src") { include("**/*.java") },
-    fileTree("desktop/src") { include("**/*.java") }
+    fileTree("core/src") { include("**/*.java", "**/*.kt") },
+    fileTree("cli/src") { include("**/*.java", "**/*.kt") },
+    fileTree("plugin/src") { include("**/*.java", "**/*.kt") },
+    fileTree("desktop/src") { include("**/*.java", "**/*.kt") }
   )
   inputs.files(sources)
   doLast {

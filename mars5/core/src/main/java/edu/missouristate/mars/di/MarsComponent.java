@@ -24,15 +24,9 @@ import javax.inject.Singleton;
  * MarsContext ctx = component.context();
  * }</pre>
  *
- * <p>Usage (IntelliJ plugin) — prefer {@code PluginComponent} which supplies {@link MarsGuiProxy}
- * from the IntelliJ service registry automatically:
- *
- * <pre>{@code
- * MarsGuiProxy proxy = ApplicationManager.getApplication().getService(MarsGuiProxy.class);
- * MarsComponent component = DaggerMarsComponent.builder()
- *     .guiProxy(proxy)
- *     .build();
- * }</pre>
+ * <p>Each frontend owns its component and supplies its own I/O routing. The standalone desktop uses
+ * a window-scoped component; the IntelliJ integration owns a separate core component in each
+ * project service. Neither frontend retrieves a process-wide simulation context.
  *
  * <p>Supply {@code .coreModule(new CoreModule(existingSettings))} to share a frontend's
  * preferences. Omit the module to create a separate settings owner for a new session.
