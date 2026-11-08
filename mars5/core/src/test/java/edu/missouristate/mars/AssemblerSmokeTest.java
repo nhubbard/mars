@@ -2,16 +2,11 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import edu.missouristate.mars.assembler.SymbolTable;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,20 +18,19 @@ import org.junit.jupiter.params.provider.MethodSource;
  * here.
  */
 class AssemblerSmokeTest {
+  private edu.missouristate.mars.core.MarsContext machine = TestSessions.create();
 
-  @BeforeAll
-  static void initMars() {
-    Globals.initialize();
+  @org.junit.jupiter.api.AfterEach
+  void closeMachine() {
+    machine.close();
   }
 
   @BeforeEach
   void resetState() {
-    Globals.memory.clear();
-    RegisterFile.resetRegisters();
-    Coprocessor0.resetRegisters();
-    Coprocessor1.resetRegisters();
-    Globals.symbolTable = new SymbolTable();
-    Globals.exitCode = 0;
+    machine.memory.clear();
+    machine.registerFile.resetRegisters();
+    machine.coprocessor0.resetRegisters();
+    machine.coprocessor1.resetRegisters();
   }
 
   static Stream<String> allPrograms() {
@@ -61,7 +55,7 @@ class AssemblerSmokeTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("allPrograms")
   void assemblesWithoutErrors(String filename) throws Exception {
-    MIPSprogram program = new LegacyProgram();
+    MIPSprogram program = new MIPSprogram(machine);
     String path = resourcePath(filename);
     program.readSource(path);
     program.tokenize();
@@ -83,7 +77,7 @@ class AssemblerSmokeTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("allPrograms")
   void assemblesWithStrictMode(String filename) throws Exception {
-    MIPSprogram program = new LegacyProgram();
+    MIPSprogram program = new MIPSprogram(machine);
     String path = resourcePath(filename);
     program.readSource(path);
     program.tokenize();

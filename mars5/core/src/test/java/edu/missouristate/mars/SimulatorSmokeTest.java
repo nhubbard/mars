@@ -2,10 +2,6 @@ package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import edu.missouristate.mars.assembler.SymbolTable;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.net.URISyntaxException;
@@ -13,7 +9,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,27 +21,22 @@ import org.junit.jupiter.api.Test;
  * here. Interactive programs are covered by assembly-only tests in {@link AssemblerSmokeTest}.
  */
 class SimulatorSmokeTest {
+  private edu.missouristate.mars.core.MarsContext machine;
+
+  @org.junit.jupiter.api.AfterEach
+  void closeMachine() {
+    machine.close();
+  }
 
   private PrintStream originalOut;
   private ByteArrayOutputStream capturedOut;
 
-  @BeforeAll
-  static void initMars() {
-    Globals.initialize();
-  }
-
   @BeforeEach
   void resetState() {
-    Globals.memory.clear();
-    RegisterFile.resetRegisters();
-    Coprocessor0.resetRegisters();
-    Coprocessor1.resetRegisters();
-    Globals.symbolTable = new SymbolTable();
-    Globals.exitCode = 0;
-
     capturedOut = new ByteArrayOutputStream();
     originalOut = System.out;
     System.setOut(new PrintStream(capturedOut));
+    machine = TestSessions.create();
   }
 
   @AfterEach
@@ -93,9 +83,9 @@ class SimulatorSmokeTest {
   void division_finalRegisterState() throws Exception {
     runProgram("07_division.asm");
     // $s0 = 10 (set early, never modified), $s1 = 3, $s2 = (10*3)/3 = 10 (last result)
-    assertThat(RegisterFile.getValue(16)).as("$s0 should be 10").isEqualTo(10);
-    assertThat(RegisterFile.getValue(17)).as("$s1 should be 3").isEqualTo(3);
-    assertThat(RegisterFile.getValue(18))
+    assertThat(machine.registerFile.getValue(16)).as("$s0 should be 10").isEqualTo(10);
+    assertThat(machine.registerFile.getValue(17)).as("$s1 should be 3").isEqualTo(3);
+    assertThat(machine.registerFile.getValue(18))
         .as("$s2 should be 10 (last division result)")
         .isEqualTo(10);
   }
@@ -132,7 +122,7 @@ class SimulatorSmokeTest {
   void xor_registerRestoredAfterDoubleXor() throws Exception {
     runProgram("09_xor.asm");
     // $s0 starts as 0x01234567, XOR'd twice → restored to original value
-    assertThat(RegisterFile.getValue(16))
+    assertThat(machine.registerFile.getValue(16))
         .as("$s0 should be restored to 0x01234567 after double XOR")
         .isEqualTo(0x01234567);
   }
@@ -158,9 +148,9 @@ class SimulatorSmokeTest {
   @Test
   void floatingPointArithmeticConversionAndComparisonStillExecute() throws Exception {
     assertThat(runProgram("16_floating_point.asm")).isTrue();
-    assertThat(Coprocessor1.getFloatFromRegister(4)).isEqualTo(4.0f);
-    assertThat(Coprocessor1.getDoubleFromRegisterPair(6)).isEqualTo(4.0);
-    assertThat(Coprocessor1.getConditionFlag(0)).isEqualTo(1);
+    assertThat(machine.coprocessor1.getFloatFromRegister(4)).isEqualTo(4.0f);
+    assertThat(machine.coprocessor1.getDoubleFromRegisterPair(6)).isEqualTo(4.0);
+    assertThat(machine.coprocessor1.getConditionFlag(0)).isEqualTo(1);
   }
 
   // -------------------------------------------------------------------------
@@ -168,7 +158,7 @@ class SimulatorSmokeTest {
   // -------------------------------------------------------------------------
 
   private boolean runProgram(String filename) throws Exception {
-    MIPSprogram program = new LegacyProgram();
+    MIPSprogram program = new MIPSprogram(machine);
     String path = resourcePath(filename);
     program.readSource(path);
     program.tokenize();

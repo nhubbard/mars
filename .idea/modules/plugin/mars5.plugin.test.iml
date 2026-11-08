@@ -10,10 +10,9 @@
     <orderEntry type="jdk" jdkName="homebrew-25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="mars5.plugin.main" />
-    <orderEntry type="module" module-name="mars5.legacy.main" />
+    <orderEntry type="module" module-name="mars5.core.main" />
     <orderEntry type="library" name="Gradle: com.google.dagger:dagger:2.59.2" level="project" />
     <orderEntry type="library" name="Gradle: org.junit.jupiter:junit-jupiter:6.0.0" level="project" />
-    <orderEntry type="module" module-name="mars5.core.main" />
     <orderEntry type="library" name="Gradle: jakarta.inject:jakarta.inject-api:2.0.1" level="project" />
     <orderEntry type="library" name="Gradle: javax.inject:javax.inject:1" level="project" />
     <orderEntry type="library" name="Gradle: org.jspecify:jspecify:1.0.0" level="project" />

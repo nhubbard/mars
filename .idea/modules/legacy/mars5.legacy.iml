@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.id=":legacy" external.linked.project.path="$MODULE_DIR$/../../../mars5/legacy" external.root.project.path="$MODULE_DIR$/../../../mars5" external.system.id="GRADLE" external.system.module.group="edu.missouristate" external.system.module.version="1.0-SNAPSHOT" type="JAVA_MODULE" version="4">
+<module external.linked.project.id=":legacy" external.linked.project.path="$MODULE_DIR$/../../../mars5/legacy" external.root.project.path="$MODULE_DIR$/../../../mars5" external.system.id="GRADLE" external.system.module.group="mars5" external.system.module.version="unspecified" type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$/../../../mars5/legacy">
       <excludeFolder url="file://$MODULE_DIR$/../../../mars5/legacy/.gradle" />
       <excludeFolder url="file://$MODULE_DIR$/../../../mars5/legacy/build" />
     </content>
-    <orderEntry type="jdk" jdkName="homebrew-25" jdkType="JavaSDK" />
+    <orderEntry type="jdk" jdkName="27" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

@@ -3,10 +3,8 @@
   <component name="NewModuleRootManager">
     <output-test url="file://$MODULE_DIR$/../../../mars5/core/build/classes/java/test" />
     <exclude-output />
-    <content url="file://$MODULE_DIR$/../../../mars5/core/src/test/java">
+    <content url="file://$MODULE_DIR$/../../../mars5/core/src/test">
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/core/src/test/java" isTestSource="true" />
-    </content>
-    <content url="file://$MODULE_DIR$/../../../mars5/core/src/test/resources">
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/core/src/test/resources" type="java-test-resource" />
     </content>
     <orderEntry type="jdk" jdkName="homebrew-25" jdkType="JavaSDK" />

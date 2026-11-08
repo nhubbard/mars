@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.tools;
 
-
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
 
@@ -41,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * <p>It may also communicate directly with those resources through their published methods PROVIDED
  * any such communication is wrapped inside a block synchronized on the
- * Mars.LegacyApplication.services().memoryAndRegistersLock object.
+ * Mars.DesktopApplication.services().memoryAndRegistersLock object.
  */
 public interface MarsTool {
   /** Return a name you have chosen for this tool. It will appear as the menu item. */

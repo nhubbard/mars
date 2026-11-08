@@ -216,7 +216,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     updateMMIOControl(TRANSMITTER_CONTROL, readyBitSet(TRANSMITTER_CONTROL));
     // We want to be an observer only of MIPS reads from RECEIVER_DATA and writes to
     // TRANSMITTER_DATA.
-    // Use the LegacyApplication.services().memory.addObserver() methods instead of inherited method
+    // Use the DesktopApplication.services().memory.addObserver() methods instead of inherited
+    // method
     // to achieve this.
     addAsObserver(RECEIVER_DATA, RECEIVER_DATA);
     addAsObserver(TRANSMITTER_DATA, TRANSMITTER_DATA);

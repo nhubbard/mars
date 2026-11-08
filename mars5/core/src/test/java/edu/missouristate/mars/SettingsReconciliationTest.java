@@ -8,7 +8,6 @@ import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.di.MarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
-import edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -68,13 +67,13 @@ class SettingsReconciliationTest {
     assertThat(settings.getAssemblerErrorLimit()).isEqualTo(17);
     assertThat(new Settings(preferences).getMemoryConfiguration()).isEqualTo("CompactDataAtZero");
     assertThat(new Settings(preferences).getAssemblerErrorLimit())
-        .isEqualTo(Globals.maximumErrorMessages);
+        .isEqualTo(ApplicationInfo.maximumErrorMessages);
 
     settings.setAssemblerErrorLimit(23);
     assertThat(simulation.getAssemblerErrorLimit()).isEqualTo(23);
     settings.reset();
     assertThat(simulation.getMemoryConfiguration()).isEqualTo("CompactDataAtZero");
-    assertThat(simulation.getAssemblerErrorLimit()).isEqualTo(Globals.maximumErrorMessages);
+    assertThat(simulation.getAssemblerErrorLimit()).isEqualTo(ApplicationInfo.maximumErrorMessages);
   }
 
   @Test
@@ -102,7 +101,9 @@ class SettingsReconciliationTest {
     first.registerFile().setValue(33, 45);
     assertThat(second.registerFile().getValue(8)).isZero();
     assertThat(second.registerFile().getValue(33)).isZero();
-    var configuration = LegacyMemoryConfigurations.createConfiguration("CompactDataAtZero");
+    var configuration =
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
+            "CompactDataAtZero");
     assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
     assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
     assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());
@@ -141,27 +142,23 @@ class SettingsReconciliationTest {
   }
 
   @Test
-  void legacyGlobalsCanShareTheirSettingsWithTheGraphAndErrorList() {
-    var original = Globals.settings;
-    try {
-      Globals.settings = new Settings(new MemoryPreferences());
-      var component = component(Globals.getSettings());
-      component.context().settings.setAssemblerErrorLimit(3).setWarningsAreErrors(true);
-      var errors = new ErrorList(Globals.getSettings().getSimulationSettings());
-      assertThat(errors.getErrorLimit()).isEqualTo(3);
-      for (int i = 0; i < 6; i++) {
-        errors.add(new ErrorMessage((MIPSprogram) null, i + 1, 1, "Invalid instruction"));
-      }
-      assertThat(errors.errorLimitExceeded()).isTrue();
-      assertThat(errors.getErrorMessages()).hasSize(4);
-      assertThat(errors.getErrorMessages().get(3).getMessage())
-          .isEqualTo("Error Limit of 3 exceeded.");
-      assertThat(Globals.getSettings().getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)).isTrue();
-      Globals.getSettings().setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, false);
-      assertThat(component.context().settings.isWarningsAreErrors()).isFalse();
-    } finally {
-      Globals.settings = original;
+  void settingsOwnerIsSharedWithTheGraphAndErrorList() {
+    var settings = new Settings(new MemoryPreferences());
+
+    var component = component(settings);
+    component.context().settings.setAssemblerErrorLimit(3).setWarningsAreErrors(true);
+    var errors = new ErrorList(settings.getSimulationSettings());
+    assertThat(errors.getErrorLimit()).isEqualTo(3);
+    for (int i = 0; i < 6; i++) {
+      errors.add(new ErrorMessage((MIPSprogram) null, i + 1, 1, "Invalid instruction"));
     }
+    assertThat(errors.errorLimitExceeded()).isTrue();
+    assertThat(errors.getErrorMessages()).hasSize(4);
+    assertThat(errors.getErrorMessages().get(3).getMessage())
+        .isEqualTo("Error Limit of 3 exceeded.");
+    assertThat(settings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS)).isTrue();
+    settings.setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, false);
+    assertThat(component.context().settings.isWarningsAreErrors()).isFalse();
   }
 
   @Test

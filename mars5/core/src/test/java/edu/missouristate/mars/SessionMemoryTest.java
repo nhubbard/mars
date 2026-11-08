@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.MemoryAccessException;
 import edu.missouristate.mars.core.InstructionContext;
@@ -12,7 +11,6 @@ import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.di.MarsComponent;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.basic.*;
 import java.util.ArrayList;
@@ -22,37 +20,19 @@ import org.junit.jupiter.api.Test;
 class SessionMemoryTest {
   @Test
   void memoryAndDecoderCanStartWithoutGlobalSimulationObjects() throws Exception {
-    var previousInstructions = Globals.instructionSet;
-    var previousMemory = Globals.memory;
-    var previousSettings = Globals.settings;
-    var previousProgram = Globals.program;
-    try {
-      Globals.instructionSet = null;
-      Globals.memory = null;
-      Globals.settings = null;
-      Globals.program = null;
-      var session = component("Default").context();
-      session.settings.setSelfModifyingCodeEnabled(true);
-      session.memory.setWord(session.memory.textBaseAddress, 0x2408002a);
-      var statement = session.memory.getStatement(session.memory.textBaseAddress);
-      assertThat(statement.getInstruction().getName()).isEqualTo("addiu");
-      assertThat(statement.getPrintableBasicAssemblyStatement()).contains("addiu");
-      var context = new InstructionContext(session, new RecordingEnvironment());
-      context.execute(statement);
-      assertThat(session.registerFile.getValue(8)).isEqualTo(42);
-      session.backStepper.backStep();
-      assertThat(session.registerFile.getValue(8)).isZero();
-      assertThat(session.registerFile.getPC()).isEqualTo(session.memory.textBaseAddress);
-      assertThat(Globals.instructionSet).isNull();
-      assertThat(Globals.memory).isNull();
-      assertThat(Globals.settings).isNull();
-      assertThat(Globals.program).isNull();
-    } finally {
-      Globals.instructionSet = previousInstructions;
-      Globals.memory = previousMemory;
-      Globals.settings = previousSettings;
-      Globals.program = previousProgram;
-    }
+
+    var session = component("Default").context();
+    session.settings.setSelfModifyingCodeEnabled(true);
+    session.memory.setWord(session.memory.textBaseAddress, 0x2408002a);
+    var statement = session.memory.getStatement(session.memory.textBaseAddress);
+    assertThat(statement.getInstruction().getName()).isEqualTo("addiu");
+    assertThat(statement.getPrintableBasicAssemblyStatement()).contains("addiu");
+    var context = new InstructionContext(session, new RecordingEnvironment());
+    context.execute(statement);
+    assertThat(session.registerFile.getValue(8)).isEqualTo(42);
+    session.backStepper.backStep();
+    assertThat(session.registerFile.getValue(8)).isZero();
+    assertThat(session.registerFile.getPC()).isEqualTo(session.memory.textBaseAddress);
   }
 
   @Test
@@ -149,7 +129,7 @@ class SessionMemoryTest {
     first.memory.setWord(first.memory.dataBaseAddress, 42);
     second.memory.setWord(second.memory.dataBaseAddress, 99);
     second.memory.allocateBytesFromHeap(8);
-    int legacyText = Memory.textBaseAddress;
+    int legacyText = second.memory.textBaseAddress;
     first.setMemoryConfiguration("CompactTextAtZero");
     assertThat(first.memory.textBaseAddress).isZero();
     assertThat(first.registerFile.getPC()).isZero();
@@ -160,7 +140,7 @@ class SessionMemoryTest {
     assertThat(second.memory.textBaseAddress).isEqualTo(0x400000);
     assertThat(second.memory.getWord(second.memory.dataBaseAddress)).isEqualTo(99);
     assertThat(second.memory.heapAddress).isEqualTo(second.memory.heapBaseAddress + 8);
-    assertThat(Memory.textBaseAddress).isEqualTo(legacyText);
+    assertThat(second.memory.textBaseAddress).isEqualTo(legacyText);
   }
 
   @Test
@@ -267,7 +247,7 @@ class SessionMemoryTest {
         public void clearRunConsole() {}
       };
 
-  private static class RecordingEnvironment extends HeadlessSyscallEnvironment {
+  private static class RecordingEnvironment extends TestEnvironment {
     final List<String> printed = new ArrayList<>();
     String input = "";
 

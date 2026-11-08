@@ -64,7 +64,7 @@ public class SyscallOpen extends AbstractSyscall {
     // Write/append  flag = 9
     // This code implements the modes:
     // NO MODES IMPLEMENTED  -- MODE IS IGNORED
-    // Returns in $v0: a "file descriptor" in the range 0 to SystemIO.SYSCALL_MAXFILES-1,
+    // Returns in $v0: a "file descriptor" within the environment's descriptor table,
     // or -1 if error
     String filename = ""; // = "";
     int byteAddress = context.registerFile.getValue(4);

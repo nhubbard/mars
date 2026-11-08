@@ -42,26 +42,21 @@ subprojects {
   }
 }
 
-// Deprecated public facades remain available to compatibility clients. Production code must
-// receive the canonical state through the legacy composition boundary instead.
-val verifyLegacyFacadeBoundary = tasks.register("verifyLegacyFacadeBoundary") {
-  val applicationSources = files(
-    fileTree("legacy/src/main/java") { include("**/*.java") },
-    fileTree("plugin/src/main/java") { include("**/*.java") }
+// Retired global facades must not return to production sources.
+val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
+  val sources = files(
+    fileTree("core/src") { include("**/*.java") },
+    fileTree("cli/src") { include("**/*.java") },
+    fileTree("plugin/src") { include("**/*.java") }
   )
-  inputs.files(applicationSources)
+  inputs.files(sources)
   doLast {
-    val directAccess = Regex("""\b(Globals|RegisterFile|Coprocessor0|Coprocessor1)\s*\.""")
-    val violations = applicationSources.files.filter { source ->
-      source.name != "Globals.java" &&
-          source.relativeTo(projectDir).invariantSeparatorsPath !=
-              "legacy/src/main/java/edu/missouristate/mars/legacy/di/LegacyBindings.java" &&
-          directAccess.containsMatchIn(source.readText())
-    }
+    check(!file("legacy/src").exists()) { "The retired legacy runtime source tree has returned" }
+    val access = Regex("""\b(Globals|RegisterFile|Coprocessor0|Coprocessor1|LegacyProgram|SystemIO)\s*\.""")
+    val violations = sources.files.filter { access.containsMatchIn(it.readText()) }
     check(violations.isEmpty()) {
-      "Deprecated static facade access outside the Dagger boundary: " +
-          violations.joinToString { it.relativeTo(projectDir).path }
+      "Retired runtime API references: " + violations.joinToString { it.relativeTo(projectDir).path }
     }
   }
 }
-tasks.check { dependsOn(verifyLegacyFacadeBoundary) }
+tasks.check { dependsOn(verifyNoLegacyRuntime) }

@@ -443,7 +443,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new EditSelectAllAction(
               "Select All",
               null, // new
-              // ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath+"Find22.png"))),
+              // ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath+"Find22.png"))),
               "Select All",
               KeyEvent.VK_A,
               KeyStroke.getKeyStroke(

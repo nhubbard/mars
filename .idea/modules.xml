@@ -11,9 +11,6 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.benchmark.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.benchmark.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.main.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.test.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.test.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.iml" filepath="$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.main.iml" filepath="$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.test.iml" filepath="$PROJECT_DIR$/.idea/modules/legacy/mars5.legacy.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/mars5.main.iml" filepath="$PROJECT_DIR$/.idea/modules/mars5.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.main.iml" />

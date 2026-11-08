@@ -3,25 +3,19 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.mips.instructions.basic.*;
 import edu.missouristate.mars.mips.instructions.syscalls.AbstractSyscall;
-import edu.missouristate.mars.mips.instructions.syscalls.SyscallExit;
 import edu.missouristate.mars.simulator.Exceptions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -29,20 +23,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 class InstructionContextTest {
   private static final int BASE = 0x00400000;
 
-  @BeforeAll
-  static void initializeDecoder() {
-    Globals.initialize();
-  }
-
   @Test
   void interleavedProgramsReuseInstructionsWithoutSharingRegisterState() throws Exception {
     var first = context(false, new RecordingEnvironment());
     var second = context(false, new RecordingEnvironment());
     first.registerFile.setValue(4, 2);
     second.registerFile.setValue(4, 5);
-    int legacyT0 = RegisterFile.getValue(8);
-    int legacyLo = RegisterFile.getValue(34);
-    int legacyF2 = Coprocessor1.getValue(2);
     var code =
         List.of(
             statement(new InstrAddu(), 8, 4, 0),
@@ -67,9 +53,6 @@ class InstructionContextTest {
     assertThat(second.registerFile.getValue(10)).isEqualTo(64);
     assertThat(first.coprocessor1.getFloatFromRegister(2)).isEqualTo(25.0f);
     assertThat(second.coprocessor1.getFloatFromRegister(2)).isEqualTo(64.0f);
-    assertThat(RegisterFile.getValue(8)).isEqualTo(legacyT0);
-    assertThat(RegisterFile.getValue(34)).isEqualTo(legacyLo);
-    assertThat(Coprocessor1.getValue(2)).isEqualTo(legacyF2);
   }
 
   @ParameterizedTest
@@ -143,9 +126,6 @@ class InstructionContextTest {
   @Test
   void overflowAndAddressFaultsUpdateOnlyTheSuppliedExceptionRegisters() throws Exception {
     var context = context(false, new RecordingEnvironment());
-    int legacyCause = Coprocessor0.getValue(Coprocessor0.CAUSE);
-    int legacyEpc = Coprocessor0.getValue(Coprocessor0.EPC);
-    int legacyVaddr = Coprocessor0.getValue(Coprocessor0.VADDR);
     context.registerFile.initializeProgramCounter(BASE + 0x104);
     context.registerFile.setValue(8, Integer.MAX_VALUE);
     context.registerFile.setValue(9, 1);
@@ -162,9 +142,6 @@ class InstructionContextTest {
     assertThatThrownBy(() -> execute(new InstrLw(), context, 10, 3, 0))
         .isInstanceOf(ProcessingException.class);
     assertThat(context.coprocessor0.getValue(Coprocessor0State.VADDR)).isEqualTo(3);
-    assertThat(Coprocessor0.getValue(Coprocessor0.CAUSE)).isEqualTo(legacyCause);
-    assertThat(Coprocessor0.getValue(Coprocessor0.EPC)).isEqualTo(legacyEpc);
-    assertThat(Coprocessor0.getValue(Coprocessor0.VADDR)).isEqualTo(legacyVaddr);
   }
 
   @Test
@@ -192,29 +169,12 @@ class InstructionContextTest {
     assertThat(second.registerFile.getValue(2)).isEqualTo(456);
     first.registerFile.setValue(2, 17);
     first.registerFile.setValue(4, 7);
-    int legacyExitCode = Globals.exitCode;
     assertThatThrownBy(() -> execute(syscall, first))
         .isInstanceOfSatisfying(
             ProcessingException.class, error -> assertThat(error.errors()).isNull());
     assertThat(first.getExitCode()).isEqualTo(7);
     assertThat(firstIo.exitCode).isEqualTo(7);
     assertThat(second.getExitCode()).isZero();
-    assertThat(Globals.exitCode).isEqualTo(legacyExitCode);
-  }
-
-  @Test
-  void legacyNormalExitKeepsTheExistingProcessExitCode() {
-    int previous = Globals.exitCode;
-    try {
-      Globals.exitCode = 7;
-      var exit = new SyscallExit();
-      assertThatThrownBy(() -> exit.simulate(statement(new InstrSyscall())))
-          .isInstanceOfSatisfying(
-              ProcessingException.class, error -> assertThat(error.errors()).isNull());
-      assertThat(Globals.exitCode).isEqualTo(7);
-    } finally {
-      Globals.exitCode = previous;
-    }
   }
 
   @Test
@@ -246,7 +206,7 @@ class InstructionContextTest {
     MarsContext session =
         DaggerMarsComponent.builder()
             .coreModule(new CoreModule(settings))
-            .guiProxy(Globals.getGui())
+            .guiProxy(TestSessions.NO_GUI)
             .build()
             .context();
     return new InstructionContext(session, environment);
@@ -279,7 +239,7 @@ class InstructionContextTest {
     context.completeInstruction();
   }
 
-  private static class RecordingEnvironment extends HeadlessSyscallEnvironment {
+  private static class RecordingEnvironment extends TestEnvironment {
     final List<Integer> printed = new ArrayList<>();
     int input;
     int exitCode;

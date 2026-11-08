@@ -159,7 +159,7 @@ public class MarsLaunch {
       filenameList = new ArrayList<>();
       DesktopApplication.services()
           .setMemoryConfiguration(MemoryConfigurations.getDefaultConfiguration());
-      // do NOT use LegacyApplication.services().getProgram() for command line MARS -- it triggers
+      // do NOT use DesktopApplication.services().getProgram() for command line MARS -- it triggers
       // 'backstep' log.
       code = DesktopApplication.services().createProgram();
       maxSteps = -1;

@@ -335,7 +335,7 @@ public class BackStepper {
   public int addPCRestore(int value) {
     // adjust for value reflecting incremented PC.
     value = activeFrame == 0 ? value - Instruction.INSTRUCTION_LENGTH : framePc;
-    // Use "value" insead of "pc()" for second arg because RegisterFile.getProgramCounter()
+    // Use "value" insead of "pc()" for second arg because the current program counter
     // returns branch target address at this point.
     backSteps.push(PC_RESTORE, value, value);
     return value;

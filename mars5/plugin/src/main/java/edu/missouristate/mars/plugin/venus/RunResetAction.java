@@ -49,7 +49,7 @@ public class RunResetAction extends GuiAction {
     String name = this.getValue(Action.NAME).toString();
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     // The difficult part here is resetting the data segment.  Two approaches are:
-    // 1. After each assembly, get a deep copy of the LegacyApplication.services().memory array
+    // 1. After each assembly, get a deep copy of the DesktopApplication.services().memory array
     //    containing data segment.  Then replace it upon reset.
     // 2. Simply re-assemble the program upon reset, and the assembler will
     //    build a new data segment.  Reset can only be done after a successful

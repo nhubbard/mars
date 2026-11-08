@@ -26,8 +26,8 @@ class InstructionSetTest {
 
   @BeforeAll
   static void initMars() {
-    Globals.initialize();
-    ArrayList<Instruction> raw = Globals.instructionSet.getInstructionList();
+    var set = TestSessions.create().instructionSet;
+    ArrayList<Instruction> raw = set.getInstructionList();
     allInstructions = new ArrayList<>(raw);
     basicInstructions = new ArrayList<>();
     extendedInstructions = new ArrayList<>();

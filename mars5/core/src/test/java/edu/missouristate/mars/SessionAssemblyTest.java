@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
 import edu.missouristate.mars.assembler.SymbolTable;
@@ -29,49 +28,27 @@ class SessionAssemblyTest {
 
   @Test
   void twoProgramsAssembleAndRunWithoutGlobalSimulationObjects() throws Exception {
-    var oldMemory = Globals.memory;
-    var oldInstructions = Globals.instructionSet;
-    var oldSymbols = Globals.symbolTable;
-    var oldProgram = Globals.program;
-    var oldSettings = Globals.settings;
-    try {
-      Globals.memory = null;
-      Globals.instructionSet = null;
-      Globals.symbolTable = null;
-      Globals.program = null;
-      Globals.settings = null;
-      var first = session("Default");
-      var second = session("Default");
-      var firstIo = new RecordingEnvironment();
-      var secondIo = new RecordingEnvironment();
-      var firstProgram = first.assemble(List.of(source("first.s", program(42, false))));
-      int firstResult = first.symbolTable.getAddress("result");
-      var secondProgram = second.assemble(List.of(source("second.s", program(99, true))));
-      int secondResult = second.symbolTable.getAddress("result");
-      assertThat(secondResult).isEqualTo(firstResult + 4);
-      assertThat(first.memory.getWord(firstResult)).isEqualTo(42);
-      firstProgram.setSyscallEnvironment(firstIo);
-      secondProgram.setSyscallEnvironment(secondIo);
-      assertThat(firstProgram.simulate(100)).isTrue();
-      assertThat(secondProgram.simulate(100)).isTrue();
-      assertThat(firstIo.printed).containsExactly(43);
-      assertThat(secondIo.printed).containsExactly(100);
-      assertThat(first.memory.getWord(firstResult)).isEqualTo(43);
-      assertThat(second.memory.getWord(secondResult)).isEqualTo(100);
-      assertThat(first.getProgram()).isSameAs(firstProgram);
-      assertThat(second.getProgram()).isSameAs(secondProgram);
-      assertThat(Globals.memory).isNull();
-      assertThat(Globals.instructionSet).isNull();
-      assertThat(Globals.symbolTable).isNull();
-      assertThat(Globals.program).isNull();
-      assertThat(Globals.settings).isNull();
-    } finally {
-      Globals.memory = oldMemory;
-      Globals.instructionSet = oldInstructions;
-      Globals.symbolTable = oldSymbols;
-      Globals.program = oldProgram;
-      Globals.settings = oldSettings;
-    }
+
+    var first = session("Default");
+    var second = session("Default");
+    var firstIo = new RecordingEnvironment();
+    var secondIo = new RecordingEnvironment();
+    var firstProgram = first.assemble(List.of(source("first.s", program(42, false))));
+    int firstResult = first.symbolTable.getAddress("result");
+    var secondProgram = second.assemble(List.of(source("second.s", program(99, true))));
+    int secondResult = second.symbolTable.getAddress("result");
+    assertThat(secondResult).isEqualTo(firstResult + 4);
+    assertThat(first.memory.getWord(firstResult)).isEqualTo(42);
+    firstProgram.setSyscallEnvironment(firstIo);
+    secondProgram.setSyscallEnvironment(secondIo);
+    assertThat(firstProgram.simulate(100)).isTrue();
+    assertThat(secondProgram.simulate(100)).isTrue();
+    assertThat(firstIo.printed).containsExactly(43);
+    assertThat(secondIo.printed).containsExactly(100);
+    assertThat(first.memory.getWord(firstResult)).isEqualTo(43);
+    assertThat(second.memory.getWord(secondResult)).isEqualTo(100);
+    assertThat(first.getProgram()).isSameAs(firstProgram);
+    assertThat(second.getProgram()).isSameAs(secondProgram);
   }
 
   static Stream<String> corpus() {
@@ -321,7 +298,8 @@ class SessionAssemblyTest {
     int address = session.symbolTable.getAddress("result");
     assertThatThrownBy(() -> old.simulate(100)).isInstanceOf(IllegalStateException.class);
     assertThat(old.getBackStepper()).isNull();
-    assertThatThrownBy(() -> new Assembler(session).assemble(new LegacyProgram(), true))
+    assertThatThrownBy(
+            () -> new Assembler(session).assemble(new MIPSprogram(TestSessions.create()), true))
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(session.getProgram()).isSameAs(current);
     assertThat(session.memory.getWord(address)).isEqualTo(2);
@@ -468,7 +446,7 @@ class SessionAssemblyTest {
         .context();
   }
 
-  private static class RecordingEnvironment extends HeadlessSyscallEnvironment {
+  private static class RecordingEnvironment extends TestEnvironment {
     final List<Integer> printed = new ArrayList<>();
 
     @Override

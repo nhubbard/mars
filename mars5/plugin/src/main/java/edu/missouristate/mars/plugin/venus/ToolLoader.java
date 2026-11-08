@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.plugin.tools.*;
 import edu.missouristate.mars.util.*;
 import java.awt.event.*;
@@ -104,7 +103,7 @@ public class ToolLoader {
         FilenameFinder.getFilenameList(
             this.getClass().getClassLoader(), TOOLS_DIRECTORY_PATH, CLASS_EXTENSION);
     // Add any tools stored externally, as listed in Config.properties file.
-    // This needs some work, because mars.LegacyMetadata.getExternalTools() returns
+    // This needs some work, because mars.ApplicationInfo.getExternalTools() returns
     // whatever is in the properties file entry.  Since the class file will
     // not be located in the mars.tools folder, the loop below will not process
     // it correctly.  Not sure how to create a Class object given an absolute

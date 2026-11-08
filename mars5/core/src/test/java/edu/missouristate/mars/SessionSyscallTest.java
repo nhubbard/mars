@@ -31,7 +31,7 @@ class SessionSyscallTest {
       seed(a, 123);
       seed(b, 987);
       Random expectedA = new Random(123), expectedB = new Random(987);
-      var legacy = Globals.instructionContext().randomStreams();
+      var legacy = new edu.missouristate.mars.mips.instructions.syscalls.RandomStreams();
       legacy.setSeed(7, 42);
       assertThat(a.randomStreams()).isNotSameAs(b.randomStreams()).isNotSameAs(legacy);
       for (int i = 0; i < 3; i++) {
@@ -154,11 +154,7 @@ class SessionSyscallTest {
 
   @Test
   void assembledFileSyscallsWorkWithDefaultEnvironmentAndNoGlobals() throws Exception {
-    var oldMemory = Globals.memory;
-    var oldSettings = Globals.settings;
     try (var session = session()) {
-      Globals.memory = null;
-      Globals.settings = null;
       var output = directory.resolve("mips-output");
       var source = directory.resolve("files.s");
       Files.writeString(
@@ -205,19 +201,12 @@ class SessionSyscallTest {
       assertThat(session.registerFile.getValue(17)).isEqualTo(3);
       assertThat(session.registerFile.getValue(18)).isEqualTo(3);
       assertThat(session.registerFile.getValue(19)).isEqualTo(66);
-    } finally {
-      Globals.memory = oldMemory;
-      Globals.settings = oldSettings;
     }
   }
 
   @Test
   void assembledConsoleSyscallsUseSuppliedStreamsAndHandleEndOfInput() throws Exception {
-    var oldMemory = Globals.memory;
-    var oldSettings = Globals.settings;
     try (var session = session()) {
-      Globals.memory = null;
-      Globals.settings = null;
       var output = new ByteArrayOutputStream();
       var source = directory.resolve("console.s");
       Files.writeString(
@@ -262,9 +251,6 @@ class SessionSyscallTest {
         session.setMemoryConfiguration("Default");
         assertThat(io.writeToFile(3, new byte[] {65}, 1)).isEqualTo(1);
       }
-    } finally {
-      Globals.memory = oldMemory;
-      Globals.settings = oldSettings;
     }
   }
 

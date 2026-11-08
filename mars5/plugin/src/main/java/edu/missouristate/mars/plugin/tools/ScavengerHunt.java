@@ -439,7 +439,7 @@ public class ScavengerHunt implements MarsTool {
     } catch (AddressErrorException e) {
       System.out.println(
           "\n\n"
-              + "ScavengerHunt.action: LegacyApplication.services().memory.addObserver caused"
+              + "ScavengerHunt.action: DesktopApplication.services().memory.addObserver caused"
               + " AddressErrorException.\n\n");
       System.exit(0);
     }

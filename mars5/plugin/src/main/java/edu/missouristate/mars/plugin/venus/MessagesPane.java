@@ -337,10 +337,10 @@ public class MessagesPane extends JTabbedPane {
   }
 
   /**
-   * Method used by the SystemIO class to get interactive user input requested by a running MIPS
-   * program (e.g. syscall #5 to read an integer). SystemIO knows whether simulator is being run at
-   * command line by the user, or by the GUI. If run at command line, it gets input from System.in
-   * rather than here.
+   * Method used by the syscall environment to get interactive user input requested by a running
+   * MIPS program (e.g. syscall #5 to read an integer). The environment knows whether simulator is
+   * being run at command line by the user, or by the GUI. If run at command line, it gets input
+   * from System.in rather than here.
    *
    * <p>This is an overloaded method. This version, with the String parameter, is used to get input
    * from a popup dialog.
@@ -361,10 +361,10 @@ public class MessagesPane extends JTabbedPane {
   }
 
   /**
-   * Method used by the SystemIO class to get interactive user input requested by a running MIPS
-   * program (e.g. syscall #5 to read an integer). SystemIO knows whether simulator is being run at
-   * command line by the user, or by the GUI. If run at command line, it gets input from System.in
-   * rather than here.
+   * Method used by the syscall environment to get interactive user input requested by a running
+   * MIPS program (e.g. syscall #5 to read an integer). The environment knows whether simulator is
+   * being run at command line by the user, or by the GUI. If run at command line, it gets input
+   * from System.in rather than here.
    *
    * <p>This is an overloaded method. This version, with the int parameter, is used to get input
    * from the MARS Run I/O window.

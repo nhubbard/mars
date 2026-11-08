@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.di;
 
-
 import dagger.Binds;
 import dagger.Module;
 import edu.missouristate.mars.api.MarsGuiProxy;
@@ -14,7 +13,7 @@ import javax.inject.Singleton;
  *
  * <p>{@link VenusMarsGuiProxy} is also declared as an IntelliJ application service in {@code
  * plugin.xml} so the IntelliJ service registry can retrieve it independently of Dagger (e.g. from
- * legacy Venus code that still calls {@code LegacyApplication.services().getGui()}).
+ * legacy Venus code that still calls {@code DesktopApplication.services().getGui()}).
  */
 @Module
 public abstract class PluginModule {
