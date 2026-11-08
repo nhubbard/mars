@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.plugin.venus.editors.generic.GenericTextArea;
@@ -537,7 +538,7 @@ public class EditPane extends JPanel {
   }
 
   private void handleSettingsChange() {
-    sourceCode.setFont(Globals.getSettings().getEditorFont());
+    sourceCode.setFont(EditorSettings.of(Globals.getSettings()).getEditorFont());
     sourceCode.setLineHighlightEnabled(
         Globals.getSettings().getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
     sourceCode.setCaretBlinkRate(Globals.getSettings().getCaretBlinkRate());

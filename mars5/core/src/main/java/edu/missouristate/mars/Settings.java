@@ -3,8 +3,6 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.util.*;
-import java.awt.Color;
-import java.awt.Font;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.prefs.*;
@@ -494,15 +492,14 @@ public class Settings {
   private static boolean[] defaultSyntaxStyleBoldSettingsValues;
   private static boolean[] defaultSyntaxStyleItalicSettingsValues;
 
-  public void setEditorSyntaxStyleByPosition(int index, Color color, boolean italic, boolean bold) {
-    syntaxStyleColorSettingsValues[index] =
-        Binary.intToHexString(color.getRed() << 16 | color.getGreen() << 8 | color.getBlue());
+  public void setEditorSyntaxStyleByPosition(int index, int color, boolean italic, boolean bold) {
+    syntaxStyleColorSettingsValues[index] = Binary.intToHexString(color & 0xffffff);
     syntaxStyleItalicSettingsValues[index] = italic;
     syntaxStyleBoldSettingsValues[index] = bold;
     saveEditorSyntaxStyle(index);
   }
 
-  public Color getEditorSyntaxStyleColorByPosition(int index) {
+  public Integer getEditorSyntaxStyleColorByPosition(int index) {
     return decodeSyntaxStyleColor(syntaxStyleColorSettingsValues[index]);
   }
 
@@ -514,7 +511,7 @@ public class Settings {
     return syntaxStyleBoldSettingsValues[index];
   }
 
-  public Color getDefaultEditorSyntaxStyleColorByPosition(int index) {
+  public Integer getDefaultEditorSyntaxStyleColorByPosition(int index) {
     return decodeSyntaxStyleColor(defaultSyntaxStyleColorSettingsValues[index]);
   }
 
@@ -526,11 +523,11 @@ public class Settings {
     return defaultSyntaxStyleBoldSettingsValues[index];
   }
 
-  private static Color decodeSyntaxStyleColor(String hex) {
+  private static Integer decodeSyntaxStyleColor(String hex) {
     try {
-      return Color.decode(hex);
+      return Integer.decode(hex);
     } catch (NumberFormatException ignored) {
-      return Color.BLACK;
+      return 0;
     }
   }
 
@@ -824,9 +821,6 @@ public class Settings {
    *
    * @return Font object for current editor font.
    */
-  public Font getEditorFont() {
-    return getFontByPosition(EDITOR_FONT);
-  }
 
   /**
    * Retrieve a Font setting
@@ -834,15 +828,15 @@ public class Settings {
    * @param fontSettingPosition constant that identifies which item
    * @return Font object for given item
    */
-  public Font getFontByPosition(int fontSettingPosition) {
-    if (fontSettingPosition >= 0 && fontSettingPosition < fontFamilySettingsValues.length) {
-      return EditorFont.createFontFromStringValues(
-          fontFamilySettingsValues[fontSettingPosition],
-          fontStyleSettingsValues[fontSettingPosition],
-          fontSizeSettingsValues[fontSettingPosition]);
-    } else {
-      return null;
-    }
+  public record FontSpec(String family, String style, String size) {}
+
+  public FontSpec getFontSpec(int position) {
+    return position < 0 || position >= fontFamilySettingsValues.length
+        ? null
+        : new FontSpec(
+            fontFamilySettingsValues[position],
+            fontStyleSettingsValues[position],
+            fontSizeSettingsValues[position]);
   }
 
   /**
@@ -851,15 +845,13 @@ public class Settings {
    * @param fontSettingPosition constant that identifies which item
    * @return Font object for given item
    */
-  public Font getDefaultFontByPosition(int fontSettingPosition) {
-    if (fontSettingPosition >= 0 && fontSettingPosition < defaultFontFamilySettingsValues.length) {
-      return EditorFont.createFontFromStringValues(
-          defaultFontFamilySettingsValues[fontSettingPosition],
-          defaultFontStyleSettingsValues[fontSettingPosition],
-          defaultFontSizeSettingsValues[fontSettingPosition]);
-    } else {
-      return null;
-    }
+  public FontSpec getDefaultFontSpec(int position) {
+    return position < 0 || position >= defaultFontFamilySettingsValues.length
+        ? null
+        : new FontSpec(
+            defaultFontFamilySettingsValues[position],
+            defaultFontStyleSettingsValues[position],
+            defaultFontSizeSettingsValues[position]);
   }
 
   /**
@@ -944,7 +936,7 @@ public class Settings {
    * @param key the Setting key
    * @return corresponding Color, or null if key not found or value not valid color
    */
-  public Color getColorSettingByKey(String key) {
+  public Integer getColorSettingByKey(String key) {
     return getColorValueByKey(key, colorSettingsValues);
   }
 
@@ -955,7 +947,7 @@ public class Settings {
    * @param key the Setting key
    * @return corresponding default Color, or null if key not found or value not valid color
    */
-  public Color getDefaultColorSettingByKey(String key) {
+  public Integer getDefaultColorSettingByKey(String key) {
     return getColorValueByKey(key, defaultColorSettingsValues);
   }
 
@@ -966,7 +958,7 @@ public class Settings {
    * @param position the Setting name (see list of static constants)
    * @return corresponding Color, or null if argument invalid or value not valid color
    */
-  public Color getColorSettingByPosition(int position) {
+  public Integer getColorSettingByPosition(int position) {
     return getColorValueByPosition(position, colorSettingsValues);
   }
 
@@ -977,7 +969,7 @@ public class Settings {
    * @param position the Setting name (see list of static constants)
    * @return corresponding default Color, or null if argument invalid or value not valid color
    */
-  public Color getDefaultColorSettingByPosition(int position) {
+  public Integer getDefaultColorSettingByPosition(int position) {
     return getColorValueByPosition(position, defaultColorSettingsValues);
   }
 
@@ -1271,9 +1263,6 @@ public class Settings {
    *
    * @param font Font object to be used by text editor.
    */
-  public void setEditorFont(Font font) {
-    setFontByPosition(EDITOR_FONT, font);
-  }
 
   /**
    * Store a Font setting
@@ -1281,19 +1270,16 @@ public class Settings {
    * @param fontSettingPosition Constant that identifies the item the font goes with
    * @param font The font to set that item to
    */
-  public void setFontByPosition(int fontSettingPosition, Font font) {
-    if (fontSettingPosition >= 0 && fontSettingPosition < fontFamilySettingsValues.length) {
-      fontFamilySettingsValues[fontSettingPosition] = font.getFamily();
-      fontStyleSettingsValues[fontSettingPosition] =
-          EditorFont.styleIntToStyleString(font.getStyle());
-      fontSizeSettingsValues[fontSettingPosition] = EditorFont.sizeIntToSizeString(font.getSize());
-      saveFontSetting(fontSettingPosition, fontFamilySettingsKeys, fontFamilySettingsValues);
-      saveFontSetting(fontSettingPosition, fontStyleSettingsKeys, fontStyleSettingsValues);
-      saveFontSetting(fontSettingPosition, fontSizeSettingsKeys, fontSizeSettingsValues);
+  public void setFontSpec(int position, FontSpec font) {
+    if (position >= 0 && position < fontFamilySettingsValues.length) {
+      fontFamilySettingsValues[position] = font.family();
+      fontStyleSettingsValues[position] = font.style();
+      fontSizeSettingsValues[position] = font.size();
+      saveFontSetting(position, fontFamilySettingsKeys, fontFamilySettingsValues);
+      saveFontSetting(position, fontStyleSettingsKeys, fontStyleSettingsValues);
+      saveFontSetting(position, fontSizeSettingsKeys, fontSizeSettingsValues);
     }
-    if (fontSettingPosition == EDITOR_FONT) {
-      settingsEvents.emit(this);
-    }
+    if (position == EDITOR_FONT) settingsEvents.emit(this);
   }
 
   /**
@@ -1326,7 +1312,7 @@ public class Settings {
    * @param key the Setting key
    * @param color the Color to save
    */
-  public void setColorSettingByKey(String key, Color color) {
+  public void setColorSettingByKey(String key, int color) {
     for (int i = 0; i < colorSettingsKeys.length; i++) {
       if (key.equals(colorSettingsKeys[i])) {
         setColorSettingByPosition(i, color);
@@ -1341,7 +1327,7 @@ public class Settings {
    * @param position the Setting name (see list of static constants)
    * @param color the Color to save
    */
-  public void setColorSettingByPosition(int position, Color color) {
+  public void setColorSettingByPosition(int position, int color) {
     if (position >= 0 && position < colorSettingsKeys.length) {
       setColorSetting(position, color);
     }
@@ -1415,16 +1401,15 @@ public class Settings {
   }
 
   // Used by setter methods for color-based settings
-  private void setColorSetting(int settingIndex, Color color) {
-    colorSettingsValues[settingIndex] =
-        Binary.intToHexString(color.getRed() << 16 | color.getGreen() << 8 | color.getBlue());
+  private void setColorSetting(int settingIndex, int color) {
+    colorSettingsValues[settingIndex] = Binary.intToHexString(color & 0xffffff);
     saveColorSetting(settingIndex);
   }
 
   // Get Color object for this key value.  Get it from values array provided as argument (could be
   // either
   // the current or the default settings array).
-  private Color getColorValueByKey(String key, String[] values) {
+  private Integer getColorValueByKey(String key, String[] values) {
     for (int i = 0; i < colorSettingsKeys.length; i++) {
       if (key.equals(colorSettingsKeys[i])) {
         return getColorValueByPosition(i, values);
@@ -1436,11 +1421,11 @@ public class Settings {
   // Get Color object for this key array position.  Get it from values array provided as argument
   // (could be either
   // the current or the default settings array).
-  private Color getColorValueByPosition(int position, String[] values) {
-    Color color = null;
+  private Integer getColorValueByPosition(int position, String[] values) {
+    Integer color = null;
     if (position >= 0 && position < colorSettingsKeys.length) {
       try {
-        color = Color.decode(values[position]);
+        color = Integer.decode(values[position]);
       } catch (NumberFormatException ignored) {
       }
     }

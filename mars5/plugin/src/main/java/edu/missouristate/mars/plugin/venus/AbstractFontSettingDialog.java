@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -74,7 +75,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     JPanel contents = new JPanel(new BorderLayout(20, 20));
     contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-    // Font currentFont = Globals.getSettings().getEditorFont();
+    // Font currentFont = EditorSettings.of(Globals.getSettings()).getEditorFont();
     initialFontFamily = currentFont.getFamily();
     initialFontStyle = EditorFont.styleIntToStyleString(currentFont.getStyle());
     initialFontSize = EditorFont.sizeIntToSizeString(currentFont.getSize());

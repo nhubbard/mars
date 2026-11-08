@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
@@ -265,7 +266,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     VenusUI.instance().getRegistersPane().setSelectedComponent(this);
   }
 
-  Consumer<RegisterAccessNotice> getRegistersListener() { return registersListener; }
+  Consumer<RegisterAccessNotice> getRegistersListener() {
+    return registersListener;
+  }
 
   /*
    * Cell renderer for displaying register entries.  This does highlighting, so if you
@@ -291,18 +294,25 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
       cell.setHorizontalAlignment(alignment);
       if (settings.getRegistersHighlighting() && highlighting && row == highlightRow) {
         cell.setBackground(
-            settings.getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_BACKGROUND));
+            EditorSettings.of(settings)
+                .getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_BACKGROUND));
         cell.setForeground(
-            settings.getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.REGISTER_HIGHLIGHT_FONT));
+            EditorSettings.of(settings)
+                .getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_FOREGROUND));
+        cell.setFont(
+            EditorSettings.of(settings).getFontByPosition(Settings.REGISTER_HIGHLIGHT_FONT));
       } else if (row % 2 == 0) {
-        cell.setBackground(settings.getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
-        cell.setForeground(settings.getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.EVEN_ROW_FONT));
+        cell.setBackground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
+        cell.setForeground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
+        cell.setFont(EditorSettings.of(settings).getFontByPosition(Settings.EVEN_ROW_FONT));
       } else {
-        cell.setBackground(settings.getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
-        cell.setForeground(settings.getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.ODD_ROW_FONT));
+        cell.setBackground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
+        cell.setForeground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
+        cell.setFont(EditorSettings.of(settings).getFontByPosition(Settings.ODD_ROW_FONT));
       }
       return cell;
     }
@@ -510,7 +520,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     private final String[] columnToolTips = {
       /* name */ "Each register has a tool tip describing its usage convention",
       /* float */ "32-bit single precision IEEE 754 floating point register",
-      /* double */ "64-bit double precision IEEE 754 floating point register (uses a pair of 32-bit registers)"
+      /* double */ "64-bit double precision IEEE 754 floating point register (uses a pair of 32-bit"
+                       + " registers)"
     };
 
     // Implement table header tool tips.

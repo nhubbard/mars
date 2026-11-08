@@ -1,6 +1,7 @@
 package edu.missouristate.mars.util;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -9,9 +10,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-// FIXME(phase-2): gui-coupling — FileFilter is a Swing type used for file chooser filtering;
-// replace with java.io.FileFilter
-import javax.swing.filechooser.FileFilter;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -327,7 +325,7 @@ public class FilenameFinder {
    * @return a FileFilter object that accepts files with given extensions, and directories if so
    *     indicated.
    */
-  public static FileFilter getFileFilter(
+  public static MarsFileFilter getFileFilter(
       ArrayList<String> extensions, String description, boolean acceptDirectories) {
     return new MarsFileFilter(extensions, description, acceptDirectories);
   }
@@ -342,7 +340,7 @@ public class FilenameFinder {
    * @return a FileFilter object that accepts files with given extensions, and directories if so
    *     indicated.
    */
-  public static FileFilter getFileFilter(ArrayList<String> extensions, String description) {
+  public static MarsFileFilter getFileFilter(ArrayList<String> extensions, String description) {
     return getFileFilter(extensions, description, true);
   }
 
@@ -357,7 +355,7 @@ public class FilenameFinder {
    * @return a FileFilter object that accepts files with given extensions, and directories if so
    *     indicated.
    */
-  public static FileFilter getFileFilter(
+  public static MarsFileFilter getFileFilter(
       String extension, String description, boolean acceptDirectories) {
     ArrayList<String> extensions = new ArrayList<>();
     extensions.add(extension);
@@ -374,7 +372,7 @@ public class FilenameFinder {
    * @return a FileFilter object that accepts files with given extensions, and directories if so
    *     indicated.
    */
-  public static FileFilter getFileFilter(String extension, String description) {
+  public static MarsFileFilter getFileFilter(String extension, String description) {
     ArrayList<String> extensions = new ArrayList<>();
     extensions.add(extension);
     return getFileFilter(extensions, description, true);
@@ -441,9 +439,9 @@ public class FilenameFinder {
 
   ///////////////////////////////////////////////////////////////////////////
   //  FileFilter subclass to be instantiated by the getFileFilter method above.
-  //  This extends javax.swing.filechooser.FileFilter
+  //  UI-independent filter with a descriptive label.
 
-  private static class MarsFileFilter extends FileFilter {
+  public static final class MarsFileFilter implements FileFilter {
 
     private final ArrayList<String> extensions;
     private final String fullDescription;

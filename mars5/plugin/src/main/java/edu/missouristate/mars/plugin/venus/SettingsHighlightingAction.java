@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -289,9 +290,11 @@ public class SettingsHighlightingAction extends GuiAction {
     Color backgroundSetting, foregroundSetting;
     Font fontSetting;
     for (int i = 0; i < backgroundSettingPositions.length; i++) {
-      backgroundSetting = settings.getColorSettingByPosition(backgroundSettingPositions[i]);
-      foregroundSetting = settings.getColorSettingByPosition(foregroundSettingPositions[i]);
-      fontSetting = settings.getFontByPosition(fontSettingPositions[i]);
+      backgroundSetting =
+          EditorSettings.of(settings).getColorSettingByPosition(backgroundSettingPositions[i]);
+      foregroundSetting =
+          EditorSettings.of(settings).getColorSettingByPosition(foregroundSettingPositions[i]);
+      fontSetting = EditorSettings.of(settings).getFontByPosition(fontSettingPositions[i]);
       backgroundButtons[i].setBackground(backgroundSetting);
       foregroundButtons[i].setBackground(foregroundSetting);
       fontButtons[i].setFont(MonoRightCellRenderer.MONOSPACED_PLAIN_12POINT); // fontSetting);
@@ -309,10 +312,13 @@ public class SettingsHighlightingAction extends GuiAction {
       samples[i].setFont(fontSetting);
       boolean usingDefaults =
           backgroundSetting.equals(
-                  settings.getDefaultColorSettingByPosition(backgroundSettingPositions[i]))
+                  EditorSettings.of(settings)
+                      .getDefaultColorSettingByPosition(backgroundSettingPositions[i]))
               && foregroundSetting.equals(
-                  settings.getDefaultColorSettingByPosition(foregroundSettingPositions[i]))
-              && fontSetting.equals(settings.getDefaultFontByPosition(fontSettingPositions[i]));
+                  EditorSettings.of(settings)
+                      .getDefaultColorSettingByPosition(foregroundSettingPositions[i]))
+              && fontSetting.equals(
+                  EditorSettings.of(settings).getDefaultFontByPosition(fontSettingPositions[i]));
       defaultCheckBoxes[i].setSelected(usingDefaults);
       backgroundButtons[i].setEnabled(!usingDefaults);
       foregroundButtons[i].setEnabled(!usingDefaults);
@@ -328,12 +334,15 @@ public class SettingsHighlightingAction extends GuiAction {
   private void setHighlightingSettings() {
     Settings settings = Globals.getSettings();
     for (int i = 0; i < backgroundSettingPositions.length; i++) {
-      settings.setColorSettingByPosition(
-          backgroundSettingPositions[i], backgroundButtons[i].getBackground());
-      settings.setColorSettingByPosition(
-          foregroundSettingPositions[i], foregroundButtons[i].getBackground());
-      settings.setFontByPosition(
-          fontSettingPositions[i], samples[i].getFont()); // fontButtons[i].getFont());
+      EditorSettings.of(settings)
+          .setColorSettingByPosition(
+              backgroundSettingPositions[i], backgroundButtons[i].getBackground());
+      EditorSettings.of(settings)
+          .setColorSettingByPosition(
+              foregroundSettingPositions[i], foregroundButtons[i].getBackground());
+      EditorSettings.of(settings)
+          .setFontByPosition(
+              fontSettingPositions[i], samples[i].getFont()); // fontButtons[i].getFont());
     }
     settings.setDataSegmentHighlighting(currentDataHighlightSetting);
     settings.setRegistersHighlighting(currentRegisterHighlightSetting);
@@ -371,10 +380,13 @@ public class SettingsHighlightingAction extends GuiAction {
       samples[i].setFont(fontSetting);
       boolean usingDefaults =
           backgroundSetting.equals(
-                  settings.getDefaultColorSettingByPosition(backgroundSettingPositions[i]))
+                  EditorSettings.of(settings)
+                      .getDefaultColorSettingByPosition(backgroundSettingPositions[i]))
               && foregroundSetting.equals(
-                  settings.getDefaultColorSettingByPosition(foregroundSettingPositions[i]))
-              && fontSetting.equals(settings.getDefaultFontByPosition(fontSettingPositions[i]));
+                  EditorSettings.of(settings)
+                      .getDefaultColorSettingByPosition(foregroundSettingPositions[i]))
+              && fontSetting.equals(
+                  EditorSettings.of(settings).getDefaultFontByPosition(fontSettingPositions[i]));
       defaultCheckBoxes[i].setSelected(usingDefaults);
       backgroundButtons[i].setEnabled(!usingDefaults);
       foregroundButtons[i].setEnabled(!usingDefaults);
@@ -478,12 +490,14 @@ public class SettingsHighlightingAction extends GuiAction {
         foregroundButtons[position].setEnabled(false);
         fontButtons[position].setEnabled(false);
         newBackground =
-            Globals.getSettings()
+            EditorSettings.of(Globals.getSettings())
                 .getDefaultColorSettingByPosition(backgroundSettingPositions[position]);
         newForeground =
-            Globals.getSettings()
+            EditorSettings.of(Globals.getSettings())
                 .getDefaultColorSettingByPosition(foregroundSettingPositions[position]);
-        newFont = Globals.getSettings().getDefaultFontByPosition(fontSettingPositions[position]);
+        newFont =
+            EditorSettings.of(Globals.getSettings())
+                .getDefaultFontByPosition(fontSettingPositions[position]);
         currentNondefaultBackground[position] = backgroundButtons[position].getBackground();
         currentNondefaultForeground[position] = foregroundButtons[position].getBackground();
         currentNondefaultFont[position] = samples[position].getFont();

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
@@ -90,11 +91,15 @@ public class DataSegmentWindow extends JInternalFrame {
   int homeAddress;
   boolean userOrKernelMode;
 
-  private final Consumer<MemoryAccessNotice> memoryListener = notice -> {
-    if (notice.getAccessType() == AccessNotice.WRITE) this.highlightCellForAddress(notice.getAddress());
-  };
+  private final Consumer<MemoryAccessNotice> memoryListener =
+      notice -> {
+        if (notice.getAccessType() == AccessNotice.WRITE)
+          this.highlightCellForAddress(notice.getAddress());
+      };
 
-  Consumer<MemoryAccessNotice> getMemoryListener() { return memoryListener; }
+  Consumer<MemoryAccessNotice> getMemoryListener() {
+    return memoryListener;
+  }
 
   // The combo box replaced the row of buttons when number of buttons expanded to 7!
   // We'll keep the button objects however and manually invoke their action listeners
@@ -1040,18 +1045,25 @@ public class DataSegmentWindow extends JInternalFrame {
           && rowFirstAddress == addressRowFirstAddress
           && column == addressColumn) {
         cell.setBackground(
-            settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_BACKGROUND));
+            EditorSettings.of(settings)
+                .getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_BACKGROUND));
         cell.setForeground(
-            settings.getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.DATASEGMENT_HIGHLIGHT_FONT));
+            EditorSettings.of(settings)
+                .getColorSettingByPosition(Settings.DATASEGMENT_HIGHLIGHT_FOREGROUND));
+        cell.setFont(
+            EditorSettings.of(settings).getFontByPosition(Settings.DATASEGMENT_HIGHLIGHT_FONT));
       } else if (row % 2 == 0) {
-        cell.setBackground(settings.getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
-        cell.setForeground(settings.getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.EVEN_ROW_FONT));
+        cell.setBackground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
+        cell.setForeground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
+        cell.setFont(EditorSettings.of(settings).getFontByPosition(Settings.EVEN_ROW_FONT));
       } else {
-        cell.setBackground(settings.getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
-        cell.setForeground(settings.getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
-        cell.setFont(settings.getFontByPosition(Settings.ODD_ROW_FONT));
+        cell.setBackground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
+        cell.setForeground(
+            EditorSettings.of(settings).getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
+        cell.setFont(EditorSettings.of(settings).getFontByPosition(Settings.ODD_ROW_FONT));
       }
       return cell;
     }

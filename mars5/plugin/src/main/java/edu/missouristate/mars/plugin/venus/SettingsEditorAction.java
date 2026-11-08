@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
@@ -55,7 +56,7 @@ public class SettingsEditorAction extends GuiAction {
             VenusUI.instance(),
             "Text Editor Settings",
             true,
-            Globals.getSettings().getEditorFont());
+            EditorSettings.of(Globals.getSettings()).getEditorFont());
     editorDialog.setVisible(true);
   }
 
@@ -66,7 +67,8 @@ public class SettingsEditorAction extends GuiAction {
   private static final Border ColorSelectButtonDisabledBorder = new LineBorder(Color.GRAY, 2);
 
   private static final String GENERIC_TOOL_TIP_TEXT =
-      "Use generic editor (original MARS editor, similar to Notepad) instead of language-aware styled editor";
+      "Use generic editor (original MARS editor, similar to Notepad) instead of language-aware"
+          + " styled editor";
 
   private static final String SAMPLE_TOOL_TIP_TEXT =
       "Current setting; modify using buttons to the right";
@@ -204,7 +206,7 @@ public class SettingsEditorAction extends GuiAction {
       Globals.getSettings().setEditorTabSize(tabSizeSelector.getValue());
       if (syntaxStylesAction) {
         for (int i = 0; i < syntaxStyleIndex.length; i++) {
-          Globals.getSettings()
+          EditorSettings.of(Globals.getSettings())
               .setEditorSyntaxStyleByPosition(
                   syntaxStyleIndex[i],
                   samples[i].getForeground(),
@@ -213,7 +215,7 @@ public class SettingsEditorAction extends GuiAction {
         }
         syntaxStylesAction = false; // reset
       }
-      Globals.getSettings().setEditorFont(font);
+      EditorSettings.of(Globals.getSettings()).setEditorFont(font);
       for (int i = 0; i < popupGuidanceOptions.length; i++) {
         if (popupGuidanceOptions[i].isSelected()) {
           if (i == 0) {

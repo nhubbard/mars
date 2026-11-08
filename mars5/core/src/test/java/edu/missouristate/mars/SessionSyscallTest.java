@@ -289,7 +289,7 @@ class SessionSyscallTest {
     assertThat(context.coprocessor1.getDoubleFromRegisterPair(0)).isEqualTo(expected.nextDouble());
   }
 
-  private static MarsContext session() {
+  static MarsContext session() {
     var settings = new Settings();
     settings
         .getSimulationSettings()

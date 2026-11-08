@@ -49,7 +49,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2003
  */
-public class MIPSprogram {
+public class MIPSprogram implements edu.missouristate.mars.api.Program {
   private final AssemblyContext assemblyContext;
   private SyscallEnvironment syscallEnvironment;
   private InstructionContext sessionExecution;
@@ -342,6 +342,17 @@ public class MIPSprogram {
       boolean extendedAssemblerEnabled,
       boolean warningsAreErrors)
       throws ProcessingException {
+    try (var lease =
+        assemblyContext.session() == null ? null : assemblyContext.session().claimExecution()) {
+      return assembleStopped(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
+    }
+  }
+
+  private ErrorList assembleStopped(
+      ArrayList<MIPSprogram> MIPSprogramsToAssemble,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors)
+      throws ProcessingException {
     if (assemblyContext.session() != null
         && (MIPSprogramsToAssemble == null || MIPSprogramsToAssemble.isEmpty())) {
       throw new IllegalArgumentException("At least one source file is required");
@@ -431,8 +442,10 @@ public class MIPSprogram {
     Objects.requireNonNull(environment);
     if (assemblyContext.session() == null) Globals.setSyscallEnvironment(environment);
     else {
-      syscallEnvironment = environment;
-      sessionExecution = null;
+      try (var lease = assemblyContext.session().claimExecution()) {
+        syscallEnvironment = environment;
+        sessionExecution = null;
+      }
     }
   }
 
@@ -442,54 +455,85 @@ public class MIPSprogram {
         : sessionExecution == null ? 0 : sessionExecution.getExitCode();
   }
 
-  /** Synchronous, frontend-independent execution for a session-owned program. */
-  private boolean simulateSession(int[] breakPoints, int maxSteps) throws ProcessingException {
-    MarsContext session = assemblyContext.session();
-    if (session.getProgram() != this || machineList == null) {
-      throw new IllegalStateException("This is not the current assembled program of its session");
+  @Override
+  public int instructionCount() {
+    return machineList == null ? 0 : machineList.size();
+  }
+
+  /** Result of one session instruction; a null stop reason means execution can continue. */
+  public record ExecutionStep(
+      int pc,
+      int instruction,
+      boolean executed,
+      edu.missouristate.mars.api.StopEvent.Reason stopReason) {}
+
+  /** Executes one instruction on the owning session's execution thread. */
+  public ExecutionStep executeSessionInstruction() throws ProcessingException {
+    if (assemblyContext.session() == null) throw new IllegalStateException("Legacy program");
+    try (var lease = assemblyContext.session().claimExecution()) {
+      return executeSessionInstructionStopped();
     }
+  }
+
+  private ExecutionStep executeSessionInstructionStopped() throws ProcessingException {
+    MarsContext session = assemblyContext.session();
+    if (session == null || session.getProgram() != this || machineList == null)
+      throw new IllegalStateException("This is not the current assembled program of its session");
     if (sessionExecution == null) {
       sessionExecution =
           new InstructionContext(
               session,
               syscallEnvironment == null ? session.syscallEnvironment : syscallEnvironment);
     }
-    int steps = 0;
-    while (maxSteps <= 0 || steps < maxSteps) {
-      if (Thread.currentThread().isInterrupted()) return false;
-      int pc = session.registerFile.getProgramCounter();
-      ProgramStatement statement;
+    int pc = session.registerFile.getProgramCounter();
+    ProgramStatement statement;
+    try {
+      statement = session.memory.getStatement(pc);
+    } catch (AddressErrorException error) {
+      var location = new ProgramStatement(0, pc, session.instructionSet);
+      boolean recording = session.backStepper.beginInstruction(pc, location);
       try {
-        statement = session.memory.getStatement(pc);
-      } catch (AddressErrorException error) {
-        var location = new ProgramStatement(0, pc, session.instructionSet);
-        boolean recording = session.backStepper.beginInstruction(pc, location);
-        try {
-          session.registerFile.incrementPC();
-          throw new ProcessingException(sessionExecution, location, error);
-        } finally {
-          if (recording) session.backStepper.endInstruction();
-        }
-      }
-      if (statement == null) {
-        session.delayedBranch.clear();
-        return true;
-      }
-      try {
-        sessionExecution.executeWithExceptionHandler(statement);
-      } catch (ProcessingException error) {
-        session.delayedBranch.clear();
-        if (error.errors() == null) return true;
-        throw error;
-      }
-      steps++;
-      if (breakPoints != null) {
-        for (int breakpoint : breakPoints) {
-          if (breakpoint == session.registerFile.getProgramCounter()) return false;
-        }
+        session.registerFile.incrementPC();
+        throw new ProcessingException(sessionExecution, location, error);
+      } finally {
+        if (recording) session.backStepper.endInstruction();
       }
     }
-    return false;
+    if (statement == null) {
+      session.delayedBranch.clear();
+      return new ExecutionStep(
+          pc, 0, false, edu.missouristate.mars.api.StopEvent.Reason.CLIFF_TERMINATION);
+    }
+    try {
+      sessionExecution.executeWithExceptionHandler(statement);
+    } catch (ProcessingException error) {
+      session.delayedBranch.clear();
+      if (error.errors() != null) throw error;
+      return new ExecutionStep(
+          pc,
+          statement.getBinaryStatement(),
+          true,
+          edu.missouristate.mars.api.StopEvent.Reason.NORMAL_EXIT);
+    }
+    return new ExecutionStep(pc, statement.getBinaryStatement(), true, null);
+  }
+
+  /** Synchronous, frontend-independent execution for a session-owned program. */
+  private boolean simulateSession(int[] breakPoints, int maxSteps) throws ProcessingException {
+    MarsContext session = assemblyContext.session();
+    try (var lease = session.claimExecution()) {
+      int steps = 0;
+      while (maxSteps <= 0 || steps < maxSteps) {
+        if (Thread.currentThread().isInterrupted()) return false;
+        if (executeSessionInstruction().stopReason() != null) return true;
+        steps++;
+        if (breakPoints != null) {
+          for (int breakpoint : breakPoints)
+            if (breakpoint == session.registerFile.getProgramCounter()) return false;
+        }
+      }
+      return false;
+    }
   }
 
   /**

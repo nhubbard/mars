@@ -7,6 +7,8 @@ public record StopEvent(Reason reason, int exitCode) {
   public enum Reason {
     /** Program executed syscall 10 (exit) or syscall 17 (exit2). */
     NORMAL_EXIT,
+    /** Caller explicitly stopped execution. */
+    STOP_REQUEST,
     /** Execution halted at a breakpoint address. */
     BREAKPOINT,
     /** Caller requested a pause (e.g. the IDE paused the run). */

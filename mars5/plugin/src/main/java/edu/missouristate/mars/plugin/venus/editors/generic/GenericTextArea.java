@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.venus.editors.generic;
 
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.plugin.venus.EditPane;
+import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
 import java.awt.*;
 import javax.swing.*;
@@ -50,7 +51,7 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
   public GenericTextArea(EditPane editPain, JComponent lineNumbers) {
     this.editPane = editPain;
     this.sourceCode = this;
-    this.setFont(Globals.getSettings().getEditorFont());
+    this.setFont(EditorSettings.of(Globals.getSettings()).getEditorFont());
     this.setTabSize(Globals.getSettings().getEditorTabSize());
     this.setMargin(new Insets(0, 3, 3, 3));
     this.setCaretBlinkRate(Globals.getSettings().getCaretBlinkRate());

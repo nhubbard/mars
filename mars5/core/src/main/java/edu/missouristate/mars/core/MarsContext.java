@@ -14,9 +14,11 @@ import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
+import edu.missouristate.mars.simulator.SimulatorEngine;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -79,7 +81,37 @@ public final class MarsContext implements AutoCloseable {
   /** Random streams shared by instructions of this session, independent of other sessions. */
   public final RandomStreams randomStreams = new RandomStreams();
 
-  private MIPSprogram program;
+  private volatile MIPSprogram program;
+  private final ReentrantLock executionLock = new ReentrantLock();
+  private volatile SimulatorEngine simulator;
+
+  /** The asynchronous controller for this session, created only when needed. */
+  public synchronized SimulatorEngine simulator() {
+    if (simulator == null) simulator = new SimulatorEngine(this);
+    return simulator;
+  }
+
+  /** Serializes execution and assembly; overlapping operations fail rather than corrupt state. */
+  public ExecutionLease claimExecution() {
+    if (simulator != null && simulator.executingOnAnotherThread())
+      throw new IllegalStateException("Simulator is running");
+    if (!executionLock.tryLock()) throw new IllegalStateException("Session is already in use");
+    return new ExecutionLease();
+  }
+
+  public final class ExecutionLease implements AutoCloseable {
+    private boolean closed;
+
+    private ExecutionLease() {}
+
+    @Override
+    public void close() {
+      if (!closed) {
+        executionLock.unlock();
+        closed = true;
+      }
+    }
+  }
 
   @Inject
   public MarsContext(
@@ -111,6 +143,12 @@ public final class MarsContext implements AutoCloseable {
    * while execution is stopped. Other sessions and legacy memory are unaffected.
    */
   public void setMemoryConfiguration(String identifier) {
+    try (var lease = claimExecution()) {
+      setMemoryConfigurationStopped(identifier);
+    }
+  }
+
+  private void setMemoryConfigurationStopped(String identifier) {
     var configuration = MemoryConfigurations.createConfiguration(identifier);
     syscallEnvironment.close();
     backStepper.clear();
@@ -131,13 +169,31 @@ public final class MarsContext implements AutoCloseable {
    * execution stopped.
    */
   public MIPSprogram assemble(List<Path> sources) throws ProcessingException {
+    return assemble(
+        sources, null, settings.isExtendedAssemblerEnabled(), settings.isWarningsAreErrors());
+  }
+
+  public MIPSprogram assemble(List<Path> sources, Path handler, boolean extended, boolean warnings)
+      throws ProcessingException {
+    try (var lease = claimExecution()) {
+      return assembleStopped(sources, handler, extended, warnings);
+    }
+  }
+
+  private MIPSprogram assembleStopped(
+      List<Path> sources, Path handler, boolean extended, boolean warnings)
+      throws ProcessingException {
     if (sources == null || sources.isEmpty())
       throw new IllegalArgumentException("At least one source file is required");
     var root = new MIPSprogram(this);
     var filenames = new ArrayList<String>();
     for (Path source : sources) filenames.add(source.toAbsolutePath().normalize().toString());
-    var files = root.prepareFilesForAssembly(filenames, filenames.getFirst(), null);
-    root.assemble(files, settings.isExtendedAssemblerEnabled(), settings.isWarningsAreErrors());
+    var files =
+        root.prepareFilesForAssembly(
+            filenames,
+            filenames.getFirst(),
+            handler == null ? null : handler.toAbsolutePath().toString());
+    root.assemble(files, extended, warnings);
     return root;
   }
 
@@ -161,7 +217,12 @@ public final class MarsContext implements AutoCloseable {
   /** Releases default I/O files. Custom program environments are owned by their callers. */
   @Override
   public void close() {
-    syscallEnvironment.close();
+    SimulatorEngine controller;
+    synchronized (this) {
+      controller = simulator;
+    }
+    if (controller != null) controller.close();
+    else syscallEnvironment.close();
   }
 
   void finishAssembly(MIPSprogram candidate) {

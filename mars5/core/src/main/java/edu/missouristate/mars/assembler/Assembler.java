@@ -173,7 +173,16 @@ public class Assembler {
       boolean extendedAssemblerEnabled,
       boolean warningsAreErrors)
       throws ProcessingException {
+    try (var lease = context.session() == null ? null : context.session().claimExecution()) {
+      return assembleStopped(tokenizedProgramFiles, extendedAssemblerEnabled, warningsAreErrors);
+    }
+  }
 
+  private ArrayList<ProgramStatement> assembleStopped(
+      ArrayList<MIPSprogram> tokenizedProgramFiles,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors)
+      throws ProcessingException {
     if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) {
       if (context.session() != null)
         throw new IllegalArgumentException("At least one source file is required");

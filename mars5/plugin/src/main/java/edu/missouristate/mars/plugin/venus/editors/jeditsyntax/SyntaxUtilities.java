@@ -10,6 +10,7 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
 import javax.swing.*;
@@ -107,10 +108,11 @@ public class SyntaxUtilities {
   public static SyntaxStyle[] getCurrentSyntaxStyles() {
     SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
     for (int i = 0; i < Token.ID_COUNT; i++) {
-      styles[i] = new SyntaxStyle(
-          Globals.getSettings().getEditorSyntaxStyleColorByPosition(i),
-          Globals.getSettings().getEditorSyntaxStyleItalicByPosition(i),
-          Globals.getSettings().getEditorSyntaxStyleBoldByPosition(i));
+      styles[i] =
+          new SyntaxStyle(
+              EditorSettings.of(Globals.getSettings()).getEditorSyntaxStyleColorByPosition(i),
+              Globals.getSettings().getEditorSyntaxStyleItalicByPosition(i),
+              Globals.getSettings().getEditorSyntaxStyleBoldByPosition(i));
     }
     return styles;
   }

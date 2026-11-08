@@ -9,6 +9,7 @@ import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -47,7 +48,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2005
  */
 public class Simulator {
-  private SimThread simulatorThread;
+  private volatile SimThread simulatorThread;
+  private final ExecutorService executor =
+      Executors.newSingleThreadExecutor(
+          task -> {
+            var thread = new Thread(task, "MIPS");
+            thread.setDaemon(true);
+            return thread;
+          });
+  private volatile Consumer<Runnable> completionDispatcher = Runnable::run;
+
+  /** Frontends select their callback thread; the core never imports a UI toolkit. */
+  public void setCompletionDispatcher(Consumer<Runnable> dispatcher) {
+    completionDispatcher = Objects.requireNonNull(dispatcher);
+  }
+
   private static Simulator simulator = null; // Singleton object
   private static volatile SimulatorObserver observer = null;
   private final EventEmitter<SimulatorNotice> simulatorEvents = new EventEmitter<>();
@@ -228,16 +243,36 @@ public class Simulator {
             SimulatorNotice.SIMULATOR_STOP, maxSteps, runSpeedSource.get(), programCounter));
   }
 
-  /**
-   * SwingWorker subclass to perform the simulated execution in background thread. It is
-   * "interrupted" when main thread sets the "stop" variable to true. The variable is tested before
-   * the next MIPS instruction is simulated. Thus interruption occurs in a tightly controlled
-   * fashion.
-   *
-   * <p>See SwingWorker.java for more details on its functionality and usage. It is provided by Sun
-   * Microsystems for download and is not part of the Swing library.
-   */
-  static class SimThread extends SwingWorker {
+  /** Legacy execution task, serialized on the compatibility simulator executor. */
+  static class SimThread {
+    private Future<Object> result;
+
+    void start() {
+      result =
+          Simulator.getInstance()
+              .executor
+              .submit(
+                  () -> {
+                    try {
+                      return construct();
+                    } finally {
+                      Simulator.getInstance().completionDispatcher.accept(this::finished);
+                    }
+                  });
+    }
+
+    Object get() {
+      try {
+        return result.get();
+      } catch (InterruptedException error) {
+        Thread.currentThread().interrupt();
+        setStop(null);
+        throw new IllegalStateException("Interrupted waiting for simulation", error);
+      } catch (ExecutionException error) {
+        throw new IllegalStateException("Simulation failed", error.getCause());
+      }
+    }
+
     private final int pc;
     private final int maxSteps;
     private int[] breakPoints;
@@ -260,7 +295,6 @@ public class Simulator {
      */
     SimThread(
         MIPSprogram p, int pc, int maxSteps, int[] breakPoints, SimulatorActionSource starter) {
-      super(Globals.getGui().isGuiMode());
       this.pc = pc;
       this.maxSteps = maxSteps;
       this.breakPoints = breakPoints;
@@ -282,10 +316,7 @@ public class Simulator {
       stopper = actor;
     }
 
-    /**
-     * This is comparable to the Runnable "run" method (it is called by SwingWorker's "run" method).
-     * It simulates the program execution in the backgorund.
-     */
+    /** Simulates program execution on the compatibility executor. */
     public Object construct() {
       // The next two statements are necessary for GUI to be consistently updated
       // before the simulation gets underway.  Without them, this happens only intermittently,
@@ -522,9 +553,7 @@ public class Simulator {
     }
 
     /**
-     * This method is invoked by the SwingWorker when the "construct" method returns. It will update
-     * the GUI appropriately. According to Sun's documentation, it is run in the main thread so
-     * should work OK with Swing components (which are not thread-safe).
+     * Dispatched through the frontend's completion dispatcher after execution returns.
      *
      * <p>Its action depends on what caused the return from construct() and what action led to the
      * call of construct() in the first place.

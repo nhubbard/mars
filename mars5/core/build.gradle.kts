@@ -22,3 +22,7 @@ dependencies {
 tasks.test {
   useJUnitPlatform()
 }
+
+tasks.withType<JavaCompile>().configureEach {
+  options.compilerArgs.addAll(listOf("-Xlint:rawtypes", "-Xlint:unchecked"))
+}

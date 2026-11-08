@@ -46,6 +46,10 @@ public interface MarsComponent {
   /** Returns the fully-initialized simulation context for this component. */
   MarsContext context();
 
+  edu.missouristate.mars.api.MarsAssembler assembler();
+
+  edu.missouristate.mars.api.MarsSimulator simulator();
+
   /** Legacy settings owner shared with the context's simulation view. */
   Settings settings();
 

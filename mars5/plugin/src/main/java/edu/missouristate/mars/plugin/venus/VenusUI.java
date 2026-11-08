@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
@@ -180,6 +179,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     Globals.getSettings().initializeSyntaxStyleDefaults(syntaxColors, syntaxBolds, syntaxItalics);
 
     // Wire run-speed slider into simulator (decouples core from RunSpeedPanel)
+    Simulator.getInstance().setCompletionDispatcher(SwingUtilities::invokeLater);
     Simulator.getInstance().setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
 
     // Wire GUI syscall environment (JOptionPane dialogs, clearConsole)
@@ -524,7 +524,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsPopupInputAction(
               "Popup dialog for input syscalls (5,6,7,8,12)",
               null,
-              "If set, use popup dialog for input syscalls (5,6,7,8,12) instead of cursor in Run I/O window",
+              "If set, use popup dialog for input syscalls (5,6,7,8,12) instead of cursor in Run"
+                  + " I/O window",
               null,
               null,
               mainUI);
@@ -557,7 +558,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsAssembleOnOpenAction(
               "Assemble file upon opening",
               null,
-              "If set, a file will be automatically assembled as soon as it is opened.  File Open dialog will show most recently opened file.",
+              "If set, a file will be automatically assembled as soon as it is opened.  File Open"
+                  + " dialog will show most recently opened file.",
               null,
               null,
               mainUI);
@@ -565,7 +567,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsAssembleAllAction(
               "Assemble all files in directory",
               null,
-              "If set, all files in current directory will be assembled when Assemble operation is selected.",
+              "If set, all files in current directory will be assembled when Assemble operation is"
+                  + " selected.",
               null,
               null,
               mainUI);
@@ -573,7 +576,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsWarningsAreErrorsAction(
               "Assembler warnings are considered errors",
               null,
-              "If set, assembler warnings will be interpreted as errors and prevent successful assembly.",
+              "If set, assembler warnings will be interpreted as errors and prevent successful"
+                  + " assembly.",
               null,
               null,
               mainUI);
@@ -581,7 +585,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsStartAtMainAction(
               "Initialize Program Counter to global 'main' if defined",
               null,
-              "If set, assembler will initialize Program Counter to text address globally labeled 'main', if defined.",
+              "If set, assembler will initialize Program Counter to text address globally labeled"
+                  + " 'main', if defined.",
               null,
               null,
               mainUI);
@@ -589,7 +594,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsProgramArgumentsAction(
               "Program arguments provided to MIPS program",
               null,
-              "If set, program arguments for MIPS program can be entered in border of Text Segment window.",
+              "If set, program arguments for MIPS program can be entered in border of Text Segment"
+                  + " window.",
               null,
               null,
               mainUI);
@@ -624,7 +630,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new SettingsExceptionHandlerAction(
               "Exception Handler...",
               null,
-              "If set, the specified exception handler file will be included in all Assemble operations.",
+              "If set, the specified exception handler file will be included in all Assemble"
+                  + " operations.",
               null,
               null,
               mainUI);
@@ -648,7 +655,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new HelpAboutAction("About ...", null, "Information about Mars", null, null, mainUI);
     } catch (NullPointerException e) {
       System.out.println(
-          "Internal Error: images folder not found, or other null pointer exception while creating Action objects");
+          "Internal Error: images folder not found, or other null pointer exception while creating"
+              + " Action objects");
       e.printStackTrace();
       System.exit(0);
     }

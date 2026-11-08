@@ -7,7 +7,7 @@ package edu.missouristate.mars.api;
 public interface SimulatorListener {
 
   /**
-   * Called after each instruction completes during stepped execution.
+   * Called after each completed instruction, including the terminating syscall.
    *
    * @param event details of the step that just completed
    */
