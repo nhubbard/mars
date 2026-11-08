@@ -36,8 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Owns the integer registers of one simulation, including PC, HI, LO, and access listeners. This
- * class does not consult process-wide state or record backsteps; the deprecated RegisterFile facade
- * retains those legacy responsibilities until execution is migrated.
+ * class does not consult process-wide state. InstructionContext records undo operations.
  *
  * @author Jason Bumgarner, Jason Shrewsbury
  * @version June 2003

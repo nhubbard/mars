@@ -192,7 +192,7 @@ public class Settings {
    * the properties file work. If you wish to change them, do so before instantiating the Settings
    * object. Values are matched to keys by list position.
    */
-  public static final boolean[] defaultBooleanSettingsValues = { // match the above list by position
+  private final boolean[] defaultBooleanSettingsValues = { // match the above list by position
     true, false, false, false, false, true, true, false, false, true, false, false, true, true,
     false, true, true, false, false, true, false
   };
@@ -238,9 +238,7 @@ public class Settings {
    * the properties file work. If you wish to change, do so before instantiating the Settings
    * object. Must match key by list position.
    */
-  private static final String[] defaultStringSettingsValues = {
-    "", "0 1 2 3 4", "0", "", "500", "8", "2"
-  };
+  private final String[] defaultStringSettingsValues = {"", "0 1 2 3 4", "0", "", "500", "8", "2"};
 
   // FONT SETTINGS.  Each array position has associated name.
   /** Font for the text editor */
@@ -304,14 +302,14 @@ public class Settings {
   // correctly rendering the left parenthesis character in the editor or text segment display.
   // See
   // http://www.mirthcorp.com/community/issues/browse/MIRTH-1921?page=com.atlassian.jira.plugin.system.issuetabpanels:all-tabpanel
-  private static final String[] defaultFontFamilySettingsValues = {
+  private final String[] defaultFontFamilySettingsValues = {
     "Monospaced", "Monospaced", "Monospaced", "Monospaced", "Monospaced", "Monospaced", "Monospaced"
   };
 
-  private static final String[] defaultFontStyleSettingsValues = {
+  private final String[] defaultFontStyleSettingsValues = {
     "Plain", "Plain", "Plain", "Plain", "Plain", "Plain", "Plain"
   };
-  private static final String[] defaultFontSizeSettingsValues = {
+  private final String[] defaultFontSizeSettingsValues = {
     "12", "12", "12", "12", "12", "12", "12",
   };
 
@@ -373,7 +371,7 @@ public class Settings {
    * properties file work. If you wish to change, do so before instantiating the Settings object.
    * Must match key by list position.
    */
-  private static final String[] defaultColorSettingsValues = {
+  private final String[] defaultColorSettingsValues = {
     "0x00e0e0e0",
     "0",
     "0x00ffffff",
@@ -854,13 +852,6 @@ public class Settings {
   public void setEditorPopupPrefixLength(int length) {
     setStringSetting(EDITOR_POPUP_PREFIX_LENGTH, "" + length);
   }
-
-  /**
-   * Set editor font to the specified Font object and write it to persistent storage. This method
-   * retained for compatibility but replaced by: setFontByPosition(Settings.EDITOR_FONT, font)
-   *
-   * @param font Font object to be used by text editor.
-   */
 
   /**
    * Store a Font setting

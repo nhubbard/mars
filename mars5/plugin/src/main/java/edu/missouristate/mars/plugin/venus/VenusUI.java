@@ -3,10 +3,10 @@ package edu.missouristate.mars.plugin.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.api.MarsGuiProxy;
-import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.SimulatorObserver;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxStyle;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxUtilities;
 import java.awt.*;
@@ -72,8 +72,6 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
   final MessagesPane messagesPane;
   final JSplitPane splitter;
   final JSplitPane horizonSplitter;
-  JPanel north;
-
   private int frameState; // see windowActivated() and windowDeactivated()
   private static int menuState = FileStatus.NO_FILE;
 
@@ -135,8 +133,9 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @param s Name of the window to be created.
    */
-  public VenusUI(String s) {
+  public VenusUI(String s, int frameState) {
     super(s);
+    this.frameState = frameState;
     INSTANCE = this;
     mainUI = this;
     DesktopApplication.services().setGui(this);

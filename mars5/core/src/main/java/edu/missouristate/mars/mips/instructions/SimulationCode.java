@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -39,19 +38,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2003
  */
+@FunctionalInterface
 public interface SimulationCode {
-
-  /**
-   * Method to simulate the execution of a specific MIPS basic instruction.
-   *
-   * @param statement A ProgramStatement representing the MIPS instruction to simulate.
-   * @throws ProcessingException This is a run-time exception generated during simulation.
-   */
-  void simulate(ProgramStatement statement) throws ProcessingException;
-
-  /** Context-aware entry point; existing external implementations retain their legacy behavior. */
-  default void simulate(ProgramStatement statement, InstructionContext context)
-      throws ProcessingException {
-    simulate(statement);
-  }
+  /** Executes an instruction using only the supplied session's state and I/O. */
+  void simulate(ProgramStatement statement, edu.missouristate.mars.core.InstructionContext context)
+      throws ProcessingException;
 }

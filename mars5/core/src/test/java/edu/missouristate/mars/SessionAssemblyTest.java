@@ -336,9 +336,9 @@ class SessionAssemblyTest {
     session.backStepper.backStep();
     assertThat(session.registerFile.getValue(8)).isEqualTo(1);
     assertThat(session.registerFile.getPC()).isEqualTo(base);
-    assertThat(program.simulateStepAtPC(null)).isFalse();
+    assertThat(program.simulateStepAtPC()).isFalse();
     assertThat(session.registerFile.getValue(8)).isEqualTo(2);
-    assertThat(program.simulateFromPC(new int[] {base}, 100, null)).isFalse();
+    assertThat(program.simulateFromPC(new int[] {base}, 100)).isFalse();
     assertThat(session.registerFile.getPC()).isEqualTo(base);
   }
 

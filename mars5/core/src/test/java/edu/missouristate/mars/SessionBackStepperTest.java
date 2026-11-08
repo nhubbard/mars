@@ -14,7 +14,7 @@ import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
-import edu.missouristate.mars.mips.instructions.ContextualSimulationCode;
+import edu.missouristate.mars.mips.instructions.SimulationCode;
 import edu.missouristate.mars.mips.instructions.basic.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -59,7 +59,7 @@ class SessionBackStepperTest {
     int base = session.memory.textBaseAddress;
     var loop =
         custom(
-            (statement, context) -> {
+            (_, context) -> {
               context.updateRegister(8, context.registerFile.getValue(8) + 1);
               context.setProgramCounter(base);
             });
@@ -125,7 +125,7 @@ class SessionBackStepperTest {
   }
 
   @Test
-  void invalidInstructionsProduceUndoableExceptionState() throws Exception {
+  void invalidInstructionsProduceUndoableExceptionState() {
     var session = session(16);
     var execution = execution(session);
     int base = session.memory.textBaseAddress;
@@ -184,7 +184,7 @@ class SessionBackStepperTest {
     execution.execute(
         statement(
             custom(
-                (statement, context) -> {
+                (_, context) -> {
                   try {
                     context.setRegisterPairToDouble(0, 3.5);
                   } catch (InvalidRegisterAccessException error) {
@@ -233,7 +233,7 @@ class SessionBackStepperTest {
       execution.execute(
           statement(
               custom(
-                  (statement, context) -> {
+                  (_, context) -> {
                     context.updateRegister(8, result);
                     context.updateRegister(9, result);
                   })));
@@ -251,7 +251,7 @@ class SessionBackStepperTest {
     execution.execute(
         statement(
             custom(
-                (statement, context) -> {
+                (_, context) -> {
                   context.updateRegister(8, 1);
                   context.updateRegister(9, 2);
                   context.updateRegister(10, 3);
@@ -324,7 +324,7 @@ class SessionBackStepperTest {
     return statement;
   }
 
-  private static BasicInstruction custom(ContextualSimulationCode code) {
+  private static BasicInstruction custom(SimulationCode code) {
     return new BasicInstruction(
         "test", BasicInstructionFormat.R_FORMAT, "00000000000000000000000000000000", code);
   }

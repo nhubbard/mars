@@ -1,7 +1,6 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.api.Program;
-import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
@@ -58,8 +57,6 @@ public class MIPSprogram implements Program {
   public ErrorList getAssemblyDiagnostics() {
     return assemblyDiagnostics;
   }
-
-  /** Legacy program bound to the process-global assembler and simulator. */
 
   /** Program whose sources, symbols, memory, and synchronous execution belong to one session. */
   public MIPSprogram(MarsContext session) {
@@ -266,8 +263,7 @@ public class MIPSprogram implements Program {
   public void tokenize() throws ProcessingException {
     this.tokenizer = assemblyContext.tokenizer(this);
     this.tokenList = tokenizer.tokenize(this);
-    this.localSymbolTable =
-        new SymbolTable(this.filename, assemblyContext.symbols()); // prepare for assembly
+    this.localSymbolTable = new SymbolTable(assemblyContext.symbols()); // prepare for assembly
   }
 
   /**
@@ -389,7 +385,7 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulate(int[] breakPoints) throws ProcessingException {
-    return this.simulateFromPC(breakPoints, -1, null);
+    return this.simulateFromPC(breakPoints, -1);
   }
 
   /**
@@ -402,7 +398,7 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulate(int maxSteps) throws ProcessingException {
-    return this.simulateFromPC(null, maxSteps, null);
+    return this.simulateFromPC(null, maxSteps);
   }
 
   /**
@@ -412,12 +408,10 @@ public class MIPSprogram implements Program {
    *
    * @param breakPoints int array of breakpoints (PC addresses). Can be null.
    * @param maxSteps maximum number of instruction executions. Default -1 means no maximum.
-   * @param a the caller responsible for this call (GO normally). set to null if none.
    * @return true if execution completed and false otherwise
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
-  public boolean simulateFromPC(int[] breakPoints, int maxSteps, SimulatorActionSource a)
-      throws ProcessingException {
+  public boolean simulateFromPC(int[] breakPoints, int maxSteps) throws ProcessingException {
     steppedExecution = false;
     return simulateSession(breakPoints, maxSteps);
   }
@@ -426,11 +420,10 @@ public class MIPSprogram implements Program {
    * Simulates execution of the MIPS program. Program must have already been assembled. Begins
    * simulation at current program counter address and executes one step.
    *
-   * @param a the caller responsible for this call (STEP normally). Set to null if none.
    * @return true if execution completed and false otherwise
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
-  public boolean simulateStepAtPC(SimulatorActionSource a) throws ProcessingException {
+  public boolean simulateStepAtPC() throws ProcessingException {
     steppedExecution = true;
     return simulateSession(null, 1);
   }
@@ -459,9 +452,6 @@ public class MIPSprogram implements Program {
 
   /** Executes one instruction on the owning session's execution thread. */
   public ExecutionStep executeSessionInstruction() throws ProcessingException {
-    if (assemblyContext.session() == null) {
-      throw new IllegalStateException("Legacy program");
-    }
     try (var lease = assemblyContext.session().claimExecution()) {
       return executeSessionInstructionStopped();
     }

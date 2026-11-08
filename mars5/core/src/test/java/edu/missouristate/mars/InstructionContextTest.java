@@ -124,7 +124,7 @@ class InstructionContextTest {
   }
 
   @Test
-  void overflowAndAddressFaultsUpdateOnlyTheSuppliedExceptionRegisters() throws Exception {
+  void overflowAndAddressFaultsUpdateOnlyTheSuppliedExceptionRegisters() {
     var context = context(false, new RecordingEnvironment());
     context.registerFile.initializeProgramCounter(BASE + 0x104);
     context.registerFile.setValue(8, Integer.MAX_VALUE);
@@ -178,18 +178,18 @@ class InstructionContextTest {
   }
 
   @Test
-  void legacyCallbackAndSyscallExtensionPointsStillWork() throws Exception {
+  void customInstructionAndSyscallReceiveExecutionContexts() throws Exception {
     var calls = new AtomicInteger();
     var instruction =
         new BasicInstruction(
             "custom",
             BasicInstructionFormat.R_FORMAT,
             "00000000000000000000000000000000",
-            statement -> calls.incrementAndGet());
+            (_, _) -> calls.incrementAndGet());
     var syscall =
         new AbstractSyscall(123, "Legacy") {
           @Override
-          public void simulate(ProgramStatement statement) {
+          public void simulate(ProgramStatement statement, InstructionContext execution) {
             calls.incrementAndGet();
           }
         };

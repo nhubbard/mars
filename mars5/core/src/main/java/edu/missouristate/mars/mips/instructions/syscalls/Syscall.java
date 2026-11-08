@@ -70,13 +70,5 @@ public interface Syscall {
    *
    * @param statement ProgramStatement for this syscall statement.
    */
-  void simulate(ProgramStatement statement) throws ProcessingException;
-
-  /**
-   * Context-aware entry point; old external syscall implementations retain their legacy behavior.
-   */
-  default void simulate(ProgramStatement statement, InstructionContext context)
-      throws ProcessingException {
-    simulate(statement);
-  }
+  void simulate(ProgramStatement statement, InstructionContext context) throws ProcessingException;
 }

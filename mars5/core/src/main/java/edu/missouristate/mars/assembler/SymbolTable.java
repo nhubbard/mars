@@ -49,23 +49,13 @@ public class SymbolTable {
 
   /** Create a new empty symbol table for given file */
   public SymbolTable() {
-    this((SymbolTable) null);
+    this(null);
   }
 
   /** Binds a local table to an explicit global scope; null creates a session's root table. */
-  private SymbolTable(SymbolTable globalSymbols) {
+  public SymbolTable(SymbolTable globalSymbols) {
     this.globalSymbols = globalSymbols;
     this.table = new ArrayList<>();
-  }
-
-  /** Retained source-compatible constructor; the filename is not needed by symbol lookup. */
-  public SymbolTable(String filename) {
-    this((SymbolTable) null);
-  }
-
-  /** Retained source-compatible constructor for callers that supply a source filename. */
-  public SymbolTable(String filename, SymbolTable globalSymbols) {
-    this(globalSymbols);
   }
 
   /**

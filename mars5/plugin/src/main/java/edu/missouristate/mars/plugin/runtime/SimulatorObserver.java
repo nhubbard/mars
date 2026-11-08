@@ -1,4 +1,6 @@
-package edu.missouristate.mars.api;
+package edu.missouristate.mars.plugin.runtime;
+
+import edu.missouristate.mars.api.StopEvent;
 
 /**
  * Callback interface for simulation progress notifications. Register via {@code
@@ -18,8 +20,7 @@ public interface SimulatorObserver {
   void onStepComplete(int pc);
 
   /**
-   * Called when simulation halts for any reason (normal exit, exception, pause, max-steps
-   * reached).
+   * Called when simulation halts for any reason (normal exit, exception, pause, max-steps reached).
    */
   void onSimulationStop(StopEvent event);
 }

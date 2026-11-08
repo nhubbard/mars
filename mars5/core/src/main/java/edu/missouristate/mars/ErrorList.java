@@ -56,7 +56,7 @@ public class ErrorList {
     this(null);
   }
 
-  /** Uses a session's error budget instead of global settings. Null preserves legacy behavior. */
+  /** Uses a session's error budget instead of global settings. Null uses application defaults. */
   public ErrorList(MarsSettings sessionSettings) {
     this.sessionSettings = sessionSettings;
     messages = new ArrayList<>();

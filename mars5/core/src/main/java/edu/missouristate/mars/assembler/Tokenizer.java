@@ -77,7 +77,7 @@ public class Tokenizer {
     this(program, null);
   }
 
-  /** Tokenizes against a session instruction set; null retains the legacy lookup. */
+  /** Tokenizes against a session instruction set; null uses the default instruction catalog. */
   public Tokenizer(MIPSprogram program, InstructionSet instructions) {
     this.instructions = instructions;
     errors = program == null ? new ErrorList() : program.newErrorList();

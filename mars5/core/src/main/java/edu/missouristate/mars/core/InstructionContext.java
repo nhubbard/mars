@@ -25,10 +25,8 @@ import java.util.Objects;
  * Explicit register, memory, branch, settings, and I/O dependencies for an instruction invocation.
  * Instructions use the supplied session rather than consulting the static register facades.
  *
- * <p>The legacy context uses the existing process-global banks and records undo operations through
- * their compatibility facades. Session contexts record their own undo history without consulting a
- * global program's back-stepper. The legacy simulator control loop remains separate from
- * synchronous session execution.
+ * <p>All writes and undo operations belong to the supplied session. Execution never consults
+ * process-wide registers, memory, programs, or I/O.
  */
 public final class InstructionContext {
   public final IntegerRegisterFile registerFile;
@@ -61,7 +59,7 @@ public final class InstructionContext {
     return session.settings;
   }
 
-  /** Retains the configured legacy syscall environment only for legacy execution. */
+  /** Returns the I/O environment configured for this invocation. */
   public SyscallEnvironment environment() {
     return environment;
   }
@@ -167,7 +165,7 @@ public final class InstructionContext {
     return result;
   }
 
-  /** Records a raw memory write in session history, preserving legacy write behavior. */
+  /** Records a raw memory write in session history, preserving raw-word write behavior. */
   public int setMemoryRawWord(int address, int value) throws AddressErrorException {
     int old = session.memory.setRawWord(address, value);
     if (session.backStepper.enabled()) {
@@ -176,9 +174,7 @@ public final class InstructionContext {
     return old;
   }
 
-  /**
-   * Float helper writes are undoable in sessions; legacy helpers retain their original behavior.
-   */
+  /** Float helper writes record undo operations in this session. */
   public void setRegisterToFloat(int number, float value) {
     if (number >= 0 && number < 32) {
       updateCoprocessor1(number, Float.floatToRawIntBits(value));
@@ -266,7 +262,7 @@ public final class InstructionContext {
     }
   }
 
-  /** Completes a branch-delay cycle using the same protocol as the legacy simulator. */
+  /** Completes a branch-delay cycle using this session's delayed-branch state. */
   public void completeInstruction() {
     if (delayedBranch.isTriggered()) {
       setProgramCounter(delayedBranch.getBranchTargetAddress());
@@ -289,7 +285,7 @@ public final class InstructionContext {
             coprocessor0.getValue(Coprocessor0State.STATUS), Coprocessor0State.EXCEPTION_LEVEL));
   }
 
-  /** Normal termination preserves the legacy process exit code. */
+  /** Terminates this invocation with the requested exit code. */
   public void exit() {
     exit(0);
   }

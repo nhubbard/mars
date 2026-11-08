@@ -39,6 +39,9 @@ subprojects {
     extensions.configure<JavaPluginExtension> {
       toolchain.languageVersion.set(JavaLanguageVersion.of(25))
     }
+    tasks.withType<JavaCompile>().configureEach {
+      options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Xlint:removal", "-Werror"))
+    }
   }
 }
 

@@ -43,8 +43,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /**
  * Owns a simulation's memory contents, address configuration, heap, byte order, and observers.
  * Settings and binary decoding are supplied by the owner. This class does not consult process-wide
- * state or record undo history; the Memory compatibility facade retains those legacy
- * responsibilities.
+ * state. InstructionContext records undo history for memory writes.
  *
  * @author Pete Sanderson
  * @version August 2003
@@ -382,9 +381,6 @@ public class MemoryState {
   // Allocates blocks if necessary.
   public int set(int address, int value, int length) throws AddressErrorException {
     int oldValue = 0;
-    if (debugEnabled()) {
-      System.out.println("memory[" + address + "] set to " + value + "(" + length + " bytes)");
-    }
     int relativeByteAddress;
     if (inDataSegment(address)) {
       // in data segment.  Will write one byte at a time, w/o regard to boundaries.
@@ -583,9 +579,6 @@ public class MemoryState {
           "store address to text segment out of range or not aligned to word boundary ",
           Exceptions.ADDRESS_EXCEPTION_STORE,
           address);
-    }
-    if (debugEnabled()) {
-      System.out.println("memory[" + address + "] set to " + statement.getBinaryStatement());
     }
     if (inTextSegment(address)) {
       storeProgramStatement(address, statement, textBaseAddress, textBlockTable);
@@ -1093,24 +1086,8 @@ public class MemoryState {
 
   /*********************************  THE HELPERS  *************************************/
 
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Method to notify any observers of memory operation that has just occurred.
-  //
-  // The "|| !isGuiMode()" is a hack added 19 July 2012 DPS.  IF MIPS simulation
-  // Legacy GUI notification policy is supplied by shouldNotifyObservers().
-  /** Override only in the legacy adapter to retain its GUI notification policy. */
-  protected boolean shouldNotifyObservers() {
-    return true;
-  }
-
-  /** Override only in the legacy adapter to retain its debug output. */
-  protected boolean debugEnabled() {
-    return false;
-  }
-
   private void notifyAnyObservers(int type, int address, int length, int value) {
-    if (!this.listeners.isEmpty() && shouldNotifyObservers()) {
+    if (!this.listeners.isEmpty()) {
       MemoryAccessNotice notice = new MemoryAccessNotice(type, address, length, value);
       for (MemoryListener ml : listeners) {
         if (ml.match(address)) {

@@ -35,8 +35,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Used to "step backward" through execution, undoing each instruction in its owning hardware. The
- * no-argument constructor preserves the legacy hardware bindings. Framed session execution groups
- * writes by instruction invocation, including repeated visits to the same statement.
+ * constructor binds every operation to explicit hardware. Framed session execution groups writes by
+ * instruction invocation, including repeated visits to the same statement.
  *
  * @author Pete Sanderson
  * @version February 2006

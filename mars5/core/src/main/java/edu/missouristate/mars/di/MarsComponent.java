@@ -50,7 +50,7 @@ public interface MarsComponent {
 
   MarsSimulator simulator();
 
-  /** Legacy settings owner shared with the context's simulation view. */
+  /** Persistent settings owner shared with the context's simulation view. */
   Settings settings();
 
   /** Interface view of the same simulation settings used by the context. */

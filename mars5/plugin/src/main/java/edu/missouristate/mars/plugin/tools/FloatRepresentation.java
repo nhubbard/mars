@@ -372,9 +372,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     registerSelect.setToolTipText("Attach to selected FP register");
     registerSelect.addActionListener(
         e -> {
-          //noinspection unchecked
-          JComboBox<String> cb = (JComboBox<String>) e.getSource();
-          int selectedIndex = cb.getSelectedIndex();
+          int selectedIndex = registerSelect.getSelectedIndex();
           if (isObserving()) {
             deleteAsObserver();
           }

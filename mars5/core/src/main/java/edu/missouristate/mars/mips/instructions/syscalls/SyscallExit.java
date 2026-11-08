@@ -40,10 +40,6 @@ public class SyscallExit extends AbstractSyscall {
 
   /** Performs syscall function to exit the MIPS program. */
   @Override
-  public void simulate(ProgramStatement statement) throws ProcessingException {
-    throw new ProcessingException();
-  }
-
   public void simulate(ProgramStatement statement, InstructionContext context)
       throws ProcessingException {
     context.exit();

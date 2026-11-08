@@ -1,7 +1,5 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import edu.missouristate.mars.*;
-
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
 
@@ -83,17 +81,4 @@ public abstract class AbstractSyscall implements Syscall {
   public int getNumber() {
     return serviceNumber;
   }
-
-  /**
-   * Performs syscall function. It will be invoked when the service is invoked at simulation time.
-   * Service is identified by value stored in $v0.
-   *
-   * @param statement ProgramStatement object for this syscall instruction.
-   */
-  @Override
-  public void simulate(ProgramStatement statement) throws ProcessingException {
-    throw new IllegalStateException("An instruction context is required");
-  }
-
-  // Subclasses override either the context-aware overload or the original legacy overload.
 }

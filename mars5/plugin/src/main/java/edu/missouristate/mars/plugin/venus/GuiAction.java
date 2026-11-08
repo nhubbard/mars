@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.api.SimulatorActionSource;
+import edu.missouristate.mars.plugin.runtime.SimulatorActionSource;
 import java.awt.event.*;
 import javax.swing.*;
 

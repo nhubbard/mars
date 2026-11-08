@@ -34,7 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Owns one simulation's floating-point registers, condition flags, and access listeners. Backstep
- * recording remains in the legacy Coprocessor1 facade until execution is migrated.
+ * recording is handled by InstructionContext.
  *
  * @author Pete Sanderson
  * @version July 2005

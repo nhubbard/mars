@@ -8,13 +8,13 @@ import java.util.function.BooleanSupplier;
 /**
  * Simulation-only settings. A view constructed from {@link Settings} reads its current values
  * directly, including preference reloads and temporary CLI overrides. Setters on the view are
- * session-only: persistent changes continue to go through the legacy Settings API.
+ * session-only: persistent changes continue to go through the persistent Settings owner.
  *
  * <p>The no-argument constructor retains independent, in-memory MARS defaults for standalone use.
  */
 public final class SimulationSettings implements MarsSettings {
 
-  private final Settings legacySettings;
+  private final Settings settingsOwner;
 
   // Defaults mirror MARS 4.5 behavior so headless users see no change.
   private String memoryConfiguration = "Default";
@@ -28,147 +28,145 @@ public final class SimulationSettings implements MarsSettings {
 
   /** Creates settings with MARS default values. */
   public SimulationSettings() {
-    legacySettings = null;
+    settingsOwner = null;
   }
 
   /** Creates a live, writable simulation view over the supplied settings owner. */
   public SimulationSettings(Settings settings) {
-    legacySettings = Objects.requireNonNull(settings);
+    settingsOwner = Objects.requireNonNull(settings);
   }
 
   public void setBackstepStatus(BooleanSupplier status) {
-    if (legacySettings != null) {
-      legacySettings.setBackstepStatus(status);
+    if (settingsOwner != null) {
+      settingsOwner.setBackstepStatus(status);
     }
   }
 
   public boolean displayAddressesInHex() {
-    return legacySettings == null
-        || legacySettings.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX);
+    return settingsOwner == null
+        || settingsOwner.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX);
   }
 
   public boolean displayValuesInHex() {
-    return legacySettings == null
-        || legacySettings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX);
+    return settingsOwner == null || settingsOwner.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX);
   }
 
   public String getMemoryConfiguration() {
-    return legacySettings == null ? memoryConfiguration : legacySettings.getMemoryConfiguration();
+    return settingsOwner == null ? memoryConfiguration : settingsOwner.getMemoryConfiguration();
   }
 
   public SimulationSettings setMemoryConfiguration(String memoryConfiguration) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.memoryConfiguration = memoryConfiguration;
     } else {
-      legacySettings.setMemoryConfigurationNonPersistent(memoryConfiguration);
+      settingsOwner.setMemoryConfigurationNonPersistent(memoryConfiguration);
     }
     return this;
   }
 
   public boolean isDelayedBranchingEnabled() {
-    return legacySettings == null
+    return settingsOwner == null
         ? delayedBranchingEnabled
-        : legacySettings.getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED);
+        : settingsOwner.getBooleanSetting(Settings.DELAYED_BRANCHING_ENABLED);
   }
 
   public SimulationSettings setDelayedBranchingEnabled(boolean delayedBranchingEnabled) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.delayedBranchingEnabled = delayedBranchingEnabled;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(
+      settingsOwner.setBooleanSettingNonPersistent(
           Settings.DELAYED_BRANCHING_ENABLED, delayedBranchingEnabled);
     }
     return this;
   }
 
   public boolean isSelfModifyingCodeEnabled() {
-    return legacySettings == null
+    return settingsOwner == null
         ? selfModifyingCodeEnabled
-        : legacySettings.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED);
+        : settingsOwner.getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED);
   }
 
   public SimulationSettings setSelfModifyingCodeEnabled(boolean selfModifyingCodeEnabled) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.selfModifyingCodeEnabled = selfModifyingCodeEnabled;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(
+      settingsOwner.setBooleanSettingNonPersistent(
           Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCodeEnabled);
     }
     return this;
   }
 
   public boolean isWarningsAreErrors() {
-    return legacySettings == null
+    return settingsOwner == null
         ? warningsAreErrors
-        : legacySettings.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS);
+        : settingsOwner.getBooleanSetting(Settings.WARNINGS_ARE_ERRORS);
   }
 
   public SimulationSettings setWarningsAreErrors(boolean warningsAreErrors) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.warningsAreErrors = warningsAreErrors;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(
-          Settings.WARNINGS_ARE_ERRORS, warningsAreErrors);
+      settingsOwner.setBooleanSettingNonPersistent(Settings.WARNINGS_ARE_ERRORS, warningsAreErrors);
     }
     return this;
   }
 
   public boolean isExtendedAssemblerEnabled() {
-    return legacySettings == null
+    return settingsOwner == null
         ? extendedAssemblerEnabled
-        : legacySettings.getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED);
+        : settingsOwner.getBooleanSetting(Settings.EXTENDED_ASSEMBLER_ENABLED);
   }
 
   public SimulationSettings setExtendedAssemblerEnabled(boolean extendedAssemblerEnabled) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.extendedAssemblerEnabled = extendedAssemblerEnabled;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(
+      settingsOwner.setBooleanSettingNonPersistent(
           Settings.EXTENDED_ASSEMBLER_ENABLED, extendedAssemblerEnabled);
     }
     return this;
   }
 
   public int getAssemblerErrorLimit() {
-    return legacySettings == null ? assemblerErrorLimit : legacySettings.getAssemblerErrorLimit();
+    return settingsOwner == null ? assemblerErrorLimit : settingsOwner.getAssemblerErrorLimit();
   }
 
   public SimulationSettings setAssemblerErrorLimit(int assemblerErrorLimit) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       this.assemblerErrorLimit = assemblerErrorLimit;
     } else {
-      legacySettings.setAssemblerErrorLimit(assemblerErrorLimit);
+      settingsOwner.setAssemblerErrorLimit(assemblerErrorLimit);
     }
     return this;
   }
 
   public boolean isStartAtMainEnabled() {
-    return legacySettings == null
+    return settingsOwner == null
         ? startAtMainEnabled
-        : legacySettings.getBooleanSetting(Settings.START_AT_MAIN);
+        : settingsOwner.getBooleanSetting(Settings.START_AT_MAIN);
   }
 
-  /** Session-only entry-point selection, matching the legacy Start at main preference. */
+  /** Session-only entry-point selection, using the Start at main preference. */
   public SimulationSettings setStartAtMainEnabled(boolean enabled) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       startAtMainEnabled = enabled;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(Settings.START_AT_MAIN, enabled);
+      settingsOwner.setBooleanSettingNonPersistent(Settings.START_AT_MAIN, enabled);
     }
     return this;
   }
 
   public boolean isBareMachineEnabled() {
-    return legacySettings == null
+    return settingsOwner == null
         ? bareMachineEnabled
-        : legacySettings.getBooleanSetting(Settings.BARE_MACHINE_ENABLED);
+        : settingsOwner.getBooleanSetting(Settings.BARE_MACHINE_ENABLED);
   }
 
   public SimulationSettings setBareMachineEnabled(boolean enabled) {
-    if (legacySettings == null) {
+    if (settingsOwner == null) {
       bareMachineEnabled = enabled;
     } else {
-      legacySettings.setBooleanSettingNonPersistent(Settings.BARE_MACHINE_ENABLED, enabled);
+      settingsOwner.setBooleanSettingNonPersistent(Settings.BARE_MACHINE_ENABLED, enabled);
     }
     return this;
   }
