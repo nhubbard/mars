@@ -1,11 +1,15 @@
 package edu.missouristate.mars.plugin.analysis
 
+import java.util.List.copyOf as copyOfList
+import java.util.Map.copyOf as copyOfMap
+import java.util.Set.copyOf as copyOfSet
+
 /** Missing facts are distinct from a complete index that contains no matching declaration. */
 data class PendingPartition(val source: SourceId, val revision: Long?, val partition: IndexPartition)
 
 class QueryResult<T> internal constructor(matches: List<T>, pending: Set<PendingPartition>) {
-    val matches: List<T> = java.util.List.copyOf(matches)
-    val pending: Set<PendingPartition> = java.util.Set.copyOf(pending)
+    val matches: List<T> = copyOfList(matches)
+    val pending: Set<PendingPartition> = copyOfSet(pending)
     val complete: Boolean get() = pending.isEmpty()
 }
 
@@ -27,7 +31,7 @@ class IndexSnapshot private constructor(
 ) {
     /** Prepare a scope once; symbol lookups then visit matching occurrences rather than project files. */
     fun inScope(sources: Set<SourceId>): SymbolQuery {
-        val scope = java.util.Set.copyOf(sources)
+        val scope = copyOfSet(sources)
         val missing = IndexPartition.entries.associateWith { partition ->
             scope.filter { (it to partition) !in ready }
                 .mapTo(LinkedHashSet()) { PendingPartition(it, revisions[it], partition) }
@@ -77,14 +81,14 @@ class IndexSnapshot private constructor(
                 }
             }
             return IndexSnapshot(
-                java.util.Map.copyOf(declarations.mapValues { (_, values) ->
-                    java.util.List.copyOf(values.sortedWith(compareBy({ it.id.source.value }, { it.id.localId })))
+                copyOfMap(declarations.mapValues { (_, values) ->
+                    copyOfList(values.sortedWith(compareBy({ it.id.source.value }, { it.id.localId })))
                 }),
-                java.util.Map.copyOf(references.mapValues { (_, values) ->
-                    java.util.List.copyOf(values.sortedWith(compareBy({ it.id.source.value }, { it.id.localId })))
+                copyOfMap(references.mapValues { (_, values) ->
+                    copyOfList(values.sortedWith(compareBy({ it.id.source.value }, { it.id.localId })))
                 }),
-                java.util.Map.copyOf(latest),
-                java.util.Set.copyOf(ready),
+                copyOfMap(latest),
+                copyOfSet(ready),
             )
         }
     }

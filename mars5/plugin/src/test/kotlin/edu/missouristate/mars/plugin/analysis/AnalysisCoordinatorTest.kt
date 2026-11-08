@@ -16,12 +16,12 @@ class AnalysisCoordinatorTest {
             val entered = CountDownLatch(1)
             val release = CountDownLatch(1)
             var calls = 0
-            val coordinator = AnalysisCoordinator(scope) { facts, check ->
+            val coordinator = AnalysisCoordinator(scope) { facts, checkCancelled ->
                 if (++calls == 1) {
                     entered.countDown()
-                    kotlin.check(release.await(10, TimeUnit.SECONDS))
+                    check(release.await(10, TimeUnit.SECONDS))
                 }
-                IndexSnapshot.build(facts, check)
+                IndexSnapshot.build(facts, checkCancelled)
             }
             try {
                 val old = coordinator.submit(emptyList())
@@ -51,9 +51,9 @@ class AnalysisCoordinatorTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         var fail = false
         val expected = IllegalArgumentException("bad producer")
-        val coordinator = AnalysisCoordinator(scope) { facts, check ->
+        val coordinator = AnalysisCoordinator(scope) { facts, checkCancelled ->
             if (fail) throw expected
-            IndexSnapshot.build(facts, check)
+            IndexSnapshot.build(facts, checkCancelled)
         }
         try {
             assertTrue(coordinator.submit(emptyList()).await())
@@ -89,7 +89,7 @@ class AnalysisCoordinatorTest {
             val release = CountDownLatch(1)
             val coordinator = AnalysisCoordinator(scope) { _, _ ->
                 entered.countDown()
-                kotlin.check(release.await(10, TimeUnit.SECONDS))
+                check(release.await(10, TimeUnit.SECONDS))
                 IndexSnapshot.build(emptyList())
             }
             try {

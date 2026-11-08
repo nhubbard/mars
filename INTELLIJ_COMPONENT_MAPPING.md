@@ -7,6 +7,10 @@ The independent engine stays Java. All new plugin production and test code is Ko
 A Java plugin exception requires evidence that Kotlin cannot implement the required integration.
 Convenience, examples written in Java, and annotation processing alone do not justify an exception.
 
+Use imports rather than fully qualified class names throughout implementation, tests and Gradle
+Kotlin scripts. Use import aliases for name collisions. A qualified name is allowed only where a
+framework or API explicitly requires it, such as a Settings page lookup; explain non-obvious cases.
+
 ## Contents
 
 1. [Decisions and evidence](#1-decisions-and-evidence)

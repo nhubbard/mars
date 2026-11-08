@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
+import java.util.List.copyOf as copyOfList
+
 /** Stable logical source identity. It does not retain a document, VirtualFile, or PSI tree. */
 data class SourceId(val value: String) {
     init { require(value.isNotBlank()) { "Source identity must not be blank" } }
@@ -28,14 +30,14 @@ sealed class IndexContribution(val source: SourceId, val revision: Long) {
 
     class Declarations(source: SourceId, revision: Long, declarations: List<SymbolDeclaration>) :
         IndexContribution(source, revision) {
-        val declarations: List<SymbolDeclaration> = java.util.List.copyOf(declarations)
+        val declarations: List<SymbolDeclaration> = copyOfList(declarations)
 
         init { validateIds(source, this.declarations.map { it.id }) }
     }
 
     class References(source: SourceId, revision: Long, references: List<SymbolReference>) :
         IndexContribution(source, revision) {
-        val references: List<SymbolReference> = java.util.List.copyOf(references)
+        val references: List<SymbolReference> = copyOfList(references)
 
         init { validateIds(source, this.references.map { it.id }) }
     }

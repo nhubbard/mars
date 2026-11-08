@@ -1,3 +1,5 @@
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+
 plugins {
   kotlin("jvm") version "2.4.21"
   jacoco
@@ -63,7 +65,7 @@ tasks.jacocoTestReport {
 
 // The IDE test classloader can load plugin classes without a source location.
 tasks.test {
-  extensions.configure<org.gradle.testing.jacoco.plugins.JacocoTaskExtension> {
+  extensions.configure<JacocoTaskExtension> {
     isIncludeNoLocationClasses = true
     includes = listOf("edu.missouristate.mars.plugin.*")
   }
