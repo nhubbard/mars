@@ -184,7 +184,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   // instruction.
   protected void processMIPSUpdate(AccessNotice notice) {
 
-    if (!notice.accessIsFromMIPS()) {
+    if (notice.origin() != edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
       return;
     }
     if (notice.getAccessType() != AccessNotice.READ) {

@@ -3,6 +3,8 @@ package edu.missouristate.mars.plugin.tools;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSession;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import java.awt.event.ItemEvent;
@@ -99,13 +101,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public CacheSimulator(
-      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+  public CacheSimulator(DesktopSession session, String title, String heading) {
     super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public CacheSimulator(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+  public CacheSimulator(DesktopSession session) {
     super(session, "Data Cache Simulation Tool, " + version, heading);
   }
 
@@ -116,7 +117,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
    * invoke the Cache Simulator.
    */
   static void main(String[] args) {
-    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
+    var session = DesktopApplication.createSession();
     new CacheSimulator(session, "Data Cache Simulator stand-alone, " + version, heading).go();
   }
 
@@ -550,7 +551,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     RANDOM
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Specialized inner classes for cache modeling and animation.
 
   //////////////////////////////////////////////////////////////////////////////////////

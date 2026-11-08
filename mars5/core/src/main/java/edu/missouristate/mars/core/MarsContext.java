@@ -39,8 +39,8 @@ import javax.inject.Singleton;
  * MarsContext ctx = component.context();
  * }</pre>
  *
- * <p>All hardware, symbols, assembly and execution services belong to this component. The legacy
- * frontend adapters are packaged separately and are not required to use this library.
+ * <p>All hardware, symbols, assembly and execution services belong to this component. The frontend
+ * adapters are packaged separately and are not required to use this library.
  */
 @Singleton
 public final class MarsContext implements AutoCloseable {
@@ -192,7 +192,7 @@ public final class MarsContext implements AutoCloseable {
 
   /**
    * Switches this session's address layout and resets its memory and integer registers. Call only
-   * while execution is stopped. Other sessions and legacy memory are unaffected.
+   * while execution is stopped. Other sessions are unaffected.
    */
   public void setMemoryConfiguration(String identifier) {
     try (var lease = claimStoppedSession()) {

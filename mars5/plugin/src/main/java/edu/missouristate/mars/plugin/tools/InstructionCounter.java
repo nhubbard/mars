@@ -192,7 +192,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
   //	@Override
   protected void processMIPSUpdate(AccessNotice notice) {
-    if (!notice.accessIsFromMIPS()) {
+    if (notice.origin() != edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
       return;
     }
     if (notice.getAccessType() != AccessNotice.READ) {

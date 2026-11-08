@@ -45,6 +45,7 @@ public abstract class AccessNotice {
 
   private final int accessType;
   private final Thread thread;
+  private final AccessOrigin origin;
 
   protected AccessNotice(int type) {
     if (type != READ && type != WRITE) {
@@ -52,6 +53,7 @@ public abstract class AccessNotice {
     }
     accessType = type;
     thread = Thread.currentThread();
+    origin = AccessOrigin.current();
   }
 
   /**
@@ -72,25 +74,8 @@ public abstract class AccessNotice {
     return thread;
   }
 
-  /**
-   * Query whether the access originated from MARS GUI (AWT event queue)
-   *
-   * @return true if this access originated from MARS GUI, false otherwise
-   */
-  // 'A' is the first character of the main AWT event queue thread name.
-  // "AWT-EventQueue-0"
-  public boolean accessIsFromGUI() {
-    return thread.getName().startsWith("AWT");
-  }
-
-  /**
-   * Query whether the access originated from executing MIPS program
-   *
-   * @return true if this access originated from executing MIPS program, false otherwise
-   */
-  // Thread to execute the MIPS program is instantiated in SwingWorker.java.
-  // There it is given the name "MIPS" to replace the default "Thread-x".
-  public boolean accessIsFromMIPS() {
-    return thread.getName().startsWith("MIPS");
+  /** Whether the access belongs to an instruction cycle or an application/editor operation. */
+  public AccessOrigin origin() {
+    return origin;
   }
 }

@@ -29,17 +29,18 @@ class FloatingPointEdgeTest {
       -3.5,
       1e20
     };
-    return InstructionRegistry.getAll().stream()
-        .filter(
-            instruction ->
-                instruction
-                    .getClass()
-                    .getSimpleName()
-                    .matches(
-                        "Instr((Add|Sub|Mul|Div|Sqrt|Abs|Neg|Mov|FloorW|CeilW|RoundW|TruncW)[SD]|Cvt(SD|DS|WS|WD)|C(Eq|Le|Lt)[SD][12])"))
-        .flatMap(
-            instruction ->
-                Arrays.stream(values).mapToObj(value -> Arguments.of(instruction, value)));
+    return new InstructionLoader()
+        .loadBasicInstructions().stream()
+            .filter(
+                instruction ->
+                    instruction
+                        .getClass()
+                        .getSimpleName()
+                        .matches(
+                            "Instr((Add|Sub|Mul|Div|Sqrt|Abs|Neg|Mov|FloorW|CeilW|RoundW|TruncW)[SD]|Cvt(SD|DS|WS|WD)|C(Eq|Le|Lt)[SD][12])"))
+            .flatMap(
+                instruction ->
+                    Arrays.stream(values).mapToObj(value -> Arguments.of(instruction, value)));
   }
 
   @ParameterizedTest

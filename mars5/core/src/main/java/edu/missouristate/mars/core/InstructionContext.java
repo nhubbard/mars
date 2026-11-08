@@ -223,6 +223,15 @@ public final class InstructionContext {
 
   private void execute(ProgramStatement statement, boolean dispatchHandler)
       throws ProcessingException {
+    edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution(
+        () -> {
+          executeInstruction(statement, dispatchHandler);
+          return null;
+        });
+  }
+
+  private void executeInstruction(ProgramStatement statement, boolean dispatchHandler)
+      throws ProcessingException {
     Objects.requireNonNull(statement);
     BackStepper history = session.backStepper;
     boolean recording =

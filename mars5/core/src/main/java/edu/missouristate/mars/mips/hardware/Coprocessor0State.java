@@ -33,11 +33,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Owns the interrupt and exception registers of one simulation. Access listeners and reset values
- * belong to this instance. Backstep recording is handled by the legacy Coprocessor0 facade until
- * the execution pipeline is migrated.
- *
- * @author Pete Sanderson
- * @version August 2005
+ * belong to this instance. InstructionContext records undo operations.
  */
 public final class Coprocessor0State {
   /** Coprocessor register names */

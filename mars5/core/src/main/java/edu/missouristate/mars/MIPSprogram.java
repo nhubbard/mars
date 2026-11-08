@@ -75,9 +75,6 @@ public class MIPSprogram implements Program {
     return new MIPSprogram(assemblyContext.session());
   }
 
-  // See explanation of method inSteppedExecution() below.
-  private boolean steppedExecution = false;
-
   private String filename;
   private ArrayList<String> sourceList;
   private ArrayList<TokenList> tokenList;
@@ -412,7 +409,6 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulateFromPC(int[] breakPoints, int maxSteps) throws ProcessingException {
-    steppedExecution = false;
     return simulateSession(breakPoints, maxSteps);
   }
 
@@ -424,7 +420,6 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulateStepAtPC() throws ProcessingException {
-    steppedExecution = true;
     return simulateSession(null, 1);
   }
 
@@ -453,7 +448,8 @@ public class MIPSprogram implements Program {
   /** Executes one instruction on the owning session's execution thread. */
   public ExecutionStep executeSessionInstruction() throws ProcessingException {
     try (var lease = assemblyContext.session().claimExecution()) {
-      return executeSessionInstructionStopped();
+      return edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution(
+          this::executeSessionInstructionStopped);
     }
   }
 
@@ -524,16 +520,6 @@ public class MIPSprogram implements Program {
       }
       return false;
     }
-  }
-
-  /**
-   * Will be true only while in process of simulating a program statement in step mode (e.g.
-   * returning to GUI after each step). This is used to prevent spurious AccessNotices from being
-   * sent from Memory and Register to observers at other times (e.g. while updating the data and
-   * register displays, while assembling program's data segment, etc).
-   */
-  public boolean inSteppedExecution() {
-    return steppedExecution;
   }
 
   /**

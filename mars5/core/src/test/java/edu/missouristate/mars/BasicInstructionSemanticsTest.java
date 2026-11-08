@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 /** Architectural test vectors: expected results are specified independently of instruction code. */
 class BasicInstructionSemanticsTest {
   static Stream<BasicInstruction> instructions() {
-    return InstructionRegistry.getAll().stream();
+    return new InstructionLoader().loadBasicInstructions().stream();
   }
 
   @ParameterizedTest(name = "{0}")

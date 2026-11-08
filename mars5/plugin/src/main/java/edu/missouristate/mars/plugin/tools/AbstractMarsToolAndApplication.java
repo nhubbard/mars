@@ -65,7 +65,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private final Consumer<RegisterAccessNotice> registerListener = this::handleAccess;
 
   protected void handleAccess(AccessNotice notice) {
-    if (notice.accessIsFromMIPS()) {
+    if (notice.origin() == edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
       processMIPSUpdate(notice);
       updateDisplay();
     }

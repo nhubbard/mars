@@ -339,7 +339,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
    */
   protected void processMIPSUpdate(AccessNotice notice) {
 
-    if (!notice.accessIsFromMIPS()) {
+    if (notice.origin() != edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
       return;
     }
 

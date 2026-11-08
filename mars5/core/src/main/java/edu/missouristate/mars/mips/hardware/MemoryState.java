@@ -1014,11 +1014,7 @@ public class MemoryState {
     return address >= memoryMapBaseAddress && address < kernelHighAddress;
   }
 
-  ///////////////////////////////////////////////////////////////////////////
-  //  ALL THE OBSERVABLE STUFF GOES HERE.  FOR COMPATIBILITY, Memory IS STILL
-  //  EXTENDING OBSERVABLE, BUT WILL NOT USE INHERITED METHODS.  WILL INSTEAD
-  //  USE A COLLECTION OF MemoryObserver OBJECTS, EACH OF WHICH IS COMBINATION
-  //  OF AN OBSERVER WITH AN ADDRESS RANGE.
+  // Typed memory listeners retain their individual address ranges.
 
   /** Register a listener for any memory address (full address space). */
   public void addObserver(Consumer<MemoryAccessNotice> callback) {

@@ -564,7 +564,7 @@ public class MarsLaunch {
       try {
         session.memory.addObserver(
             notice -> {
-              if (!notice.accessIsFromMIPS()) {
+              if (notice.origin() != edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
                 return;
               }
               if (notice.getAccessType() != AccessNotice.READ) {
