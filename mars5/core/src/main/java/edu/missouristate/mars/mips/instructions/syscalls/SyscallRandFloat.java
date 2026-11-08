@@ -54,6 +54,6 @@ public class SyscallRandFloat extends AbstractSyscall {
       stream = new Random(); // create a non-seeded stream
       RandomStreams.randomStreams.put(index, stream);
     }
-    context.coprocessor1.setRegisterToFloat(0, stream.nextFloat());
+    context.setRegisterToFloat(0, stream.nextFloat());
   }
 }

@@ -3,6 +3,7 @@ package edu.missouristate.mars.simulator;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
+import java.util.Objects;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -33,7 +34,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /**
- * Used to "step backward" through execution, undoing each instruction.
+ * Used to "step backward" through execution, undoing each instruction in its owning hardware. The
+ * no-argument constructor preserves the legacy hardware bindings. Framed session execution groups
+ * writes by instruction invocation, including repeated visits to the same statement.
  *
  * @author Pete Sanderson
  * @version February 2006
@@ -51,13 +54,26 @@ public class BackStepper {
   private static final int COPROC1_REGISTER_RESTORE = 7;
   private static final int COPROC1_CONDITION_CLEAR = 8;
   private static final int COPROC1_CONDITION_SET = 9;
+  private static final int HEAP_RESTORE = 11;
   private static final int DO_NOTHING = 10; // instruction does not write anything.
 
   // Flag to mark BackStep object as prepresenting specific situation: user manipulates
   // memory/register value via GUI after assembling program but before running it.
   private static final int NOT_PC_VALUE = -1;
 
-  private boolean engaged;
+  private volatile boolean engaged;
+  private final MemoryState memory;
+  private final IntegerRegisterFile registerFile;
+  private final Coprocessor0State coprocessor0;
+  private final Coprocessor1State coprocessor1;
+  private final DelayedBranchState delayedBranch;
+  private long nextFrame;
+  private long activeFrame;
+  private int framePc;
+  private ProgramStatement frameStatement;
+  private DelayedBranchState.Snapshot frameBranch;
+  private boolean frameDiscarded;
+  private boolean frameInDelaySlot;
   private final BackstepStack backSteps;
 
   // One can argue using java.util.Stack, given its clumsy implementation.
@@ -72,8 +88,69 @@ public class BackStepper {
    * will have their "undo" action recorded here.
    */
   public BackStepper() {
+    this(
+        Memory.getInstance().legacyState(),
+        RegisterFile.legacyState(),
+        Coprocessor0.legacyState(),
+        Coprocessor1.legacyState(),
+        DelayedBranch.legacyState(),
+        Globals.maximumBacksteps);
+  }
+
+  /** Creates an undo history bound to explicit hardware, without global simulation state. */
+  public BackStepper(
+      MemoryState memory,
+      IntegerRegisterFile registerFile,
+      Coprocessor0State coprocessor0,
+      Coprocessor1State coprocessor1,
+      DelayedBranchState delayedBranch,
+      int capacity) {
+    if (capacity < 1) throw new IllegalArgumentException("Backstep capacity must be positive");
+    this.memory = Objects.requireNonNull(memory);
+    this.registerFile = Objects.requireNonNull(registerFile);
+    this.coprocessor0 = Objects.requireNonNull(coprocessor0);
+    this.coprocessor1 = Objects.requireNonNull(coprocessor1);
+    this.delayedBranch = Objects.requireNonNull(delayedBranch);
     engaged = true;
-    backSteps = new BackstepStack(Globals.maximumBacksteps);
+    backSteps = new BackstepStack(capacity);
+  }
+
+  /** Starts one instruction's undo group before the program counter is incremented. */
+  public boolean beginInstruction(int pc, ProgramStatement statement) {
+    if (activeFrame != 0) throw new IllegalStateException("An instruction is already executing");
+    if (!engaged) return false;
+    Objects.requireNonNull(statement);
+    activeFrame = ++nextFrame;
+    framePc = pc;
+    frameStatement = statement;
+    frameBranch = delayedBranch.snapshot();
+    frameInDelaySlot = delayedBranch.isTriggered();
+    frameDiscarded = false;
+    return true;
+  }
+
+  /** Completes a group, retaining a step even for an instruction with no writes. */
+  public void endInstruction() {
+    if (activeFrame == 0) return;
+    try {
+      if (engaged
+          && !frameDiscarded
+          && (backSteps.empty() || backSteps.peek().frame != activeFrame)) {
+        backSteps.push(DO_NOTHING, framePc);
+      }
+    } finally {
+      activeFrame = 0;
+      frameStatement = null;
+      frameBranch = null;
+      frameDiscarded = false;
+    }
+  }
+
+  /** Clears history after loading a program or resetting session state. */
+  public void clear() {
+    if (activeFrame != 0)
+      throw new IllegalStateException("Cannot clear history during an instruction");
+    backSteps.clear();
   }
 
   /**
@@ -127,57 +204,41 @@ public class BackStepper {
   // Use a do-while loop based on the backstep's program statement reference.
 
   public void backStep() {
-    if (engaged && !backSteps.empty()) {
-      ProgramStatement statement = backSteps.peek().ps;
-      engaged =
-          false; // GOTTA DO THIS SO METHOD CALL IN SWITCH WILL NOT RESULT IN NEW ACTION ON STACK!
+    if (!engaged || backSteps.empty()) return;
+    if (activeFrame != 0) throw new IllegalStateException("Cannot undo an executing instruction");
+    BackStep first = backSteps.peek();
+    ProgramStatement statement = first.ps;
+    long frame = first.frame;
+    DelayedBranchState.Snapshot branch = first.branch;
+    engaged = false;
+    try {
       do {
         BackStep step = backSteps.pop();
-        if (step.pc != NOT_PC_VALUE) {
-          RegisterFile.setProgramCounter(step.pc);
+        if (step.pc != NOT_PC_VALUE) registerFile.setProgramCounter(step.pc);
+        switch (step.action) {
+          case MEMORY_RESTORE_RAW_WORD -> memory.setRawWord(step.param1, step.param2);
+          case MEMORY_RESTORE_WORD -> memory.setWord(step.param1, step.param2);
+          case MEMORY_RESTORE_HALF -> memory.setHalf(step.param1, step.param2);
+          case MEMORY_RESTORE_BYTE -> memory.setByte(step.param1, step.param2);
+          case REGISTER_RESTORE -> registerFile.updateRegister(step.param1, step.param2);
+          case PC_RESTORE -> registerFile.setProgramCounter(step.param1);
+          case COPROC0_REGISTER_RESTORE -> coprocessor0.updateRegister(step.param1, step.param2);
+          case COPROC1_REGISTER_RESTORE -> coprocessor1.updateRegister(step.param1, step.param2);
+          case COPROC1_CONDITION_CLEAR -> coprocessor1.clearConditionFlag(step.param1);
+          case COPROC1_CONDITION_SET -> coprocessor1.setConditionFlag(step.param1);
+          case HEAP_RESTORE -> memory.heapAddress = step.param1;
+          case DO_NOTHING -> {}
+          default -> throw new IllegalStateException("Unknown undo action: " + step.action);
         }
-        try {
-          switch (step.action) {
-            case MEMORY_RESTORE_RAW_WORD:
-              Globals.memory.setRawWord(step.param1, step.param2);
-              break;
-            case MEMORY_RESTORE_WORD:
-              Globals.memory.setWord(step.param1, step.param2);
-              break;
-            case MEMORY_RESTORE_HALF:
-              Globals.memory.setHalf(step.param1, step.param2);
-              break;
-            case MEMORY_RESTORE_BYTE:
-              Globals.memory.setByte(step.param1, step.param2);
-              break;
-            case REGISTER_RESTORE:
-              RegisterFile.updateRegister(step.param1, step.param2);
-              break;
-            case PC_RESTORE:
-              RegisterFile.setProgramCounter(step.param1);
-              break;
-            case COPROC0_REGISTER_RESTORE:
-              Coprocessor0.updateRegister(step.param1, step.param2);
-              break;
-            case COPROC1_REGISTER_RESTORE:
-              Coprocessor1.updateRegister(step.param1, step.param2);
-              break;
-            case COPROC1_CONDITION_CLEAR:
-              Coprocessor1.clearConditionFlag(step.param1);
-              break;
-            case COPROC1_CONDITION_SET:
-              Coprocessor1.setConditionFlag(step.param1);
-              break;
-            case DO_NOTHING:
-              break;
-          }
-        } catch (Exception e) {
-          // if the original action did not cause an exception this will not either.
-          System.out.println("Internal MARS error: address exception while back-stepping.");
-          System.exit(0);
-        }
-      } while (!backSteps.empty() && statement == backSteps.peek().ps);
-      engaged = true; // RESET IT (was disabled at top of loop -- see comment)
+      } while (!backSteps.empty()
+          && (frame != 0
+              ? backSteps.peek().frame == frame
+              : backSteps.peek().frame == 0 && statement == backSteps.peek().ps));
+      if (branch != null) delayedBranch.restore(branch);
+    } catch (AddressErrorException error) {
+      throw new IllegalStateException("Cannot restore memory while back-stepping", error);
+    } finally {
+      engaged = true;
     }
   }
 
@@ -187,7 +248,9 @@ public class BackStepper {
 
   private int pc() {
     // PC incremented prior to instruction simulation, so need to adjust for that.
-    return RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH;
+    return activeFrame == 0
+        ? registerFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH
+        : framePc;
   }
 
   /**
@@ -264,7 +327,7 @@ public class BackStepper {
    */
   public int addPCRestore(int value) {
     // adjust for value reflecting incremented PC.
-    value -= Instruction.INSTRUCTION_LENGTH;
+    value = activeFrame == 0 ? value - Instruction.INSTRUCTION_LENGTH : framePc;
     // Use "value" insead of "pc()" for second arg because RegisterFile.getProgramCounter()
     // returns branch target address at this point.
     backSteps.push(PC_RESTORE, value, value);
@@ -336,8 +399,15 @@ public class BackStepper {
     return 0;
   }
 
+  /** Records the previous heap position for a session's allocation syscall. */
+  public void addHeapRestore(int address) {
+    backSteps.push(HEAP_RESTORE, pc(), address);
+  }
+
   // Represents a "back step" (undo action) on the stack.
-  private static class BackStep {
+  private class BackStep {
+    private long frame;
+    private DelayedBranchState.Snapshot branch;
     private int action; // what do do MEMORY_RESTORE_WORD, etc
     private int pc; // program counter value when original step occurred
     private ProgramStatement ps; // statement whose action is being "undone" here
@@ -352,23 +422,23 @@ public class BackStepper {
     private void assign(int act, int programCounter, int parm1, int parm2) {
       action = act;
       pc = programCounter;
-      try {
-        // Client does not have direct access to program statement, and rather than making all
-        // of them go through the methods below to obtain it, we will do it here.
-        // Want the program statement but do not want observers notified.
-        ps = Globals.memory.getStatementNoNotify(programCounter);
-      } catch (Exception e) {
-        // The only situation causing this so far: user modifies memory or register
-        // contents through direct manipulation on the GUI, after assembling the program but
-        // before starting to run it (or after backstepping all the way to the start).
-        // The action will not be associated with any instruction, but will be carried out
-        // when popped.
-        ps = null;
-        pc = NOT_PC_VALUE; // Backstep method above will see this as flag to not set PC
+      frame = activeFrame;
+      branch = frameBranch;
+      if (frame != 0) {
+        pc = framePc;
+        ps = frameStatement;
+      } else {
+        try {
+          ps = memory.getStatementNoNotify(programCounter);
+        } catch (Exception error) {
+          ps = null;
+          pc = NOT_PC_VALUE;
+        }
       }
       param1 = parm1;
       param2 = parm2;
-      inDelaySlot = Simulator.inDelaySlot(); // ADDED 25 June 2007
+      inDelaySlot =
+          frame != 0 ? frameInDelaySlot : delayedBranch.isTriggered(); // ADDED 25 June 2007
     }
   }
 
@@ -385,7 +455,7 @@ public class BackStepper {
   // regardless of how many steps are executed.  This will speed things up a bit
   // and make life easier for the garbage collector.
 
-  private static class BackstepStack {
+  private class BackstepStack {
     private final int capacity;
     private int size;
     private int top;
@@ -405,11 +475,36 @@ public class BackStepper {
       }
     }
 
+    private synchronized void clear() {
+      size = 0;
+      top = -1;
+      for (BackStep step : stack) {
+        step.ps = null;
+        step.branch = null;
+        step.frame = 0;
+      }
+    }
+
     private synchronized boolean empty() {
       return size == 0;
     }
 
     private synchronized void push(int act, int programCounter, int parm1, int parm2) {
+      if (!engaged || (activeFrame != 0 && frameDiscarded)) return;
+      if (size == capacity && activeFrame != 0) {
+        long oldestFrame = stack[(top - size + 1 + capacity) % capacity].frame;
+        if (oldestFrame == activeFrame) {
+          // A single instruction exceeds the capacity. Keep no partial undo for that instruction.
+          clear();
+          frameDiscarded = true;
+          return;
+        }
+        do {
+          size--;
+        } while (size > 0
+            && oldestFrame != 0
+            && stack[(top - size + 1 + capacity) % capacity].frame == oldestFrame);
+      }
       if (size == 0) {
         top = 0;
         size++;

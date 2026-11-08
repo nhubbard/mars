@@ -76,7 +76,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
     inputValue = context.environment(env).showInputDialog(message);
 
     try {
-      context.coprocessor1.setRegisterPairToDouble(0, 0.0); // set $f0 to zero
+      context.setRegisterPairToDouble(0, 0.0); // set $f0 to zero
       if (inputValue == null) // Cancel was chosen
       {
         context.updateRegister(5, -2); // set $a1 to -2 flag
@@ -87,7 +87,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
         double doubleValue = Double.parseDouble(inputValue);
 
         // Successful parse of valid input data
-        context.coprocessor1.setRegisterPairToDouble(0, doubleValue); // set $f0 to input data
+        context.setRegisterPairToDouble(0, doubleValue); // set $f0 to input data
         context.updateRegister(5, 0); // set $a1 to valid flag
       }
 

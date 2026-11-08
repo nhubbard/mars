@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
+import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -56,6 +57,9 @@ public final class MarsContext {
   /** Instruction definitions used for this simulation's binary decoding. */
   public final InstructionSet instructionSet;
 
+  /** Undo history bound exclusively to this session's hardware. */
+  public final BackStepper backStepper;
+
   @Inject
   public MarsContext(
       SimulationSettings settings,
@@ -65,7 +69,8 @@ public final class MarsContext {
       Coprocessor1State coprocessor1,
       DelayedBranchState delayedBranch,
       MemoryState memory,
-      InstructionSet instructionSet) {
+      InstructionSet instructionSet,
+      BackStepper backStepper) {
     this.settings = settings;
     this.gui = gui;
     this.registerFile = registerFile;
@@ -74,6 +79,7 @@ public final class MarsContext {
     this.delayedBranch = delayedBranch;
     this.memory = memory;
     this.instructionSet = instructionSet;
+    this.backStepper = backStepper;
   }
 
   /**
@@ -82,6 +88,7 @@ public final class MarsContext {
    */
   public void setMemoryConfiguration(String identifier) {
     var configuration = MemoryConfigurations.createConfiguration(identifier);
+    backStepper.clear();
     memory.setConfiguration(configuration);
     memory.clear();
     settings.setMemoryConfiguration(configuration.configurationIdentifier());

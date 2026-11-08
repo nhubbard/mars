@@ -2,6 +2,7 @@ package edu.missouristate.mars.di;
 
 import dagger.Module;
 import dagger.Provides;
+import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsMemory;
@@ -16,6 +17,7 @@ import edu.missouristate.mars.mips.hardware.MemoryConfiguration;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
+import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import java.util.Objects;
 import javax.inject.Singleton;
@@ -31,6 +33,7 @@ import javax.inject.Singleton;
 @Module
 public final class CoreModule {
   private final Settings settings;
+  private final int maximumBacksteps;
 
   /** Creates a settings owner for this component, loading the existing user preferences. */
   public CoreModule() {
@@ -39,7 +42,15 @@ public final class CoreModule {
 
   /** Reuses a settings owner, e.g. Globals.getSettings() during legacy migration. */
   public CoreModule(Settings settings) {
+    this(settings, Globals.maximumBacksteps);
+  }
+
+  /** Configures a session's undo-history capacity independently of other components. */
+  public CoreModule(Settings settings, int maximumBacksteps) {
+    if (maximumBacksteps < 1)
+      throw new IllegalArgumentException("Backstep capacity must be positive");
     this.settings = Objects.requireNonNull(settings);
+    this.maximumBacksteps = maximumBacksteps;
   }
 
   @Provides
@@ -119,7 +130,18 @@ public final class CoreModule {
 
   @Provides
   @Singleton
-  static MarsMemory provideMarsMemory(MemoryState memory) {
-    return new MarsMemoryAdapter(memory);
+  static MarsMemory provideMarsMemory(MemoryState memory, BackStepper backStepper) {
+    return new MarsMemoryAdapter(memory, backStepper);
+  }
+
+  @Provides
+  @Singleton
+  BackStepper provideBackStepper(
+      MemoryState memory,
+      IntegerRegisterFile registers,
+      Coprocessor0State coprocessor0,
+      Coprocessor1State coprocessor1,
+      DelayedBranchState branch) {
+    return new BackStepper(memory, registers, coprocessor0, coprocessor1, branch, maximumBacksteps);
   }
 }

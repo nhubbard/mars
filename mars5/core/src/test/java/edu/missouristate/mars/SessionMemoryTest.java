@@ -38,10 +38,11 @@ class SessionMemoryTest {
       assertThat(statement.getInstruction().getName()).isEqualTo("addiu");
       assertThat(statement.getPrintableBasicAssemblyStatement()).contains("addiu");
       var context = new InstructionContext(session, new RecordingEnvironment());
-      ((BasicInstruction) statement.getInstruction())
-          .getSimulationCode()
-          .simulate(statement, context);
+      context.execute(statement);
       assertThat(session.registerFile.getValue(8)).isEqualTo(42);
+      session.backStepper.backStep();
+      assertThat(session.registerFile.getValue(8)).isZero();
+      assertThat(session.registerFile.getPC()).isEqualTo(session.memory.textBaseAddress);
       assertThat(Globals.instructionSet).isNull();
       assertThat(Globals.memory).isNull();
       assertThat(Globals.settings).isNull();
@@ -213,12 +214,8 @@ class SessionMemoryTest {
   private static boolean step(InstructionContext context) throws Exception {
     var statement = context.memory().getStatement(context.registerFile.getPC());
     assertThat(statement).isNotNull();
-    context.registerFile.incrementPC();
     try {
-      ((BasicInstruction) statement.getInstruction())
-          .getSimulationCode()
-          .simulate(statement, context);
-      context.completeInstruction();
+      context.execute(statement);
       return false;
     } catch (ProcessingException error) {
       if (error.errors() != null) throw error;

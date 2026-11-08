@@ -4,14 +4,21 @@ import edu.missouristate.mars.api.MarsMemory;
 import edu.missouristate.mars.api.MemoryAccessException;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.simulator.BackStepper;
 import java.util.Objects;
 
 /** Exposes session memory through the public API without leaking hardware-specific exceptions. */
 public final class MarsMemoryAdapter implements MarsMemory {
   private final MemoryState memory;
+  private final BackStepper backStepper;
 
   public MarsMemoryAdapter(MemoryState memory) {
+    this(memory, null);
+  }
+
+  public MarsMemoryAdapter(MemoryState memory, BackStepper backStepper) {
     this.memory = Objects.requireNonNull(memory);
+    this.backStepper = backStepper;
   }
 
   @Override
@@ -52,6 +59,7 @@ public final class MarsMemoryAdapter implements MarsMemory {
 
   @Override
   public void clear() {
+    if (backStepper != null) backStepper.clear();
     memory.clear();
   }
 

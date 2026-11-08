@@ -1,5 +1,7 @@
 package edu.missouristate.mars.simulator;
 
+import java.util.Objects;
+
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
 
@@ -66,6 +68,22 @@ public final class DelayedBranchState {
 
   private int state = CLEARED;
   private int branchTargetAddress = 0;
+
+  /** Immutable pending-branch state retained by an instruction's undo group. */
+  public record Snapshot(int state, int targetAddress) {}
+
+  public Snapshot snapshot() {
+    return new Snapshot(state, branchTargetAddress);
+  }
+
+  public void restore(Snapshot snapshot) {
+    Objects.requireNonNull(snapshot);
+    if (snapshot.state() < CLEARED || snapshot.state() > TRIGGERED) {
+      throw new IllegalArgumentException("Invalid delayed branch state");
+    }
+    state = snapshot.state();
+    branchTargetAddress = state == CLEARED ? 0 : snapshot.targetAddress();
+  }
 
   /**
    * Register the fact that a successful branch is to occur. This is called in the instruction's

@@ -57,7 +57,7 @@ public class SyscallRandDouble extends AbstractSyscall {
       RandomStreams.randomStreams.put(index, stream);
     }
     try {
-      context.coprocessor1.setRegisterPairToDouble(0, stream.nextDouble());
+      context.setRegisterPairToDouble(0, stream.nextDouble());
     } catch (InvalidRegisterAccessException e) { // register ID error in this method
       throw new ProcessingException(
           context,
