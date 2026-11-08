@@ -47,6 +47,8 @@ public class SettingsAssembleAllAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setAssembleAllEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.ASSEMBLE_ALL_ENABLED,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

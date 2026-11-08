@@ -137,7 +137,10 @@ public class RegisterFile {
 
   public static void resetRegisters() {
     legacyState().resetRegisters();
-    initializeProgramCounter(LegacyApplication.services().getSettings().getStartAtMain());
+    initializeProgramCounter(
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.START_AT_MAIN));
   }
 
   public static void incrementPC() {

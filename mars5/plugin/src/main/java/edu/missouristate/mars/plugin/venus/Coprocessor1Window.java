@@ -145,8 +145,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
           NumberDisplayBaseChooser.formatFloatNumber(
               registers[i].getValue(),
               NumberDisplayBaseChooser.getBase(
-                  settings
-                      .getDisplayValuesInHex())); // formatNumber(floatValue,NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex()));
+                  settings.getBooleanSetting(
+                      edu.missouristate.mars.Settings
+                          .DISPLAY_VALUES_IN_HEX))); // formatNumber(floatValue,NumberDisplayBaseChooser.getBase(settings.getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX)));
       if (i % 2 == 0) { // even numbered double registers
         long longValue = 0;
         try {
@@ -159,7 +160,10 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
         } // cannot happen since i must be even
         tableData[i][2] =
             NumberDisplayBaseChooser.formatDoubleNumber(
-                longValue, NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex()));
+                longValue,
+                NumberDisplayBaseChooser.getBase(
+                    settings.getBooleanSetting(
+                        edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX)));
       } else {
         tableData[i][2] = "";
       }
@@ -309,7 +313,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
               super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       cell.setFont(font);
       cell.setHorizontalAlignment(alignment);
-      if (settings.getRegistersHighlighting() && highlighting && row == highlightRow) {
+      if (settings.getBooleanSetting(edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING)
+          && highlighting
+          && row == highlightRow) {
         cell.setBackground(
             EditorSettings.of(settings)
                 .getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_BACKGROUND));

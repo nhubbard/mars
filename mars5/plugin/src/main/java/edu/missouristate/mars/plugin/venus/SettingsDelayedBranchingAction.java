@@ -52,7 +52,9 @@ public class SettingsDelayedBranchingAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setDelayedBranchingEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
     // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
     if (VenusUI.instance() != null
         && (FileStatus.get() == FileStatus.RUNNABLE

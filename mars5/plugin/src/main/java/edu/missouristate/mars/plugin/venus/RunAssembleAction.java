@@ -72,8 +72,13 @@ public class RunAssembleAction extends GuiAction {
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     RegistersPane registersPane = mainUI.getRegistersPane();
     extendedAssemblerEnabled =
-        LegacyApplication.services().getSettings().getExtendedAssemblerEnabled();
-    warningsAreErrors = LegacyApplication.services().getSettings().getWarningsAreErrors();
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED);
+    warningsAreErrors =
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS);
     if (FileStatus.getFile() != null) {
       if (FileStatus.get() == FileStatus.EDITED) {
         mainUI.editor.save();
@@ -83,7 +88,9 @@ public class RunAssembleAction extends GuiAction {
         ArrayList<String> filesToAssemble;
         if (LegacyApplication.services()
             .getSettings()
-            .getAssembleAllEnabled()) { // setting calls for multiple file assembly
+            .getBooleanSetting(
+                edu.missouristate.mars.Settings
+                    .ASSEMBLE_ALL_ENABLED)) { // setting calls for multiple file assembly
           filesToAssemble =
               FilenameFinder.getFilenameList(
                   new File(FileStatus.getName()).getParent(), LegacyMetadata.fileExtensions);
@@ -92,7 +99,9 @@ public class RunAssembleAction extends GuiAction {
           filesToAssemble.add(FileStatus.getName());
         }
         String exceptionHandler = null;
-        if (LegacyApplication.services().getSettings().getExceptionHandlerEnabled()
+        if (LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
             && LegacyApplication.services().getSettings().getExceptionHandler() != null
             && !LegacyApplication.services().getSettings().getExceptionHandler().isEmpty()) {
           exceptionHandler = LegacyApplication.services().getSettings().getExceptionHandler();

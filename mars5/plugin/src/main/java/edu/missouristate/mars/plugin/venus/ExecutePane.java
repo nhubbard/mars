@@ -70,13 +70,17 @@ public class ExecutePane extends JDesktopPane {
     addressDisplayBase =
         new NumberDisplayBaseChooser(
             "Hexadecimal Addresses",
-            LegacyApplication.services().getSettings().getDisplayAddressesInHex());
+            LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_ADDRESSES_IN_HEX));
     valueDisplayBase =
         new NumberDisplayBaseChooser(
             "Hexadecimal Values",
             LegacyApplication.services()
                 .getSettings()
-                .getDisplayValuesInHex()); // VenusUI.DEFAULT_NUMBER_BASE);
+                .getBooleanSetting(
+                    edu.missouristate.mars.Settings
+                        .DISPLAY_VALUES_IN_HEX)); // VenusUI.DEFAULT_NUMBER_BASE);
     addressDisplayBase.setToolTipText(
         "If checked, displays all memory addresses in hexadecimal.  Otherwise, decimal.");
     valueDisplayBase.setToolTipText(
@@ -89,7 +93,10 @@ public class ExecutePane extends JDesktopPane {
     textSegment = new TextSegmentWindow();
     dataSegment = new DataSegmentWindow(choosers);
     labelValues = new LabelsWindow();
-    labelWindowVisible = LegacyApplication.services().getSettings().getLabelWindowVisibility();
+    labelWindowVisible =
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.LABEL_WINDOW_VISIBILITY);
     layoutPending = false;
     this.add(textSegment); // these 3 LOC moved up.  DPS 3-Sept-2014
     this.add(dataSegment);

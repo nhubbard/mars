@@ -438,7 +438,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new EditSelectAllAction(
               "Select All",
               null, // new
-                    // ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath+"Find22.png"))),
+              // ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath+"Find22.png"))),
               "Select All",
               KeyEvent.VK_A,
               KeyStroke.getKeyStroke(
@@ -841,7 +841,9 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     JCheckBoxMenuItem settingsLabel = new JCheckBoxMenuItem(settingsLabelAction);
     settingsLabel.setSelected(
-        LegacyApplication.services().getSettings().getLabelWindowVisibility());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.LABEL_WINDOW_VISIBILITY));
     JCheckBoxMenuItem settingsPopupInput = new JCheckBoxMenuItem(settingsPopupInputAction);
     settingsPopupInput.setSelected(
         LegacyApplication.services().getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT));
@@ -849,7 +851,9 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     settingsValueDisplayBase.setSelected(
         LegacyApplication.services()
             .getSettings()
-            .getDisplayValuesInHex()); // mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
+            .getBooleanSetting(
+                edu.missouristate.mars.Settings
+                    .DISPLAY_VALUES_IN_HEX)); // mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
     // Tell the corresponding JCheckBox in the Execute Pane about me -- it has already been created.
     mainPane
         .getExecutePane()
@@ -859,7 +863,9 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     settingsAddressDisplayBase.setSelected(
         LegacyApplication.services()
             .getSettings()
-            .getDisplayAddressesInHex()); // mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
+            .getBooleanSetting(
+                edu.missouristate.mars.Settings
+                    .DISPLAY_ADDRESSES_IN_HEX)); // mainPane.getExecutePane().getValueDisplayBaseChooser().isSelected());
     // Tell the corresponding JCheckBox in the Execute Pane about me -- it has already been created.
     mainPane
         .getExecutePane()
@@ -867,11 +873,15 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         .setSettingsMenuItem(settingsAddressDisplayBase);
     JCheckBoxMenuItem settingsExtended = new JCheckBoxMenuItem(settingsExtendedAction);
     settingsExtended.setSelected(
-        LegacyApplication.services().getSettings().getExtendedAssemblerEnabled());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED));
     JCheckBoxMenuItem settingsDelayedBranching =
         new JCheckBoxMenuItem(settingsDelayedBranchingAction);
     settingsDelayedBranching.setSelected(
-        LegacyApplication.services().getSettings().getDelayedBranchingEnabled());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED));
     JCheckBoxMenuItem settingsSelfModifyingCode =
         new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
     settingsSelfModifyingCode.setSelected(
@@ -880,20 +890,31 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
             .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     JCheckBoxMenuItem settingsAssembleOnOpen = new JCheckBoxMenuItem(settingsAssembleOnOpenAction);
     settingsAssembleOnOpen.setSelected(
-        LegacyApplication.services().getSettings().getAssembleOnOpenEnabled());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED));
     JCheckBoxMenuItem settingsAssembleAll = new JCheckBoxMenuItem(settingsAssembleAllAction);
     settingsAssembleAll.setSelected(
-        LegacyApplication.services().getSettings().getAssembleAllEnabled());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ALL_ENABLED));
     JCheckBoxMenuItem settingsWarningsAreErrors =
         new JCheckBoxMenuItem(settingsWarningsAreErrorsAction);
     settingsWarningsAreErrors.setSelected(
-        LegacyApplication.services().getSettings().getWarningsAreErrors());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
     JCheckBoxMenuItem settingsStartAtMain = new JCheckBoxMenuItem(settingsStartAtMainAction);
-    settingsStartAtMain.setSelected(LegacyApplication.services().getSettings().getStartAtMain());
+    settingsStartAtMain.setSelected(
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.START_AT_MAIN));
     JCheckBoxMenuItem settingsProgramArguments =
         new JCheckBoxMenuItem(settingsProgramArgumentsAction);
     settingsProgramArguments.setSelected(
-        LegacyApplication.services().getSettings().getProgramArguments());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS));
     JMenuItem settingsEditor = new JMenuItem(settingsEditorAction);
     JMenuItem settingsHighlighting = new JMenuItem(settingsHighlightingAction);
     JMenuItem settingsExceptionHandler = new JMenuItem(settingsExceptionHandlerAction);

@@ -79,19 +79,8 @@ public class SyntaxStyle {
   }
 
   /** Returns the font metrics for the styled font. */
-  public FontMetrics getFontMetrics(Font font) {
-    if (font == null) {
-      throw new NullPointerException("font param must not" + " be null");
-    }
-    if (font.equals(lastFont) && fontMetrics != null) {
-      return fontMetrics;
-    }
-    lastFont = font;
-    lastStyledFont =
-        new Font(
-            font.getFamily(), (bold ? Font.BOLD : 0) | (italic ? Font.ITALIC : 0), font.getSize());
-    fontMetrics = Toolkit.getDefaultToolkit().getFontMetrics(lastStyledFont);
-    return fontMetrics;
+  public FontMetrics getFontMetrics(Font font, Component component) {
+    return component.getFontMetrics(getStyledFont(font));
   }
 
   /**
@@ -123,5 +112,4 @@ public class SyntaxStyle {
   private final boolean bold;
   private Font lastFont;
   private Font lastStyledFont;
-  private FontMetrics fontMetrics;
 }

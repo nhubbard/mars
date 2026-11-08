@@ -51,6 +51,8 @@ public class SettingsValueDisplayBaseAction extends GuiAction {
         .getExecutePane()
         .getValueDisplayBaseChooser()
         .setSelected(isHex);
-    LegacyApplication.services().getSettings().setDisplayValuesInHex(isHex);
+    LegacyApplication.services()
+        .getSettings()
+        .setBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX, isHex);
   }
 }

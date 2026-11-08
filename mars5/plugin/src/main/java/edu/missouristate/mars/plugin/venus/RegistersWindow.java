@@ -101,7 +101,9 @@ public class RegistersWindow extends JPanel {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    int valueBase = NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex());
+    int valueBase =
+        NumberDisplayBaseChooser.getBase(
+            settings.getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX));
     Object[][] tableData = new Object[35][3];
     registers = LegacyApplication.services().context().registerFile.getRegisters();
     for (int i = 0; i < registers.length; i++) {
@@ -265,7 +267,9 @@ public class RegistersWindow extends JPanel {
               super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       cell.setFont(font);
       cell.setHorizontalAlignment(alignment);
-      if (settings.getRegistersHighlighting() && highlighting && row == highlightRow) {
+      if (settings.getBooleanSetting(edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING)
+          && highlighting
+          && row == highlightRow) {
         cell.setBackground(
             EditorSettings.of(settings)
                 .getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_BACKGROUND));

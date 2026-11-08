@@ -47,6 +47,8 @@ public class SettingsExtendedAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setExtendedAssemblerEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

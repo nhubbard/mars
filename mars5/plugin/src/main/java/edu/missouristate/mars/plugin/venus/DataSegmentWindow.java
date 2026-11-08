@@ -1081,7 +1081,7 @@ public class DataSegmentWindow extends JInternalFrame {
 
       cell.setHorizontalAlignment(SwingConstants.RIGHT);
       int rowFirstAddress = Binary.stringToInt(table.getValueAt(row, ADDRESS_COLUMN).toString());
-      if (settings.getDataSegmentHighlighting()
+      if (settings.getBooleanSetting(edu.missouristate.mars.Settings.DATA_SEGMENT_HIGHLIGHTING)
           && addressHighlighting
           && rowFirstAddress == addressRowFirstAddress
           && column == addressColumn) {

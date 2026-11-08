@@ -111,7 +111,9 @@ public class Coprocessor0Window extends JPanel {
       tableData[i][2] =
           NumberDisplayBaseChooser.formatNumber(
               registers[i].getValue(),
-              NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex()));
+              NumberDisplayBaseChooser.getBase(
+                  settings.getBooleanSetting(
+                      edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX)));
     }
     return tableData;
   }
@@ -227,7 +229,9 @@ public class Coprocessor0Window extends JPanel {
               super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       cell.setFont(font);
       cell.setHorizontalAlignment(alignment);
-      if (settings.getRegistersHighlighting() && highlighting && row == highlightRow) {
+      if (settings.getBooleanSetting(edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING)
+          && highlighting
+          && row == highlightRow) {
         cell.setBackground(
             EditorSettings.of(settings)
                 .getColorSettingByPosition(Settings.REGISTER_HIGHLIGHT_BACKGROUND));

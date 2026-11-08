@@ -203,7 +203,9 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !LegacyApplication.services().getSettings().getProgramArguments()) {
+        || !LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
     new ProgramArgumentList(programArguments)

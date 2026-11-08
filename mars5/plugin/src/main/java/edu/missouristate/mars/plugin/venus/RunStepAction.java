@@ -136,7 +136,9 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !LegacyApplication.services().getSettings().getProgramArguments()) {
+        || !LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
     new ProgramArgumentList(programArguments)

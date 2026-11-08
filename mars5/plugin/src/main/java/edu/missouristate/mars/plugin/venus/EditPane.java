@@ -145,7 +145,9 @@ public class EditPane extends JPanel {
     showLineNumbers.setEnabled(false);
     // Show line numbers by default.
     showLineNumbers.setSelected(
-        LegacyApplication.services().getSettings().getEditorLineNumbersDisplayed());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED));
 
     this.setSourceCode("", false);
 
@@ -167,7 +169,9 @@ public class EditPane extends JPanel {
           sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
           LegacyApplication.services()
               .getSettings()
-              .setEditorLineNumbersDisplayed(showLineNumbers.isSelected());
+              .setBooleanSetting(
+                  edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED,
+                  showLineNumbers.isSelected());
           // needed because caret disappears when checkbox clicked
           sourceCode.setCaretVisible(true);
           sourceCode.requestFocusInWindow();

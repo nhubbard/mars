@@ -173,7 +173,9 @@ public class SyntaxUtilities {
       }
       line.count = length;
 
-      x = Utilities.drawTabbedText(line, x, y, gfx, expander, 0);
+      x =
+          Math.round(
+              Utilities.drawTabbedText(line, (float) x, (float) y, (Graphics2D) gfx, expander, 0));
       line.offset += length;
       offset += length;
 

@@ -461,7 +461,7 @@ public class JEditTextArea extends JComponent {
     /* If syntax coloring is disabled, do simple translation */
     if (tokenMarker == null) {
       lineSegment.count = offset;
-      return x + Utilities.getTabbedTextWidth(lineSegment, fm, x, painter, 0);
+      return x + Math.round(Utilities.getTabbedTextWidth(lineSegment, fm, (float) x, painter, 0));
     }
     /* If syntax coloring is enabled, we have to do this because
      * tokens can vary in width */
@@ -474,7 +474,6 @@ public class JEditTextArea extends JComponent {
         tokens = painter.currentLineTokens = tokenMarker.markTokens(lineSegment, line);
       }
 
-      Toolkit toolkit = painter.getToolkit();
       Font defaultFont = painter.getFont();
       SyntaxStyle[] styles = painter.getStyles();
 
@@ -487,17 +486,18 @@ public class JEditTextArea extends JComponent {
         if (id == Token.NULL) {
           fm = painter.getFontMetrics();
         } else {
-          fm = styles[id].getFontMetrics(defaultFont);
+          fm = styles[id].getFontMetrics(defaultFont, painter);
         }
 
         int length = tokens.length;
 
         if (offset + segmentOffset < lineSegment.offset + length) {
           lineSegment.count = offset - (lineSegment.offset - segmentOffset);
-          return x + Utilities.getTabbedTextWidth(lineSegment, fm, x, painter, 0);
+          return x
+              + Math.round(Utilities.getTabbedTextWidth(lineSegment, fm, (float) x, painter, 0));
         } else {
           lineSegment.count = length;
-          x += Utilities.getTabbedTextWidth(lineSegment, fm, x, painter, 0);
+          x += Math.round(Utilities.getTabbedTextWidth(lineSegment, fm, (float) x, painter, 0));
           lineSegment.offset += length;
         }
         tokens = tokens.next;
@@ -559,7 +559,6 @@ public class JEditTextArea extends JComponent {
       }
 
       int offset = 0;
-      Toolkit toolkit = painter.getToolkit();
       Font defaultFont = painter.getFont();
       SyntaxStyle[] styles = painter.getStyles();
 
@@ -572,7 +571,7 @@ public class JEditTextArea extends JComponent {
         if (id == Token.NULL) {
           fm = painter.getFontMetrics();
         } else {
-          fm = styles[id].getFontMetrics(defaultFont);
+          fm = styles[id].getFontMetrics(defaultFont, painter);
         }
 
         int length = tokens.length;

@@ -50,6 +50,8 @@ public class SettingsAddressDisplayBaseAction extends GuiAction {
         .getExecutePane()
         .getAddressDisplayBaseChooser()
         .setSelected(isHex);
-    LegacyApplication.services().getSettings().setDisplayAddressesInHex(isHex);
+    LegacyApplication.services()
+        .getSettings()
+        .setBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_ADDRESSES_IN_HEX, isHex);
   }
 }

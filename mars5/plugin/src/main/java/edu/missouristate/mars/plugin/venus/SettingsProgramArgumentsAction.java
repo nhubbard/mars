@@ -46,7 +46,9 @@ public class SettingsProgramArgumentsAction extends GuiAction {
 
   public void actionPerformed(ActionEvent e) {
     boolean selected = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-    LegacyApplication.services().getSettings().setProgramArguments(selected);
+    LegacyApplication.services()
+        .getSettings()
+        .setBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS, selected);
     if (selected) {
       VenusUI.instance()
           .getMainPane()

@@ -44,6 +44,8 @@ public class SettingsAssembleOnOpenAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setAssembleOnOpenEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

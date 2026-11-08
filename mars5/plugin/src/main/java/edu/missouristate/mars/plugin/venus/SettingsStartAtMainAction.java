@@ -47,6 +47,8 @@ public class SettingsStartAtMainAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setStartAtMain(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.START_AT_MAIN,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

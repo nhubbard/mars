@@ -632,7 +632,9 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private class CreateAssembleRunMIPSprogram implements Runnable {
     public void run() {
       String exceptionHandler = null;
-      if (LegacyApplication.services().getSettings().getExceptionHandlerEnabled()
+      if (LegacyApplication.services()
+              .getSettings()
+              .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
           && LegacyApplication.services().getSettings().getExceptionHandler() != null
           && !LegacyApplication.services().getSettings().getExceptionHandler().isEmpty()) {
         exceptionHandler = LegacyApplication.services().getSettings().getExceptionHandler();
@@ -667,8 +669,12 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
       try {
         program.assemble(
             programsToAssemble,
-            LegacyApplication.services().getSettings().getExtendedAssemblerEnabled(),
-            LegacyApplication.services().getSettings().getWarningsAreErrors());
+            LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED),
+            LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
       } catch (ProcessingException pe) {
         operationStatusMessages.displayTerminatingMessage("Assembly Error: " + fileToAssemble);
         return;

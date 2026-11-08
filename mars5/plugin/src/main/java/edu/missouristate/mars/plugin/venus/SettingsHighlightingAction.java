@@ -325,9 +325,11 @@ public class SettingsHighlightingAction extends GuiAction {
       fontButtons[i].setEnabled(!usingDefaults);
     }
     currentDataHighlightSetting =
-        initialDataHighlightSetting = settings.getDataSegmentHighlighting();
+        initialDataHighlightSetting =
+            settings.getBooleanSetting(edu.missouristate.mars.Settings.DATA_SEGMENT_HIGHLIGHTING);
     currentRegisterHighlightSetting =
-        initialRegisterHighlightSetting = settings.getRegistersHighlighting();
+        initialRegisterHighlightSetting =
+            settings.getBooleanSetting(edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING);
   }
 
   // Set the color settings according to current button colors.  Occurs when "Apply" selected.
@@ -344,8 +346,10 @@ public class SettingsHighlightingAction extends GuiAction {
           .setFontByPosition(
               fontSettingPositions[i], samples[i].getFont()); // fontButtons[i].getFont());
     }
-    settings.setDataSegmentHighlighting(currentDataHighlightSetting);
-    settings.setRegistersHighlighting(currentRegisterHighlightSetting);
+    settings.setBooleanSetting(
+        edu.missouristate.mars.Settings.DATA_SEGMENT_HIGHLIGHTING, currentDataHighlightSetting);
+    settings.setBooleanSetting(
+        edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING, currentRegisterHighlightSetting);
     ExecutePane executePane = VenusUI.instance().getMainPane().getExecutePane();
     executePane.getRegistersWindow().refresh();
     executePane.getCoprocessor0Window().refresh();

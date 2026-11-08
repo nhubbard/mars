@@ -47,6 +47,8 @@ public class SettingsWarningsAreErrorsAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     LegacyApplication.services()
         .getSettings()
-        .setWarningsAreErrors(((JCheckBoxMenuItem) e.getSource()).isSelected());
+        .setBooleanSetting(
+            edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS,
+            ((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

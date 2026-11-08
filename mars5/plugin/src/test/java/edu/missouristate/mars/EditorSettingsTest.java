@@ -28,6 +28,20 @@ class EditorSettingsTest {
     assertNull(editor.getColorSettingByPosition(-1));
   }
 
+  @Test
+  void syntaxDefaultsBelongToEachSettingsOwner() {
+    var first = new Settings(new MemoryPreferences());
+    first.initializeSyntaxStyleDefaults(
+        new String[] {"0x112233"}, new boolean[] {true}, new boolean[] {false});
+    var second = new Settings(new MemoryPreferences());
+    second.initializeSyntaxStyleDefaults(
+        new String[] {"0x445566"}, new boolean[] {false}, new boolean[] {true});
+    assertEquals(0x112233, first.getEditorSyntaxStyleColorByPosition(0));
+    assertEquals(0x445566, second.getEditorSyntaxStyleColorByPosition(0));
+    assertTrue(first.getEditorSyntaxStyleBoldByPosition(0));
+    assertFalse(second.getEditorSyntaxStyleBoldByPosition(0));
+  }
+
   private static final class MemoryPreferences extends AbstractPreferences {
     private final Map<String, String> values = new HashMap<>();
 

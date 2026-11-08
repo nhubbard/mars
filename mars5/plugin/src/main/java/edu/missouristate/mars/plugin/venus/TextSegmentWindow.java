@@ -201,7 +201,9 @@ public class TextSegmentWindow extends JInternalFrame {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
     contentPane.add(tableScroller);
-    if (LegacyApplication.services().getSettings().getProgramArguments()) {
+    if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       addProgramArgumentsPanel();
     }
 

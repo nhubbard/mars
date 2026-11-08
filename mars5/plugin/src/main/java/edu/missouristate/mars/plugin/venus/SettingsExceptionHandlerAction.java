@@ -54,7 +54,10 @@ public class SettingsExceptionHandlerAction extends GuiAction {
 
   // launch dialog for setting and filename specification
   public void actionPerformed(ActionEvent e) {
-    initialSelected = LegacyApplication.services().getSettings().getExceptionHandlerEnabled();
+    initialSelected =
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED);
     initialPathname = LegacyApplication.services().getSettings().getExceptionHandler();
     exceptionHandlerDialog = new JDialog(VenusUI.instance(), "Exception Handler", true);
     exceptionHandlerDialog.setContentPane(buildDialogPanel());
@@ -78,7 +81,9 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     exceptionHandlerSetting =
         new JCheckBox("Include this exception handler file in all assemble operations");
     exceptionHandlerSetting.setSelected(
-        LegacyApplication.services().getSettings().getExceptionHandlerEnabled());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED));
     exceptionHandlerSetting.addActionListener(new ExceptionHandlerSettingAction());
     contents.add(exceptionHandlerSetting, BorderLayout.NORTH);
     // Middle row - the button and text field for exception handler file selection
@@ -120,7 +125,10 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     if (initialSelected != finalSelected
         || initialPathname == null && finalPathname != null
         || initialPathname != null && !initialPathname.equals(finalPathname)) {
-      LegacyApplication.services().getSettings().setExceptionHandlerEnabled(finalSelected);
+      LegacyApplication.services()
+          .getSettings()
+          .setBooleanSetting(
+              edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED, finalSelected);
       if (finalSelected) {
         LegacyApplication.services().getSettings().setExceptionHandler(finalPathname);
       }

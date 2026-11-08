@@ -218,7 +218,9 @@ public class MIPSTokenMarker extends TokenMarker {
         int realMatches = 0;
         matches = new ArrayList<>();
         for (Instruction inst : instrMatches) {
-          if (LegacyApplication.services().getSettings().getExtendedAssemblerEnabled()
+          if (LegacyApplication.services()
+                  .getSettings()
+                  .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
               || inst instanceof BasicInstruction) {
             matches.add(
                 new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
@@ -408,7 +410,9 @@ public class MIPSTokenMarker extends TokenMarker {
     HashMap<String, String> insts = new HashMap<>();
     TreeSet<String> mnemonics = new TreeSet<>();
     for (Instruction inst : matches) {
-      if (LegacyApplication.services().getSettings().getExtendedAssemblerEnabled()
+      if (LegacyApplication.services()
+              .getSettings()
+              .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
           || inst instanceof BasicInstruction) {
         if (exact) {
           results.add(
