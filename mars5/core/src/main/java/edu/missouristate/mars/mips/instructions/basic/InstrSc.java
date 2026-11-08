@@ -17,7 +17,7 @@ public class InstrSc extends BasicInstruction {
         (statement, context) -> {
           int[] operands = statement.getOperands();
           try {
-            Globals.memory.setWord(
+            context.setMemoryWord(
                 context.registerFile.getValue(operands[2]) + operands[1],
                 context.registerFile.getValue(operands[0]));
           } catch (AddressErrorException e) {

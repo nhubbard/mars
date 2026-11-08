@@ -21,7 +21,7 @@ public class InstrSwr extends BasicInstruction {
             int address = context.registerFile.getValue(operands[2]) + operands[1];
             int source = context.registerFile.getValue(operands[0]);
             for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
-              Globals.memory.setByte(address + i, Binary.getByte(source, i));
+              context.setMemoryByte(address + i, Binary.getByte(source, i));
             }
           } catch (AddressErrorException e) {
             throw new ProcessingException(context, statement, e);

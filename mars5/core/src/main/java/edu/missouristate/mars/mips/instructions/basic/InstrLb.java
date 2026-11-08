@@ -17,8 +17,10 @@ public class InstrLb extends BasicInstruction {
           try {
             context.updateRegister(
                 operands[0],
-                Globals.memory.getByte(
-                        context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
+                context
+                        .memory()
+                        .getByte(
+                            context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
                     << 24
                     >> 24);
           } catch (AddressErrorException e) {

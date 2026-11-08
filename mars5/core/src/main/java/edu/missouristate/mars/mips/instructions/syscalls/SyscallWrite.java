@@ -58,13 +58,13 @@ public class SyscallWrite extends AbstractSyscall {
     byte[] myBuffer =
         new byte[context.registerFile.getValue(6) + 1]; // specified length plus null termination
     try {
-      b = (byte) Globals.memory.getByte(byteAddress);
+      b = (byte) context.memory().getByte(byteAddress);
       while (index < reqLength) // Stop at requested length. Null bytes are included.
       // while (index < reqLength && b != 0) // Stop at requested length OR null byte
       {
         myBuffer[index++] = b;
         byteAddress++;
-        b = (byte) Globals.memory.getByte(byteAddress);
+        b = (byte) context.memory().getByte(byteAddress);
       }
 
       myBuffer[index] = 0; // Add string termination

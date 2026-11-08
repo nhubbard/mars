@@ -128,8 +128,12 @@ public abstract class Instruction {
    * Parser uses this for syntax checking. *
    */
   protected void createExampleTokenList() {
+    createExampleTokenList(null);
+  }
+
+  protected void createExampleTokenList(InstructionSet instructions) {
     try {
-      tokenList = ((new Tokenizer()).tokenizeExampleInstruction(exampleFormat));
+      tokenList = new Tokenizer(null, instructions).tokenizeExampleInstruction(exampleFormat);
     } catch (ProcessingException pe) {
       System.out.println(
           "CONFIGURATION ERROR: Instruction example \""

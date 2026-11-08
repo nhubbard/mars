@@ -48,12 +48,12 @@ public class SyscallPrintString extends AbstractSyscall {
     int byteAddress = context.registerFile.getValue(4);
     char ch;
     try {
-      ch = (char) Globals.memory.getByte(byteAddress);
+      ch = (char) context.memory().getByte(byteAddress);
       // won't stop until NULL byte reached!
       while (ch != 0) {
         context.environment(env).printChar(ch);
         byteAddress++;
-        ch = (char) Globals.memory.getByte(byteAddress);
+        ch = (char) context.memory().getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);

@@ -4,6 +4,9 @@ import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
+import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,8 +26,8 @@ import javax.inject.Singleton;
  * }</pre>
  *
  * <p><b>Migration note.</b> As core classes are moved from the legacy {@code Globals} statics to
- * this context, add them as constructor parameters and expose them via final fields. The assembler,
- * memory, and simulator fields will be added here in later migration phases.
+ * this context, add them as constructor parameters and expose them via final fields. The assembler
+ * and simulator fields will be added here in later migration phases.
  */
 @Singleton
 public final class MarsContext {
@@ -47,6 +50,12 @@ public final class MarsContext {
   /** Pending branch and delay-slot state owned by this simulation. */
   public final DelayedBranchState delayedBranch;
 
+  /** Memory contents, heap, observers, and address layout owned by this simulation. */
+  public final MemoryState memory;
+
+  /** Instruction definitions used for this simulation's binary decoding. */
+  public final InstructionSet instructionSet;
+
   @Inject
   public MarsContext(
       SimulationSettings settings,
@@ -54,14 +63,32 @@ public final class MarsContext {
       IntegerRegisterFile registerFile,
       Coprocessor0State coprocessor0,
       Coprocessor1State coprocessor1,
-      DelayedBranchState delayedBranch) {
+      DelayedBranchState delayedBranch,
+      MemoryState memory,
+      InstructionSet instructionSet) {
     this.settings = settings;
     this.gui = gui;
     this.registerFile = registerFile;
     this.coprocessor0 = coprocessor0;
     this.coprocessor1 = coprocessor1;
     this.delayedBranch = delayedBranch;
-    // TODO(phase-2+): add Memory, InstructionSet, Simulator as constructor params
-    //                 once their implementations live in mars-core.
+    this.memory = memory;
+    this.instructionSet = instructionSet;
+  }
+
+  /**
+   * Switches this session's address layout and resets its memory and integer registers. Call only
+   * while execution is stopped. Other sessions and legacy memory are unaffected.
+   */
+  public void setMemoryConfiguration(String identifier) {
+    var configuration = MemoryConfigurations.createConfiguration(identifier);
+    memory.setConfiguration(configuration);
+    memory.clear();
+    settings.setMemoryConfiguration(configuration.configurationIdentifier());
+    registerFile.getUserRegister("$gp").changeResetValue(configuration.getGlobalPointer());
+    registerFile.getUserRegister("$sp").changeResetValue(configuration.getStackPointer());
+    registerFile.getProgramCounterRegister().changeResetValue(configuration.getTextBaseAddress());
+    registerFile.reset();
+    delayedBranch.clear();
   }
 }

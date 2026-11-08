@@ -3,11 +3,13 @@ package edu.missouristate.mars.core;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.api.SyscallEnvironment;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.simulator.DelayedBranch;
@@ -16,14 +18,13 @@ import edu.missouristate.mars.util.Binary;
 import java.util.Objects;
 
 /**
- * Explicit register, branch, settings, and I/O dependencies for an instruction invocation.
+ * Explicit register, memory, branch, settings, and I/O dependencies for an instruction invocation.
  * Instructions use the supplied session rather than consulting the static register facades.
  *
  * <p>The legacy context uses the existing process-global banks and records undo operations through
  * their compatibility facades. Session contexts operate on their own banks without consulting a
- * global program's back-stepper. Memory, assembly ownership, and some syscall services still use
- * legacy global state and will be migrated separately; this is not yet a complete simulator
- * session.
+ * global program's back-stepper. Assembly ownership and some syscall services still use legacy
+ * global state and will be migrated separately; this is not yet a complete simulator session.
  */
 public final class InstructionContext {
   public final IntegerRegisterFile registerFile;
@@ -105,6 +106,35 @@ public final class InstructionContext {
     return session == null
         ? Coprocessor1.clearConditionFlag(flag)
         : coprocessor1.clearConditionFlag(flag);
+  }
+
+  /** Memory belonging to this invocation, including its address layout and heap. */
+  public MemoryState memory() {
+    return session == null ? Globals.memory.legacyState() : session.memory;
+  }
+
+  public int setMemoryWord(int address, int value) throws AddressErrorException {
+    return session == null
+        ? Globals.memory.setWord(address, value)
+        : session.memory.setWord(address, value);
+  }
+
+  public int setMemoryHalf(int address, int value) throws AddressErrorException {
+    return session == null
+        ? Globals.memory.setHalf(address, value)
+        : session.memory.setHalf(address, value);
+  }
+
+  public int setMemoryByte(int address, int value) throws AddressErrorException {
+    return session == null
+        ? Globals.memory.setByte(address, value)
+        : session.memory.setByte(address, value);
+  }
+
+  public int allocateBytesFromHeap(int bytes) {
+    return session == null
+        ? Globals.memory.allocateBytesFromHeap(bytes)
+        : session.memory.allocateBytesFromHeap(bytes);
   }
 
   /** Completes a branch-delay cycle using the same protocol as the legacy simulator. */

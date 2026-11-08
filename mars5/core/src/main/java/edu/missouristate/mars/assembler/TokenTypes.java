@@ -2,6 +2,7 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.util.*;
 
 /*
@@ -99,6 +100,11 @@ public final class TokenTypes {
    *     token type, else returns <code>null</code>.
    */
   public static TokenTypes matchTokenType(String value) {
+    return matchTokenType(value, Globals.instructionSet);
+  }
+
+  /** Classifies an operator using an explicit instruction set. */
+  public static TokenTypes matchTokenType(String value, InstructionSet instructions) {
 
     TokenTypes type = null;
     // If it starts with single quote ('), it is a mal-formed character literal
@@ -211,7 +217,7 @@ public final class TokenTypes {
     }
 
     // See if it is an instruction operator
-    if (Globals.instructionSet.matchOperator(value) != null) return TokenTypes.OPERATOR;
+    if (instructions.matchOperator(value) != null) return TokenTypes.OPERATOR;
 
     // See if it is a directive
     if (value.charAt(0) == '.' && Directives.matchDirective(value) != null) {

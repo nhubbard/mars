@@ -4,7 +4,6 @@ import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
-
 import java.util.*;
 
 /*
@@ -108,19 +107,24 @@ public class ProgramStatement {
    *     statement is stored.
    */
   public ProgramStatement(int binaryStatement, int textAddress) {
+    this(binaryStatement, textAddress, Globals.instructionSet);
+  }
+
+  /** Decodes binary code using the owning session's instruction set. */
+  public ProgramStatement(int binaryStatement, int textAddress, InstructionSet instructions) {
     this.sourceMIPSprogram = null;
     this.binaryStatement = binaryStatement;
     this.textAddress = textAddress;
     this.originalTokenList = this.strippedTokenList = null;
     this.source = "";
     this.machineStatement = this.basicAssemblyStatement = null;
-    BasicInstruction instr = Globals.instructionSet.findByBinaryCode(binaryStatement);
+    BasicInstruction instr = instructions.findByBinaryCode(binaryStatement);
     if (instr == null) {
       this.operands = null;
       this.numOperands = 0;
       this.instruction =
           (binaryStatement == 0) // this is a "nop" statement
-              ? Globals.instructionSet.matchOperator("nop").getFirst()
+              ? instructions.matchOperator("nop").getFirst()
               : null;
     } else {
       this.operands = new int[4];
@@ -736,12 +740,15 @@ public class ProgramStatement {
     }
 
     public String toString() {
+      Settings displaySettings = Globals.getSettings();
       int addressBase =
-          (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX))
+          (displaySettings == null
+                  || displaySettings.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX))
               ? NumberDisplayBase.HEXADECIMAL
               : NumberDisplayBase.DECIMAL;
       int valueBase =
-          (Globals.getSettings().getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX))
+          (displaySettings == null
+                  || displaySettings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX))
               ? NumberDisplayBase.HEXADECIMAL
               : NumberDisplayBase.DECIMAL;
 

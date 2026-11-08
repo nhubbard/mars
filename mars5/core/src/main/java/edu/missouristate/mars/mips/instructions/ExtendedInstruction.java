@@ -62,12 +62,23 @@ public class ExtendedInstruction extends Instruction {
    */
   public ExtendedInstruction(
       String example, String translation, String compactTranslation, String description) {
+    this(example, translation, compactTranslation, description, null);
+  }
+
+  /** Builds example tokens against the owning instruction set without a Globals lookup. */
+  public ExtendedInstruction(
+      String example,
+      String translation,
+      String compactTranslation,
+      String description,
+      InstructionSet instructions) {
     this.exampleFormat = example;
     this.description = description;
     this.mnemonic = this.extractOperator(example);
-    this.createExampleTokenList();
+    this.createExampleTokenList(instructions);
     this.translationStrings = buildTranslationList(translation);
-    this.compactTranslationStrings = buildTranslationList(compactTranslation);
+    this.compactTranslationStrings =
+        compactTranslation == null ? null : buildTranslationList(compactTranslation);
   }
 
   /**
@@ -79,12 +90,7 @@ public class ExtendedInstruction extends Instruction {
    * @param description a helpful description to be included on help requests
    */
   public ExtendedInstruction(String example, String translation, String description) {
-    this.exampleFormat = example;
-    this.description = description;
-    this.mnemonic = this.extractOperator(example);
-    this.createExampleTokenList();
-    this.translationStrings = buildTranslationList(translation);
-    this.compactTranslationStrings = null;
+    this(example, translation, null, description, null);
   }
 
   /**

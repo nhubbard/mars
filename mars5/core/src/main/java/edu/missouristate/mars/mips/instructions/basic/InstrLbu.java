@@ -18,8 +18,10 @@ public class InstrLbu extends BasicInstruction {
           try {
             context.updateRegister(
                 operands[0],
-                Globals.memory.getByte(
-                        context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
+                context
+                        .memory()
+                        .getByte(
+                            context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
                     & 0x000000ff);
           } catch (AddressErrorException e) {
             throw new ProcessingException(context, statement, e);

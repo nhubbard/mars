@@ -2,14 +2,20 @@ package edu.missouristate.mars.di;
 
 import dagger.Module;
 import dagger.Provides;
+import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.api.MarsMemory;
 import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
+import edu.missouristate.mars.core.MarsMemoryAdapter;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.MemoryConfiguration;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
+import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import java.util.Objects;
 import javax.inject.Singleton;
@@ -56,8 +62,7 @@ public final class CoreModule {
 
   @Provides
   @Singleton
-  static IntegerRegisterFile provideRegisterFile(SimulationSettings settings) {
-    var configuration = MemoryConfigurations.createConfiguration(settings.getMemoryConfiguration());
+  static IntegerRegisterFile provideRegisterFile(MemoryConfiguration configuration) {
     return new IntegerRegisterFile(
         configuration.getGlobalPointer(),
         configuration.getStackPointer(),
@@ -86,5 +91,35 @@ public final class CoreModule {
   @Singleton
   static DelayedBranchState provideDelayedBranch() {
     return new DelayedBranchState();
+  }
+
+  @Provides
+  @Singleton
+  static MemoryConfiguration provideMemoryConfiguration(SimulationSettings settings) {
+    return MemoryConfigurations.createConfiguration(settings.getMemoryConfiguration());
+  }
+
+  @Provides
+  @Singleton
+  static InstructionSet provideInstructionSet() {
+    var instructions = new InstructionSet();
+    instructions.populate();
+    return instructions;
+  }
+
+  @Provides
+  @Singleton
+  static MemoryState provideMemory(
+      MemoryConfiguration configuration, SimulationSettings settings, InstructionSet instructions) {
+    return new MemoryState(
+        configuration,
+        settings,
+        (binary, address) -> new ProgramStatement(binary, address, instructions));
+  }
+
+  @Provides
+  @Singleton
+  static MarsMemory provideMarsMemory(MemoryState memory) {
+    return new MarsMemoryAdapter(memory);
   }
 }

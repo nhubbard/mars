@@ -16,7 +16,7 @@ public class InstrSh extends BasicInstruction {
         (statement, context) -> {
           int[] operands = statement.getOperands();
           try {
-            Globals.memory.setHalf(
+            context.setMemoryHalf(
                 context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16),
                 context.registerFile.getValue(operands[0]) & 0x0000ffff);
           } catch (AddressErrorException e) {

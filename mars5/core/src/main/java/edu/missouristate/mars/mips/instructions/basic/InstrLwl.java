@@ -20,7 +20,7 @@ public class InstrLwl extends BasicInstruction {
             int address = context.registerFile.getValue(operands[2]) + operands[1];
             int result = context.registerFile.getValue(operands[0]);
             for (int i = 0; i <= address % Memory.WORD_LENGTH_BYTES; i++) {
-              result = Binary.setByte(result, 3 - i, Globals.memory.getByte(address - i));
+              result = Binary.setByte(result, 3 - i, context.memory().getByte(address - i));
             }
             context.updateRegister(operands[0], result);
           } catch (AddressErrorException e) {

@@ -48,7 +48,7 @@ public class SyscallSbrk extends AbstractSyscall {
       throws ProcessingException {
     int address;
     try {
-      address = Globals.memory.allocateBytesFromHeap(context.registerFile.getValue(4));
+      address = context.allocateBytesFromHeap(context.registerFile.getValue(4));
     } catch (IllegalArgumentException iae) {
       throw new ProcessingException(
           context,

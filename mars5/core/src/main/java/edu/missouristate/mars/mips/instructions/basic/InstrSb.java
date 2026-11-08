@@ -15,7 +15,7 @@ public class InstrSb extends BasicInstruction {
         (statement, context) -> {
           int[] operands = statement.getOperands();
           try {
-            Globals.memory.setByte(
+            context.setMemoryByte(
                 context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16),
                 context.registerFile.getValue(operands[0]) & 0x000000ff);
           } catch (AddressErrorException e) {

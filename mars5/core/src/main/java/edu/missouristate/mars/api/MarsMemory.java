@@ -43,6 +43,6 @@ public interface MarsMemory {
    */
   int getByte(int address) throws MemoryAccessException;
 
-  /** Resets all memory to zero and reinstates the initial stack/global-pointer values. */
+  /** Resets memory contents and heap allocation while retaining the configured address layout. */
   void clear();
 }

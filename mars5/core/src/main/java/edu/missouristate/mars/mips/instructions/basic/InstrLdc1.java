@@ -34,11 +34,12 @@ public class InstrLdc1 extends BasicInstruction {
           try {
             context.updateCoprocessor1(
                 operands[0],
-                Globals.memory.getWord(context.registerFile.getValue(operands[2]) + operands[1]));
+                context.memory().getWord(context.registerFile.getValue(operands[2]) + operands[1]));
             context.updateCoprocessor1(
                 operands[0] + 1,
-                Globals.memory.getWord(
-                    context.registerFile.getValue(operands[2]) + operands[1] + 4));
+                context
+                    .memory()
+                    .getWord(context.registerFile.getValue(operands[2]) + operands[1] + 4));
           } catch (AddressErrorException e) {
             throw new ProcessingException(context, statement, e);
           }

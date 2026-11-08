@@ -18,8 +18,10 @@ public class InstrLh extends BasicInstruction {
           try {
             context.updateRegister(
                 operands[0],
-                Globals.memory.getHalf(
-                        context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
+                context
+                        .memory()
+                        .getHalf(
+                            context.registerFile.getValue(operands[2]) + (operands[1] << 16 >> 16))
                     << 16
                     >> 16);
           } catch (AddressErrorException e) {

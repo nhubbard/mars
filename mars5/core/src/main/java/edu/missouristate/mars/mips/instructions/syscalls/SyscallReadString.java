@@ -63,13 +63,13 @@ public class SyscallReadString extends AbstractSyscall {
     int stringLength = Math.min(maxLength, inputString.length());
     try {
       for (int index = 0; index < stringLength; index++) {
-        Globals.memory.setByte(buf + index, inputString.charAt(index));
+        context.setMemoryByte(buf + index, inputString.charAt(index));
       }
       if (stringLength < maxLength) {
-        Globals.memory.setByte(buf + stringLength, '\n');
+        context.setMemoryByte(buf + stringLength, '\n');
         stringLength++;
       }
-      if (addNullByte) Globals.memory.setByte(buf + stringLength, 0);
+      if (addNullByte) context.setMemoryByte(buf + stringLength, 0);
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);
     }

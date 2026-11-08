@@ -67,7 +67,7 @@ public class SyscallRead extends AbstractSyscall {
     // copy bytes from returned buffer into MARS memory
     try {
       while (index < retLength) {
-        Globals.memory.setByte(byteAddress++, myBuffer[index++]);
+        context.setMemoryByte(byteAddress++, myBuffer[index++]);
       }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);

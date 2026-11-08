@@ -4,6 +4,7 @@ import dagger.BindsInstance;
 import dagger.Component;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.api.MarsMemory;
 import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.core.MarsContext;
@@ -53,6 +54,9 @@ public interface MarsComponent {
 
   /** Interface view of this simulation's integer registers. */
   MarsRegisterFile registerFile();
+
+  /** Public API view of this simulation's memory. */
+  MarsMemory memory();
 
   @Component.Builder
   interface Builder {

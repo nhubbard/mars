@@ -51,13 +51,13 @@ public class SyscallMessageDialogString extends AbstractSyscall {
     int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
-      ch[0] = (char) Globals.memory.getByte(byteAddress);
+      ch[0] = (char) context.memory().getByte(byteAddress);
       while (ch[0] != 0) // only uses single location ch[0]
       {
         message =
             message.concat(new String(ch)); // parameter to String constructor is a char[] array
         byteAddress++;
-        ch[0] = (char) Globals.memory.getByte(byteAddress);
+        ch[0] = (char) context.memory().getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);
@@ -66,13 +66,13 @@ public class SyscallMessageDialogString extends AbstractSyscall {
     String message2 = ""; // = "";
     byteAddress = context.registerFile.getValue(5);
     try {
-      ch[0] = (char) Globals.memory.getByte(byteAddress);
+      ch[0] = (char) context.memory().getByte(byteAddress);
       while (ch[0] != 0) // only uses single location ch[0]
       {
         message2 =
             message2.concat(new String(ch)); // parameter to String constructor is a char[] array
         byteAddress++;
-        ch[0] = (char) Globals.memory.getByte(byteAddress);
+        ch[0] = (char) context.memory().getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);

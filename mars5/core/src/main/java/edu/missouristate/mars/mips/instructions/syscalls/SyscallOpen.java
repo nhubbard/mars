@@ -70,13 +70,13 @@ public class SyscallOpen extends AbstractSyscall {
     int byteAddress = context.registerFile.getValue(4);
     char[] ch = {' '}; // Need an array to convert to String
     try {
-      ch[0] = (char) Globals.memory.getByte(byteAddress);
+      ch[0] = (char) context.memory().getByte(byteAddress);
       while (ch[0] != 0) // only uses single location ch[0]
       {
         filename =
             filename.concat(new String(ch)); // parameter to String constructor is a char[] array
         byteAddress++;
-        ch[0] = (char) Globals.memory.getByte(byteAddress);
+        ch[0] = (char) context.memory().getByte(byteAddress);
       }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);

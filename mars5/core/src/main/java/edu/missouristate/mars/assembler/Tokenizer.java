@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.io.*;
 import java.util.*;
 
@@ -50,6 +51,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class Tokenizer {
 
+  private final InstructionSet instructions;
   private ErrorList errors;
   private MIPSprogram sourceMIPSprogram;
   private HashMap<String, String> equivalents; // DPS 11-July-2012
@@ -71,6 +73,12 @@ public class Tokenizer {
    * @param program A previously-existing MIPSprogram object or null if none.
    */
   public Tokenizer(MIPSprogram program) {
+    this(program, null);
+  }
+
+  /** Tokenizes against a session instruction set; null retains the legacy lookup. */
+  public Tokenizer(MIPSprogram program, InstructionSet instructions) {
+    this.instructions = instructions;
     errors = new ErrorList();
     sourceMIPSprogram = program;
   }
@@ -584,7 +592,9 @@ public class Tokenizer {
       TokenList tokenList) {
     String value = new String(token, 0, tokenPos);
     if (!value.isEmpty() && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
-    TokenTypes type = TokenTypes.matchTokenType(value);
+    TokenTypes type =
+        TokenTypes.matchTokenType(
+            value, instructions == null ? Globals.instructionSet : instructions);
     if (type == TokenTypes.ERROR) {
       errors.add(
           new ErrorMessage(

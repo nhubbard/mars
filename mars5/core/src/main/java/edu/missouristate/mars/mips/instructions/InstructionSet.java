@@ -70,7 +70,7 @@ public class InstructionSet {
     // Initialization step.  Create token list for each instruction example.  This is
     // used by parser to determine user program correct syntax.
     for (Instruction inst : instructionList) {
-      inst.createExampleTokenList();
+      inst.createExampleTokenList(this);
     }
 
     HashMap<Integer, HashMap<Integer, BasicInstruction>> maskMap = new HashMap<>();
@@ -91,7 +91,6 @@ public class InstructionSet {
     Collections.sort(matchMaps);
     this.opcodeMatchMaps = matchMaps;
   }
-
 
   public BasicInstruction findByBinaryCode(int binaryInstr) {
     ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
@@ -152,9 +151,9 @@ public class InstructionSet {
           }
           ExtendedInstruction inst =
               (firstTemplate == null)
-                  ? new ExtendedInstruction(pseudoOp, template.toString(), description)
+                  ? new ExtendedInstruction(pseudoOp, template.toString(), null, description, this)
                   : new ExtendedInstruction(
-                      pseudoOp, firstTemplate, template.toString(), description);
+                      pseudoOp, firstTemplate, template.toString(), description, this);
           instructionList.add(inst);
           // if (firstTemplate != null) System.out.println("\npseudoOp: "+pseudoOp+"\ndefault
           // template:\n"+firstTemplate+"\ncompact template:\n"+template);

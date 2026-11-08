@@ -31,10 +31,10 @@ public class InstrSdc1 extends BasicInstruction {
                     context.registerFile.getValue(operands[2]) + operands[1]));
           }
           try {
-            Globals.memory.setWord(
+            context.setMemoryWord(
                 context.registerFile.getValue(operands[2]) + operands[1],
                 context.coprocessor1.getValue(operands[0]));
-            Globals.memory.setWord(
+            context.setMemoryWord(
                 context.registerFile.getValue(operands[2]) + operands[1] + 4,
                 context.coprocessor1.getValue(operands[0] + 1));
           } catch (AddressErrorException e) {
