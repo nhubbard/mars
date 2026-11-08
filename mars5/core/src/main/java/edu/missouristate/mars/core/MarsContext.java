@@ -1,6 +1,9 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.MIPSprogram;
+import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
@@ -9,6 +12,9 @@ import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -27,8 +33,8 @@ import javax.inject.Singleton;
  * }</pre>
  *
  * <p><b>Migration note.</b> As core classes are moved from the legacy {@code Globals} statics to
- * this context, add them as constructor parameters and expose them via final fields. The assembler
- * and simulator fields will be added here in later migration phases.
+ * this context, add them as constructor parameters and expose them via final fields. Legacy GUI
+ * simulator control will be migrated separately.
  */
 @Singleton
 public final class MarsContext {
@@ -60,6 +66,11 @@ public final class MarsContext {
   /** Undo history bound exclusively to this session's hardware. */
   public final BackStepper backStepper;
 
+  /** Global labels for the current assembly in this session. */
+  public final SymbolTable symbolTable;
+
+  private MIPSprogram program;
+
   @Inject
   public MarsContext(
       SimulationSettings settings,
@@ -70,7 +81,8 @@ public final class MarsContext {
       DelayedBranchState delayedBranch,
       MemoryState memory,
       InstructionSet instructionSet,
-      BackStepper backStepper) {
+      BackStepper backStepper,
+      SymbolTable symbolTable) {
     this.settings = settings;
     this.gui = gui;
     this.registerFile = registerFile;
@@ -80,6 +92,7 @@ public final class MarsContext {
     this.memory = memory;
     this.instructionSet = instructionSet;
     this.backStepper = backStepper;
+    this.symbolTable = symbolTable;
   }
 
   /**
@@ -89,6 +102,8 @@ public final class MarsContext {
   public void setMemoryConfiguration(String identifier) {
     var configuration = MemoryConfigurations.createConfiguration(identifier);
     backStepper.clear();
+    program = null;
+    symbolTable.clear();
     memory.setConfiguration(configuration);
     memory.clear();
     settings.setMemoryConfiguration(configuration.configurationIdentifier());
@@ -97,5 +112,49 @@ public final class MarsContext {
     registerFile.getProgramCounterRegister().changeResetValue(configuration.getTextBaseAddress());
     registerFile.reset();
     delayedBranch.clear();
+  }
+
+  /**
+   * Assembles files in the supplied order; the first source is the lead program. Call with
+   * execution stopped.
+   */
+  public MIPSprogram assemble(List<Path> sources) throws ProcessingException {
+    if (sources == null || sources.isEmpty())
+      throw new IllegalArgumentException("At least one source file is required");
+    var root = new MIPSprogram(this);
+    var filenames = new ArrayList<String>();
+    for (Path source : sources) filenames.add(source.toAbsolutePath().normalize().toString());
+    var files = root.prepareFilesForAssembly(filenames, filenames.getFirst(), null);
+    root.assemble(files, settings.isExtendedAssemblerEnabled(), settings.isWarningsAreErrors());
+    return root;
+  }
+
+  /** Returns the currently assembled lead program, or null after a reset or failed assembly. */
+  public MIPSprogram getProgram() {
+    return program;
+  }
+
+  void beginAssembly(MIPSprogram candidate) {
+    if (candidate.assemblyContext().session() != this)
+      throw new IllegalArgumentException("Program belongs to another session");
+    backStepper.clear();
+    program = null;
+    registerFile.reset();
+    coprocessor0.resetRegisters();
+    coprocessor1.resetRegisters();
+    delayedBranch.clear();
+  }
+
+  void finishAssembly(MIPSprogram candidate) {
+    program = candidate;
+    int entry =
+        settings.isStartAtMainEnabled()
+            ? symbolTable.getAddress(SymbolTable.getStartLabel())
+            : SymbolTable.NOT_FOUND;
+    registerFile.initializeProgramCounter(
+        entry != SymbolTable.NOT_FOUND
+                && (memory.inTextSegment(entry) || memory.inKernelTextSegment(entry))
+            ? entry
+            : memory.textBaseAddress);
   }
 }

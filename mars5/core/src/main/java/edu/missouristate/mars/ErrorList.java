@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.MarsSettings;
 import java.io.*;
 import java.util.*;
 
@@ -40,6 +41,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ErrorList {
   private final ArrayList<ErrorMessage> messages;
+  private final MarsSettings sessionSettings;
   private int errorCount;
   private int warningCount;
   public static final String ERROR_MESSAGE_PREFIX = "Error";
@@ -51,6 +53,12 @@ public class ErrorList {
 
   /** Constructor for ErrorList */
   public ErrorList() {
+    this(null);
+  }
+
+  /** Uses a session's error budget instead of global settings. Null preserves legacy behavior. */
+  public ErrorList(MarsSettings sessionSettings) {
+    this.sessionSettings = sessionSettings;
     messages = new ArrayList<>();
     errorCount = 0;
     warningCount = 0;
@@ -154,6 +162,7 @@ public class ErrorList {
    * @return error limit.
    */
   public int getErrorLimit() {
+    if (sessionSettings != null) return sessionSettings.getAssemblerErrorLimit();
     Settings settings = Globals.getSettings();
     return settings == null ? Globals.maximumErrorMessages : settings.getAssemblerErrorLimit();
   }

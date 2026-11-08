@@ -123,7 +123,7 @@ public class ProcessingException extends Exception {
 
   /** Runtime error whose program counter comes from the supplied execution context. */
   public ProcessingException(InstructionContext context, ProgramStatement ps, String message) {
-    errs = new ErrorList();
+    errs = context.newErrorList();
     errs.add(
         new ErrorMessage(
             ps,

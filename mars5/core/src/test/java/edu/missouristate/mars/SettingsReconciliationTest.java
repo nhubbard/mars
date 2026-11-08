@@ -22,7 +22,9 @@ class SettingsReconciliationTest {
         Settings.DELAYED_BRANCHING_ENABLED,
         Settings.SELF_MODIFYING_CODE_ENABLED,
         Settings.WARNINGS_ARE_ERRORS,
-        Settings.EXTENDED_ASSEMBLER_ENABLED
+        Settings.EXTENDED_ASSEMBLER_ENABLED,
+        Settings.START_AT_MAIN,
+        Settings.BARE_MACHINE_ENABLED
       })
   void booleanViewsSharePersistentAndTemporaryChanges(int id) {
     var preferences = new MemoryPreferences();
@@ -180,6 +182,8 @@ class SettingsReconciliationTest {
       case Settings.SELF_MODIFYING_CODE_ENABLED -> settings.isSelfModifyingCodeEnabled();
       case Settings.WARNINGS_ARE_ERRORS -> settings.isWarningsAreErrors();
       case Settings.EXTENDED_ASSEMBLER_ENABLED -> settings.isExtendedAssemblerEnabled();
+      case Settings.START_AT_MAIN -> settings.isStartAtMainEnabled();
+      case Settings.BARE_MACHINE_ENABLED -> settings.isBareMachineEnabled();
       default -> throw new IllegalArgumentException();
     };
   }
@@ -190,6 +194,8 @@ class SettingsReconciliationTest {
       case Settings.SELF_MODIFYING_CODE_ENABLED -> settings.setSelfModifyingCodeEnabled(value);
       case Settings.WARNINGS_ARE_ERRORS -> settings.setWarningsAreErrors(value);
       case Settings.EXTENDED_ASSEMBLER_ENABLED -> settings.setExtendedAssemblerEnabled(value);
+      case Settings.START_AT_MAIN -> settings.setStartAtMainEnabled(value);
+      case Settings.BARE_MACHINE_ENABLED -> settings.setBareMachineEnabled(value);
       default -> throw new IllegalArgumentException();
     }
   }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
@@ -158,6 +159,12 @@ public class ProgramStatement {
         buildBasicStatementListFromBinaryCode(binaryStatement, instr, operands, numOperands);
   }
 
+  private AssemblyContext assemblyContext() {
+    return sourceMIPSprogram == null
+        ? AssemblyContext.legacy()
+        : sourceMIPSprogram.assemblyContext();
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   /**
    * Given specification of BasicInstruction for this operator, build the corresponding assembly
@@ -184,7 +191,7 @@ public class ProgramStatement {
         basic.append(basicStatementElement);
         basicStatementList.addString(basicStatementElement);
         try {
-          registerNumber = RegisterFile.getUserRegister(tokenValue).getNumber();
+          registerNumber = assemblyContext().integerRegister(tokenValue).getNumber();
         } catch (Exception e) {
           // should never happen; should be caught before now...
           errors.add(
@@ -197,7 +204,7 @@ public class ProgramStatement {
         }
         this.operands[this.numOperands++] = registerNumber;
       } else if (tokenType == TokenTypes.REGISTER_NAME) {
-        registerNumber = RegisterFile.getNumber(tokenValue);
+        registerNumber = assemblyContext().integerRegisterNumber(tokenValue);
         basicStatementElement = "$" + registerNumber;
         basic.append(basicStatementElement);
         basicStatementList.addString(basicStatementElement);
@@ -213,7 +220,7 @@ public class ProgramStatement {
         }
         this.operands[this.numOperands++] = registerNumber;
       } else if (tokenType == TokenTypes.FP_REGISTER_NAME) {
-        registerNumber = Coprocessor1.getRegisterNumber(tokenValue);
+        registerNumber = assemblyContext().floatingRegisterNumber(tokenValue);
         basicStatementElement = "$f" + registerNumber;
         basic.append(basicStatementElement);
         basicStatementList.addString(basicStatementElement);

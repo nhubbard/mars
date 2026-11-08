@@ -79,7 +79,7 @@ public class Tokenizer {
   /** Tokenizes against a session instruction set; null retains the legacy lookup. */
   public Tokenizer(MIPSprogram program, InstructionSet instructions) {
     this.instructions = instructions;
-    errors = new ErrorList();
+    errors = program == null ? new ErrorList() : program.newErrorList();
     sourceMIPSprogram = program;
   }
 
@@ -161,7 +161,7 @@ public class Tokenizer {
             throw new ProcessingException(errors);
           }
           inclFiles.put(filename, filename);
-          MIPSprogram incl = new MIPSprogram();
+          MIPSprogram incl = program.createRelatedProgram();
           try {
             incl.readSource(filename);
           } catch (ProcessingException p) {
@@ -297,7 +297,8 @@ public class Tokenizer {
     int tokenPos = 0;
     int tokenStartPos = 1;
     boolean insideQuotedString = false;
-    if (Globals.debug) System.out.println("source line --->" + theLine + "<---");
+    if (sourceMIPSprogram == null ? Globals.debug : sourceMIPSprogram.assemblyContext().debug())
+      System.out.println("source line --->" + theLine + "<---");
     // Each iteration of this loop processes one character in the source line.
     while (linePos < line.length) {
       c = line[linePos];

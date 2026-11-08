@@ -1,5 +1,6 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
@@ -219,6 +220,20 @@ public final class InstructionContext {
    * A ProcessingException with a null error list signals normal program termination.
    */
   public void execute(ProgramStatement statement) throws ProcessingException {
+    execute(statement, false);
+  }
+
+  /** Executes a cycle and dispatches recoverable faults to this session's exception handler. */
+  public void executeWithExceptionHandler(ProgramStatement statement) throws ProcessingException {
+    execute(statement, true);
+  }
+
+  public ErrorList newErrorList() {
+    return session == null ? new ErrorList() : new ErrorList(session.settings);
+  }
+
+  private void execute(ProgramStatement statement, boolean dispatchHandler)
+      throws ProcessingException {
     Objects.requireNonNull(statement);
     BackStepper history =
         session == null
@@ -228,11 +243,23 @@ public final class InstructionContext {
         history != null && history.beginInstruction(registerFile.getProgramCounter(), statement);
     try {
       registerFile.incrementPC();
-      if (!(statement.getInstruction() instanceof BasicInstruction instruction)) {
-        throw new ProcessingException(
-            this, statement, "invalid instruction", Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
+      try {
+        if (!(statement.getInstruction() instanceof BasicInstruction instruction)) {
+          throw new ProcessingException(
+              this, statement, "invalid instruction", Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
+        }
+        instruction.getSimulationCode().simulate(statement, this);
+      } catch (ProcessingException error) {
+        if (!dispatchHandler || error.errors() == null) throw error;
+        ProgramStatement handler = null;
+        try {
+          handler = memory().getStatementNoNotify(memory().exceptionHandlerAddress);
+        } catch (AddressErrorException ignored) {
+        }
+        if (handler == null) throw error;
+        setProgramCounter(memory().exceptionHandlerAddress);
+        delayedBranch.clear();
       }
-      instruction.getSimulationCode().simulate(statement, this);
       completeInstruction();
     } finally {
       if (recording) history.endInstruction();

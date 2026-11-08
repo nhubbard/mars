@@ -1,11 +1,18 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.SimulatorActionSource;
+import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.core.AssemblyContext;
+import edu.missouristate.mars.core.InstructionContext;
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.simulator.*;
 import java.io.*;
 import java.util.*;
+import java.util.Objects;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -44,6 +51,33 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003
  */
 public class MIPSprogram {
+  private final AssemblyContext assemblyContext;
+  private SyscallEnvironment syscallEnvironment;
+  private InstructionContext sessionExecution;
+
+  /** Legacy program bound to the process-global assembler and simulator. */
+  public MIPSprogram() {
+    assemblyContext = AssemblyContext.legacy();
+  }
+
+  /** Program whose sources, symbols, memory, and synchronous execution belong to one session. */
+  public MIPSprogram(MarsContext session) {
+    assemblyContext = new AssemblyContext(session);
+  }
+
+  public AssemblyContext assemblyContext() {
+    return assemblyContext;
+  }
+
+  public ErrorList newErrorList() {
+    return assemblyContext.newErrorList();
+  }
+
+  public MIPSprogram createRelatedProgram() {
+    return assemblyContext.session() == null
+        ? new MIPSprogram()
+        : new MIPSprogram(assemblyContext.session());
+  }
 
   // See explanation of method inSteppedExecution() below.
   private boolean steppedExecution = false;
@@ -160,6 +194,8 @@ public class MIPSprogram {
    * @return BackStepper object, null if there is none.
    */
   public BackStepper getBackStepper() {
+    if (assemblyContext.session() != null && assemblyContext.session().getProgram() != this)
+      return null;
     return backStepper;
   }
 
@@ -177,7 +213,8 @@ public class MIPSprogram {
    * @return true if enabled, false if disabled or non-existant.
    */
   public boolean backSteppingEnabled() {
-    return (backStepper != null && backStepper.enabled());
+    BackStepper current = getBackStepper();
+    return current != null && current.enabled();
   }
 
   /**
@@ -204,18 +241,15 @@ public class MIPSprogram {
     this.filename = file;
     this.sourceList = new ArrayList<>();
     ErrorList errors;
-    BufferedReader inputFile;
     String line;
-    int lengthSoFar = 0;
-    try {
-      inputFile = new BufferedReader(new FileReader(file));
+    try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
       line = inputFile.readLine();
       while (line != null) {
         sourceList.add(line);
         line = inputFile.readLine();
       }
     } catch (Exception e) {
-      errors = new ErrorList();
+      errors = newErrorList();
       errors.add(new ErrorMessage((MIPSprogram) null, 0, 0, e.toString()));
       throw new ProcessingException(errors);
     }
@@ -227,9 +261,12 @@ public class MIPSprogram {
    * @throws ProcessingException Will throw exception if errors occured while tokenizing.
    */
   public void tokenize() throws ProcessingException {
-    this.tokenizer = new Tokenizer();
+    this.tokenizer = assemblyContext.tokenizer(this);
     this.tokenList = tokenizer.tokenize(this);
-    this.localSymbolTable = new SymbolTable(this.filename); // prepare for assembly
+    this.localSymbolTable =
+        assemblyContext.session() == null
+            ? new SymbolTable(this.filename)
+            : new SymbolTable(this.filename, assemblyContext.symbols()); // prepare for assembly
   }
 
   /**
@@ -257,7 +294,7 @@ public class MIPSprogram {
       leadFilePosition = 1;
     }
     for (String filename : filenames) {
-      MIPSprogram preparee = (filename.equals(leadFilename)) ? this : new MIPSprogram();
+      MIPSprogram preparee = (filename.equals(leadFilename)) ? this : createRelatedProgram();
       preparee.readSource(filename);
       preparee.tokenize();
       // I want "this" MIPSprogram to be the first in the list...except for exception handler
@@ -306,11 +343,28 @@ public class MIPSprogram {
       boolean extendedAssemblerEnabled,
       boolean warningsAreErrors)
       throws ProcessingException {
+    if (assemblyContext.session() != null
+        && (MIPSprogramsToAssemble == null || MIPSprogramsToAssemble.isEmpty())) {
+      throw new IllegalArgumentException("At least one source file is required");
+    }
+    if (MIPSprogramsToAssemble != null) {
+      for (MIPSprogram source : MIPSprogramsToAssemble) {
+        if (!assemblyContext.sharesSession(source.assemblyContext())) {
+          throw new IllegalArgumentException(
+              "All source files must belong to the program's session");
+        }
+      }
+    }
     this.backStepper = null;
-    Assembler asm = new Assembler();
+    Assembler asm = new Assembler(assemblyContext);
     this.machineList =
         asm.assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
-    this.backStepper = new BackStepper();
+    this.backStepper =
+        assemblyContext.session() == null
+            ? new BackStepper()
+            : assemblyContext.session().backStepper;
+    sessionExecution = null;
+    assemblyContext.finishAssembly(this);
     return asm.getErrorList();
   }
 
@@ -353,6 +407,7 @@ public class MIPSprogram {
   public boolean simulateFromPC(int[] breakPoints, int maxSteps, SimulatorActionSource a)
       throws ProcessingException {
     steppedExecution = false;
+    if (assemblyContext.session() != null) return simulateSession(breakPoints, maxSteps);
     Simulator sim = Simulator.getInstance();
     return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a);
   }
@@ -367,8 +422,75 @@ public class MIPSprogram {
    */
   public boolean simulateStepAtPC(SimulatorActionSource a) throws ProcessingException {
     steppedExecution = true;
+    if (assemblyContext.session() != null) return simulateSession(null, 1);
     Simulator sim = Simulator.getInstance();
     return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
+  }
+
+  /** Sets I/O for a session program; call while execution is stopped. */
+  public void setSyscallEnvironment(SyscallEnvironment environment) {
+    Objects.requireNonNull(environment);
+    if (assemblyContext.session() == null) Globals.setSyscallEnvironment(environment);
+    else {
+      syscallEnvironment = environment;
+      sessionExecution = null;
+    }
+  }
+
+  public int getExitCode() {
+    return assemblyContext.session() == null
+        ? Globals.exitCode
+        : sessionExecution == null ? 0 : sessionExecution.getExitCode();
+  }
+
+  /** Synchronous, frontend-independent execution for a session-owned program. */
+  private boolean simulateSession(int[] breakPoints, int maxSteps) throws ProcessingException {
+    MarsContext session = assemblyContext.session();
+    if (session.getProgram() != this || machineList == null) {
+      throw new IllegalStateException("This is not the current assembled program of its session");
+    }
+    if (sessionExecution == null) {
+      sessionExecution =
+          new InstructionContext(
+              session,
+              syscallEnvironment == null ? new HeadlessSyscallEnvironment() : syscallEnvironment);
+    }
+    int steps = 0;
+    while (maxSteps <= 0 || steps < maxSteps) {
+      if (Thread.currentThread().isInterrupted()) return false;
+      int pc = session.registerFile.getProgramCounter();
+      ProgramStatement statement;
+      try {
+        statement = session.memory.getStatement(pc);
+      } catch (AddressErrorException error) {
+        var location = new ProgramStatement(0, pc, session.instructionSet);
+        boolean recording = session.backStepper.beginInstruction(pc, location);
+        try {
+          session.registerFile.incrementPC();
+          throw new ProcessingException(sessionExecution, location, error);
+        } finally {
+          if (recording) session.backStepper.endInstruction();
+        }
+      }
+      if (statement == null) {
+        session.delayedBranch.clear();
+        return true;
+      }
+      try {
+        sessionExecution.executeWithExceptionHandler(statement);
+      } catch (ProcessingException error) {
+        session.delayedBranch.clear();
+        if (error.errors() == null) return true;
+        throw error;
+      }
+      steps++;
+      if (breakPoints != null) {
+        for (int breakpoint : breakPoints) {
+          if (breakpoint == session.registerFile.getProgramCounter()) return false;
+        }
+      }
+    }
+    return false;
   }
 
   /**

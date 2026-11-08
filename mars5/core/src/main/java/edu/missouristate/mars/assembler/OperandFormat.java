@@ -55,8 +55,14 @@ public class OperandFormat {
    */
 
   static boolean tokenOperandMatch(TokenList candidateList, Instruction inst, ErrorList errors) {
+    return tokenOperandMatch(
+        candidateList, inst, errors, Globals.getSettings().getBareMachineEnabled());
+  }
+
+  static boolean tokenOperandMatch(
+      TokenList candidateList, Instruction inst, ErrorList errors, boolean bareMachine) {
     if (!numOperandsCheck(candidateList, inst, errors)) return false;
-    return operandTypeCheck(candidateList, inst, errors);
+    return operandTypeCheck(candidateList, inst, errors, bareMachine);
   }
 
   /*
@@ -65,10 +71,16 @@ public class OperandFormat {
    * return the first Instruction and let client deal with operand mismatches.
    */
   static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
+    return bestOperandMatch(tokenList, instrMatches, Globals.getSettings().getBareMachineEnabled());
+  }
+
+  static Instruction bestOperandMatch(
+      TokenList tokenList, ArrayList<Instruction> instrMatches, boolean bareMachine) {
     if (instrMatches == null) return null;
     if (instrMatches.size() == 1) return instrMatches.getFirst();
     for (Instruction potentialMatch : instrMatches) {
-      if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList())) return potentialMatch;
+      if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList(), bareMachine))
+        return potentialMatch;
     }
     return instrMatches.getFirst();
   }
@@ -93,7 +105,8 @@ public class OperandFormat {
   }
 
   // Generate error message if operand is not of correct type for this operation & operand position
-  private static boolean operandTypeCheck(TokenList cand, Instruction spec, ErrorList errors) {
+  private static boolean operandTypeCheck(
+      TokenList cand, Instruction spec, ErrorList errors, boolean bareMachine) {
     Token candToken, specToken;
     TokenTypes candType, specType;
     for (int i = 1; i < spec.getTokenList().size(); i++) {
@@ -126,7 +139,7 @@ public class OperandFormat {
 
       if ((specType == TokenTypes.REGISTER_NAME || specType == TokenTypes.REGISTER_NUMBER)
           && candType == TokenTypes.REGISTER_NAME) {
-        if (Globals.getSettings().getBareMachineEnabled()) {
+        if (bareMachine) {
           // On 10-Aug-2010, I noticed this cannot happen since the IDE provides no access
           // to this setting, whose default value is false.
           generateMessage(candToken, "Use register number instead of name.  See Settings.", errors);

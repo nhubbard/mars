@@ -22,6 +22,8 @@ public final class SimulationSettings implements MarsSettings {
   private boolean warningsAreErrors = false;
   private boolean extendedAssemblerEnabled = true;
   private int assemblerErrorLimit = 200;
+  private boolean startAtMainEnabled;
+  private boolean bareMachineEnabled;
 
   /** Creates settings with MARS default values. */
   public SimulationSettings() {
@@ -120,6 +122,31 @@ public final class SimulationSettings implements MarsSettings {
     } else {
       legacySettings.setAssemblerErrorLimit(assemblerErrorLimit);
     }
+    return this;
+  }
+
+  public boolean isStartAtMainEnabled() {
+    return legacySettings == null
+        ? startAtMainEnabled
+        : legacySettings.getBooleanSetting(Settings.START_AT_MAIN);
+  }
+
+  /** Session-only entry-point selection, matching the legacy Start at main preference. */
+  public SimulationSettings setStartAtMainEnabled(boolean enabled) {
+    if (legacySettings == null) startAtMainEnabled = enabled;
+    else legacySettings.setBooleanSettingNonPersistent(Settings.START_AT_MAIN, enabled);
+    return this;
+  }
+
+  public boolean isBareMachineEnabled() {
+    return legacySettings == null
+        ? bareMachineEnabled
+        : legacySettings.getBooleanSetting(Settings.BARE_MACHINE_ENABLED);
+  }
+
+  public SimulationSettings setBareMachineEnabled(boolean enabled) {
+    if (legacySettings == null) bareMachineEnabled = enabled;
+    else legacySettings.setBooleanSettingNonPersistent(Settings.BARE_MACHINE_ENABLED, enabled);
     return this;
   }
 }

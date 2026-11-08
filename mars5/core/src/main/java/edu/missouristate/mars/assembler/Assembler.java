@@ -2,20 +2,20 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.ErrorMessage;
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.core.AssemblyContext;
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.util.SystemIO;
 import edu.missouristate.mars.util.NumberDisplayBase;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Objects;
 
 /*
 Copyright (c) 2003-2012,  Pete Sanderson and Kenneth Vollmar
@@ -54,6 +54,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003
  */
 public class Assembler {
+  private final AssemblyContext context;
+
+  public Assembler() {
+    this(AssemblyContext.legacy());
+  }
+
+  public Assembler(MarsContext session) {
+    this(new AssemblyContext(session));
+  }
+
+  public Assembler(AssemblyContext context) {
+    this.context = Objects.requireNonNull(context);
+  }
+
   private ErrorList errors;
   private boolean inDataSegment; // status maintained by parser
   private boolean inMacroSegment; // status maintained by parser, true if in
@@ -160,18 +174,33 @@ public class Assembler {
       boolean warningsAreErrors)
       throws ProcessingException {
 
-    if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) return null;
-    textAddress = new UserKernelAddressSpace(Memory.textBaseAddress, Memory.kernelTextBaseAddress);
-    dataAddress = new UserKernelAddressSpace(Memory.dataBaseAddress, Memory.kernelDataBaseAddress);
-    externAddress = Memory.externBaseAddress;
+    if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) {
+      if (context.session() != null)
+        throw new IllegalArgumentException("At least one source file is required");
+      return null;
+    }
+    for (MIPSprogram program : tokenizedProgramFiles) {
+      if (!context.sharesSession(program.assemblyContext())) {
+        throw new IllegalArgumentException(
+            "All source files must belong to the assembler's session");
+      }
+    }
+    context.beginAssembly(tokenizedProgramFiles.getFirst());
+    textAddress =
+        new UserKernelAddressSpace(
+            context.memory().textBaseAddress, context.memory().kernelTextBaseAddress);
+    dataAddress =
+        new UserKernelAddressSpace(
+            context.memory().dataBaseAddress, context.memory().kernelDataBaseAddress);
+    externAddress = context.memory().externBaseAddress;
     currentFileDataSegmentForwardReferences = new DataSegmentForwardReferences();
     DataSegmentForwardReferences accumulatedDataSegmentForwardReferences =
         new DataSegmentForwardReferences();
-    Globals.symbolTable.clear();
-    Globals.memory.clear();
+    context.symbols().clear();
+    context.clearMemory();
     ArrayList<ProgramStatement> machineList = new ArrayList<>();
-    this.errors = new ErrorList();
-    if (Globals.debug) System.out.println("Assembler first pass begins:");
+    this.errors = context.newErrorList();
+    if (context.debug()) System.out.println("Assembler first pass begins:");
     // PROCESS THE FIRST ASSEMBLY PASS FOR ALL SOURCE FILES BEFORE PROCEEDING
     // TO SECOND PASS. THIS ASSURES ALL SYMBOL TABLES ARE CORRECTLY BUILT.
     // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
@@ -247,14 +276,14 @@ public class Assembler {
     // Have processed all source files. Attempt to resolve any remaining forward label
     // references from global symbol table. Those that remain unresolved are undefined
     // and require error message.
-    accumulatedDataSegmentForwardReferences.resolve(Globals.symbolTable);
+    accumulatedDataSegmentForwardReferences.resolve(context.symbols());
     accumulatedDataSegmentForwardReferences.generateErrorMessages(errors);
 
     // Throw collection of errors accumulated through the first pass.
     if (errors.errorsOccurred()) {
       throw new ProcessingException(errors);
     }
-    if (Globals.debug) System.out.println("Assembler second pass begins");
+    if (context.debug()) System.out.println("Assembler second pass begins");
     // SECOND PASS OF ASSEMBLER GENERATES BASIC ASSEMBLER THEN MACHINE CODE.
     // Generates basic assembler statements...
     for (MIPSprogram tokenizedProgramFile : tokenizedProgramFiles) {
@@ -296,7 +325,9 @@ public class Assembler {
           String basicAssembly = statement.getBasicAssemblyStatement();
           int sourceLine = statement.getSourceLine();
           TokenList theTokenList =
-              new Tokenizer().tokenizeLine(sourceLine, basicAssembly, errors, false);
+              context
+                  .tokenizer(fileCurrentlyBeingAssembled)
+                  .tokenizeLine(sourceLine, basicAssembly, errors, false);
 
           // ////////////////////////////////////////////////////////////////////////////
           // If we are using compact memory config and there is a compact expansion, use it
@@ -324,13 +355,17 @@ public class Assembler {
 
             // All substitutions have been made so we have generated
             // a valid basic instruction!
-            if (Globals.debug) System.out.println("PSEUDO generated: " + instruction);
+            if (context.debug()) System.out.println("PSEUDO generated: " + instruction);
             // For generated instruction: tokenize, build program
             // statement, add to list.
             TokenList newTokenList =
-                new Tokenizer().tokenizeLine(sourceLine, instruction, errors, false);
+                context
+                    .tokenizer(fileCurrentlyBeingAssembled)
+                    .tokenizeLine(sourceLine, instruction, errors, false);
             ArrayList<Instruction> instrMatches = this.matchInstruction(newTokenList.get(0));
-            Instruction instr = OperandFormat.bestOperandMatch(newTokenList, instrMatches);
+            Instruction instr =
+                OperandFormat.bestOperandMatch(
+                    newTokenList, instrMatches, context.bareMachineEnabled());
             // Only first generated instruction is linked to original source
             ProgramStatement ps =
                 new ProgramStatement(
@@ -348,7 +383,7 @@ public class Assembler {
         } // end of ELSE part for extended instruction.
       } // end of assembler second pass.
     }
-    if (Globals.debug) System.out.println("Code generation begins");
+    if (context.debug()) System.out.println("Code generation begins");
     // THIRD MAJOR STEP IS PRODUCE MACHINE CODE FROM ASSEMBLY //////////
     // Generates machine code statements from the list of basic assembler statements
     // and writes the statement to memory.
@@ -357,9 +392,9 @@ public class Assembler {
       if (errors.errorLimitExceeded()) break;
       statement = programStatement;
       statement.buildMachineStatementFromBasicStatement(errors);
-      if (Globals.debug) System.out.println(statement);
+      if (context.debug()) System.out.println(statement);
       try {
-        Globals.memory.setStatement(statement.getAddress(), statement);
+        context.memory().setStatement(statement.getAddress(), statement);
       } catch (AddressErrorException e) {
         Token t = statement.getOriginalTokenList().get(0);
         errors.add(
@@ -372,7 +407,7 @@ public class Assembler {
     }
     // Aug. 24, 2005 Ken Vollmar
     // Ensure that I/O "file descriptors" are initialized for a new program run
-    SystemIO.resetFiles();
+    context.resetLegacyFiles();
     // DPS 6 Dec 2006:
     // We will now sort the ArrayList of ProgramStatements by getAddress() value.
     // This is for display purposes, since they have already been stored to Memory.
@@ -406,14 +441,13 @@ public class Assembler {
                 0,
                 "Duplicate text segment address: "
                     + NumberDisplayBase.formatUnsignedInteger(
-                        ps2.getAddress(),
-                        (Globals.getSettings().getDisplayAddressesInHex()) ? 16 : 10)
+                        ps2.getAddress(), (context.displayAddressesInHex()) ? 16 : 10)
                     + " already occupied by "
                     + ps1.getSourceFile()
                     + " line "
                     + ps1.getSourceLine()
                     + " (caused by use of "
-                    + ((Memory.inTextSegment(ps2.getAddress())) ? ".text" : ".ktext")
+                    + ((context.memory().inTextSegment(ps2.getAddress())) ? ".text" : ".ktext")
                     + " operand)"));
       }
     }
@@ -581,7 +615,8 @@ public class Assembler {
       ArrayList<Instruction> instrMatches = this.matchInstruction(token);
       if (instrMatches == null) return ret;
       // OK, we've got an operator match, let's check the operands.
-      Instruction inst = OperandFormat.bestOperandMatch(tokens, instrMatches);
+      Instruction inst =
+          OperandFormat.bestOperandMatch(tokens, instrMatches, context.bareMachineEnabled());
       // Here's the place to flag use of extended (pseudo) instructions
       // when setting disabled.
       if (inst instanceof ExtendedInstruction && !extendedAssemblerEnabled) {
@@ -592,7 +627,7 @@ public class Assembler {
                 token.getStartPos(),
                 "Extended (pseudo) instruction or format not permitted.  See Settings."));
       }
-      if (OperandFormat.tokenOperandMatch(tokens, inst, errors)) {
+      if (OperandFormat.tokenOperandMatch(tokens, inst, errors, context.bareMachineEnabled())) {
         programStatement =
             new ProgramStatement(
                 this.fileCurrentlyBeingAssembled,
@@ -605,10 +640,14 @@ public class Assembler {
         // instruction length is 4 for all basic instruction, varies for extended instruction
         // Modified to permit use of compact expansion if address fits
         // in 15 bits. DPS 4-Aug-2009
-        int instLength = inst.getInstructionLength();
+        int instLength =
+            inst instanceof ExtendedInstruction ext
+                ? ext.getInstructionLength(context.settings().isDelayedBranchingEnabled())
+                : inst.getInstructionLength();
         if (compactTranslationCanBeApplied(programStatement)
             && inst instanceof ExtendedInstruction ext) {
-          instLength = ext.getCompactInstructionLength();
+          instLength =
+              ext.getCompactInstructionLength(context.settings().isDelayedBranchingEnabled());
         }
         textAddress.increment(instLength);
         ret.add(programStatement);
@@ -630,7 +669,7 @@ public class Assembler {
   // alternate compact translation.
   private boolean compactTranslationCanBeApplied(ProgramStatement statement) {
     return (statement.getInstruction() instanceof ExtendedInstruction
-        && Globals.memory.usingCompactMemoryConfiguration()
+        && context.memory().usingCompactMemoryConfiguration()
         && ((ExtendedInstruction) statement.getInstruction()).hasCompactTranslation());
   }
 
@@ -704,7 +743,7 @@ public class Assembler {
   private void executeDirective(TokenList tokens) {
     Token token = tokens.get(0);
     Directives direct = Directives.matchDirective(token.getValue());
-    if (Globals.debug)
+    if (context.debug())
       System.out.println("line " + token.getSourceLine() + " is directive " + direct);
     if (direct == null) {
       errors.add(
@@ -890,9 +929,8 @@ public class Assembler {
       }
       int size = Binary.stringToInt(tokens.get(2).getValue());
       // If label already in global symtab, do nothing. If not, add it right now.
-      if (Globals.symbolTable.getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
-        Globals.symbolTable.addSymbol(
-            tokens.get(1), this.externAddress, Symbol.DATA_SYMBOL, errors);
+      if (context.symbols().getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
+        context.symbols().addSymbol(tokens.get(1), this.externAddress, Symbol.DATA_SYMBOL, errors);
         this.externAddress += size;
       }
     } else if (direct == Directives.SET) {
@@ -957,7 +995,7 @@ public class Assembler {
                 label.getStartPos(),
                 "\"" + label.getValue() + "\" declared global label but not defined."));
       } else {
-        if (Globals.symbolTable.getAddress(label.getValue()) != SymbolTable.NOT_FOUND) {
+        if (context.symbols().getAddress(label.getValue()) != SymbolTable.NOT_FOUND) {
           errors.add(
               new ErrorMessage(
                   fileCurrentlyBeingAssembled,
@@ -966,8 +1004,9 @@ public class Assembler {
                   "\"" + label.getValue() + "\" already defined as global in a different file."));
         } else {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
-          Globals.symbolTable.addSymbol(
-              label, symtabEntry.getAddress(), symtabEntry.getType(), errors);
+          context
+              .symbols()
+              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.getType(), errors);
         }
       }
     }
@@ -1014,7 +1053,7 @@ public class Assembler {
                 "\"" + token.getValue() + "\" is not a recognized operator"));
       return null;
     }
-    ArrayList<Instruction> inst = Globals.instructionSet.matchOperator(token.getValue());
+    ArrayList<Instruction> inst = context.instructions().matchOperator(token.getValue());
     if (inst == null) { // This should NEVER happen...
       this.errors.add(
           new ErrorMessage(
@@ -1102,7 +1141,7 @@ public class Assembler {
        * <p>
        * else { // not in data segment...which we assume to mean in text
        * segment. try { for (int i=0; i < repetitions; i++) {
-       * Globals.memory.set(this.textAddress.get(),
+       * context.memory().set(this.textAddress.get(),
        * Binary.stringToInt(valueToken.getValue()), lengthInBytes);
        * this.textAddress.increment(lengthInBytes); } } catch
        * (AddressErrorException e) { errors.add(new
@@ -1171,7 +1210,7 @@ public class Assembler {
        ********/
       else {
         try {
-          Globals.memory.set(this.textAddress.get(), value, lengthInBytes);
+          context.memory().set(this.textAddress.get(), value, lengthInBytes);
         } catch (AddressErrorException e) {
           errors.add(
               new ErrorMessage(
@@ -1332,7 +1371,7 @@ public class Assembler {
             }
           }
           try {
-            Globals.memory.set(this.dataAddress.get(), (int) theChar, DataTypes.CHAR_SIZE);
+            context.memory().set(this.dataAddress.get(), (int) theChar, DataTypes.CHAR_SIZE);
           } catch (AddressErrorException e) {
             errors.add(
                 new ErrorMessage(
@@ -1345,7 +1384,7 @@ public class Assembler {
         }
         if (direct == Directives.ASCIIZ) {
           try {
-            Globals.memory.set(this.dataAddress.get(), 0, DataTypes.CHAR_SIZE);
+            context.memory().set(this.dataAddress.get(), 0, DataTypes.CHAR_SIZE);
           } catch (AddressErrorException e) {
             errors.add(
                 new ErrorMessage(
@@ -1385,7 +1424,7 @@ public class Assembler {
       this.dataAddress.set(this.alignToBoundary(this.dataAddress.get(), lengthInBytes));
     }
     try {
-      Globals.memory.set(this.dataAddress.get(), value, lengthInBytes);
+      context.memory().set(this.dataAddress.get(), value, lengthInBytes);
     } catch (AddressErrorException e) {
       errors.add(
           new ErrorMessage(
@@ -1411,7 +1450,7 @@ public class Assembler {
       this.dataAddress.set(this.alignToBoundary(this.dataAddress.get(), lengthInBytes));
     }
     try {
-      Globals.memory.setDouble(this.dataAddress.get(), value);
+      context.memory().setDouble(this.dataAddress.get(), value);
     } catch (AddressErrorException e) {
       errors.add(
           new ErrorMessage(
@@ -1519,7 +1558,7 @@ public class Assembler {
   // - number of bytes (addresses are 4 bytes but may be used with any of
   // the integer directives: .word, .half, .byte)
   // - the label's token. Normally need only the name but error message needs more.
-  private static class DataSegmentForwardReferences {
+  private class DataSegmentForwardReferences {
     private final ArrayList<DataSegmentForwardReference> forwardReferenceList;
 
     private DataSegmentForwardReferences() {
@@ -1567,7 +1606,7 @@ public class Assembler {
         if (labelAddress != SymbolTable.NOT_FOUND) {
           // patch address has to be valid b/c we already stored there...
           try {
-            Globals.memory.set(entry.patchAddress, labelAddress, entry.length);
+            context.memory().set(entry.patchAddress, labelAddress, entry.length);
           } catch (AddressErrorException ignored) {
           }
           forwardReferenceList.remove(i);

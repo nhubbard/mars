@@ -2,6 +2,7 @@ package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
@@ -113,7 +114,16 @@ public class ExtendedInstruction extends Instruction {
    * @return int length in bytes of corresponding binary instruction(s).
    */
   public int getInstructionLength() {
-    return getInstructionLength(translationStrings);
+    return getInstructionLength(translationStrings, null);
+  }
+
+  /** Computes expansion length using the owning session's delayed-branch setting. */
+  public int getInstructionLength(boolean delayedBranching) {
+    return getInstructionLength(translationStrings, delayedBranching);
+  }
+
+  public int getCompactInstructionLength(boolean delayedBranching) {
+    return getInstructionLength(compactTranslationStrings, delayedBranching);
   }
 
   /**
@@ -136,7 +146,7 @@ public class ExtendedInstruction extends Instruction {
    *     expansion is not defined for this instruction.
    */
   public int getCompactInstructionLength() {
-    return getInstructionLength(compactTranslationStrings);
+    return getInstructionLength(compactTranslationStrings, null);
   }
 
   /**
@@ -227,6 +237,7 @@ public class ExtendedInstruction extends Instruction {
    */
   public static String makeTemplateSubstitutions(
       MIPSprogram program, String template, TokenList theTokenList) {
+    var context = program == null ? AssemblyContext.legacy() : program.assemblyContext();
     String instruction = template;
     int index;
     // Added 22 Jan 2008 by DPS.  The DBNOP template means to generate a "nop" instruction if
@@ -238,7 +249,7 @@ public class ExtendedInstruction extends Instruction {
     // the
     // next major release.
     if (instruction.contains("DBNOP")) {
-      return Globals.getSettings().getDelayedBranchingEnabled() ? "nop" : "";
+      return context.settings().isDelayedBranchingEnabled() ? "nop" : "";
     }
     // substitute first operand token for template's RG1 or OP1, second for RG2 or OP2, etc
     for (int op = 1; op < theTokenList.size(); op++) {
@@ -541,7 +552,7 @@ public class ExtendedInstruction extends Instruction {
             substitute(
                 instruction,
                 "BROFF" + disabled + enabled,
-                Globals.getSettings().getDelayedBranchingEnabled() ? enabled : disabled);
+                context.settings().isDelayedBranchingEnabled() ? enabled : disabled);
       } catch (IndexOutOfBoundsException iooe) {
         instruction = substitute(instruction, "BROFF", "BAD_PSEUDO_OP_SPEC");
       }
@@ -552,12 +563,12 @@ public class ExtendedInstruction extends Instruction {
         String token = theTokenList.get(op).getValue();
         int regNumber;
         try { // if token is a RegisterFile register, substitute next higher register
-          regNumber = RegisterFile.getUserRegister(token).getNumber();
+          regNumber = context.integerRegister(token).getNumber();
           if (regNumber >= 0) {
             instruction = substitute(instruction, "NR" + op, "$" + (regNumber + 1));
           }
         } catch (NullPointerException e) { // not in RegisterFile, must be Coprocessor1 register
-          regNumber = Coprocessor1.getRegisterNumber(token);
+          regNumber = context.floatingRegisterNumber(token);
           if (regNumber >= 0) {
             instruction = substitute(instruction, "NR" + op, "$f" + (regNumber + 1));
           }
@@ -650,7 +661,7 @@ public class ExtendedInstruction extends Instruction {
    * Returns length in bytes of corresponding binary instruction(s).
    * Returns 0 if the ArrayList is null or empty.
    */
-  private int getInstructionLength(ArrayList<String> translationList) {
+  private int getInstructionLength(ArrayList<String> translationList, Boolean delayedBranching) {
     if (translationList == null || translationList.isEmpty()) {
       return 0;
     }
@@ -659,7 +670,10 @@ public class ExtendedInstruction extends Instruction {
     // then don't count the nop in the instruction length.   DPS 23-Jan-2008
     int instructionCount = 0;
     for (String s : translationList) {
-      if (s.contains("DBNOP") && !Globals.getSettings().getDelayedBranchingEnabled()) continue;
+      if (s.contains("DBNOP")
+          && !(delayedBranching != null
+              ? delayedBranching
+              : Globals.getSettings().getDelayedBranchingEnabled())) continue;
       instructionCount++;
     }
     return 4 * instructionCount;

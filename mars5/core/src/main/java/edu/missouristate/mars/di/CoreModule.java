@@ -8,6 +8,7 @@ import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsMemory;
 import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
+import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.core.MarsMemoryAdapter;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
@@ -143,5 +144,11 @@ public final class CoreModule {
       Coprocessor1State coprocessor1,
       DelayedBranchState branch) {
     return new BackStepper(memory, registers, coprocessor0, coprocessor1, branch, maximumBacksteps);
+  }
+
+  @Provides
+  @Singleton
+  static SymbolTable provideSymbolTable() {
+    return new SymbolTable("global", null);
   }
 }

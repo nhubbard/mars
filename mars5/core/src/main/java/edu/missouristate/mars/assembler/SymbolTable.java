@@ -41,6 +41,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class SymbolTable {
   private static final String startLabel = "main";
   private final String filename;
+  private final SymbolTable globalSymbols;
+  private final boolean legacyLookup;
   private ArrayList<Symbol> table;
   // Note -1 is legal 32 bit address (0xFFFFFFFF) but it is the high address in
   // kernel address space so highly unlikely that any symbol will have this as
@@ -54,7 +56,18 @@ public class SymbolTable {
    *     output/display so it can be any descriptive string.
    */
   public SymbolTable(String filename) {
+    this(filename, null, true);
+  }
+
+  /** Binds a local table to an explicit global scope; null creates a session's root table. */
+  public SymbolTable(String filename, SymbolTable globalSymbols) {
+    this(filename, globalSymbols, false);
+  }
+
+  private SymbolTable(String filename, SymbolTable globalSymbols, boolean legacyLookup) {
     this.filename = filename;
+    this.globalSymbols = globalSymbols;
+    this.legacyLookup = legacyLookup;
     this.table = new ArrayList<>();
   }
 
@@ -78,7 +91,7 @@ public class SymbolTable {
     } else {
       Symbol s = new Symbol(label, address, b);
       table.add(s);
-      if (Globals.debug)
+      if (legacyLookup && Globals.debug)
         System.out.println(
             "The symbol "
                 + label
@@ -101,7 +114,7 @@ public class SymbolTable {
     for (int i = 0; i < table.size(); i++) {
       if (table.get(i).getName().equals(label)) {
         table.remove(i);
-        if (Globals.debug)
+        if (legacyLookup && Globals.debug)
           System.out.println(
               "The symbol "
                   + label
@@ -137,7 +150,8 @@ public class SymbolTable {
    */
   public int getAddressLocalOrGlobal(String s) {
     int address = this.getAddress(s);
-    return (address == NOT_FOUND) ? Globals.symbolTable.getAddress(s) : address;
+    SymbolTable globals = legacyLookup ? Globals.symbolTable : globalSymbols;
+    return address == NOT_FOUND && globals != null ? globals.getAddress(s) : address;
   }
 
   /**
@@ -184,7 +198,8 @@ public class SymbolTable {
    */
   public Symbol getSymbolGivenAddressLocalOrGlobal(String s) {
     Symbol sym = this.getSymbolGivenAddress(s);
-    return (sym == null) ? Globals.symbolTable.getSymbolGivenAddress(s) : sym;
+    SymbolTable globals = legacyLookup ? Globals.symbolTable : globalSymbols;
+    return sym == null && globals != null ? globals.getSymbolGivenAddress(s) : sym;
   }
 
   /**
