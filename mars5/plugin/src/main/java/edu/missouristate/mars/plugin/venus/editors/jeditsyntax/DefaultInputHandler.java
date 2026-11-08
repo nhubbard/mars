@@ -9,6 +9,7 @@
 
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
+
 import edu.missouristate.mars.plugin.venus.VenusUI;
 import java.awt.Toolkit;
 import java.awt.event.*;
@@ -180,7 +181,8 @@ public class DefaultInputHandler extends InputHandler {
           currentBindings = bindings;
           // No binding for this keyStroke, pass it to menu
           // (mnemonic, accelerator).  DPS 4-may-2010
-          VenusUI.instance().dispatchEventToMenu(evt);
+          if (javax.swing.SwingUtilities.getWindowAncestor((java.awt.Component) evt.getSource())
+              instanceof VenusUI window) window.dispatchEventToMenu(evt);
           evt.consume();
         }
         case ActionBinding(ActionListener action) -> {

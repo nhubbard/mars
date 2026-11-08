@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.Binary;
@@ -51,6 +50,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Team JSpim
  */
 public class TextSegmentWindow extends JInternalFrame {
+  private final VenusUI mainUI;
   private final JPanel programArgumentsPanel; // DPS 17-July-2008
   private final JTextField programArgumentsTextField; // DPS 17-July-2008
   private static final int PROGRAM_ARGUMENT_TEXTFIELD_COLUMNS = 40;
@@ -92,10 +92,11 @@ public class TextSegmentWindow extends JInternalFrame {
   private static final String modifiedCodeMarker = " ------ ";
 
   /** Constructor, sets up a new JInternalFrame. */
-  public TextSegmentWindow() {
+  public TextSegmentWindow(VenusUI mainUI) {
     super("Text Segment", true, false, true, true);
-    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
-    DesktopApplication.services().getSettings().subscribeChange(s -> handleSettingsChange());
+    this.mainUI = mainUI;
+    mainUI.session().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    mainUI.session().getSettings().subscribeChange(s -> handleSettingsChange());
     contentPane = this.getContentPane();
     codeHighlighting = true;
     breakpointsEnabled = true;
@@ -112,11 +113,11 @@ public class TextSegmentWindow extends JInternalFrame {
    * to the table rows and columns.
    */
   public void setupTable() {
-    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
     codeHighlighting = true;
     breakpointsEnabled = true;
     ArrayList<ProgramStatement> sourceStatementList =
-        DesktopApplication.services().getProgram().getMachineList();
+        mainUI.session().getProgram().getMachineList();
     data = new Object[sourceStatementList.size()][columnNames.length];
     intAddresses = new int[data.length];
     addressRows = new HashMap<>(data.length);
@@ -154,7 +155,10 @@ public class TextSegmentWindow extends JInternalFrame {
         if (statement.getSourceLine() == lastLine) {
           lineNumber = "          ".substring(0, sourceLineDigits) + "  ";
         }
-        sourceString = lineNumber + EditorFont.substituteSpacesForTabs(statement.getSource());
+        sourceString =
+            lineNumber
+                + EditorFont.substituteSpacesForTabs(
+                    statement.getSource(), mainUI.session().getSettings().getEditorTabSize());
       }
       data[i][SOURCE_COLUMN] = sourceString;
       lastLine = statement.getSourceLine();
@@ -202,16 +206,15 @@ public class TextSegmentWindow extends JInternalFrame {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
     contentPane.add(tableScroller);
-    if (DesktopApplication.services()
+    if (mainUI
+        .session()
         .getSettings()
         .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       addProgramArgumentsPanel();
     }
 
     deleteAsTextSegmentObserver();
-    if (DesktopApplication.services()
-        .getSettings()
-        .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+    if (mainUI.session().getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
       addAsTextSegmentObserver();
     }
   }
@@ -267,7 +270,7 @@ public class TextSegmentWindow extends JInternalFrame {
     if (contentPane.getComponentCount() == 0) {
       return; // ignore if no content to change
     }
-    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
     int address;
     String formattedAddress;
     for (int i = 0; i < intAddresses.length; i++) {
@@ -286,7 +289,7 @@ public class TextSegmentWindow extends JInternalFrame {
       return; // ignore if no content to change
     }
     ArrayList<ProgramStatement> sourceStatementList =
-        DesktopApplication.services().getProgram().getMachineList();
+        mainUI.session().getProgram().getMachineList();
     for (int i = 0; i < sourceStatementList.size(); i++) {
       // Loop has been extended to cover self-modifying code.  If code at this memory location has
       // been
@@ -316,9 +319,7 @@ public class TextSegmentWindow extends JInternalFrame {
   private void handleSimulatorNotice(ExecutionNotice notice) {
     if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       deleteAsTextSegmentObserver();
-      if (DesktopApplication.services()
-          .getSettings()
-          .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+      if (mainUI.session().getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
         addAsTextSegmentObserver();
       }
     }
@@ -326,9 +327,7 @@ public class TextSegmentWindow extends JInternalFrame {
 
   private void handleSettingsChange() {
     deleteAsTextSegmentObserver();
-    if (DesktopApplication.services()
-        .getSettings()
-        .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+    if (mainUI.session().getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
       addAsTextSegmentObserver();
     }
   }
@@ -397,7 +396,7 @@ public class TextSegmentWindow extends JInternalFrame {
       // for that.  So we'll pretend to be Memory observable and send it a fake memory write
       // update.
       try {
-        VenusUI.instance()
+        mainUI
             .getMainPane()
             .getExecutePane()
             .getDataSegmentWindow()
@@ -504,8 +503,7 @@ public class TextSegmentWindow extends JInternalFrame {
    * is used for stepping through code execution and when reaching breakpoints.
    */
   public void highlightStepAtPC() {
-    highlightStepAtAddress(
-        DesktopApplication.services().context().registerFile.getProgramCounter(), false);
+    highlightStepAtAddress(mainUI.session().context().registerFile.getProgramCounter(), false);
   }
 
   /**
@@ -517,7 +515,7 @@ public class TextSegmentWindow extends JInternalFrame {
    */
   public void highlightStepAtPC(boolean inDelaySlot) {
     highlightStepAtAddress(
-        DesktopApplication.services().context().registerFile.getProgramCounter(), inDelaySlot);
+        mainUI.session().context().registerFile.getProgramCounter(), inDelaySlot);
   }
 
   /**
@@ -653,18 +651,19 @@ public class TextSegmentWindow extends JInternalFrame {
    */
   private void addAsTextSegmentObserver() {
     try {
-      DesktopApplication.services()
+      mainUI
+          .session()
           .memory
           .addObserver(
               memoryListener,
-              DesktopApplication.services().memory.textBaseAddress,
-              DesktopApplication.services().memory.dataSegmentBaseAddress);
+              mainUI.session().memory.textBaseAddress,
+              mainUI.session().memory.dataSegmentBaseAddress);
     } catch (AddressErrorException ignored) {
     }
   }
 
   private void deleteAsTextSegmentObserver() {
-    DesktopApplication.services().memory.deleteObserver(memoryListener);
+    mainUI.session().memory.deleteObserver(memoryListener);
   }
 
   /*
@@ -674,7 +673,7 @@ public class TextSegmentWindow extends JInternalFrame {
   private void reorderColumns() {
     TableColumnModel oldtcm = table.getColumnModel();
     TableColumnModel newtcm = new DefaultTableColumnModel();
-    int[] savedColumnOrder = DesktopApplication.services().getSettings().getTextColumnOrder();
+    int[] savedColumnOrder = mainUI.session().getSettings().getTextColumnOrder();
     // Apply ordering only if correct number of columns.
     if (savedColumnOrder.length == table.getColumnCount()) {
       for (int j : savedColumnOrder) {
@@ -702,7 +701,7 @@ public class TextSegmentWindow extends JInternalFrame {
   }
 
   /** Inner class to implement the Table model for this JTable. */
-  static class TextTableModel extends AbstractTableModel {
+  class TextTableModel extends AbstractTableModel {
     final Object[][] data;
 
     public TextTableModel(Object[][] d) {
@@ -744,7 +743,8 @@ public class TextSegmentWindow extends JInternalFrame {
       // no matter where the cell appears onscreen.
       return col == BREAK_COLUMN
           || (col == CODE_COLUMN
-              && DesktopApplication.services()
+              && mainUI
+                  .session()
                   .getSettings()
                   .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     }
@@ -782,9 +782,9 @@ public class TextSegmentWindow extends JInternalFrame {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+      synchronized (mainUI.session().memoryAndRegistersLock) {
         try {
-          DesktopApplication.services().instructionContext().setMemoryRawWord(address, val);
+          mainUI.session().instructionContext().setMemoryRawWord(address, val);
         }
         // somehow, user was able to display out-of-range address.  Most likely to occur between
         // stack base and Kernel.
@@ -806,14 +806,12 @@ public class TextSegmentWindow extends JInternalFrame {
       Component cell =
           super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
       // cell.setFont(tableCellFont);
-      TextSegmentWindow textSegment =
-          VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow();
-      Settings settings = DesktopApplication.services().getSettings();
+      TextSegmentWindow textSegment = mainUI.getMainPane().getExecutePane().getTextSegmentWindow();
+      Settings settings = mainUI.session().getSettings();
       boolean highlighting = textSegment.getCodeHighlighting();
 
       if (highlighting && textSegment.getIntCodeAddressAtRow(row) == highlightAddress) {
-        if (DesktopApplication.services().context().delayedBranch.isTriggered()
-            || textSegment.inDelaySlot) {
+        if (mainUI.session().context().delayedBranch.isTriggered() || textSegment.inDelaySlot) {
           cell.setBackground(
               EditorSettings.of(settings)
                   .getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_BACKGROUND));
@@ -854,7 +852,7 @@ public class TextSegmentWindow extends JInternalFrame {
    * Cell renderer for Machine Code column.  Alternates background color by row but otherwise is
    * same as MonoRightCellRenderer.
    */
-  static class MachineCodeCellRenderer extends DefaultTableCellRenderer {
+  class MachineCodeCellRenderer extends DefaultTableCellRenderer {
     public Component getTableCellRendererComponent(
         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
       JLabel cell =
@@ -864,17 +862,17 @@ public class TextSegmentWindow extends JInternalFrame {
       cell.setHorizontalAlignment(SwingConstants.RIGHT);
       if (row % 2 == 0) {
         cell.setBackground(
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
         cell.setForeground(
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
       } else {
         cell.setBackground(
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
         cell.setForeground(
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
       }
       return cell;
@@ -1082,10 +1080,10 @@ public class TextSegmentWindow extends JInternalFrame {
       // If movement is slow, this event may fire multiple times w/o
       // actually changing the column order.  If new column order is
       // same as previous, do not save changes to persistent store.
-      int[] oldOrder = DesktopApplication.services().getSettings().getTextColumnOrder();
+      int[] oldOrder = mainUI.session().getSettings().getTextColumnOrder();
       for (int i = 0; i < columnOrder.length; i++) {
         if (oldOrder[i] != columnOrder[i]) {
-          DesktopApplication.services().getSettings().setTextColumnOrder(columnOrder);
+          mainUI.session().getSettings().setTextColumnOrder(columnOrder);
           break;
         }
       }

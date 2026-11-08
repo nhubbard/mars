@@ -9,7 +9,6 @@
 
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
@@ -113,15 +112,14 @@ public class SyntaxUtilities {
    * <code>SyntaxDocument</code> to use the current syntax styles. If changes have been made via
    * MARS Settings menu, the current settings will not be the same as the default settings.
    */
-  public static SyntaxStyle[] getCurrentSyntaxStyles() {
+  public static SyntaxStyle[] getCurrentSyntaxStyles(edu.missouristate.mars.Settings settings) {
     SyntaxStyle[] styles = new SyntaxStyle[Token.ID_COUNT];
     for (int i = 0; i < Token.ID_COUNT; i++) {
       styles[i] =
           new SyntaxStyle(
-              EditorSettings.of(DesktopApplication.services().getSettings())
-                  .getEditorSyntaxStyleColorByPosition(i),
-              DesktopApplication.services().getSettings().getEditorSyntaxStyleItalicByPosition(i),
-              DesktopApplication.services().getSettings().getEditorSyntaxStyleBoldByPosition(i));
+              EditorSettings.of(settings).getEditorSyntaxStyleColorByPosition(i),
+              settings.getEditorSyntaxStyleItalicByPosition(i),
+              settings.getEditorSyntaxStyleBoldByPosition(i));
     }
     return styles;
   }

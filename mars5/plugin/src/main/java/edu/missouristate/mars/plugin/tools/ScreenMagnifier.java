@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.plugin.venus.VenusUI;
+
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -49,19 +49,25 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version 1.0. 9 July 2007.
  */
 public class ScreenMagnifier implements MarsTool {
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+
+  public ScreenMagnifier(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    this.session = session;
+  }
 
   public String getName() {
     return "Screen Magnifier";
   }
 
   public void action() {
-    Magnifier mag = new Magnifier();
+    Magnifier mag = new Magnifier(session);
   }
 
   // Permits stand-alone execution.
 
   public static void main(String[] args) {
-    new Thread(() -> new ScreenMagnifier().action()).start();
+    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
+    new Thread(() -> new ScreenMagnifier(session).action()).start();
   }
 }
 
@@ -72,7 +78,8 @@ public class ScreenMagnifier implements MarsTool {
 */
 
 class Magnifier extends JFrame implements ComponentListener {
-  static Robot robot;
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+  private Robot robot;
   final JButton close;
   final JButton capture;
   final JButton settings;
@@ -101,13 +108,14 @@ class Magnifier extends JFrame implements ComponentListener {
   static final String CLOSE_TOOLTIP_TEXT =
       "Exit the Screen Magnifier.  Changed settings are NOT retained.";
 
-  Magnifier() {
+  Magnifier(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
     super("Screen Magnifier 1.0");
+    this.session = session;
     frame = this;
     createSettings();
     // If running withint MARS, set to its icon image; if not fuggetit.
     try {
-      this.setIconImage(VenusUI.instance().getIconImage());
+      this.setIconImage(session.window().getIconImage());
     } catch (Exception ignored) {
     }
     getContentPane().setLayout(new BorderLayout());
@@ -266,7 +274,7 @@ class Magnifier extends JFrame implements ComponentListener {
     // If this doesn't work, e.g. getGui() returns null, then there
     // are no alternatives so just let what would happen, happen.
     try {
-      VenusUI.instance().update(VenusUI.instance().getGraphics());
+      session.window().update(session.window().getGraphics());
     } catch (Exception ignored) {
     }
     // Perform the screen capture.
@@ -571,7 +579,7 @@ class MagnifierImage extends JPanel {
   // Rectangle representing screen pixels to be magnified.
   private Rectangle screenRectangle;
   // Robot used to perform the screen capture.
-  private static Robot robot;
+  private Robot robot;
   // Displayed image's Image object, which is actually a BufferedImage.
   private Image image;
   // Scribbler for highlighting image using mouse.

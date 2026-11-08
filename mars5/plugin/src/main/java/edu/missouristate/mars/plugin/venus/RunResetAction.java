@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -45,11 +44,11 @@ public class RunResetAction extends GuiAction {
 
   /** reset GUI components and MIPS resources */
   public void actionPerformed(ActionEvent e) {
-    RunGoAction.resetMaxSteps();
+    mainUI.resetMaxSteps();
     String name = this.getValue(Action.NAME).toString();
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     // The difficult part here is resetting the data segment.  Two approaches are:
-    // 1. After each assembly, get a deep copy of the DesktopApplication.services().memory array
+    // 1. After each assembly, get a deep copy of the mainUI.session().memory array
     //    containing data segment.  Then replace it upon reset.
     // 2. Simply re-assemble the program upon reset, and the assembler will
     //    build a new data segment.  Reset can only be done after a successful
@@ -57,7 +56,8 @@ public class RunResetAction extends GuiAction {
     // I am choosing the second approach although it will slow down the reset
     // operation.  The first approach requires additional Memory class methods.
     try {
-      DesktopApplication.services()
+      mainUI
+          .session()
           .getProgram()
           .assemble(
               RunAssembleAction.getMIPSprogramsToAssemble(),
@@ -71,9 +71,9 @@ public class RunResetAction extends GuiAction {
               "Unable to reset.  Please close file then re-open and re-assemble.\n");
       return;
     }
-    DesktopApplication.services().resetRegisters();
-    DesktopApplication.services().context().coprocessor1.resetRegisters();
-    DesktopApplication.services().context().coprocessor0.resetRegisters();
+    mainUI.session().resetRegisters();
+    mainUI.session().context().coprocessor1.resetRegisters();
+    mainUI.session().context().coprocessor0.resetRegisters();
 
     executePane.getRegistersWindow().clearHighlighting();
     executePane.getRegistersWindow().updateRegisters();
@@ -83,18 +83,19 @@ public class RunResetAction extends GuiAction {
     executePane.getCoprocessor0Window().updateRegisters();
     executePane
         .getDataSegmentWindow()
-        .highlightCellForAddress(DesktopApplication.services().memory.dataBaseAddress);
+        .highlightCellForAddress(mainUI.session().memory.dataBaseAddress);
     executePane.getDataSegmentWindow().clearHighlighting();
     executePane.getTextSegmentWindow().resetModifiedSourceCode();
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
     executePane.getTextSegmentWindow().highlightStepAtPC();
     mainUI.getRegistersPane().setSelectedComponent(executePane.getRegistersWindow());
-    FileStatus.set(FileStatus.RUNNABLE);
-    VenusUI.setReset(true);
-    VenusUI.setStarted(false);
+    mainUI.editorState().set(FileStatus.RUNNABLE);
+    mainUI.setReset(true);
+    mainUI.setStarted(false);
 
     // Aug. 24, 2005 Ken Vollmar
-    DesktopApplication.services()
+    mainUI
+        .session()
         .context()
         .syscallEnvironment
         .close(); // Ensure that I/O "file descriptors" are initialized for a new program run

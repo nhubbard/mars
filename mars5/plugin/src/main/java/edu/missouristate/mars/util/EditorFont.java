@@ -1,7 +1,6 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.util.*;
 
@@ -175,11 +174,6 @@ public class EditorFont {
 
   private static final char TAB_CHAR = '\t';
   private static final String SPACES = "                                                  ";
-
-  public static String substituteSpacesForTabs(String string) {
-    return substituteSpacesForTabs(
-        string, DesktopApplication.services().getSettings().getEditorTabSize());
-  }
 
   /**
    * Handy utility to produce a string that substitutes spaces for all tab characters in the given

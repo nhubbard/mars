@@ -36,6 +36,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class Mars {
   public static void main(String[] args) {
-    new MarsLaunch(args);
+    new MarsLaunch(args, edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession());
   }
 }

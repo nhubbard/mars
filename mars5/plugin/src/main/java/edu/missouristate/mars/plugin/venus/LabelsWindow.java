@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -48,6 +47,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Team JSpim
  */
 public class LabelsWindow extends JInternalFrame {
+  private final VenusUI mainUI;
   private final JPanel labelPanel; // holds J
   private final JCheckBox dataLabels;
   private final JCheckBox textLabels;
@@ -61,7 +61,7 @@ public class LabelsWindow extends JInternalFrame {
     /* LABEL_COLUMN */ "Programmer-defined label (identifier).",
     /* ADDRESS_COLUMN */ "Text or data segment address at which label is defined."
   };
-  private static String[] columnNames;
+  private String[] columnNames;
   private Comparator<Symbol> tableSortComparator;
 
   /////////////////////////////////////////////////////////////////////////////////////
@@ -121,10 +121,11 @@ public class LabelsWindow extends JInternalFrame {
   private int sortState;
 
   /** Constructor for the Labels (symbol table) window. */
-  public LabelsWindow() {
+  public LabelsWindow(VenusUI mainUI) {
     super("Labels", true, false, true, true);
+    this.mainUI = mainUI;
     try {
-      sortState = Integer.parseInt(DesktopApplication.services().getSettings().getLabelSortState());
+      sortState = Integer.parseInt(mainUI.session().getSettings().getLabelSortState());
     } catch (NumberFormatException nfe) {
       sortState = 0;
     }
@@ -244,7 +245,7 @@ public class LabelsWindow extends JInternalFrame {
   //  Suggested by Ken Vollmar, implemented by Pete Sanderson
   //  July 2007.
 
-  private static class LabelDisplayMouseListener extends MouseAdapter {
+  private class LabelDisplayMouseListener extends MouseAdapter {
     public void mouseClicked(MouseEvent e) {
       JTable table = (JTable) e.getSource();
       int row = table.rowAtPoint(e.getPoint());
@@ -263,19 +264,11 @@ public class LabelsWindow extends JInternalFrame {
         // Cannot happen because table contains only strings.
       }
       // Scroll to this address, either in Text Segment display or Data Segment display
-      if (DesktopApplication.services().memory.inTextSegment(address)
-          || DesktopApplication.services().memory.inKernelTextSegment(address)) {
-        VenusUI.instance()
-            .getMainPane()
-            .getExecutePane()
-            .getTextSegmentWindow()
-            .selectStepAtAddress(address);
+      if (mainUI.session().memory.inTextSegment(address)
+          || mainUI.session().memory.inKernelTextSegment(address)) {
+        mainUI.getMainPane().getExecutePane().getTextSegmentWindow().selectStepAtAddress(address);
       } else {
-        VenusUI.instance()
-            .getMainPane()
-            .getExecutePane()
-            .getDataSegmentWindow()
-            .selectCellForAddress(address);
+        mainUI.getMainPane().getExecutePane().getDataSegmentWindow().selectCellForAddress(address);
       }
     }
   }
@@ -295,7 +288,7 @@ public class LabelsWindow extends JInternalFrame {
       this.myMIPSprogram = myMIPSprogram;
       symbolTable =
           (myMIPSprogram == null)
-              ? DesktopApplication.services().symbolTable
+              ? mainUI.session().symbolTable
               : myMIPSprogram.getLocalSymbolTable();
       tableName =
           (myMIPSprogram == null) ? "(global)" : new File(myMIPSprogram.getFilename()).getName();
@@ -314,9 +307,9 @@ public class LabelsWindow extends JInternalFrame {
     private JTable generateLabelTable() {
       SymbolTable symbolTable =
           (myMIPSprogram == null)
-              ? DesktopApplication.services().symbolTable
+              ? mainUI.session().symbolTable
               : myMIPSprogram.getLocalSymbolTable();
-      int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+      int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
       if (textLabels.isSelected() && dataLabels.isSelected()) {
         symbols = symbolTable.getAllSymbols();
       } else if (textLabels.isSelected()) {
@@ -335,7 +328,7 @@ public class LabelsWindow extends JInternalFrame {
         labelData[i][ADDRESS_COLUMN] =
             NumberDisplayBaseChooser.formatNumber(s.getAddress(), addressBase);
       }
-      LabelTableModel m = new LabelTableModel(labelData, LabelsWindow.columnNames);
+      LabelTableModel m = new LabelTableModel(labelData, columnNames);
       if (labelTable == null) {
         labelTable = new MyTippedJTable(m);
       } else {
@@ -352,7 +345,7 @@ public class LabelsWindow extends JInternalFrame {
       if (labelPanel.getComponentCount() == 0) {
         return; // ignore if no content to change
       }
-      int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+      int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
       int address;
       String formattedAddress;
       int numSymbols = (labelData == null) ? 0 : labelData.length;
@@ -368,7 +361,7 @@ public class LabelsWindow extends JInternalFrame {
 
   ///////////////////////////////////////////////////////////////
   // Class representing label table data
-  static class LabelTableModel extends AbstractTableModel {
+  class LabelTableModel extends AbstractTableModel {
     final String[] columns;
     final Object[][] data;
 
@@ -468,12 +461,10 @@ public class LabelsWindow extends JInternalFrame {
           sortState = sortStateTransitions[sortState][realIndex];
           tableSortComparator = tableSortingComparators.get(sortState);
           columnNames = sortColumnHeadings[sortState];
-          DesktopApplication.services()
-              .getSettings()
-              .setLabelSortState(Integer.toString(sortState));
+          mainUI.session().getSettings().setLabelSortState(Integer.toString(sortState));
           setupTable();
-          VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(false);
-          VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(true);
+          mainUI.getMainPane().getExecutePane().setLabelWindowVisibility(false);
+          mainUI.getMainPane().getExecutePane().setLabelWindowVisibility(true);
         }
 
         public void mouseEntered(MouseEvent e) {}
@@ -490,7 +481,7 @@ public class LabelsWindow extends JInternalFrame {
   ////////////////////////////////////////////////////////////////////////////
   //
   //  Comparator class used to sort in ascending order a List of symbols alphabetically by name
-  private static class LabelNameAscendingComparator implements Comparator<Symbol> {
+  private class LabelNameAscendingComparator implements Comparator<Symbol> {
     public int compare(Symbol a, Symbol b) {
       return a.getName().toLowerCase().compareTo(b.getName().toLowerCase());
     }
@@ -505,7 +496,7 @@ public class LabelsWindow extends JInternalFrame {
   //  Remember, if not equal then any value with correct sign will work.
   //  If both have same sign, a-b will yield correct result.
   //  If signs differ, b will yield correct result (think about it).
-  private static class LabelAddressAscendingComparator implements Comparator<Symbol> {
+  private class LabelAddressAscendingComparator implements Comparator<Symbol> {
     public int compare(Symbol a, Symbol b) {
       int addrA = a.getAddress();
       int addrB = b.getAddress();

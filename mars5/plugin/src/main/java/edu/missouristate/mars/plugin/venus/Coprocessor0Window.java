@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -47,22 +46,24 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson, Bumgarner
  */
 public class Coprocessor0Window extends JPanel {
-  private static JTable table;
-  private static Register[] registers;
+  private final VenusUI mainUI;
+  private JTable table;
+  private Register[] registers;
   private boolean highlighting;
   private int highlightRow;
   private int[] rowGivenRegNumber; // translate register number to table row.
   private static final int NAME_COLUMN = 0;
   private static final int NUMBER_COLUMN = 1;
   private static final int VALUE_COLUMN = 2;
-  private static Settings settings;
+  private Settings settings;
 
   private final Consumer<RegisterAccessNotice> registersListener = this::handleRegisterAccess;
 
   /** Constructor which sets up a fresh window with a table that contains the register values. */
-  public Coprocessor0Window() {
-    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
-    settings = DesktopApplication.services().getSettings();
+  public Coprocessor0Window(VenusUI mainUI) {
+    this.mainUI = mainUI;
+    mainUI.session().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = mainUI.session().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(50);
@@ -102,7 +103,7 @@ public class Coprocessor0Window extends JPanel {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    registers = DesktopApplication.services().context().coprocessor0.getRegisters();
+    registers = mainUI.session().context().coprocessor0.getRegisters();
     Object[][] tableData = new Object[registers.length][3];
     rowGivenRegNumber = new int[32]; // maximum number of registers
     for (int i = 0; i < registers.length; i++) {
@@ -122,8 +123,8 @@ public class Coprocessor0Window extends JPanel {
   /** Reset and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    DesktopApplication.services().context().coprocessor0.resetRegisters();
-    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
+    mainUI.session().context().coprocessor0.resetRegisters();
+    this.updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /** Clear highlight background color from any row currently highlighted. */
@@ -144,7 +145,7 @@ public class Coprocessor0Window extends JPanel {
 
   /** Update register display using current display base (10 or 16) */
   public void updateRegisters() {
-    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
+    this.updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -153,7 +154,7 @@ public class Coprocessor0Window extends JPanel {
    * @param base number base for display (10 or 16)
    */
   public void updateRegisters(int base) {
-    registers = DesktopApplication.services().context().coprocessor0.getRegisters();
+    registers = mainUI.session().context().coprocessor0.getRegisters();
     for (Register register : registers) {
       this.updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
@@ -174,17 +175,11 @@ public class Coprocessor0Window extends JPanel {
   private void handleSimulatorNotice(ExecutionNotice notice) {
     if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        DesktopApplication.services()
-            .context()
-            .coprocessor0
-            .addRegistersObserver(registersListener);
+        mainUI.session().context().coprocessor0.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      DesktopApplication.services()
-          .context()
-          .coprocessor0
-          .deleteRegistersObserver(registersListener);
+      mainUI.session().context().coprocessor0.deleteRegistersObserver(registersListener);
     }
   }
 
@@ -192,19 +187,18 @@ public class Coprocessor0Window extends JPanel {
     if (access.getAccessType() != AccessNotice.WRITE) {
       return;
     }
-    Register reg =
-        DesktopApplication.services().context().coprocessor0.getRegister(access.getRegisterName());
+    Register reg = mainUI.session().context().coprocessor0.getRegister(access.getRegisterName());
     if (reg == null) {
       return;
     }
-    int registerRow = DesktopApplication.services().context().coprocessor0.getRegisterPosition(reg);
+    int registerRow = mainUI.session().context().coprocessor0.getRegisterPosition(reg);
     if (registerRow < 0) {
       return;
     }
     this.highlighting = true;
     this.highlightRow = registerRow;
     table.tableChanged(new TableModelEvent(table.getModel()));
-    VenusUI.instance().getRegistersPane().setSelectedComponent(this);
+    mainUI.getRegistersPane().setSelectedComponent(this);
   }
 
   Consumer<RegisterAccessNotice> getRegistersListener() {
@@ -261,7 +255,7 @@ public class Coprocessor0Window extends JPanel {
     }
   }
 
-  static class RegTableModel extends AbstractTableModel {
+  class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Number", "Value"};
     final Object[][] data;
 
@@ -319,12 +313,10 @@ public class Coprocessor0Window extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-        DesktopApplication.services()
-            .instructionContext()
-            .updateCoprocessor0(registers[row].getNumber(), val);
+      synchronized (mainUI.session().memoryAndRegistersLock) {
+        mainUI.session().instructionContext().updateCoprocessor0(registers[row].getNumber(), val);
       }
-      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }
@@ -358,7 +350,7 @@ public class Coprocessor0Window extends JPanel {
   // the first column. From Sun's JTable tutorial.
   // http://java.sun.com/docs/books/tutorial/uiswing/components/table.html
   //
-  private static class MyTippedJTable extends JTable {
+  private class MyTippedJTable extends JTable {
     MyTippedJTable(RegTableModel m) {
       super(m);
       this.setRowSelectionAllowed(true); // highlights background color of entire row

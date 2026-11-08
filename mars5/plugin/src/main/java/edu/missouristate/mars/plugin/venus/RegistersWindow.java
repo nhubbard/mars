@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -47,22 +46,24 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson, Bumgarner
  */
 public class RegistersWindow extends JPanel {
-  private static JTable table;
-  private static Register[] registers;
+  private final VenusUI mainUI;
+  private JTable table;
+  private Register[] registers;
   private boolean highlighting;
   private int highlightRow;
   private ExecutePane executePane;
   private static final int NAME_COLUMN = 0;
   private static final int NUMBER_COLUMN = 1;
   private static final int VALUE_COLUMN = 2;
-  private static Settings settings;
+  private Settings settings;
 
   private final Consumer<RegisterAccessNotice> registersListener = this::handleRegisterAccess;
 
   /** Constructor which sets up a fresh window with a table that contains the register values. */
-  public RegistersWindow() {
-    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
-    settings = DesktopApplication.services().getSettings();
+  public RegistersWindow(VenusUI mainUI) {
+    this.mainUI = mainUI;
+    mainUI.session().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = mainUI.session().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(25);
@@ -106,7 +107,7 @@ public class RegistersWindow extends JPanel {
         NumberDisplayBaseChooser.getBase(
             settings.getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX));
     Object[][] tableData = new Object[35][3];
-    registers = DesktopApplication.services().context().registerFile.getRegisters();
+    registers = mainUI.session().context().registerFile.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       tableData[i][0] = registers[i].getName();
       tableData[i][1] = registers[i].getNumber();
@@ -116,19 +117,19 @@ public class RegistersWindow extends JPanel {
     tableData[32][1] = ""; // 32;
     tableData[32][2] =
         NumberDisplayBaseChooser.formatUnsignedInteger(
-            DesktopApplication.services().context().registerFile.getProgramCounter(), valueBase);
+            mainUI.session().context().registerFile.getProgramCounter(), valueBase);
 
     tableData[33][0] = "hi";
     tableData[33][1] = ""; // 33;
     tableData[33][2] =
         NumberDisplayBaseChooser.formatNumber(
-            DesktopApplication.services().context().registerFile.getValue(33), valueBase);
+            mainUI.session().context().registerFile.getValue(33), valueBase);
 
     tableData[34][0] = "lo";
     tableData[34][1] = ""; // 34;
     tableData[34][2] =
         NumberDisplayBaseChooser.formatNumber(
-            DesktopApplication.services().context().registerFile.getValue(34), valueBase);
+            mainUI.session().context().registerFile.getValue(34), valueBase);
 
     return tableData;
   }
@@ -136,8 +137,8 @@ public class RegistersWindow extends JPanel {
   /** clear and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    DesktopApplication.services().resetRegisters();
-    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
+    mainUI.session().resetRegisters();
+    this.updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /** Clear highlight background color from any cell currently highlighted. */
@@ -158,7 +159,7 @@ public class RegistersWindow extends JPanel {
 
   /** update register display using current number base (10 or 16) */
   public void updateRegisters() {
-    updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
+    updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -167,16 +168,14 @@ public class RegistersWindow extends JPanel {
    * @param base desired number base
    */
   public void updateRegisters(int base) {
-    registers = DesktopApplication.services().context().registerFile.getRegisters();
+    registers = mainUI.session().context().registerFile.getRegisters();
     for (Register register : registers) {
       updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
     updateRegisterUnsignedValue(
-        32, DesktopApplication.services().context().registerFile.getProgramCounter(), base);
-    updateRegisterValue(
-        33, DesktopApplication.services().context().registerFile.getValue(33), base);
-    updateRegisterValue(
-        34, DesktopApplication.services().context().registerFile.getValue(34), base);
+        32, mainUI.session().context().registerFile.getProgramCounter(), base);
+    updateRegisterValue(33, mainUI.session().context().registerFile.getValue(33), base);
+    updateRegisterValue(34, mainUI.session().context().registerFile.getValue(34), base);
   }
 
   /**
@@ -199,17 +198,11 @@ public class RegistersWindow extends JPanel {
   private void handleSimulatorNotice(ExecutionNotice notice) {
     if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        DesktopApplication.services()
-            .context()
-            .registerFile
-            .addRegistersObserver(registersListener);
+        mainUI.session().context().registerFile.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      DesktopApplication.services()
-          .context()
-          .registerFile
-          .deleteRegistersObserver(registersListener);
+      mainUI.session().context().registerFile.deleteRegistersObserver(registersListener);
     }
   }
 
@@ -221,16 +214,14 @@ public class RegistersWindow extends JPanel {
     int row =
         "hi".equals(name)
             ? 33
-            : "lo".equals(name)
-                ? 34
-                : DesktopApplication.services().context().registerFile.getNumber(name);
+            : "lo".equals(name) ? 34 : mainUI.session().context().registerFile.getNumber(name);
     if (row < 0) {
       return;
     }
     this.highlighting = true;
     this.highlightRow = row;
     table.tableChanged(new TableModelEvent(table.getModel()));
-    VenusUI.instance().getRegistersPane().setSelectedComponent(this);
+    mainUI.getRegistersPane().setSelectedComponent(this);
   }
 
   Consumer<RegisterAccessNotice> getRegistersListener() {
@@ -302,7 +293,7 @@ public class RegistersWindow extends JPanel {
   }
 
   ////////////////////////////////////////////////////////////////////////////
-  static class RegTableModel extends AbstractTableModel {
+  class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Number", "Value"};
     final Object[][] data;
 
@@ -361,10 +352,10 @@ public class RegistersWindow extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-        DesktopApplication.services().instructionContext().updateRegister(row, val);
+      synchronized (mainUI.session().memoryAndRegistersLock) {
+        mainUI.session().instructionContext().updateRegister(row, val);
       }
-      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }
@@ -398,7 +389,7 @@ public class RegistersWindow extends JPanel {
   // the first column. From Sun's JTable tutorial.
   // http://java.sun.com/docs/books/tutorial/uiswing/components/table.html
   //
-  private static class MyTippedJTable extends JTable {
+  private class MyTippedJTable extends JTable {
     MyTippedJTable(RegTableModel m) {
       super(m);
       this.setRowSelectionAllowed(true); // highlights background color of entire row

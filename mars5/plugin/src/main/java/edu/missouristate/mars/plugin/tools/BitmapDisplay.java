@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSession;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import javax.swing.*;
@@ -94,13 +95,14 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public BitmapDisplay(String title, String heading) {
-    super(title, heading);
+  public BitmapDisplay(
+      DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public BitmapDisplay() {
-    super("Bitmap Display, " + version, heading);
+  public BitmapDisplay(DesktopSession session) {
+    super(session, "Bitmap Display, " + version, heading);
   }
 
   /**
@@ -109,8 +111,9 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
    * is not invoked from the MARS Tools menu. "Pure" means there is no driver program to invoke the
    * application.
    */
-  public static void main(String[] args) {
-    new BitmapDisplay("Bitmap Display stand-alone, " + version, heading).go();
+  static void main(String[] ignoredArgs) {
+    var session = DesktopApplication.createSession();
+    new BitmapDisplay(session, "Bitmap Display stand-alone, " + version, heading).go();
   }
 
   /**
@@ -234,13 +237,13 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
         questions or comments.
         """;
     JButton help = new JButton("Help");
-    help.addActionListener(e -> JOptionPane.showMessageDialog(theWindow, helpContent));
+    help.addActionListener(_ -> JOptionPane.showMessageDialog(theWindow, helpContent));
     return help;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Private methods defined to support the above.
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
 
   // UI components and layout for left half of GUI, where settings are specified.
   private JComponent buildOrganizationArea() {
@@ -253,7 +256,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     visualizationUnitPixelWidthSelector.setToolTipText(
         "Width in pixels of rectangle representing memory word");
     visualizationUnitPixelWidthSelector.addActionListener(
-        e -> {
+        _ -> {
           unitPixelWidth = getIntComboBoxSelection(visualizationUnitPixelWidthSelector);
           theGrid = createNewGrid();
           updateDisplay();
@@ -265,7 +268,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     visualizationUnitPixelHeightSelector.setToolTipText(
         "Height in pixels of rectangle representing memory word");
     visualizationUnitPixelHeightSelector.addActionListener(
-        e -> {
+        _ -> {
           unitPixelHeight = getIntComboBoxSelection(visualizationUnitPixelHeightSelector);
           theGrid = createNewGrid();
           updateDisplay();
@@ -276,7 +279,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     visualizationPixelWidthSelector.setSelectedIndex(defaultDisplayWidthIndex);
     visualizationPixelWidthSelector.setToolTipText("Total width in pixels of display area");
     visualizationPixelWidthSelector.addActionListener(
-        e -> {
+        _ -> {
           displayAreaWidthInPixels = getIntComboBoxSelection(visualizationPixelWidthSelector);
           canvas.setPreferredSize(getDisplayAreaDimension());
           canvas.setSize(getDisplayAreaDimension());
@@ -289,7 +292,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     visualizationPixelHeightSelector.setSelectedIndex(defaultDisplayHeightIndex);
     visualizationPixelHeightSelector.setToolTipText("Total height in pixels of display area");
     visualizationPixelHeightSelector.addActionListener(
-        e -> {
+        _ -> {
           displayAreaHeightInPixels = getIntComboBoxSelection(visualizationPixelHeightSelector);
           canvas.setPreferredSize(getDisplayAreaDimension());
           canvas.setSize(getDisplayAreaDimension());
@@ -302,7 +305,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     displayBaseAddressSelector.setSelectedIndex(defaultBaseAddressIndex);
     displayBaseAddressSelector.setToolTipText("Base address for display area (upper left corner)");
     displayBaseAddressSelector.addActionListener(
-        e -> {
+        _ -> {
           // This may also affect what address range we should be registered as an Observer
           // for.  The default (inherited) address range is the MIPS static data segment
           // starting at 0x10010000. To change this requires override of
@@ -372,11 +375,11 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
   // dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
   private void initializeDisplayBaseChoices() {
     int[] displayBaseAddressArray = {
-      DesktopApplication.services().memory.dataSegmentBaseAddress,
-      DesktopApplication.services().memory.globalPointer,
-      DesktopApplication.services().memory.dataBaseAddress,
-      DesktopApplication.services().memory.heapBaseAddress,
-      DesktopApplication.services().memory.memoryMapBaseAddress
+      session.memory.dataSegmentBaseAddress,
+      session.memory.globalPointer,
+      session.memory.dataBaseAddress,
+      session.memory.heapBaseAddress,
+      session.memory.memoryMapBaseAddress
     };
     // Must agree with above in number and order...
     String[] descriptions = {
@@ -440,9 +443,9 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     return new Grid(rows, columns);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Specialized inner classes for modeling and animation.
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
 
   /////////////////////////////////////////////////////////////////////////////
   //  Class that represents the panel for visualizing and animating memory reference
@@ -494,13 +497,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
       return columns;
     }
 
-    // Returns value in given grid element; null if row or column is out of range.
-    private Color getElement(int row, int column) {
-      return (row >= 0 && row <= rows && column >= 0 && column <= columns)
-          ? grid[row][column]
-          : null;
-    }
-
     // Returns value in given grid element without doing any row/column index checking.
     // Is faster than getElement but will throw array index out of bounds exception if
     // parameter values are outside the bounds of the grid.
@@ -511,11 +507,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     // Set the grid element.
     private void setElement(int row, int column, int color) {
       grid[row][column] = new Color(color);
-    }
-
-    // Set the grid element.
-    private void setElement(int row, int column, Color color) {
-      grid[row][column] = color;
     }
 
     // Just set all grid elements to black.

@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
@@ -53,10 +52,10 @@ public class SettingsEditorAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     editorDialog =
         new EditorFontDialog(
-            VenusUI.instance(),
+            mainUI,
             "Text Editor Settings",
             true,
-            EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
+            EditorSettings.of(mainUI.session().getSettings()).getEditorFont());
     editorDialog.setVisible(true);
   }
 
@@ -94,7 +93,7 @@ public class SettingsEditorAction extends GuiAction {
   };
 
   // Concrete font chooser class.
-  private static class EditorFontDialog extends AbstractFontSettingDialog {
+  private class EditorFontDialog extends AbstractFontSettingDialog {
 
     private JButton[] foregroundButtons;
     private JLabel[] samples;
@@ -122,9 +121,7 @@ public class SettingsEditorAction extends GuiAction {
 
     public EditorFontDialog(Frame owner, String title, boolean modality, Font font) {
       super(owner, title, modality, font);
-      if (DesktopApplication.services()
-          .getSettings()
-          .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
+      if (mainUI.session().getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
         syntaxStylePanel.setVisible(false);
         otherSettingsPanel.setVisible(false);
       }
@@ -167,9 +164,7 @@ public class SettingsEditorAction extends GuiAction {
       resetButton.setToolTipText(SettingsHighlightingAction.RESET_TOOL_TIP_TEXT);
       resetButton.addActionListener(e -> reset());
       initialGenericTextEditor =
-          DesktopApplication.services()
-              .getSettings()
-              .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR);
+          mainUI.session().getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR);
       genericEditorCheck = new JCheckBox("Use Generic Editor", initialGenericTextEditor);
       genericEditorCheck.setToolTipText(GENERIC_TOOL_TIP_TEXT);
       genericEditorCheck.addItemListener(
@@ -200,23 +195,24 @@ public class SettingsEditorAction extends GuiAction {
     // User has clicked "Apply" or "Apply and Close" button.  Required method, is
     // abstract in superclass.
     protected void apply(Font font) {
-      DesktopApplication.services()
+      mainUI
+          .session()
           .getSettings()
           .setBooleanSetting(Settings.GENERIC_TEXT_EDITOR, genericEditorCheck.isSelected());
-      DesktopApplication.services()
+      mainUI
+          .session()
           .getSettings()
           .setBooleanSetting(
               Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING, lineHighlightCheck.isSelected());
-      DesktopApplication.services()
+      mainUI
+          .session()
           .getSettings()
           .setBooleanSetting(Settings.AUTO_INDENT, autoIndentCheck.isSelected());
-      DesktopApplication.services()
-          .getSettings()
-          .setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
-      DesktopApplication.services().getSettings().setEditorTabSize(tabSizeSelector.getValue());
+      mainUI.session().getSettings().setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
+      mainUI.session().getSettings().setEditorTabSize(tabSizeSelector.getValue());
       if (syntaxStylesAction) {
         for (int i = 0; i < syntaxStyleIndex.length; i++) {
-          EditorSettings.of(DesktopApplication.services().getSettings())
+          EditorSettings.of(mainUI.session().getSettings())
               .setEditorSyntaxStyleByPosition(
                   syntaxStyleIndex[i],
                   samples[i].getForeground(),
@@ -225,18 +221,20 @@ public class SettingsEditorAction extends GuiAction {
         }
         syntaxStylesAction = false; // reset
       }
-      EditorSettings.of(DesktopApplication.services().getSettings()).setEditorFont(font);
+      EditorSettings.of(mainUI.session().getSettings()).setEditorFont(font);
       for (int i = 0; i < popupGuidanceOptions.length; i++) {
         if (popupGuidanceOptions[i].isSelected()) {
           if (i == 0) {
-            DesktopApplication.services()
+            mainUI
+                .session()
                 .getSettings()
                 .setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, false);
           } else {
-            DesktopApplication.services()
+            mainUI
+                .session()
                 .getSettings()
                 .setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, true);
-            DesktopApplication.services().getSettings().setEditorPopupPrefixLength(i);
+            mainUI.session().getSettings().setEditorPopupPrefixLength(i);
           }
           break;
         }
@@ -268,7 +266,7 @@ public class SettingsEditorAction extends GuiAction {
       JPanel otherSettingsPanel = new JPanel();
 
       // Tab size selector
-      initialEditorTabSize = DesktopApplication.services().getSettings().getEditorTabSize();
+      initialEditorTabSize = mainUI.session().getSettings().getEditorTabSize();
       tabSizeSelector = new JSlider(Editor.MIN_TAB_SIZE, Editor.MAX_TAB_SIZE, initialEditorTabSize);
       tabSizeSelector.setToolTipText(
           "Use slider to select tab size from "
@@ -293,7 +291,8 @@ public class SettingsEditorAction extends GuiAction {
 
       // highlighting of current line
       initialLineHighlighting =
-          DesktopApplication.services()
+          mainUI
+              .session()
               .getSettings()
               .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
       lineHighlightCheck = new JCheckBox("Highlight the line currently being edited");
@@ -301,14 +300,13 @@ public class SettingsEditorAction extends GuiAction {
       lineHighlightCheck.setToolTipText(CURRENT_LINE_HIGHLIGHT_TOOL_TIP_TEXT);
 
       // auto-indent
-      initialAutoIndent =
-          DesktopApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT);
+      initialAutoIndent = mainUI.session().getSettings().getBooleanSetting(Settings.AUTO_INDENT);
       autoIndentCheck = new JCheckBox("Auto-Indent");
       autoIndentCheck.setSelected(initialAutoIndent);
       autoIndentCheck.setToolTipText(AUTO_INDENT_TOOL_TIP_TEXT);
 
       // cursor blink rate selector
-      initialCaretBlinkRate = DesktopApplication.services().getSettings().getCaretBlinkRate();
+      initialCaretBlinkRate = mainUI.session().getSettings().getCaretBlinkRate();
       blinkSample = new JTextField("     ");
       blinkSample.setCaretPosition(2);
       blinkSample.setToolTipText(BLINK_SAMPLE_TOOL_TIP_TEXT);
@@ -359,10 +357,8 @@ public class SettingsEditorAction extends GuiAction {
         popupGuidanceButtons.add(popupGuidanceOptions[i]);
       }
       initialPopupGuidance =
-          DesktopApplication.services()
-                  .getSettings()
-                  .getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)
-              ? DesktopApplication.services().getSettings().getEditorPopupPrefixLength()
+          mainUI.session().getSettings().getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)
+              ? mainUI.session().getSettings().getEditorPopupPrefixLength()
               : 0;
       popupGuidanceOptions[initialPopupGuidance].setSelected(true);
       JPanel popupPanel = new JPanel(new GridLayout(3, 1));
@@ -381,7 +377,7 @@ public class SettingsEditorAction extends GuiAction {
     private JPanel buildSyntaxStylePanel() {
       JPanel syntaxStylePanel = new JPanel();
       defaultStyles = SyntaxUtilities.getDefaultSyntaxStyles();
-      initialStyles = SyntaxUtilities.getCurrentSyntaxStyles();
+      initialStyles = SyntaxUtilities.getCurrentSyntaxStyles(mainUI.session().getSettings());
       String[] labels = MIPSTokenMarker.getMIPSTokenLabels();
       String[] sampleText = MIPSTokenMarker.getMIPSTokenExamples();
       syntaxStylesAction = false;

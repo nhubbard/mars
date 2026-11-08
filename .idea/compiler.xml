@@ -70,10 +70,16 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="mars5.core" options="-Xlint:rawtypes -Xlint:unchecked -Werror" />
-      <module name="mars5.core.benchmark" options="-Xlint:rawtypes -Xlint:unchecked -Werror" />
-      <module name="mars5.core.main" options="-Xlint:rawtypes -Xlint:unchecked -Werror" />
-      <module name="mars5.core.test" options="-Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.cli" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.cli.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.cli.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.core" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.core.benchmark" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.core.main" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.core.test" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.plugin" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.plugin.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.plugin.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
     </option>
   </component>
 </project>

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -42,7 +41,7 @@ public class RunStopAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    DesktopApplication.services().simulator().stopExecution(this);
+    mainUI.session().simulator().stopExecution(this);
     // RunGoAction's "stopped" method will take care of the cleanup.
   }
 }

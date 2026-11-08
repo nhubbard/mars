@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.venus.editors.generic;
 
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.EditPane;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
@@ -51,10 +50,10 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
   public GenericTextArea(EditPane editPain, JComponent lineNumbers) {
     this.editPane = editPain;
     this.sourceCode = this;
-    this.setFont(EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
-    this.setTabSize(DesktopApplication.services().getSettings().getEditorTabSize());
+    this.setFont(EditorSettings.of(editPane.session().getSettings()).getEditorFont());
+    this.setTabSize(editPane.session().getSettings().getEditorTabSize());
     this.setMargin(new Insets(0, 3, 3, 3));
-    this.setCaretBlinkRate(DesktopApplication.services().getSettings().getCaretBlinkRate());
+    this.setCaretBlinkRate(editPane.session().getSettings().getCaretBlinkRate());
 
     JPanel source = new JPanel(new BorderLayout());
     source.add(lineNumbers, BorderLayout.WEST);

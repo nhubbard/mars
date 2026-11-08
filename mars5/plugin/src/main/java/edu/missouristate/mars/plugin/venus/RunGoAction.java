@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -41,7 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinishCallback {
 
   public static final int defaultMaxSteps = -1; // "forever", formerly 10000000; // 10 million
-  public static int maxSteps = defaultMaxSteps;
+  private int maxSteps = defaultMaxSteps;
   private String name;
   private ExecutePane executePane;
 
@@ -54,29 +53,30 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
   public void actionPerformed(ActionEvent e) {
     name = this.getValue(Action.NAME).toString();
     executePane = mainUI.getMainPane().getExecutePane();
-    if (FileStatus.isAssembled()) {
-      if (!VenusUI.getStarted()) {
+    if (mainUI.editorState().isAssembled()) {
+      if (!mainUI.getStarted()) {
         processProgramArgumentsIfAny(); // DPS 17-July-2008
       }
-      if (VenusUI.getReset() || VenusUI.getStarted()) {
+      if (mainUI.getReset() || mainUI.getStarted()) {
 
-        VenusUI.setStarted(true); // added 8/27/05
+        mainUI.setStarted(true); // added 8/27/05
 
         mainUI.messagesPane.postMarsMessage(
-            name + ": running " + FileStatus.getFile().getName() + "\n\n");
+            name + ": running " + mainUI.editorState().getFile().getName() + "\n\n");
         mainUI.getMessagesPane().selectRunMessageTab();
         executePane.getTextSegmentWindow().setCodeHighlighting(false);
         executePane.getTextSegmentWindow().unhighlightAllSteps();
-        // FileStatus.set(FileStatus.RUNNING);
+        // mainUI.editorState().set(FileStatus.RUNNING);
         mainUI.setMenuState(FileStatus.RUNNING);
         try {
           int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
           boolean done =
-              DesktopApplication.services()
+              mainUI
+                  .session()
                   .simulator()
                   .simulate(
-                      DesktopApplication.services().getProgram(),
-                      DesktopApplication.services().context().registerFile.getPC(),
+                      mainUI.session().getProgram(),
+                      mainUI.session().context().registerFile.getPC(),
                       maxSteps,
                       breakPoints,
                       this);
@@ -87,9 +87,9 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
         JOptionPane.showMessageDialog(
             mainUI,
             "reset "
-                + VenusUI.getReset()
+                + mainUI.getReset()
                 + " started "
-                + VenusUI
+                + mainUI
                     .getStarted()); // "You must reset before you can execute the program again.");
       }
     } else {
@@ -111,10 +111,16 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
     }
     if (pauseReason == DesktopSimulation.BREAKPOINT) {
       mainUI.messagesPane.postMarsMessage(
-          name + ": execution paused at breakpoint: " + FileStatus.getFile().getName() + "\n\n");
+          name
+              + ": execution paused at breakpoint: "
+              + mainUI.editorState().getFile().getName()
+              + "\n\n");
     } else {
       mainUI.messagesPane.postMarsMessage(
-          name + ": execution paused by user: " + FileStatus.getFile().getName() + "\n\n");
+          name
+              + ": execution paused by user: "
+              + mainUI.editorState().getFile().getName()
+              + "\n\n");
     }
     mainUI.getMessagesPane().selectMarsMessageTab();
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
@@ -123,8 +129,8 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
     executePane.getCoprocessor1Window().updateRegisters();
     executePane.getCoprocessor0Window().updateRegisters();
     executePane.getDataSegmentWindow().updateValues();
-    FileStatus.set(FileStatus.RUNNABLE);
-    VenusUI.setReset(false);
+    mainUI.editorState().set(FileStatus.RUNNABLE);
+    mainUI.setReset(false);
   }
 
   /**
@@ -139,11 +145,8 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
     executePane.getCoprocessor1Window().updateRegisters();
     executePane.getCoprocessor0Window().updateRegisters();
     executePane.getDataSegmentWindow().updateValues();
-    FileStatus.set(FileStatus.TERMINATED);
-    DesktopApplication.services()
-        .context()
-        .syscallEnvironment
-        .close(); // close any files opened in MIPS program
+    mainUI.editorState().set(FileStatus.TERMINATED);
+    mainUI.session().context().syscallEnvironment.close(); // close any files opened in MIPS program
     // Bring coprocessor 0 to the front if terminated due to exception.
     if (pe != null) {
       mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
@@ -151,8 +154,7 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
       executePane.getTextSegmentWindow().unhighlightAllSteps();
       executePane
           .getTextSegmentWindow()
-          .highlightStepAtAddress(
-              DesktopApplication.services().context().registerFile.getProgramCounter() - 4);
+          .highlightStepAtAddress(mainUI.session().context().registerFile.getProgramCounter() - 4);
     }
     switch (reason) {
       case DesktopSimulation.NORMAL_TERMINATION:
@@ -193,15 +195,15 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
       case DesktopSimulation.BREAKPOINT: // should never get here
         break;
     }
-    RunGoAction.resetMaxSteps();
-    VenusUI.setReset(false);
+    mainUI.resetMaxSteps();
+    mainUI.setReset(false);
   }
 
   @Override
   public void stepped(boolean done, int reason, ProcessingException pe) {}
 
   /** Reset max steps limit to default value at termination of a simulated execution. */
-  public static void resetMaxSteps() {
+  public void resetMaxSteps() {
     maxSteps = defaultMaxSteps;
   }
 
@@ -214,12 +216,12 @@ public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinis
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !DesktopApplication.services()
+        || !mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
-    new ProgramArgumentList(programArguments)
-        .storeProgramArguments(DesktopApplication.services().context());
+    new ProgramArgumentList(programArguments).storeProgramArguments(mainUI.session().context());
   }
 }

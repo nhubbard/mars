@@ -59,7 +59,7 @@ public class Editor {
    */
   public Editor(VenusUI ui) {
     mainUI = ui;
-    FileStatus.reset();
+    mainUI.editorState().reset();
     mainUIbaseTitle = mainUI.getTitle();
     newUsageCount = 0;
     // Directory from which MARS was launched. Guaranteed to have a value.

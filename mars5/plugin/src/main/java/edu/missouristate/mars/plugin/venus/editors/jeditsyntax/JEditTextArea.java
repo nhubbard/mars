@@ -10,7 +10,6 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -54,6 +53,8 @@ import javax.swing.undo.*;
  * @version $Id: JEditTextArea.java,v 1.36 1999/12/13 03:40:30 sp Exp $
  */
 public class JEditTextArea extends JComponent {
+  protected final Settings settings;
+
   /**
    * Adding components with this name to the text area will place them left of the horizontal scroll
    * bar. In jEdit, the status bar is added this way.
@@ -68,8 +69,8 @@ public class JEditTextArea extends JComponent {
   private static final int LINES_PER_MOUSE_WHEEL_NOTCH = 3;
 
   /** Creates a new JEditTextArea with the default settings. */
-  public JEditTextArea(JComponent lineNumbers) {
-    this(TextAreaDefaults.getDefaults(), lineNumbers);
+  public JEditTextArea(Settings settings, JComponent lineNumbers) {
+    this(settings, TextAreaDefaults.getDefaults(settings), lineNumbers);
   }
 
   private final JScrollBar lineNumbersVertical; // ************************************
@@ -79,7 +80,8 @@ public class JEditTextArea extends JComponent {
    *
    * @param defaults The default settings
    */
-  public JEditTextArea(TextAreaDefaults defaults, JComponent lineNumbers) {
+  public JEditTextArea(Settings settings, TextAreaDefaults defaults, JComponent lineNumbers) {
+    this.settings = settings;
     // Enable the necessary events
     enableEvents(AWTEvent.KEY_EVENT_MASK);
 
@@ -1902,9 +1904,7 @@ public class JEditTextArea extends JComponent {
    * @return String containing auto-indent characters to be inserted into text
    */
   public String getAutoIndent() {
-    return (DesktopApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT))
-        ? getLeadingWhiteSpace()
-        : "";
+    return (settings.getBooleanSetting(Settings.AUTO_INDENT)) ? getLeadingWhiteSpace() : "";
   }
 
   /**
@@ -1992,9 +1992,7 @@ public class JEditTextArea extends JComponent {
   // Compose and display syntax-sensitive help. Typically invoked upon typing a key.
   // Results in popup menu.  Is not used for creating tool tips.
   private void applySyntaxSensitiveHelp() {
-    if (!DesktopApplication.services()
-        .getSettings()
-        .getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
+    if (!settings.getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
       return;
     }
     int line = getCaretLine();

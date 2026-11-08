@@ -32,7 +32,6 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -92,13 +91,14 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public InstructionCounter(String title, String heading) {
-    super(title, heading);
+  public InstructionCounter(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple construction, likely used by the MARS Tools menu mechanism. */
-  public InstructionCounter() {
-    super(name + ", " + version, heading);
+  public InstructionCounter(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    super(session, name + ", " + version, heading);
   }
 
   //	@Override
@@ -187,9 +187,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
   //	@Override
   protected void addAsObserver() {
-    addAsObserver(
-        DesktopApplication.services().memory.textBaseAddress,
-        DesktopApplication.services().memory.textLimitAddress);
+    addAsObserver(session.memory.textBaseAddress, session.memory.textLimitAddress);
   }
 
   //	@Override
@@ -208,7 +206,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     lastAddress = a;
     counter++;
     try {
-      ProgramStatement stmt = DesktopApplication.services().memory.getStatement(a);
+      ProgramStatement stmt = session.memory.getStatement(a);
       BasicInstruction instr = (BasicInstruction) stmt.getInstruction();
       BasicInstructionFormat format = instr.getInstructionFormat();
       if (format == BasicInstructionFormat.R_FORMAT) {

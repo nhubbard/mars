@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
@@ -97,27 +96,9 @@ public class RunSpeedPanel extends JPanel {
     UNLIMITED_SPEED // 38-40
   };
   private JLabel sliderLabel = null;
-  private static RunSpeedPanel runSpeedPanel = null;
   private volatile int runSpeedIndex = SPEED_INDEX_MAX;
 
-  /**
-   * Retrieve the run speed panel object
-   *
-   * @return the run speed panel
-   */
-  public static RunSpeedPanel getInstance() {
-    if (runSpeedPanel == null) {
-      runSpeedPanel = new RunSpeedPanel();
-      DesktopApplication.services()
-          .setRunSpeedPanelExists(true); // DPS 24 July 2008 (needed for standalone tools)
-    }
-    return runSpeedPanel;
-  }
-
-  /*
-   * private constructor (this is a singleton class)
-   */
-  private RunSpeedPanel() {
+  public RunSpeedPanel() {
     super(new BorderLayout());
     JSlider runSpeedSlider =
         new JSlider(JSlider.HORIZONTAL, SPEED_INDEX_MIN, SPEED_INDEX_MAX, SPEED_INDEX_INIT);

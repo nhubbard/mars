@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
@@ -52,19 +51,20 @@ public class RunStepAction extends GuiAction implements DesktopSimulation.SimFin
     name = this.getValue(Action.NAME).toString();
     executePane = mainUI.getMainPane().getExecutePane();
     boolean done = false;
-    if (FileStatus.isAssembled()) {
-      if (!VenusUI.getStarted()) { // DPS 17-July-2008
+    if (mainUI.editorState().isAssembled()) {
+      if (!mainUI.getStarted()) { // DPS 17-July-2008
         processProgramArgumentsIfAny();
       }
-      VenusUI.setStarted(true);
+      mainUI.setStarted(true);
       mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       try {
-        DesktopApplication.services()
+        mainUI
+            .session()
             .simulator()
             .simulate(
-                DesktopApplication.services().getProgram(),
-                DesktopApplication.services().context().registerFile.getPC(),
+                mainUI.session().getProgram(),
+                mainUI.session().context().registerFile.getPC(),
                 1,
                 null,
                 this);
@@ -85,12 +85,12 @@ public class RunStepAction extends GuiAction implements DesktopSimulation.SimFin
     executePane.getDataSegmentWindow().updateValues();
     if (!done) {
       executePane.getTextSegmentWindow().highlightStepAtPC();
-      FileStatus.set(FileStatus.RUNNABLE);
+      mainUI.editorState().set(FileStatus.RUNNABLE);
     }
     if (done) {
-      RunGoAction.resetMaxSteps();
+      mainUI.resetMaxSteps();
       executePane.getTextSegmentWindow().unhighlightAllSteps();
-      FileStatus.set(FileStatus.TERMINATED);
+      mainUI.editorState().set(FileStatus.TERMINATED);
     }
     if (done && pe == null) {
       mainUI
@@ -112,21 +112,20 @@ public class RunStepAction extends GuiAction implements DesktopSimulation.SimFin
       mainUI.getMessagesPane().selectRunMessageTab();
     }
     if (pe != null) {
-      RunGoAction.resetMaxSteps();
+      mainUI.resetMaxSteps();
       mainUI.getMessagesPane().postMarsMessage(pe.errors().generateErrorReport());
       mainUI
           .getMessagesPane()
           .postMarsMessage("\n" + name + ": execution terminated with errors.\n\n");
       mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
-      FileStatus.set(FileStatus.TERMINATED); // should be redundant.
+      mainUI.editorState().set(FileStatus.TERMINATED); // should be redundant.
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       executePane.getTextSegmentWindow().unhighlightAllSteps();
       executePane
           .getTextSegmentWindow()
-          .highlightStepAtAddress(
-              DesktopApplication.services().context().registerFile.getProgramCounter() - 4);
+          .highlightStepAtAddress(mainUI.session().context().registerFile.getProgramCounter() - 4);
     }
-    VenusUI.setReset(false);
+    mainUI.setReset(false);
   }
 
   @Override
@@ -144,12 +143,12 @@ public class RunStepAction extends GuiAction implements DesktopSimulation.SimFin
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !DesktopApplication.services()
+        || !mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
-    new ProgramArgumentList(programArguments)
-        .storeProgramArguments(DesktopApplication.services().context());
+    new ProgramArgumentList(programArguments).storeProgramArguments(mainUI.session().context());
   }
 }

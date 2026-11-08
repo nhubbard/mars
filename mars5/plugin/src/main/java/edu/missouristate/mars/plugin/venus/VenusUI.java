@@ -5,7 +5,6 @@ import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.mips.dump.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.SimulatorObserver;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxStyle;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxUtilities;
@@ -54,11 +53,25 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 public class VenusUI extends JFrame implements MarsGuiProxy {
-  private static VenusUI INSTANCE;
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+  private final EditorState editorState = new EditorState(this::setMenuState);
 
-  /** Returns the running VenusUI instance. Only valid in GUI mode; null otherwise. */
-  public static VenusUI instance() {
-    return INSTANCE;
+  public EditorState editorState() {
+    return editorState;
+  }
+
+  private final RunSpeedPanel speedPanel = new RunSpeedPanel();
+
+  public edu.missouristate.mars.plugin.runtime.DesktopSession session() {
+    return session;
+  }
+
+  public RunSpeedPanel getRunSpeedPanel() {
+    return speedPanel;
+  }
+
+  public void resetMaxSteps() {
+    ((RunGoAction) runGoAction).resetMaxSteps();
   }
 
   final VenusUI mainUI;
@@ -73,11 +86,11 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
   final JSplitPane splitter;
   final JSplitPane horizonSplitter;
   private int frameState; // see windowActivated() and windowDeactivated()
-  private static int menuState = FileStatus.NO_FILE;
+  private int menuState = FileStatus.NO_FILE;
 
   // PLEASE PUT THESE TWO (& THEIR METHODS) SOMEWHERE THEY BELONG, NOT HERE
-  private static boolean reset = true; // registers/memory reset for execution
-  private static boolean started = false; // started execution
+  private boolean reset = true; // registers/memory reset for execution
+  private boolean started = false; // started execution
   final Editor editor;
   private JMenu window;
   private JCheckBoxMenuItem settingsValueDisplayBase;
@@ -133,12 +146,13 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @param s Name of the window to be created.
    */
-  public VenusUI(String s, int frameState) {
+  public VenusUI(
+      String s, int frameState, edu.missouristate.mars.plugin.runtime.DesktopSession session) {
     super(s);
     this.frameState = frameState;
-    INSTANCE = this;
+    this.session = session;
     mainUI = this;
-    DesktopApplication.services().setGui(this);
+    session.setGui(this);
     this.editor = new Editor(this);
 
     double screenWidth = Toolkit.getDefaultToolkit().getScreenSize().getWidth();
@@ -164,8 +178,6 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     // I want to keep it large, with enough room for user to get handles
     // this.setSize((int)(screenWidth*.8),(int)(screenHeight*.8));
 
-    DesktopApplication.services();
-
     // Push jeditsyntax defaults into core Settings (decouples core from Swing/jeditsyntax)
     SyntaxStyle[] syntaxDefaults = SyntaxUtilities.getDefaultSyntaxStyles();
     String[] syntaxColors = new String[syntaxDefaults.length];
@@ -176,19 +188,14 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       syntaxBolds[i] = syntaxDefaults[i].isBold();
       syntaxItalics[i] = syntaxDefaults[i].isItalic();
     }
-    DesktopApplication.services()
-        .getSettings()
-        .initializeSyntaxStyleDefaults(syntaxColors, syntaxBolds, syntaxItalics);
+    session.getSettings().initializeSyntaxStyleDefaults(syntaxColors, syntaxBolds, syntaxItalics);
 
     // Wire run-speed slider into simulator (decouples core from RunSpeedPanel)
-    DesktopApplication.services().simulator().setCompletionDispatcher(SwingUtilities::invokeLater);
-    DesktopApplication.services()
-        .simulator()
-        .setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
+    session.simulator().setCompletionDispatcher(SwingUtilities::invokeLater);
+    session.simulator().setRunSpeedSource(speedPanel::getRunSpeed);
 
     // Wire GUI syscall environment (JOptionPane dialogs, clearConsole)
-    DesktopApplication.services()
-        .setSyscallEnvironment(new VenusSyscallEnvironment(DesktopApplication.services()));
+    session.setSyscallEnvironment(new VenusSyscallEnvironment(session));
 
     //  image courtesy of NASA/JPL.
     URL im = this.getClass().getResource(ApplicationInfo.imagesPath + "RedMars16.gif");
@@ -212,16 +219,16 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     // roughly in bottom-up order; some are created in component constructors and thus are
     // not visible here.
 
-    registersTab = new RegistersWindow();
-    coprocessor1Tab = new Coprocessor1Window();
-    coprocessor0Tab = new Coprocessor0Window();
+    registersTab = new RegistersWindow(this);
+    coprocessor1Tab = new Coprocessor1Window(this);
+    coprocessor0Tab = new Coprocessor0Window(this);
     registersPane = new RegistersPane(mainUI, registersTab, coprocessor1Tab, coprocessor0Tab);
     registersPane.setPreferredSize(registersPanePreferredSize);
 
     mainPane = new MainPane(mainUI, editor, registersTab, coprocessor1Tab, coprocessor0Tab);
 
     mainPane.setPreferredSize(mainPanePreferredSize);
-    messagesPane = new MessagesPane();
+    messagesPane = new MessagesPane(this);
     messagesPane.setPreferredSize(messagesPanePreferredSize);
     messagesPane.setMinimumSize(new Dimension(0, 120));
     splitter = new JSplitPane(JSplitPane.VERTICAL_SPLIT, mainPane, messagesPane);
@@ -242,16 +249,16 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     JPanel jp = new JPanel(new FlowLayout(FlowLayout.LEFT));
     jp.add(toolbar);
-    jp.add(RunSpeedPanel.getInstance());
+    jp.add(speedPanel);
     JPanel center = new JPanel(new BorderLayout());
     center.add(jp, BorderLayout.NORTH);
     center.add(horizonSplitter);
 
     this.getContentPane().add(center);
 
-    FileStatus.reset();
+    mainUI.editorState().reset();
     // The following has side effect of establishing menu state
-    FileStatus.set(FileStatus.NO_FILE);
+    mainUI.editorState().set(FileStatus.NO_FILE);
 
     // This is invoked when opening the app.  It will set the app to
     // appear at full screen size.
@@ -281,7 +288,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     this.pack();
     this.setVisible(true);
 
-    DesktopApplication.services()
+    session
         .simulator()
         .setObserver(
             new SimulatorObserver() {
@@ -847,17 +854,15 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     JCheckBoxMenuItem settingsLabel = new JCheckBoxMenuItem(settingsLabelAction);
     settingsLabel.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.LABEL_WINDOW_VISIBILITY));
     JCheckBoxMenuItem settingsPopupInput = new JCheckBoxMenuItem(settingsPopupInputAction);
     settingsPopupInput.setSelected(
-        DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT));
+        session.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT));
     settingsValueDisplayBase = new JCheckBoxMenuItem(settingsValueDisplayBaseAction);
     settingsValueDisplayBase.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
@@ -869,7 +874,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         .setSettingsMenuItem(settingsValueDisplayBase);
     settingsAddressDisplayBase = new JCheckBoxMenuItem(settingsAddressDisplayBaseAction);
     settingsAddressDisplayBase.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
@@ -881,48 +886,42 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         .setSettingsMenuItem(settingsAddressDisplayBase);
     JCheckBoxMenuItem settingsExtended = new JCheckBoxMenuItem(settingsExtendedAction);
     settingsExtended.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED));
     JCheckBoxMenuItem settingsDelayedBranching =
         new JCheckBoxMenuItem(settingsDelayedBranchingAction);
     settingsDelayedBranching.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED));
     JCheckBoxMenuItem settingsSelfModifyingCode =
         new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
     settingsSelfModifyingCode.setSelected(
-        DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
+        session.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     JCheckBoxMenuItem settingsAssembleOnOpen = new JCheckBoxMenuItem(settingsAssembleOnOpenAction);
     settingsAssembleOnOpen.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED));
     JCheckBoxMenuItem settingsAssembleAll = new JCheckBoxMenuItem(settingsAssembleAllAction);
     settingsAssembleAll.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ALL_ENABLED));
     JCheckBoxMenuItem settingsWarningsAreErrors =
         new JCheckBoxMenuItem(settingsWarningsAreErrorsAction);
     settingsWarningsAreErrors.setSelected(
-        DesktopApplication.services()
+        session
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
     JCheckBoxMenuItem settingsStartAtMain = new JCheckBoxMenuItem(settingsStartAtMainAction);
     settingsStartAtMain.setSelected(
-        DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(edu.missouristate.mars.Settings.START_AT_MAIN));
+        session.getSettings().getBooleanSetting(edu.missouristate.mars.Settings.START_AT_MAIN));
     JCheckBoxMenuItem settingsProgramArguments =
         new JCheckBoxMenuItem(settingsProgramArgumentsAction);
     settingsProgramArguments.setSelected(
-        DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS));
+        session.getSettings().getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS));
     JMenuItem settingsEditor = new JMenuItem(settingsEditorAction);
     JMenuItem settingsHighlighting = new JMenuItem(settingsHighlightingAction);
     JMenuItem settingsExceptionHandler = new JMenuItem(settingsExceptionHandlerAction);
@@ -964,7 +963,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     menuBar.add(edit);
     menuBar.add(run);
     menuBar.add(settings);
-    JMenu toolMenu = new ToolLoader().buildToolsMenu();
+    JMenu toolMenu = new ToolLoader(session).buildToolsMenu();
     if (toolMenu != null) {
       menuBar.add(toolMenu);
     }
@@ -1162,9 +1161,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runAssembleAction.setEnabled(true);
     // If assemble-all, allow previous Run menu settings to remain.
     // Otherwise, clear them out.  DPS 9-Aug-2011
-    if (!DesktopApplication.services()
-        .getSettings()
-        .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+    if (!session.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
       runGoAction.setEnabled(false);
       runStepAction.setEnabled(false);
       runBackstepAction.setEnabled(false);
@@ -1275,8 +1272,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runGoAction.setEnabled(true);
     runStepAction.setEnabled(true);
     runBackstepAction.setEnabled(
-        DesktopApplication.services().getSettings().getBackSteppingEnabled()
-            && !DesktopApplication.services().getProgram().getBackStepper().empty());
+        session.getSettings().getBackSteppingEnabled()
+            && !session.getProgram().getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);
@@ -1347,8 +1344,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runGoAction.setEnabled(false);
     runStepAction.setEnabled(false);
     runBackstepAction.setEnabled(
-        DesktopApplication.services().getSettings().getBackSteppingEnabled()
-            && !DesktopApplication.services().getProgram().getBackStepper().empty());
+        session.getSettings().getBackSteppingEnabled()
+            && !session.getProgram().getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);
@@ -1364,7 +1361,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @return current menu state.
    */
-  public static int getMenuState() {
+  public int getMenuState() {
     return menuState;
   }
 
@@ -1373,7 +1370,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @param b Boolean true if the register values have been reset.
    */
-  public static void setReset(boolean b) {
+  public void setReset(boolean b) {
     reset = b;
   }
 
@@ -1382,7 +1379,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @param b true if the MIPS program execution has started.
    */
-  public static void setStarted(boolean b) {
+  public void setStarted(boolean b) {
     started = b;
   }
 
@@ -1391,7 +1388,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @return Boolean true if the register values have been reset.
    */
-  public static boolean getReset() {
+  public boolean getReset() {
     return reset;
   }
 
@@ -1400,7 +1397,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
    *
    * @return true if MIPS program is currently executing.
    */
-  public static boolean getStarted() {
+  public boolean getStarted() {
     return started;
   }
 

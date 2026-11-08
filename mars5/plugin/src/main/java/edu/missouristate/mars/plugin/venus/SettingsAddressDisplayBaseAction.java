@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -45,12 +44,9 @@ public class SettingsAddressDisplayBaseAction extends GuiAction {
 
   public void actionPerformed(ActionEvent e) {
     boolean isHex = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-    VenusUI.instance()
-        .getMainPane()
-        .getExecutePane()
-        .getAddressDisplayBaseChooser()
-        .setSelected(isHex);
-    DesktopApplication.services()
+    mainUI.getMainPane().getExecutePane().getAddressDisplayBaseChooser().setSelected(isHex);
+    mainUI
+        .session()
         .getSettings()
         .setBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_ADDRESSES_IN_HEX, isHex);
   }

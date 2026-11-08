@@ -11,6 +11,7 @@ import edu.missouristate.mars.mips.hardware.MemoryConfiguration;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.plugin.VenusMarsGuiProxy;
+import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxUtilities;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -42,6 +43,16 @@ public final class DesktopSession implements AutoCloseable {
     instructionSet = context.instructionSet;
     symbolTable = context.symbolTable;
     environment = context.syscallEnvironment;
+    var styles = SyntaxUtilities.getDefaultSyntaxStyles();
+    var colors = new String[styles.length];
+    var bold = new boolean[styles.length];
+    var italic = new boolean[styles.length];
+    for (int i = 0; i < styles.length; i++) {
+      colors[i] = styles[i].getColorAsHexString();
+      bold[i] = styles[i].isBold();
+      italic[i] = styles[i].isItalic();
+    }
+    settings.initializeSyntaxStyleDefaults(colors, bold, italic);
   }
 
   public MarsContext context() {
@@ -99,6 +110,12 @@ public final class DesktopSession implements AutoCloseable {
 
   public void setRunSpeedPanelExists(boolean value) {
     runSpeedPanelExists = value;
+  }
+
+  public edu.missouristate.mars.plugin.venus.VenusUI window() {
+    return gui.frontend() instanceof edu.missouristate.mars.plugin.venus.VenusUI window
+        ? window
+        : null;
   }
 
   public MarsGuiProxy getGui() {

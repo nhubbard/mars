@@ -2,8 +2,6 @@ package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
-import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -105,14 +103,15 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public FloatRepresentation(String title, String heading) {
-    super(title, heading);
+  public FloatRepresentation(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
     FloatRepresentation thisFloatTool = this;
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public FloatRepresentation() {
-    this(title + version, heading);
+  public FloatRepresentation(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    this(session, title + version, heading);
   }
 
   /**
@@ -122,7 +121,8 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
    * program to invoke the application.
    */
   public static void main(String[] args) {
-    new FloatRepresentation(title + version, heading).go();
+    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
+    new FloatRepresentation(session, title + version, heading).go();
   }
 
   /**
@@ -361,7 +361,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // Means of selecting and deselecting an attached floating point register
 
-    fpRegisters = DesktopApplication.services().context().coprocessor1.getRegisters();
+    fpRegisters = session.context().coprocessor1.getRegisters();
     String[] registerList = new String[fpRegisters.length + 1];
     registerList[0] = "None";
     for (int i = 0; i < fpRegisters.length; i++) {
@@ -407,14 +407,14 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   // If display is attached to a register then update the register value.
   private synchronized void updateAnyAttachedRegister(int intValue) {
     if (attachedRegister != null) {
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+      synchronized (session.memoryAndRegistersLock) {
         attachedRegister.setValue(intValue);
       }
       // HERE'S A HACK!!  Want to immediately display the updated register value in MARS
       // but that code was not written for event-driven update (e.g. Observer) --
       // it was written to poll the registers for their values.  So we force it to do so.
-      if (VenusUI.instance() != null) {
-        VenusUI.instance().getRegistersPane().getCoprocessor1Window().updateRegisters();
+      if (session.window() != null) {
+        session.window().getRegistersPane().getCoprocessor1Window().updateRegisters();
       }
     }
   }

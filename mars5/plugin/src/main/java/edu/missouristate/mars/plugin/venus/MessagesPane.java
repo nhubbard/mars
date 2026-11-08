@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import java.awt.*;
 import java.awt.event.*;
@@ -49,6 +48,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Team JSpim
  */
 public class MessagesPane extends JTabbedPane {
+  private final VenusUI mainUI;
   final JTextArea assemble;
   final JTextArea run;
   final JPanel assembleTab;
@@ -64,8 +64,9 @@ public class MessagesPane extends JTabbedPane {
       ApplicationInfo.maximumMessageCharacters / 10; // 10%
 
   /** Constructor for the class, sets up two fresh tabbed text areas for program feedback. */
-  public MessagesPane() {
+  public MessagesPane(VenusUI mainUI) {
     super();
+    this.mainUI = mainUI;
     this.setMinimumSize(new Dimension(0, 0));
     assemble = new JTextArea();
     run = new JTextArea();
@@ -235,8 +236,7 @@ public class MessagesPane extends JTabbedPane {
    * @param column Column number for error message
    */
   public void selectEditorTextLine(String fileName, int line, int column) {
-    EditTabbedPane editTabbedPane =
-        (EditTabbedPane) VenusUI.instance().getMainPane().getEditTabbedPane();
+    EditTabbedPane editTabbedPane = (EditTabbedPane) mainUI.getMainPane().getEditTabbedPane();
     EditPane editPane, currentPane = null;
     editPane = editTabbedPane.getEditPaneForFile(new File(fileName).getPath());
     if (editPane != null) {
@@ -353,7 +353,7 @@ public class MessagesPane extends JTabbedPane {
     JOptionPane pane =
         new JOptionPane(prompt, JOptionPane.QUESTION_MESSAGE, JOptionPane.DEFAULT_OPTION);
     pane.setWantsInput(true);
-    JDialog dialog = pane.createDialog(VenusUI.instance(), "MIPS Keyboard Input");
+    JDialog dialog = pane.createDialog(mainUI, "MIPS Keyboard Input");
     dialog.setVisible(true);
     input = (String) pane.getInputValue();
     this.postRunMessage(ApplicationInfo.userInputAlert + input + "\n");
@@ -458,7 +458,7 @@ public class MessagesPane extends JTabbedPane {
       initialPos = run.getCaretPosition();
       run.setNavigationFilter(navigationFilter);
       run.getDocument().addDocumentListener(listener);
-      DesktopApplication.services().simulator().addStopListener(stopListener);
+      mainUI.session().simulator().addStopListener(stopListener);
     }
 
     void cleanup() { // not required to be called from the GUI thread
@@ -468,7 +468,7 @@ public class MessagesPane extends JTabbedPane {
             run.setEditable(false);
             run.setNavigationFilter(null);
             run.setCaretPosition(run.getDocument().getLength());
-            DesktopApplication.services().simulator().removeStopListener(stopListener);
+            mainUI.session().simulator().removeStopListener(stopListener);
           });
     }
 

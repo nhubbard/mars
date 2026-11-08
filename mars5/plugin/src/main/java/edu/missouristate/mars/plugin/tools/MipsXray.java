@@ -7,7 +7,6 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.RunAssembleAction;
 import edu.missouristate.mars.plugin.venus.RunBackstepAction;
 import edu.missouristate.mars.plugin.venus.RunStepAction;
@@ -47,13 +46,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   private VenusUI mainUI;
   private JToolBar toolbar;
 
-  public MipsXray(String title, String heading) {
-    super(title, heading);
+  public MipsXray(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MipsXray menu mechanism */
-  public MipsXray() {
-    super(heading + ", " + version, heading);
+  public MipsXray(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    super(session, heading + ", " + version, heading);
   }
 
   /**
@@ -101,7 +101,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
   // Insert image in the panel and configure the parameters to run animation.
   protected JComponent buildMainDisplayArea() {
-    mainUI = VenusUI.instance();
+    mainUI = session.window();
     this.createActionObjects();
     toolbar = this.setUpToolBar();
 
@@ -140,7 +140,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   }
 
   protected JComponent buildMainDisplayArea(String figure) {
-    mainUI = VenusUI.instance();
+    mainUI = session.window();
     this.createActionObjects();
     toolbar = this.setUpToolBar();
 
@@ -177,9 +177,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   }
 
   protected void addAsObserver() {
-    addAsObserver(
-        DesktopApplication.services().memory.textBaseAddress,
-        DesktopApplication.services().memory.textLimitAddress);
+    addAsObserver(session.memory.textBaseAddress, session.memory.textLimitAddress);
   }
 
   // Function that gets the current instruction in memory and start animation with the selected
@@ -203,7 +201,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     try {
       BasicInstruction instr;
-      stmt = DesktopApplication.services().memory.getStatement(currentAdress);
+      stmt = session.memory.getStatement(currentAdress);
       if (stmt == null) {
         return;
       }

@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.venus;
 
+import java.awt.Component;
 import javax.swing.JComponent;
 import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import java.awt.Component;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -40,6 +40,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Bumgarner
  */
 public class MainPane extends JTabbedPane {
+  private final VenusUI mainUI;
   final ExecutePane executeTab;
   final EditTabbedPane editTabbedPane;
 
@@ -51,6 +52,7 @@ public class MainPane extends JTabbedPane {
       Coprocessor1Window cop1Regs,
       Coprocessor0Window cop0Regs) {
     super();
+    this.mainUI = appFrame;
     this.setTabPlacement(JTabbedPane.TOP); // LEFT);
     editTabbedPane = new EditTabbedPane(appFrame, editor, this);
     executeTab = new ExecutePane(appFrame, regs, cop1Regs, cop0Regs);
@@ -81,10 +83,10 @@ public class MainPane extends JTabbedPane {
             JTabbedPane tabbedPane = (JTabbedPane) ce.getSource();
             int index = tabbedPane.getSelectedIndex();
             Component c = tabbedPane.getComponentAt(index);
-            ExecutePane executePane = VenusUI.instance().getMainPane().getExecutePane();
+            ExecutePane executePane = mainUI.getMainPane().getExecutePane();
             if (c == executePane) {
               executePane.setWindowBounds();
-              VenusUI.instance().getMainPane().removeChangeListener(this);
+              mainUI.getMainPane().removeChangeListener(this);
             }
           }
         });

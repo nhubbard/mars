@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -72,66 +71,73 @@ public class RunAssembleAction extends GuiAction {
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     RegistersPane registersPane = mainUI.getRegistersPane();
     extendedAssemblerEnabled =
-        DesktopApplication.services()
+        mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED);
     warningsAreErrors =
-        DesktopApplication.services()
+        mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS);
-    if (FileStatus.getFile() != null) {
-      if (FileStatus.get() == FileStatus.EDITED) {
+    if (mainUI.editorState().getFile() != null) {
+      if (mainUI.editorState().get() == FileStatus.EDITED) {
         mainUI.editor.save();
       }
       try {
-        DesktopApplication.services().setProgram(DesktopApplication.services().createProgram());
+        mainUI.session().setProgram(mainUI.session().createProgram());
         ArrayList<String> filesToAssemble;
-        if (DesktopApplication.services()
+        if (mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
                     .ASSEMBLE_ALL_ENABLED)) { // setting calls for multiple file assembly
           filesToAssemble =
               FilenameFinder.getFilenameList(
-                  new File(FileStatus.getName()).getParent(), ApplicationInfo.fileExtensions);
+                  new File(mainUI.editorState().getName()).getParent(),
+                  ApplicationInfo.fileExtensions);
         } else {
           filesToAssemble = new ArrayList<>();
-          filesToAssemble.add(FileStatus.getName());
+          filesToAssemble.add(mainUI.editorState().getName());
         }
         String exceptionHandler = null;
-        if (DesktopApplication.services()
+        if (mainUI
+                .session()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
-            && DesktopApplication.services().getSettings().getExceptionHandler() != null
-            && !DesktopApplication.services().getSettings().getExceptionHandler().isEmpty()) {
-          exceptionHandler = DesktopApplication.services().getSettings().getExceptionHandler();
+            && mainUI.session().getSettings().getExceptionHandler() != null
+            && !mainUI.session().getSettings().getExceptionHandler().isEmpty()) {
+          exceptionHandler = mainUI.session().getSettings().getExceptionHandler();
         }
         MIPSprogramsToAssemble =
-            DesktopApplication.services()
+            mainUI
+                .session()
                 .getProgram()
                 .prepareFilesForAssembly(
-                    filesToAssemble, FileStatus.getFile().getPath(), exceptionHandler);
+                    filesToAssemble, mainUI.editorState().getFile().getPath(), exceptionHandler);
         mainUI.messagesPane.postMarsMessage(
             buildFileNameList(name + ": assembling ", MIPSprogramsToAssemble));
         // added logic to receive any warnings and output them.... DPS 11/28/06
         ErrorList warnings =
-            DesktopApplication.services()
+            mainUI
+                .session()
                 .getProgram()
                 .assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
         if (warnings.warningsOccurred()) {
           mainUI.messagesPane.postMarsMessage(warnings.generateWarningReport());
         }
         mainUI.messagesPane.postMarsMessage(name + ": operation completed successfully.\n\n");
-        FileStatus.setAssembled(true);
-        FileStatus.set(FileStatus.RUNNABLE);
-        DesktopApplication.services().resetRegisters();
-        DesktopApplication.services().context().coprocessor1.resetRegisters();
-        DesktopApplication.services().context().coprocessor0.resetRegisters();
+        mainUI.editorState().setAssembled(true);
+        mainUI.editorState().set(FileStatus.RUNNABLE);
+        mainUI.session().resetRegisters();
+        mainUI.session().context().coprocessor1.resetRegisters();
+        mainUI.session().context().coprocessor0.resetRegisters();
         executePane.getTextSegmentWindow().setupTable();
         executePane.getDataSegmentWindow().setupTable();
         executePane
             .getDataSegmentWindow()
-            .highlightCellForAddress(DesktopApplication.services().memory.dataBaseAddress);
+            .highlightCellForAddress(mainUI.session().memory.dataBaseAddress);
         executePane.getDataSegmentWindow().clearHighlighting();
         executePane.getLabelsWindow().setupTable();
         executePane.getTextSegmentWindow().setCodeHighlighting(true);
@@ -139,12 +145,13 @@ public class RunAssembleAction extends GuiAction {
         registersPane.getRegistersWindow().clearWindow();
         registersPane.getCoprocessor1Window().clearWindow();
         registersPane.getCoprocessor0Window().clearWindow();
-        VenusUI.setReset(true);
-        VenusUI.setStarted(false);
+        mainUI.setReset(true);
+        mainUI.setStarted(false);
         mainUI.getMainPane().setSelectedComponent(executePane);
 
         // Aug. 24, 2005 Ken Vollmar
-        DesktopApplication.services()
+        mainUI
+            .session()
             .context()
             .syscallEnvironment
             .close(); // Ensure that I/O "file descriptors" are initialized for a new program
@@ -163,7 +170,7 @@ public class RunAssembleAction extends GuiAction {
             continue;
           }
           if (!em.isWarning() || warningsAreErrors) {
-            VenusUI.instance()
+            mainUI
                 .getMessagesPane()
                 .selectErrorMessage(em.getFilename(), em.getLine(), em.getPosition());
             // Bug workaround: Line selection does not work correctly for the JEditTextArea editor
@@ -172,15 +179,15 @@ public class RunAssembleAction extends GuiAction {
             // this method (actionPerformed) explicitly with null argument.  Thus e!=null test.
             // DPS 9-Aug-2010
             if (e != null) {
-              VenusUI.instance()
+              mainUI
                   .getMessagesPane()
                   .selectEditorTextLine(em.getFilename(), em.getLine(), em.getPosition());
             }
             break;
           }
         }
-        FileStatus.setAssembled(false);
-        FileStatus.set(FileStatus.NOT_EDITED);
+        mainUI.editorState().setAssembled(false);
+        mainUI.editorState().set(FileStatus.NOT_EDITED);
       }
     }
   }

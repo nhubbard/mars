@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -50,41 +49,41 @@ public class RunBackstepAction extends GuiAction {
     name = this.getValue(Action.NAME).toString();
     executePane = mainUI.getMainPane().getExecutePane();
     boolean done = false;
-    if (!FileStatus.isAssembled()) {
+    if (!mainUI.editorState().isAssembled()) {
       // note: this should never occur since backstepping is only enabled after successful assembly.
       JOptionPane.showMessageDialog(mainUI, "The program must be assembled before it can be run.");
       return;
     }
-    VenusUI.setStarted(true);
+    mainUI.setStarted(true);
     mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
 
-    if (DesktopApplication.services().getSettings().getBackSteppingEnabled()) {
+    if (mainUI.session().getSettings().getBackSteppingEnabled()) {
       boolean inDelaySlot =
-          DesktopApplication.services()
-              .getProgram()
-              .getBackStepper()
-              .inDelaySlot(); // Added 25 June 2007
-      DesktopApplication.services()
-          .memory
-          .addObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      DesktopApplication.services()
+          mainUI.session().getProgram().getBackStepper().inDelaySlot(); // Added 25 June 2007
+      mainUI.session().memory.addObserver(executePane.getDataSegmentWindow().getMemoryListener());
+      mainUI
+          .session()
           .context()
           .registerFile
           .addRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
-      DesktopApplication.services()
+      mainUI
+          .session()
           .context()
           .coprocessor0
           .addRegistersObserver(executePane.getCoprocessor0Window().getRegistersListener());
-      DesktopApplication.services()
+      mainUI
+          .session()
           .context()
           .coprocessor1
           .addRegistersObserver(executePane.getCoprocessor1Window().getRegistersListener());
-      DesktopApplication.services().getProgram().getBackStepper().backStep();
-      DesktopApplication.services()
+      mainUI.session().getProgram().getBackStepper().backStep();
+      mainUI
+          .session()
           .memory
           .deleteObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      DesktopApplication.services()
+      mainUI
+          .session()
           .context()
           .registerFile
           .deleteRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
@@ -95,8 +94,8 @@ public class RunBackstepAction extends GuiAction {
       executePane
           .getTextSegmentWindow()
           .highlightStepAtPC(inDelaySlot); // Argument aded 25 June 2007
-      FileStatus.set(FileStatus.RUNNABLE);
-      VenusUI.setReset(false);
+      mainUI.editorState().set(FileStatus.RUNNABLE);
+      mainUI.setReset(false);
     }
   }
 }

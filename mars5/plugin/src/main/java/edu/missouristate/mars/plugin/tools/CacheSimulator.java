@@ -52,7 +52,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class CacheSimulator extends AbstractMarsToolAndApplication {
   private static final String version = "Version 1.2";
   private static final String heading = "Simulate and illustrate data cache performance";
-  private static boolean debug = false; // controls display of debugging info
+  private boolean debug = false; // controls display of debugging info
   // Some GUI settings
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Font countFonts = new Font("Times", Font.BOLD, 12);
@@ -99,13 +99,14 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public CacheSimulator(String title, String heading) {
-    super(title, heading);
+  public CacheSimulator(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public CacheSimulator() {
-    super("Data Cache Simulation Tool, " + version, heading);
+  public CacheSimulator(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    super(session, "Data Cache Simulation Tool, " + version, heading);
   }
 
   /**
@@ -114,8 +115,9 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
    * means it is not invoked from the MARS Tools menu. "Pure" means there is no driver program to
    * invoke the Cache Simulator.
    */
-  public static void main(String[] args) {
-    new CacheSimulator("Data Cache Simulator stand-alone, " + version, heading).go();
+  static void main(String[] args) {
+    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
+    new CacheSimulator(session, "Data Cache Simulator stand-alone, " + version, heading).go();
   }
 
   /**
@@ -184,7 +186,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cachePlacementSelector.setBackground(backgroundColor);
     cachePlacementSelector.setSelectedIndex(defaultPlacementPolicyIndex);
     cachePlacementSelector.addActionListener(
-        e -> {
+        _ -> {
           updateCacheSetSizeSelector();
           reset();
         });
@@ -200,7 +202,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     int defaultCacheBlockSizeIndex = 2;
     cacheBlockSizeSelector.setSelectedIndex(defaultCacheBlockSizeIndex);
     cacheBlockSizeSelector.addActionListener(
-        e -> {
+        _ -> {
           updateCacheSizeDisplay();
           reset();
         });
@@ -209,7 +211,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheBlockCountSelector.setBackground(backgroundColor);
     cacheBlockCountSelector.setSelectedIndex(defaultCacheBlockCountIndex);
     cacheBlockCountSelector.addActionListener(
-        e -> {
+        _ -> {
           updateCacheSetSizeSelector();
           theCache = createNewCache();
           resetCounts();
@@ -223,7 +225,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     cacheSetSizeSelector.setBackground(backgroundColor);
     int defaultCacheSetSizeIndex = 0;
     cacheSetSizeSelector.setSelectedIndex(defaultCacheSetSizeIndex);
-    cacheSetSizeSelector.addActionListener(e -> reset());
+    cacheSetSizeSelector.addActionListener(_ -> reset());
 
     // ALL COMPONENTS FOR "CACHE ORGANIZATION" SECTION
     JPanel placementPolicyRow = getPanelWithBorderLayout();
@@ -403,10 +405,10 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
         determineSetSizeChoices(defaultCacheBlockCountIndex, defaultPlacementPolicyIndex);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Rest of the protected methods.  These override do-nothing methods inherited from
   //  the abstract superclass.
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * The only post-GUI initialization is to create the initial cache object based on the default

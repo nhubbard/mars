@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import java.util.*;
@@ -154,13 +153,15 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public MemoryReferenceVisualization(String title, String heading) {
-    super(title, heading);
+  public MemoryReferenceVisualization(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public MemoryReferenceVisualization() {
-    super("Memory Reference Visualization, " + version, heading);
+  public MemoryReferenceVisualization(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    super(session, "Memory Reference Visualization, " + version, heading);
   }
 
   /**
@@ -170,8 +171,9 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
    * program to invoke the application.
    */
   public static void main(String[] args) {
+    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
     new MemoryReferenceVisualization(
-            "Memory Reference Visualization stand-alone, " + version, heading)
+            session, "Memory Reference Visualization stand-alone, " + version, heading)
         .go();
   }
 
@@ -474,12 +476,12 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   // dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
   private void initializeDisplayBaseChoices() {
     int[] displayBaseAddressArray = {
-      DesktopApplication.services().memory.textBaseAddress,
-      DesktopApplication.services().memory.dataSegmentBaseAddress,
-      DesktopApplication.services().memory.globalPointer,
-      DesktopApplication.services().memory.dataBaseAddress,
-      DesktopApplication.services().memory.heapBaseAddress,
-      DesktopApplication.services().memory.memoryMapBaseAddress
+      session.memory.textBaseAddress,
+      session.memory.dataSegmentBaseAddress,
+      session.memory.globalPointer,
+      session.memory.dataBaseAddress,
+      session.memory.heapBaseAddress,
+      session.memory.memoryMapBaseAddress
     };
     // Must agree with above in number and order...
     String[] descriptions = {

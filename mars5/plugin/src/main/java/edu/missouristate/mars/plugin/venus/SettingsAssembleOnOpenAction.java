@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -42,7 +41,8 @@ public class SettingsAssembleOnOpenAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    DesktopApplication.services()
+    mainUI
+        .session()
         .getSettings()
         .setBooleanSetting(
             edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED,

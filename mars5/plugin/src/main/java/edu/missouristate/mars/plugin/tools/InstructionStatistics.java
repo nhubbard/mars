@@ -31,7 +31,6 @@ import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -112,13 +111,15 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public InstructionStatistics(String title, String heading) {
-    super(title, heading);
+  public InstructionStatistics(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple construction, likely used by the MARS Tools menu mechanism. */
-  public InstructionStatistics() {
+  public InstructionStatistics(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
     super(
+        session,
         InstructionStatistics.NAME + ", " + InstructionStatistics.VERSION,
         InstructionStatistics.HEADING);
   }
@@ -186,9 +187,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
 
   /** registers the tool as observer for the text segment of the MIPS program */
   protected void addAsObserver() {
-    addAsObserver(
-        DesktopApplication.services().memory.textBaseAddress,
-        DesktopApplication.services().memory.textLimitAddress);
+    addAsObserver(session.memory.textBaseAddress, session.memory.textLimitAddress);
   }
 
   /**
@@ -290,8 +289,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
       try {
 
         // access the statement in the text segment without notifying other tools etc.
-        ProgramStatement stmt =
-            DesktopApplication.services().memory.getStatementNoNotify(memAccNotice.getAddress());
+        ProgramStatement stmt = session.memory.getStatementNoNotify(memAccNotice.getAddress());
 
         // necessary to handle possible null pointers at the end of the program
         // (e.g., if the simulator tries to execute the next instruction after the last instruction

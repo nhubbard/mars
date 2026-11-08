@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
+import java.awt.event.ActionEvent;
 import javax.swing.Icon;
 import javax.swing.KeyStroke;
-import java.awt.event.ActionEvent;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -54,6 +54,6 @@ public class RunToggleBreakpointsAction extends GuiAction {
    * When this option is selected, tell text segment window to clear breakpoints in its table model.
    */
   public void actionPerformed(ActionEvent e) {
-    VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow().toggleBreakpoints();
+    mainUI.getMainPane().getExecutePane().getTextSegmentWindow().toggleBreakpoints();
   }
 }

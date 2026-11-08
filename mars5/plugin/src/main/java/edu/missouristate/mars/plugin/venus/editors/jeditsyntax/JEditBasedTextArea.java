@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.EditPane;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
@@ -31,7 +30,7 @@ public class JEditBasedTextArea extends JEditTextArea
   private final JEditBasedTextArea sourceCode;
 
   public JEditBasedTextArea(EditPane editPain, JComponent lineNumbers) {
-    super(lineNumbers);
+    super(editPain.session().getSettings(), lineNumbers);
     this.editPane = editPain;
     this.undoManager = new UndoManager();
     this.compoundEdit = new CompoundEdit();
@@ -51,8 +50,8 @@ public class JEditBasedTextArea extends JEditTextArea
           }
         };
     this.getDocument().addUndoableEditListener(undoableEditListener);
-    this.setFont(EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
-    this.setTokenMarker(new MIPSTokenMarker());
+    this.setFont(EditorSettings.of(settings).getEditorFont());
+    this.setTokenMarker(new MIPSTokenMarker(editPain.session()));
 
     addCaretListener(this);
   }
@@ -104,7 +103,7 @@ public class JEditBasedTextArea extends JEditTextArea
 
   /** Update the syntax style table, which is obtained from SyntaxUtilities. */
   public void updateSyntaxStyles() {
-    painter.setStyles(SyntaxUtilities.getCurrentSyntaxStyles());
+    painter.setStyles(SyntaxUtilities.getCurrentSyntaxStyles(settings));
   }
 
   public Component getOuterComponent() {

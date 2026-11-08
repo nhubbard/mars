@@ -54,7 +54,7 @@ public class NumberDisplayBaseChooser extends JCheckBox {
    * @param displayInHex Currently either DECIMAL (<code>false</code>) or HEXADECIMAL (<code>true
    *     </code>)
    */
-  public NumberDisplayBaseChooser(String text, boolean displayInHex) {
+  public NumberDisplayBaseChooser(VenusUI mainUI, String text, boolean displayInHex) {
     super(text, displayInHex);
     base = getBase(displayInHex);
     addItemListener(
@@ -75,7 +75,7 @@ public class NumberDisplayBaseChooser extends JCheckBox {
             }
           }
           // Better to use notify, but I am tired...
-          VenusUI.instance().getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
+          mainUI.getMainPane().getExecutePane().numberDisplayBaseChanged(choose);
         });
   }
 

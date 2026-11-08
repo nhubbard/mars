@@ -1,7 +1,14 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
-
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Frame;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.Icon;
@@ -14,14 +21,6 @@ import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Frame;
-import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -64,7 +63,7 @@ public class EditFindReplaceAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    findReplaceDialog = new FindReplaceDialog(VenusUI.instance(), DIALOG_TITLE, false);
+    findReplaceDialog = new FindReplaceDialog(mainUI, DIALOG_TITLE, false);
     findReplaceDialog.setVisible(true);
   }
 

@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -43,8 +42,6 @@ public class SettingsPopupInputAction extends GuiAction {
 
   public void actionPerformed(ActionEvent e) {
     boolean usePopup = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-    DesktopApplication.services()
-        .getSettings()
-        .setBooleanSetting(Settings.POPUP_SYSCALL_INPUT, usePopup);
+    mainUI.session().getSettings().setBooleanSetting(Settings.POPUP_SYSCALL_INPUT, usePopup);
   }
 }

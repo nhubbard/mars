@@ -4,7 +4,6 @@ import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryState;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.MemoryDump;
 import java.awt.*;
@@ -79,14 +78,14 @@ public class FileDumpMemoryAction extends GuiAction {
   private boolean dumpMemory() {
     dumpDialog = createDumpDialog();
     dumpDialog.pack();
-    dumpDialog.setLocationRelativeTo(VenusUI.instance());
+    dumpDialog.setLocationRelativeTo(mainUI);
     dumpDialog.setVisible(true);
     return true;
   }
 
   // The dump dialog that appears when menu item is selected.
   private JDialog createDumpDialog() {
-    JDialog dumpDialog = new JDialog(VenusUI.instance(), title, true);
+    JDialog dumpDialog = new JDialog(mainUI, title, true);
     dumpDialog.setContentPane(buildDialogPanel());
     dumpDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     dumpDialog.addWindowListener(
@@ -106,9 +105,9 @@ public class FileDumpMemoryAction extends GuiAction {
     // A series of parallel arrays representing the memory segments that can be dumped.
     String[] segmentArray = MemoryDump.getSegmentNames();
     int[] baseAddressArray =
-        MemoryDump.getBaseAddresses(segmentArray, DesktopApplication.services().context().memory);
+        MemoryDump.getBaseAddresses(segmentArray, mainUI.session().context().memory);
     int[] limitAddressArray =
-        MemoryDump.getLimitAddresses(segmentArray, DesktopApplication.services().context().memory);
+        MemoryDump.getLimitAddresses(segmentArray, mainUI.session().context().memory);
     int[] highAddressArray = new int[segmentArray.length];
 
     // These three are allocated and filled by buildDialogPanel() and used by action listeners.
@@ -130,9 +129,7 @@ public class FileDumpMemoryAction extends GuiAction {
     for (int i = 0; i < segmentArray.length; i++) {
       try {
         highAddressArray[i] =
-            DesktopApplication.services()
-                    .memory
-                    .getAddressOfFirstNull(baseAddressArray[i], limitAddressArray[i])
+            mainUI.session().memory.getAddressOfFirstNull(baseAddressArray[i], limitAddressArray[i])
                 - MemoryState.WORD_LENGTH_BYTES;
 
       } // Exception will not happen since the Memory base and limit addresses are on word
@@ -251,8 +248,7 @@ public class FileDumpMemoryAction extends GuiAction {
       }
       if (operationOK) {
         try {
-          format.dumpMemoryRange(
-              theFile, firstAddress, lastAddress, DesktopApplication.services().context());
+          format.dumpMemoryRange(theFile, firstAddress, lastAddress, mainUI.session().context());
         } catch (AddressErrorException | IOException ignored) {
 
         }

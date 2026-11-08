@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.plugin.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.JEditBasedTextArea;
@@ -49,6 +48,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Bumgarner
  */
 public class EditPane extends JPanel {
+  public edu.missouristate.mars.plugin.runtime.DesktopSession session() {
+    return mainUI.session();
+  }
 
   private final MARSTextEditingArea sourceCode;
   private final VenusUI mainUI;
@@ -68,13 +70,11 @@ public class EditPane extends JPanel {
     String currentDirectoryPath = System.getProperty("user.dir");
     // mainUI.editor = new Editor(mainUI);
     // We want to be notified of editor font changes! See update() below.
-    DesktopApplication.services().getSettings().subscribeChange(s -> this.handleSettingsChange());
+    mainUI.session().getSettings().subscribeChange(s -> this.handleSettingsChange());
     this.fileStatus = new FileStatus();
     lineNumbers = new JLabel();
 
-    if (DesktopApplication.services()
-        .getSettings()
-        .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
+    if (mainUI.session().getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
       this.sourceCode = new GenericTextArea(this, lineNumbers);
     } else {
       this.sourceCode = new JEditBasedTextArea(this, lineNumbers);
@@ -92,9 +92,9 @@ public class EditPane extends JPanel {
                 // This method is triggered when file contents added to document
                 // upon opening, even though not edited by user.  The IF
                 // statement will sense this situation and immediately return.
-                if (FileStatus.get() == FileStatus.OPENING) {
+                if (mainUI.editorState().get() == FileStatus.OPENING) {
                   setFileStatus(FileStatus.NOT_EDITED);
-                  FileStatus.set(FileStatus.NOT_EDITED);
+                  mainUI.editorState().set(FileStatus.NOT_EDITED);
                   if (showingLineNumbers()) {
                     lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
                   }
@@ -113,18 +113,18 @@ public class EditPane extends JPanel {
                   mainUI.editor.setTitle(getPathname(), getFilename(), getFileStatus());
                 }
 
-                FileStatus.setEdited(true);
-                switch (FileStatus.get()) {
+                mainUI.editorState().setEdited(true);
+                switch (mainUI.editorState().get()) {
                   case FileStatus.NEW_NOT_EDITED:
-                    FileStatus.set(FileStatus.NEW_EDITED);
+                    mainUI.editorState().set(FileStatus.NEW_EDITED);
                     break;
                   case FileStatus.NEW_EDITED:
                     break;
                   default:
-                    FileStatus.set(FileStatus.EDITED);
+                    mainUI.editorState().set(FileStatus.EDITED);
                 }
 
-                VenusUI.instance().getMainPane().getExecutePane().clearPane(); // DPS 9-Aug-2011
+                mainUI.getMainPane().getExecutePane().clearPane(); // DPS 9-Aug-2011
 
                 if (showingLineNumbers()) {
                   lineNumbers.setText(getLineNumbersList(sourceCode.getDocument()));
@@ -145,7 +145,8 @@ public class EditPane extends JPanel {
     showLineNumbers.setEnabled(false);
     // Show line numbers by default.
     showLineNumbers.setSelected(
-        DesktopApplication.services()
+        mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED));
 
@@ -167,7 +168,8 @@ public class EditPane extends JPanel {
             lineNumbers.setVisible(false);
           }
           sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
-          DesktopApplication.services()
+          mainUI
+              .session()
               .getSettings()
               .setBooleanSetting(
                   edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED,
@@ -311,8 +313,8 @@ public class EditPane extends JPanel {
   }
 
   /** Delegates to corresponding FileStatus method */
-  public void updateStaticFileStatus() {
-    fileStatus.updateStaticFileStatus();
+  public void publishFileStatus() {
+    mainUI.editorState().adopt(fileStatus);
   }
 
   /**
@@ -547,14 +549,14 @@ public class EditPane extends JPanel {
   }
 
   private void handleSettingsChange() {
-    sourceCode.setFont(
-        EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
+    sourceCode.setFont(EditorSettings.of(mainUI.session().getSettings()).getEditorFont());
     sourceCode.setLineHighlightEnabled(
-        DesktopApplication.services()
+        mainUI
+            .session()
             .getSettings()
             .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
-    sourceCode.setCaretBlinkRate(DesktopApplication.services().getSettings().getCaretBlinkRate());
-    sourceCode.setTabSize(DesktopApplication.services().getSettings().getEditorTabSize());
+    sourceCode.setCaretBlinkRate(mainUI.session().getSettings().getCaretBlinkRate());
+    sourceCode.setTabSize(mainUI.session().getSettings().getEditorTabSize());
     sourceCode.updateSyntaxStyles();
     sourceCode.revalidate();
     lineNumbers.setFont(getLineNumberFont(sourceCode.getFont()));

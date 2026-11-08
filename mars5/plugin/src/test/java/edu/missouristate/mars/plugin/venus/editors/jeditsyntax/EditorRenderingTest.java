@@ -1,6 +1,5 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
-
 import static org.junit.jupiter.api.Assertions.*;
 
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.Token;
@@ -59,6 +58,7 @@ class EditorRenderingTest {
   void caretCoordinatesRoundTripWithTabs() throws Exception {
     SwingUtilities.invokeAndWait(
         () -> {
+          var settings = new edu.missouristate.mars.Settings();
           var styles = SyntaxUtilities.getDefaultSyntaxStyles();
           var colors = new String[styles.length];
           var bold = new boolean[styles.length];
@@ -68,10 +68,8 @@ class EditorRenderingTest {
             bold[i] = styles[i].isBold();
             italic[i] = styles[i].isItalic();
           }
-          edu.missouristate.mars.plugin.runtime.DesktopApplication.services()
-              .getSettings()
-              .initializeSyntaxStyleDefaults(colors, bold, italic);
-          var area = new JEditTextArea(new JPanel());
+          settings.initializeSyntaxStyleDefaults(colors, bold, italic);
+          var area = new JEditTextArea(settings, new JPanel());
           area.getPainter().setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
           area.setText("ab\tcd");
           for (int offset = 0; offset <= 5; offset++) {

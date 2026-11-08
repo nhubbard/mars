@@ -1,17 +1,12 @@
 package edu.missouristate.mars.plugin.runtime;
 
 import edu.missouristate.mars.plugin.di.DaggerPluginComponent;
-import edu.missouristate.mars.plugin.di.PluginComponent;
 
-/** Standalone desktop composition root. */
+/** Composes a fresh session at each standalone application or tool entry point. */
 public final class DesktopApplication {
   private DesktopApplication() {}
 
-  private static class Holder {
-    static final PluginComponent COMPONENT = DaggerPluginComponent.create();
-  }
-
-  public static DesktopSession services() {
-    return Holder.COMPONENT.session();
+  public static DesktopSession createSession() {
+    return DaggerPluginComponent.create().session();
   }
 }

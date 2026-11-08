@@ -10,7 +10,6 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.Color;
 import javax.swing.JPopupMenu;
 
@@ -47,7 +46,7 @@ public class TextAreaDefaults {
   public JPopupMenu popup;
 
   /** Returns a new TextAreaDefaults object with the default values filled in. */
-  public static TextAreaDefaults getDefaults() {
+  public static TextAreaDefaults getDefaults(edu.missouristate.mars.Settings settings) {
     TextAreaDefaults DEFAULTS = new TextAreaDefaults();
 
     DEFAULTS.inputHandler = new DefaultInputHandler();
@@ -56,22 +55,20 @@ public class TextAreaDefaults {
 
     DEFAULTS.blockCaret = false;
     DEFAULTS.caretVisible = true;
-    DEFAULTS.caretBlinks = (DesktopApplication.services().getSettings().getCaretBlinkRate() != 0);
-    DEFAULTS.caretBlinkRate = DesktopApplication.services().getSettings().getCaretBlinkRate();
-    DEFAULTS.tabSize = DesktopApplication.services().getSettings().getEditorTabSize();
+    DEFAULTS.caretBlinks = (settings.getCaretBlinkRate() != 0);
+    DEFAULTS.caretBlinkRate = settings.getCaretBlinkRate();
+    DEFAULTS.tabSize = settings.getEditorTabSize();
     DEFAULTS.electricScroll =
         0; // was 3.  Will begin scrolling when cursor is this many lines from the edge.
 
     DEFAULTS.cols = 80;
     DEFAULTS.rows = 25;
-    DEFAULTS.styles = SyntaxUtilities.getCurrentSyntaxStyles(); // was getDefaultSyntaxStyles()
+    DEFAULTS.styles =
+        SyntaxUtilities.getCurrentSyntaxStyles(settings); // was getDefaultSyntaxStyles()
     DEFAULTS.caretColor = Color.black; // Color.red;
     DEFAULTS.selectionColor = new Color(0xccccff);
     DEFAULTS.lineHighlightColor = new Color(0xeeeeee); // 0xe0e0e0);
-    DEFAULTS.lineHighlight =
-        DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
+    DEFAULTS.lineHighlight = settings.getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
     DEFAULTS.bracketHighlightColor = Color.black;
     DEFAULTS.bracketHighlight = false; // assembly language doesn't need this.
     DEFAULTS.eolMarkerColor = new Color(0x009999);

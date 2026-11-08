@@ -5,7 +5,7 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.plugin.runtime.DesktopApplication;
-import edu.missouristate.mars.plugin.venus.VenusUI;
+import edu.missouristate.mars.plugin.runtime.DesktopSession;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -22,41 +22,37 @@ import javax.swing.*;
 public class DigitalLabSim extends AbstractMarsToolAndApplication {
   private static final String heading = "Digital Lab Sim";
   private static final String version = " Version 1.0 (Didier Teifreto)";
-  private static final int IN_ADRESS_DISPLAY_1 =
-      DesktopApplication.services().memory.memoryMapBaseAddress + 0x10;
-  private static final int IN_ADRESS_DISPLAY_2 =
-      DesktopApplication.services().memory.memoryMapBaseAddress + 0x11;
-  private static final int IN_ADRESS_HEXA_KEYBOARD =
-      DesktopApplication.services().memory.memoryMapBaseAddress + 0x12;
-  private static final int IN_ADRESS_COUNTER =
-      DesktopApplication.services().memory.memoryMapBaseAddress + 0x13;
-  private static final int OUT_ADRESS_HEXA_KEYBOARD =
-      DesktopApplication.services().memory.memoryMapBaseAddress + 0x14;
+  private final int IN_ADRESS_DISPLAY_1 = session.memory.memoryMapBaseAddress + 0x10;
+  private final int IN_ADRESS_DISPLAY_2 = session.memory.memoryMapBaseAddress + 0x11;
+  private final int IN_ADRESS_HEXA_KEYBOARD = session.memory.memoryMapBaseAddress + 0x12;
+  private final int IN_ADRESS_COUNTER = session.memory.memoryMapBaseAddress + 0x13;
+  private final int OUT_ADRESS_HEXA_KEYBOARD = session.memory.memoryMapBaseAddress + 0x14;
 
   public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; // Add for digital Lab Sim
   public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200; // Add for digital Lab Sim
   // Seven Segment display
   private SevenSegmentPanel sevenSegPanel;
   // Keyboard
-  private static int KeyBoardValueButtonClick = -1; // -1 no button click
+  private int KeyBoardValueButtonClick = -1; // -1 no button click
   private HexaKeyboard hexaKeyPanel;
-  private static boolean KeyboardInterruptOnOff = false;
+  private boolean KeyboardInterruptOnOff = false;
   // Counter
   private static final int CounterValueMax = 30;
-  private static int CounterValue = CounterValueMax;
-  private static boolean CounterInterruptOnOff = false;
-  private static OneSecondCounter SecondCounter;
+  private int CounterValue = CounterValueMax;
+  private boolean CounterInterruptOnOff = false;
+  private OneSecondCounter SecondCounter;
 
-  public DigitalLabSim(String title, String heading) {
-    super(title, heading);
+  public DigitalLabSim(DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
-  public DigitalLabSim() {
-    super(heading + ", " + version, heading);
+  public DigitalLabSim(DesktopSession session) {
+    super(session, heading + ", " + version, heading);
   }
 
-  public static void main(String[] args) {
-    new DigitalLabSim(heading + ", " + version, heading).go();
+  static void main(String[] ignoredArgs) {
+    var session = DesktopApplication.createSession();
+    new DigitalLabSim(session, heading + ", " + version, heading).go();
   }
 
   public String getName() {
@@ -65,9 +61,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   protected void addAsObserver() {
     addAsObserver(IN_ADRESS_DISPLAY_1, IN_ADRESS_DISPLAY_1);
-    addAsObserver(
-        DesktopApplication.services().memory.textBaseAddress,
-        DesktopApplication.services().memory.textLimitAddress);
+    addAsObserver(session.memory.textBaseAddress, session.memory.textLimitAddress);
   }
 
   @Override
@@ -89,12 +83,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         CounterValue--;
       } else {
         CounterValue = CounterValueMax;
-        if ((DesktopApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
-                & 2)
-            == 0) {
-          DesktopApplication.services()
-              .context()
-              .requestExternalInterrupt(/*Exceptions.*/ EXTERNAL_INTERRUPT_TIMER);
+        if ((session.context().coprocessor0.getValue(Coprocessor0State.STATUS) & 2) == 0) {
+          session.context().requestExternalInterrupt(/*Exceptions.*/ EXTERNAL_INTERRUPT_TIMER);
         }
       }
     }
@@ -119,21 +109,22 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
     if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+      synchronized (session.memoryAndRegistersLock) {
         try {
-          DesktopApplication.services().instructionContext().setMemoryByte(dataAddr, dataValue);
+          session.instructionContext().setMemoryByte(dataAddr, dataValue);
         } catch (AddressErrorException aee) {
           System.out.println("Tool author specified incorrect MMIO address!" + aee);
           System.exit(0);
         }
       }
-      if (VenusUI.instance() != null
-          && VenusUI.instance()
+      if (session.window() != null
+          && session
+              .window()
               .getMainPane()
               .getExecutePane()
               .getTextSegmentWindow()
               .getCodeHighlighting()) {
-        VenusUI.instance().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
+        session.window().getMainPane().getExecutePane().getDataSegmentWindow().updateValues();
       }
     }
   }
@@ -166,7 +157,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         """;
     JButton help = new JButton("Help");
     help.addActionListener(
-        e -> {
+        _ -> {
           JTextArea ja = new JTextArea(helpContent);
           ja.setRows(20);
           ja.setColumns(60);
@@ -370,13 +361,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
           KeyBoardValueButtonClick = buttonValue;
           button[KeyBoardValueButtonClick].setBackground(Color.GREEN);
           if (KeyboardInterruptOnOff
-              && (DesktopApplication.services()
-                          .context()
-                          .coprocessor0
-                          .getValue(Coprocessor0State.STATUS)
-                      & 2)
-                  == 0) {
-            DesktopApplication.services()
+              && (session.context().coprocessor0.getValue(Coprocessor0State.STATUS) & 2) == 0) {
+            session
                 .context()
                 .requestExternalInterrupt(/*Exceptions.*/ EXTERNAL_INTERRUPT_HEXA_KEYBOARD);
           }
@@ -396,7 +382,7 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     }
   }
 
-  public static class OneSecondCounter {
+  public class OneSecondCounter {
     public OneSecondCounter() {
       CounterInterruptOnOff = false;
     }

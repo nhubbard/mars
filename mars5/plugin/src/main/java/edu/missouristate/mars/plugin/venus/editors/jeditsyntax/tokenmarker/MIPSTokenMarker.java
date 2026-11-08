@@ -12,7 +12,6 @@ package edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import java.util.*;
 import javax.swing.text.Segment;
@@ -23,11 +22,15 @@ import javax.swing.text.Segment;
  * @author Pete Sanderson (2010) and Slava Pestov (1999)
  */
 public class MIPSTokenMarker extends TokenMarker {
-  public MIPSTokenMarker() {
-    this(getKeywords());
+  public MIPSTokenMarker(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    this(session, getKeywords(session));
   }
 
-  public MIPSTokenMarker(KeywordMap keywords) {
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+
+  public MIPSTokenMarker(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, KeywordMap keywords) {
+    this.session = session;
     this.keywords = keywords;
   }
 
@@ -212,13 +215,12 @@ public class MIPSTokenMarker extends TokenMarker {
   public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
     ArrayList<PopupHelpItem> matches = null;
     if (token != null && token.id == Token.KEYWORD1) {
-      ArrayList<Instruction> instrMatches =
-          DesktopApplication.services().instructionSet.matchOperator(tokenText);
+      ArrayList<Instruction> instrMatches = session.instructionSet.matchOperator(tokenText);
       if (!instrMatches.isEmpty()) {
         int realMatches = 0;
         matches = new ArrayList<>();
         for (Instruction inst : instrMatches) {
-          if (DesktopApplication.services()
+          if (session
                   .getSettings()
                   .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
               || inst instanceof BasicInstruction) {
@@ -357,8 +359,7 @@ public class MIPSTokenMarker extends TokenMarker {
       // token.
       if (trimmedTokenText.charAt(0) == '.') {
         return getTextFromDirectiveMatch(trimmedTokenText, false);
-      } else if (trimmedTokenText.length()
-          >= DesktopApplication.services().getSettings().getEditorPopupPrefixLength()) {
+      } else if (trimmedTokenText.length() >= session.getSettings().getEditorPopupPrefixLength()) {
         return getTextFromInstructionMatch(trimmedTokenText, false);
       }
     }
@@ -399,9 +400,9 @@ public class MIPSTokenMarker extends TokenMarker {
     ArrayList<Instruction> matches;
     ArrayList<PopupHelpItem> results = new ArrayList<>();
     if (exact) {
-      matches = DesktopApplication.services().instructionSet.matchOperator(tokenText);
+      matches = session.instructionSet.matchOperator(tokenText);
     } else {
-      matches = DesktopApplication.services().instructionSet.prefixMatchOperator(tokenText);
+      matches = session.instructionSet.prefixMatchOperator(tokenText);
     }
     if (matches == null) {
       return null;
@@ -410,7 +411,7 @@ public class MIPSTokenMarker extends TokenMarker {
     HashMap<String, String> insts = new HashMap<>();
     TreeSet<String> mnemonics = new TreeSet<>();
     for (Instruction inst : matches) {
-      if (DesktopApplication.services()
+      if (session
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
           || inst instanceof BasicInstruction) {
@@ -451,41 +452,37 @@ public class MIPSTokenMarker extends TokenMarker {
    * @return KeywordMap where key is the keyword and associated value is the token type (e.g.
    *     Token.KEYWORD1).
    */
-  public static KeywordMap getKeywords() {
-    if (cKeywords == null) {
-      cKeywords = new KeywordMap(false);
-      // add Instruction mnemonics
-      ArrayList<Instruction> instructionSet =
-          DesktopApplication.services().instructionSet.getInstructionList();
-      for (Instruction instruction : instructionSet) {
-        cKeywords.add(instruction.getName(), Token.KEYWORD1);
-      }
-      // add assembler directives
-      ArrayList<Directives> directiveSet = Directives.getDirectiveList();
-      for (Directives directives : directiveSet) {
-        cKeywords.add(directives.getName(), Token.KEYWORD2);
-      }
-      // add integer register file
-      Register[] registerFile = DesktopApplication.services().context().registerFile.getRegisters();
-      for (int i = 0; i < registerFile.length; i++) {
-        cKeywords.add(registerFile[i].getName(), Token.KEYWORD3);
-        cKeywords.add("$" + i, Token.KEYWORD3); // also recognize $0, $1, $2, etc
-      }
-      // add Coprocessor 1 (floating point) register file
-      Register[] coprocessor1RegisterFile =
-          DesktopApplication.services().context().coprocessor1.getRegisters();
-      for (Register register : coprocessor1RegisterFile) {
-        cKeywords.add(register.getName(), Token.KEYWORD3);
-      }
-      // Note: Coprocessor 0 registers referenced only by number: $8, $12, $13, $14. These are
-      // already in the map
-
+  public static KeywordMap getKeywords(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    var cKeywords = new KeywordMap(false);
+    // add Instruction mnemonics
+    ArrayList<Instruction> instructionSet = session.instructionSet.getInstructionList();
+    for (Instruction instruction : instructionSet) {
+      cKeywords.add(instruction.getName(), Token.KEYWORD1);
     }
+    // add assembler directives
+    ArrayList<Directives> directiveSet = Directives.getDirectiveList();
+    for (Directives directives : directiveSet) {
+      cKeywords.add(directives.getName(), Token.KEYWORD2);
+    }
+    // add integer register file
+    Register[] registerFile = session.context().registerFile.getRegisters();
+    for (int i = 0; i < registerFile.length; i++) {
+      cKeywords.add(registerFile[i].getName(), Token.KEYWORD3);
+      cKeywords.add("$" + i, Token.KEYWORD3); // also recognize $0, $1, $2, etc
+    }
+    // add Coprocessor 1 (floating point) register file
+    Register[] coprocessor1RegisterFile = session.context().coprocessor1.getRegisters();
+    for (Register register : coprocessor1RegisterFile) {
+      cKeywords.add(register.getName(), Token.KEYWORD3);
+    }
+    // Note: Coprocessor 0 registers referenced only by number: $8, $12, $13, $14. These are
+    // already in the map
+
     return cKeywords;
   }
 
   // private members
-  private static KeywordMap cKeywords;
   private static String[] tokenLabels, tokenExamples;
   private final KeywordMap keywords;
   private int lastOffset;

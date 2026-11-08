@@ -13,6 +13,10 @@ public final class VenusMarsGuiProxy implements MarsGuiProxy {
   @Inject
   public VenusMarsGuiProxy() {}
 
+  public MarsGuiProxy frontend() {
+    return delegate;
+  }
+
   public void attach(MarsGuiProxy delegate) {
     this.delegate = Objects.requireNonNull(delegate);
   }

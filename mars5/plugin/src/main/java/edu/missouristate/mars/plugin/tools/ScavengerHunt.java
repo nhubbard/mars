@@ -2,8 +2,6 @@ package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
-import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -17,6 +15,7 @@ import javax.swing.*;
  * memory-mapped addresses, rules of the game, etc.
  */
 public class ScavengerHunt implements MarsTool {
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
   private static final int GRAPHIC_WIDTH = 712;
   private static final int GRAPHIC_HEIGHT = 652;
 
@@ -83,10 +82,9 @@ public class ScavengerHunt implements MarsTool {
   private ScavengerHuntDisplay graphicArea;
   private int authenticationValue = 0;
   private boolean GameOn = false; // MIPS programs readiness
-  private static int SetWordCounter = 0;
+  private int SetWordCounter = 0;
   private static final int accessCounter = 0;
-  private static int playerID =
-      ADMINISTRATOR_ID; // Range 0...(NUM_PLAYERS-1), plus ADMINISTRATOR_ID
+  private int playerID = ADMINISTRATOR_ID; // Range 0...(NUM_PLAYERS-1), plus ADMINISTRATOR_ID
   private final boolean KENVDEBUG = false;
 
   // Used to define (X,Y) coordinate of a location to which ScavengerHunt players
@@ -178,8 +176,8 @@ public class ScavengerHunt implements MarsTool {
     }
   } // end class PlayerData
 
-  private static final PlayerData[] pd = new PlayerData[NUM_PLAYERS];
-  private static final Location[] loc = new Location[NUM_LOCATIONS];
+  private final PlayerData[] pd = new PlayerData[NUM_PLAYERS];
+  private final Location[] loc = new Location[NUM_LOCATIONS];
   private Random randomStream;
   private long startTime;
 
@@ -192,7 +190,7 @@ public class ScavengerHunt implements MarsTool {
       // final JFrame frame = new JFrame("ScavengerHunt");
       // Recommended by Pete Sanderson, 2 Nov. 2006, so that the Tool window and
       // MARS window can be on the screen at the same time.
-      final JDialog frame = new JDialog(VenusUI.instance(), "ScavengerHunt");
+      final JDialog frame = new JDialog(session.window(), "ScavengerHunt");
 
       // System.out.println("ScavengerHuntRunnable.constructor: starting....");
 
@@ -412,7 +410,8 @@ public class ScavengerHunt implements MarsTool {
   // before all MARS classes have been created. Do not include any action in a constructor
   // but rather postpone any action until the action() class,
   // at which time all MARS classes will be ready for use.
-  public ScavengerHunt() {
+  public ScavengerHunt(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    this.session = session;
     // System.out.println("ScavengerHunt.constructor: starting....");
   }
 
@@ -432,14 +431,12 @@ public class ScavengerHunt implements MarsTool {
     // Register as observer for a particular MIPS data range. Other ranges
     // are not used by this Tool.
     try {
-      DesktopApplication.services()
-          .memory
-          .addObserver(
-              this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
+      session.memory.addObserver(
+          this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
     } catch (AddressErrorException e) {
       System.out.println(
           "\n\n"
-              + "ScavengerHunt.action: DesktopApplication.services().memory.addObserver caused"
+              + "ScavengerHunt.action: session.memory.addObserver caused"
               + " AddressErrorException.\n\n");
       System.exit(0);
     }
@@ -673,7 +670,7 @@ public class ScavengerHunt implements MarsTool {
     SetWordCounter++;
 
     try {
-      DesktopApplication.services().instructionContext().setMemoryWord(address, data); // Write
+      session.instructionContext().setMemoryWord(address, data); // Write
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolSetWord: deliberate exit on AEE exception.");
       System.out.println("     SetWordCounter = " + SetWordCounter);
@@ -713,7 +710,7 @@ public class ScavengerHunt implements MarsTool {
     int returnValue;
 
     try {
-      returnValue = DesktopApplication.services().memory.getWord(address);
+      returnValue = session.memory.getWord(address);
       return returnValue;
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolGetWord: deliberate exit on AEE exception.");

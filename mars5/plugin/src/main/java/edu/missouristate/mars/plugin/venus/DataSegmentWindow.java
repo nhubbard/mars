@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.venus;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -49,11 +48,12 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Sanderson and Bumgarner
  */
 public class DataSegmentWindow extends JInternalFrame {
+  private final VenusUI mainUI;
 
   private static final String[] dataSegmentNames = {"Data", "Stack", "Kernel"};
-  private static Object[][] dataData;
+  private Object[][] dataData;
 
-  private static JTable dataTable;
+  private JTable dataTable;
   private JScrollPane dataTableScroller;
   private final Container contentPane;
   private final JPanel tablePanel;
@@ -120,13 +120,25 @@ public class DataSegmentWindow extends JInternalFrame {
    *
    * @param choosers an array of objects used by user to select number display base (10 or 16)
    */
-  public DataSegmentWindow(NumberDisplayBaseChooser[] choosers) {
+  public DataSegmentWindow(VenusUI mainUI, NumberDisplayBaseChooser[] choosers) {
     super("Data Segment", true, false, true, true);
+    this.mainUI = mainUI;
+    displayBaseAddressArray =
+        new int[] {
+          mainUI.session().memory.externBaseAddress,
+          mainUI.session().memory.dataBaseAddress,
+          mainUI.session().memory.heapBaseAddress,
+          -1 /*Memory.globalPointer*/,
+          -1 /*Memory.stackPointer*/,
+          mainUI.session().memory.textBaseAddress,
+          mainUI.session().memory.kernelDataBaseAddress,
+          mainUI.session().memory.memoryMapBaseAddress,
+        };
 
-    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
-    settings = DesktopApplication.services().getSettings();
+    mainUI.session().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = mainUI.session().getSettings();
 
-    homeAddress = DesktopApplication.services().memory.dataBaseAddress; // address for Home button
+    homeAddress = mainUI.session().memory.dataBaseAddress; // address for Home button
     firstAddress = homeAddress; // first address to display at any given time
     userOrKernelMode = USER_MODE;
     addressHighlighting = false;
@@ -201,20 +213,15 @@ public class DataSegmentWindow extends JInternalFrame {
   }
 
   public void updateBaseAddressComboBox() {
-    displayBaseAddressArray[EXTERN_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.externBaseAddress;
+    displayBaseAddressArray[EXTERN_BASE_ADDRESS_INDEX] = mainUI.session().memory.externBaseAddress;
     displayBaseAddressArray[GLOBAL_POINTER_ADDRESS_INDEX] = -1; /*Memory.globalPointer*/
-    displayBaseAddressArray[DATA_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.dataBaseAddress;
-    displayBaseAddressArray[HEAP_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.heapBaseAddress;
+    displayBaseAddressArray[DATA_BASE_ADDRESS_INDEX] = mainUI.session().memory.dataBaseAddress;
+    displayBaseAddressArray[HEAP_BASE_ADDRESS_INDEX] = mainUI.session().memory.heapBaseAddress;
     displayBaseAddressArray[STACK_POINTER_BASE_ADDRESS_INDEX] = -1; /*Memory.stackPointer*/
     displayBaseAddressArray[KERNEL_DATA_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.kernelDataBaseAddress;
-    displayBaseAddressArray[MMIO_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.memoryMapBaseAddress;
-    displayBaseAddressArray[TEXT_BASE_ADDRESS_INDEX] =
-        DesktopApplication.services().memory.textBaseAddress;
+        mainUI.session().memory.kernelDataBaseAddress;
+    displayBaseAddressArray[MMIO_BASE_ADDRESS_INDEX] = mainUI.session().memory.memoryMapBaseAddress;
+    displayBaseAddressArray[TEXT_BASE_ADDRESS_INDEX] = mainUI.session().memory.textBaseAddress;
     displayBaseAddressChoices = createBaseAddressLabelsArray(displayBaseAddressArray, descriptions);
     baseAddressSelector.setModel(new CustomComboBoxModel(displayBaseAddressChoices));
     displayBaseAddresses = displayBaseAddressArray;
@@ -312,22 +319,26 @@ public class DataSegmentWindow extends JInternalFrame {
     if (baseAddress == -1) {
       if (desiredComboBoxIndex == GLOBAL_POINTER_ADDRESS_INDEX) {
         baseAddress =
-            DesktopApplication.services()
+            mainUI
+                    .session()
                     .context()
                     .registerFile
                     .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER)
-                - (DesktopApplication.services()
+                - (mainUI
+                        .session()
                         .context()
                         .registerFile
                         .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER)
                     % BYTES_PER_ROW);
       } else if (desiredComboBoxIndex == STACK_POINTER_BASE_ADDRESS_INDEX) {
         baseAddress =
-            DesktopApplication.services()
+            mainUI
+                    .session()
                     .context()
                     .registerFile
                     .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER)
-                - (DesktopApplication.services()
+                - (mainUI
+                        .session()
                         .context()
                         .registerFile
                         .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER)
@@ -375,16 +386,7 @@ public class DataSegmentWindow extends JInternalFrame {
   private static final int KERNEL_DATA_BASE_ADDRESS_INDEX = 6;
   private static final int MMIO_BASE_ADDRESS_INDEX = 7;
   // Must agree with above in number and order...
-  private final int[] displayBaseAddressArray = {
-    DesktopApplication.services().memory.externBaseAddress,
-    DesktopApplication.services().memory.dataBaseAddress,
-    DesktopApplication.services().memory.heapBaseAddress,
-    -1 /*Memory.globalPointer*/,
-    -1 /*Memory.stackPointer*/,
-    DesktopApplication.services().memory.textBaseAddress,
-    DesktopApplication.services().memory.kernelDataBaseAddress,
-    DesktopApplication.services().memory.memoryMapBaseAddress,
-  };
+  private final int[] displayBaseAddressArray;
   // Must agree with above in number and order...
   final String[] descriptions = {
     " (.extern)",
@@ -432,17 +434,17 @@ public class DataSegmentWindow extends JInternalFrame {
   // same table as the static (0x10010000) so all are "Memory.inDataSegment()".
   private int getBaseAddressIndexForAddress(int address) {
     int desiredComboBoxIndex = -1; // assume not a data address.
-    if (DesktopApplication.services().memory.inKernelDataSegment(address)) {
+    if (mainUI.session().memory.inKernelDataSegment(address)) {
       return KERNEL_DATA_BASE_ADDRESS_INDEX;
-    } else if (DesktopApplication.services().memory.inMemoryMapSegment(address)) {
+    } else if (mainUI.session().memory.inMemoryMapSegment(address)) {
       return MMIO_BASE_ADDRESS_INDEX;
-    } else if (DesktopApplication.services().memory.inTextSegment(address)) { // DPS. 8-July-2013
+    } else if (mainUI.session().memory.inTextSegment(address)) { // DPS. 8-July-2013
       return TEXT_BASE_ADDRESS_INDEX;
     }
     int shortDistance = 0x7fffffff;
     int thisDistance;
     // Check distance from .extern base.  Cannot be below it
-    thisDistance = address - DesktopApplication.services().memory.externBaseAddress;
+    thisDistance = address - mainUI.session().memory.externBaseAddress;
     if (thisDistance >= 0 && thisDistance < shortDistance) {
       shortDistance = thisDistance;
       desiredComboBoxIndex = EXTERN_BASE_ADDRESS_INDEX;
@@ -451,7 +453,8 @@ public class DataSegmentWindow extends JInternalFrame {
     thisDistance =
         Math.abs(
             address
-                - DesktopApplication.services()
+                - mainUI
+                    .session()
                     .context()
                     .registerFile
                     .getValue(
@@ -462,13 +465,13 @@ public class DataSegmentWindow extends JInternalFrame {
       desiredComboBoxIndex = GLOBAL_POINTER_ADDRESS_INDEX;
     }
     // Check distance from .data base.  Cannot be below it
-    thisDistance = address - DesktopApplication.services().memory.dataBaseAddress;
+    thisDistance = address - mainUI.session().memory.dataBaseAddress;
     if (thisDistance >= 0 && thisDistance < shortDistance) {
       shortDistance = thisDistance;
       desiredComboBoxIndex = DATA_BASE_ADDRESS_INDEX;
     }
     // Check distance from heap base.  Cannot be below it
-    thisDistance = address - DesktopApplication.services().memory.heapBaseAddress;
+    thisDistance = address - mainUI.session().memory.heapBaseAddress;
     if (thisDistance >= 0 && thisDistance < shortDistance) {
       shortDistance = thisDistance;
       desiredComboBoxIndex = HEAP_BASE_ADDRESS_INDEX;
@@ -477,7 +480,8 @@ public class DataSegmentWindow extends JInternalFrame {
     thisDistance =
         Math.abs(
             address
-                - DesktopApplication.services()
+                - mainUI
+                    .session()
                     .context()
                     .registerFile
                     .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER));
@@ -492,8 +496,8 @@ public class DataSegmentWindow extends JInternalFrame {
   //   Returns the JScrollPane for the Address/Data part of the Data Segment window.
   private JScrollPane generateDataPanel() {
     dataData = new Object[NUMBER_OF_ROWS][NUMBER_OF_COLUMNS];
-    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
-    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+    int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
+    int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
     int address = this.homeAddress;
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
       dataData[row][ADDRESS_COLUMN] =
@@ -502,7 +506,7 @@ public class DataSegmentWindow extends JInternalFrame {
         try {
           dataData[row][column] =
               NumberDisplayBaseChooser.formatNumber(
-                  DesktopApplication.services().memory.getRawWord(address), valueBase);
+                  mainUI.session().memory.getRawWord(address), valueBase);
         } catch (AddressErrorException aee) {
           dataData[row][column] = NumberDisplayBaseChooser.formatNumber(0, valueBase);
         }
@@ -572,7 +576,7 @@ public class DataSegmentWindow extends JInternalFrame {
   private int getValueDisplayFormat() {
     return (asciiDisplay)
         ? NumberDisplayBaseChooser.ASCII
-        : VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+        : mainUI.getMainPane().getExecutePane().getValueDisplayBase();
   }
 
   /**
@@ -586,7 +590,7 @@ public class DataSegmentWindow extends JInternalFrame {
       return; // ignore if no content to change
     }
     int valueBase = getValueDisplayFormat();
-    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
     int address = firstAddr;
     TableModel dataModel = dataTable.getModel();
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
@@ -600,7 +604,7 @@ public class DataSegmentWindow extends JInternalFrame {
           ((DataTableModel) dataModel)
               .setDisplayAndModelValueAt(
                   NumberDisplayBaseChooser.formatNumber(
-                      DesktopApplication.services().memory.getWordNoNotify(address), valueBase),
+                      mainUI.session().memory.getWordNoNotify(address), valueBase),
                   row,
                   column);
         } catch (AddressErrorException aee) {
@@ -612,21 +616,24 @@ public class DataSegmentWindow extends JInternalFrame {
           // Memory by
           // temporarily enabling the setting as "non persistent" so it won't write through to the
           // registry.
-          if (DesktopApplication.services().memory.inTextSegment(address)) {
+          if (mainUI.session().memory.inTextSegment(address)) {
             int displayValue = 0;
-            if (!DesktopApplication.services()
+            if (!mainUI
+                .session()
                 .getSettings()
                 .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
-              DesktopApplication.services()
+              mainUI
+                  .session()
                   .getSettings()
                   .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, true);
               try {
-                displayValue = DesktopApplication.services().memory.getWordNoNotify(address);
+                displayValue = mainUI.session().memory.getWordNoNotify(address);
               } catch (AddressErrorException e) {
                 // Still got an exception?  Doesn't seem possible but if we drop through it will
                 // write default value 0.
               }
-              DesktopApplication.services()
+              mainUI
+                  .session()
                   .getSettings()
                   .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, false);
             }
@@ -662,7 +669,7 @@ public class DataSegmentWindow extends JInternalFrame {
     }
     int row = offset / BYTES_PER_ROW;
     int column = (offset % BYTES_PER_ROW) / BYTES_PER_VALUE + 1; // column 0 reserved for address
-    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+    int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
     ((DataTableModel) dataTable.getModel())
         .setDisplayAndModelValueAt(
             NumberDisplayBaseChooser.formatNumber(value, valueBase), row, column);
@@ -676,7 +683,7 @@ public class DataSegmentWindow extends JInternalFrame {
     if (tablePanel.getComponentCount() == 0) {
       return; // ignore if no content to change
     }
-    int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
+    int addressBase = mainUI.getMainPane().getExecutePane().getAddressDisplayBase();
     int address = this.firstAddress;
     String formattedAddress;
     for (int i = 0; i < NUMBER_OF_ROWS; i++) {
@@ -709,7 +716,7 @@ public class DataSegmentWindow extends JInternalFrame {
 
   /** Reset all data display values to 0 */
   public void resetValues() {
-    int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+    int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
     TableModel dataModel = dataTable.getModel();
     for (int row = 0; row < NUMBER_OF_ROWS; row++) {
       for (int column = 1; column < NUMBER_OF_COLUMNS; column++) {
@@ -769,24 +776,24 @@ public class DataSegmentWindow extends JInternalFrame {
     stakButton.setToolTipText("View range around stack pointer");
     heapButton.setToolTipText(
         "View range around heap base address "
-            + Binary.intToHexString(DesktopApplication.services().memory.heapBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.heapBaseAddress));
     kernButton.setToolTipText(
         "View range around kernel data base address "
-            + Binary.intToHexString(DesktopApplication.services().memory.kernelDataBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.kernelDataBaseAddress));
     extnButton.setToolTipText(
         "View range around static global base address "
-            + Binary.intToHexString(DesktopApplication.services().memory.externBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.externBaseAddress));
     mmioButton.setToolTipText(
         "View range around MMIO base address "
-            + Binary.intToHexString(DesktopApplication.services().memory.memoryMapBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.memoryMapBaseAddress));
     textButton.setToolTipText(
         "View range around program code "
-            + Binary.intToHexString(DesktopApplication.services().memory.textBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.textBaseAddress));
     prevButton.setToolTipText("View next lower address range; hold down for rapid fire");
     nextButton.setToolTipText("View next higher address range; hold down for rapid fire");
     dataButton.setToolTipText(
         "View range around static data segment base address "
-            + Binary.intToHexString(DesktopApplication.services().memory.dataBaseAddress));
+            + Binary.intToHexString(mainUI.session().memory.dataBaseAddress));
 
     // add the action listeners to maintain button state and table contents
     // Currently there is no memory upper bound so next button always enabled.
@@ -797,8 +804,9 @@ public class DataSegmentWindow extends JInternalFrame {
           // get $gp global pointer, but guard against it having value below data segment
           firstAddress =
               Math.max(
-                  DesktopApplication.services().memory.dataSegmentBaseAddress,
-                  DesktopApplication.services()
+                  mainUI.session().memory.dataSegmentBaseAddress,
+                  mainUI
+                      .session()
                       .context()
                       .registerFile
                       .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER));
@@ -817,14 +825,15 @@ public class DataSegmentWindow extends JInternalFrame {
           // get $sp stack pointer, but guard against it having value below data segment
           firstAddress =
               Math.max(
-                  DesktopApplication.services().memory.dataSegmentBaseAddress,
-                  DesktopApplication.services()
+                  mainUI.session().memory.dataSegmentBaseAddress,
+                  mainUI
+                      .session()
                       .context()
                       .registerFile
                       .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER));
           // See comment above for gloButton...
           firstAddress = firstAddress - (firstAddress % BYTES_PER_ROW);
-          homeAddress = DesktopApplication.services().memory.stackBaseAddress;
+          homeAddress = mainUI.session().memory.stackBaseAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
           updateModelForMemoryRange(firstAddress);
         });
@@ -832,7 +841,7 @@ public class DataSegmentWindow extends JInternalFrame {
     heapButton.addActionListener(
         ae -> {
           userOrKernelMode = USER_MODE;
-          homeAddress = DesktopApplication.services().memory.heapBaseAddress;
+          homeAddress = mainUI.session().memory.heapBaseAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(homeAddress);
           updateModelForMemoryRange(firstAddress);
         });
@@ -840,7 +849,7 @@ public class DataSegmentWindow extends JInternalFrame {
     extnButton.addActionListener(
         ae -> {
           userOrKernelMode = USER_MODE;
-          homeAddress = DesktopApplication.services().memory.externBaseAddress;
+          homeAddress = mainUI.session().memory.externBaseAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(homeAddress);
           updateModelForMemoryRange(firstAddress);
         });
@@ -848,7 +857,7 @@ public class DataSegmentWindow extends JInternalFrame {
     kernButton.addActionListener(
         ae -> {
           userOrKernelMode = KERNEL_MODE;
-          homeAddress = DesktopApplication.services().memory.kernelDataBaseAddress;
+          homeAddress = mainUI.session().memory.kernelDataBaseAddress;
           firstAddress = homeAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
           updateModelForMemoryRange(firstAddress);
@@ -857,7 +866,7 @@ public class DataSegmentWindow extends JInternalFrame {
     mmioButton.addActionListener(
         ae -> {
           userOrKernelMode = KERNEL_MODE;
-          homeAddress = DesktopApplication.services().memory.memoryMapBaseAddress;
+          homeAddress = mainUI.session().memory.memoryMapBaseAddress;
           firstAddress = homeAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
           updateModelForMemoryRange(firstAddress);
@@ -866,7 +875,7 @@ public class DataSegmentWindow extends JInternalFrame {
     textButton.addActionListener(
         ae -> {
           userOrKernelMode = USER_MODE;
-          homeAddress = DesktopApplication.services().memory.textBaseAddress;
+          homeAddress = mainUI.session().memory.textBaseAddress;
           firstAddress = homeAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
           updateModelForMemoryRange(firstAddress);
@@ -875,7 +884,7 @@ public class DataSegmentWindow extends JInternalFrame {
     dataButton.addActionListener(
         ae -> {
           userOrKernelMode = USER_MODE;
-          homeAddress = DesktopApplication.services().memory.dataBaseAddress;
+          homeAddress = mainUI.session().memory.dataBaseAddress;
           firstAddress = homeAddress;
           firstAddress = setFirstAddressAndPrevNextButtonEnableStatus(firstAddress);
           updateModelForMemoryRange(firstAddress);
@@ -903,14 +912,14 @@ public class DataSegmentWindow extends JInternalFrame {
         (userOrKernelMode == USER_MODE)
             ? Math.min(
                 Math.min(
-                    DesktopApplication.services().memory.textBaseAddress,
-                    DesktopApplication.services().memory.dataSegmentBaseAddress),
-                DesktopApplication.services().memory.dataBaseAddress)
-            : DesktopApplication.services().memory.kernelDataBaseAddress;
+                    mainUI.session().memory.textBaseAddress,
+                    mainUI.session().memory.dataSegmentBaseAddress),
+                mainUI.session().memory.dataBaseAddress)
+            : mainUI.session().memory.kernelDataBaseAddress;
     int highLimit =
         (userOrKernelMode == USER_MODE)
-            ? DesktopApplication.services().memory.userHighAddress
-            : DesktopApplication.services().memory.kernelHighAddress;
+            ? mainUI.session().memory.userHighAddress
+            : mainUI.session().memory.kernelHighAddress;
     if (lowAddress <= lowLimit) {
       lowAddress = lowLimit;
       prevButton.setEnabled(false);
@@ -938,11 +947,11 @@ public class DataSegmentWindow extends JInternalFrame {
   private void handleSimulatorNotice(ExecutionNotice notice) {
     if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        DesktopApplication.services().memory.addObserver(memoryListener);
+        mainUI.session().memory.addObserver(memoryListener);
         addressHighlighting = true;
       }
     } else {
-      DesktopApplication.services().memory.deleteObserver(memoryListener);
+      mainUI.session().memory.deleteObserver(memoryListener);
     }
   }
 
@@ -956,7 +965,7 @@ public class DataSegmentWindow extends JInternalFrame {
   // setSelectedIndex to also call selectedItemChanged() did not help.  Only this
   // solution to extend the model class to call the protected
   // "fireContentsChanged()" method worked. DPS 25-Jan-2009
-  private static class CustomComboBoxModel extends DefaultComboBoxModel<String> {
+  private class CustomComboBoxModel extends DefaultComboBoxModel<String> {
     public CustomComboBoxModel(String[] list) {
       super(list);
     }
@@ -1043,9 +1052,9 @@ public class DataSegmentWindow extends JInternalFrame {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+      synchronized (mainUI.session().memoryAndRegistersLock) {
         try {
-          DesktopApplication.services().instructionContext().setMemoryRawWord(address, val);
+          mainUI.session().instructionContext().setMemoryRawWord(address, val);
         }
         // somehow, user was able to display out-of-range address.  Most likely to occur between
         // stack base and Kernel.  Also text segment with self-modifying-code setting off.
@@ -1053,7 +1062,7 @@ public class DataSegmentWindow extends JInternalFrame {
           return;
         }
       } // end synchronized block
-      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);
       fireTableCellUpdated(row, col);
     }

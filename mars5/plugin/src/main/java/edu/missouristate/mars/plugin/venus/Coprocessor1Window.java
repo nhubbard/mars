@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -47,22 +46,24 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson 2005
  */
 public class Coprocessor1Window extends JPanel implements ActionListener {
-  private static JTable table;
-  private static Register[] registers;
+  private final VenusUI mainUI;
+  private JTable table;
+  private Register[] registers;
   private boolean highlighting;
   private int highlightRow;
   private final JCheckBox[] conditionFlagCheckBox;
   private static final int NAME_COLUMN = 0;
   private static final int FLOAT_COLUMN = 1;
   private static final int DOUBLE_COLUMN = 2;
-  private static Settings settings;
+  private Settings settings;
 
   private final Consumer<RegisterAccessNotice> registersListener = this::handleRegisterAccess;
 
   /** Constructor which sets up a fresh window with a table that contains the register values. */
-  public Coprocessor1Window() {
-    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
-    settings = DesktopApplication.services().getSettings();
+  public Coprocessor1Window(VenusUI mainUI) {
+    this.mainUI = mainUI;
+    mainUI.session().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = mainUI.session().getSettings();
     // Display registers in table contained in scroll pane.
     this.setLayout(new BorderLayout()); // table display will occupy entire width if widened
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
@@ -98,7 +99,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     flagsPane.setToolTipText(
         "flags are used by certain floating point instructions, default flag is 0");
     flagsPane.add(new JLabel("Condition Flags", JLabel.CENTER), BorderLayout.NORTH);
-    int numFlags = DesktopApplication.services().context().coprocessor1.getConditionFlagCount();
+    int numFlags = mainUI.session().context().coprocessor1.getConditionFlagCount();
     conditionFlagCheckBox = new JCheckBox[numFlags];
     JPanel checksPane = new JPanel(new GridLayout(2, numFlags / 2));
     for (int i = 0; i < numFlags; i++) {
@@ -124,10 +125,10 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     int i = Integer.parseInt(checkBox.getText());
     if (checkBox.isSelected()) {
       checkBox.setSelected(true);
-      DesktopApplication.services().instructionContext().setConditionFlag(i);
+      mainUI.session().instructionContext().setConditionFlag(i);
     } else {
       checkBox.setSelected(false);
-      DesktopApplication.services().instructionContext().clearConditionFlag(i);
+      mainUI.session().instructionContext().clearConditionFlag(i);
     }
   }
 
@@ -137,7 +138,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    registers = DesktopApplication.services().context().coprocessor1.getRegisters();
+    registers = mainUI.session().context().coprocessor1.getRegisters();
     this.highlighting = false;
     Object[][] tableData = new Object[registers.length][3];
     for (int i = 0; i < registers.length; i++) {
@@ -153,7 +154,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
         long longValue = 0;
         try {
           longValue =
-              DesktopApplication.services()
+              mainUI
+                  .session()
                   .context()
                   .coprocessor1
                   .getLongFromRegisterPair(registers[i].getName());
@@ -175,9 +177,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   /** Reset and redisplay registers. */
   public void clearWindow() {
     this.clearHighlighting();
-    DesktopApplication.services().context().coprocessor1.resetRegisters();
-    this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
-    DesktopApplication.services().context().coprocessor1.clearConditionFlags();
+    mainUI.session().context().coprocessor1.resetRegisters();
+    this.updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
+    mainUI.session().context().coprocessor1.clearConditionFlags();
     this.updateConditionFlagDisplay();
   }
 
@@ -199,7 +201,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
 
   /** Redisplay registers using current display number base (10 or 16) */
   public void updateRegisters() {
-    updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
+    updateRegisters(mainUI.getMainPane().getExecutePane().getValueDisplayBase());
   }
 
   /**
@@ -208,7 +210,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
    * @param base number base for display (10 or 16)
    */
   public void updateRegisters(int base) {
-    registers = DesktopApplication.services().context().coprocessor1.getRegisters();
+    registers = mainUI.session().context().coprocessor1.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       updateFloatRegisterValue(registers[i].getNumber(), registers[i].getValue(), base);
       if (i % 2 == 0) {
@@ -221,7 +223,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   private void updateConditionFlagDisplay() {
     for (int i = 0; i < conditionFlagCheckBox.length; i++) {
       conditionFlagCheckBox[i].setSelected(
-          DesktopApplication.services().context().coprocessor1.getConditionFlag(i) != 0);
+          mainUI.session().context().coprocessor1.getConditionFlag(i) != 0);
     }
   }
 
@@ -248,7 +250,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     long val = 0;
     try {
       val =
-          DesktopApplication.services()
+          mainUI
+              .session()
               .context()
               .coprocessor1
               .getLongFromRegisterPair(registers[number].getName());
@@ -262,17 +265,11 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   private void handleSimulatorNotice(ExecutionNotice notice) {
     if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        DesktopApplication.services()
-            .context()
-            .coprocessor1
-            .addRegistersObserver(registersListener);
+        mainUI.session().context().coprocessor1.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      DesktopApplication.services()
-          .context()
-          .coprocessor1
-          .deleteRegistersObserver(registersListener);
+      mainUI.session().context().coprocessor1.deleteRegistersObserver(registersListener);
     }
   }
 
@@ -280,15 +277,14 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     if (access.getAccessType() != AccessNotice.WRITE) {
       return;
     }
-    Register reg =
-        DesktopApplication.services().context().coprocessor1.getRegister(access.getRegisterName());
+    Register reg = mainUI.session().context().coprocessor1.getRegister(access.getRegisterName());
     if (reg == null) {
       return;
     }
     this.highlighting = true;
     this.highlightRow = reg.getNumber();
     table.tableChanged(new TableModelEvent(table.getModel()));
-    VenusUI.instance().getRegistersPane().setSelectedComponent(this);
+    mainUI.getRegistersPane().setSelectedComponent(this);
   }
 
   Consumer<RegisterAccessNotice> getRegistersListener() {
@@ -348,7 +344,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   /////////////////////////////////////////////////////////////////////////////
   //  The table model.
 
-  static class RegTableModel extends AbstractTableModel {
+  class RegTableModel extends AbstractTableModel {
     final String[] columnNames = {"Name", "Float", "Double"};
     final Object[][] data;
 
@@ -395,7 +391,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
      * value is valid, MIPS register is updated.
      */
     public void setValueAt(Object value, int row, int col) {
-      int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
+      int valueBase = mainUI.getMainPane().getExecutePane().getValueDisplayBase();
       float fVal;
       double dVal;
       String sVal = (String) value;
@@ -406,8 +402,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             int iVal = Binary.stringToInt(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-              DesktopApplication.services().instructionContext().updateCoprocessor1(row, iVal);
+            synchronized (mainUI.session().memoryAndRegistersLock) {
+              mainUI.session().instructionContext().updateCoprocessor1(row, iVal);
             }
             data[row][col] = NumberDisplayBaseChooser.formatFloatNumber(iVal, valueBase);
 
@@ -415,8 +411,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             fVal = Float.parseFloat(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-              DesktopApplication.services().context().coprocessor1.setRegisterToFloat(row, fVal);
+            synchronized (mainUI.session().memoryAndRegistersLock) {
+              mainUI.session().context().coprocessor1.setRegisterToFloat(row, fVal);
             }
             data[row][col] = NumberDisplayBaseChooser.formatNumber(fVal, valueBase);
           }
@@ -424,11 +420,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
           int dReg = row - (row % 2);
           setDisplayAndModelValueAt(
               NumberDisplayBaseChooser.formatDoubleNumber(
-                  DesktopApplication.services()
-                      .context()
-                      .coprocessor1
-                      .getLongFromRegisterPair(dReg),
-                  valueBase),
+                  mainUI.session().context().coprocessor1.getLongFromRegisterPair(dReg), valueBase),
               dReg,
               DOUBLE_COLUMN);
         } else if (col == DOUBLE_COLUMN) {
@@ -436,8 +428,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             long lVal = Binary.stringToLong(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-              DesktopApplication.services().context().coprocessor1.setRegisterPairToLong(row, lVal);
+            synchronized (mainUI.session().memoryAndRegistersLock) {
+              mainUI.session().context().coprocessor1.setRegisterPairToLong(row, lVal);
             }
             setDisplayAndModelValueAt(
                 NumberDisplayBaseChooser.formatDoubleNumber(lVal, valueBase), row, col);
@@ -445,11 +437,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             dVal = Double.parseDouble(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (DesktopApplication.services().memoryAndRegistersLock) {
-              DesktopApplication.services()
-                  .context()
-                  .coprocessor1
-                  .setRegisterPairToDouble(row, dVal);
+            synchronized (mainUI.session().memoryAndRegistersLock) {
+              mainUI.session().context().coprocessor1.setRegisterPairToDouble(row, dVal);
             }
             setDisplayAndModelValueAt(
                 NumberDisplayBaseChooser.formatNumber(dVal, valueBase), row, col);
@@ -457,13 +446,12 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
           // have to update corresponding float display
           setDisplayAndModelValueAt(
               NumberDisplayBaseChooser.formatNumber(
-                  DesktopApplication.services().context().coprocessor1.getValue(row), valueBase),
+                  mainUI.session().context().coprocessor1.getValue(row), valueBase),
               row,
               FLOAT_COLUMN);
           setDisplayAndModelValueAt(
               NumberDisplayBaseChooser.formatNumber(
-                  DesktopApplication.services().context().coprocessor1.getValue(row + 1),
-                  valueBase),
+                  mainUI.session().context().coprocessor1.getValue(row + 1), valueBase),
               row + 1,
               FLOAT_COLUMN);
         }
@@ -490,7 +478,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   // the first column. From Sun's JTable tutorial.
   // http://java.sun.com/docs/books/tutorial/uiswing/components/table.html
   //
-  private static class MyTippedJTable extends JTable {
+  private class MyTippedJTable extends JTable {
     MyTippedJTable(RegTableModel m) {
       super(m);
       this.setRowSelectionAllowed(true); // highlights background color of entire row

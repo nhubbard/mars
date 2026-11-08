@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -113,8 +112,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   /** When this action is triggered, launch a dialog to view and modify editor settings. */
   public void actionPerformed(ActionEvent e) {
-    highlightDialog =
-        new JDialog(VenusUI.instance(), "Runtime Table Highlighting Colors and Fonts", true);
+    highlightDialog = new JDialog(mainUI, "Runtime Table Highlighting Colors and Fonts", true);
     highlightDialog.setContentPane(buildDialogPanel());
     highlightDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
     highlightDialog.addWindowListener(
@@ -124,7 +122,7 @@ public class SettingsHighlightingAction extends GuiAction {
           }
         });
     highlightDialog.pack();
-    highlightDialog.setLocationRelativeTo(VenusUI.instance());
+    highlightDialog.setLocationRelativeTo(mainUI);
     highlightDialog.setVisible(true);
   }
 
@@ -285,7 +283,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Called once, upon dialog setup.
   private void initializeButtonColors() {
-    Settings settings = DesktopApplication.services().getSettings();
+    Settings settings = mainUI.session().getSettings();
     LineBorder lineBorder = new LineBorder(Color.BLACK);
     Color backgroundSetting, foregroundSetting;
     Font fontSetting;
@@ -334,7 +332,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Set the color settings according to current button colors.  Occurs when "Apply" selected.
   private void setHighlightingSettings() {
-    Settings settings = DesktopApplication.services().getSettings();
+    Settings settings = mainUI.session().getSettings();
     for (int i = 0; i < backgroundSettingPositions.length; i++) {
       EditorSettings.of(settings)
           .setColorSettingByPosition(
@@ -350,7 +348,7 @@ public class SettingsHighlightingAction extends GuiAction {
         edu.missouristate.mars.Settings.DATA_SEGMENT_HIGHLIGHTING, currentDataHighlightSetting);
     settings.setBooleanSetting(
         edu.missouristate.mars.Settings.REGISTERS_HIGHLIGHTING, currentRegisterHighlightSetting);
-    ExecutePane executePane = VenusUI.instance().getMainPane().getExecutePane();
+    ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     executePane.getRegistersWindow().refresh();
     executePane.getCoprocessor0Window().refresh();
     executePane.getCoprocessor1Window().refresh();
@@ -367,7 +365,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Called when Reset selected.
   private void resetButtonColors() {
-    Settings settings = DesktopApplication.services().getSettings();
+    Settings settings = mainUI.session().getSettings();
     dataHighlightButton.setText(getHighlightControlText(initialDataHighlightSetting));
     registerHighlightButton.setText(getHighlightControlText(initialRegisterHighlightSetting));
     Color backgroundSetting, foregroundSetting;
@@ -494,13 +492,13 @@ public class SettingsHighlightingAction extends GuiAction {
         foregroundButtons[position].setEnabled(false);
         fontButtons[position].setEnabled(false);
         newBackground =
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getDefaultColorSettingByPosition(backgroundSettingPositions[position]);
         newForeground =
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getDefaultColorSettingByPosition(foregroundSettingPositions[position]);
         newFont =
-            EditorSettings.of(DesktopApplication.services().getSettings())
+            EditorSettings.of(mainUI.session().getSettings())
                 .getDefaultFontByPosition(fontSettingPositions[position]);
         currentNondefaultBackground[position] = backgroundButtons[position].getBackground();
         currentNondefaultForeground[position] = foregroundButtons[position].getBackground();

@@ -3,10 +3,8 @@ package edu.missouristate.mars.plugin.tools;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.FileChooserFilters;
 import edu.missouristate.mars.plugin.venus.RunSpeedPanel;
-import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -88,8 +86,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Color backgroundColor = Color.WHITE;
 
-  private final int lowMemoryAddress = DesktopApplication.services().memory.dataSegmentBaseAddress;
-  private final int highMemoryAddress = DesktopApplication.services().memory.stackBaseAddress;
+  private final int lowMemoryAddress;
+  private final int highMemoryAddress;
   // For MarsTool, is set true when "Connect" clicked, false when "Disconnect" clicked.
   // For app, is set true when "Assemble and Run" clicked, false when program terminates.
   private volatile boolean observing = false;
@@ -108,7 +106,13 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
    *
    * @param title String containing title bar text
    */
-  protected AbstractMarsToolAndApplication(String title, String heading) {
+  protected final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+
+  protected AbstractMarsToolAndApplication(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    this.session = session;
+    lowMemoryAddress = session.memory.dataSegmentBaseAddress;
+    highMemoryAddress = session.memory.stackBaseAddress;
     thisMarsApp = this;
     this.title = title;
     this.heading = heading;
@@ -155,7 +159,6 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     theWindow = this;
     this.isBeingUsedAsAMarsTool = false;
     thisMarsApp.setTitle(this.title);
-    DesktopApplication.services();
     // assure the dialog goes away if user clicks the X
     thisMarsApp.addWindowListener(
         new WindowAdapter() {
@@ -194,7 +197,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
    */
   public void action() {
     this.isBeingUsedAsAMarsTool = true;
-    dialog = new JDialog(VenusUI.instance(), this.title);
+    dialog = new JDialog(session.window(), this.title);
     // assure the dialog goes away if user clicks the X
     dialog.addWindowListener(
         new WindowAdapter() {
@@ -213,7 +216,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     initializePostGUI();
     dialog.setContentPane(contentPane);
     dialog.pack();
-    dialog.setLocationRelativeTo(VenusUI.instance());
+    dialog.setLocationRelativeTo(session.window());
     dialog.setVisible(true);
   }
 
@@ -362,7 +365,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     operationStatusMessages.setFocusable(false);
     operationStatusMessages.setToolTipText("Display operation status messages");
 
-    RunSpeedPanel speed = RunSpeedPanel.getInstance();
+    RunSpeedPanel speed = new RunSpeedPanel();
+    session.simulator().setRunSpeedSource(speed::getRunSpeed);
 
     // Bottom row of controls consists of the three buttons defined here.
     assembleRunButton = new JButton("Assemble and Run");
@@ -380,8 +384,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     stopButton = new JButton("Stop");
     stopButton.setToolTipText("Terminate MIPS program execution");
     stopButton.setEnabled(false);
-    stopButton.addActionListener(
-        _ -> DesktopApplication.services().simulator().stopExecution(null));
+    stopButton.addActionListener(_ -> session.simulator().stopExecution(null));
     stopButton.addKeyListener(new EnterKeyListener(stopButton));
 
     JButton resetButton = new JButton("Reset");
@@ -472,7 +475,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   protected void addAsObserver(int lowEnd, int highEnd) {
     String errorMessage = "Error connecting to MIPS memory";
     try {
-      DesktopApplication.services().memory.addObserver(memoryListener, lowEnd, highEnd);
+      session.memory.addObserver(memoryListener, lowEnd, highEnd);
     } catch (AddressErrorException aee) {
       if (this.isBeingUsedAsAMarsTool) {
         headingLabel.setText(errorMessage);
@@ -497,7 +500,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
    * (e.g. when the button is re-enabled).
    */
   protected void deleteAsObserver() {
-    DesktopApplication.services().memory.deleteObserver(memoryListener);
+    session.memory.deleteObserver(memoryListener);
   }
 
   /** Remove this app/tool as a listener of the specified MIPS register. */
@@ -581,14 +584,14 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
     public void connect() {
       observing = true;
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
+      synchronized (session.memoryAndRegistersLock) { // DPS 23 July 2008
         addAsObserver();
       }
       setText(disconnectText);
     }
 
     public void disconnect() {
-      synchronized (DesktopApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
+      synchronized (session.memoryAndRegistersLock) { // DPS 23 July 2008
         deleteAsObserver();
       }
       observing = false;
@@ -632,18 +635,18 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private class CreateAssembleRunMIPSprogram implements Runnable {
     public void run() {
       String exceptionHandler = null;
-      if (DesktopApplication.services()
+      if (session
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
-          && DesktopApplication.services().getSettings().getExceptionHandler() != null
-          && !DesktopApplication.services().getSettings().getExceptionHandler().isEmpty()) {
-        exceptionHandler = DesktopApplication.services().getSettings().getExceptionHandler();
+          && session.getSettings().getExceptionHandler() != null
+          && !session.getSettings().getExceptionHandler().isEmpty()) {
+        exceptionHandler = session.getSettings().getExceptionHandler();
       }
 
       Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
       Thread.yield();
-      MIPSprogram program = DesktopApplication.services().createProgram();
-      DesktopApplication.services().setProgram(program); // Shouldn't have to do this...
+      MIPSprogram program = session.createProgram();
+      session.setProgram(program); // Shouldn't have to do this...
       String fileToAssemble = mostRecentlyOpenedFile.getPath();
       ArrayList<String> filesToAssemble;
       if (multiFileAssemble) { // setting (check box in file open dialog) calls for multiple file
@@ -669,10 +672,10 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
       try {
         program.assemble(
             programsToAssemble,
-            DesktopApplication.services()
+            session
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED),
-            DesktopApplication.services()
+            session
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
       } catch (ProcessingException pe) {
@@ -680,16 +683,19 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
         return;
       }
       // Moved these three register resets from before the try block to after it.  17-Dec-09 DPS.
-      DesktopApplication.services().resetRegisters();
-      DesktopApplication.services().context().coprocessor1.resetRegisters();
-      DesktopApplication.services().context().coprocessor0.resetRegisters();
+      session.resetRegisters();
+      session.context().coprocessor1.resetRegisters();
+      session.context().coprocessor0.resetRegisters();
 
       addAsObserver();
       observing = true;
       String terminatingMessage = "Normal termination: ";
       try {
         operationStatusMessages.displayNonTerminatingMessage("Running " + fileToAssemble);
-        program.simulate(-1); // unlimited steps
+        session
+            .simulator()
+            .simulate(
+                program, session.context().registerFile.getPC(), -1, null, null); // unlimited steps
       } catch (NullPointerException npe) {
         // This will occur if program execution is interrupted by Stop button.
         terminatingMessage = "User interrupt: ";

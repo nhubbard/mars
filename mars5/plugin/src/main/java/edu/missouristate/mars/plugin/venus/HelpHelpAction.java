@@ -4,7 +4,6 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -290,8 +289,7 @@ public class HelpHelpAction extends GuiAction {
 
   ////////////////////////////////////////////////////////////////////////////
   private JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
-    ArrayList<Instruction> instructionList =
-        DesktopApplication.services().instructionSet.getInstructionList();
+    ArrayList<Instruction> instructionList = mainUI.session().instructionSet.getInstructionList();
     ArrayList<String> exampleList = new ArrayList<>(instructionList.size());
     Iterator<Instruction> it = instructionList.iterator();
     Instruction instr;

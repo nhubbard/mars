@@ -31,7 +31,7 @@ import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSession;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JComponent;
@@ -90,16 +90,15 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
   private boolean m_lastBranchTaken;
 
   /** Creates a BHT Simulator with given name and heading. */
-  public BHTSimulator() {
-    super(BHTSimulator.BHT_NAME + ", " + BHTSimulator.BHT_VERSION, BHTSimulator.BHT_HEADING);
+  public BHTSimulator(DesktopSession session) {
+    super(
+        session, BHTSimulator.BHT_NAME + ", " + BHTSimulator.BHT_VERSION, BHTSimulator.BHT_HEADING);
   }
 
   /** Adds BHTSimulator as observer of the text segment. */
   protected void addAsObserver() {
-    addAsObserver(
-        DesktopApplication.services().memory.textBaseAddress,
-        DesktopApplication.services().memory.textLimitAddress);
-    addAsObserver(DesktopApplication.services().context().registerFile.getProgramCounterRegister());
+    addAsObserver(session.memory.textBaseAddress, session.memory.textLimitAddress);
+    addAsObserver(session.context().registerFile.getProgramCounterRegister());
   }
 
   /** Creates a GUI and initialize the GUI with the default values. */
@@ -283,14 +282,14 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
    * @param stmt the branch instruction to be investigated
    * @return true if the branch will be taken, otherwise false
    */
-  protected static boolean willBranch(ProgramStatement stmt) {
+  protected boolean willBranch(ProgramStatement stmt) {
     int opCode = stmt.getBinaryStatement() >>> (32 - 6);
     int funct = stmt.getBinaryStatement() & 0x1F;
     int rs = stmt.getBinaryStatement() >>> (32 - 6 - 5) & 0x1F;
     int rt = stmt.getBinaryStatement() >>> (32 - 6 - 5 - 5) & 0x1F;
 
-    int valRS = DesktopApplication.services().context().registerFile.getRegisters()[rs].getValue();
-    int valRT = DesktopApplication.services().context().registerFile.getRegisters()[rt].getValue();
+    int valRS = session.context().registerFile.getRegisters()[rs].getValue();
+    int valRT = session.context().registerFile.getRegisters()[rt].getValue();
 
     if (opCode == 0x01) {
       switch (funct) {
@@ -351,8 +350,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
 
       try {
         // access the statement in the text segment without notifying other tools etc.
-        ProgramStatement stmt =
-            DesktopApplication.services().memory.getStatementNoNotify(memAccNotice.getAddress());
+        ProgramStatement stmt = session.memory.getStatementNoNotify(memAccNotice.getAddress());
 
         // necessary to handle possible null pointers at the end of the program
         // (e.g., if the simulator tries to execute the next instruction after the last instruction

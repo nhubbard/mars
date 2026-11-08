@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -46,7 +45,8 @@ public class SettingsSelfModifyingCodeAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    DesktopApplication.services()
+    mainUI
+        .session()
         .getSettings()
         .setBooleanSetting(
             Settings.SELF_MODIFYING_CODE_ENABLED, ((JCheckBoxMenuItem) e.getSource()).isSelected());

@@ -43,13 +43,14 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
    * @param title String containing title for title bar
    * @param heading String containing text for heading shown in upper part of window.
    */
-  public IntroToTools(String title, String heading) {
-    super(title, heading);
+  public IntroToTools(
+      edu.missouristate.mars.plugin.runtime.DesktopSession session, String title, String heading) {
+    super(session, title, heading);
   }
 
   /** Simple constructor, likely used by the MARS Tools menu mechanism */
-  public IntroToTools() {
-    super(heading + ", " + version, heading);
+  public IntroToTools(edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    super(session, heading + ", " + version, heading);
   }
 
   /**
@@ -59,7 +60,8 @@ public class IntroToTools extends AbstractMarsToolAndApplication {
    * program to invoke the application.
    */
   public static void main(String[] args) {
-    new IntroToTools(heading + ", " + version, heading).go();
+    var session = edu.missouristate.mars.plugin.runtime.DesktopApplication.createSession();
+    new IntroToTools(session, heading + ", " + version, heading).go();
   }
 
   /**

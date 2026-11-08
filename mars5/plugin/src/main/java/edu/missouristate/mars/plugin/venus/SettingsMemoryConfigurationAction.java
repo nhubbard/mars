@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -54,8 +53,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
   /** When this action is triggered, launch a dialog to view and modify editor settings. */
   public void actionPerformed(ActionEvent e) {
-    configDialog =
-        new MemoryConfigurationDialog(VenusUI.instance(), "MIPS Memory Configuration", true);
+    configDialog = new MemoryConfigurationDialog(mainUI, "MIPS Memory Configuration", true);
     configDialog.setVisible(true);
   }
 
@@ -119,7 +117,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
     private Component buildConfigDisplay() {
       JPanel displayPanel = new JPanel();
-      MemoryConfiguration config = DesktopApplication.services().memory.getConfiguration();
+      MemoryConfiguration config = mainUI.session().memory.getConfiguration();
       String[] configurationItemNames = config.configurationItemNames();
       int numItems = configurationItemNames.length;
       JPanel namesPanel = new JPanel(new GridLayout(numItems, 1));
@@ -187,29 +185,27 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     }
 
     private void performApply() {
-      if (DesktopApplication.services()
+      if (mainUI
+          .session()
           .setMemoryConfiguration(this.selectedConfigurationButton.getConfiguration())) {
-        DesktopApplication.services()
+        mainUI
+            .session()
             .getSettings()
             .setMemoryConfiguration(
                 this.selectedConfigurationButton.getConfiguration().configurationIdentifier());
-        VenusUI.instance().getRegistersPane().getRegistersWindow().clearHighlighting();
-        VenusUI.instance().getRegistersPane().getRegistersWindow().updateRegisters();
-        VenusUI.instance()
-            .getMainPane()
-            .getExecutePane()
-            .getDataSegmentWindow()
-            .updateBaseAddressComboBox();
+        mainUI.getRegistersPane().getRegistersWindow().clearHighlighting();
+        mainUI.getRegistersPane().getRegistersWindow().updateRegisters();
+        mainUI.getMainPane().getExecutePane().getDataSegmentWindow().updateBaseAddressComboBox();
         // 21 July 2009 Re-assemble if the situation demands it to maintain consistency.
-        if (FileStatus.get() == FileStatus.RUNNABLE
-            || FileStatus.get() == FileStatus.RUNNING
-            || FileStatus.get() == FileStatus.TERMINATED) {
+        if (mainUI.editorState().get() == FileStatus.RUNNABLE
+            || mainUI.editorState().get() == FileStatus.RUNNING
+            || mainUI.editorState().get() == FileStatus.TERMINATED) {
           // Stop execution if executing -- should NEVER happen because this
           // Action's widget is disabled during MIPS execution.
-          if (FileStatus.get() == FileStatus.RUNNING) {
-            DesktopApplication.services().simulator().stopExecution(thisAction);
+          if (mainUI.editorState().get() == FileStatus.RUNNING) {
+            mainUI.session().simulator().stopExecution(thisAction);
           }
-          VenusUI.instance().getRunAssembleAction().actionPerformed(null);
+          mainUI.getRunAssembleAction().actionPerformed(null);
         }
       }
     }
@@ -254,13 +250,11 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
   }
 
   // Handy class to connect button to its configuration...
-  private static class ConfigurationButton extends JRadioButton {
+  private class ConfigurationButton extends JRadioButton {
     private final MemoryConfiguration configuration;
 
     public ConfigurationButton(MemoryConfiguration config) {
-      super(
-          config.configurationName(),
-          config == DesktopApplication.services().memory.getConfiguration());
+      super(config.configurationName(), config == mainUI.session().memory.getConfiguration());
       this.configuration = config;
     }
 

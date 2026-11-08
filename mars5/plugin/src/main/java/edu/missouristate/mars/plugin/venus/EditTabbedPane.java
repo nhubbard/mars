@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -66,9 +65,7 @@ public class EditTabbedPane extends JTabbedPane {
           if (editPane != null) {
             // New IF statement to permit free traversal of edit panes w/o invalidating
             // assembly if assemble-all is selected.  DPS 9-Aug-2011
-            if (DesktopApplication.services()
-                .getSettings()
-                .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+            if (mainUI.session().getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
               EditTabbedPane.this.updateTitles(editPane);
             } else {
               EditTabbedPane.this.updateTitlesAndMenuState(editPane);
@@ -131,12 +128,12 @@ public class EditTabbedPane extends JTabbedPane {
     editPane.setPathname(name);
     this.addTab(name, editPane);
 
-    FileStatus.reset();
-    FileStatus.setName(name);
-    FileStatus.set(FileStatus.NEW_NOT_EDITED);
+    mainUI.editorState().reset();
+    mainUI.editorState().setName(name);
+    mainUI.editorState().set(FileStatus.NEW_NOT_EDITED);
 
-    DesktopApplication.services().resetRegisters();
-    VenusUI.setReset(true);
+    mainUI.session().resetRegisters();
+    mainUI.setReset(true);
     mainPane.getExecutePane().clearPane();
     mainPane.setSelectedComponent(this);
     editPane.displayCaretPosition(new Point(1, 1));
@@ -249,9 +246,9 @@ public class EditTabbedPane extends JTabbedPane {
   public boolean saveCurrentFile() {
     EditPane editPane = getCurrentEditTab();
     if (saveFile(editPane)) {
-      FileStatus.setSaved(true);
-      FileStatus.setEdited(false);
-      FileStatus.set(FileStatus.NOT_EDITED);
+      mainUI.editorState().setSaved(true);
+      mainUI.editorState().setEdited(false);
+      mainUI.editorState().set(FileStatus.NOT_EDITED);
       editPane.setFileStatus(FileStatus.NOT_EDITED);
       updateTitlesAndMenuState(editPane);
       return true;
@@ -298,11 +295,11 @@ public class EditTabbedPane extends JTabbedPane {
     EditPane editPane = getCurrentEditTab();
     File theFile = saveAsFile(editPane);
     if (theFile != null) {
-      FileStatus.setFile(theFile);
-      FileStatus.setName(theFile.getPath());
-      FileStatus.setSaved(true);
-      FileStatus.setEdited(false);
-      FileStatus.set(FileStatus.NOT_EDITED);
+      mainUI.editorState().setFile(theFile);
+      mainUI.editorState().setName(theFile.getPath());
+      mainUI.editorState().setSaved(true);
+      mainUI.editorState().setEdited(false);
+      mainUI.editorState().set(FileStatus.NOT_EDITED);
       editor.setCurrentSaveDirectory(theFile.getParent());
       editPane.setPathname(theFile.getPath());
       editPane.setFileStatus(FileStatus.NOT_EDITED);
@@ -411,9 +408,9 @@ public class EditTabbedPane extends JTabbedPane {
       setCurrentEditTab(savedPane);
       if (result) {
         EditPane editPane = getCurrentEditTab();
-        FileStatus.setSaved(true);
-        FileStatus.setEdited(false);
-        FileStatus.set(FileStatus.NOT_EDITED);
+        mainUI.editorState().setSaved(true);
+        mainUI.editorState().setEdited(false);
+        mainUI.editorState().set(FileStatus.NOT_EDITED);
         editPane.setFileStatus(FileStatus.NOT_EDITED);
         updateTitlesAndMenuState(editPane);
       }
@@ -426,11 +423,11 @@ public class EditTabbedPane extends JTabbedPane {
     super.remove(editPane);
     editPane = getCurrentEditTab(); // is now next tab or null
     if (editPane == null) {
-      FileStatus.set(FileStatus.NO_FILE);
+      mainUI.editorState().set(FileStatus.NO_FILE);
       this.editor.setTitle("", "", FileStatus.NO_FILE);
-      VenusUI.instance().setMenuState(FileStatus.NO_FILE);
+      mainUI.setMenuState(FileStatus.NO_FILE);
     } else {
-      FileStatus.set(editPane.getFileStatus());
+      mainUI.editorState().set(editPane.getFileStatus());
       updateTitlesAndMenuState(editPane);
     }
     // When last file is closed, menu is unable to respond to mnemonics
@@ -444,10 +441,8 @@ public class EditTabbedPane extends JTabbedPane {
   // and also to update the MARS menu state (controls which actions are enabled).
   private void updateTitlesAndMenuState(EditPane editPane) {
     editor.setTitle(editPane.getPathname(), editPane.getFilename(), editPane.getFileStatus());
-    editPane
-        .updateStaticFileStatus(); //  for legacy code that depends on the static FileStatus (pre
-    // 4.0)
-    VenusUI.instance().setMenuState(editPane.getFileStatus());
+    editPane.publishFileStatus();
+    mainUI.setMenuState(editPane.getFileStatus());
   }
 
   // Handy little utility to update the title on the current tab and the frame title bar
@@ -455,11 +450,9 @@ public class EditTabbedPane extends JTabbedPane {
   // DPS 9-Aug-2011
   private void updateTitles(EditPane editPane) {
     editor.setTitle(editPane.getPathname(), editPane.getFilename(), editPane.getFileStatus());
-    boolean assembled = FileStatus.isAssembled();
-    editPane
-        .updateStaticFileStatus(); //  for legacy code that depends on the static FileStatus (pre
-    // 4.0)
-    FileStatus.setAssembled(assembled);
+    boolean assembled = mainUI.editorState().isAssembled();
+    editPane.publishFileStatus();
+    mainUI.editorState().setAssembled(assembled);
   }
 
   /**
@@ -547,7 +540,8 @@ public class EditTabbedPane extends JTabbedPane {
       // Set default to previous file opened, if any.  This is useful in conjunction
       // with option to assemble file automatically upon opening.  File likely to have
       // been edited externally (e.g. by Mipster).
-      if (DesktopApplication.services()
+      if (mainUI
+              .session()
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED)
           && mostRecentlyOpenedFile != null) {
@@ -565,7 +559,8 @@ public class EditTabbedPane extends JTabbedPane {
         // possibly send this file right through to the assembler by firing Run->Assemble's
         // actionPerformed() method.
         if (theFile.canRead()
-            && DesktopApplication.services()
+            && mainUI
+                .session()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED)) {
           mainUI.getRunAssembleAction().actionPerformed(null);
@@ -596,14 +591,14 @@ public class EditTabbedPane extends JTabbedPane {
         editPane = new EditPane(mainUI);
       }
       editPane.setPathname(currentFilePath);
-      // FileStatus.reset();
-      FileStatus.setName(currentFilePath);
-      FileStatus.setFile(theFile);
-      FileStatus.set(FileStatus.OPENING); // DPS 9-Aug-2011
+      // mainUI.editorState().reset();
+      mainUI.editorState().setName(currentFilePath);
+      mainUI.editorState().setFile(theFile);
+      mainUI.editorState().set(FileStatus.OPENING); // DPS 9-Aug-2011
       if (theFile.canRead()) {
-        DesktopApplication.services().setProgram(DesktopApplication.services().createProgram());
+        mainUI.session().setProgram(mainUI.session().createProgram());
         try {
-          DesktopApplication.services().getProgram().readSource(currentFilePath);
+          mainUI.session().getProgram().readSource(currentFilePath);
         } catch (ProcessingException ignored) {
         }
         // DPS 1 Nov 2006.  Defined a StringBuffer to receive all file contents,
@@ -613,10 +608,10 @@ public class EditTabbedPane extends JTabbedPane {
         // to the Edit pane as it was read, way slower due to dynamic string alloc.
         StringBuilder fileContents = new StringBuilder((int) theFile.length());
         int lineNumber = 1;
-        String line = DesktopApplication.services().getProgram().getSourceLine(lineNumber++);
+        String line = mainUI.session().getProgram().getSourceLine(lineNumber++);
         while (line != null) {
           fileContents.append(line).append("\n");
-          line = DesktopApplication.services().getProgram().getSourceLine(lineNumber++);
+          line = mainUI.session().getProgram().getSourceLine(lineNumber++);
         }
         editPane.setSourceCode(fileContents.toString(), true);
         // The above operation generates an undoable edit, setting the initial
@@ -629,15 +624,13 @@ public class EditTabbedPane extends JTabbedPane {
         addTab(editPane.getFilename(), editPane);
         setToolTipTextAt(indexOfComponent(editPane), editPane.getPathname());
         setSelectedComponent(editPane);
-        FileStatus.setSaved(true);
-        FileStatus.setEdited(false);
-        FileStatus.set(FileStatus.NOT_EDITED);
+        mainUI.editorState().setSaved(true);
+        mainUI.editorState().setEdited(false);
+        mainUI.editorState().set(FileStatus.NOT_EDITED);
 
         // If assemble-all, then allow opening of any file w/o invalidating assembly.
         // DPS 9-Aug-2011
-        if (DesktopApplication.services()
-            .getSettings()
-            .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+        if (mainUI.session().getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
           updateTitles(editPane);
         } else { // this was the original code...
           updateTitlesAndMenuState(editPane);

@@ -4,7 +4,6 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -131,16 +130,17 @@ public class MarsLaunch {
   private int assembleErrorExitCode; // MARS command exit code to return if assemble error occurs
   private int simulateErrorExitCode; // MARS command exit code to return if simulation error occurs
 
-  public MarsLaunch(String[] args) {
+  private final edu.missouristate.mars.plugin.runtime.DesktopSession session;
+
+  public MarsLaunch(String[] args, edu.missouristate.mars.plugin.runtime.DesktopSession session) {
+    this.session = session;
     boolean gui = (args.length == 0);
-    DesktopApplication.services();
     if (gui) {
       launchIDE();
     } else { // running from command line.
       // assure command mode works in headless environment (generates exception if not)
       System.setProperty("java.awt.headless", "true");
-      DesktopApplication.services()
-          .setSyscallEnvironment(DesktopApplication.services().context().syscallEnvironment);
+      session.setSyscallEnvironment(session.context().syscallEnvironment);
       simulate = true;
       displayFormat = HEXADECIMAL;
       verbose = true;
@@ -157,11 +157,10 @@ public class MarsLaunch {
       registerDisplayList = new ArrayList<>();
       memoryDisplayList = new ArrayList<>();
       filenameList = new ArrayList<>();
-      DesktopApplication.services()
-          .setMemoryConfiguration(MemoryConfigurations.getDefaultConfiguration());
-      // do NOT use DesktopApplication.services().getProgram() for command line MARS -- it triggers
+      session.setMemoryConfiguration(MemoryConfigurations.getDefaultConfiguration());
+      // do NOT use session.getProgram() for command line MARS -- it triggers
       // 'backstep' log.
-      code = DesktopApplication.services().createProgram();
+      code = session.createProgram();
       maxSteps = -1;
       out = System.out;
       if (parseCommandArgs(args)) {
@@ -172,7 +171,7 @@ public class MarsLaunch {
         }
         dumpSegments();
       }
-      System.exit(DesktopApplication.services().exitCode());
+      System.exit(session.exitCode());
     }
   }
 
@@ -188,8 +187,7 @@ public class MarsLaunch {
 
     for (String[] triple : dumpTriples) {
       File file = new File(triple[2]);
-      Integer[] segInfo =
-          MemoryDump.getSegmentBounds(triple[0], DesktopApplication.services().context().memory);
+      Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0], session.context().memory);
       // If not segment name, see if it is address range instead.  DPS 14-July-2008
       if (segInfo == null) {
         try {
@@ -215,14 +213,13 @@ public class MarsLaunch {
       }
       try {
         int highAddress =
-            DesktopApplication.services().memory.getAddressOfFirstNull(segInfo[0], segInfo[1])
+            session.memory.getAddressOfFirstNull(segInfo[0], segInfo[1])
                 - MemoryState.WORD_LENGTH_BYTES;
         if (highAddress < segInfo[0]) {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
         }
-        format.dumpMemoryRange(
-            file, segInfo[0], highAddress, DesktopApplication.services().context());
+        format.dumpMemoryRange(file, segInfo[0], highAddress, session.context());
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {
@@ -250,7 +247,7 @@ public class MarsLaunch {
         () -> {
           // Turn off metal's use of bold fonts
           // UIManager.put("swing.boldMetal", Boolean.FALSE);
-          new VenusUI("MARS " + ApplicationInfo.version);
+          new VenusUI("MARS " + ApplicationInfo.version, java.awt.Frame.NORMAL, session);
         });
   }
 
@@ -323,7 +320,7 @@ public class MarsLaunch {
           out.println("Invalid memory configuration: " + configName);
           argsOK = false;
         } else {
-          DesktopApplication.services().setMemoryConfiguration(config);
+          session.setMemoryConfiguration(config);
         }
         continue;
       }
@@ -348,7 +345,7 @@ public class MarsLaunch {
         }
       }
       if (args[i].equalsIgnoreCase("d")) {
-        DesktopApplication.services().setDebug(true);
+        session.setDebug(true);
         continue;
       }
       if (args[i].equalsIgnoreCase("a")) {
@@ -356,7 +353,7 @@ public class MarsLaunch {
         continue;
       }
       if (args[i].equalsIgnoreCase("ad") || args[i].equalsIgnoreCase("da")) {
-        DesktopApplication.services().setDebug(true);
+        session.setDebug(true);
         simulate = false;
         continue;
       }
@@ -406,8 +403,8 @@ public class MarsLaunch {
       }
 
       if (args[i].indexOf("$") == 0) {
-        if (DesktopApplication.services().context().registerFile.getUserRegister(args[i]) == null
-            && DesktopApplication.services().context().coprocessor1.getRegister(args[i]) == null) {
+        if (session.context().registerFile.getUserRegister(args[i]) == null
+            && session.context().coprocessor1.getRegister(args[i]) == null) {
           out.println("Invalid Register Name: " + args[i]);
         } else {
           registerDisplayList.add(args[i]);
@@ -415,10 +412,8 @@ public class MarsLaunch {
         continue;
       }
       // check for register name w/o $.  added 14-July-2008 DPS
-      if (DesktopApplication.services().context().registerFile.getUserRegister("$" + args[i])
-              != null
-          || DesktopApplication.services().context().coprocessor1.getRegister("$" + args[i])
-              != null) {
+      if (session.context().registerFile.getUserRegister("$" + args[i]) != null
+          || session.context().coprocessor1.getRegister("$" + args[i]) != null) {
         registerDisplayList.add("$" + args[i]);
         continue;
       }
@@ -462,10 +457,10 @@ public class MarsLaunch {
       return false;
     }
     try {
-      DesktopApplication.services()
+      session
           .getSettings()
           .setBooleanSettingNonPersistent(Settings.DELAYED_BRANCHING_ENABLED, delayedBranching);
-      DesktopApplication.services()
+      session
           .getSettings()
           .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
       File mainFile =
@@ -496,12 +491,12 @@ public class MarsLaunch {
         filesToAssemble =
             FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
       }
-      if (DesktopApplication.services().debug()) {
+      if (session.debug()) {
         out.println("--------  TOKENIZING BEGINS  -----------");
       }
       ArrayList<MIPSprogram> MIPSprogramsToAssemble =
           code.prepareFilesForAssembly(filesToAssemble, mainFile.getAbsolutePath(), null);
-      if (DesktopApplication.services().debug()) {
+      if (session.debug()) {
         out.println("--------  ASSEMBLY BEGINS  -----------");
       }
       // Added logic to check for warnings and print if any. DPS 11/28/06
@@ -509,29 +504,27 @@ public class MarsLaunch {
       if (warnings != null && warnings.warningsOccurred()) {
         out.println(warnings.generateWarningReport());
       }
-      DesktopApplication.services().initializeProgramCounter(startAtMain); // DPS 3/9/09
+      session.initializeProgramCounter(startAtMain); // DPS 3/9/09
       if (simulate) {
         // store program args (if any) in MIPS memory
-        new ProgramArgumentList(programArgumentList)
-            .storeProgramArguments(DesktopApplication.services().context());
+        new ProgramArgumentList(programArgumentList).storeProgramArguments(session.context());
         // establish observer if specified
         establishObserver();
-        if (DesktopApplication.services().debug()) {
+        if (session.debug()) {
           out.println("--------  SIMULATION BEGINS  -----------");
         }
         programRan = true;
         boolean done = code.simulate(maxSteps);
-        DesktopApplication.services().setExitCode(code.getExitCode());
+        session.setExitCode(code.getExitCode());
         if (!done) {
           out.println("\nProgram terminated when maximum step limit " + maxSteps + " reached.");
         }
       }
-      if (DesktopApplication.services().debug()) {
+      if (session.debug()) {
         out.println("\n--------  ALL PROCESSING COMPLETE  -----------");
       }
     } catch (ProcessingException e) {
-      DesktopApplication.services()
-          .setExitCode((programRan) ? simulateErrorExitCode : assembleErrorExitCode);
+      session.setExitCode((programRan) ? simulateErrorExitCode : assembleErrorExitCode);
       out.println(e.errors().generateErrorAndWarningReport());
       out.println("Processing terminated due to errors.");
     }
@@ -569,25 +562,23 @@ public class MarsLaunch {
     if (countInstructions) {
       final int[] lastAddress = {0};
       try {
-        DesktopApplication.services()
-            .memory
-            .addObserver(
-                notice -> {
-                  if (!notice.accessIsFromMIPS()) {
-                    return;
-                  }
-                  if (notice.getAccessType() != AccessNotice.READ) {
-                    return;
-                  }
-                  int a = notice.getAddress();
-                  if (a == lastAddress[0]) {
-                    return;
-                  }
-                  lastAddress[0] = a;
-                  instructionCount++;
-                },
-                DesktopApplication.services().memory.textBaseAddress,
-                DesktopApplication.services().memory.textLimitAddress);
+        session.memory.addObserver(
+            notice -> {
+              if (!notice.accessIsFromMIPS()) {
+                return;
+              }
+              if (notice.getAccessType() != AccessNotice.READ) {
+                return;
+              }
+              int a = notice.getAddress();
+              if (a == lastAddress[0]) {
+                return;
+              }
+              lastAddress[0] = a;
+              instructionCount++;
+            },
+            session.memory.textBaseAddress,
+            session.memory.textLimitAddress);
       } catch (AddressErrorException aee) {
         out.println(
             "Internal error: MarsLaunch uses incorrect text segment address for instruction"
@@ -614,27 +605,23 @@ public class MarsLaunch {
     // Display requested register contents
     out.println();
     for (String reg : registerDisplayList) {
-      if (DesktopApplication.services().context().registerFile.getUserRegister(reg) != null) {
+      if (session.context().registerFile.getUserRegister(reg) != null) {
         // integer register
         if (verbose) {
           out.print(reg + "\t");
         }
-        value =
-            DesktopApplication.services().context().registerFile.getUserRegister(reg).getValue();
+        value = session.context().registerFile.getUserRegister(reg).getValue();
         out.println(formatIntForDisplay(value));
       } else {
         // floating point register
-        float fvalue =
-            DesktopApplication.services().context().coprocessor1.getFloatFromRegister(reg);
-        int ivalue = DesktopApplication.services().context().coprocessor1.getIntFromRegister(reg);
+        float fvalue = session.context().coprocessor1.getFloatFromRegister(reg);
+        int ivalue = session.context().coprocessor1.getIntFromRegister(reg);
         double dvalue = Double.NaN;
         long lvalue = 0;
         boolean hasDouble = false;
         try {
-          dvalue =
-              DesktopApplication.services().context().coprocessor1.getDoubleFromRegisterPair(reg);
-          lvalue =
-              DesktopApplication.services().context().coprocessor1.getLongFromRegisterPair(reg);
+          dvalue = session.context().coprocessor1.getDoubleFromRegisterPair(reg);
+          lvalue = session.context().coprocessor1.getLongFromRegisterPair(reg);
           hasDouble = true;
         } catch (InvalidRegisterAccessException ignored) {
         }
@@ -709,12 +696,11 @@ public class MarsLaunch {
         }
         try {
           // Allow display of binary text segment (machine code) DPS 14-July-2008
-          if (DesktopApplication.services().memory.inTextSegment(addr)
-              || DesktopApplication.services().memory.inKernelTextSegment(addr)) {
-            Integer iValue = DesktopApplication.services().memory.getRawWordOrNull(addr);
+          if (session.memory.inTextSegment(addr) || session.memory.inKernelTextSegment(addr)) {
+            Integer iValue = session.memory.getRawWordOrNull(addr);
             value = (iValue == null) ? 0 : iValue;
           } else {
-            value = DesktopApplication.services().memory.getWord(addr);
+            value = session.memory.getWord(addr);
           }
           out.print(formatIntForDisplay(value) + "\t");
         } catch (AddressErrorException aee) {

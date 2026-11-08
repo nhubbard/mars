@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -50,22 +49,23 @@ public class SettingsDelayedBranchingAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    DesktopApplication.services()
+    mainUI
+        .session()
         .getSettings()
         .setBooleanSetting(
             edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED,
             ((JCheckBoxMenuItem) e.getSource()).isSelected());
     // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
-    if (VenusUI.instance() != null
-        && (FileStatus.get() == FileStatus.RUNNABLE
-            || FileStatus.get() == FileStatus.RUNNING
-            || FileStatus.get() == FileStatus.TERMINATED)) {
+    if (mainUI != null
+        && (mainUI.editorState().get() == FileStatus.RUNNABLE
+            || mainUI.editorState().get() == FileStatus.RUNNING
+            || mainUI.editorState().get() == FileStatus.TERMINATED)) {
       // Stop execution if executing -- should NEVER happen because this
       // Action's widget is disabled during MIPS execution.
-      if (FileStatus.get() == FileStatus.RUNNING) {
-        DesktopApplication.services().simulator().stopExecution(this);
+      if (mainUI.editorState().get() == FileStatus.RUNNING) {
+        mainUI.session().simulator().stopExecution(this);
       }
-      VenusUI.instance().getRunAssembleAction().actionPerformed(null);
+      mainUI.getRunAssembleAction().actionPerformed(null);
     }
   }
 }
