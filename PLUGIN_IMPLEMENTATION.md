@@ -112,9 +112,31 @@ is created. Tests verify fresh native resolution and reverse lookup for that cas
 requires unresolved path sentinels and VFS structure dependencies for future semantic caches.
 Production query consumers must follow that rule. Visual acceptance remains open as described above.
 
+## Include navigation and refactoring
+
+The native AST factory creates a PSI leaf for MARS string tokens. Only strings selected by the
+assembler's include prepass expose file references. IntelliJ supplies caret navigation, filename
+completion, usage search, file and directory rename, and move handling through `FileReferenceSet`
+and the registered element manipulator. The shared include provider uses those same references
+when resolving its indexed paths. There is no parallel reference or refactoring engine.
+
+MARS paths retain spaces and question marks as literal filename characters. Relative paths use the
+source directory. Absolute paths use the filesystem root, including when a native move rewrites a
+reference. The PSI cache stores path text by offset; it does not cache resolved targets. A reference
+to a missing file resolves after the target is created, even without an edit to the source.
+
+Eight new Jupiter editor fixtures cover the navigation, completion, refactoring, raw path, missing
+target, and quote preservation contracts. The shared-index absolute path test has no relative alias
+that could conceal a failed absolute lookup. All 1,254 tests passed in the clean launch and authored
+runtime line and branch coverage remains 100%. The IDE loaded the plugin and opened the smoke
+project without a plugin error. Visual editor acceptance remains open as described above.
+
 ## Next slices
 
-Finish syntax and semantic edge cases from MARS characterization, then add reference sentinels,
+Finish syntax and semantic edge cases from MARS characterization. The assembler matches directive
+names without case sensitivity; the lexer still needs that behavior for macro and equivalence tokens.
+Characterize macro boundaries across includes with the real assembler before changing the grammar.
+Then add symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

@@ -295,18 +295,28 @@ comma separators. It strips the enclosing quotes without decoding string escapes
 quoted directive text, missing arguments and unfinished strings do not create include links.
 Relative paths remain unresolved until query time.
 
-Use `FileIncludeManager` for native reverse lookups and fresh path resolution. Its cached forward
-graph has a verified limit in the pinned source: an unresolved target that appears later does not
-invalidate the cached empty result. `IncludedFilesProvider` tracks the source document and existing
-targets, but does not track VFS structure changes. Do not use that cached result as proof that the
-source still has no dependency. Retain the unresolved path sentinel and resolve it again when needed.
-Any MARS semantic cache for forward dependencies must use the platform's cache facilities and include
-`VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS`, source revisions and build options as dependencies.
-This is a required correctness rule for the query layer, not a reason to create another include store.
+Use `FileIncludeManager` for native reverse lookups. The provider's resolution hook uses the same
+`FileReferenceSet` as the editor's include string PSI. Native file references supply navigation,
+filename completion, usage search, rename and move handling. Override path ranges, decoding and
+contexts for MARS's raw filenames. The generic platform behavior trims spaces, treats `?` as URL
+syntax and uses project roots for absolute paths. MARS uses literal filenames, the including file's
+directory for relative paths, and a filesystem root for absolute paths. Keep text changes in the
+registered element manipulator so quotes and unrelated strings are preserved.
+
+Use fresh literal references for forward resolution. The platform's cached forward graph can keep
+an empty result after a missing target appears. `IncludedFilesProvider` tracks the source document
+and existing targets, but does not track VFS structure changes. Its generic resolver fallback also
+applies the default path rules when a provider returns no target. A cached graph or fallback result
+does not establish MARS build dependencies. Retain the unresolved path sentinel and resolve it again
+when needed. Any MARS semantic cache for forward dependencies must use the platform's cache facilities
+and include `VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS`, source revisions and build options as
+dependencies. The editor caches only a file's path texts by PSI offset and lets native references
+resolve the targets. This requires no second include store.
 
 Real Jupiter fixture tests exercise persistent declaration queries, native scope filtering, unsaved
-edits, deletion, relative includes, reverse lookups, cycle-safe graph traversal, newly created targets
-and the producer contracts. See [PLUGIN_IMPLEMENTATION.md](/Users/nhubbard/IdeaProjects/mars-original/PLUGIN_IMPLEMENTATION.md)
+edits, deletion, relative and absolute includes, reverse lookups, cycle-safe graph traversal, newly
+created targets, native completion, file/directory rename, and file moves. See
+[PLUGIN_IMPLEMENTATION.md](/Users/nhubbard/IdeaProjects/mars-original/PLUGIN_IMPLEMENTATION.md)
 for current acceptance results and the separate visual startup check.
 
 

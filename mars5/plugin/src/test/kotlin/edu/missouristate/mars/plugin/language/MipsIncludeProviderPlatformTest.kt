@@ -62,7 +62,7 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(1, provider.version)
+        assertEquals(2, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
     }
@@ -87,11 +87,11 @@ class MipsIncludeProviderPlatformTest {
     }
 
     @Test
-    fun `native include resolution supports absolute paths spaces unicode and dot segments`() = timeoutRunBlocking<Unit> {
+    fun `shared include index resolves an absolute path with spaces and unicode without a relative alias`() = timeoutRunBlocking<Unit> {
         val files = withContext(Dispatchers.EDT) {
             val target = fixture.addFileToProject("names/with spaces#é.s", "target: nop\n").virtualFile
             val source = fixture.addFileToProject(
-                "main.asm", ".include \"${target.path}\"\n.include \"./names/with spaces#é.s\"\n",
+                "main.asm", ".include \"${target.path}\"\n",
             ).virtualFile
             source to target
         }
