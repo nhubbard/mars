@@ -60,6 +60,21 @@ The first clean launch passed all 1,233 tests and coverage checks. The IDE log c
 The UI automation could not attach to the sandbox Java window. Visual editor acceptance remains
 open; log evidence does not replace it. The test process was stopped without closing the development IDE.
 
+## Native editor actions
+
+MARS registers `Commenter` and `PairedBraceMatcher` implementations, following the TOML and
+EditorConfig examples in the reference checkout. IntelliJ owns comment toggling, parenthesis
+insertion, closing-parenthesis skipping, paired deletion and brace matching. There is no MARS
+typing handler or replacement editor action.
+
+Five Jupiter tests use the platform's `codeInsightProjectFixture` and `codeInsightFixture`.
+They exercise real editor actions, selected lines, existing comments, hashes inside strings,
+parenthesis typing/deletion, nested matching, token registration and the extension contracts.
+Authored plugin code retains 100% line and branch coverage.
+
+The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
+plugin without a plugin error. The visual acceptance limit above still applies.
+
 ## Next slices
 
 Finish syntax and semantic edge cases from MARS characterization, then add native named PSI/stubs,

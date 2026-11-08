@@ -1,0 +1,97 @@
+package edu.missouristate.mars.plugin.language
+
+import com.intellij.codeInsight.highlighting.BraceMatchingUtil
+import com.intellij.lang.LanguageBraceMatching
+import com.intellij.lang.LanguageCommenters
+import com.intellij.openapi.actionSystem.IdeActions
+import com.intellij.openapi.application.EDT
+import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
+import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.junit5.TestApplication
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+@TestApplication
+class MipsEditorPlatformTest {
+    private val project = codeInsightProjectFixture()
+    private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `platform comment action toggles a MARS line without changing string hashes`() = timeoutRunBlocking<Unit> {
+        // The editor fixture and its actions require model access on the UI thread.
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText(MipsFileType, ".asciiz \"# message\"<caret>\n")
+            fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
+            assertEquals("#.asciiz \"# message\"\n", fixture.editor.document.text)
+            fixture.editor.caretModel.moveToOffset(0)
+            fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
+            fixture.checkResult(".asciiz \"# message\"\n")
+        }
+    }
+
+    @Test
+    fun `platform comment action toggles selected instructions and existing comments`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = "<selection>li \$v0, 1\n# explain\nsyscall</selection>\n"
+            fixture.configureByText(MipsFileType, source)
+            fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
+            assertEquals("#li \$v0, 1\n## explain\n#syscall\n", fixture.editor.document.text)
+            fixture.performEditorAction(IdeActions.ACTION_COMMENT_LINE)
+            fixture.checkResult("li \$v0, 1\n# explain\nsyscall\n")
+        }
+    }
+
+    @Test
+    fun `platform typing pairs parentheses skips an existing close and deletes an empty pair`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText(MipsFileType, "lw \$t0, 4<caret>")
+            fixture.type('(')
+            fixture.checkResult("lw \$t0, 4(<caret>)")
+            fixture.performEditorAction(IdeActions.ACTION_EDITOR_BACKSPACE)
+            fixture.checkResult("lw \$t0, 4<caret>")
+            fixture.type("(\$sp)")
+            fixture.checkResult("lw \$t0, 4(\$sp)<caret>")
+        }
+    }
+
+    @Test
+    fun `platform matches nested parentheses and ignores parentheses in strings and comments`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = ".word <caret>(1+(2-3)) # )\n.asciiz \"(\"\n"
+            fixture.configureByText(MipsFileType, source)
+            val closing = fixture.file.text.indexOf(") #")
+            assertEquals(closing, BraceMatchingUtil.getMatchedBraceOffset(fixture.editor, true, fixture.file))
+            fixture.editor.caretModel.moveToOffset(closing)
+            assertEquals(6, BraceMatchingUtil.getMatchedBraceOffset(fixture.editor, false, fixture.file))
+
+            val matcher = LanguageBraceMatching.INSTANCE.forLanguage(MipsLanguage)
+            assertInstanceOf(MipsBraceMatcher::class.java, matcher)
+            val pair = matcher.pairs.single()
+            assertSame(MipsTypes.psi("LEFT_PAREN"), pair.leftBraceType)
+            assertSame(MipsTypes.psi("RIGHT_PAREN"), pair.rightBraceType)
+            assertFalse(pair.isStructural)
+            assertTrue(matcher.isPairedBracesAllowedBeforeType(pair.leftBraceType, null))
+            assertTrue(matcher.isPairedBracesAllowedBeforeType(pair.leftBraceType, MipsTypes.psi("NUMBER")))
+            assertEquals(6, matcher.getCodeConstructStart(fixture.file, 6))
+        }
+    }
+
+    @Test
+    fun `registered commenter exposes only the MARS line marker`() {
+        val commenter = LanguageCommenters.INSTANCE.forLanguage(MipsLanguage)
+        assertInstanceOf(MipsCommenter::class.java, commenter)
+        assertEquals("#", commenter.lineCommentPrefix)
+        assertNull(commenter.blockCommentPrefix)
+        assertNull(commenter.blockCommentSuffix)
+        assertNull(commenter.commentedBlockCommentPrefix)
+        assertNull(commenter.commentedBlockCommentSuffix)
+    }
+}
