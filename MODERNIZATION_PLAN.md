@@ -18,6 +18,10 @@ Kotlin engine rewrite is deferred and is not a prerequisite for plugin implement
 The next implementation work follows [the detailed component mapping](INTELLIJ_COMPONENT_MAPPING.md).
 It covers every current MARS component, full feature parity, native editing/build/Run/Debug/tool
 integration, explicit ownership and near-full branch coverage with Jupiter-only tests.
+The first Kotlin unified-analysis slice implements independent file facts, typed reference sentinels,
+query-time joins, explicit incomplete states, immutable scoped snapshots and cancellable background
+publication. Follow component mapping section 2.5 for the indexing contract and remaining adapters.
+
 No existing user feature is deferred in that mapping. IntelliJ IDEA 2026.3 is the platform baseline;
 older-release compatibility layers are outside the current target.
 

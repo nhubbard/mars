@@ -190,6 +190,89 @@ Renderers receive bounded, coalesced presentation updates. Dropping repaint fram
 cache accesses, branch outcomes, or instruction counts is not. Backpressure must remain bounded and stop-aware.
 Each subscription has an owner, unsubscribe path, and close-race test.
 
+### 2.5 Unified analysis core: independent facts and query-time joins
+
+Use the sentinel-and-join approach from the user's existing plugin. Each independent index emits
+facts it can determine from its own file. A reference retains a symbolic sentinel key for a target
+provided by another index. Neither producer queries the other index, resolves a target, or starts
+assembly while indexing. The unified query layer reads both sides and joins matching keys later.
+
+A sentinel is a typed unresolved link, not a magic string, null address, cached PSI element, or
+promise that an asynchronous task will eventually mutate. Its key identifies the symbol name and
+kind. Its occurrence identifies the source and local identity. Future include/path links add their
+own typed target keys; macro arity and visibility remain explicit semantic facts.
+
+| Data/operation | Owner and constraint |
+| --- | --- |
+| Declaration facts | The declaration producer emits local names, kinds, occurrence IDs and source revision. |
+| Reference sentinels | The reference producer emits the target key and occurrence; it does not need the declaration producer to finish. |
+| Bidirectional lookup | The unified core queries declaration and reference tables by the same key. It returns candidate declarations and incoming references. |
+| Missing partition | Report incomplete data explicitly. A missing partition is different from a known-empty contribution or a missing symbol. |
+| Revision mismatch | Use facts from the newest captured revision of a source. Older partitions cannot complete that source's newer revision. |
+| Scope | Every query has an explicit source/build scope. Matching names across projects, unrelated build units or symbol kinds must not merge. |
+| Semantic resolution | A unique indexed candidate is not proof of correct MIPS resolution. Include order, exports, macro scope, `.eqv` expansion and options remain the semantic resolver's responsibility. |
+| Publication | Build a detached immutable snapshot, then publish it atomically only if its request is still current. Old readers keep a coherent prior snapshot. |
+| Cancellation | Superseded background requests cancel cooperatively; a generation/identity guard also rejects stale results. Project disposal cancels work and releases stored facts. |
+
+The same key supports lookup from either side. A reference asks for candidate declarations; a
+declaration asks for incoming reference candidates. Do not write resolved results back into a
+persistent file index. That would create a dependency on another file and revive invalidation problems.
+Do not recursively query another index from an indexer's `map`, stub serializer or indexing callback.
+
+Separate acquisition from joining. IntelliJ index adapters capture file-local contributions under
+the proper read/index-access context. The background worker receives immutable values and holds no
+PSI, VFS or read lock while joining them. During dumb mode, publish/query explicit availability
+instead of recursively forcing smart mode from indexing. Cancellation must not become a false
+"no matching symbol" result.
+
+For production performance, query native index keys directly and reuse immutable file partitions.
+Do not rescan every file for completion or rebuild every partition after one edit. Track reverse
+include/build dependencies and invalidate affected semantic snapshots. Keep bounded caches keyed
+by source revisions, scope, options and catalog version. Bulk snapshot construction is useful for
+initial ingestion and tests; it is not a license to copy the entire project on every keystroke.
+The user's sub-five-second result motivates measurement. It is not a measured MARS performance claim.
+
+#### First implemented slice
+
+The `plugin.analysis` package now contains typed declaration/reference facts, query-time joins,
+explicit pending partitions, source revision selection, immutable scoped snapshots, an atomic
+publication owner, a cancellable background coordinator and a project light service.
+The coordinator uses the platform-supplied service coroutine scope. Its builder performs no
+IntelliJ index or PSI access. Failed builds preserve the last publication; disposal rejects late work.
+
+This is the query/publication foundation. Persistent IntelliJ index producers, PSI extraction,
+include graphs, semantic resolution, editor subscriptions and executable/source-map analysis are
+subsequent implementation slices. They are still committed scope, not deferred features.
+The existing Java simulator and the execution-session starter are unchanged by this analysis slice.
+
+Jupiter tests cover producer order independence, both lookup directions, known-empty versus pending,
+revision skew, ambiguous candidates, symbol kind and source scope, immutable inputs/results,
+replacement/removal, malformed producer facts, cancellation inside large contributions, superseded
+requests, failed computation, project isolation, disposal and preservation of old snapshots.
+Measure the new package with JaCoCo and gate its reachable line/branch coverage. Real IntelliJ
+fixture/index tests remain necessary before claiming that persistence and platform indexing work.
+
+The first-slice acceptance run passes 21 plugin Jupiter tests and the complete module build/plugin
+package. JaCoCo reports 139/139 lines and 58/58 branches in `plugin.analysis`; the current plugin
+as a whole reports 163/163 lines and 68/68 branches. No coverage exclusions were added.
+Gradle `check` now enforces 100% line/branch coverage per current plugin package, with Jupiter-only
+engine selection. The IDE test classloader needs no-source-location instrumentation, restricted
+to plugin classes; otherwise a successful test run can misleadingly report no project coverage.
+The scaled correctness case builds facts for 2,000 sources and checks keyed lookups. It is not an
+end-to-end IDE indexing benchmark or evidence of a sub-five-second project indexing time.
+
+Implementation entry points:
+
+- [IndexFacts.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/IndexFacts.kt): independent facts and typed sentinels.
+- [IndexSnapshot.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/IndexSnapshot.kt): immutable keyed joins, explicit scope and readiness.
+- [UnifiedAnalysisCore.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/UnifiedAnalysisCore.kt): atomic publication and stale-request protection.
+- [AnalysisCoordinator.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/AnalysisCoordinator.kt): cancellable background computation.
+- [MarsAnalysisService.kt](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/analysis/MarsAnalysisService.kt): project service lifecycle.
+
+Reproduce with `./gradlew :plugin:test :plugin:jacocoTestReport :plugin:jacocoTestCoverageVerification`
+from `mars5`. HTML and XML coverage appear under `plugin/build/reports/jacoco/test`.
+
+
 ## 3. Engine component mapping
 
 The dispositions below preserve the Java engine. Kotlin adapters consume explicit contracts.
