@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
-import edu.missouristate.mars.mips.hardware.*;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -49,7 +48,7 @@ public class SyscallRandSeed extends AbstractSyscall {
     // Result: No values are returned. Sets the seed of the underlying Java pseudorandom number
     // generator.
 
-    Integer index = context.registerFile.getValue(4);
+    int index = context.registerFile.getValue(4);
     context.randomStreams().setSeed(index, context.registerFile.getValue(5));
   }
 }

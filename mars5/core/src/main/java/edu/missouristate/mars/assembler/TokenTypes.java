@@ -1,6 +1,5 @@
 package edu.missouristate.mars.assembler;
 
-import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
@@ -111,10 +110,14 @@ public final class TokenTypes {
     // If it starts with single quote ('), it is a mal-formed character literal
     // because a well-formed character literal was converted to string-ified
     // integer before getting here...
-    if (value.charAt(0) == '\'') return TokenTypes.ERROR;
+    if (value.charAt(0) == '\'') {
+      return TokenTypes.ERROR;
+    }
 
     // See if it is a comment
-    if (value.charAt(0) == '#') return TokenTypes.COMMENT;
+    if (value.charAt(0) == '#') {
+      return TokenTypes.COMMENT;
+    }
 
     // See if it is one of the simple tokens
     if (value.length() == 1) {
@@ -133,18 +136,26 @@ public final class TokenTypes {
     }
 
     // See if it is a macro parameter
-    if (Macro.tokenIsMacroParameter(value, false)) return TokenTypes.MACRO_PARAMETER;
+    if (Macro.tokenIsMacroParameter(value, false)) {
+      return TokenTypes.MACRO_PARAMETER;
+    }
 
     // See if it is a register
     Register reg = RegisterNames.integer(value);
-    if (reg != null)
-      if (reg.getName().equals(value)) return TokenTypes.REGISTER_NAME;
-      else return TokenTypes.REGISTER_NUMBER;
+    if (reg != null) {
+      if (reg.getName().equals(value)) {
+        return TokenTypes.REGISTER_NAME;
+      } else {
+        return TokenTypes.REGISTER_NUMBER;
+      }
+    }
 
     // See if it is a floating point register
 
     reg = RegisterNames.floating(value);
-    if (reg != null) return TokenTypes.FP_REGISTER_NAME;
+    if (reg != null) {
+      return TokenTypes.FP_REGISTER_NAME;
+    }
 
     // See if it is an immediate (constant) integer value
     // Classify based on # bits needed to represent in binary
@@ -218,7 +229,9 @@ public final class TokenTypes {
     }
 
     // See if it is an instruction operator
-    if (instructions.matchOperator(value) != null) return TokenTypes.OPERATOR;
+    if (instructions.matchOperator(value) != null) {
+      return TokenTypes.OPERATOR;
+    }
 
     // See if it is a directive
     if (value.charAt(0) == '.' && Directives.matchDirective(value) != null) {
@@ -226,13 +239,17 @@ public final class TokenTypes {
     }
 
     // See if it is a quoted string
-    if (value.charAt(0) == '"') return TokenTypes.QUOTED_STRING;
+    if (value.charAt(0) == '"') {
+      return TokenTypes.QUOTED_STRING;
+    }
 
     // Test for identifier goes last because I have defined tokens for various
     // MIPS constructs (such as operators and directives) that also could fit
     // the lexical specifications of an identifier, and those need to be
     // recognized first.
-    if (isValidIdentifier(value)) return TokenTypes.IDENTIFIER;
+    if (isValidIdentifier(value)) {
+      return TokenTypes.IDENTIFIER;
+    }
 
     // Matches no MIPS language token.
     return TokenTypes.ERROR;
@@ -280,7 +297,9 @@ public final class TokenTypes {
       if (!(Character.isLetterOrDigit(value.charAt(index))
           || value.charAt(index) == '_'
           || value.charAt(index) == '.'
-          || value.charAt(index) == '$')) result = false;
+          || value.charAt(index) == '$')) {
+        result = false;
+      }
       index++;
     }
     return result;

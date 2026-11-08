@@ -13,8 +13,12 @@ public final class TextMemorySegment {
 
   public synchronized void store(int word, ProgramStatement value) {
     int block = word / BLOCK_WORDS, offset = word % BLOCK_WORDS;
-    if (block < 0 || block >= blocks.length) return;
-    if (blocks[block] == null) blocks[block] = new ProgramStatement[BLOCK_WORDS];
+    if (block < 0 || block >= blocks.length) {
+      return;
+    }
+    if (blocks[block] == null) {
+      blocks[block] = new ProgramStatement[BLOCK_WORDS];
+    }
     blocks[block][offset] = value;
   }
 

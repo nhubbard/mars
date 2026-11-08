@@ -1,7 +1,6 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.mips.hardware.*;
-import java.util.*;
 
 /*
 Copyright (c) 2003-2009,  Pete Sanderson and Kenneth Vollmar
@@ -72,8 +71,7 @@ public class MemoryDump {
    * @param segments Array of Strings containing segment names (".text", ".data")
    * @return Array of int containing corresponding base addresses.
    */
-  public static int[] getBaseAddresses(
-      String[] segments, edu.missouristate.mars.mips.hardware.MemoryState memory) {
+  public static int[] getBaseAddresses(String[] segments, MemoryState memory) {
     return new int[] {memory.textBaseAddress, memory.dataBaseAddress};
   }
 
@@ -85,8 +83,7 @@ public class MemoryDump {
    * @param segments Array of Strings containing segment names (".text", ".data")
    * @return Array of int containing corresponding limit addresses.
    */
-  public static int[] getLimitAddresses(
-      String[] segments, edu.missouristate.mars.mips.hardware.MemoryState memory) {
+  public static int[] getLimitAddresses(String[] segments, MemoryState memory) {
     return new int[] {memory.textLimitAddress, memory.dataSegmentLimitAddress};
   }
 
@@ -101,8 +98,7 @@ public class MemoryDump {
    * @return lowest address within specified range that contains "null" value as described above.
    * @throws AddressErrorException if the base address is not on a word boundary
    */
-  public static int getAddressOfFirstNull(
-      int baseAddress, int limitAddress, edu.missouristate.mars.mips.hardware.MemoryState memory)
+  public static int getAddressOfFirstNull(int baseAddress, int limitAddress, MemoryState memory)
       throws AddressErrorException {
     int address = baseAddress;
     for (; address < limitAddress; address += MemoryState.WORD_LENGTH_BYTES) {

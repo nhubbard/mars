@@ -157,8 +157,9 @@ public class Macro {
           }
         }
         String substitute = token.getValue();
-        if (repl != -1) substitute = args.get(repl + 1).toString();
-        else {
+        if (repl != -1) {
+          substitute = args.get(repl + 1).toString();
+        } else {
           errors.add(
               new ErrorMessage(
                   program, token.getSourceLine(), token.getStartPos(), "Unknown macro parameter"));

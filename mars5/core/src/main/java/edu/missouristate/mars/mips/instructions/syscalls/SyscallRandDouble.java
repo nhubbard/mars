@@ -50,7 +50,7 @@ public class SyscallRandDouble extends AbstractSyscall {
     // Input arguments: $a0 = index of pseudorandom number generator
     // Return: $f0 = the next pseudorandom, uniformly distributed double value between 0.0 and 1.0
     // from this random number generator's sequence.
-    Integer index = context.registerFile.getValue(4);
+    int index = context.registerFile.getValue(4);
     Random stream = context.randomStreams().get(index);
     try {
       context.setRegisterPairToDouble(0, stream.nextDouble());

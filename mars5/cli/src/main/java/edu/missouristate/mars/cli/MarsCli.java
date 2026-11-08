@@ -51,17 +51,24 @@ public final class MarsCli {
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "nc" -> {}
           case "--memory", "mc" -> {
-            if (++i >= arguments.length)
+            if (++i >= arguments.length) {
               throw new IllegalArgumentException("Missing memory layout");
+            }
             layout = arguments[i];
           }
           case "--max-steps" -> {
-            if (++i >= arguments.length) throw new IllegalArgumentException("Missing step limit");
+            if (++i >= arguments.length) {
+              throw new IllegalArgumentException("Missing step limit");
+            }
             maximumSteps = Integer.parseInt(arguments[i]);
-            if (maximumSteps < 1) throw new IllegalArgumentException("Step limit must be positive");
+            if (maximumSteps < 1) {
+              throw new IllegalArgumentException("Step limit must be positive");
+            }
           }
           default -> {
-            if (arg.startsWith("-")) throw new IllegalArgumentException("Unknown option: " + arg);
+            if (arg.startsWith("-")) {
+              throw new IllegalArgumentException("Unknown option: " + arg);
+            }
             files.add(Path.of(arg));
           }
         }
@@ -73,7 +80,9 @@ public final class MarsCli {
       session.setMemoryConfiguration(layout);
       var program = session.assemble(files);
       error.print(program.getAssemblyDiagnostics().generateWarningReport());
-      if (assembleOnly) return 0;
+      if (assembleOnly) {
+        return 0;
+      }
       new ProgramArgumentList(programArguments).storeProgramArguments(session);
       try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
         program.setSyscallEnvironment(io);

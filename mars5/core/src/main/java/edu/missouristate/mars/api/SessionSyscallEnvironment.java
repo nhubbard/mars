@@ -1,7 +1,9 @@
 package edu.missouristate.mars.api;
 
 import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator;
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.Objects;
 
 /**
@@ -10,14 +12,15 @@ import java.util.Objects;
  * the console streams. Call only while the session is stopped or from its execution thread.
  */
 public final class SessionSyscallEnvironment implements SyscallEnvironment, AutoCloseable {
-  private final edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator tones =
-      new edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator();
+  private final ToneGenerator tones = new ToneGenerator();
 
   @Override
   public void playTone(int pitch, int duration, int instrument, int volume, boolean synchronous) {
-    if (synchronous)
+    if (synchronous) {
       tones.generateToneSynchronously((byte) pitch, duration, (byte) instrument, (byte) volume);
-    else tones.generateTone((byte) pitch, duration, (byte) instrument, (byte) volume);
+    } else {
+      tones.generateTone((byte) pitch, duration, (byte) instrument, (byte) volume);
+    }
   }
 
   private final MemoryState memory;
@@ -64,9 +67,13 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
     try {
       var bytes = new ByteArrayOutputStream();
       int value;
-      while ((value = input.read()) != -1 && value != '\n') bytes.write(value);
-      if (value == -1 && bytes.size() == 0) return null;
-      String line = bytes.toString(java.nio.charset.Charset.defaultCharset());
+      while ((value = input.read()) != -1 && value != '\n') {
+        bytes.write(value);
+      }
+      if (value == -1 && bytes.size() == 0) {
+        return null;
+      }
+      String line = bytes.toString(Charset.defaultCharset());
       return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
     } catch (IOException e) {
       throw new IllegalStateException("Unable to read console input", e);
@@ -75,7 +82,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
 
   public String readString(int maxLength) {
     String line = readLine();
-    return line == null ? null : line.substring(0, Math.min(line.length(), Math.max(0, maxLength)));
+    return line == null ? null : line.substring(0, Math.clamp(maxLength, 0, line.length()));
   }
 
   private String numericInput() {
@@ -105,10 +112,18 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   }
 
   public int openFile(String path, int flags) {
-    if (path == null || (flags != 0 && flags != 1 && flags != 9)) return -1;
-    for (int fd = 3; fd < files.length; fd++) if (path.equals(paths[fd])) return -1;
+    if (path == null || (flags != 0 && flags != 1 && flags != 9)) {
+      return -1;
+    }
     for (int fd = 3; fd < files.length; fd++) {
-      if (files[fd] != null) continue;
+      if (path.equals(paths[fd])) {
+        return -1;
+      }
+    }
+    for (int fd = 3; fd < files.length; fd++) {
+      if (files[fd] != null) {
+        continue;
+      }
       try {
         files[fd] = flags == 0 ? new FileInputStream(path) : new FileOutputStream(path, flags == 9);
         paths[fd] = path;
@@ -121,12 +136,16 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   }
 
   public int readFromFile(int fd, byte[] buffer, int length) {
-    if (buffer == null || length < 0 || length > buffer.length) return -1;
+    if (buffer == null || length < 0 || length > buffer.length) {
+      return -1;
+    }
     InputStream stream =
         fd == 0
             ? input
             : fd >= 3 && fd < files.length && files[fd] instanceof InputStream in ? in : null;
-    if (stream == null) return -1;
+    if (stream == null) {
+      return -1;
+    }
     try {
       return Math.max(0, stream.read(buffer, 0, length));
     } catch (IOException e) {
@@ -135,7 +154,9 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   }
 
   public int writeToFile(int fd, byte[] buffer, int length) {
-    if (buffer == null || length < 0 || length > buffer.length) return -1;
+    if (buffer == null || length < 0 || length > buffer.length) {
+      return -1;
+    }
     OutputStream stream =
         fd == 1
             ? output
@@ -144,7 +165,9 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
                 : fd >= 3 && fd < files.length && files[fd] instanceof OutputStream out
                     ? out
                     : null;
-    if (stream == null) return -1;
+    if (stream == null) {
+      return -1;
+    }
     try {
       stream.write(buffer, 0, length);
       stream.flush();
@@ -155,7 +178,9 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   }
 
   public void closeFile(int fd) {
-    if (fd < 3 || fd >= files.length || files[fd] == null) return;
+    if (fd < 3 || fd >= files.length || files[fd] == null) {
+      return;
+    }
     try {
       files[fd].close();
     } catch (IOException ignored) {
@@ -168,7 +193,9 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   /** Releases this environment's open files; the environment can subsequently be reused. */
   public void close() {
     tones.close();
-    for (int fd = 3; fd < files.length; fd++) closeFile(fd);
+    for (int fd = 3; fd < files.length; fd++) {
+      closeFile(fd);
+    }
   }
 
   public int sbrk(int bytes) {

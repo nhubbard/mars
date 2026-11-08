@@ -1,17 +1,17 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.Program;
 import edu.missouristate.mars.api.SimulatorActionSource;
+import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.core.MarsContext;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.simulator.*;
 import java.io.*;
 import java.util.*;
-import java.util.Objects;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -49,7 +49,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @author Pete Sanderson
  * @version August 2003
  */
-public class MIPSprogram implements edu.missouristate.mars.api.Program {
+public class MIPSprogram implements Program {
   private final AssemblyContext assemblyContext;
   private SyscallEnvironment syscallEnvironment;
   private InstructionContext sessionExecution;
@@ -193,8 +193,9 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
    * @return BackStepper object, null if there is none.
    */
   public BackStepper getBackStepper() {
-    if (assemblyContext.session() != null && assemblyContext.session().getProgram() != this)
+    if (assemblyContext.session() != null && assemblyContext.session().getProgram() != this) {
       return null;
+    }
     return backStepper;
   }
 
@@ -224,8 +225,11 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
    *     1 is first line.
    */
   public String getSourceLine(int i) {
-    if ((i >= 1) && (i <= sourceList.size())) return sourceList.get(i - 1);
-    else return null;
+    if ((i >= 1) && (i <= sourceList.size())) {
+      return sourceList.get(i - 1);
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -451,14 +455,13 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
 
   /** Result of one session instruction; a null stop reason means execution can continue. */
   public record ExecutionStep(
-      int pc,
-      int instruction,
-      boolean executed,
-      edu.missouristate.mars.api.StopEvent.Reason stopReason) {}
+      int pc, int instruction, boolean executed, StopEvent.Reason stopReason) {}
 
   /** Executes one instruction on the owning session's execution thread. */
   public ExecutionStep executeSessionInstruction() throws ProcessingException {
-    if (assemblyContext.session() == null) throw new IllegalStateException("Legacy program");
+    if (assemblyContext.session() == null) {
+      throw new IllegalStateException("Legacy program");
+    }
     try (var lease = assemblyContext.session().claimExecution()) {
       return executeSessionInstructionStopped();
     }
@@ -466,8 +469,9 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
 
   private ExecutionStep executeSessionInstructionStopped() throws ProcessingException {
     MarsContext session = assemblyContext.session();
-    if (session == null || session.getProgram() != this || machineList == null)
+    if (session == null || session.getProgram() != this || machineList == null) {
       throw new IllegalStateException("This is not the current assembled program of its session");
+    }
     if (sessionExecution == null) {
       sessionExecution =
           new InstructionContext(
@@ -485,24 +489,24 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
         session.registerFile.incrementPC();
         throw new ProcessingException(sessionExecution, location, error);
       } finally {
-        if (recording) session.backStepper.endInstruction();
+        if (recording) {
+          session.backStepper.endInstruction();
+        }
       }
     }
     if (statement == null) {
       session.delayedBranch.clear();
-      return new ExecutionStep(
-          pc, 0, false, edu.missouristate.mars.api.StopEvent.Reason.CLIFF_TERMINATION);
+      return new ExecutionStep(pc, 0, false, StopEvent.Reason.CLIFF_TERMINATION);
     }
     try {
       sessionExecution.executeWithExceptionHandler(statement);
     } catch (ProcessingException error) {
       session.delayedBranch.clear();
-      if (error.errors() != null) throw error;
+      if (error.errors() != null) {
+        throw error;
+      }
       return new ExecutionStep(
-          pc,
-          statement.getBinaryStatement(),
-          true,
-          edu.missouristate.mars.api.StopEvent.Reason.NORMAL_EXIT);
+          pc, statement.getBinaryStatement(), true, StopEvent.Reason.NORMAL_EXIT);
     }
     return new ExecutionStep(pc, statement.getBinaryStatement(), true, null);
   }
@@ -513,12 +517,19 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
     try (var lease = session.claimStoppedSession()) {
       int steps = 0;
       while (maxSteps <= 0 || steps < maxSteps) {
-        if (Thread.currentThread().isInterrupted() || session.isClosing()) return false;
-        if (executeSessionInstruction().stopReason() != null) return true;
+        if (Thread.currentThread().isInterrupted() || session.isClosing()) {
+          return false;
+        }
+        if (executeSessionInstruction().stopReason() != null) {
+          return true;
+        }
         steps++;
         if (breakPoints != null) {
-          for (int breakpoint : breakPoints)
-            if (breakpoint == session.registerFile.getProgramCounter()) return false;
+          for (int breakpoint : breakPoints) {
+            if (breakpoint == session.registerFile.getProgramCounter()) {
+              return false;
+            }
+          }
         }
       }
       return false;

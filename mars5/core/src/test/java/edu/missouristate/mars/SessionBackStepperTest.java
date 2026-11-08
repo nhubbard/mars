@@ -9,7 +9,9 @@ import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.di.MarsComponent;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.mips.instructions.ContextualSimulationCode;
@@ -62,7 +64,9 @@ class SessionBackStepperTest {
               context.setProgramCounter(base);
             });
     var statement = statement(loop);
-    for (int i = 0; i < 3; i++) execution.execute(statement);
+    for (int i = 0; i < 3; i++) {
+      execution.execute(statement);
+    }
     assertThat(session.registerFile.getValue(8)).isEqualTo(3);
     for (int expected = 2; expected >= 0; expected--) {
       session.backStepper.backStep();
@@ -153,7 +157,7 @@ class SessionBackStepperTest {
                       case "raw" -> context.setMemoryRawWord(address, 0x76543210);
                       default -> throw new IllegalArgumentException(operation);
                     }
-                  } catch (edu.missouristate.mars.mips.hardware.AddressErrorException error) {
+                  } catch (AddressErrorException error) {
                     throw new ProcessingException(context, statement, error);
                   }
                 })));
@@ -183,8 +187,7 @@ class SessionBackStepperTest {
                 (statement, context) -> {
                   try {
                     context.setRegisterPairToDouble(0, 3.5);
-                  } catch (
-                      edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException error) {
+                  } catch (InvalidRegisterAccessException error) {
                     throw new AssertionError(error);
                   }
                 })));

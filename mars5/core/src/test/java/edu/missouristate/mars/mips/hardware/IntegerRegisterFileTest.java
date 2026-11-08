@@ -14,7 +14,9 @@ class IntegerRegisterFileTest {
   void instancesOwnAllRegistersAndResetValues() {
     var first = new IntegerRegisterFile(100, 200, 300);
     var second = new IntegerRegisterFile(400, 500, 600);
-    for (int i = 0; i <= 34; i++) first.setValue(i, i + 1000);
+    for (int i = 0; i <= 34; i++) {
+      first.setValue(i, i + 1000);
+    }
     assertThat(first.getValue(0)).isZero();
     for (int i = 0; i <= 34; i++) {
       int expected =
@@ -95,22 +97,16 @@ class IntegerRegisterFileTest {
 
   @Test
   void configurationSnapshotsDoNotShareMutableArrays() {
-    var first =
-        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("Default");
+    var first = MemoryConfigurations.createConfiguration("Default");
     int expected = first.getTextBaseAddress();
     first.configurationItemValues()[0] = 123;
     first.configurationItemNames()[0] = "changed";
-    var second =
-        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("Default");
+    var second = MemoryConfigurations.createConfiguration("Default");
     assertThat(second.getTextBaseAddress()).isEqualTo(expected);
     assertThat(second.configurationItemNames()[0]).isNotEqualTo("changed");
-    assertThat(
-            edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("")
-                .getTextBaseAddress())
+    assertThat(MemoryConfigurations.createConfiguration("").getTextBaseAddress())
         .isEqualTo(expected);
-    assertThat(
-            edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("unknown")
-                .getTextBaseAddress())
+    assertThat(MemoryConfigurations.createConfiguration("unknown").getTextBaseAddress())
         .isEqualTo(expected);
   }
 }

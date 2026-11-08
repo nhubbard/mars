@@ -6,7 +6,6 @@ import edu.missouristate.mars.core.MarsContext;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
@@ -54,16 +53,24 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
 
   /** Completes after the stop callbacks; nonpositive limits mean unlimited execution. */
   public synchronized CompletableFuture<StopEvent> runAsync(long maximumSteps, int[] breakpoints) {
-    if (closed || session.isClosing()) throw new IllegalStateException("Simulator is closed");
-    if (state == SimulatorState.RUNNING) throw new IllegalStateException("Simulator is running");
+    if (closed || session.isClosing()) {
+      throw new IllegalStateException("Simulator is closed");
+    }
+    if (state == SimulatorState.RUNNING) {
+      throw new IllegalStateException("Simulator is running");
+    }
     var current = session.getProgram();
-    if (current == null) throw new IllegalStateException("No program assembled");
+    if (current == null) {
+      throw new IllegalStateException("No program assembled");
+    }
     if (current != program) {
       program = current;
       stepCount = 0;
       state = SimulatorState.IDLE;
     }
-    if (state == SimulatorState.STOPPED) throw new IllegalStateException("Program has stopped");
+    if (state == SimulatorState.STOPPED) {
+      throw new IllegalStateException("Program has stopped");
+    }
     int[] points = breakpoints == null ? new int[0] : breakpoints.clone();
     Arrays.sort(points);
     request = Request.NONE;
@@ -79,11 +86,13 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
       int[] points,
       CompletableFuture<StopEvent> completion) {
     worker = Thread.currentThread();
-    StopEvent.Reason reason = StopEvent.Reason.EXCEPTION;
+    StopEvent.Reason reason;
     boolean acquired = false;
-    try (var lease = session.claimExecution()) {
+    try (var _ = session.claimExecution()) {
       acquired = true;
-      if (current != session.getProgram()) throw new IllegalStateException("Program was replaced");
+      if (current != session.getProgram()) {
+        throw new IllegalStateException("Program was replaced");
+      }
       long steps = 0;
       while (true) {
         if (request != Request.NONE) {
@@ -101,7 +110,9 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
           reason = result.stopReason();
           break;
         }
-        if (request != Request.NONE) continue;
+        if (request != Request.NONE) {
+          continue;
+        }
         if (Arrays.binarySearch(points, session.registerFile.getPC()) >= 0) {
           reason = StopEvent.Reason.BREAKPOINT;
           break;
@@ -113,9 +124,13 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
       }
       if (reason != StopEvent.Reason.PAUSE
           && reason != StopEvent.Reason.BREAKPOINT
-          && reason != StopEvent.Reason.STEP_LIMIT) session.syscallEnvironment.close();
+          && reason != StopEvent.Reason.STEP_LIMIT) {
+        session.syscallEnvironment.close();
+      }
     } catch (Exception error) {
-      if (acquired) session.syscallEnvironment.close();
+      if (acquired) {
+        session.syscallEnvironment.close();
+      }
       reason = StopEvent.Reason.EXCEPTION;
       notifyListeners(listener -> listener.onError(new ErrorEvent(error.getMessage(), error)));
     }
@@ -133,20 +148,25 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
 
   @Override
   public synchronized void pause() {
-    if (state == SimulatorState.RUNNING && request != Request.STOP) request = Request.PAUSE;
+    if (state == SimulatorState.RUNNING && request != Request.STOP) {
+      request = Request.PAUSE;
+    }
   }
 
   @Override
   public synchronized void stop() {
-    if (closed) return;
-    if (state == SimulatorState.RUNNING) request = Request.STOP;
-    else {
+    if (closed) {
+      return;
+    }
+    if (state == SimulatorState.RUNNING) {
+      request = Request.STOP;
+    } else {
       state = SimulatorState.RUNNING;
       executor.execute(
           () -> {
             worker = Thread.currentThread();
             StopEvent.Reason reason = StopEvent.Reason.STOP_REQUEST;
-            try (var lease = session.claimExecution()) {
+            try (var _ = session.claimExecution()) {
               session.syscallEnvironment.close();
             } catch (Exception error) {
               reason = StopEvent.Reason.EXCEPTION;
@@ -166,10 +186,16 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
   }
 
   public synchronized CompletableFuture<Void> backstepAsync() {
-    if (closed || session.isClosing()) throw new IllegalStateException("Simulator is closed");
-    if (state == SimulatorState.RUNNING) throw new IllegalStateException("Simulator is running");
+    if (closed || session.isClosing()) {
+      throw new IllegalStateException("Simulator is closed");
+    }
+    if (state == SimulatorState.RUNNING) {
+      throw new IllegalStateException("Simulator is running");
+    }
     var current = session.getProgram();
-    if (current == null) return CompletableFuture.completedFuture(null);
+    if (current == null) {
+      return CompletableFuture.completedFuture(null);
+    }
     if (program != current) {
       program = current;
       stepCount = 0;
@@ -179,12 +205,15 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     executor.execute(
         () -> {
           worker = Thread.currentThread();
-          try (var lease = session.claimExecution()) {
-            if (program != session.getProgram())
+          try (var _ = session.claimExecution()) {
+            if (program != session.getProgram()) {
               throw new IllegalStateException("Program was replaced");
+            }
             if (!session.backStepper.empty()) {
               session.backStepper.backStep();
-              if (stepCount > 0) stepCount--;
+              if (stepCount > 0) {
+                stepCount--;
+              }
             }
           } catch (Exception error) {
             state = SimulatorState.STOPPED;
@@ -241,7 +270,9 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
 
   @Override
   public synchronized void close() {
-    if (closed) return;
+    if (closed) {
+      return;
+    }
     closed = true;
     request = Request.STOP;
     executor.execute(

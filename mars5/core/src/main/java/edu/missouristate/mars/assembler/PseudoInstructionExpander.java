@@ -35,7 +35,9 @@ final class PseudoInstructionExpander {
     for (int index = 0; index < templates.size(); index++) {
       String expanded =
           ExtendedInstruction.makeTemplateSubstitutions(program, templates.get(index), operands);
-      if (expanded == null || expanded.isEmpty()) continue;
+      if (expanded == null || expanded.isEmpty()) {
+        continue;
+      }
       var tokens = tokenizer.tokenizeLine(statement.getSourceLine(), expanded, errors, false);
       var matches = context.instructions().matchOperator(tokens.get(0).getValue());
       var basic = OperandFormat.bestOperandMatch(tokens, matches, context.bareMachineEnabled());

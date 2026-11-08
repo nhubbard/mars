@@ -59,7 +59,9 @@ public final class MarsMemoryAdapter implements MarsMemory {
 
   @Override
   public void clear() {
-    if (backStepper != null) backStepper.clear();
+    if (backStepper != null) {
+      backStepper.clear();
+    }
     memory.clear();
   }
 

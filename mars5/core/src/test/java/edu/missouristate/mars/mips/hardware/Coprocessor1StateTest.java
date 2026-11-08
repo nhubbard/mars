@@ -26,7 +26,9 @@ class Coprocessor1StateTest {
     second.updateRegister(31, 99);
     second.setConditionFlag(7);
     first.resetRegisters();
-    for (int i = 0; i < 32; i++) assertThat(first.getValue(i)).isZero();
+    for (int i = 0; i < 32; i++) {
+      assertThat(first.getValue(i)).isZero();
+    }
     assertThat(first.getConditionFlags()).isZero();
     assertThat(second.getValue(31)).isEqualTo(99);
     assertThat(second.getConditionFlag(7)).isEqualTo(1);

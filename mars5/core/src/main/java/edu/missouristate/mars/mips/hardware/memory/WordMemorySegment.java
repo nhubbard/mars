@@ -69,10 +69,15 @@ public final class WordMemorySegment {
       block = relativeWordAddress / BLOCK_LENGTH_WORDS; // Block number
       offset = relativeWordAddress % BLOCK_LENGTH_WORDS; // Word within that block
       if (blockTable[block] == null) {
-        if (op == STORE) blockTable[block] = new int[BLOCK_LENGTH_WORDS];
-        else return 0;
+        if (op == STORE) {
+          blockTable[block] = new int[BLOCK_LENGTH_WORDS];
+        } else {
+          return 0;
+        }
       }
-      if (littleEndian.getAsBoolean()) bytePositionInMemory = 3 - bytePositionInMemory;
+      if (littleEndian.getAsBoolean()) {
+        bytePositionInMemory = 3 - bytePositionInMemory;
+      }
       if (op == STORE) {
         oldValue =
             replaceByte(

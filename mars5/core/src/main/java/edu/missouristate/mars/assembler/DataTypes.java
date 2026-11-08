@@ -97,12 +97,19 @@ public final class DataTypes {
    *     implemented yet), returns 0.
    */
   public static int getLengthInBytes(Directives direct) {
-    if (direct == Directives.FLOAT) return FLOAT_SIZE;
-    else if (direct == Directives.DOUBLE) return DOUBLE_SIZE;
-    else if (direct == Directives.WORD) return WORD_SIZE;
-    else if (direct == Directives.HALF) return HALF_SIZE;
-    else if (direct == Directives.BYTE) return BYTE_SIZE;
-    else return 0;
+    if (direct == Directives.FLOAT) {
+      return FLOAT_SIZE;
+    } else if (direct == Directives.DOUBLE) {
+      return DOUBLE_SIZE;
+    } else if (direct == Directives.WORD) {
+      return WORD_SIZE;
+    } else if (direct == Directives.HALF) {
+      return HALF_SIZE;
+    } else if (direct == Directives.BYTE) {
+      return BYTE_SIZE;
+    } else {
+      return 0;
+    }
   }
 
   /**
@@ -114,9 +121,11 @@ public final class DataTypes {
    *     given directive (.word, .half, .byte), <code>false</code> otherwise.
    */
   public static boolean outOfRange(Directives direct, int value) {
-    if (direct == Directives.HALF && (value < MIN_HALF_VALUE || value > MAX_HALF_VALUE))
+    if (direct == Directives.HALF && (value < MIN_HALF_VALUE || value > MAX_HALF_VALUE)) {
       return true;
-    else return direct == Directives.BYTE && (value < MIN_BYTE_VALUE || value > MAX_BYTE_VALUE);
+    } else {
+      return direct == Directives.BYTE && (value < MIN_BYTE_VALUE || value > MAX_BYTE_VALUE);
+    }
   }
 
   /**

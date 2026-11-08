@@ -29,7 +29,9 @@ public final class HeadlessGuiProxy implements MarsGuiProxy {
   public String readInput(int maxLength) {
     try {
       String line = stdin.readLine();
-      if (line == null) return "";
+      if (line == null) {
+        return "";
+      }
       return maxLength < 0 ? line : line.substring(0, Math.min(line.length(), maxLength));
     } catch (IOException e) {
       return "";

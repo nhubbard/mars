@@ -60,7 +60,9 @@ public class OperandFormat {
 
   static boolean tokenOperandMatch(
       TokenList candidateList, Instruction inst, ErrorList errors, boolean bareMachine) {
-    if (!numOperandsCheck(candidateList, inst, errors)) return false;
+    if (!numOperandsCheck(candidateList, inst, errors)) {
+      return false;
+    }
     return operandTypeCheck(candidateList, inst, errors, bareMachine);
   }
 
@@ -75,11 +77,16 @@ public class OperandFormat {
 
   static Instruction bestOperandMatch(
       TokenList tokenList, ArrayList<Instruction> instrMatches, boolean bareMachine) {
-    if (instrMatches == null) return null;
-    if (instrMatches.size() == 1) return instrMatches.getFirst();
+    if (instrMatches == null) {
+      return null;
+    }
+    if (instrMatches.size() == 1) {
+      return instrMatches.getFirst();
+    }
     for (Instruction potentialMatch : instrMatches) {
-      if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList(), bareMachine))
+      if (tokenOperandMatch(tokenList, potentialMatch, new ErrorList(), bareMachine)) {
         return potentialMatch;
+      }
     }
     return instrMatches.getFirst();
   }
@@ -147,22 +154,30 @@ public class OperandFormat {
           continue;
         }
       }
-      if (specType == TokenTypes.REGISTER_NAME && candType == TokenTypes.REGISTER_NUMBER) continue;
+      if (specType == TokenTypes.REGISTER_NAME && candType == TokenTypes.REGISTER_NUMBER) {
+        continue;
+      }
       if ((specType == TokenTypes.INTEGER_16 && candType == TokenTypes.INTEGER_5)
           || (specType == TokenTypes.INTEGER_16U && candType == TokenTypes.INTEGER_5)
           || (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_5)
           || (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_16U)
-          || (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_16)) continue;
+          || (specType == TokenTypes.INTEGER_32 && candType == TokenTypes.INTEGER_16)) {
+        continue;
+      }
       if (candType == TokenTypes.INTEGER_16U || candType == TokenTypes.INTEGER_16) {
         int temp = Binary.stringToInt(candToken.getValue());
         if (specType == TokenTypes.INTEGER_16
             && candType == TokenTypes.INTEGER_16U
             && temp >= DataTypes.MIN_HALF_VALUE
-            && temp <= DataTypes.MAX_HALF_VALUE) continue;
+            && temp <= DataTypes.MAX_HALF_VALUE) {
+          continue;
+        }
         if (specType == TokenTypes.INTEGER_16U
             && candType == TokenTypes.INTEGER_16
             && temp >= DataTypes.MIN_UHALF_VALUE
-            && temp <= DataTypes.MAX_UHALF_VALUE) continue;
+            && temp <= DataTypes.MAX_UHALF_VALUE) {
+          continue;
+        }
       }
       if ((specType == TokenTypes.INTEGER_5 && candType == TokenTypes.INTEGER_16)
           || (specType == TokenTypes.INTEGER_5 && candType == TokenTypes.INTEGER_16U)

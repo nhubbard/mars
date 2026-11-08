@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.dump;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.io.*;
 
@@ -27,8 +28,7 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(
-      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
+  public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
       throws AddressErrorException, IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
       StringBuilder string;
@@ -36,7 +36,9 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
           address <= lastAddress;
           address += MemoryState.WORD_LENGTH_BYTES) {
         Integer temp = session.memory.getRawWordOrNull(address);
-        if (temp == null) break;
+        if (temp == null) {
+          break;
+        }
         string = new StringBuilder(Integer.toHexString(temp));
         while (string.length() < 8) {
           string.insert(0, '0');
@@ -57,7 +59,9 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
         tmp_chksum = tmp_chksum % 256;
         tmp_chksum = ~tmp_chksum + 1;
         chksum = Integer.toHexString(0xFF & tmp_chksum);
-        if (chksum.length() == 1) chksum = '0' + chksum;
+        if (chksum.length() == 1) {
+          chksum = '0' + chksum;
+        }
         String finalstr = ":04" + addr + "00" + string + chksum;
         out.println(finalstr.toUpperCase());
       }

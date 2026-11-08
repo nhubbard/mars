@@ -2,7 +2,7 @@ package edu.missouristate.mars;
 
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.core.AssemblyContext;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
@@ -56,10 +56,10 @@ public class ProgramStatement {
   private int sourceLine;
   private int binaryStatement;
   private final boolean altered;
-  private edu.missouristate.mars.core.SimulationSettings displaySettings;
+  private final SimulationSettings displaySettings;
   private static final String invalidOperator = "<INVALID>";
 
-  //////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////
   /**
    * Constructor for ProgramStatement when there are links back to all source and token information.
    * These can be used by a debugger later on.
@@ -111,10 +111,7 @@ public class ProgramStatement {
    *     statement is stored.
    */
   public ProgramStatement(int binaryStatement, int textAddress) {
-    this(
-        binaryStatement,
-        textAddress,
-        edu.missouristate.mars.mips.instructions.InstructionDefaults.get());
+    this(binaryStatement, textAddress, InstructionDefaults.get());
   }
 
   /** Decodes binary code using the owning session's instruction set. */
@@ -126,7 +123,7 @@ public class ProgramStatement {
       int binaryStatement,
       int textAddress,
       InstructionSet instructions,
-      edu.missouristate.mars.core.SimulationSettings displaySettings) {
+      SimulationSettings displaySettings) {
     this.displaySettings = displaySettings;
     this.sourceMIPSprogram = null;
     this.binaryStatement = binaryStatement;
@@ -175,8 +172,9 @@ public class ProgramStatement {
   }
 
   private AssemblyContext assemblyContext() {
-    if (sourceMIPSprogram == null)
+    if (sourceMIPSprogram == null) {
       throw new IllegalStateException("Source program is required for assembly");
+    }
     return sourceMIPSprogram.assemblyContext();
   }
 
@@ -419,8 +417,9 @@ public class ProgramStatement {
       this.insertBinaryCode(
           operands[this.numOperands - 1], Instruction.operandMask[this.numOperands - 1], errors);
     } else { // R_FORMAT or I_FORMAT
-      for (int i = 0; i < this.numOperands; i++)
+      for (int i = 0; i < this.numOperands; i++) {
         this.insertBinaryCode(this.operands[i], Instruction.operandMask[i], errors);
+      }
     }
     this.binaryStatement = Binary.binaryStringToInt(this.machineStatement);
   } // buildMachineStatementFromBasicStatement(
@@ -452,8 +451,10 @@ public class ProgramStatement {
     result.append(blanks, 0, 40 - result.length()).append(";  "); // this.source;
     if (operands != null) {
       for (int i = 0; i < this.numOperands; i++)
-        // result += operands[i] + " ";
+      // result += operands[i] + " ";
+      {
         result.append(Integer.toString(operands[i], 16)).append(" ");
+      }
     }
     if (this.machineStatement != null) {
       result.append("[").append(Binary.binaryStringToHexString(this.machineStatement)).append("]");
@@ -665,8 +666,9 @@ public class ProgramStatement {
     }
     String bitString = Binary.intToBinaryString(value, endPos - startPos + 1);
     String state = this.machineStatement.substring(0, startPos) + bitString;
-    if (endPos < this.machineStatement.length() - 1)
+    if (endPos < this.machineStatement.length() - 1) {
       state = state + this.machineStatement.substring(endPos + 1);
+    }
     this.machineStatement = state;
   } // insertBinaryCode()
 

@@ -69,8 +69,9 @@ final class FirstPassProcessor {
       boolean warningsAreErrors)
       throws ProcessingException {
     if (tokenizedProgramFiles == null || tokenizedProgramFiles.isEmpty()) {
-      if (context.session() != null)
+      if (context.session() != null) {
         throw new IllegalArgumentException("At least one source file is required");
+      }
       return null;
     }
     for (MIPSprogram program : tokenizedProgramFiles) {
@@ -93,13 +94,17 @@ final class FirstPassProcessor {
     context.symbols().clear();
     context.clearMemory();
     this.errors = context.newErrorList();
-    if (context.debug()) System.out.println("Assembler first pass begins:");
+    if (context.debug()) {
+      System.out.println("Assembler first pass begins:");
+    }
     // PROCESS THE FIRST ASSEMBLY PASS FOR ALL SOURCE FILES BEFORE PROCEEDING
     // TO SECOND PASS. THIS ASSURES ALL SYMBOL TABLES ARE CORRECTLY BUILT.
     // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
     // ONE LOCAL SYMBOL TABLE FOR EACH SOURCE FILE.
     for (MIPSprogram programFile : tokenizedProgramFiles) {
-      if (errors.errorLimitExceeded()) break;
+      if (errors.errorLimitExceeded()) {
+        break;
+      }
       this.fileCurrentlyBeingAssembled = programFile;
       // List of labels declared ".globl". new list for each file assembled
       this.globalDeclarationList = new TokenList();
@@ -127,7 +132,9 @@ final class FirstPassProcessor {
       // INITIALIZES DATA SEGMENT
       ArrayList<ProgramStatement> statements;
       for (int i = 0; i < tokenList.size(); i++) {
-        if (errors.errorLimitExceeded()) break;
+        if (errors.errorLimitExceeded()) {
+          break;
+        }
         for (int z = 0; z < tokenList.get(i).size(); z++) {
           Token t = tokenList.get(i).get(z);
           // record this token's original source program and line #. Differs from final, if .include
@@ -183,18 +190,10 @@ final class FirstPassProcessor {
   // Will check for duplicate text addresses, which can happen inadvertantly when using
   // operand on .text directive. Will generate error message for each one that occurs.
 
-  /**
-   * This method parses one line of MIPS source code. It works with the list of tokens, but original
-   * source is also provided. It also carries out directives, which includes initializing the data
-   * segment. This method is invoked in the assembler first pass.
-   *
-   * @return ArrayList of ProgramStatements because parsing a macro expansion request will return a
-   *     list of ProgramStatements expanded
-   */
-  // parseLine()
-
   void detectLabels(TokenList tokens, Macro current) {
-    if (tokenListBeginsWithLabel(tokens)) current.addLabel(tokens.get(0).getValue());
+    if (tokenListBeginsWithLabel(tokens)) {
+      current.addLabel(tokens.get(0).getValue());
+    }
   }
 
   // Determine whether or not a compact (16-bit) translation from
@@ -256,7 +255,9 @@ final class FirstPassProcessor {
 
   private boolean tokenListBeginsWithLabel(TokenList tokens) {
     // 2-July-2010. DPS. Remove prohibition of operator names as labels
-    if (tokens.size() < 2) return false;
+    if (tokens.size() < 2) {
+      return false;
+    }
     return (tokens.get(0).getType() == TokenTypes.IDENTIFIER
             || tokens.get(0).getType() == TokenTypes.OPERATOR)
         && tokens.get(1).getType() == TokenTypes.COLON;
@@ -268,8 +269,9 @@ final class FirstPassProcessor {
   void executeDirective(TokenList tokens) {
     Token token = tokens.get(0);
     Directives direct = Directives.matchDirective(token.getValue());
-    if (context.debug())
+    if (context.debug()) {
       System.out.println("line " + token.getSourceLine() + " is directive " + direct);
+    }
     if (direct == null) {
       errors.add(
           new ErrorMessage(
@@ -313,8 +315,9 @@ final class FirstPassProcessor {
       pool.beginMacro(tokens.get(1));
       for (int i = 2; i < tokens.size(); i++) {
         Token arg = tokens.get(i);
-        if (arg.getType() == TokenTypes.RIGHT_PAREN || arg.getType() == TokenTypes.LEFT_PAREN)
+        if (arg.getType() == TokenTypes.RIGHT_PAREN || arg.getType() == TokenTypes.LEFT_PAREN) {
           continue;
+        }
         if (!Macro.tokenIsMacroParameter(arg.getValue(), true)) {
           errors.add(
               new ErrorMessage(
@@ -562,20 +565,21 @@ final class FirstPassProcessor {
   // recognized as OPERATOR, there is a problem.
   ArrayList<Instruction> matchInstruction(Token token) {
     if (token.getType() != TokenTypes.OPERATOR) {
-      if (token.getSourceMIPSprogram().getLocalMacroPool().matchesAnyMacroName(token.getValue()))
+      if (token.getSourceMIPSprogram().getLocalMacroPool().matchesAnyMacroName(token.getValue())) {
         this.errors.add(
             new ErrorMessage(
                 token.getSourceMIPSprogram(),
                 token.getSourceLine(),
                 token.getStartPos(),
                 "forward reference or invalid parameters for macro \"" + token.getValue() + "\""));
-      else
+      } else {
         this.errors.add(
             new ErrorMessage(
                 token.getSourceMIPSprogram(),
                 token.getSourceLine(),
                 token.getStartPos(),
                 "\"" + token.getValue() + "\" is not a recognized operator"));
+      }
       return null;
     }
     ArrayList<Instruction> inst = context.instructions().matchOperator(token.getValue());
@@ -600,10 +604,14 @@ final class FirstPassProcessor {
   private void storeNumeric(TokenList tokens, Directives directive, ErrorList errors) {
     Token token = tokens.get(0);
     // A double-check; should have already been caught...removed ".word" exemption 11/20/06
-    if (!passesDataSegmentCheck(token)) return;
+    if (!passesDataSegmentCheck(token)) {
+      return;
+    }
     // Correctly handles case where this is a "directive continuation" line.
     int tokenStart = 0;
-    if (token.getType() == TokenTypes.DIRECTIVE) tokenStart = 1;
+    if (token.getType() == TokenTypes.DIRECTIVE) {
+      tokenStart = 1;
+    }
 
     // Set byte length in memory of each number (e.g. WORD is 4, BYTE is 1, etc)
     int lengthInBytes = DataTypes.getLengthInBytes(directive);

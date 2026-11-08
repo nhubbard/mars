@@ -62,7 +62,9 @@ public final class Coprocessor0State {
   private final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
 
   public Coprocessor0State() {
-    for (Register r : registers) r.addObserver(registerEvents::emit);
+    for (Register r : registers) {
+      r.addObserver(registerEvents::emit);
+    }
   }
 
   public void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {

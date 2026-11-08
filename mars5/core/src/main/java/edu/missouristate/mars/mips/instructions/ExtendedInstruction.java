@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
 
@@ -669,7 +668,9 @@ public class ExtendedInstruction extends Instruction {
     // then don't count the nop in the instruction length.   DPS 23-Jan-2008
     int instructionCount = 0;
     for (String s : translationList) {
-      if (s.contains("DBNOP") && !delayedBranching) continue;
+      if (s.contains("DBNOP") && !delayedBranching) {
+        continue;
+      }
       instructionCount++;
     }
     return 4 * instructionCount;

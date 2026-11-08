@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.instructions.*;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -38,8 +39,7 @@ class FloatingPointEdgeTest {
                         "Instr((Add|Sub|Mul|Div|Sqrt|Abs|Neg|Mov|FloorW|CeilW|RoundW|TruncW)[SD]|Cvt(SD|DS|WS|WD)|C(Eq|Le|Lt)[SD][12])"))
         .flatMap(
             instruction ->
-                java.util.Arrays.stream(values)
-                    .mapToObj(value -> Arguments.of(instruction, value)));
+                Arrays.stream(values).mapToObj(value -> Arguments.of(instruction, value)));
   }
 
   @ParameterizedTest
@@ -80,8 +80,9 @@ class FloatingPointEdgeTest {
         boolean expected =
             base.startsWith("CEq") ? input == 2 : base.startsWith("CLe") ? input <= 2 : input < 2;
         assertThat(fp.getConditionFlag(name.endsWith("2") ? 3 : 0)).isEqualTo(expected ? 1 : 0);
-      } else if (base.startsWith("CvtW")) assertThat(fp.getValue(8)).isEqualTo((int) input);
-      else if (base.matches("(Floor|Ceil|Round|Trunc)W[SD]")) {
+      } else if (base.startsWith("CvtW")) {
+        assertThat(fp.getValue(8)).isEqualTo((int) input);
+      } else if (base.matches("(Floor|Ceil|Round|Trunc)W[SD]")) {
         boolean invalid =
             !Double.isFinite(input)
                 || input < Integer.MIN_VALUE
@@ -113,11 +114,17 @@ class FloatingPointEdgeTest {
                                     : base.startsWith("Neg") ? -input : input;
         boolean targetDouble = base.startsWith("Cvt") ? base.charAt(3) == 'D' : base.endsWith("D");
         if (targetDouble) {
-          if (Double.isNaN(expected)) assertThat(fp.getDoubleFromRegisterPair(8)).isNaN();
-          else assertThat(fp.getDoubleFromRegisterPair(8)).isEqualTo(expected);
+          if (Double.isNaN(expected)) {
+            assertThat(fp.getDoubleFromRegisterPair(8)).isNaN();
+          } else {
+            assertThat(fp.getDoubleFromRegisterPair(8)).isEqualTo(expected);
+          }
         } else {
-          if (Double.isNaN(expected)) assertThat(fp.getFloatFromRegister(8)).isNaN();
-          else assertThat(fp.getFloatFromRegister(8)).isEqualTo((float) expected);
+          if (Double.isNaN(expected)) {
+            assertThat(fp.getFloatFromRegister(8)).isNaN();
+          } else {
+            assertThat(fp.getFloatFromRegister(8)).isEqualTo((float) expected);
+          }
         }
       }
     }

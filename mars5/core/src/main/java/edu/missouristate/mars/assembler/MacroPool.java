@@ -111,7 +111,9 @@ public class MacroPool {
    * @return {@link Macro} object matching the name and argument count of tokens passed
    */
   public Macro getMatchingMacro(TokenList tokens, int callerLine) {
-    if (tokens.isEmpty()) return null;
+    if (tokens.isEmpty()) {
+      return null;
+    }
     Macro ret = null;
     Token firstToken = tokens.get(0);
     for (Macro macro : macroList) {
@@ -119,7 +121,9 @@ public class MacroPool {
           && macro.getArgs().size() + 1 == tokens.size()
           // && macro.getToLine() < callerLine  // condition removed; doesn't work nicely in
           // conjunction with .include, and does not seem necessary.  DPS 8-MAR-2013
-          && (ret == null || ret.getFromLine() < macro.getFromLine())) ret = macro;
+          && (ret == null || ret.getFromLine() < macro.getFromLine())) {
+        ret = macro;
+      }
     }
     return ret;
   }
@@ -129,7 +133,11 @@ public class MacroPool {
    *     concerning arguments count.
    */
   public boolean matchesAnyMacroName(String value) {
-    for (Macro macro : macroList) if (macro.getName().equals(value)) return true;
+    for (Macro macro : macroList) {
+      if (macro.getName().equals(value)) {
+        return true;
+      }
+    }
     return false;
   }
 
@@ -159,7 +167,9 @@ public class MacroPool {
   public boolean pushOnCallStack(Token token) { // returns true if detected expansion loop
     int sourceLine = token.getSourceLine();
     int origSourceLine = token.getOriginalSourceLine();
-    if (callStack.contains(sourceLine)) return true;
+    if (callStack.contains(sourceLine)) {
+      return true;
+    }
     callStack.add(sourceLine);
     callStackOrigLines.add(origSourceLine);
     return false;
@@ -173,7 +183,9 @@ public class MacroPool {
   public String getExpansionHistory() {
     StringBuilder ret = new StringBuilder();
     for (int i = 0; i < callStackOrigLines.size(); i++) {
-      if (i > 0) ret.append("->");
+      if (i > 0) {
+        ret.append("->");
+      }
       ret.append(callStackOrigLines.get(i).toString());
     }
     return ret.toString();

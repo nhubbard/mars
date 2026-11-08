@@ -1,5 +1,6 @@
 package edu.missouristate.mars.util;
 
+import edu.missouristate.mars.ApplicationInfo;
 import java.util.*;
 
 /*
@@ -160,7 +161,9 @@ public class Binary {
       pow = 1;
       rep = 0;
       while (rep < 4 && position >= 0) {
-        if (value.charAt(position) == '1') result = result + pow;
+        if (value.charAt(position) == '1') {
+          result = result + pow;
+        }
         pow *= 2;
         position--;
         rep++;
@@ -256,11 +259,15 @@ public class Binary {
    *     length &gt; 4, returns '0'.
    */
   public static char binaryStringToHexDigit(String value) {
-    if (value.length() > 4) return '0';
+    if (value.length() > 4) {
+      return '0';
+    }
     int result = 0;
     int pow = 1;
     for (int i = value.length() - 1; i >= 0; i--) {
-      if (value.charAt(i) == '1') result = result + pow;
+      if (value.charAt(i) == '1') {
+        result = result + pow;
+      }
       pow *= 2;
     }
     return chars[result];
@@ -278,7 +285,9 @@ public class Binary {
     String leadingZero = "0";
     String leadingX = "0x";
     String t = Integer.toHexString(d);
-    while (t.length() < 8) t = leadingZero.concat(t);
+    while (t.length() < 8) {
+      t = leadingZero.concat(t);
+    }
 
     t = leadingX.concat(t);
     return t;
@@ -301,7 +310,9 @@ public class Binary {
     if (t.length() > 4) {
       t = t.substring(t.length() - 4);
     }
-    while (t.length() < 4) t = leadingZero.concat(t);
+    while (t.length() < 4) {
+      t = leadingZero.concat(t);
+    }
 
     t = leadingX.concat(t);
     return t;
@@ -343,9 +354,9 @@ public class Binary {
     for (int i = 3; i >= 0; i--) {
       int byteValue = getByte(d, i);
       result.append(
-          (byteValue < edu.missouristate.mars.ApplicationInfo.ASCII_TABLE.length)
-              ? edu.missouristate.mars.ApplicationInfo.ASCII_TABLE[byteValue]
-              : edu.missouristate.mars.ApplicationInfo.ASCII_NON_PRINT);
+          (byteValue < ApplicationInfo.ASCII_TABLE.length)
+              ? ApplicationInfo.ASCII_TABLE[byteValue]
+              : ApplicationInfo.ASCII_NON_PRINT);
     }
     return result.toString();
   }
@@ -585,10 +596,11 @@ public class Binary {
       if ((v.charAt(0) == '-')
           && // sign is optional but if present can only be -
           (v.charAt(1) == '0')
-          && (Character.toUpperCase(v.charAt(1)) == 'X'))
+          && (Character.toUpperCase(v.charAt(1)) == 'X')) {
         return true; // Form is Sign 0x.... and the entire string is parseable as a number
-      else if ((v.charAt(0) == '0') && (Character.toUpperCase(v.charAt(1)) == 'X'))
+      } else if ((v.charAt(0) == '0') && (Character.toUpperCase(v.charAt(1)) == 'X')) {
         return true; // Form is 0x.... and the entire string is parseable as a number
+      }
 
     } catch (StringIndexOutOfBoundsException e) {
       return false;
@@ -613,14 +625,19 @@ public class Binary {
       // we don't care what value Binary.stringToInt(v) returns, just whether it threw exception
       int dontCare = Binary.stringToInt(v);
 
-      if (isHex(v)) return false; // String starts with "0" but continues "0x", so not octal
+      if (isHex(v)) {
+        return false; // String starts with "0" but continues "0x", so not octal
+      }
 
       // sign is optional but if present can only be -
       if (v.charAt(0) == '-' && v.charAt(1) == '0') // Has to have more digits than the leading zero
-      return true; // Form is Sign 0.... and the entire string is parseable as a number
-      else if ((v.charAt(0) == '0')
+      {
+        return true; // Form is Sign 0.... and the entire string is parseable as a number
+      } else if ((v.charAt(0) == '0')
           && (v.length() > 1)) // Has to have more digits than the leading zero
-      return true; // Form is 0.... and the entire string is parseable as a number
+      {
+        return true; // Form is 0.... and the entire string is parseable as a number
+      }
 
     } catch (StringIndexOutOfBoundsException | NumberFormatException e) {
       return false;

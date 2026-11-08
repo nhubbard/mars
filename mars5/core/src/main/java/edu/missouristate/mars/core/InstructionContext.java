@@ -13,6 +13,7 @@ import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
@@ -48,7 +49,7 @@ public final class InstructionContext {
     delayedBranch = session.delayedBranch;
   }
 
-  public edu.missouristate.mars.mips.instructions.SyscallRegistry syscalls() {
+  public SyscallRegistry syscalls() {
     return session.syscalls;
   }
 
@@ -66,7 +67,9 @@ public final class InstructionContext {
   }
 
   public int updateRegister(int number, int value) {
-    if (number == 32) return setProgramCounter(value);
+    if (number == 32) {
+      return setProgramCounter(value);
+    }
     int old = registerFile.updateRegister(number, value);
     if (number != 0 && session.backStepper.enabled()) {
       session.backStepper.addRegisterFileRestore(number, old);
@@ -76,7 +79,9 @@ public final class InstructionContext {
 
   public int setProgramCounter(int value) {
     int old = registerFile.setProgramCounter(value);
-    if (session.backStepper.enabled()) session.backStepper.addPCRestore(old);
+    if (session.backStepper.enabled()) {
+      session.backStepper.addPCRestore(old);
+    }
     return old;
   }
 
@@ -103,8 +108,11 @@ public final class InstructionContext {
   public int setConditionFlag(int flag) {
     int old = coprocessor1.setConditionFlag(flag);
     if (flag >= 0 && flag < coprocessor1.getConditionFlagCount() && session.backStepper.enabled()) {
-      if (old == 0) session.backStepper.addConditionFlagClear(flag);
-      else session.backStepper.addConditionFlagSet(flag);
+      if (old == 0) {
+        session.backStepper.addConditionFlagClear(flag);
+      } else {
+        session.backStepper.addConditionFlagSet(flag);
+      }
     }
     return old;
   }
@@ -112,8 +120,11 @@ public final class InstructionContext {
   public int clearConditionFlag(int flag) {
     int old = coprocessor1.clearConditionFlag(flag);
     if (flag >= 0 && flag < coprocessor1.getConditionFlagCount() && session.backStepper.enabled()) {
-      if (old == 0) session.backStepper.addConditionFlagClear(flag);
-      else session.backStepper.addConditionFlagSet(flag);
+      if (old == 0) {
+        session.backStepper.addConditionFlagClear(flag);
+      } else {
+        session.backStepper.addConditionFlagSet(flag);
+      }
     }
     return old;
   }
@@ -125,19 +136,25 @@ public final class InstructionContext {
 
   public int setMemoryWord(int address, int value) throws AddressErrorException {
     int old = session.memory.setWord(address, value);
-    if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreWord(address, old);
+    if (session.backStepper.enabled()) {
+      session.backStepper.addMemoryRestoreWord(address, old);
+    }
     return old;
   }
 
   public int setMemoryHalf(int address, int value) throws AddressErrorException {
     int old = session.memory.setHalf(address, value);
-    if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreHalf(address, old);
+    if (session.backStepper.enabled()) {
+      session.backStepper.addMemoryRestoreHalf(address, old);
+    }
     return old;
   }
 
   public int setMemoryByte(int address, int value) throws AddressErrorException {
     int old = session.memory.setByte(address, value);
-    if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreByte(address, old);
+    if (session.backStepper.enabled()) {
+      session.backStepper.addMemoryRestoreByte(address, old);
+    }
     return old;
   }
 
@@ -153,7 +170,9 @@ public final class InstructionContext {
   /** Records a raw memory write in session history, preserving legacy write behavior. */
   public int setMemoryRawWord(int address, int value) throws AddressErrorException {
     int old = session.memory.setRawWord(address, value);
-    if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreRawWord(address, old);
+    if (session.backStepper.enabled()) {
+      session.backStepper.addMemoryRestoreRawWord(address, old);
+    }
     return old;
   }
 
@@ -161,7 +180,9 @@ public final class InstructionContext {
    * Float helper writes are undoable in sessions; legacy helpers retain their original behavior.
    */
   public void setRegisterToFloat(int number, float value) {
-    if (number >= 0 && number < 32) updateCoprocessor1(number, Float.floatToRawIntBits(value));
+    if (number >= 0 && number < 32) {
+      updateCoprocessor1(number, Float.floatToRawIntBits(value));
+    }
   }
 
   public void setRegisterToFloat(String name, float value) {
@@ -170,7 +191,9 @@ public final class InstructionContext {
 
   public void setRegisterPairToDouble(int number, double value)
       throws InvalidRegisterAccessException {
-    if (number % 2 != 0) throw new InvalidRegisterAccessException();
+    if (number % 2 != 0) {
+      throw new InvalidRegisterAccessException();
+    }
     if (number < 0 || number >= coprocessor1.getRegisters().length - 1) {
       throw new ArrayIndexOutOfBoundsException(number);
     }
@@ -212,27 +235,34 @@ public final class InstructionContext {
       registerFile.incrementPC();
       try {
         int interrupt = session.takeExternalInterrupt();
-        if (interrupt != 0)
+        if (interrupt != 0) {
           throw new ProcessingException(this, statement, "External interrupt", interrupt);
+        }
         if (!(statement.getInstruction() instanceof BasicInstruction instruction)) {
           throw new ProcessingException(
               this, statement, "invalid instruction", Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
         }
         instruction.getSimulationCode().simulate(statement, this);
       } catch (ProcessingException error) {
-        if (!dispatchHandler || error.errors() == null) throw error;
+        if (!dispatchHandler || error.errors() == null) {
+          throw error;
+        }
         ProgramStatement handler = null;
         try {
           handler = memory().getStatementNoNotify(memory().exceptionHandlerAddress);
         } catch (AddressErrorException ignored) {
         }
-        if (handler == null) throw error;
+        if (handler == null) {
+          throw error;
+        }
         setProgramCounter(memory().exceptionHandlerAddress);
         delayedBranch.clear();
       }
       completeInstruction();
     } finally {
-      if (recording) history.endInstruction();
+      if (recording) {
+        history.endInstruction();
+      }
     }
   }
 

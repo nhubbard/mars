@@ -8,6 +8,7 @@ import edu.missouristate.mars.core.SessionAssembler;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,7 +19,7 @@ class SimulatorEngineTest {
   void stepBreakpointUndoResumeAndExitHaveOrderedEvents() throws Exception {
     try (var session = load(".text\naddiu $t0,$zero,7\naddiu $t0,$t0,2\nli $v0,10\nsyscall\n")) {
       var engine = session.simulator();
-      var events = new ArrayList<Object>();
+      var events = new ArrayList<>();
       engine.addListener(listener(events));
       int pc = session.registerFile.getPC();
       assertThat(engine.runAsync(1, null).get(5, TimeUnit.SECONDS).reason())
@@ -55,8 +56,9 @@ class SimulatorEngineTest {
             public void onStep(StepEvent event) {
               entered.countDown();
               try {
-                if (!release.await(5, TimeUnit.SECONDS))
+                if (!release.await(5, TimeUnit.SECONDS)) {
                   throw new AssertionError("release timeout");
+                }
               } catch (InterruptedException e) {
                 throw new AssertionError(e);
               }
@@ -116,7 +118,7 @@ class SimulatorEngineTest {
   @Test
   void runtimeFailureEmitsErrorThenStopAndPreservesUndo() throws Exception {
     try (var session = load(".text\nli $t0,0x7fffffff\naddi $t0,$t0,1\n")) {
-      var events = new ArrayList<Object>();
+      var events = new ArrayList<>();
       session.simulator().addListener(listener(events));
       assertThat(session.simulator().runAsync(0, null).get(5, TimeUnit.SECONDS).reason())
           .isEqualTo(StopEvent.Reason.EXCEPTION);
@@ -152,7 +154,7 @@ class SimulatorEngineTest {
       var engine = session.simulator();
       var entered = new CountDownLatch(1);
       var release = new CountDownLatch(1);
-      var rejected = new java.util.concurrent.atomic.AtomicBoolean();
+      var rejected = new AtomicBoolean();
       engine.addListener(
           new SimulatorListener() {
             public void onStep(StepEvent event) {

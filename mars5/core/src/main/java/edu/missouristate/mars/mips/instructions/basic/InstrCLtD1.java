@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.instructions.basic;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.util.*;
@@ -30,8 +29,11 @@ public class InstrCLtD1 extends BasicInstruction {
                   Binary.twoIntsToLong(
                       context.coprocessor1.getValue(operands[1] + 1),
                       context.coprocessor1.getValue(operands[1])));
-          if (op1 < op2) context.setConditionFlag(0);
-          else context.clearConditionFlag(0);
+          if (op1 < op2) {
+            context.setConditionFlag(0);
+          } else {
+            context.clearConditionFlag(0);
+          }
         });
   }
 }

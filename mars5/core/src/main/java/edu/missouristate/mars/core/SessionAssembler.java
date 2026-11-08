@@ -1,5 +1,6 @@
 package edu.missouristate.mars.core;
 
+import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.*;
 import java.nio.file.Path;
@@ -41,7 +42,7 @@ public final class SessionAssembler implements MarsAssembler {
     }
   }
 
-  private static List<AssemblyError> diagnostics(edu.missouristate.mars.ErrorList errors) {
+  private static List<AssemblyError> diagnostics(ErrorList errors) {
     return errors.getErrorMessages().stream()
         .map(
             message ->

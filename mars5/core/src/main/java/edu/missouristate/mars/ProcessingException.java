@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 
 /*

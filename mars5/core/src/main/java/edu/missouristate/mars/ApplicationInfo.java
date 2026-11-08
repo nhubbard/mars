@@ -43,9 +43,15 @@ public final class ApplicationInfo {
     String[] lets = let.split(" +");
     int maxLength = 0;
     for (int i = 0; i < lets.length; i++) {
-      if (lets[i].equals("null")) lets[i] = placeHolder;
-      if (lets[i].equals("space")) lets[i] = " ";
-      if (lets[i].length() > maxLength) maxLength = lets[i].length();
+      if (lets[i].equals("null")) {
+        lets[i] = placeHolder;
+      }
+      if (lets[i].equals("space")) {
+        lets[i] = " ";
+      }
+      if (lets[i].length() > maxLength) {
+        maxLength = lets[i].length();
+      }
     }
     String padding = "        ";
     maxLength++;

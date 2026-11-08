@@ -40,29 +40,32 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class SymbolTable {
   private static final String startLabel = "main";
-  private final String filename;
   private final SymbolTable globalSymbols;
   private ArrayList<Symbol> table;
-  // Note -1 is legal 32 bit address (0xFFFFFFFF) but it is the high address in
+  // Note -1 is legal 32-bit address (0xFFFFFFFF) but it is the high address in
   // kernel address space so highly unlikely that any symbol will have this as
   // its associated address!
   public static final int NOT_FOUND = -1;
 
-  /**
-   * Create a new empty symbol table for given file
-   *
-   * @param filename name of file this symbol table is associated with. Will be used only for
-   *     output/display so it can be any descriptive string.
-   */
-  public SymbolTable(String filename) {
-    this(filename, null);
+  /** Create a new empty symbol table for given file */
+  public SymbolTable() {
+    this((SymbolTable) null);
   }
 
   /** Binds a local table to an explicit global scope; null creates a session's root table. */
-  public SymbolTable(String filename, SymbolTable globalSymbols) {
-    this.filename = filename;
+  private SymbolTable(SymbolTable globalSymbols) {
     this.globalSymbols = globalSymbols;
     this.table = new ArrayList<>();
+  }
+
+  /** Retained source-compatible constructor; the filename is not needed by symbol lookup. */
+  public SymbolTable(String filename) {
+    this((SymbolTable) null);
+  }
+
+  /** Retained source-compatible constructor for callers that supply a source filename. */
+  public SymbolTable(String filename, SymbolTable globalSymbols) {
+    this(globalSymbols);
   }
 
   /**

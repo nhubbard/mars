@@ -2,6 +2,7 @@ package edu.missouristate.mars.di;
 
 import dagger.Module;
 import dagger.Provides;
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsAssembler;
@@ -46,13 +47,14 @@ public final class CoreModule {
 
   /** Reuses a settings owner, for a frontend that already owns settings. */
   public CoreModule(Settings settings) {
-    this(settings, edu.missouristate.mars.ApplicationInfo.maximumBacksteps);
+    this(settings, ApplicationInfo.maximumBacksteps);
   }
 
   /** Configures a session's undo-history capacity independently of other components. */
   public CoreModule(Settings settings, int maximumBacksteps) {
-    if (maximumBacksteps < 1)
+    if (maximumBacksteps < 1) {
       throw new IllegalArgumentException("Backstep capacity must be positive");
+    }
     this.settings = Objects.requireNonNull(settings);
     this.maximumBacksteps = maximumBacksteps;
   }
@@ -164,6 +166,6 @@ public final class CoreModule {
   @Provides
   @Singleton
   static SymbolTable provideSymbolTable() {
-    return new SymbolTable("global", null);
+    return new SymbolTable(null);
   }
 }

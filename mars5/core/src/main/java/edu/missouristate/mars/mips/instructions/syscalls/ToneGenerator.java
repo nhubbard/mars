@@ -74,7 +74,7 @@ public final class ToneGenerator implements AutoCloseable {
   private ExecutorService threadPool;
 
   private synchronized ExecutorService pool() {
-    if (threadPool == null)
+    if (threadPool == null) {
       threadPool =
           Executors.newCachedThreadPool(
               task -> {
@@ -82,6 +82,7 @@ public final class ToneGenerator implements AutoCloseable {
                 thread.setDaemon(true);
                 return thread;
               });
+    }
     return threadPool;
   }
 

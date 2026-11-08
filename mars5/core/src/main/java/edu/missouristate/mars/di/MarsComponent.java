@@ -3,10 +3,12 @@ package edu.missouristate.mars.di;
 import dagger.BindsInstance;
 import dagger.Component;
 import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.api.MarsAssembler;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.MarsMemory;
 import edu.missouristate.mars.api.MarsRegisterFile;
 import edu.missouristate.mars.api.MarsSettings;
+import edu.missouristate.mars.api.MarsSimulator;
 import edu.missouristate.mars.core.MarsContext;
 import javax.inject.Singleton;
 
@@ -44,9 +46,9 @@ public interface MarsComponent {
   /** Returns the fully-initialized simulation context for this component. */
   MarsContext context();
 
-  edu.missouristate.mars.api.MarsAssembler assembler();
+  MarsAssembler assembler();
 
-  edu.missouristate.mars.api.MarsSimulator simulator();
+  MarsSimulator simulator();
 
   /** Legacy settings owner shared with the context's simulation view. */
   Settings settings();

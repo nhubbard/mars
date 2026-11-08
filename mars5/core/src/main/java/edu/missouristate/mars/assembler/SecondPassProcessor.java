@@ -21,16 +21,25 @@ final class SecondPassProcessor {
     var machine = new ArrayList<ProgramStatement>();
     var expander = new PseudoInstructionExpander(context);
     for (var program : programs) {
-      if (errors.errorLimitExceeded()) break;
+      if (errors.errorLimitExceeded()) {
+        break;
+      }
       for (var statement : program.getParsedList()) {
         statement.buildBasicStatementFromBasicInstruction(errors);
-        if (errors.errorsOccurred()) throw new ProcessingException(errors);
-        if (statement.getInstruction() instanceof BasicInstruction) machine.add(statement);
-        else machine.addAll(expander.expand(statement, program, errors));
+        if (errors.errorsOccurred()) {
+          throw new ProcessingException(errors);
+        }
+        if (statement.getInstruction() instanceof BasicInstruction) {
+          machine.add(statement);
+        } else {
+          machine.addAll(expander.expand(statement, program, errors));
+        }
       }
     }
     for (var statement : machine) {
-      if (errors.errorLimitExceeded()) break;
+      if (errors.errorLimitExceeded()) {
+        break;
+      }
       statement.buildMachineStatementFromBasicStatement(errors);
       try {
         context.memory().setStatement(statement.getAddress(), statement);
@@ -47,8 +56,9 @@ final class SecondPassProcessor {
     machine.sort(
         (first, second) -> Integer.compareUnsigned(first.getAddress(), second.getAddress()));
     catchDuplicateAddresses(machine, errors);
-    if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors)
+    if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
+    }
     return machine;
   }
 

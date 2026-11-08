@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.io.*;
 import java.util.*;
@@ -288,7 +289,9 @@ public class Tokenizer {
   public TokenList tokenizeLine(
       MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes) {
     TokenList result = new TokenList();
-    if (theLine.isEmpty()) return result;
+    if (theLine.isEmpty()) {
+      return result;
+    }
     // will be faster to work with char arrays instead of strings
     char c;
     char[] line = theLine.toCharArray();
@@ -297,8 +300,9 @@ public class Tokenizer {
     int tokenPos = 0;
     int tokenStartPos = 1;
     boolean insideQuotedString = false;
-    if (sourceMIPSprogram != null && sourceMIPSprogram.assemblyContext().debug())
+    if (sourceMIPSprogram != null && sourceMIPSprogram.assemblyContext().debug()) {
       System.out.println("source line --->" + theLine + "<---");
+    }
     // Each iteration of this loop processes one character in the source line.
     while (linePos < line.length) {
       c = line[linePos];
@@ -405,10 +409,14 @@ public class Tokenizer {
             token[tokenPos++] = c; // Put the quote in token[0]
             int lookaheadChars = line.length - linePos - 1;
             // need minimum 2 more characters, 1 for char and 1 for ending quote
-            if (lookaheadChars < 2) break; // gonna be an error
+            if (lookaheadChars < 2) {
+              break; // gonna be an error
+            }
             c = line[++linePos];
             token[tokenPos++] = c; // grab second character, put it in token[1]
-            if (c == '\'') break; // gonna be an error: nothing between the quotes
+            if (c == '\'') {
+              break; // gonna be an error: nothing between the quotes
+            }
             c = line[++linePos];
             token[tokenPos++] = c; // grab third character, put it in token[2]
             // Process if we've either reached second, non-escaped, quote or end of line.
@@ -450,7 +458,9 @@ public class Tokenizer {
             tokenStartPos = linePos + 1;
             break;
           default:
-            if (tokenPos == 0) tokenStartPos = linePos + 1;
+            if (tokenPos == 0) {
+              tokenStartPos = linePos + 1;
+            }
             token[tokenPos++] = c;
             break;
         } // switch
@@ -592,13 +602,12 @@ public class Tokenizer {
       int tokenStartPos,
       TokenList tokenList) {
     String value = new String(token, 0, tokenPos);
-    if (!value.isEmpty() && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
+    if (!value.isEmpty() && value.charAt(0) == '\'') {
+      value = preprocessCharacterLiteral(value);
+    }
     TokenTypes type =
         TokenTypes.matchTokenType(
-            value,
-            instructions == null
-                ? edu.missouristate.mars.mips.instructions.InstructionDefaults.get()
-                : instructions);
+            value, instructions == null ? InstructionDefaults.get() : instructions);
     if (type == TokenTypes.ERROR) {
       errors.add(
           new ErrorMessage(

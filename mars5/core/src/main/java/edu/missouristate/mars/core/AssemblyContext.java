@@ -10,15 +10,9 @@ import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.util.Objects;
 
 /** Assembly dependencies shared by a program's source files, includes, and pseudo-instructions. */
-public final class AssemblyContext {
-  private final MarsContext session;
-
+public record AssemblyContext(MarsContext session) {
   public AssemblyContext(MarsContext session) {
     this.session = Objects.requireNonNull(session);
-  }
-
-  public MarsContext session() {
-    return session;
   }
 
   public boolean sharesSession(AssemblyContext other) {

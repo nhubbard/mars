@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.instructions.basic;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.util.*;
@@ -34,13 +33,12 @@ public class InstrRoundWD extends BasicInstruction {
               || doubleValue > (double) Integer.MAX_VALUE) {
             round = Integer.MAX_VALUE;
           } else {
-            double doubleObj = doubleValue;
 
             if (doubleValue < 0.0) {
-              above = (int) doubleObj;
+              above = (int) doubleValue;
               below = above - 1;
             } else {
-              below = (int) doubleObj;
+              below = (int) doubleValue;
               above = below + 1;
             }
             if (doubleValue - below == above - doubleValue) {

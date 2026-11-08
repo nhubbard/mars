@@ -45,18 +45,15 @@ class BasicInstructionSemanticsTest {
           switch (base) {
             case "Add", "Addu" -> 13;
             case "Sub", "Subu" -> 7;
-            case "Addi", "Addiu" -> 14;
+            case "Addi", "Addiu", "Ori", "Xori" -> 14;
             case "And" -> 2;
             case "Or" -> 11;
             case "Xor" -> 9;
             case "Nor" -> ~11;
-            case "Andi" -> 0;
-            case "Ori", "Xori" -> 14;
+            case "Andi", "Slt", "Sltu", "Slti", "Sltiu", "Srl", "Sra" -> 0;
             case "Sll" -> 160;
             case "Sllv" -> 80;
-            case "Srl", "Sra" -> 0;
             case "Srlv", "Srav" -> 1;
-            case "Slt", "Sltu", "Slti", "Sltiu" -> 0;
             case "Mul" -> 30;
             default -> null;
           };
@@ -97,19 +94,27 @@ class BasicInstructionSemanticsTest {
         registers.updateRegister(2, base.equals("Clo") ? 0xff000000 : 0x00ffffff);
         verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(8);
       } else if (Set.of("Movn", "Movz", "Movf", "Movt").contains(base)) {
-        if (base.equals("Movz")) registers.updateRegister(4, 0);
-        if (base.equals("Movt")) floating.setConditionFlag(name.endsWith("2") ? 4 : 0);
+        if (base.equals("Movz")) {
+          registers.updateRegister(4, 0);
+        }
+        if (base.equals("Movt")) {
+          floating.setConditionFlag(name.endsWith("2") ? 4 : 0);
+        }
         verify = s -> assertThat(s.registerFile.getValue(8)).isEqualTo(10);
       } else if (Set.of("Beq", "Bne", "Bgez", "Bgezal", "Bgtz", "Blez", "Bltz", "Bltzal")
           .contains(base)) {
         boolean taken = !Set.of("Blez", "Bltz", "Bltzal").contains(base);
-        if (base.equals("Beq")) registers.updateRegister(4, 10);
+        if (base.equals("Beq")) {
+          registers.updateRegister(4, 10);
+        }
         operands =
             base.equals("Beq") || base.equals("Bne") ? new int[] {2, 4, 2} : new int[] {2, 2};
         verify =
             s -> {
               assertThat(s.registerFile.getPC()).isEqualTo(pc + (taken ? 12 : 4));
-              if (base.equals("Bgezal")) assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
+              if (base.equals("Bgezal")) {
+                assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
+              }
             };
       } else if (Set.of("J", "Jal", "Jr", "Jalr").contains(base)) {
         registers.updateRegister(2, pc + 32);
@@ -120,9 +125,12 @@ class BasicInstructionSemanticsTest {
         verify =
             s -> {
               assertThat(s.registerFile.getPC()).isEqualTo(pc + 32);
-              if (base.equals("Jal")) assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
-              if (base.equals("Jalr"))
+              if (base.equals("Jal")) {
+                assertThat(s.registerFile.getValue(31)).isEqualTo(pc + 4);
+              }
+              if (base.equals("Jalr")) {
                 assertThat(s.registerFile.getValue(name.endsWith("1") ? 8 : 31)).isEqualTo(pc + 4);
+              }
             };
       } else if (Set.of(
               "Lw", "Ll", "Lwl", "Lwr", "Lb", "Lbu", "Lh", "Lhu", "Sw", "Sc", "Swl", "Swr", "Sb",
@@ -144,14 +152,15 @@ class BasicInstructionSemanticsTest {
             };
         verify =
             s -> {
-              if (expectedLoad != null)
+              if (expectedLoad != null) {
                 assertThat(s.registerFile.getValue(8)).isEqualTo(expectedLoad);
-              else
+              } else {
                 switch (base) {
                   case "Lwc1", "Ldc1" -> {
                     assertThat(s.coprocessor1.getValue(8)).isEqualTo(0x89abcdef);
-                    if (base.equals("Ldc1"))
+                    if (base.equals("Ldc1")) {
                       assertThat(s.coprocessor1.getValue(9)).isEqualTo(0x01234567);
+                    }
                   }
                   default -> {
                     int expectedWord =
@@ -160,14 +169,18 @@ class BasicInstructionSemanticsTest {
                             : base.equals("Sh") ? 0x89ab5678 : 0x12345678;
                     try {
                       assertThat(s.memory.getWord(address)).isEqualTo(expectedWord);
-                      if (base.equals("Sdc1"))
+                      if (base.equals("Sdc1")) {
                         assertThat(s.memory.getWord(address + 4)).isEqualTo(0x76543210);
+                      }
                     } catch (AddressErrorException e) {
                       throw new AssertionError(e);
                     }
-                    if (base.equals("Sc")) assertThat(s.registerFile.getValue(8)).isEqualTo(1);
+                    if (base.equals("Sc")) {
+                      assertThat(s.registerFile.getValue(8)).isEqualTo(1);
+                    }
                   }
                 }
+              }
             };
       } else if (base.equals("Mfc0") || base.equals("Mtc0")) {
         operands = new int[] {8, Coprocessor0State.EPC};
@@ -193,7 +206,9 @@ class BasicInstructionSemanticsTest {
                     .isEqualTo(base.equals("Mfc1") ? 42 : 99);
       } else if (base.equals("Bc1t") || base.equals("Bc1f")) {
         int flag = name.endsWith("2") ? 4 : 0;
-        if (base.equals("Bc1t")) floating.setConditionFlag(flag);
+        if (base.equals("Bc1t")) {
+          floating.setConditionFlag(flag);
+        }
         operands = name.endsWith("2") ? new int[] {flag, 2} : new int[] {2};
         verify = s -> assertThat(s.registerFile.getPC()).isEqualTo(pc + 12);
       } else if (base.startsWith("CEq") || base.startsWith("CLe") || base.startsWith("CLt")) {
@@ -245,12 +260,19 @@ class BasicInstructionSemanticsTest {
             default -> throw new AssertionError(base);
           }
         } else if (operation.startsWith("Mov")) {
-          if (operation.equals("Movt")) floating.setConditionFlag(name.endsWith("2") ? 4 : 0);
-          if (operation.equals("Movz")) registers.updateRegister(4, 0);
+          if (operation.equals("Movt")) {
+            floating.setConditionFlag(name.endsWith("2") ? 4 : 0);
+          }
+          if (operation.equals("Movz")) {
+            registers.updateRegister(4, 0);
+          }
           verify =
               s -> {
-                if (doubles) assertDouble(s, 4.75);
-                else assertThat(s.coprocessor1.getFloatFromRegister(8)).isEqualTo(4.75f);
+                if (doubles) {
+                  assertDouble(s, 4.75);
+                } else {
+                  assertThat(s.coprocessor1.getFloatFromRegister(8)).isEqualTo(4.75f);
+                }
               };
         } else if (Set.of("FloorW", "CeilW", "RoundW", "TruncW").contains(operation)) {
           int expected = operation.equals("FloorW") || operation.equals("TruncW") ? 4 : 5;
@@ -269,8 +291,11 @@ class BasicInstructionSemanticsTest {
               };
           verify =
               s -> {
-                if (doubles) assertDouble(s, expected);
-                else assertThat(s.coprocessor1.getFloatFromRegister(8)).isEqualTo((float) expected);
+                if (doubles) {
+                  assertDouble(s, expected);
+                } else {
+                  assertThat(s.coprocessor1.getFloatFromRegister(8)).isEqualTo((float) expected);
+                }
               };
         }
       } else if (base.startsWith("T")) {
@@ -288,7 +313,7 @@ class BasicInstructionSemanticsTest {
       } else if (base.equals("Syscall")) {
         registers.updateRegister(2, 10);
         exception = -1;
-        verify = s -> assertThat(context.getExitCode()).isZero();
+        verify = _ -> assertThat(context.getExitCode()).isZero();
       } else if (base.equals("Eret")) {
         session.coprocessor0.updateRegister(Coprocessor0State.EPC, pc + 32);
         session.coprocessor0.updateRegister(Coprocessor0State.STATUS, 3);
@@ -297,9 +322,13 @@ class BasicInstructionSemanticsTest {
               assertThat(s.registerFile.getPC()).isEqualTo(pc + 32);
               assertThat(s.coprocessor0.getValue(Coprocessor0State.STATUS)).isEqualTo(1);
             };
-      } else if (base.equals("Nop"))
-        verify = s -> assertThat(s.registerFile.getPC()).isEqualTo(pc + 4);
-      else throw new AssertionError("Missing semantic vector for " + name);
+      } else {
+        if (base.equals("Nop")) {
+          verify = s -> assertThat(s.registerFile.getPC()).isEqualTo(pc + 4);
+        } else {
+          throw new AssertionError("Missing semantic vector for " + name);
+        }
+      }
 
       int[] beforeRegisters =
           Arrays.stream(registers.getRegisters()).mapToInt(Register::getValue).toArray();
@@ -312,14 +341,17 @@ class BasicInstructionSemanticsTest {
           new ProgramStatement(
               null, instruction.getExampleFormat(), null, null, instruction, pc, 1);
       System.arraycopy(operands, 0, statement.getOperands(), 0, operands.length);
-      if (exception == null) context.execute(statement);
-      else {
+      if (exception == null) {
+        context.execute(statement);
+      } else {
         var failure = catchThrowable(() -> context.execute(statement));
         assertThat(failure).isInstanceOf(ProcessingException.class);
-        if (exception == -1) assertThat(((ProcessingException) failure).errors()).isNull();
-        else
+        if (exception == -1) {
+          assertThat(((ProcessingException) failure).errors()).isNull();
+        } else {
           assertThat((session.coprocessor0.getValue(Coprocessor0State.CAUSE) >>> 2) & 31)
               .isEqualTo(exception);
+        }
       }
       verify.accept(session);
       assertThat(registers.getValue(0)).isZero();

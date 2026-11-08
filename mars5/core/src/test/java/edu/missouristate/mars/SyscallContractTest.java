@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.instructions.SyscallRegistry;
+import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import java.lang.reflect.Proxy;
 import java.util.*;
 import java.util.stream.Stream;
@@ -14,7 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class SyscallContractTest {
   static Stream<Integer> services() {
-    return new SyscallRegistry().services().stream().map(service -> service.getNumber()).sorted();
+    return new SyscallRegistry().services().stream().map(Syscall::getNumber).sorted();
   }
 
   @ParameterizedTest
@@ -53,14 +54,20 @@ class SyscallContractTest {
       var context = new InstructionContext(session, environment);
       int address = session.memory.dataBaseAddress, buffer = address + 32;
       byte[] message = "hello\0".getBytes();
-      for (int i = 0; i < message.length; i++) session.memory.setByte(address + i, message[i]);
-      for (int i = 0; i < 4; i++) session.memory.setByte(buffer + i, 65 + i);
+      for (int i = 0; i < message.length; i++) {
+        session.memory.setByte(address + i, message[i]);
+      }
+      for (int i = 0; i < 4; i++) {
+        session.memory.setByte(buffer + i, 65 + i);
+      }
       var registers = session.registerFile;
       registers.updateRegister(4, address);
       registers.updateRegister(5, buffer);
       registers.updateRegister(6, 8);
       session.coprocessor1.setRegisterToFloat(12, 1.5f);
-      if (number == 3 || number == 58) session.coprocessor1.setRegisterPairToDouble(12, 2.5);
+      if (number == 3 || number == 58) {
+        session.coprocessor1.setRegisterPairToDouble(12, 2.5);
+      }
       switch (number) {
         case 1, 34, 35 -> registers.updateRegister(4, 42);
         case 36 -> registers.updateRegister(4, -1);
@@ -104,7 +111,9 @@ class SyscallContractTest {
         assertThat(failure).isInstanceOf(ProcessingException.class);
         assertThat(((ProcessingException) failure).errors()).isNull();
         assertThat(context.getExitCode()).isEqualTo(number == 17 ? 7 : 0);
-      } else service.simulate(null, context);
+      } else {
+        service.simulate(null, context);
+      }
       switch (number) {
         case 1 -> assertThat(calls).containsExactly("printInt[42]");
         case 2 -> assertThat(calls).containsExactly("printFloat[1.5]");
@@ -131,7 +140,9 @@ class SyscallContractTest {
         case 13, 14, 15 -> {
           assertThat(registers.getValue(2)).isEqualTo(3);
           assertThat(calls).hasSize(1);
-          if (number == 14) assertThat(session.memory.getByte(buffer + 2)).isEqualTo(3);
+          if (number == 14) {
+            assertThat(session.memory.getByte(buffer + 2)).isEqualTo(3);
+          }
         }
         case 16 -> assertThat(calls).containsExactly("closeFile[3]");
         case 30 -> {

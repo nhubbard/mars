@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions.basic;
 
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 
@@ -14,8 +13,9 @@ public class InstrMovfS1 extends BasicInstruction {
         "010001 10000 000 00 sssss fffff 010001",
         (statement, context) -> {
           int[] operands = statement.getOperands();
-          if (context.coprocessor1.getConditionFlag(0) == 0)
+          if (context.coprocessor1.getConditionFlag(0) == 0) {
             context.updateCoprocessor1(operands[0], context.coprocessor1.getValue(operands[1]));
+          }
         });
   }
 }

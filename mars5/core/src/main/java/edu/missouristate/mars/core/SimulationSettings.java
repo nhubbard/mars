@@ -3,6 +3,7 @@ package edu.missouristate.mars.core;
 import edu.missouristate.mars.Settings;
 import edu.missouristate.mars.api.MarsSettings;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 
 /**
  * Simulation-only settings. A view constructed from {@link Settings} reads its current values
@@ -35,8 +36,10 @@ public final class SimulationSettings implements MarsSettings {
     legacySettings = Objects.requireNonNull(settings);
   }
 
-  public void setBackstepStatus(java.util.function.BooleanSupplier status) {
-    if (legacySettings != null) legacySettings.setBackstepStatus(status);
+  public void setBackstepStatus(BooleanSupplier status) {
+    if (legacySettings != null) {
+      legacySettings.setBackstepStatus(status);
+    }
   }
 
   public boolean displayAddressesInHex() {
@@ -147,8 +150,11 @@ public final class SimulationSettings implements MarsSettings {
 
   /** Session-only entry-point selection, matching the legacy Start at main preference. */
   public SimulationSettings setStartAtMainEnabled(boolean enabled) {
-    if (legacySettings == null) startAtMainEnabled = enabled;
-    else legacySettings.setBooleanSettingNonPersistent(Settings.START_AT_MAIN, enabled);
+    if (legacySettings == null) {
+      startAtMainEnabled = enabled;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(Settings.START_AT_MAIN, enabled);
+    }
     return this;
   }
 
@@ -159,8 +165,11 @@ public final class SimulationSettings implements MarsSettings {
   }
 
   public SimulationSettings setBareMachineEnabled(boolean enabled) {
-    if (legacySettings == null) bareMachineEnabled = enabled;
-    else legacySettings.setBooleanSettingNonPersistent(Settings.BARE_MACHINE_ENABLED, enabled);
+    if (legacySettings == null) {
+      bareMachineEnabled = enabled;
+    } else {
+      legacySettings.setBooleanSettingNonPersistent(Settings.BARE_MACHINE_ENABLED, enabled);
+    }
     return this;
   }
 }

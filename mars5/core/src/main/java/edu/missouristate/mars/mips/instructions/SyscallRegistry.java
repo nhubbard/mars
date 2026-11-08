@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.mips.instructions.syscalls.*;
+import java.util.Collection;
 import java.util.Map;
 
 /**
@@ -56,7 +57,7 @@ public final class SyscallRegistry {
     return BY_NUMBER.get(number);
   }
 
-  public java.util.Collection<Syscall> services() {
+  public Collection<Syscall> services() {
     return BY_NUMBER.values();
   }
 

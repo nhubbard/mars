@@ -1,6 +1,6 @@
 package edu.missouristate.mars.simulator;
 
-import edu.missouristate.mars.*;
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.util.*;
 
@@ -114,7 +114,7 @@ public class ProgramArgumentList {
   // pointer register $sp is adjusted accordingly and $a0 is set
   // to the argument count (argc), and $a1 is set to the stack
   // address holding the first argument pointer (argv).
-  public void storeProgramArguments(edu.missouristate.mars.core.MarsContext session) {
+  public void storeProgramArguments(MarsContext session) {
     if (programArgumentList == null || programArgumentList.isEmpty()) {
       return;
     }

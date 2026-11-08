@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.dump;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.io.*;
 
@@ -117,6 +118,6 @@ public abstract class AbstractDumpFormat implements DumpFormat {
    * @throws IOException if error occurs during file output.
    */
   public abstract void dumpMemoryRange(
-      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
+      File file, int firstAddress, int lastAddress, MarsContext session)
       throws AddressErrorException, IOException;
 }

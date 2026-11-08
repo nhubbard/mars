@@ -382,8 +382,9 @@ public class MemoryState {
   // Allocates blocks if necessary.
   public int set(int address, int value, int length) throws AddressErrorException {
     int oldValue = 0;
-    if (debugEnabled())
+    if (debugEnabled()) {
       System.out.println("memory[" + address + "] set to " + value + "(" + length + " bytes)");
+    }
     int relativeByteAddress;
     if (inDataSegment(address)) {
       // in data segment.  Will write one byte at a time, w/o regard to boundaries.
@@ -583,8 +584,9 @@ public class MemoryState {
           Exceptions.ADDRESS_EXCEPTION_STORE,
           address);
     }
-    if (debugEnabled())
+    if (debugEnabled()) {
       System.out.println("memory[" + address + "] set to " + statement.getBinaryStatement());
+    }
     if (inTextSegment(address)) {
       storeProgramStatement(address, statement, textBaseAddress, textBlockTable);
     } else {
@@ -651,7 +653,9 @@ public class MemoryState {
       throw new AddressErrorException(
           "address out of range ", Exceptions.ADDRESS_EXCEPTION_LOAD, address);
     }
-    if (notify) notifyAnyObservers(AccessNotice.READ, address, length, value);
+    if (notify) {
+      notifyAnyObservers(AccessNotice.READ, address, length, value);
+    }
     return value;
   }
 
@@ -912,11 +916,13 @@ public class MemoryState {
           Exceptions.ADDRESS_EXCEPTION_LOAD,
           address);
     }
-    if (inTextSegment(address))
+    if (inTextSegment(address)) {
       return readProgramStatement(address, textBaseAddress, textBlockTable, notify);
-    else if (inKernelTextSegment(address))
+    } else if (inKernelTextSegment(address)) {
       return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, notify);
-    else return decoder.apply(get(address, WORD_LENGTH_BYTES), address);
+    } else {
+      return decoder.apply(get(address, WORD_LENGTH_BYTES), address);
+    }
   }
 
   /* ********************************  THE UTILITIES  *************************************/
@@ -949,8 +955,11 @@ public class MemoryState {
    */
   public static int alignToWordBoundary(int address) {
     if (!wordAligned(address)) {
-      if (address > 0) address += (4 - (address % WORD_LENGTH_BYTES));
-      else address -= (4 - (address % WORD_LENGTH_BYTES));
+      if (address > 0) {
+        address += (4 - (address % WORD_LENGTH_BYTES));
+      } else {
+        address -= (4 - (address % WORD_LENGTH_BYTES));
+      }
     }
     return address;
   }
@@ -1104,7 +1113,9 @@ public class MemoryState {
     if (!this.listeners.isEmpty() && shouldNotifyObservers()) {
       MemoryAccessNotice notice = new MemoryAccessNotice(type, address, length, value);
       for (MemoryListener ml : listeners) {
-        if (ml.match(address)) ml.callback().accept(notice);
+        if (ml.match(address)) {
+          ml.callback().accept(notice);
+        }
       }
     }
   }
@@ -1158,12 +1169,13 @@ public class MemoryState {
   private ProgramStatement readProgramStatement(
       int address, int baseAddress, TextMemorySegment segment, boolean notify) {
     ProgramStatement statement = segment.read((address - baseAddress) >> 2);
-    if (notify)
+    if (notify) {
       notifyAnyObservers(
           AccessNotice.READ,
           address,
           Instruction.INSTRUCTION_LENGTH,
           statement == null ? 0 : statement.getBinaryStatement());
+    }
     return statement;
   }
 }

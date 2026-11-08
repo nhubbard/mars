@@ -15,6 +15,6 @@ public record AssemblyResult(Program program, List<AssemblyError> errors) {
 
   /** Returns {@code true} if assembly completed without any errors. */
   public boolean succeeded() {
-    return program != null && errors.stream().noneMatch(error -> !error.isWarning());
+    return program != null && errors.stream().allMatch(AssemblyError::isWarning);
   }
 }

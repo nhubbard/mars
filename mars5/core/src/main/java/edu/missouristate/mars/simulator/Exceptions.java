@@ -1,9 +1,5 @@
 package edu.missouristate.mars.simulator;
 
-import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.mips.instructions.*;
-import edu.missouristate.mars.util.*;
-
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
 

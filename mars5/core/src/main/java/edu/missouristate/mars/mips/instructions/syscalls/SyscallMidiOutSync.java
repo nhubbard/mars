@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
-import edu.missouristate.mars.mips.hardware.*;
 
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
@@ -80,11 +79,18 @@ public class SyscallMidiOutSync extends AbstractSyscall {
     int duration = context.registerFile.getValue(5); // $a1
     int instrument = context.registerFile.getValue(6); // $a2
     int volume = context.registerFile.getValue(7); // $a3
-    if (pitch < rangeLowEnd || pitch > rangeHighEnd) pitch = ToneGenerator.DEFAULT_PITCH;
-    if (duration < 0) duration = ToneGenerator.DEFAULT_DURATION;
-    if (instrument < rangeLowEnd || instrument > rangeHighEnd)
+    if (pitch < rangeLowEnd || pitch > rangeHighEnd) {
+      pitch = ToneGenerator.DEFAULT_PITCH;
+    }
+    if (duration < 0) {
+      duration = ToneGenerator.DEFAULT_DURATION;
+    }
+    if (instrument < rangeLowEnd || instrument > rangeHighEnd) {
       instrument = ToneGenerator.DEFAULT_INSTRUMENT;
-    if (volume < rangeLowEnd || volume > rangeHighEnd) volume = ToneGenerator.DEFAULT_VOLUME;
+    }
+    if (volume < rangeLowEnd || volume > rangeHighEnd) {
+      volume = ToneGenerator.DEFAULT_VOLUME;
+    }
     context.environment().playTone(pitch, duration, instrument, volume, true);
   }
 }

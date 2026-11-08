@@ -114,7 +114,9 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   public IntegerRegisterFile(int globalPointer, int stackPointer, int textBaseAddress) {
     regFile = createRegisters(globalPointer, stackPointer);
     programCounter = new Register("pc", 32, textBaseAddress);
-    for (Register r : regFile) r.addObserver(registerEvents::emit);
+    for (Register r : regFile) {
+      r.addObserver(registerEvents::emit);
+    }
     hi.addObserver(registerEvents::emit);
     lo.addObserver(registerEvents::emit);
   }
@@ -138,8 +140,12 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
    */
   public int updateRegister(int num, int val) {
     checkRegisterNumber(num);
-    if (num == 0) return 0;
-    if (num == 32) return setProgramCounter(val);
+    if (num == 0) {
+      return 0;
+    }
+    if (num == 32) {
+      return setProgramCounter(val);
+    }
     return register(num).setValue(val);
   }
 
@@ -150,15 +156,15 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
    * @param val The desired value for the register.
    */
   public void updateRegister(String reg, int val) {
-    if (reg.equals("zero")) {
-      // System.out.println("You can not change the value of the zero register.");
-    } else {
+    if (!reg.equals("zero")) {
       for (int i = 0; i < regFile.length; i++) {
         if (regFile[i].getName().equals(reg)) {
           updateRegister(i, val);
           break;
         }
       }
+    } else {
+      System.out.println("You can not change the value of the zero register.");
     }
   }
 
@@ -277,7 +283,9 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
 
   /** Resets every register to this instance's configured initial value. */
   public void resetRegisters() {
-    for (Register register : regFile) register.resetValue();
+    for (Register register : regFile) {
+      register.resetValue();
+    }
     programCounter.resetValue();
     hi.resetValue();
     lo.resetValue();
@@ -304,8 +312,9 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   }
 
   private static void checkRegisterNumber(int number) {
-    if (number < 0 || number > 34)
+    if (number < 0 || number > 34) {
       throw new IllegalArgumentException("Invalid register number: " + number);
+    }
   }
 
   private Register register(int number) {

@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.util.*;
 import java.util.*;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.prefs.*;
 
@@ -454,11 +455,11 @@ public class Settings {
    * execution steps one at a time. Available only in the IDE. This is not a persistent setting and
    * is not under MARS user control.
    *
-   * @return true if backstepping is permitted, false otherwise.
+   * <p>The supplier returns true if backstepping is permitted, false otherwise.
    */
-  private java.util.function.BooleanSupplier backstepStatus = () -> false;
+  private BooleanSupplier backstepStatus = () -> false;
 
-  public void setBackstepStatus(java.util.function.BooleanSupplier status) {
+  public void setBackstepStatus(BooleanSupplier status) {
     backstepStatus = status;
   }
 
@@ -575,7 +576,9 @@ public class Settings {
   }
 
   private void getEditorSyntaxStyleSettingsFromPreferences() {
-    if (syntaxStyleColorSettingsKeys == null) return;
+    if (syntaxStyleColorSettingsKeys == null) {
+      return;
+    }
     for (int i = 0; i < syntaxStyleColorSettingsKeys.length; i++) {
       syntaxStyleColorSettingsValues[i] =
           preferences.get(syntaxStyleColorSettingsKeys[i], syntaxStyleColorSettingsValues[i]);
@@ -819,19 +822,6 @@ public class Settings {
     return stringSettingsValues[MEMORY_CONFIGURATION];
   }
 
-  /**
-   * Current editor font. Retained for compatibility but replaced by:
-   * getFontByPosition(Settings.EDITOR_FONT)
-   *
-   * @return Font object for current editor font.
-   */
-
-  /**
-   * Retrieve a Font setting
-   *
-   * @param fontSettingPosition constant that identifies which item
-   * @return Font object for given item
-   */
   public record FontSpec(String family, String style, String size) {}
 
   public FontSpec getFontSpec(int position) {
@@ -846,7 +836,7 @@ public class Settings {
   /**
    * Retrieve a default Font setting
    *
-   * @param fontSettingPosition constant that identifies which item
+   * @param position constant that identifies which item
    * @return Font object for given item
    */
   public FontSpec getDefaultFontSpec(int position) {
@@ -1271,7 +1261,7 @@ public class Settings {
   /**
    * Store a Font setting
    *
-   * @param fontSettingPosition Constant that identifies the item the font goes with
+   * @param position Constant that identifies the item the font goes with
    * @param font The font to set that item to
    */
   public void setFontSpec(int position, FontSpec font) {
@@ -1283,7 +1273,9 @@ public class Settings {
       saveFontSetting(position, fontStyleSettingsKeys, fontStyleSettingsValues);
       saveFontSetting(position, fontSizeSettingsKeys, fontSizeSettingsValues);
     }
-    if (position == EDITOR_FONT) settingsEvents.emit(this);
+    if (position == EDITOR_FONT) {
+      settingsEvents.emit(this);
+    }
   }
 
   /**
@@ -1465,28 +1457,33 @@ public class Settings {
       for (int i = 0; i < stringSettingsKeys.length; i++) {
         settingValue =
             ApplicationInfo.getPropertyEntry(Settings.settingsFile, stringSettingsKeys[i]);
-        if (settingValue != null)
+        if (settingValue != null) {
           stringSettingsValues[i] = defaultStringSettingsValues[i] = settingValue;
+        }
       }
       for (int i = 0; i < fontFamilySettingsValues.length; i++) {
         settingValue =
             ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontFamilySettingsKeys[i]);
-        if (settingValue != null)
+        if (settingValue != null) {
           fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i] = settingValue;
+        }
         settingValue =
             ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontStyleSettingsKeys[i]);
-        if (settingValue != null)
+        if (settingValue != null) {
           fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i] = settingValue;
+        }
         settingValue =
             ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontSizeSettingsKeys[i]);
-        if (settingValue != null)
+        if (settingValue != null) {
           fontSizeSettingsValues[i] = defaultFontSizeSettingsValues[i] = settingValue;
+        }
       }
       for (int i = 0; i < colorSettingsKeys.length; i++) {
         settingValue =
             ApplicationInfo.getPropertyEntry(Settings.settingsFile, colorSettingsKeys[i]);
-        if (settingValue != null)
+        if (settingValue != null) {
           colorSettingsValues[i] = defaultColorSettingsValues[i] = settingValue;
+        }
       }
     } catch (Exception e) {
       return false;

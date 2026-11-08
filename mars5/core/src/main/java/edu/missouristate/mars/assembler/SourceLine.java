@@ -53,7 +53,9 @@ public class SourceLine {
   public SourceLine(String source, MIPSprogram mipsProgram, int lineNumber) {
     this.source = source;
     this.mipsProgram = mipsProgram;
-    if (mipsProgram != null) this.filename = mipsProgram.getFilename();
+    if (mipsProgram != null) {
+      this.filename = mipsProgram.getFilename();
+    }
     this.lineNumber = lineNumber;
   }
 

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions;
 
-import java.io.*;
 import java.util.*;
 
 /*
@@ -98,7 +97,9 @@ public class InstructionSet {
     ArrayList<MatchMap> matchMaps = this.opcodeMatchMaps;
     for (MatchMap map : matchMaps) {
       BasicInstruction ret = map.find(binaryInstr);
-      if (ret != null) return ret;
+      if (ret != null) {
+        return ret;
+      }
     }
     return null;
   }
@@ -118,7 +119,9 @@ public class InstructionSet {
     // Linear search for now...
     for (Instruction instruction : instructionList) {
       if (instruction.getName().equalsIgnoreCase(name)) {
-        if (matchingInstructions == null) matchingInstructions = new ArrayList<>();
+        if (matchingInstructions == null) {
+          matchingInstructions = new ArrayList<>();
+        }
         matchingInstructions.add(instruction);
       }
     }
@@ -139,7 +142,9 @@ public class InstructionSet {
     if (name != null) {
       for (Instruction instruction : instructionList) {
         if (instruction.getName().toLowerCase().startsWith(name.toLowerCase())) {
-          if (matchingInstructions == null) matchingInstructions = new ArrayList<>();
+          if (matchingInstructions == null) {
+            matchingInstructions = new ArrayList<>();
+          }
           matchingInstructions.add(instruction);
         }
       }
@@ -171,7 +176,9 @@ public class InstructionSet {
 
     public int compareTo(MatchMap other) {
       int d = other.maskLength - this.maskLength;
-      if (d == 0) d = this.mask - other.mask;
+      if (d == 0) {
+        d = this.mask - other.mask;
+      }
       return d;
     }
 

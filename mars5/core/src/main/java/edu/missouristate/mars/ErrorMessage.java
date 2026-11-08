@@ -283,13 +283,17 @@ public class ErrorMessage {
   // Method added by Mohammad Sekavat Dec 2012
 
   public String getMacroExpansionHistory() {
-    if (macroExpansionHistory == null || macroExpansionHistory.isEmpty()) return "";
+    if (macroExpansionHistory == null || macroExpansionHistory.isEmpty()) {
+      return "";
+    }
     return macroExpansionHistory + "->";
   }
 
   // Added by Mohammad Sekavat Dec 2012
   private static String getExpansionHistory(MIPSprogram sourceMIPSprogram) {
-    if (sourceMIPSprogram == null || sourceMIPSprogram.getLocalMacroPool() == null) return "";
+    if (sourceMIPSprogram == null || sourceMIPSprogram.getLocalMacroPool() == null) {
+      return "";
+    }
     return sourceMIPSprogram.getLocalMacroPool().getExpansionHistory();
   }
 } // ErrorMessage

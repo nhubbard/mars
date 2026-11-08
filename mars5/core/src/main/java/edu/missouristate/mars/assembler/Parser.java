@@ -57,7 +57,9 @@ final class Parser {
     } else {
       pass.stripLabels(tokens);
     }
-    if (tokens.isEmpty()) return null;
+    if (tokens.isEmpty()) {
+      return null;
+    }
     // Grab first (operator) token...
     Token token = tokens.get(0);
     TokenTypes tokenType = token.getType();
@@ -69,7 +71,9 @@ final class Parser {
     }
 
     // don't parse if in macro segment
-    if (pass.inMacroSegment) return null;
+    if (pass.inMacroSegment) {
+      return null;
+    }
 
     // SPIM-style macro calling:
     TokenList parenFreeTokens = tokens;
@@ -128,7 +132,9 @@ final class Parser {
           // the modified source.
           // Put it into the line to be parsed, so it will be displayed properly in text segment
           // display. DPS 23 Jan 2013
-          if (!tokenList2.getProcessedLine().isEmpty()) substituted = tokenList2.getProcessedLine();
+          if (!tokenList2.getProcessedLine().isEmpty()) {
+            substituted = tokenList2.getProcessedLine();
+          }
 
           // recursively parse lines of expanded macro
           ArrayList<ProgramStatement> statements =
@@ -140,7 +146,9 @@ final class Parser {
                       + substituted.trim(),
                   sourceLineNumber,
                   extendedAssemblerEnabled);
-          if (statements != null) ret.addAll(statements);
+          if (statements != null) {
+            ret.addAll(statements);
+          }
         }
         macroPool.popFromCallStack();
       }
@@ -196,7 +204,9 @@ final class Parser {
     // yet implemented.
     if (!pass.inDataSegment) {
       ArrayList<Instruction> instrMatches = pass.matchInstruction(token);
-      if (instrMatches == null) return ret;
+      if (instrMatches == null) {
+        return ret;
+      }
       // OK, we've got an operator match, let's check the operands.
       Instruction inst =
           OperandFormat.bestOperandMatch(tokens, instrMatches, pass.context.bareMachineEnabled());
@@ -242,7 +252,9 @@ final class Parser {
   }
 
   private TokenList stripComment(TokenList tokenList) {
-    if (tokenList.isEmpty()) return tokenList;
+    if (tokenList.isEmpty()) {
+      return tokenList;
+    }
     TokenList tokens = (TokenList) tokenList.clone();
     // If there is a comment, strip it off.
     int last = tokens.size() - 1;

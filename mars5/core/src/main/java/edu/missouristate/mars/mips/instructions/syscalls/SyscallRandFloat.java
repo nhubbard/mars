@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
-import edu.missouristate.mars.mips.hardware.*;
 import java.util.Random;
 
 /*
@@ -48,7 +47,7 @@ public class SyscallRandFloat extends AbstractSyscall {
     // Input arguments: $a0 = index of pseudorandom number generator
     // Return: $f0 = the next pseudorandom, uniformly distributed float value between 0.0 and 1.0
     // from this random number generator's sequence.
-    Integer index = context.registerFile.getValue(4);
+    int index = context.registerFile.getValue(4);
     Random stream = context.randomStreams().get(index);
     context.setRegisterToFloat(0, stream.nextFloat());
   }

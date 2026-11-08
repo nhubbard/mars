@@ -162,7 +162,9 @@ public class ErrorList {
    * @return error limit.
    */
   public int getErrorLimit() {
-    if (sessionSettings != null) return sessionSettings.getAssemblerErrorLimit();
+    if (sessionSettings != null) {
+      return sessionSettings.getAssemblerErrorLimit();
+    }
     return ApplicationInfo.maximumErrorMessages;
   }
 
@@ -201,11 +203,15 @@ public class ErrorList {
       if ((isWarning && m.isWarning()) || (!isWarning && !m.isWarning())) {
         reportLine =
             ((isWarning) ? WARNING_MESSAGE_PREFIX : ERROR_MESSAGE_PREFIX) + FILENAME_PREFIX;
-        if (!m.getFilename().isEmpty())
+        if (!m.getFilename().isEmpty()) {
           reportLine = reportLine + (new File(m.getFilename()).getPath()); // .getName());
-        if (m.getLine() > 0)
+        }
+        if (m.getLine() > 0) {
           reportLine = reportLine + LINE_PREFIX + m.getMacroExpansionHistory() + m.getLine();
-        if (m.getPosition() > 0) reportLine = reportLine + POSITION_PREFIX + m.getPosition();
+        }
+        if (m.getPosition() > 0) {
+          reportLine = reportLine + POSITION_PREFIX + m.getPosition();
+        }
         reportLine = reportLine + MESSAGE_SEPARATOR + m.getMessage() + "\n";
         report.append(reportLine);
       }

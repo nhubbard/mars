@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import java.util.Random;
 
@@ -53,7 +52,7 @@ public class SyscallRandIntRange extends AbstractSyscall {
     //    $a1 = the upper bound of range of returned values.
     // Return: $a0 = the next pseudorandom, uniformly distributed int value from this
     // random number generator's sequence.
-    Integer index = context.registerFile.getValue(4);
+    int index = context.registerFile.getValue(4);
     Random stream = context.randomStreams().get(index);
     try {
       context.updateRegister(4, stream.nextInt(context.registerFile.getValue(5)));

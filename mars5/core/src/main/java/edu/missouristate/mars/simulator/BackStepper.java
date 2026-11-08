@@ -95,7 +95,9 @@ public class BackStepper {
       Coprocessor1State coprocessor1,
       DelayedBranchState delayedBranch,
       int capacity) {
-    if (capacity < 1) throw new IllegalArgumentException("Backstep capacity must be positive");
+    if (capacity < 1) {
+      throw new IllegalArgumentException("Backstep capacity must be positive");
+    }
     this.memory = Objects.requireNonNull(memory);
     this.registerFile = Objects.requireNonNull(registerFile);
     this.coprocessor0 = Objects.requireNonNull(coprocessor0);
@@ -107,8 +109,12 @@ public class BackStepper {
 
   /** Starts one instruction's undo group before the program counter is incremented. */
   public boolean beginInstruction(int pc, ProgramStatement statement) {
-    if (activeFrame != 0) throw new IllegalStateException("An instruction is already executing");
-    if (!engaged) return false;
+    if (activeFrame != 0) {
+      throw new IllegalStateException("An instruction is already executing");
+    }
+    if (!engaged) {
+      return false;
+    }
     Objects.requireNonNull(statement);
     activeFrame = ++nextFrame;
     framePc = pc;
@@ -121,7 +127,9 @@ public class BackStepper {
 
   /** Completes a group, retaining a step even for an instruction with no writes. */
   public void endInstruction() {
-    if (activeFrame == 0) return;
+    if (activeFrame == 0) {
+      return;
+    }
     try {
       if (engaged
           && !frameDiscarded
@@ -138,8 +146,9 @@ public class BackStepper {
 
   /** Clears history after loading a program or resetting session state. */
   public void clear() {
-    if (activeFrame != 0)
+    if (activeFrame != 0) {
       throw new IllegalStateException("Cannot clear history during an instruction");
+    }
     backSteps.clear();
   }
 
@@ -194,8 +203,12 @@ public class BackStepper {
   // Use a do-while loop based on the backstep's program statement reference.
 
   public void backStep() {
-    if (!engaged || backSteps.empty()) return;
-    if (activeFrame != 0) throw new IllegalStateException("Cannot undo an executing instruction");
+    if (!engaged || backSteps.empty()) {
+      return;
+    }
+    if (activeFrame != 0) {
+      throw new IllegalStateException("Cannot undo an executing instruction");
+    }
     BackStep first = backSteps.peek();
     ProgramStatement statement = first.ps;
     long frame = first.frame;
@@ -204,7 +217,9 @@ public class BackStepper {
     try {
       do {
         BackStep step = backSteps.pop();
-        if (step.pc != NOT_PC_VALUE) registerFile.setProgramCounter(step.pc);
+        if (step.pc != NOT_PC_VALUE) {
+          registerFile.setProgramCounter(step.pc);
+        }
         switch (step.action) {
           case MEMORY_RESTORE_RAW_WORD -> memory.setRawWord(step.param1, step.param2);
           case MEMORY_RESTORE_WORD -> memory.setWord(step.param1, step.param2);
@@ -224,7 +239,9 @@ public class BackStepper {
           && (frame != 0
               ? backSteps.peek().frame == frame
               : backSteps.peek().frame == 0 && statement == backSteps.peek().ps));
-      if (branch != null) delayedBranch.restore(branch);
+      if (branch != null) {
+        delayedBranch.restore(branch);
+      }
     } catch (AddressErrorException error) {
       throw new IllegalStateException("Cannot restore memory while back-stepping", error);
     } finally {
@@ -480,7 +497,9 @@ public class BackStepper {
     }
 
     private synchronized void push(int act, int programCounter, int parm1, int parm2) {
-      if (!engaged || (activeFrame != 0 && frameDiscarded)) return;
+      if (!engaged || (activeFrame != 0 && frameDiscarded)) {
+        return;
+      }
       if (size == capacity && activeFrame != 0) {
         long oldestFrame = stack[(top - size + 1 + capacity) % capacity].frame;
         if (oldestFrame == activeFrame) {

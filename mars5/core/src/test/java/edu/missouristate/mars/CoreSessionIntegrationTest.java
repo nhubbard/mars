@@ -40,14 +40,16 @@ class CoreSessionIntegrationTest {
       var a = directory.resolve("a.s");
       var b = directory.resolve("b.s");
       String template =
-          ".data\n"
-              + "value: .word 0\n"
-              + ".text\n"
-              + "li $t0,%d\n"
-              + "la $t1,value\n"
-              + "sw $t0,0($t1)\n"
-              + "li $v0,10\n"
-              + "syscall\n";
+          """
+          .data
+          value: .word 0
+          .text
+          li $t0,%d
+          la $t1,value
+          sw $t0,0($t1)
+          li $v0,10
+          syscall
+          """;
       Files.writeString(a, template.formatted(42));
       Files.writeString(b, template.formatted(99));
       first.assemble(List.of(a));

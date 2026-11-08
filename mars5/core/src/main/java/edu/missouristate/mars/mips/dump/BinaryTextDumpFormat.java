@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.dump;
 
+import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
 import java.io.*;
 
@@ -59,8 +60,7 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(
-      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
+  public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
       throws AddressErrorException, IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
       StringBuilder string;
@@ -68,7 +68,9 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
           address <= lastAddress;
           address += MemoryState.WORD_LENGTH_BYTES) {
         Integer temp = session.memory.getRawWordOrNull(address);
-        if (temp == null) break;
+        if (temp == null) {
+          break;
+        }
         string = new StringBuilder(Integer.toBinaryString(temp));
         while (string.length() < 32) {
           string.insert(0, '0');

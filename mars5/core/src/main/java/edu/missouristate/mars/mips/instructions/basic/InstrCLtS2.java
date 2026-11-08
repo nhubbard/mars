@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.instructions.basic;
 
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 
@@ -16,8 +15,11 @@ public class InstrCLtS2 extends BasicInstruction {
           int[] operands = statement.getOperands();
           float op1 = Float.intBitsToFloat(context.coprocessor1.getValue(operands[1]));
           float op2 = Float.intBitsToFloat(context.coprocessor1.getValue(operands[2]));
-          if (op1 < op2) context.setConditionFlag(operands[0]);
-          else context.clearConditionFlag(operands[0]);
+          if (op1 < op2) {
+            context.setConditionFlag(operands[0]);
+          } else {
+            context.clearConditionFlag(operands[0]);
+          }
         });
   }
 }

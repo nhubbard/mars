@@ -92,7 +92,9 @@ public final class Coprocessor1State {
   private final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
 
   public Coprocessor1State() {
-    for (Register r : registers) r.addObserver(registerEvents::emit);
+    for (Register r : registers) {
+      r.addObserver(registerEvents::emit);
+    }
     condition.addObserver(registerEvents::emit);
   }
 
@@ -396,7 +398,9 @@ public final class Coprocessor1State {
 
   /** Method to reinitialize the values of the registers. */
   public void resetRegisters() {
-    for (Register register : registers) register.resetValue();
+    for (Register register : registers) {
+      register.resetValue();
+    }
     clearConditionFlags();
   }
 
@@ -437,7 +441,9 @@ public final class Coprocessor1State {
    * @return 0 if condition is false, 1 if condition is true
    */
   public int getConditionFlag(int flag) {
-    if (flag < 0 || flag >= numConditionFlags) flag = 0;
+    if (flag < 0 || flag >= numConditionFlags) {
+      flag = 0;
+    }
     return Binary.bitValue(condition.getValue(), flag);
   }
 

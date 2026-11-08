@@ -4,6 +4,7 @@ import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
+import edu.missouristate.mars.api.SimulatorState;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
@@ -11,6 +12,7 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
+import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
@@ -18,6 +20,7 @@ import edu.missouristate.mars.simulator.SimulatorEngine;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -80,11 +83,9 @@ public final class MarsContext implements AutoCloseable {
   /** Random streams shared by instructions of this session, independent of other sessions. */
   public final RandomStreams randomStreams = new RandomStreams();
 
-  public final edu.missouristate.mars.mips.instructions.SyscallRegistry syscalls =
-      new edu.missouristate.mars.mips.instructions.SyscallRegistry();
+  public final SyscallRegistry syscalls = new SyscallRegistry();
 
-  private final java.util.concurrent.atomic.AtomicInteger interrupt =
-      new java.util.concurrent.atomic.AtomicInteger();
+  private final AtomicInteger interrupt = new AtomicInteger();
 
   /** Requests an interrupt to be handled at the next instruction boundary. */
   public void requestExternalInterrupt(int cause) {
@@ -106,25 +107,33 @@ public final class MarsContext implements AutoCloseable {
 
   /** The asynchronous controller for this session, created only when needed. */
   public synchronized SimulatorEngine simulator() {
-    if (closing) throw new IllegalStateException("Session is closed");
-    if (simulator == null) simulator = new SimulatorEngine(this);
+    if (closing) {
+      throw new IllegalStateException("Session is closed");
+    }
+    if (simulator == null) {
+      simulator = new SimulatorEngine(this);
+    }
     return simulator;
   }
 
   /** Serializes execution and assembly; overlapping operations fail rather than corrupt state. */
   public ExecutionLease claimExecution() {
-    if (simulator != null && simulator.executingOnAnotherThread())
+    if (simulator != null && simulator.executingOnAnotherThread()) {
       throw new IllegalStateException("Simulator is running");
-    if (!executionLock.tryLock()) throw new IllegalStateException("Session is already in use");
+    }
+    if (!executionLock.tryLock()) {
+      throw new IllegalStateException("Session is already in use");
+    }
     return new ExecutionLease();
   }
 
   /** Claims an operation that requires stopped execution, including frontend callbacks. */
   public ExecutionLease claimStoppedSession() {
-    if (closing) throw new IllegalStateException("Session is closed");
+    if (closing) {
+      throw new IllegalStateException("Session is closed");
+    }
     var lease = claimExecution();
-    if (simulator != null
-        && simulator.state() == edu.missouristate.mars.api.SimulatorState.RUNNING) {
+    if (simulator != null && simulator.state() == SimulatorState.RUNNING) {
       lease.close();
       throw new IllegalStateException("Simulator is running");
     }
@@ -227,11 +236,14 @@ public final class MarsContext implements AutoCloseable {
   private MIPSprogram assembleStopped(
       List<Path> sources, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
-    if (sources == null || sources.isEmpty())
+    if (sources == null || sources.isEmpty()) {
       throw new IllegalArgumentException("At least one source file is required");
+    }
     var root = new MIPSprogram(this);
     var filenames = new ArrayList<String>();
-    for (Path source : sources) filenames.add(source.toAbsolutePath().normalize().toString());
+    for (Path source : sources) {
+      filenames.add(source.toAbsolutePath().normalize().toString());
+    }
     var files =
         root.prepareFilesForAssembly(
             filenames,
@@ -247,8 +259,9 @@ public final class MarsContext implements AutoCloseable {
   }
 
   void beginAssembly(MIPSprogram candidate) {
-    if (candidate.assemblyContext().session() != this)
+    if (candidate.assemblyContext().session() != this) {
       throw new IllegalArgumentException("Program belongs to another session");
+    }
     syscallEnvironment.close();
     backStepper.clear();
     program = null;
@@ -264,12 +277,17 @@ public final class MarsContext implements AutoCloseable {
   public void close() {
     SimulatorEngine controller;
     synchronized (this) {
-      if (closing) return;
+      if (closing) {
+        return;
+      }
       closing = true;
       controller = simulator;
     }
-    if (controller != null) controller.close();
-    else releaseDefaultResources();
+    if (controller != null) {
+      controller.close();
+    } else {
+      releaseDefaultResources();
+    }
   }
 
   void finishAssembly(MIPSprogram candidate) {

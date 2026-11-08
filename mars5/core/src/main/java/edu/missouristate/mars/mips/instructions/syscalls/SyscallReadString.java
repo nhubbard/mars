@@ -60,7 +60,9 @@ public class SyscallReadString extends AbstractSyscall {
       addNullByte = false;
     }
     inputString = context.environment().readString(maxLength);
-    if (inputString == null) inputString = "";
+    if (inputString == null) {
+      inputString = "";
+    }
     int stringLength = Math.min(maxLength, inputString.length());
     try {
       for (int index = 0; index < stringLength; index++) {
@@ -70,7 +72,9 @@ public class SyscallReadString extends AbstractSyscall {
         context.setMemoryByte(buf + stringLength, '\n');
         stringLength++;
       }
-      if (addNullByte) context.setMemoryByte(buf + stringLength, 0);
+      if (addNullByte) {
+        context.setMemoryByte(buf + stringLength, 0);
+      }
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);
     }

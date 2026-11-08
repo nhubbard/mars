@@ -13,7 +13,9 @@ public final class InstructionLoader {
 
   private static BufferedReader resource(String path) {
     var input = InstructionLoader.class.getResourceAsStream(path);
-    if (input == null) throw new IllegalStateException("Missing instruction resource: " + path);
+    if (input == null) {
+      throw new IllegalStateException("Missing instruction resource: " + path);
+    }
     return new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
   }
 
@@ -22,7 +24,9 @@ public final class InstructionLoader {
     try (var input = resource(BASIC)) {
       String line;
       while ((line = input.readLine()) != null) {
-        if (line.isBlank() || line.startsWith("#")) continue;
+        if (line.isBlank() || line.startsWith("#")) {
+          continue;
+        }
         var type =
             Class.forName("edu.missouristate.mars.mips.instructions.basic." + line.trim())
                 .asSubclass(BasicInstruction.class);
@@ -39,7 +43,9 @@ public final class InstructionLoader {
     try (var input = resource("/PseudoOps.txt")) {
       String line;
       while ((line = input.readLine()) != null) {
-        if (line.isEmpty() || line.startsWith("#") || line.startsWith(" ")) continue;
+        if (line.isEmpty() || line.startsWith("#") || line.startsWith(" ")) {
+          continue;
+        }
         var tokens = new StringTokenizer(line, "\t");
         String example = tokens.nextToken(), description = "", first = null;
         var template = new StringBuilder();
@@ -55,7 +61,9 @@ public final class InstructionLoader {
             continue;
           }
           template.append(token);
-          if (tokens.hasMoreTokens()) template.append('\n');
+          if (tokens.hasMoreTokens()) {
+            template.append('\n');
+          }
         }
         instructions.add(
             first == null
