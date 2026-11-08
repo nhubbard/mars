@@ -159,10 +159,26 @@ fixture verifies that `.include` inside a percent-prefixed token does not create
 The clean sandbox launch ran 1,259 tests and opened the smoke project with the plugin loaded.
 The rebuilt distribution passed its ZIP integrity check. Visual editor acceptance remains open.
 
+## Raw macro arguments
+
+The lexer recognizes instruction and directive names from the Java core catalogs. Known
+instructions retain structured operand PSI. Other operation-shaped lines preserve their token
+sequence in `OPERATION_CANDIDATE`, including punctuation that the assembler can pass to macros.
+This also preserves the source of dotted macro names, equivalence uses, and symbolic data
+continuations until analysis has the assembly context. Mnemonic spellings remain valid label
+tokens, and the declaration index rebuilds those entries after upgrade.
+
+The assembler and PSI fixtures cover standalone plus and colon tokens, quoted strings, mnemonic
+arguments, unmatched argument parentheses, dotted and dollar-prefixed names, and operations
+supplied by macro parameters. The instruction corpus checks that every canonical instruction
+example still produces structured instruction PSI.
+The clean sandbox launch ran 1,261 tests and opened the smoke project with the plugin loaded.
+The rebuilt plugin archive passed its integrity check. Visual editor acceptance remains open.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler. Macro call arguments can be raw
-tokens, including a standalone `+`, and still need native PSI support. Then add symbol reference sentinels,
+Continue checking parser edge cases against the Java assembler, including operand syntax formed
+by macro and equivalence substitution. Then add symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

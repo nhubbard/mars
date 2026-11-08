@@ -37,6 +37,7 @@ class MipsDeclarationIndexPlatformTest {
             .EqV shared 7
             shared: nop
             shared: nop
+            NOP: nop
             .MaCrO emit(%x)
               local: li ${'$'}v0, %x
               .eqv inside 2
@@ -61,6 +62,7 @@ class MipsDeclarationIndexPlatformTest {
                     MipsDeclarationSite(SymbolKind.LABEL, source.lastIndexOf("shared:"), -1),
                 ), sites("shared"),
             )
+            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("NOP:"), -1)), sites("NOP"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("emit"), -1)), sites("emit"))
             val macro = source.indexOf(".MaCrO emit")
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)), sites("local"))
@@ -88,7 +90,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(3, extension.version)
+            assertEquals(4, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

@@ -3,9 +3,13 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.platform.syntax.SyntaxElementType
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.util.lexer.LexerBase
+import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import edu.missouristate.mars.plugin.language.syntax.MipsToken
 import edu.missouristate.mars.plugin.language.syntax.MipsTokenKind
+import java.util.TreeSet
 
 class MipsLexer : LexerBase() {
     private var buffer: CharSequence = ""
@@ -27,14 +31,25 @@ class MipsLexer : LexerBase() {
 
     override fun getTokenType(): SyntaxElementType? {
         val current = token ?: return null
-        if (current.kind == MipsTokenKind.SPACE) return SyntaxTokenTypes.WHITE_SPACE
-        if (current.kind == MipsTokenKind.DIRECTIVE) {
-            when (buffer.subSequence(current.start, current.end).toString().lowercase()) {
-                ".macro" -> return MipsTypes.syntax.getValue("MACRO")
-                ".end_macro" -> return MipsTypes.syntax.getValue("END_MACRO")
-                ".eqv" -> return MipsTypes.syntax.getValue("EQV")
+        return when (current.kind) {
+            MipsTokenKind.SPACE -> SyntaxTokenTypes.WHITE_SPACE
+            MipsTokenKind.DIRECTIVE -> when (Directives.matchDirective(textOf(current))) {
+                Directives.MACRO -> MipsSyntaxTypes.MACRO
+                Directives.END_MACRO -> MipsSyntaxTypes.END_MACRO
+                Directives.EQV -> MipsSyntaxTypes.EQV
+                null -> MipsSyntaxTypes.WORD
+                else -> MipsSyntaxTypes.DIRECTIVE
             }
+            MipsTokenKind.WORD -> if (textOf(current) in mnemonics) MipsSyntaxTypes.MNEMONIC else MipsSyntaxTypes.WORD
+            else -> MipsTypes.syntax.getValue(current.kind.name)
         }
-        return MipsTypes.syntax.getValue(current.kind.name)
+    }
+
+    private fun textOf(token: MipsToken): String = buffer.subSequence(token.start, token.end).toString()
+
+    companion object {
+        private val mnemonics: Set<String> by lazy {
+            InstructionDefaults.get().instructionList.mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
+        }
     }
 }

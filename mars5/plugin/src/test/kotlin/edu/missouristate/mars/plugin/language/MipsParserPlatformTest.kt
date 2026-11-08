@@ -113,12 +113,55 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `macro calls retain raw punctuation and tokens accepted by the assembler`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val calls = listOf(
+            Triple("emit", "(+,7)", listOf("(", "+", ",", "7", ")")),
+            Triple(".emit", "(:,7)", listOf("(", ":", ",", "7", ")")),
+            Triple("\$emit", " ),7", listOf(")", ",", "7")),
+            Triple("emit", "((,7)", listOf("(", "(", ",", "7", ")")),
+            Triple("emit", "(nop,7)", listOf("(", "nop", ",", "7", ")")),
+            Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", ",", "7", ")")),
+        )
+        for ((name, arguments, tokens) in calls) {
+            val call = name + arguments
+            val source = ".macro $name (%ignored,%value)\naddiu \$t0, \$zero, %value\n.end_macro\nentry: $call"
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                val candidate = file.children
+                    .mapNotNull { it.node.findChildByType(MipsTypes.psi("OPERATION_CANDIDATE")) }.single()
+                assertEquals(call, candidate.text)
+                val actualTokens = candidate.getChildren(null)
+                    .filter { it.elementType == MipsTypes.psi("INVOCATION_TOKEN") }.map { it.text }
+                assertEquals(tokens, actualTokens)
+            }
+        }
+    }
+
+    @Test
+    fun `macro parameter can supply an operation during expansion`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro emit (%ignored,%value)
+              addiu ${'$'}t0, ${'$'}zero, %value
+            .end_macro
+            .macro forward (%operation,%value)
+              %operation +,%value
+            .end_macro
+            forward(emit,7)
+        """.trimIndent()
+        assertAssembles(directory, source)
+        readAction { assertParses(source) }
+    }
+
+    @Test
     fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
         val instructions = InstructionSet().also { it.populate() }
         assertTrue(instructions.instructionList.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
         readAction {
             for (instruction in instructions.instructionList) {
-                assertParses(instruction.exampleFormat + "\n")
+                val source = instruction.exampleFormat
+                val statement = assertParses(source + "\n").node.findChildByType(MipsTypes.psi("STATEMENT"))
+                assertNotNull(statement?.findChildByType(MipsTypes.psi("INSTRUCTION")), source)
             }
         }
     }
@@ -248,7 +291,7 @@ class MipsParserPlatformTest {
             ".macro spim(\$arg, \$other)\n add \$arg \$arg \$other\n.end_macro\n",
             ".macro plain %a %b\n nop\n.end_macro\n",
             ".eqv expr, (+1 - 2):4\n.eqv text \"x\" 'a' %p .data \$t0\n",
-            "first: second: nop\nlast:\n",
+            "first: second: nop\nlast:\nLİ \$v0, 1\nB NOP\n.ent ignored, +\n",
             ".word\n.word 1,2,\n.data\n.word 1\n 2 -3 +4\n \"text\" 'a'\n",
             ".macro m(%x,%y)\n lw \$t0,%x(%y)\n.end_macro\nm()\nm(1,2,)\n",
             "lw \$t0, (\$sp)\n.word (1+2)-3\n.word +(-2)\n",
