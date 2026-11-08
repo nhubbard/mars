@@ -45,7 +45,7 @@ public final class VenusSyscallEnvironment implements SyscallEnvironment {
 
   private String input(String prompt, int maximum) {
     return settings.getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)
-        ? gui.readInputWithPrompt(prompt)
+        ? onEventThread(() -> gui.readInputWithPrompt(prompt))
         : gui.readInput(maximum);
   }
 
@@ -126,7 +126,11 @@ public final class VenusSyscallEnvironment implements SyscallEnvironment {
   }
 
   public void clearConsole() {
-    gui.clearRunConsole();
+    onEventThread(
+        () -> {
+          gui.clearRunConsole();
+          return null;
+        });
   }
 
   private static <T> T onEventThread(Supplier<T> action) {

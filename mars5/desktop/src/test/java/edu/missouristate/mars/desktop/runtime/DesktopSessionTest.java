@@ -107,6 +107,23 @@ class DesktopSessionTest {
     }
   }
 
+  @Test
+  void popupConsoleInputAndClearRunOnTheDesktopEventThread() {
+    try (var session = DaggerDesktopComponent.create().session()) {
+      var console = new Console();
+      session.setGui(console);
+      session
+          .getSettings()
+          .setBooleanSettingNonPersistent(
+              edu.missouristate.mars.Settings.POPUP_SYSCALL_INPUT, true);
+      var io = new VenusSyscallEnvironment(session);
+      assertEquals(42, io.readInt());
+      assertTrue(console.promptedOnEventThread);
+      io.clearConsole();
+      assertTrue(console.clearedOnEventThread);
+    }
+  }
+
   private static final class Actor
       implements SimulatorActionSource, DesktopSimulation.SimFinishCallback {
     private final String name;
@@ -136,6 +153,8 @@ class DesktopSessionTest {
 
   private static final class Console implements MarsGuiProxy {
     final StringBuilder output = new StringBuilder();
+    boolean promptedOnEventThread;
+    boolean clearedOnEventThread;
 
     public boolean isGuiMode() {
       return true;
@@ -152,10 +171,12 @@ class DesktopSessionTest {
     }
 
     public String readInputWithPrompt(String prompt) {
+      promptedOnEventThread = javax.swing.SwingUtilities.isEventDispatchThread();
       return "42";
     }
 
     public void clearRunConsole() {
+      clearedOnEventThread = javax.swing.SwingUtilities.isEventDispatchThread();
       output.setLength(0);
     }
   }
