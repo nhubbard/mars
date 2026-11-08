@@ -4,7 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-/** Headless implementation of {@link SyscallEnvironment} for CLI/batch use. */
+/**
+ * Legacy headless implementation backed by global I/O services. Independent sessions use {@link
+ * SessionSyscallEnvironment}; this class preserves existing CLI and GUI integration.
+ */
 public class HeadlessSyscallEnvironment extends BaseSyscallEnvironment {
 
   @Override

@@ -1,6 +1,5 @@
 package edu.missouristate.mars;
 
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
@@ -453,7 +452,7 @@ public class MIPSprogram {
       sessionExecution =
           new InstructionContext(
               session,
-              syscallEnvironment == null ? new HeadlessSyscallEnvironment() : syscallEnvironment);
+              syscallEnvironment == null ? session.syscallEnvironment : syscallEnvironment);
     }
     int steps = 0;
     while (maxSteps <= 0 || steps < maxSteps) {

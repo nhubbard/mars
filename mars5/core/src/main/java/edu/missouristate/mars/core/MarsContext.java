@@ -3,6 +3,7 @@ package edu.missouristate.mars.core;
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.MarsGuiProxy;
+import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
@@ -10,6 +11,7 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
+import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import java.nio.file.Path;
@@ -37,7 +39,7 @@ import javax.inject.Singleton;
  * simulator control will be migrated separately.
  */
 @Singleton
-public final class MarsContext {
+public final class MarsContext implements AutoCloseable {
 
   /** Simulation settings (memory config, delayed branching, etc.). */
   public final SimulationSettings settings;
@@ -69,6 +71,14 @@ public final class MarsContext {
   /** Global labels for the current assembly in this session. */
   public final SymbolTable symbolTable;
 
+  /**
+   * Default console and file services; caller-supplied program environments remain caller-owned.
+   */
+  public final SessionSyscallEnvironment syscallEnvironment;
+
+  /** Random streams shared by instructions of this session, independent of other sessions. */
+  public final RandomStreams randomStreams = new RandomStreams();
+
   private MIPSprogram program;
 
   @Inject
@@ -93,6 +103,7 @@ public final class MarsContext {
     this.instructionSet = instructionSet;
     this.backStepper = backStepper;
     this.symbolTable = symbolTable;
+    this.syscallEnvironment = new SessionSyscallEnvironment(memory);
   }
 
   /**
@@ -101,6 +112,7 @@ public final class MarsContext {
    */
   public void setMemoryConfiguration(String identifier) {
     var configuration = MemoryConfigurations.createConfiguration(identifier);
+    syscallEnvironment.close();
     backStepper.clear();
     program = null;
     symbolTable.clear();
@@ -137,12 +149,19 @@ public final class MarsContext {
   void beginAssembly(MIPSprogram candidate) {
     if (candidate.assemblyContext().session() != this)
       throw new IllegalArgumentException("Program belongs to another session");
+    syscallEnvironment.close();
     backStepper.clear();
     program = null;
     registerFile.reset();
     coprocessor0.resetRegisters();
     coprocessor1.resetRegisters();
     delayedBranch.clear();
+  }
+
+  /** Releases default I/O files. Custom program environments are owned by their callers. */
+  @Override
+  public void close() {
+    syscallEnvironment.close();
   }
 
   void finishAssembly(MIPSprogram candidate) {

@@ -17,6 +17,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
+import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.DelayedBranchState;
@@ -30,8 +31,8 @@ import java.util.Objects;
  *
  * <p>The legacy context uses the existing process-global banks and records undo operations through
  * their compatibility facades. Session contexts record their own undo history without consulting a
- * global program's back-stepper. Assembly ownership and some syscall services still use legacy
- * global state and will be migrated separately; this is not yet a complete simulator session.
+ * global program's back-stepper. The legacy simulator control loop remains separate from
+ * synchronous session execution.
  */
 public final class InstructionContext {
   public final IntegerRegisterFile registerFile;
@@ -68,6 +69,10 @@ public final class InstructionContext {
   /** Transitional entry point for existing simulator and syscall callers. */
   public static InstructionContext legacy() {
     return LegacyHolder.INSTANCE;
+  }
+
+  public RandomStreams randomStreams() {
+    return session == null ? RandomStreams.legacy() : session.randomStreams;
   }
 
   public MarsSettings settings() {

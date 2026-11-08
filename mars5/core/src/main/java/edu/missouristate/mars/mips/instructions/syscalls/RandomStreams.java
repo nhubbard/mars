@@ -31,14 +31,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/**
- * This small class serves only to hold a static HashMap for storing random number generators for
- * use by all the random number generator syscalls.
- */
-public class RandomStreams {
-  /**
-   * Collection of pseudorandom number streams available for use in Rand-type syscalls. The streams
-   * are by default not seeded.
-   */
-  static final HashMap<Integer, Random> randomStreams = new HashMap<>();
+/** A collection of numbered pseudorandom streams owned by one simulation session. */
+public final class RandomStreams {
+  private final HashMap<Integer, Random> streams = new HashMap<>();
+  private static final RandomStreams LEGACY = new RandomStreams();
+
+  /** Process-wide stream collection retained for legacy execution. */
+  public static RandomStreams legacy() {
+    return LEGACY;
+  }
+
+  public Random get(int index) {
+    return streams.computeIfAbsent(index, ignored -> new Random());
+  }
+
+  public void setSeed(int index, long seed) {
+    get(index).setSeed(seed);
+  }
 }

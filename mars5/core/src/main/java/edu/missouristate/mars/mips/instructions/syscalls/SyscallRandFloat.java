@@ -49,11 +49,7 @@ public class SyscallRandFloat extends AbstractSyscall {
     // Return: $f0 = the next pseudorandom, uniformly distributed float value between 0.0 and 1.0
     // from this random number generator's sequence.
     Integer index = context.registerFile.getValue(4);
-    Random stream = RandomStreams.randomStreams.get(index);
-    if (stream == null) {
-      stream = new Random(); // create a non-seeded stream
-      RandomStreams.randomStreams.put(index, stream);
-    }
+    Random stream = context.randomStreams().get(index);
     context.setRegisterToFloat(0, stream.nextFloat());
   }
 }

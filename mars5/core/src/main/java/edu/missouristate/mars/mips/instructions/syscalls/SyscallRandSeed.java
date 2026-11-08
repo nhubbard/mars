@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
-import java.util.Random;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -51,11 +50,6 @@ public class SyscallRandSeed extends AbstractSyscall {
     // generator.
 
     Integer index = context.registerFile.getValue(4);
-    Random stream = RandomStreams.randomStreams.get(index);
-    if (stream == null) {
-      RandomStreams.randomStreams.put(index, new Random(context.registerFile.getValue(5)));
-    } else {
-      stream.setSeed(context.registerFile.getValue(5));
-    }
+    context.randomStreams().setSeed(index, context.registerFile.getValue(5));
   }
 }

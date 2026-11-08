@@ -4,9 +4,10 @@ import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.util.SystemIO;
 
 /**
- * Provides default implementations of all non-dialog {@link SyscallEnvironment} methods by
- * delegating to {@link SystemIO} and {@link Globals#memory}. Subclasses supply the dialog and
- * console-control methods that differ between headless (CLI) and GUI environments.
+ * Legacy compatibility environment. New sessions use {@link SessionSyscallEnvironment}. Provides
+ * default implementations of all non-dialog {@link SyscallEnvironment} methods by delegating to
+ * {@link SystemIO} and {@link Globals#memory}. Subclasses supply the dialog and console-control
+ * methods that differ between headless (CLI) and GUI environments.
  */
 public abstract class BaseSyscallEnvironment implements SyscallEnvironment {
 
