@@ -1,5 +1,6 @@
 plugins {
   kotlin("jvm") version "2.4.21"
+  jacoco
   id("org.jetbrains.intellij.platform") version "2.20.0"
 }
 
@@ -48,4 +49,42 @@ kotlin {
   compilerOptions { allWarningsAsErrors.set(true) }
 }
 
-tasks.test { useJUnitPlatform() }
+tasks.test { useJUnitPlatform { includeEngines("junit-jupiter") } }
+
+jacoco { toolVersion = "0.8.16" }
+
+tasks.jacocoTestReport {
+  dependsOn(tasks.test)
+  reports {
+    xml.required.set(true)
+    html.required.set(true)
+  }
+}
+
+// The IDE test classloader can load plugin classes without a source location.
+tasks.test {
+  extensions.configure<org.gradle.testing.jacoco.plugins.JacocoTaskExtension> {
+    isIncludeNoLocationClasses = true
+    includes = listOf("edu.missouristate.mars.plugin.*")
+  }
+}
+
+tasks.jacocoTestCoverageVerification {
+  dependsOn(tasks.test)
+  violationRules {
+    rule {
+      element = "PACKAGE"
+      includes = listOf("edu.missouristate.mars.plugin*")
+      limit {
+        counter = "LINE"
+        minimum = "1.0".toBigDecimal()
+      }
+      limit {
+        counter = "BRANCH"
+        minimum = "1.0".toBigDecimal()
+      }
+    }
+  }
+}
+
+tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }

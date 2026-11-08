@@ -34,4 +34,19 @@ class MarsSessionServiceTest {
         service.dispose()
         assertThrows<IllegalStateException> { service.context }
     }
+    @Test
+    fun `bootstrap frontend routes messages and refuses input until a console is attached`() {
+        val service = MarsSessionService()
+        try {
+            val frontend = service.context.gui
+            assertFalse(frontend.isGuiMode)
+            frontend.postMessage("MARS bootstrap test message")
+            frontend.postRunMessage("MARS bootstrap test output")
+            frontend.clearRunConsole()
+            assertThrows<UnsupportedOperationException> { frontend.readInput(10) }
+            assertThrows<UnsupportedOperationException> { frontend.readInputWithPrompt("input") }
+        } finally {
+            service.dispose()
+        }
+    }
 }
