@@ -10,13 +10,16 @@ The compatibility runtime has been deleted. Core is independent of both desktop 
 all frontends use explicit session ownership. The plugin is Kotlin; core, CLI, and desktop are
 currently Java. All modules target JDK 25 with Gradle 9.9.
 
-**MARS 5 destination:** fully Kotlin engine, CLI, and IntelliJ plugin. The next engine milestone
-ports the tested core to idiomatic Kotlin in coherent subsystems, preserving MIPS semantics and
-session isolation. Begin with value types/contracts, then hardware, instruction execution,
-assembly, simulation/I/O, and CLI. The current Java implementation provides the behavioral
-reference during migration. Keep each increment green; avoid retaining Java-shaped compatibility
-facades in the new Kotlin design. Kotlin plugin language/UI work can build on the stable session
-boundary, while Venus remains available in the separate desktop module.
+**Current language decision:** retain the independent engine and CLI in Java for now. All new
+IntelliJ plugin production and test code is Kotlin. A Java exception inside the plugin requires
+evidence that the required integration cannot be implemented in Kotlin. The previously proposed
+Kotlin engine rewrite is deferred and is not a prerequisite for plugin implementation.
+
+The next implementation work follows [the detailed component mapping](INTELLIJ_COMPONENT_MAPPING.md).
+It covers every current MARS component, full feature parity, native editing/build/Run/Debug/tool
+integration, explicit ownership and near-full branch coverage with Jupiter-only tests.
+No existing user feature is deferred in that mapping. IntelliJ IDEA 2026.3 is the platform baseline;
+older-release compatibility layers are outside the current target.
 
 See [Phase 2.5 completion and acceptance evidence](PHASE_2_5_PLAN.md). Earlier phase sketches below
 are historical design notes where they differ from this status and the checked-in build files.
@@ -46,8 +49,9 @@ are historical design notes where they differ from this status and the checked-i
 - **Incremental, always-green.** Each phase ends with a working build. No "big bang" rewrite.
 - **Tests before refactoring, not after.** Capture existing behavior as characterization tests before changing anything.
 - **Interfaces before implementations.** Define the public API surface of the core before rewriting internals.
-- **Kotlin for MARS 5.** Write new engine and IntelliJ implementation in idiomatic Kotlin; migrate the existing Java core against its behavior tests.
-- **No new Swing.** The existing Venus GUI is frozen: bug-fix only. All new UI goes into the IntelliJ plugin.
+- **Kotlin plugin, Java engine.** Keep the existing core in Java. Write new plugin implementation and tests in Kotlin. Engine language migration is not current work.
+- **Full parity and testability.** Map every existing capability and require nearly complete meaningful branch coverage through Jupiter tests. Feature deferral is a last resort.
+- **Native IntelliJ UI.** Keep Venus as the transition frontend. New plugin UI uses platform widgets and Kotlin UI DSL; do not create a second standalone Swing application.
 
 ---
 
@@ -55,15 +59,15 @@ are historical design notes where they differ from this status and the checked-i
 
 ```text
 mars5/
-├── core/       independent engine; Java behavioral reference, Kotlin migration next
-├── cli/        standalone launcher; migrates with the engine
+├── core/       independent Java engine; language migration deferred
+├── cli/        standalone Java launcher
 ├── desktop/    existing Venus frontend; depends only on core
 ├── plugin/     Kotlin IntelliJ plugin; depends only on core
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```
 
-The final engine and CLI source roots will be Kotlin. The desktop transition frontend is kept
+The engine and CLI remain Java for now. The desktop transition frontend is kept
 separate from the plugin artifact and from the core dependency graph.
 
 ---
@@ -995,11 +999,12 @@ launchers were verified. The final step imported the Kotlin plugin scaffold. See
 
 ## Phase 3 — IntelliJ Plugin
 
-**Goal:** A Kotlin IntelliJ plugin backed by the independent Kotlin engine. The existing Venus
+**Goal:** A Kotlin IntelliJ plugin backed by the independent Java engine. The existing Venus
 frontend is retained in `desktop` while native language, execution, and debugger features arrive.
 
-**Prerequisites:** Phase 2 and Phase 2.5 are complete. The Kotlin engine migration is now an
-explicit milestone; the current Java engine remains the tested integration reference meanwhile.
+**Prerequisites:** Phase 2 and Phase 2.5 are complete. Retain the Java engine and implement the
+plugin using [the component mapping and delivery gates](INTELLIJ_COMPONENT_MAPPING.md).
+That document supersedes the historical feature sketches below where they differ.
 
 ### Plugin module setup (implemented)
 

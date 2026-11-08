@@ -27,14 +27,16 @@ CLI 2, desktop 14, plugin 2). Packaged CLI/desktop launchers execute Hello World
 smoke check creates two windows with independent registers and editor state. Detailed visual
 interaction, every tool, and IntelliJ language/debugger behavior remain outside these checks.
 
-## Kotlin destination and next milestone
+## Plugin language decision and next milestone
 
-MARS 5 is intended to be fully Kotlin, including the engine. The existing Java core is the tested
-behavioral reference, not the final language choice. Port coherent subsystems behind the existing
-session boundary, preserve encoding/execution/undo/I/O semantics, and move or adapt each relevant
-test alongside its implementation. Start with value types and session contracts, then hardware,
-instruction execution, assembly, simulation/I/O, and the CLI. The Swing desktop remains a working
-transition frontend; all new IntelliJ features use Kotlin and native platform APIs.
+The independent engine and CLI remain Java for now. All new IntelliJ plugin implementation and
+tests are Kotlin. The previously proposed Kotlin engine migration is deferred by the subsequent
+language decision. It is not a dependency of plugin integration.
+
+Follow [the detailed component mapping](INTELLIJ_COMPONENT_MAPPING.md) for complete MARS feature
+parity inside IntelliJ 2026.3, near-full meaningful branch coverage, and Jupiter-only tests.
+The mapping inventories all production source files and resources, including all educational tools.
+No existing user feature is deferred there. The desktop remains a working transition frontend.
 
 ## Original audit plan (historical)
 
