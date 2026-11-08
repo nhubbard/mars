@@ -51,6 +51,24 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     runAsync(1, null);
   }
 
+  private volatile java.util.function.DoubleSupplier runSpeed = () -> Double.POSITIVE_INFINITY;
+
+  /** Instructions per second; a nonpositive or infinite rate executes without throttling. */
+  public void setRunSpeedSource(java.util.function.DoubleSupplier source) {
+    runSpeed = Objects.requireNonNull(source);
+  }
+
+  private void awaitNextInstruction() {
+    double rate = runSpeed.getAsDouble();
+    if (rate <= 0 || !Double.isFinite(rate)) return;
+    long delay = (long) Math.min(1_000_000_000.0 / rate, Long.MAX_VALUE / 2.0);
+    long start = System.nanoTime();
+    while (request == Request.NONE && System.nanoTime() - start < delay) {
+      java.util.concurrent.locks.LockSupport.parkNanos(
+          Math.min(10_000_000, delay - (System.nanoTime() - start)));
+    }
+  }
+
   /** Completes after the stop callbacks; nonpositive limits mean unlimited execution. */
   public synchronized CompletableFuture<StopEvent> runAsync(long maximumSteps, int[] breakpoints) {
     if (closed || session.isClosing()) {
@@ -121,6 +139,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
           reason = StopEvent.Reason.STEP_LIMIT;
           break;
         }
+        awaitNextInstruction();
       }
       if (reason != StopEvent.Reason.PAUSE
           && reason != StopEvent.Reason.BREAKPOINT

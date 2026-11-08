@@ -1,13 +1,12 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
-import edu.missouristate.mars.legacy.LegacyMetadata;
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.FileChooserFilters;
 import edu.missouristate.mars.plugin.venus.RunSpeedPanel;
 import edu.missouristate.mars.plugin.venus.VenusUI;
-import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -89,8 +88,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private final EmptyBorder emptyBorder = new EmptyBorder(4, 4, 4, 4);
   private final Color backgroundColor = Color.WHITE;
 
-  private final int lowMemoryAddress = Memory.dataSegmentBaseAddress;
-  private final int highMemoryAddress = Memory.stackBaseAddress;
+  private final int lowMemoryAddress = DesktopApplication.services().memory.dataSegmentBaseAddress;
+  private final int highMemoryAddress = DesktopApplication.services().memory.stackBaseAddress;
   // For MarsTool, is set true when "Connect" clicked, false when "Disconnect" clicked.
   // For app, is set true when "Assemble and Run" clicked, false when program terminates.
   private volatile boolean observing = false;
@@ -156,7 +155,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     theWindow = this;
     this.isBeingUsedAsAMarsTool = false;
     thisMarsApp.setTitle(this.title);
-    LegacyApplication.services();
+    DesktopApplication.services();
     // assure the dialog goes away if user clicks the X
     thisMarsApp.addWindowListener(
         new WindowAdapter() {
@@ -381,7 +380,8 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
     stopButton = new JButton("Stop");
     stopButton.setToolTipText("Terminate MIPS program execution");
     stopButton.setEnabled(false);
-    stopButton.addActionListener(_ -> Simulator.getInstance().stopExecution(null));
+    stopButton.addActionListener(
+        _ -> DesktopApplication.services().simulator().stopExecution(null));
     stopButton.addKeyListener(new EnterKeyListener(stopButton));
 
     JButton resetButton = new JButton("Reset");
@@ -472,7 +472,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   protected void addAsObserver(int lowEnd, int highEnd) {
     String errorMessage = "Error connecting to MIPS memory";
     try {
-      LegacyApplication.services().memory.addObserver(memoryListener, lowEnd, highEnd);
+      DesktopApplication.services().memory.addObserver(memoryListener, lowEnd, highEnd);
     } catch (AddressErrorException aee) {
       if (this.isBeingUsedAsAMarsTool) {
         headingLabel.setText(errorMessage);
@@ -497,7 +497,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
    * (e.g. when the button is re-enabled).
    */
   protected void deleteAsObserver() {
-    LegacyApplication.services().memory.deleteObserver(memoryListener);
+    DesktopApplication.services().memory.deleteObserver(memoryListener);
   }
 
   /** Remove this app/tool as a listener of the specified MIPS register. */
@@ -581,14 +581,14 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
     public void connect() {
       observing = true;
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
         addAsObserver();
       }
       setText(disconnectText);
     }
 
     public void disconnect() {
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) { // DPS 23 July 2008
         deleteAsObserver();
       }
       observing = false;
@@ -632,25 +632,25 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
   private class CreateAssembleRunMIPSprogram implements Runnable {
     public void run() {
       String exceptionHandler = null;
-      if (LegacyApplication.services()
+      if (DesktopApplication.services()
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
-          && LegacyApplication.services().getSettings().getExceptionHandler() != null
-          && !LegacyApplication.services().getSettings().getExceptionHandler().isEmpty()) {
-        exceptionHandler = LegacyApplication.services().getSettings().getExceptionHandler();
+          && DesktopApplication.services().getSettings().getExceptionHandler() != null
+          && !DesktopApplication.services().getSettings().getExceptionHandler().isEmpty()) {
+        exceptionHandler = DesktopApplication.services().getSettings().getExceptionHandler();
       }
 
       Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
       Thread.yield();
-      MIPSprogram program = new LegacyProgram();
-      LegacyApplication.services().setProgram(program); // Shouldn't have to do this...
+      MIPSprogram program = DesktopApplication.services().createProgram();
+      DesktopApplication.services().setProgram(program); // Shouldn't have to do this...
       String fileToAssemble = mostRecentlyOpenedFile.getPath();
       ArrayList<String> filesToAssemble;
       if (multiFileAssemble) { // setting (check box in file open dialog) calls for multiple file
         // assembly
         filesToAssemble =
             FilenameFinder.getFilenameList(
-                new File(fileToAssemble).getParent(), LegacyMetadata.fileExtensions);
+                new File(fileToAssemble).getParent(), ApplicationInfo.fileExtensions);
       } else {
         filesToAssemble = new ArrayList<>();
         filesToAssemble.add(fileToAssemble);
@@ -669,10 +669,10 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
       try {
         program.assemble(
             programsToAssemble,
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED),
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
       } catch (ProcessingException pe) {
@@ -680,9 +680,9 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
         return;
       }
       // Moved these three register resets from before the try block to after it.  17-Dec-09 DPS.
-      LegacyApplication.services().resetRegisters();
-      LegacyApplication.services().context().coprocessor1.resetRegisters();
-      LegacyApplication.services().context().coprocessor0.resetRegisters();
+      DesktopApplication.services().resetRegisters();
+      DesktopApplication.services().context().coprocessor1.resetRegisters();
+      DesktopApplication.services().context().coprocessor0.resetRegisters();
 
       addAsObserver();
       observing = true;

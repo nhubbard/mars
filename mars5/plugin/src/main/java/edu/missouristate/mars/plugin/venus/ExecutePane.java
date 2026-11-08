@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import javax.swing.*;
 
@@ -70,13 +70,13 @@ public class ExecutePane extends JDesktopPane {
     addressDisplayBase =
         new NumberDisplayBaseChooser(
             "Hexadecimal Addresses",
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_ADDRESSES_IN_HEX));
     valueDisplayBase =
         new NumberDisplayBaseChooser(
             "Hexadecimal Values",
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(
                     edu.missouristate.mars.Settings
@@ -94,7 +94,7 @@ public class ExecutePane extends JDesktopPane {
     dataSegment = new DataSegmentWindow(choosers);
     labelValues = new LabelsWindow();
     labelWindowVisible =
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.LABEL_WINDOW_VISIBILITY);
     layoutPending = false;

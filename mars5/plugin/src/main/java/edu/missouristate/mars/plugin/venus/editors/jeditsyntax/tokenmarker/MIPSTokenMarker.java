@@ -10,9 +10,9 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker;
 
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.instructions.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import java.util.*;
 import javax.swing.text.Segment;
@@ -213,12 +213,12 @@ public class MIPSTokenMarker extends TokenMarker {
     ArrayList<PopupHelpItem> matches = null;
     if (token != null && token.id == Token.KEYWORD1) {
       ArrayList<Instruction> instrMatches =
-          LegacyApplication.services().instructionSet.matchOperator(tokenText);
+          DesktopApplication.services().instructionSet.matchOperator(tokenText);
       if (!instrMatches.isEmpty()) {
         int realMatches = 0;
         matches = new ArrayList<>();
         for (Instruction inst : instrMatches) {
-          if (LegacyApplication.services()
+          if (DesktopApplication.services()
                   .getSettings()
                   .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
               || inst instanceof BasicInstruction) {
@@ -358,7 +358,7 @@ public class MIPSTokenMarker extends TokenMarker {
       if (trimmedTokenText.charAt(0) == '.') {
         return getTextFromDirectiveMatch(trimmedTokenText, false);
       } else if (trimmedTokenText.length()
-          >= LegacyApplication.services().getSettings().getEditorPopupPrefixLength()) {
+          >= DesktopApplication.services().getSettings().getEditorPopupPrefixLength()) {
         return getTextFromInstructionMatch(trimmedTokenText, false);
       }
     }
@@ -399,9 +399,9 @@ public class MIPSTokenMarker extends TokenMarker {
     ArrayList<Instruction> matches;
     ArrayList<PopupHelpItem> results = new ArrayList<>();
     if (exact) {
-      matches = LegacyApplication.services().instructionSet.matchOperator(tokenText);
+      matches = DesktopApplication.services().instructionSet.matchOperator(tokenText);
     } else {
-      matches = LegacyApplication.services().instructionSet.prefixMatchOperator(tokenText);
+      matches = DesktopApplication.services().instructionSet.prefixMatchOperator(tokenText);
     }
     if (matches == null) {
       return null;
@@ -410,7 +410,7 @@ public class MIPSTokenMarker extends TokenMarker {
     HashMap<String, String> insts = new HashMap<>();
     TreeSet<String> mnemonics = new TreeSet<>();
     for (Instruction inst : matches) {
-      if (LegacyApplication.services()
+      if (DesktopApplication.services()
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED)
           || inst instanceof BasicInstruction) {
@@ -456,7 +456,7 @@ public class MIPSTokenMarker extends TokenMarker {
       cKeywords = new KeywordMap(false);
       // add Instruction mnemonics
       ArrayList<Instruction> instructionSet =
-          LegacyApplication.services().instructionSet.getInstructionList();
+          DesktopApplication.services().instructionSet.getInstructionList();
       for (Instruction instruction : instructionSet) {
         cKeywords.add(instruction.getName(), Token.KEYWORD1);
       }
@@ -466,14 +466,14 @@ public class MIPSTokenMarker extends TokenMarker {
         cKeywords.add(directives.getName(), Token.KEYWORD2);
       }
       // add integer register file
-      Register[] registerFile = LegacyApplication.services().context().registerFile.getRegisters();
+      Register[] registerFile = DesktopApplication.services().context().registerFile.getRegisters();
       for (int i = 0; i < registerFile.length; i++) {
         cKeywords.add(registerFile[i].getName(), Token.KEYWORD3);
         cKeywords.add("$" + i, Token.KEYWORD3); // also recognize $0, $1, $2, etc
       }
       // add Coprocessor 1 (floating point) register file
       Register[] coprocessor1RegisterFile =
-          LegacyApplication.services().context().coprocessor1.getRegisters();
+          DesktopApplication.services().context().coprocessor1.getRegisters();
       for (Register register : coprocessor1RegisterFile) {
         cKeywords.add(register.getName(), Token.KEYWORD3);
       }

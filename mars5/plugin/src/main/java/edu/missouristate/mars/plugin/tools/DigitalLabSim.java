@@ -1,13 +1,11 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.VenusUI;
-import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -24,11 +22,16 @@ import javax.swing.*;
 public class DigitalLabSim extends AbstractMarsToolAndApplication {
   private static final String heading = "Digital Lab Sim";
   private static final String version = " Version 1.0 (Didier Teifreto)";
-  private static final int IN_ADRESS_DISPLAY_1 = Memory.memoryMapBaseAddress + 0x10;
-  private static final int IN_ADRESS_DISPLAY_2 = Memory.memoryMapBaseAddress + 0x11;
-  private static final int IN_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x12;
-  private static final int IN_ADRESS_COUNTER = Memory.memoryMapBaseAddress + 0x13;
-  private static final int OUT_ADRESS_HEXA_KEYBOARD = Memory.memoryMapBaseAddress + 0x14;
+  private static final int IN_ADRESS_DISPLAY_1 =
+      DesktopApplication.services().memory.memoryMapBaseAddress + 0x10;
+  private static final int IN_ADRESS_DISPLAY_2 =
+      DesktopApplication.services().memory.memoryMapBaseAddress + 0x11;
+  private static final int IN_ADRESS_HEXA_KEYBOARD =
+      DesktopApplication.services().memory.memoryMapBaseAddress + 0x12;
+  private static final int IN_ADRESS_COUNTER =
+      DesktopApplication.services().memory.memoryMapBaseAddress + 0x13;
+  private static final int OUT_ADRESS_HEXA_KEYBOARD =
+      DesktopApplication.services().memory.memoryMapBaseAddress + 0x14;
 
   public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100; // Add for digital Lab Sim
   public static final int EXTERNAL_INTERRUPT_HEXA_KEYBOARD = 0x00000200; // Add for digital Lab Sim
@@ -62,7 +65,9 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   protected void addAsObserver() {
     addAsObserver(IN_ADRESS_DISPLAY_1, IN_ADRESS_DISPLAY_1);
-    addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.textBaseAddress,
+        DesktopApplication.services().memory.textLimitAddress);
   }
 
   @Override
@@ -84,10 +89,12 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         CounterValue--;
       } else {
         CounterValue = CounterValueMax;
-        if ((LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+        if ((DesktopApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
                 & 2)
             == 0) {
-          Simulator.externalInterruptingDevice = /*Exceptions.*/ EXTERNAL_INTERRUPT_TIMER;
+          DesktopApplication.services()
+              .context()
+              .requestExternalInterrupt(/*Exceptions.*/ EXTERNAL_INTERRUPT_TIMER);
         }
       }
     }
@@ -112,9 +119,9 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
     if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
         try {
-          LegacyApplication.services().memory.setByte(dataAddr, dataValue);
+          DesktopApplication.services().instructionContext().setMemoryByte(dataAddr, dataValue);
         } catch (AddressErrorException aee) {
           System.out.println("Tool author specified incorrect MMIO address!" + aee);
           System.exit(0);
@@ -363,13 +370,15 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
           KeyBoardValueButtonClick = buttonValue;
           button[KeyBoardValueButtonClick].setBackground(Color.GREEN);
           if (KeyboardInterruptOnOff
-              && (LegacyApplication.services()
+              && (DesktopApplication.services()
                           .context()
                           .coprocessor0
                           .getValue(Coprocessor0State.STATUS)
                       & 2)
                   == 0) {
-            Simulator.externalInterruptingDevice = /*Exceptions.*/ EXTERNAL_INTERRUPT_HEXA_KEYBOARD;
+            DesktopApplication.services()
+                .context()
+                .requestExternalInterrupt(/*Exceptions.*/ EXTERNAL_INTERRUPT_HEXA_KEYBOARD);
           }
         }
       }

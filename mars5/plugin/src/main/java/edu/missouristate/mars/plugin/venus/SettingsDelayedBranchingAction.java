@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -50,7 +50,7 @@ public class SettingsDelayedBranchingAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    LegacyApplication.services()
+    DesktopApplication.services()
         .getSettings()
         .setBooleanSetting(
             edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED,
@@ -63,7 +63,7 @@ public class SettingsDelayedBranchingAction extends GuiAction {
       // Stop execution if executing -- should NEVER happen because this
       // Action's widget is disabled during MIPS execution.
       if (FileStatus.get() == FileStatus.RUNNING) {
-        Simulator.getInstance().stopExecution(this);
+        DesktopApplication.services().simulator().stopExecution(this);
       }
       VenusUI.instance().getRunAssembleAction().actionPerformed(null);
     }

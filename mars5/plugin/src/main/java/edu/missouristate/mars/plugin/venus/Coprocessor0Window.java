@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -60,8 +61,8 @@ public class Coprocessor0Window extends JPanel {
 
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public Coprocessor0Window() {
-    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = LegacyApplication.services().getSettings();
+    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = DesktopApplication.services().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(50);
@@ -101,7 +102,7 @@ public class Coprocessor0Window extends JPanel {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    registers = LegacyApplication.services().context().coprocessor0.getRegisters();
+    registers = DesktopApplication.services().context().coprocessor0.getRegisters();
     Object[][] tableData = new Object[registers.length][3];
     rowGivenRegNumber = new int[32]; // maximum number of registers
     for (int i = 0; i < registers.length; i++) {
@@ -121,7 +122,7 @@ public class Coprocessor0Window extends JPanel {
   /** Reset and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    LegacyApplication.services().context().coprocessor0.resetRegisters();
+    DesktopApplication.services().context().coprocessor0.resetRegisters();
     this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
@@ -152,7 +153,7 @@ public class Coprocessor0Window extends JPanel {
    * @param base number base for display (10 or 16)
    */
   public void updateRegisters(int base) {
-    registers = LegacyApplication.services().context().coprocessor0.getRegisters();
+    registers = DesktopApplication.services().context().coprocessor0.getRegisters();
     for (Register register : registers) {
       this.updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
@@ -170,14 +171,17 @@ public class Coprocessor0Window extends JPanel {
             NumberDisplayBaseChooser.formatNumber(val, base), rowGivenRegNumber[number], 2);
   }
 
-  private void handleSimulatorNotice(SimulatorNotice notice) {
-    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
+  private void handleSimulatorNotice(ExecutionNotice notice) {
+    if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        LegacyApplication.services().context().coprocessor0.addRegistersObserver(registersListener);
+        DesktopApplication.services()
+            .context()
+            .coprocessor0
+            .addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      LegacyApplication.services()
+      DesktopApplication.services()
           .context()
           .coprocessor0
           .deleteRegistersObserver(registersListener);
@@ -189,11 +193,11 @@ public class Coprocessor0Window extends JPanel {
       return;
     }
     Register reg =
-        LegacyApplication.services().context().coprocessor0.getRegister(access.getRegisterName());
+        DesktopApplication.services().context().coprocessor0.getRegister(access.getRegisterName());
     if (reg == null) {
       return;
     }
-    int registerRow = LegacyApplication.services().context().coprocessor0.getRegisterPosition(reg);
+    int registerRow = DesktopApplication.services().context().coprocessor0.getRegisterPosition(reg);
     if (registerRow < 0) {
       return;
     }
@@ -315,8 +319,8 @@ public class Coprocessor0Window extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
-        LegacyApplication.services()
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+        DesktopApplication.services()
             .instructionContext()
             .updateCoprocessor0(registers[row].getNumber(), val);
       }

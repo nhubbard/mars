@@ -9,7 +9,7 @@
 
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
@@ -118,10 +118,10 @@ public class SyntaxUtilities {
     for (int i = 0; i < Token.ID_COUNT; i++) {
       styles[i] =
           new SyntaxStyle(
-              EditorSettings.of(LegacyApplication.services().getSettings())
+              EditorSettings.of(DesktopApplication.services().getSettings())
                   .getEditorSyntaxStyleColorByPosition(i),
-              LegacyApplication.services().getSettings().getEditorSyntaxStyleItalicByPosition(i),
-              LegacyApplication.services().getSettings().getEditorSyntaxStyleBoldByPosition(i));
+              DesktopApplication.services().getSettings().getEditorSyntaxStyleItalicByPosition(i),
+              DesktopApplication.services().getSettings().getEditorSyntaxStyleBoldByPosition(i));
     }
     return styles;
   }

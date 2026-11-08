@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import javax.swing.*;
@@ -132,7 +133,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
    */
   protected void addAsObserver() {
     int highAddress =
-        baseAddress + theGrid.getRows() * theGrid.getColumns() * Memory.WORD_LENGTH_BYTES;
+        baseAddress + theGrid.getRows() * theGrid.getColumns() * MemoryState.WORD_LENGTH_BYTES;
     // Special case: baseAddress<0 means we're in kernel memory (0x80000000 and up) and most likely
     // in memory map address space (0xffff0000 and up).  In this case, we need to make sure the high
     // address
@@ -371,11 +372,11 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
   // dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
   private void initializeDisplayBaseChoices() {
     int[] displayBaseAddressArray = {
-      Memory.dataSegmentBaseAddress,
-      Memory.globalPointer,
-      Memory.dataBaseAddress,
-      Memory.heapBaseAddress,
-      Memory.memoryMapBaseAddress
+      DesktopApplication.services().memory.dataSegmentBaseAddress,
+      DesktopApplication.services().memory.globalPointer,
+      DesktopApplication.services().memory.dataBaseAddress,
+      DesktopApplication.services().memory.heapBaseAddress,
+      DesktopApplication.services().memory.memoryMapBaseAddress
     };
     // Must agree with above in number and order...
     String[] descriptions = {
@@ -537,7 +538,7 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
   private void updateColorForAddress(MemoryAccessNotice notice) {
     int address = notice.getAddress();
     int value = notice.getValue();
-    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
+    int offset = (address - baseAddress) / MemoryState.WORD_LENGTH_BYTES;
     try {
       theGrid.setElement(offset / theGrid.getColumns(), offset % theGrid.getColumns(), value);
     } catch (IndexOutOfBoundsException e) {

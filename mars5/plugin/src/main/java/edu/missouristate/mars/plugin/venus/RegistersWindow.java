@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -60,8 +61,8 @@ public class RegistersWindow extends JPanel {
 
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public RegistersWindow() {
-    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = LegacyApplication.services().getSettings();
+    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    settings = DesktopApplication.services().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(25);
@@ -105,7 +106,7 @@ public class RegistersWindow extends JPanel {
         NumberDisplayBaseChooser.getBase(
             settings.getBooleanSetting(edu.missouristate.mars.Settings.DISPLAY_VALUES_IN_HEX));
     Object[][] tableData = new Object[35][3];
-    registers = LegacyApplication.services().context().registerFile.getRegisters();
+    registers = DesktopApplication.services().context().registerFile.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       tableData[i][0] = registers[i].getName();
       tableData[i][1] = registers[i].getNumber();
@@ -115,19 +116,19 @@ public class RegistersWindow extends JPanel {
     tableData[32][1] = ""; // 32;
     tableData[32][2] =
         NumberDisplayBaseChooser.formatUnsignedInteger(
-            LegacyApplication.services().context().registerFile.getProgramCounter(), valueBase);
+            DesktopApplication.services().context().registerFile.getProgramCounter(), valueBase);
 
     tableData[33][0] = "hi";
     tableData[33][1] = ""; // 33;
     tableData[33][2] =
         NumberDisplayBaseChooser.formatNumber(
-            LegacyApplication.services().context().registerFile.getValue(33), valueBase);
+            DesktopApplication.services().context().registerFile.getValue(33), valueBase);
 
     tableData[34][0] = "lo";
     tableData[34][1] = ""; // 34;
     tableData[34][2] =
         NumberDisplayBaseChooser.formatNumber(
-            LegacyApplication.services().context().registerFile.getValue(34), valueBase);
+            DesktopApplication.services().context().registerFile.getValue(34), valueBase);
 
     return tableData;
   }
@@ -135,7 +136,7 @@ public class RegistersWindow extends JPanel {
   /** clear and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    LegacyApplication.services().resetRegisters();
+    DesktopApplication.services().resetRegisters();
     this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
@@ -166,14 +167,16 @@ public class RegistersWindow extends JPanel {
    * @param base desired number base
    */
   public void updateRegisters(int base) {
-    registers = LegacyApplication.services().context().registerFile.getRegisters();
+    registers = DesktopApplication.services().context().registerFile.getRegisters();
     for (Register register : registers) {
       updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
     updateRegisterUnsignedValue(
-        32, LegacyApplication.services().context().registerFile.getProgramCounter(), base);
-    updateRegisterValue(33, LegacyApplication.services().context().registerFile.getValue(33), base);
-    updateRegisterValue(34, LegacyApplication.services().context().registerFile.getValue(34), base);
+        32, DesktopApplication.services().context().registerFile.getProgramCounter(), base);
+    updateRegisterValue(
+        33, DesktopApplication.services().context().registerFile.getValue(33), base);
+    updateRegisterValue(
+        34, DesktopApplication.services().context().registerFile.getValue(34), base);
   }
 
   /**
@@ -193,14 +196,17 @@ public class RegistersWindow extends JPanel {
             NumberDisplayBaseChooser.formatUnsignedInteger(val, base), number, 2);
   }
 
-  private void handleSimulatorNotice(SimulatorNotice notice) {
-    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
+  private void handleSimulatorNotice(ExecutionNotice notice) {
+    if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        LegacyApplication.services().context().registerFile.addRegistersObserver(registersListener);
+        DesktopApplication.services()
+            .context()
+            .registerFile
+            .addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      LegacyApplication.services()
+      DesktopApplication.services()
           .context()
           .registerFile
           .deleteRegistersObserver(registersListener);
@@ -217,7 +223,7 @@ public class RegistersWindow extends JPanel {
             ? 33
             : "lo".equals(name)
                 ? 34
-                : LegacyApplication.services().context().registerFile.getNumber(name);
+                : DesktopApplication.services().context().registerFile.getNumber(name);
     if (row < 0) {
       return;
     }
@@ -355,8 +361,8 @@ public class RegistersWindow extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
-        LegacyApplication.services().instructionContext().updateRegister(row, val);
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
+        DesktopApplication.services().instructionContext().updateRegister(row, val);
       }
       int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);

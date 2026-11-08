@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import java.util.*;
@@ -195,7 +196,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   protected void addAsObserver() {
     int highAddress =
         baseAddress
-            + theGrid.getRows() * theGrid.getColumns() * Memory.WORD_LENGTH_BYTES * wordsPerUnit;
+            + theGrid.getRows()
+                * theGrid.getColumns()
+                * MemoryState.WORD_LENGTH_BYTES
+                * wordsPerUnit;
     // Special case: baseAddress<0 means we're in kernel memory (0x80000000 and up) and most likely
     // in memory map address space (0xffff0000 and up).  In this case, we need to make sure the high
     // address
@@ -470,12 +474,12 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   // dataBaseAddress=0x10010000, heapBaseAddress=0x10040000, memoryMapBaseAddress=0xffff0000
   private void initializeDisplayBaseChoices() {
     int[] displayBaseAddressArray = {
-      Memory.textBaseAddress,
-      Memory.dataSegmentBaseAddress,
-      Memory.globalPointer,
-      Memory.dataBaseAddress,
-      Memory.heapBaseAddress,
-      Memory.memoryMapBaseAddress
+      DesktopApplication.services().memory.textBaseAddress,
+      DesktopApplication.services().memory.dataSegmentBaseAddress,
+      DesktopApplication.services().memory.globalPointer,
+      DesktopApplication.services().memory.dataBaseAddress,
+      DesktopApplication.services().memory.heapBaseAddress,
+      DesktopApplication.services().memory.memoryMapBaseAddress
     };
     // Must agree with above in number and order...
     String[] descriptions = {
@@ -816,7 +820,7 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
   }
 
   private void incrementReferenceCountForAddress(int address) {
-    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES / wordsPerUnit;
+    int offset = (address - baseAddress) / MemoryState.WORD_LENGTH_BYTES / wordsPerUnit;
     // If you care to do anything with it, the following will return -1 if the address
     // maps outside the dimensions of the grid (e.g. below the base address or beyond end).
     theGrid.incrementElement(offset / theGrid.getColumns(), offset % theGrid.getColumns());

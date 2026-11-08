@@ -1,10 +1,10 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
+import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.MemoryDump;
 import java.awt.*;
@@ -106,9 +106,9 @@ public class FileDumpMemoryAction extends GuiAction {
     // A series of parallel arrays representing the memory segments that can be dumped.
     String[] segmentArray = MemoryDump.getSegmentNames();
     int[] baseAddressArray =
-        MemoryDump.getBaseAddresses(segmentArray, LegacyApplication.services().context().memory);
+        MemoryDump.getBaseAddresses(segmentArray, DesktopApplication.services().context().memory);
     int[] limitAddressArray =
-        MemoryDump.getLimitAddresses(segmentArray, LegacyApplication.services().context().memory);
+        MemoryDump.getLimitAddresses(segmentArray, DesktopApplication.services().context().memory);
     int[] highAddressArray = new int[segmentArray.length];
 
     // These three are allocated and filled by buildDialogPanel() and used by action listeners.
@@ -130,15 +130,15 @@ public class FileDumpMemoryAction extends GuiAction {
     for (int i = 0; i < segmentArray.length; i++) {
       try {
         highAddressArray[i] =
-            LegacyApplication.services()
+            DesktopApplication.services()
                     .memory
                     .getAddressOfFirstNull(baseAddressArray[i], limitAddressArray[i])
-                - Memory.WORD_LENGTH_BYTES;
+                - MemoryState.WORD_LENGTH_BYTES;
 
       } // Exception will not happen since the Memory base and limit addresses are on word
       // boundaries!
       catch (AddressErrorException aee) {
-        highAddressArray[i] = baseAddressArray[i] - Memory.WORD_LENGTH_BYTES;
+        highAddressArray[i] = baseAddressArray[i] - MemoryState.WORD_LENGTH_BYTES;
       }
       if (highAddressArray[i] >= baseAddressArray[i]) {
         segmentListBaseArray[segmentCount] = baseAddressArray[i];
@@ -252,7 +252,7 @@ public class FileDumpMemoryAction extends GuiAction {
       if (operationOK) {
         try {
           format.dumpMemoryRange(
-              theFile, firstAddress, lastAddress, LegacyApplication.services().context());
+              theFile, firstAddress, lastAddress, DesktopApplication.services().context());
         } catch (AddressErrorException | IOException ignored) {
 
         }

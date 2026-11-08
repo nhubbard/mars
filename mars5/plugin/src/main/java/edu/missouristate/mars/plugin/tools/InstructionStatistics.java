@@ -30,8 +30,8 @@ package edu.missouristate.mars.plugin.tools;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -186,7 +186,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
 
   /** registers the tool as observer for the text segment of the MIPS program */
   protected void addAsObserver() {
-    addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.textBaseAddress,
+        DesktopApplication.services().memory.textLimitAddress);
   }
 
   /**
@@ -289,7 +291,7 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
 
         // access the statement in the text segment without notifying other tools etc.
         ProgramStatement stmt =
-            Memory.getInstance().getStatementNoNotify(memAccNotice.getAddress());
+            DesktopApplication.services().memory.getStatementNoNotify(memAccNotice.getAddress());
 
         // necessary to handle possible null pointers at the end of the program
         // (e.g., if the simulator tries to execute the next instruction after the last instruction

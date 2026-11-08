@@ -1,9 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
-import edu.missouristate.mars.legacy.LegacyMetadata;
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -72,11 +72,11 @@ public class RunAssembleAction extends GuiAction {
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     RegistersPane registersPane = mainUI.getRegistersPane();
     extendedAssemblerEnabled =
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED);
     warningsAreErrors =
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS);
     if (FileStatus.getFile() != null) {
@@ -84,30 +84,30 @@ public class RunAssembleAction extends GuiAction {
         mainUI.editor.save();
       }
       try {
-        LegacyApplication.services().setProgram(new LegacyProgram());
+        DesktopApplication.services().setProgram(DesktopApplication.services().createProgram());
         ArrayList<String> filesToAssemble;
-        if (LegacyApplication.services()
+        if (DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
                     .ASSEMBLE_ALL_ENABLED)) { // setting calls for multiple file assembly
           filesToAssemble =
               FilenameFinder.getFilenameList(
-                  new File(FileStatus.getName()).getParent(), LegacyMetadata.fileExtensions);
+                  new File(FileStatus.getName()).getParent(), ApplicationInfo.fileExtensions);
         } else {
           filesToAssemble = new ArrayList<>();
           filesToAssemble.add(FileStatus.getName());
         }
         String exceptionHandler = null;
-        if (LegacyApplication.services()
+        if (DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.EXCEPTION_HANDLER_ENABLED)
-            && LegacyApplication.services().getSettings().getExceptionHandler() != null
-            && !LegacyApplication.services().getSettings().getExceptionHandler().isEmpty()) {
-          exceptionHandler = LegacyApplication.services().getSettings().getExceptionHandler();
+            && DesktopApplication.services().getSettings().getExceptionHandler() != null
+            && !DesktopApplication.services().getSettings().getExceptionHandler().isEmpty()) {
+          exceptionHandler = DesktopApplication.services().getSettings().getExceptionHandler();
         }
         MIPSprogramsToAssemble =
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getProgram()
                 .prepareFilesForAssembly(
                     filesToAssemble, FileStatus.getFile().getPath(), exceptionHandler);
@@ -115,7 +115,7 @@ public class RunAssembleAction extends GuiAction {
             buildFileNameList(name + ": assembling ", MIPSprogramsToAssemble));
         // added logic to receive any warnings and output them.... DPS 11/28/06
         ErrorList warnings =
-            LegacyApplication.services()
+            DesktopApplication.services()
                 .getProgram()
                 .assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
         if (warnings.warningsOccurred()) {
@@ -124,12 +124,14 @@ public class RunAssembleAction extends GuiAction {
         mainUI.messagesPane.postMarsMessage(name + ": operation completed successfully.\n\n");
         FileStatus.setAssembled(true);
         FileStatus.set(FileStatus.RUNNABLE);
-        LegacyApplication.services().resetRegisters();
-        LegacyApplication.services().context().coprocessor1.resetRegisters();
-        LegacyApplication.services().context().coprocessor0.resetRegisters();
+        DesktopApplication.services().resetRegisters();
+        DesktopApplication.services().context().coprocessor1.resetRegisters();
+        DesktopApplication.services().context().coprocessor0.resetRegisters();
         executePane.getTextSegmentWindow().setupTable();
         executePane.getDataSegmentWindow().setupTable();
-        executePane.getDataSegmentWindow().highlightCellForAddress(Memory.dataBaseAddress);
+        executePane
+            .getDataSegmentWindow()
+            .highlightCellForAddress(DesktopApplication.services().memory.dataBaseAddress);
         executePane.getDataSegmentWindow().clearHighlighting();
         executePane.getLabelsWindow().setupTable();
         executePane.getTextSegmentWindow().setCodeHighlighting(true);
@@ -142,8 +144,10 @@ public class RunAssembleAction extends GuiAction {
         mainUI.getMainPane().setSelectedComponent(executePane);
 
         // Aug. 24, 2005 Ken Vollmar
-        SystemIO
-            .resetFiles(); // Ensure that I/O "file descriptors" are initialized for a new program
+        DesktopApplication.services()
+            .context()
+            .syscallEnvironment
+            .close(); // Ensure that I/O "file descriptors" are initialized for a new program
         // run
 
       } catch (ProcessingException pe) {

@@ -29,10 +29,10 @@ package edu.missouristate.mars.plugin.tools;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -187,7 +187,9 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
   //	@Override
   protected void addAsObserver() {
-    addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.textBaseAddress,
+        DesktopApplication.services().memory.textLimitAddress);
   }
 
   //	@Override
@@ -206,7 +208,7 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
     lastAddress = a;
     counter++;
     try {
-      ProgramStatement stmt = Memory.getInstance().getStatement(a);
+      ProgramStatement stmt = DesktopApplication.services().memory.getStatement(a);
       BasicInstruction instr = (BasicInstruction) stmt.getInstruction();
       BasicInstructionFormat format = instr.getInstructionFormat();
       if (format == BasicInstructionFormat.R_FORMAT) {

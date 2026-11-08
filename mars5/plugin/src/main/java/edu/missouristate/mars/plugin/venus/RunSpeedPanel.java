@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
@@ -108,7 +108,7 @@ public class RunSpeedPanel extends JPanel {
   public static RunSpeedPanel getInstance() {
     if (runSpeedPanel == null) {
       runSpeedPanel = new RunSpeedPanel();
-      LegacyApplication.services()
+      DesktopApplication.services()
           .setRunSpeedPanelExists(true); // DPS 24 July 2008 (needed for standalone tools)
     }
     return runSpeedPanel;

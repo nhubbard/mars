@@ -10,7 +10,7 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.Color;
 import javax.swing.JPopupMenu;
 
@@ -56,9 +56,9 @@ public class TextAreaDefaults {
 
     DEFAULTS.blockCaret = false;
     DEFAULTS.caretVisible = true;
-    DEFAULTS.caretBlinks = (LegacyApplication.services().getSettings().getCaretBlinkRate() != 0);
-    DEFAULTS.caretBlinkRate = LegacyApplication.services().getSettings().getCaretBlinkRate();
-    DEFAULTS.tabSize = LegacyApplication.services().getSettings().getEditorTabSize();
+    DEFAULTS.caretBlinks = (DesktopApplication.services().getSettings().getCaretBlinkRate() != 0);
+    DEFAULTS.caretBlinkRate = DesktopApplication.services().getSettings().getCaretBlinkRate();
+    DEFAULTS.tabSize = DesktopApplication.services().getSettings().getEditorTabSize();
     DEFAULTS.electricScroll =
         0; // was 3.  Will begin scrolling when cursor is this many lines from the edge.
 
@@ -69,7 +69,7 @@ public class TextAreaDefaults {
     DEFAULTS.selectionColor = new Color(0xccccff);
     DEFAULTS.lineHighlightColor = new Color(0xeeeeee); // 0xe0e0e0);
     DEFAULTS.lineHighlight =
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
     DEFAULTS.bracketHighlightColor = Color.black;

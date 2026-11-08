@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.ExecutionNotice;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.Binary;
 import edu.missouristate.mars.util.EditorFont;
@@ -93,8 +94,8 @@ public class TextSegmentWindow extends JInternalFrame {
   /** Constructor, sets up a new JInternalFrame. */
   public TextSegmentWindow() {
     super("Text Segment", true, false, true, true);
-    Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    LegacyApplication.services().getSettings().subscribeChange(s -> handleSettingsChange());
+    DesktopApplication.services().simulator().addSimulatorListener(this::handleSimulatorNotice);
+    DesktopApplication.services().getSettings().subscribeChange(s -> handleSettingsChange());
     contentPane = this.getContentPane();
     codeHighlighting = true;
     breakpointsEnabled = true;
@@ -115,7 +116,7 @@ public class TextSegmentWindow extends JInternalFrame {
     codeHighlighting = true;
     breakpointsEnabled = true;
     ArrayList<ProgramStatement> sourceStatementList =
-        LegacyApplication.services().getProgram().getMachineList();
+        DesktopApplication.services().getProgram().getMachineList();
     data = new Object[sourceStatementList.size()][columnNames.length];
     intAddresses = new int[data.length];
     addressRows = new HashMap<>(data.length);
@@ -201,14 +202,14 @@ public class TextSegmentWindow extends JInternalFrame {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS);
     contentPane.add(tableScroller);
-    if (LegacyApplication.services()
+    if (DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       addProgramArgumentsPanel();
     }
 
     deleteAsTextSegmentObserver();
-    if (LegacyApplication.services()
+    if (DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
       addAsTextSegmentObserver();
@@ -285,7 +286,7 @@ public class TextSegmentWindow extends JInternalFrame {
       return; // ignore if no content to change
     }
     ArrayList<ProgramStatement> sourceStatementList =
-        LegacyApplication.services().getProgram().getMachineList();
+        DesktopApplication.services().getProgram().getMachineList();
     for (int i = 0; i < sourceStatementList.size(); i++) {
       // Loop has been extended to cover self-modifying code.  If code at this memory location has
       // been
@@ -312,10 +313,10 @@ public class TextSegmentWindow extends JInternalFrame {
     }
   }
 
-  private void handleSimulatorNotice(SimulatorNotice notice) {
-    if (notice.action() == SimulatorNotice.SIMULATOR_START) {
+  private void handleSimulatorNotice(ExecutionNotice notice) {
+    if (notice.action() == ExecutionNotice.SIMULATOR_START) {
       deleteAsTextSegmentObserver();
-      if (LegacyApplication.services()
+      if (DesktopApplication.services()
           .getSettings()
           .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
         addAsTextSegmentObserver();
@@ -325,7 +326,7 @@ public class TextSegmentWindow extends JInternalFrame {
 
   private void handleSettingsChange() {
     deleteAsTextSegmentObserver();
-    if (LegacyApplication.services()
+    if (DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
       addAsTextSegmentObserver();
@@ -504,7 +505,7 @@ public class TextSegmentWindow extends JInternalFrame {
    */
   public void highlightStepAtPC() {
     highlightStepAtAddress(
-        LegacyApplication.services().context().registerFile.getProgramCounter(), false);
+        DesktopApplication.services().context().registerFile.getProgramCounter(), false);
   }
 
   /**
@@ -516,7 +517,7 @@ public class TextSegmentWindow extends JInternalFrame {
    */
   public void highlightStepAtPC(boolean inDelaySlot) {
     highlightStepAtAddress(
-        LegacyApplication.services().context().registerFile.getProgramCounter(), inDelaySlot);
+        DesktopApplication.services().context().registerFile.getProgramCounter(), inDelaySlot);
   }
 
   /**
@@ -652,14 +653,18 @@ public class TextSegmentWindow extends JInternalFrame {
    */
   private void addAsTextSegmentObserver() {
     try {
-      Memory.getInstance()
-          .addObserver(memoryListener, Memory.textBaseAddress, Memory.dataSegmentBaseAddress);
+      DesktopApplication.services()
+          .memory
+          .addObserver(
+              memoryListener,
+              DesktopApplication.services().memory.textBaseAddress,
+              DesktopApplication.services().memory.dataSegmentBaseAddress);
     } catch (AddressErrorException ignored) {
     }
   }
 
   private void deleteAsTextSegmentObserver() {
-    Memory.getInstance().deleteObserver(memoryListener);
+    DesktopApplication.services().memory.deleteObserver(memoryListener);
   }
 
   /*
@@ -669,7 +674,7 @@ public class TextSegmentWindow extends JInternalFrame {
   private void reorderColumns() {
     TableColumnModel oldtcm = table.getColumnModel();
     TableColumnModel newtcm = new DefaultTableColumnModel();
-    int[] savedColumnOrder = LegacyApplication.services().getSettings().getTextColumnOrder();
+    int[] savedColumnOrder = DesktopApplication.services().getSettings().getTextColumnOrder();
     // Apply ordering only if correct number of columns.
     if (savedColumnOrder.length == table.getColumnCount()) {
       for (int j : savedColumnOrder) {
@@ -739,7 +744,7 @@ public class TextSegmentWindow extends JInternalFrame {
       // no matter where the cell appears onscreen.
       return col == BREAK_COLUMN
           || (col == CODE_COLUMN
-              && LegacyApplication.services()
+              && DesktopApplication.services()
                   .getSettings()
                   .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     }
@@ -777,9 +782,9 @@ public class TextSegmentWindow extends JInternalFrame {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
         try {
-          LegacyApplication.services().memory.setRawWord(address, val);
+          DesktopApplication.services().instructionContext().setMemoryRawWord(address, val);
         }
         // somehow, user was able to display out-of-range address.  Most likely to occur between
         // stack base and Kernel.
@@ -803,11 +808,12 @@ public class TextSegmentWindow extends JInternalFrame {
       // cell.setFont(tableCellFont);
       TextSegmentWindow textSegment =
           VenusUI.instance().getMainPane().getExecutePane().getTextSegmentWindow();
-      Settings settings = LegacyApplication.services().getSettings();
+      Settings settings = DesktopApplication.services().getSettings();
       boolean highlighting = textSegment.getCodeHighlighting();
 
       if (highlighting && textSegment.getIntCodeAddressAtRow(row) == highlightAddress) {
-        if (Simulator.inDelaySlot() || textSegment.inDelaySlot) {
+        if (DesktopApplication.services().context().delayedBranch.isTriggered()
+            || textSegment.inDelaySlot) {
           cell.setBackground(
               EditorSettings.of(settings)
                   .getColorSettingByPosition(Settings.TEXTSEGMENT_DELAYSLOT_HIGHLIGHT_BACKGROUND));
@@ -858,17 +864,17 @@ public class TextSegmentWindow extends JInternalFrame {
       cell.setHorizontalAlignment(SwingConstants.RIGHT);
       if (row % 2 == 0) {
         cell.setBackground(
-            EditorSettings.of(LegacyApplication.services().getSettings())
+            EditorSettings.of(DesktopApplication.services().getSettings())
                 .getColorSettingByPosition(Settings.EVEN_ROW_BACKGROUND));
         cell.setForeground(
-            EditorSettings.of(LegacyApplication.services().getSettings())
+            EditorSettings.of(DesktopApplication.services().getSettings())
                 .getColorSettingByPosition(Settings.EVEN_ROW_FOREGROUND));
       } else {
         cell.setBackground(
-            EditorSettings.of(LegacyApplication.services().getSettings())
+            EditorSettings.of(DesktopApplication.services().getSettings())
                 .getColorSettingByPosition(Settings.ODD_ROW_BACKGROUND));
         cell.setForeground(
-            EditorSettings.of(LegacyApplication.services().getSettings())
+            EditorSettings.of(DesktopApplication.services().getSettings())
                 .getColorSettingByPosition(Settings.ODD_ROW_FOREGROUND));
       }
       return cell;
@@ -1076,10 +1082,10 @@ public class TextSegmentWindow extends JInternalFrame {
       // If movement is slow, this event may fire multiple times w/o
       // actually changing the column order.  If new column order is
       // same as previous, do not save changes to persistent store.
-      int[] oldOrder = LegacyApplication.services().getSettings().getTextColumnOrder();
+      int[] oldOrder = DesktopApplication.services().getSettings().getTextColumnOrder();
       for (int i = 0; i < columnOrder.length; i++) {
         if (oldOrder[i] != columnOrder[i]) {
-          LegacyApplication.services().getSettings().setTextColumnOrder(columnOrder);
+          DesktopApplication.services().getSettings().setTextColumnOrder(columnOrder);
           break;
         }
       }

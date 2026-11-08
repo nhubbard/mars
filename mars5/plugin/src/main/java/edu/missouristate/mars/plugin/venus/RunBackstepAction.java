@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -59,28 +59,32 @@ public class RunBackstepAction extends GuiAction {
     mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
 
-    if (LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+    if (DesktopApplication.services().getSettings().getBackSteppingEnabled()) {
       boolean inDelaySlot =
-          LegacyApplication.services()
+          DesktopApplication.services()
               .getProgram()
               .getBackStepper()
               .inDelaySlot(); // Added 25 June 2007
-      Memory.getInstance().addObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      LegacyApplication.services()
+      DesktopApplication.services()
+          .memory
+          .addObserver(executePane.getDataSegmentWindow().getMemoryListener());
+      DesktopApplication.services()
           .context()
           .registerFile
           .addRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
-      LegacyApplication.services()
+      DesktopApplication.services()
           .context()
           .coprocessor0
           .addRegistersObserver(executePane.getCoprocessor0Window().getRegistersListener());
-      LegacyApplication.services()
+      DesktopApplication.services()
           .context()
           .coprocessor1
           .addRegistersObserver(executePane.getCoprocessor1Window().getRegistersListener());
-      LegacyApplication.services().getProgram().getBackStepper().backStep();
-      Memory.getInstance().deleteObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      LegacyApplication.services()
+      DesktopApplication.services().getProgram().getBackStepper().backStep();
+      DesktopApplication.services()
+          .memory
+          .deleteObserver(executePane.getDataSegmentWindow().getMemoryListener());
+      DesktopApplication.services()
           .context()
           .registerFile
           .deleteRegistersObserver(executePane.getRegistersWindow().getRegistersListener());

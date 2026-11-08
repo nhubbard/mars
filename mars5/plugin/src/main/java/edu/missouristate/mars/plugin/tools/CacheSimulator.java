@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.mips.hardware.AccessNotice;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
 import java.awt.event.ItemEvent;
@@ -520,7 +520,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     int cacheSize =
         cacheBlockSizeChoicesInt[cacheBlockSizeSelector.getSelectedIndex()]
             * cacheBlockCountChoicesInt[cacheBlockCountSelector.getSelectedIndex()]
-            * Memory.WORD_LENGTH_BYTES;
+            * MemoryState.WORD_LENGTH_BYTES;
     cacheSizeDisplay.setText(Integer.toString(cacheSize));
   }
 
@@ -621,7 +621,7 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     }
 
     public int getCacheSizeInBytes() {
-      return this.numberOfBlocks * this.blockSizeInWords * Memory.WORD_LENGTH_BYTES;
+      return this.numberOfBlocks * this.blockSizeInWords * MemoryState.WORD_LENGTH_BYTES;
     }
 
     // This will work regardless of placement.
@@ -629,12 +629,12 @@ public class CacheSimulator extends AbstractMarsToolAndApplication {
     // For full assoc, #sets==1 so anything % #sets == 0
     // For n-way assoc, it extracts the set bits in address.
     public int getSetNumber(int address) {
-      return address / Memory.WORD_LENGTH_BYTES / this.blockSizeInWords % this.numberOfSets;
+      return address / MemoryState.WORD_LENGTH_BYTES / this.blockSizeInWords % this.numberOfSets;
     }
 
     // This will work regardless of placement policy (direct map, n-way or full assoc)
     public int getTag(int address) {
-      return address / Memory.WORD_LENGTH_BYTES / this.blockSizeInWords / this.numberOfSets;
+      return address / MemoryState.WORD_LENGTH_BYTES / this.blockSizeInWords / this.numberOfSets;
     }
 
     // This will work regardless of placement policy (direct map, n-way or full assoc)

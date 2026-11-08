@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.event.*;
@@ -37,7 +38,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** Action class for the Run -&gt; Go menu item (and toolbar icon) */
-public class RunGoAction extends GuiAction implements Simulator.SimFinishCallback {
+public class RunGoAction extends GuiAction implements DesktopSimulation.SimFinishCallback {
 
   public static final int defaultMaxSteps = -1; // "forever", formerly 10000000; // 10 million
   public static int maxSteps = defaultMaxSteps;
@@ -71,7 +72,14 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
         try {
           int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
           boolean done =
-              LegacyApplication.services().getProgram().simulateFromPC(breakPoints, maxSteps, this);
+              DesktopApplication.services()
+                  .simulator()
+                  .simulate(
+                      DesktopApplication.services().getProgram(),
+                      DesktopApplication.services().context().registerFile.getPC(),
+                      maxSteps,
+                      breakPoints,
+                      this);
         } catch (ProcessingException ignored) {
         }
       } else {
@@ -98,10 +106,10 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
   public void paused(boolean done, int pauseReason, ProcessingException pe) {
     // I doubt this can happen (pause when execution finished), but if so treat it as stopped.
     if (done) {
-      stopped(pe, Simulator.NORMAL_TERMINATION);
+      stopped(pe, DesktopSimulation.NORMAL_TERMINATION);
       return;
     }
-    if (pauseReason == Simulator.BREAKPOINT) {
+    if (pauseReason == DesktopSimulation.BREAKPOINT) {
       mainUI.messagesPane.postMarsMessage(
           name + ": execution paused at breakpoint: " + FileStatus.getFile().getName() + "\n\n");
     } else {
@@ -132,7 +140,10 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
     executePane.getCoprocessor0Window().updateRegisters();
     executePane.getDataSegmentWindow().updateValues();
     FileStatus.set(FileStatus.TERMINATED);
-    SystemIO.resetFiles(); // close any files opened in MIPS program
+    DesktopApplication.services()
+        .context()
+        .syscallEnvironment
+        .close(); // close any files opened in MIPS program
     // Bring coprocessor 0 to the front if terminated due to exception.
     if (pe != null) {
       mainUI.getRegistersPane().setSelectedComponent(executePane.getCoprocessor0Window());
@@ -141,17 +152,17 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
       executePane
           .getTextSegmentWindow()
           .highlightStepAtAddress(
-              LegacyApplication.services().context().registerFile.getProgramCounter() - 4);
+              DesktopApplication.services().context().registerFile.getProgramCounter() - 4);
     }
     switch (reason) {
-      case Simulator.NORMAL_TERMINATION:
+      case DesktopSimulation.NORMAL_TERMINATION:
         mainUI
             .getMessagesPane()
             .postMarsMessage("\n" + name + ": execution completed successfully.\n\n");
         mainUI.getMessagesPane().postRunMessage("\n-- program is finished running --\n\n");
         mainUI.getMessagesPane().selectRunMessageTab();
         break;
-      case Simulator.CLIFF_TERMINATION:
+      case DesktopSimulation.CLIFF_TERMINATION:
         mainUI
             .getMessagesPane()
             .postMarsMessage("\n" + name + ": execution terminated by null instruction.\n\n");
@@ -160,26 +171,26 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
             .postRunMessage("\n-- program is finished running (dropped off bottom) --\n\n");
         mainUI.getMessagesPane().selectRunMessageTab();
         break;
-      case Simulator.EXCEPTION:
+      case DesktopSimulation.EXCEPTION:
         mainUI.getMessagesPane().postMarsMessage(pe.errors().generateErrorReport());
         mainUI
             .getMessagesPane()
             .postMarsMessage("\n" + name + ": execution terminated with errors.\n\n");
         break;
-      case Simulator.PAUSE_OR_STOP:
+      case DesktopSimulation.PAUSE_OR_STOP:
         mainUI
             .getMessagesPane()
             .postMarsMessage("\n" + name + ": execution terminated by user.\n\n");
         mainUI.getMessagesPane().selectMarsMessageTab();
         break;
-      case Simulator.MAX_STEPS:
+      case DesktopSimulation.MAX_STEPS:
         mainUI
             .getMessagesPane()
             .postMarsMessage(
                 "\n" + name + ": execution step limit of " + maxSteps + " exceeded.\n\n");
         mainUI.getMessagesPane().selectMarsMessageTab();
         break;
-      case Simulator.BREAKPOINT: // should never get here
+      case DesktopSimulation.BREAKPOINT: // should never get here
         break;
     }
     RunGoAction.resetMaxSteps();
@@ -203,12 +214,12 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !LegacyApplication.services()
+        || !DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
     new ProgramArgumentList(programArguments)
-        .storeProgramArguments(LegacyApplication.services().context());
+        .storeProgramArguments(DesktopApplication.services().context());
   }
 }

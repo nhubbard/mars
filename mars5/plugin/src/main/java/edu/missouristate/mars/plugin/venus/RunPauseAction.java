@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -41,7 +42,7 @@ public class RunPauseAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    Simulator.getInstance().stopExecution(this);
+    DesktopApplication.services().simulator().stopExecution(this);
     // RunGoAction's "paused" method will do the cleanup.
   }
 }

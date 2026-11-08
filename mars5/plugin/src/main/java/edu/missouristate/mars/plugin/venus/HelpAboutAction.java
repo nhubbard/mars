@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyMetadata;
+import edu.missouristate.mars.ApplicationInfo;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -44,11 +44,11 @@ public class HelpAboutAction extends GuiAction {
     JOptionPane.showMessageDialog(
         mainUI,
         "MARS "
-            + LegacyMetadata.version
+            + ApplicationInfo.version
             + "    Copyright "
-            + LegacyMetadata.copyrightYears
+            + ApplicationInfo.copyrightYears
             + "\n"
-            + LegacyMetadata.copyrightHolders
+            + ApplicationInfo.copyrightHolders
             + "\n"
             + "MARS is the Mips Assembler and Runtime Simulator.\n\n"
             + "Mars image courtesy of NASA/JPL.\n"

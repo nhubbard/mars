@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -432,7 +432,7 @@ public class ScavengerHunt implements MarsTool {
     // Register as observer for a particular MIPS data range. Other ranges
     // are not used by this Tool.
     try {
-      LegacyApplication.services()
+      DesktopApplication.services()
           .memory
           .addObserver(
               this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
@@ -673,7 +673,7 @@ public class ScavengerHunt implements MarsTool {
     SetWordCounter++;
 
     try {
-      LegacyApplication.services().memory.setWord(address, data); // Write
+      DesktopApplication.services().instructionContext().setMemoryWord(address, data); // Write
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolSetWord: deliberate exit on AEE exception.");
       System.out.println("     SetWordCounter = " + SetWordCounter);
@@ -713,7 +713,7 @@ public class ScavengerHunt implements MarsTool {
     int returnValue;
 
     try {
-      returnValue = LegacyApplication.services().memory.getWord(address);
+      returnValue = DesktopApplication.services().memory.getWord(address);
       return returnValue;
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolGetWord: deliberate exit on AEE exception.");

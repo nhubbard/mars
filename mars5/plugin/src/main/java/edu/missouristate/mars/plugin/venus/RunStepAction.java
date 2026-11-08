@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -36,7 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /** Action for the Run -&gt; Step menu item */
-public class RunStepAction extends GuiAction implements Simulator.SimFinishCallback {
+public class RunStepAction extends GuiAction implements DesktopSimulation.SimFinishCallback {
 
   String name;
   ExecutePane executePane;
@@ -59,7 +60,14 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
       mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       try {
-        LegacyApplication.services().getProgram().simulateStepAtPC(this);
+        DesktopApplication.services()
+            .simulator()
+            .simulate(
+                DesktopApplication.services().getProgram(),
+                DesktopApplication.services().context().registerFile.getPC(),
+                1,
+                null,
+                this);
       } catch (ProcessingException ignored) {
       }
     } else {
@@ -91,7 +99,7 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
               "\n"
                   + name
                   + ": execution "
-                  + ((reason == Simulator.CLIFF_TERMINATION)
+                  + ((reason == DesktopSimulation.CLIFF_TERMINATION)
                       ? "terminated due to null instruction."
                       : "completed successfully.")
                   + "\n\n");
@@ -99,7 +107,7 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
           .getMessagesPane()
           .postRunMessage(
               "\n-- program is finished running "
-                  + ((reason == Simulator.CLIFF_TERMINATION) ? "(dropped off bottom)" : "")
+                  + ((reason == DesktopSimulation.CLIFF_TERMINATION) ? "(dropped off bottom)" : "")
                   + " --\n\n");
       mainUI.getMessagesPane().selectRunMessageTab();
     }
@@ -116,7 +124,7 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
       executePane
           .getTextSegmentWindow()
           .highlightStepAtAddress(
-              LegacyApplication.services().context().registerFile.getProgramCounter() - 4);
+              DesktopApplication.services().context().registerFile.getProgramCounter() - 4);
     }
     VenusUI.setReset(false);
   }
@@ -136,12 +144,12 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !LegacyApplication.services()
+        || !DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS)) {
       return;
     }
     new ProgramArgumentList(programArguments)
-        .storeProgramArguments(LegacyApplication.services().context());
+        .storeProgramArguments(DesktopApplication.services().context());
   }
 }

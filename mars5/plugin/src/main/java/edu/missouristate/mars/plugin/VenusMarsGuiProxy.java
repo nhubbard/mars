@@ -1,64 +1,47 @@
 package edu.missouristate.mars.plugin;
 
 import edu.missouristate.mars.api.MarsGuiProxy;
+import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-/**
- * IntelliJ plugin implementation of {@link MarsGuiProxy}. Routes all I/O to the MARS tool window
- * (Messages pane and Run I/O pane) built by {@code VenusUI}.
- *
- * <p>This class is registered as an IntelliJ application-level service in {@code plugin.xml}:
- *
- * <pre>{@code
- * <applicationService
- *   serviceInterface="edu.missouristate.mars.api.MarsGuiProxy"
- *   serviceImplementation="edu.missouristate.mars.plugin.VenusMarsGuiProxy"/>
- * }</pre>
- *
- * <p>When used with Dagger (e.g. in tests or the standalone Swing launcher), inject it via
- * {@link edu.missouristate.mars.plugin.di.PluginModule} which binds it to {@link MarsGuiProxy}.
- *
- * <p><b>Stub:</b> message routing to the actual Venus toolwindow panels is wired in a later
- * migration phase; for now all output goes to stderr/stdout so the class is safe to instantiate.
- */
+/** Session-scoped frontend routing; a desktop window attaches after its component is built. */
 @Singleton
 public final class VenusMarsGuiProxy implements MarsGuiProxy {
+  private volatile MarsGuiProxy delegate;
 
   @Inject
   public VenusMarsGuiProxy() {}
 
-  @Override
+  public void attach(MarsGuiProxy delegate) {
+    this.delegate = Objects.requireNonNull(delegate);
+  }
+
   public boolean isGuiMode() {
-    return true;
+    return delegate != null && delegate.isGuiMode();
   }
 
-  @Override
   public void postMessage(String message) {
-    // TODO(plugin): route to MessagesPane via SwingUtilities.invokeLater
-    System.err.print(message);
+    if (delegate == null) System.err.print(message);
+    else delegate.postMessage(message);
   }
 
-  @Override
   public void postRunMessage(String message) {
-    // TODO(plugin): route to RunIOPane via SwingUtilities.invokeLater
-    System.out.print(message);
+    if (delegate == null) System.out.print(message);
+    else delegate.postRunMessage(message);
   }
 
-  @Override
-  public String readInput(int maxLength) {
-    // TODO(plugin): block on RunIOPane input field
-    return "";
+  public String readInput(int length) {
+    if (delegate == null) throw new IllegalStateException("No desktop input is attached");
+    return delegate.readInput(length);
   }
 
-  @Override
   public String readInputWithPrompt(String prompt) {
-    // TODO(plugin): show dialog or use RunIOPane prompt
-    return "";
+    if (delegate == null) throw new IllegalStateException("No desktop input is attached");
+    return delegate.readInputWithPrompt(prompt);
   }
 
-  @Override
   public void clearRunConsole() {
-    // TODO(plugin): clear RunIOPane text area via EDT
+    if (delegate != null) delegate.clearRunConsole();
   }
 }

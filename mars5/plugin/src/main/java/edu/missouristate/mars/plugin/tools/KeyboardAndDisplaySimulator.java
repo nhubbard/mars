@@ -1,15 +1,14 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.AbstractFontSettingDialog;
 import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.simulator.Exceptions;
-import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.Binary;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -180,13 +179,18 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // each time to reflect possible change in memory configuration. DPS 6-Aug-09
   protected void initializePreGUI() {
     RECEIVER_CONTROL =
-        Memory.memoryMapBaseAddress; // 0xffff0000; // keyboard Ready in low-order bit
+        DesktopApplication.services()
+            .memory
+            .memoryMapBaseAddress; // 0xffff0000; // keyboard Ready in low-order bit
     RECEIVER_DATA =
-        Memory.memoryMapBaseAddress + 4; // 0xffff0004; // keyboard character in low-order byte
+        DesktopApplication.services().memory.memoryMapBaseAddress
+            + 4; // 0xffff0004; // keyboard character in low-order byte
     TRANSMITTER_CONTROL =
-        Memory.memoryMapBaseAddress + 8; // 0xffff0008; // display Ready in low-order bit
+        DesktopApplication.services().memory.memoryMapBaseAddress
+            + 8; // 0xffff0008; // display Ready in low-order bit
     TRANSMITTER_DATA =
-        Memory.memoryMapBaseAddress + 12; // 0xffff000c; // display character in low-order byte
+        DesktopApplication.services().memory.memoryMapBaseAddress
+            + 12; // 0xffff000c; // display character in low-order byte
     displayPanelTitle =
         "DISPLAY: Store to Transmitter Data " + Binary.intToHexString(TRANSMITTER_DATA);
     keyboardPanelTitle =
@@ -220,8 +224,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // basis for delay in re-setting (literally) the TRANSMITTER_CONTROL register.  SPIM does
     // this too.  This simulates the time required for the display unit to process the
     // TRANSMITTER_DATA.
-    addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
-    addAsObserver(Memory.kernelTextBaseAddress, Memory.kernelTextLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.textBaseAddress,
+        DesktopApplication.services().memory.textLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.kernelTextBaseAddress,
+        DesktopApplication.services().memory.kernelTextLimitAddress);
   }
 
   /**
@@ -295,8 +303,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     // bit had been set by the MIPS program, generate an interrupt!
     if (this.countingInstructions
         && notice.getAccessType() == AccessNotice.READ
-        && (Memory.inTextSegment(notice.getAddress())
-            || Memory.inKernelTextSegment(notice.getAddress()))) {
+        && (DesktopApplication.services().memory.inTextSegment(notice.getAddress())
+            || DesktopApplication.services().memory.inKernelTextSegment(notice.getAddress()))) {
       this.instructionCount++;
       if (this.instructionCount >= this.transmitDelayInstructionCountLimit) {
         if (displayAfterDelay) {
@@ -306,13 +314,13 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         int updatedTransmitterControl = readyBitSet(TRANSMITTER_CONTROL);
         updateMMIOControl(TRANSMITTER_CONTROL, updatedTransmitterControl);
         if (updatedTransmitterControl != 1
-            && (LegacyApplication.services()
+            && (DesktopApplication.services()
                         .context()
                         .coprocessor0
                         .getValue(Coprocessor0State.STATUS)
                     & 2)
                 == 0 // Added by Carl Hauser Nov 2008
-            && (LegacyApplication.services()
+            && (DesktopApplication.services()
                         .context()
                         .coprocessor0
                         .getValue(Coprocessor0State.STATUS)
@@ -321,7 +329,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
           // interrupt-enabled bit is set in both Tranmitter Control and in
           // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external
           // interrupt.
-          Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_DISPLAY;
+          DesktopApplication.services()
+              .context()
+              .requestExternalInterrupt(Exceptions.EXTERNAL_INTERRUPT_DISPLAY);
         }
       }
     }
@@ -750,11 +760,15 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   private synchronized void updateMMIOControlAndData(
       int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
     if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
         try {
-          LegacyApplication.services().memory.setRawWord(controlAddr, controlValue);
+          DesktopApplication.services()
+              .instructionContext()
+              .setMemoryRawWord(controlAddr, controlValue);
           if (!controlOnly) {
-            LegacyApplication.services().memory.setRawWord(dataAddr, dataValue);
+            DesktopApplication.services()
+                .instructionContext()
+                .setMemoryRawWord(dataAddr, dataValue);
           }
         } catch (AddressErrorException aee) {
           System.out.println("Tool author specified incorrect MMIO address!" + aee);
@@ -781,7 +795,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1)
   private static boolean isReadyBitSet(int mmioControlRegister) {
     try {
-      return (LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+      return (DesktopApplication.services()
+                  .memory
+                  .get(mmioControlRegister, MemoryState.WORD_LENGTH_BYTES)
               & 1)
           == 1;
     } catch (AddressErrorException aee) {
@@ -796,7 +812,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1)
   private static int readyBitSet(int mmioControlRegister) {
     try {
-      return LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+      return DesktopApplication.services()
+              .memory
+              .get(mmioControlRegister, MemoryState.WORD_LENGTH_BYTES)
           | 1;
     } catch (AddressErrorException aee) {
       System.out.println("Tool author specified incorrect MMIO address!" + aee);
@@ -810,7 +828,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1). Bits 2 and higher don't matter.
   private static int readyBitCleared(int mmioControlRegister) {
     try {
-      return LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+      return DesktopApplication.services()
+              .memory
+              .get(mmioControlRegister, MemoryState.WORD_LENGTH_BYTES)
           & 2;
     } catch (AddressErrorException aee) {
       System.out.println("Tool author specified incorrect MMIO address!" + aee);
@@ -850,16 +870,24 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       updateMMIOControlAndData(
           RECEIVER_CONTROL, updatedReceiverControl, RECEIVER_DATA, e.getKeyChar() & 0x00000ff);
       if (updatedReceiverControl != 1
-          && (LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+          && (DesktopApplication.services()
+                      .context()
+                      .coprocessor0
+                      .getValue(Coprocessor0State.STATUS)
                   & 2)
               == 0 // Added by Carl Hauser Nov 2008
-          && (LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+          && (DesktopApplication.services()
+                      .context()
+                      .coprocessor0
+                      .getValue(Coprocessor0State.STATUS)
                   & 1)
               == 1) {
         // interrupt-enabled bit is set in both Receiver Control and in
         // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external
         // interrupt.
-        Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_KEYBOARD;
+        DesktopApplication.services()
+            .context()
+            .requestExternalInterrupt(Exceptions.EXTERNAL_INTERRUPT_KEYBOARD);
       }
     }
 

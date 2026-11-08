@@ -1,15 +1,14 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SimulatorObserver;
 import edu.missouristate.mars.api.StopEvent;
-import edu.missouristate.mars.legacy.LegacyApplication;
-import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.dump.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxStyle;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.SyntaxUtilities;
-import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
 import java.net.*;
@@ -140,7 +139,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     super(s);
     INSTANCE = this;
     mainUI = this;
-    LegacyApplication.services().setGui(this);
+    DesktopApplication.services().setGui(this);
     this.editor = new Editor(this);
 
     double screenWidth = Toolkit.getDefaultToolkit().getScreenSize().getWidth();
@@ -166,7 +165,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     // I want to keep it large, with enough room for user to get handles
     // this.setSize((int)(screenWidth*.8),(int)(screenHeight*.8));
 
-    LegacyApplication.services();
+    DesktopApplication.services();
 
     // Push jeditsyntax defaults into core Settings (decouples core from Swing/jeditsyntax)
     SyntaxStyle[] syntaxDefaults = SyntaxUtilities.getDefaultSyntaxStyles();
@@ -178,19 +177,22 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       syntaxBolds[i] = syntaxDefaults[i].isBold();
       syntaxItalics[i] = syntaxDefaults[i].isItalic();
     }
-    LegacyApplication.services()
+    DesktopApplication.services()
         .getSettings()
         .initializeSyntaxStyleDefaults(syntaxColors, syntaxBolds, syntaxItalics);
 
     // Wire run-speed slider into simulator (decouples core from RunSpeedPanel)
-    Simulator.getInstance().setCompletionDispatcher(SwingUtilities::invokeLater);
-    Simulator.getInstance().setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
+    DesktopApplication.services().simulator().setCompletionDispatcher(SwingUtilities::invokeLater);
+    DesktopApplication.services()
+        .simulator()
+        .setRunSpeedSource(RunSpeedPanel.getInstance()::getRunSpeed);
 
     // Wire GUI syscall environment (JOptionPane dialogs, clearConsole)
-    LegacyApplication.services().setSyscallEnvironment(new VenusSyscallEnvironment());
+    DesktopApplication.services()
+        .setSyscallEnvironment(new VenusSyscallEnvironment(DesktopApplication.services()));
 
     //  image courtesy of NASA/JPL.
-    URL im = this.getClass().getResource(LegacyMetadata.imagesPath + "RedMars16.gif");
+    URL im = this.getClass().getResource(ApplicationInfo.imagesPath + "RedMars16.gif");
     if (im == null) {
       System.out.println("Internal Error: images folder or file not found");
       System.exit(0);
@@ -280,7 +282,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     this.pack();
     this.setVisible(true);
 
-    Simulator.getInstance()
+    DesktopApplication.services()
+        .simulator()
         .setObserver(
             new SimulatorObserver() {
               public void onStepComplete(int pc) {
@@ -314,7 +317,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       fileNewAction =
           new FileNewAction(
               "New",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "New22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "New22.png"))),
               "Create a new file for editing",
               KeyEvent.VK_N,
               KeyStroke.getKeyStroke(
@@ -323,7 +326,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       fileOpenAction =
           new FileOpenAction(
               "Open ...",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Open22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Open22.png"))),
               "Open a file for editing",
               KeyEvent.VK_O,
               KeyStroke.getKeyStroke(
@@ -344,7 +347,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       fileSaveAction =
           new FileSaveAction(
               "Save",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Save22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Save22.png"))),
               "Save the current file",
               KeyEvent.VK_S,
               KeyStroke.getKeyStroke(
@@ -354,7 +357,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new FileSaveAsAction(
               "Save as ...",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "SaveAs22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "SaveAs22.png"))),
               "Save current file with different name",
               KeyEvent.VK_A,
               null,
@@ -365,7 +368,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       fileDumpMemoryAction =
           new FileDumpMemoryAction(
               "Dump Memory ...",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Dump22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Dump22.png"))),
               "Dump machine code or data in an available format",
               KeyEvent.VK_D,
               KeyStroke.getKeyStroke(
@@ -374,7 +377,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       filePrintAction =
           new FilePrintAction(
               "Print ...",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Print22.gif"))),
+              new ImageIcon(
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Print22.gif"))),
               "Print current file",
               KeyEvent.VK_P,
               null,
@@ -383,7 +387,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editUndoAction =
           new EditUndoAction(
               "Undo",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Undo22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Undo22.png"))),
               "Undo last edit",
               KeyEvent.VK_U,
               KeyStroke.getKeyStroke(
@@ -392,7 +396,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editRedoAction =
           new EditRedoAction(
               "Redo",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Redo22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Redo22.png"))),
               "Redo last edit",
               KeyEvent.VK_R,
               KeyStroke.getKeyStroke(
@@ -401,7 +405,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editCutAction =
           new EditCutAction(
               "Cut",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Cut22.gif"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Cut22.gif"))),
               "Cut",
               KeyEvent.VK_C,
               KeyStroke.getKeyStroke(
@@ -410,7 +414,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editCopyAction =
           new EditCopyAction(
               "Copy",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Copy22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Copy22.png"))),
               "Copy",
               KeyEvent.VK_O,
               KeyStroke.getKeyStroke(
@@ -419,7 +423,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editPasteAction =
           new EditPasteAction(
               "Paste",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Paste22.png"))),
+              new ImageIcon(
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Paste22.png"))),
               "Paste",
               KeyEvent.VK_P,
               KeyStroke.getKeyStroke(
@@ -428,7 +433,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       editFindReplaceAction =
           new EditFindReplaceAction(
               "Find/Replace",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Find22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Find22.png"))),
               "Find/Replace",
               KeyEvent.VK_F,
               KeyStroke.getKeyStroke(
@@ -448,7 +453,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new RunAssembleAction(
               "Assemble",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Assemble22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Assemble22.png"))),
               "Assemble the current file and clear breakpoints",
               KeyEvent.VK_A,
               KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0),
@@ -456,7 +461,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       runGoAction =
           new RunGoAction(
               "Go",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Play22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Play22.png"))),
               "Run the current program",
               KeyEvent.VK_G,
               KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0),
@@ -465,7 +470,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new RunStepAction(
               "Step",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "StepForward22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "StepForward22.png"))),
               "Run one step at a time",
               KeyEvent.VK_T,
               KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0),
@@ -474,7 +479,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
           new RunBackstepAction(
               "Backstep",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "StepBack22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "StepBack22.png"))),
               "Undo the last step",
               KeyEvent.VK_B,
               KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0),
@@ -482,7 +487,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       runPauseAction =
           new RunPauseAction(
               "Pause",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Pause22.png"))),
+              new ImageIcon(
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Pause22.png"))),
               "Pause the currently running program",
               KeyEvent.VK_P,
               KeyStroke.getKeyStroke(KeyEvent.VK_F9, 0),
@@ -490,7 +496,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       runStopAction =
           new RunStopAction(
               "Stop",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Stop22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Stop22.png"))),
               "Stop the currently running program",
               KeyEvent.VK_S,
               KeyStroke.getKeyStroke(KeyEvent.VK_F11, 0),
@@ -498,7 +504,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       runResetAction =
           new RunResetAction(
               "Reset",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Reset22.png"))),
+              new ImageIcon(
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Reset22.png"))),
               "Reset MIPS memory and registers",
               KeyEvent.VK_R,
               KeyStroke.getKeyStroke(KeyEvent.VK_F12, 0),
@@ -655,7 +662,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
       helpHelpAction =
           new HelpHelpAction(
               "Help",
-              new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Help22.png"))),
+              new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Help22.png"))),
               "Help",
               KeyEvent.VK_H,
               KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0),
@@ -696,34 +703,34 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     JMenuItem fileNew = new JMenuItem(fileNewAction);
     fileNew.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "New16.png"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "New16.png"))));
     JMenuItem fileOpen = new JMenuItem(fileOpenAction);
     fileOpen.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Open16.png"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Open16.png"))));
     JMenuItem fileClose = new JMenuItem(fileCloseAction);
     fileClose.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     JMenuItem fileCloseAll = new JMenuItem(fileCloseAllAction);
     fileCloseAll.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     JMenuItem fileSave = new JMenuItem(fileSaveAction);
     fileSave.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Save16.png"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Save16.png"))));
     JMenuItem fileSaveAs = new JMenuItem(fileSaveAsAction);
     fileSaveAs.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "SaveAs16.png"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "SaveAs16.png"))));
     JMenuItem fileSaveAll = new JMenuItem(fileSaveAllAction);
     fileSaveAll.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     JMenuItem fileDumpMemory = new JMenuItem(fileDumpMemoryAction);
     fileDumpMemory.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Dump16.png"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Dump16.png"))));
     JMenuItem filePrint = new JMenuItem(filePrintAction);
     filePrint.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Print16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Print16.gif"))));
     JMenuItem fileExit = new JMenuItem(fileExitAction);
     fileExit.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     file.add(fileNew);
     file.add(fileOpen);
     file.add(fileClose);
@@ -744,33 +751,33 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     editUndo.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Undo16.png")))); // "Undo16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Undo16.png")))); // "Undo16.gif"))));
     JMenuItem editRedo = new JMenuItem(editRedoAction);
     editRedo.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Redo16.png")))); // "Redo16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Redo16.png")))); // "Redo16.gif"))));
     JMenuItem editCut = new JMenuItem(editCutAction);
     editCut.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Cut16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Cut16.gif"))));
     JMenuItem editCopy = new JMenuItem(editCopyAction);
     editCopy.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Copy16.png")))); // "Copy16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Copy16.png")))); // "Copy16.gif"))));
     JMenuItem editPaste = new JMenuItem(editPasteAction);
     editPaste.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Paste16.png")))); // "Paste16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Paste16.png")))); // "Paste16.gif"))));
     JMenuItem editFindReplace = new JMenuItem(editFindReplaceAction);
     editFindReplace.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Find16.png")))); // "Paste16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Find16.png")))); // "Paste16.gif"))));
     JMenuItem editSelectAll = new JMenuItem(editSelectAllAction);
     editSelectAll.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     edit.add(editUndo);
     edit.add(editRedo);
     edit.addSeparator();
@@ -786,47 +793,47 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         new ImageIcon(
             tk.getImage(
                 cs.getResource(
-                    LegacyMetadata.imagesPath + "Assemble16.png")))); // "MyAssemble16.gif"))));
+                    ApplicationInfo.imagesPath + "Assemble16.png")))); // "MyAssemble16.gif"))));
     JMenuItem runGo = new JMenuItem(runGoAction);
     runGo.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Play16.png")))); // "Play16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Play16.png")))); // "Play16.gif"))));
     JMenuItem runStep = new JMenuItem(runStepAction);
     runStep.setIcon(
         new ImageIcon(
             tk.getImage(
                 cs.getResource(
-                    LegacyMetadata.imagesPath
+                    ApplicationInfo.imagesPath
                         + "StepForward16.png")))); // "MyStepForward16.gif"))));
     JMenuItem runBackstep = new JMenuItem(runBackstepAction);
     runBackstep.setIcon(
         new ImageIcon(
             tk.getImage(
                 cs.getResource(
-                    LegacyMetadata.imagesPath + "StepBack16.png")))); // "MyStepBack16.gif"))));
+                    ApplicationInfo.imagesPath + "StepBack16.png")))); // "MyStepBack16.gif"))));
     JMenuItem runReset = new JMenuItem(runResetAction);
     runReset.setIcon(
         new ImageIcon(
             tk.getImage(
                 cs.getResource(
-                    LegacyMetadata.imagesPath + "Reset16.png")))); // "MyReset16.gif"))));
+                    ApplicationInfo.imagesPath + "Reset16.png")))); // "MyReset16.gif"))));
     JMenuItem runStop = new JMenuItem(runStopAction);
     runStop.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Stop16.png")))); // "Stop16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Stop16.png")))); // "Stop16.gif"))));
     JMenuItem runPause = new JMenuItem(runPauseAction);
     runPause.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Pause16.png")))); // "Pause16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Pause16.png")))); // "Pause16.gif"))));
     JMenuItem runClearBreakpoints = new JMenuItem(runClearBreakpointsAction);
     runClearBreakpoints.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     JMenuItem runToggleBreakpoints = new JMenuItem(runToggleBreakpointsAction);
     runToggleBreakpoints.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
 
     run.add(runAssemble);
     run.add(runGo);
@@ -841,15 +848,17 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
 
     JCheckBoxMenuItem settingsLabel = new JCheckBoxMenuItem(settingsLabelAction);
     settingsLabel.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.LABEL_WINDOW_VISIBILITY));
     JCheckBoxMenuItem settingsPopupInput = new JCheckBoxMenuItem(settingsPopupInputAction);
     settingsPopupInput.setSelected(
-        LegacyApplication.services().getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT));
+        DesktopApplication.services()
+            .getSettings()
+            .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT));
     settingsValueDisplayBase = new JCheckBoxMenuItem(settingsValueDisplayBaseAction);
     settingsValueDisplayBase.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
@@ -861,7 +870,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         .setSettingsMenuItem(settingsValueDisplayBase);
     settingsAddressDisplayBase = new JCheckBoxMenuItem(settingsAddressDisplayBaseAction);
     settingsAddressDisplayBase.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(
                 edu.missouristate.mars.Settings
@@ -873,46 +882,46 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
         .setSettingsMenuItem(settingsAddressDisplayBase);
     JCheckBoxMenuItem settingsExtended = new JCheckBoxMenuItem(settingsExtendedAction);
     settingsExtended.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EXTENDED_ASSEMBLER_ENABLED));
     JCheckBoxMenuItem settingsDelayedBranching =
         new JCheckBoxMenuItem(settingsDelayedBranchingAction);
     settingsDelayedBranching.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.DELAYED_BRANCHING_ENABLED));
     JCheckBoxMenuItem settingsSelfModifyingCode =
         new JCheckBoxMenuItem(settingsSelfModifyingCodeAction);
     settingsSelfModifyingCode.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED));
     JCheckBoxMenuItem settingsAssembleOnOpen = new JCheckBoxMenuItem(settingsAssembleOnOpenAction);
     settingsAssembleOnOpen.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED));
     JCheckBoxMenuItem settingsAssembleAll = new JCheckBoxMenuItem(settingsAssembleAllAction);
     settingsAssembleAll.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ALL_ENABLED));
     JCheckBoxMenuItem settingsWarningsAreErrors =
         new JCheckBoxMenuItem(settingsWarningsAreErrorsAction);
     settingsWarningsAreErrors.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.WARNINGS_ARE_ERRORS));
     JCheckBoxMenuItem settingsStartAtMain = new JCheckBoxMenuItem(settingsStartAtMainAction);
     settingsStartAtMain.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.START_AT_MAIN));
     JCheckBoxMenuItem settingsProgramArguments =
         new JCheckBoxMenuItem(settingsProgramArgumentsAction);
     settingsProgramArguments.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS));
     JMenuItem settingsEditor = new JMenuItem(settingsEditorAction);
@@ -944,10 +953,10 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     helpHelp.setIcon(
         new ImageIcon(
             tk.getImage(
-                cs.getResource(LegacyMetadata.imagesPath + "Help16.png")))); // "Help16.gif"))));
+                cs.getResource(ApplicationInfo.imagesPath + "Help16.png")))); // "Help16.gif"))));
     JMenuItem helpAbout = new JMenuItem(helpAboutAction);
     helpAbout.setIcon(
-        new ImageIcon(tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "MyBlank16.gif"))));
+        new ImageIcon(tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "MyBlank16.gif"))));
     help.add(helpHelp);
     help.addSeparator();
     help.add(helpAbout);
@@ -1154,7 +1163,7 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runAssembleAction.setEnabled(true);
     // If assemble-all, allow previous Run menu settings to remain.
     // Otherwise, clear them out.  DPS 9-Aug-2011
-    if (!LegacyApplication.services()
+    if (!DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
       runGoAction.setEnabled(false);
@@ -1267,8 +1276,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runGoAction.setEnabled(true);
     runStepAction.setEnabled(true);
     runBackstepAction.setEnabled(
-        LegacyApplication.services().getSettings().getBackSteppingEnabled()
-            && !LegacyApplication.services().getProgram().getBackStepper().empty());
+        DesktopApplication.services().getSettings().getBackSteppingEnabled()
+            && !DesktopApplication.services().getProgram().getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);
@@ -1339,8 +1348,8 @@ public class VenusUI extends JFrame implements MarsGuiProxy {
     runGoAction.setEnabled(false);
     runStepAction.setEnabled(false);
     runBackstepAction.setEnabled(
-        LegacyApplication.services().getSettings().getBackSteppingEnabled()
-            && !LegacyApplication.services().getProgram().getBackStepper().empty());
+        DesktopApplication.services().getSettings().getBackSteppingEnabled()
+            && !DesktopApplication.services().getProgram().getBackStepper().empty());
     runResetAction.setEnabled(true);
     runStopAction.setEnabled(false);
     runPauseAction.setEnabled(false);

@@ -1,8 +1,9 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyMetadata;
-import edu.missouristate.mars.simulator.Simulator;
+import edu.missouristate.mars.ApplicationInfo;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopSimulation;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -58,9 +59,9 @@ public class MessagesPane extends JTabbedPane {
   // reaches MAXIMUM_SCROLLED_CHARACTERS in length then cut off
   // the first NUMBER_OF_CHARACTERS_TO_CUT characters.  The latter
   // must obviously be smaller than the former.
-  public static final int MAXIMUM_SCROLLED_CHARACTERS = LegacyMetadata.maximumMessageCharacters;
+  public static final int MAXIMUM_SCROLLED_CHARACTERS = ApplicationInfo.maximumMessageCharacters;
   public static final int NUMBER_OF_CHARACTERS_TO_CUT =
-      LegacyMetadata.maximumMessageCharacters / 10; // 10%
+      ApplicationInfo.maximumMessageCharacters / 10; // 10%
 
   /** Constructor for the class, sets up two fresh tabbed text areas for program feedback. */
   public MessagesPane() {
@@ -355,7 +356,7 @@ public class MessagesPane extends JTabbedPane {
     JDialog dialog = pane.createDialog(VenusUI.instance(), "MIPS Keyboard Input");
     dialog.setVisible(true);
     input = (String) pane.getInputValue();
-    this.postRunMessage(LegacyMetadata.userInputAlert + input + "\n");
+    this.postRunMessage(ApplicationInfo.userInputAlert + input + "\n");
     return input;
   }
 
@@ -447,7 +448,7 @@ public class MessagesPane extends JTabbedPane {
             fb.setDot(dot, bias);
           }
         };
-    final Simulator.StopListener stopListener = s -> returnResponse();
+    final DesktopSimulation.StopListener stopListener = s -> returnResponse();
 
     public void run() { // must be invoked from the GUI thread
       setSelectedComponent(runTab);
@@ -457,7 +458,7 @@ public class MessagesPane extends JTabbedPane {
       initialPos = run.getCaretPosition();
       run.setNavigationFilter(navigationFilter);
       run.getDocument().addDocumentListener(listener);
-      Simulator.getInstance().addStopListener(stopListener);
+      DesktopApplication.services().simulator().addStopListener(stopListener);
     }
 
     void cleanup() { // not required to be called from the GUI thread
@@ -467,7 +468,7 @@ public class MessagesPane extends JTabbedPane {
             run.setEditable(false);
             run.setNavigationFilter(null);
             run.setCaretPosition(run.getDocument().getLength());
-            Simulator.getInstance().removeStopListener(stopListener);
+            DesktopApplication.services().simulator().removeStopListener(stopListener);
           });
     }
 

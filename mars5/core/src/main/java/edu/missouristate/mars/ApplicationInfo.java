@@ -8,6 +8,14 @@ public final class ApplicationInfo {
   private ApplicationInfo() {}
 
   private static final String configPropertiesFile = "Config";
+  public static final String version = "4.6",
+      imagesPath = "/images/",
+      helpPath = "/help/",
+      userInputAlert = "**** user input : ";
+  public static final String copyrightYears = "2003-2014",
+      copyrightHolders = "Pete Sanderson and Kenneth Vollmar";
+  public static final ArrayList<String> fileExtensions = getFileExtensions();
+  public static final int maximumMessageCharacters = getMessageLimit();
   public static final int maximumErrorMessages = getErrorLimit();
   public static final int maximumBacksteps = getBackstepLimit();
   public static final String ASCII_NON_PRINT = getAsciiNonPrint();

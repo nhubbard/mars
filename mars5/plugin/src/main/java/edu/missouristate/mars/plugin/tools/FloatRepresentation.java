@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -361,7 +361,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // Means of selecting and deselecting an attached floating point register
 
-    fpRegisters = LegacyApplication.services().context().coprocessor1.getRegisters();
+    fpRegisters = DesktopApplication.services().context().coprocessor1.getRegisters();
     String[] registerList = new String[fpRegisters.length + 1];
     registerList[0] = "None";
     for (int i = 0; i < fpRegisters.length; i++) {
@@ -409,7 +409,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   // If display is attached to a register then update the register value.
   private synchronized void updateAnyAttachedRegister(int intValue) {
     if (attachedRegister != null) {
-      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+      synchronized (DesktopApplication.services().memoryAndRegistersLock) {
         attachedRegister.setValue(intValue);
       }
       // HERE'S A HACK!!  Want to immediately display the updated register value in MARS

@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -46,7 +46,7 @@ public class SettingsProgramArgumentsAction extends GuiAction {
 
   public void actionPerformed(ActionEvent e) {
     boolean selected = ((JCheckBoxMenuItem) e.getSource()).isSelected();
-    LegacyApplication.services()
+    DesktopApplication.services()
         .getSettings()
         .setBooleanSetting(edu.missouristate.mars.Settings.PROGRAM_ARGUMENTS, selected);
     if (selected) {

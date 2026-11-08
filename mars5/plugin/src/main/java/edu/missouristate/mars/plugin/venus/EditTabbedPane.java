@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -66,7 +66,7 @@ public class EditTabbedPane extends JTabbedPane {
           if (editPane != null) {
             // New IF statement to permit free traversal of edit panes w/o invalidating
             // assembly if assemble-all is selected.  DPS 9-Aug-2011
-            if (LegacyApplication.services()
+            if (DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
               EditTabbedPane.this.updateTitles(editPane);
@@ -135,7 +135,7 @@ public class EditTabbedPane extends JTabbedPane {
     FileStatus.setName(name);
     FileStatus.set(FileStatus.NEW_NOT_EDITED);
 
-    LegacyApplication.services().resetRegisters();
+    DesktopApplication.services().resetRegisters();
     VenusUI.setReset(true);
     mainPane.getExecutePane().clearPane();
     mainPane.setSelectedComponent(this);
@@ -547,7 +547,7 @@ public class EditTabbedPane extends JTabbedPane {
       // Set default to previous file opened, if any.  This is useful in conjunction
       // with option to assemble file automatically upon opening.  File likely to have
       // been edited externally (e.g. by Mipster).
-      if (LegacyApplication.services()
+      if (DesktopApplication.services()
               .getSettings()
               .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED)
           && mostRecentlyOpenedFile != null) {
@@ -565,7 +565,7 @@ public class EditTabbedPane extends JTabbedPane {
         // possibly send this file right through to the assembler by firing Run->Assemble's
         // actionPerformed() method.
         if (theFile.canRead()
-            && LegacyApplication.services()
+            && DesktopApplication.services()
                 .getSettings()
                 .getBooleanSetting(edu.missouristate.mars.Settings.ASSEMBLE_ON_OPEN_ENABLED)) {
           mainUI.getRunAssembleAction().actionPerformed(null);
@@ -601,9 +601,9 @@ public class EditTabbedPane extends JTabbedPane {
       FileStatus.setFile(theFile);
       FileStatus.set(FileStatus.OPENING); // DPS 9-Aug-2011
       if (theFile.canRead()) {
-        LegacyApplication.services().setProgram(new LegacyProgram());
+        DesktopApplication.services().setProgram(DesktopApplication.services().createProgram());
         try {
-          LegacyApplication.services().getProgram().readSource(currentFilePath);
+          DesktopApplication.services().getProgram().readSource(currentFilePath);
         } catch (ProcessingException ignored) {
         }
         // DPS 1 Nov 2006.  Defined a StringBuffer to receive all file contents,
@@ -613,10 +613,10 @@ public class EditTabbedPane extends JTabbedPane {
         // to the Edit pane as it was read, way slower due to dynamic string alloc.
         StringBuilder fileContents = new StringBuilder((int) theFile.length());
         int lineNumber = 1;
-        String line = LegacyApplication.services().getProgram().getSourceLine(lineNumber++);
+        String line = DesktopApplication.services().getProgram().getSourceLine(lineNumber++);
         while (line != null) {
           fileContents.append(line).append("\n");
-          line = LegacyApplication.services().getProgram().getSourceLine(lineNumber++);
+          line = DesktopApplication.services().getProgram().getSourceLine(lineNumber++);
         }
         editPane.setSourceCode(fileContents.toString(), true);
         // The above operation generates an undoable edit, setting the initial
@@ -635,7 +635,7 @@ public class EditTabbedPane extends JTabbedPane {
 
         // If assemble-all, then allow opening of any file w/o invalidating assembly.
         // DPS 9-Aug-2011
-        if (LegacyApplication.services()
+        if (DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
           updateTitles(editPane);

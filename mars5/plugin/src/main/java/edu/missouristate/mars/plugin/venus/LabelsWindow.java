@@ -2,8 +2,8 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -124,7 +124,7 @@ public class LabelsWindow extends JInternalFrame {
   public LabelsWindow() {
     super("Labels", true, false, true, true);
     try {
-      sortState = Integer.parseInt(LegacyApplication.services().getSettings().getLabelSortState());
+      sortState = Integer.parseInt(DesktopApplication.services().getSettings().getLabelSortState());
     } catch (NumberFormatException nfe) {
       sortState = 0;
     }
@@ -263,7 +263,8 @@ public class LabelsWindow extends JInternalFrame {
         // Cannot happen because table contains only strings.
       }
       // Scroll to this address, either in Text Segment display or Data Segment display
-      if (Memory.inTextSegment(address) || Memory.inKernelTextSegment(address)) {
+      if (DesktopApplication.services().memory.inTextSegment(address)
+          || DesktopApplication.services().memory.inKernelTextSegment(address)) {
         VenusUI.instance()
             .getMainPane()
             .getExecutePane()
@@ -294,7 +295,7 @@ public class LabelsWindow extends JInternalFrame {
       this.myMIPSprogram = myMIPSprogram;
       symbolTable =
           (myMIPSprogram == null)
-              ? LegacyApplication.services().symbolTable
+              ? DesktopApplication.services().symbolTable
               : myMIPSprogram.getLocalSymbolTable();
       tableName =
           (myMIPSprogram == null) ? "(global)" : new File(myMIPSprogram.getFilename()).getName();
@@ -313,7 +314,7 @@ public class LabelsWindow extends JInternalFrame {
     private JTable generateLabelTable() {
       SymbolTable symbolTable =
           (myMIPSprogram == null)
-              ? LegacyApplication.services().symbolTable
+              ? DesktopApplication.services().symbolTable
               : myMIPSprogram.getLocalSymbolTable();
       int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
       if (textLabels.isSelected() && dataLabels.isSelected()) {
@@ -467,7 +468,9 @@ public class LabelsWindow extends JInternalFrame {
           sortState = sortStateTransitions[sortState][realIndex];
           tableSortComparator = tableSortingComparators.get(sortState);
           columnNames = sortColumnHeadings[sortState];
-          LegacyApplication.services().getSettings().setLabelSortState(Integer.toString(sortState));
+          DesktopApplication.services()
+              .getSettings()
+              .setLabelSortState(Integer.toString(sortState));
           setupTable();
           VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(false);
           VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(true);

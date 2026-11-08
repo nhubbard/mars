@@ -10,7 +10,7 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.Settings;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -1902,7 +1902,7 @@ public class JEditTextArea extends JComponent {
    * @return String containing auto-indent characters to be inserted into text
    */
   public String getAutoIndent() {
-    return (LegacyApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT))
+    return (DesktopApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT))
         ? getLeadingWhiteSpace()
         : "";
   }
@@ -1992,7 +1992,7 @@ public class JEditTextArea extends JComponent {
   // Compose and display syntax-sensitive help. Typically invoked upon typing a key.
   // Results in popup menu.  Is not used for creating tool tips.
   private void applySyntaxSensitiveHelp() {
-    if (!LegacyApplication.services()
+    if (!DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
       return;

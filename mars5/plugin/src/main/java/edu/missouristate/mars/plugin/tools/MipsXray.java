@@ -1,13 +1,13 @@
 package edu.missouristate.mars.plugin.tools;
 
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.RunAssembleAction;
 import edu.missouristate.mars.plugin.venus.RunBackstepAction;
 import edu.missouristate.mars.plugin.venus.RunStepAction;
@@ -110,7 +110,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
     try {
       BufferedImage im =
-          ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "datapath.png"));
+          ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "datapath.png"));
 
       int transparency = im.getColorModel().getTransparency();
       datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(), transparency);
@@ -121,14 +121,14 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     } catch (IOException e) {
       System.out.println(
           "Load Image error for "
-              + getClass().getResource(LegacyMetadata.imagesPath + "datapath.png")
+              + getClass().getResource(ApplicationInfo.imagesPath + "datapath.png")
               + ":\n"
               + e);
       e.printStackTrace();
     }
     System.setProperty("sun.java2d.translaccel", "true");
     ImageIcon icon =
-        new ImageIcon(getClass().getResource(LegacyMetadata.imagesPath + "datapath.png"));
+        new ImageIcon(getClass().getResource(ApplicationInfo.imagesPath + "datapath.png"));
     Image im = icon.getImage();
     icon = new ImageIcon(im);
 
@@ -148,7 +148,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
     gc = ge.getDefaultScreenDevice().getDefaultConfiguration();
     try {
-      BufferedImage im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + figure));
+      BufferedImage im = ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + figure));
 
       int transparency = im.getColorModel().getTransparency();
       datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(), transparency);
@@ -159,13 +159,13 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     } catch (IOException e) {
       System.out.println(
           "Load Image error for "
-              + getClass().getResource(LegacyMetadata.imagesPath + figure)
+              + getClass().getResource(ApplicationInfo.imagesPath + figure)
               + ":\n"
               + e);
       e.printStackTrace();
     }
     System.setProperty("sun.java2d.translaccel", "true");
-    ImageIcon icon = new ImageIcon(getClass().getResource(LegacyMetadata.imagesPath + figure));
+    ImageIcon icon = new ImageIcon(getClass().getResource(ApplicationInfo.imagesPath + figure));
     Image im = icon.getImage();
     icon = new ImageIcon(im);
 
@@ -177,7 +177,9 @@ public class MipsXray extends AbstractMarsToolAndApplication {
   }
 
   protected void addAsObserver() {
-    addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
+    addAsObserver(
+        DesktopApplication.services().memory.textBaseAddress,
+        DesktopApplication.services().memory.textLimitAddress);
   }
 
   // Function that gets the current instruction in memory and start animation with the selected
@@ -201,7 +203,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
 
     try {
       BasicInstruction instr;
-      stmt = Memory.getInstance().getStatement(currentAdress);
+      stmt = DesktopApplication.services().memory.getStatement(currentAdress);
       if (stmt == null) {
         return;
       }
@@ -253,7 +255,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           new RunAssembleAction(
               "Assemble",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "Assemble22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "Assemble22.png"))),
               "Assemble the current file and clear breakpoints",
               KeyEvent.VK_A,
               KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0),
@@ -263,7 +265,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           new RunStepAction(
               "Step",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "StepForward22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "StepForward22.png"))),
               "Run one step at a time",
               KeyEvent.VK_T,
               KeyStroke.getKeyStroke(KeyEvent.VK_F7, 0),
@@ -272,7 +274,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
           new RunBackstepAction(
               "Backstep",
               new ImageIcon(
-                  tk.getImage(cs.getResource(LegacyMetadata.imagesPath + "StepBack22.png"))),
+                  tk.getImage(cs.getResource(ApplicationInfo.imagesPath + "StepBack22.png"))),
               "Undo the last step",
               KeyEvent.VK_B,
               KeyStroke.getKeyStroke(KeyEvent.VK_F8, 0),
@@ -1163,7 +1165,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
     private void initImages() {
       try {
         BufferedImage im =
-            ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "datapath.png"));
+            ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "datapath.png"));
 
         int transparency = im.getColorModel().getTransparency();
         datapath = gc.createCompatibleImage(im.getWidth(), im.getHeight(), transparency);
@@ -1173,7 +1175,7 @@ public class MipsXray extends AbstractMarsToolAndApplication {
       } catch (IOException e) {
         System.out.println(
             "Load Image error for "
-                + getClass().getResource(LegacyMetadata.imagesPath + "datapath.png")
+                + getClass().getResource(ApplicationInfo.imagesPath + "datapath.png")
                 + ":\n"
                 + e);
       }

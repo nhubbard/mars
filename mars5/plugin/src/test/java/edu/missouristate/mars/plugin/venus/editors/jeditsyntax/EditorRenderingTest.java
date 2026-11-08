@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.Token;
@@ -67,7 +68,7 @@ class EditorRenderingTest {
             bold[i] = styles[i].isBold();
             italic[i] = styles[i].isItalic();
           }
-          edu.missouristate.mars.legacy.LegacyApplication.services()
+          edu.missouristate.mars.plugin.runtime.DesktopApplication.services()
               .getSettings()
               .initializeSyntaxStyleDefaults(colors, bold, italic);
           var area = new JEditTextArea(new JPanel());

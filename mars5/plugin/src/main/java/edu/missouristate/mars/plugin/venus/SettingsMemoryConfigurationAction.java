@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -87,7 +87,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       dialogPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
       JPanel configInfo = new JPanel(new FlowLayout());
-      LegacyMemoryConfigurations.buildConfigurationCollection();
+      MemoryConfigurations.buildConfigurationCollection();
       configInfo.add(buildConfigChooser());
       configInfo.add(buildConfigDisplay());
       dialogPanel.add(configInfo);
@@ -99,7 +99,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       JPanel chooserPanel = new JPanel(new GridLayout(4, 1));
       ButtonGroup choices = new ButtonGroup();
       Iterator<MemoryConfiguration> configurationsIterator =
-          LegacyMemoryConfigurations.getConfigurationsIterator();
+          MemoryConfigurations.getConfigurationsIterator();
       while (configurationsIterator.hasNext()) {
         MemoryConfiguration config = configurationsIterator.next();
         ConfigurationButton button = new ConfigurationButton(config);
@@ -119,7 +119,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
     private Component buildConfigDisplay() {
       JPanel displayPanel = new JPanel();
-      MemoryConfiguration config = LegacyMemoryConfigurations.getCurrentConfiguration();
+      MemoryConfiguration config = DesktopApplication.services().memory.getConfiguration();
       String[] configurationItemNames = config.configurationItemNames();
       int numItems = configurationItemNames.length;
       JPanel namesPanel = new JPanel(new GridLayout(numItems, 1));
@@ -187,9 +187,9 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     }
 
     private void performApply() {
-      if (LegacyMemoryConfigurations.setCurrentConfiguration(
-          this.selectedConfigurationButton.getConfiguration())) {
-        LegacyApplication.services()
+      if (DesktopApplication.services()
+          .setMemoryConfiguration(this.selectedConfigurationButton.getConfiguration())) {
+        DesktopApplication.services()
             .getSettings()
             .setMemoryConfiguration(
                 this.selectedConfigurationButton.getConfiguration().configurationIdentifier());
@@ -207,7 +207,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
           // Stop execution if executing -- should NEVER happen because this
           // Action's widget is disabled during MIPS execution.
           if (FileStatus.get() == FileStatus.RUNNING) {
-            Simulator.getInstance().stopExecution(thisAction);
+            DesktopApplication.services().simulator().stopExecution(thisAction);
           }
           VenusUI.instance().getRunAssembleAction().actionPerformed(null);
         }
@@ -260,7 +260,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     public ConfigurationButton(MemoryConfiguration config) {
       super(
           config.configurationName(),
-          config == LegacyMemoryConfigurations.getCurrentConfiguration());
+          config == DesktopApplication.services().memory.getConfiguration());
       this.configuration = config;
     }
 

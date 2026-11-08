@@ -1,7 +1,7 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import java.util.*;
 
@@ -178,7 +178,7 @@ public class EditorFont {
 
   public static String substituteSpacesForTabs(String string) {
     return substituteSpacesForTabs(
-        string, LegacyApplication.services().getSettings().getEditorTabSize());
+        string, DesktopApplication.services().getSettings().getEditorTabSize());
   }
 
   /**

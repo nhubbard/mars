@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import java.awt.*;
 import javax.swing.*;
 
@@ -90,8 +90,12 @@ public class MarsBot implements MarsTool {
 
           // Write this new information to MARS memory area
           try {
-            LegacyApplication.services().memory.setWord(ADDR_WHEREAREWEX, (int) MarsBotXPosition);
-            LegacyApplication.services().memory.setWord(ADDR_WHEREAREWEY, (int) MarsBotYPosition);
+            DesktopApplication.services()
+                .instructionContext()
+                .setMemoryWord(ADDR_WHEREAREWEX, (int) MarsBotXPosition);
+            DesktopApplication.services()
+                .instructionContext()
+                .setMemoryWord(ADDR_WHEREAREWEY, (int) MarsBotYPosition);
 
           } catch (AddressErrorException e) {
             // TBD TBD TBD No action
@@ -194,7 +198,7 @@ public class MarsBot implements MarsTool {
     t1.start();
     // New: DPS 27 Feb 2006.  Register observer for memory subrange.
     try {
-      LegacyApplication.services()
+      DesktopApplication.services()
           .memory
           .addObserver(this::handleMemoryAccess, 0xffff8000, 0xffff8060);
     } catch (AddressErrorException aee) {

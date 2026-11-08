@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.legacy.LegacyMetadata;
+import edu.missouristate.mars.ApplicationInfo;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -558,13 +558,13 @@ class UnitAnimation extends JPanel implements ActionListener {
     try {
       BufferedImage im;
       if (datapatTypeUsed == register) {
-        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "register.png"));
+        im = ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "register.png"));
       } else if (datapatTypeUsed == control) {
-        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "control.png"));
+        im = ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "control.png"));
       } else if (datapatTypeUsed == aluControl) {
-        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "ALUcontrol.png"));
+        im = ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "ALUcontrol.png"));
       } else {
-        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "alu.png"));
+        im = ImageIO.read(getClass().getResource(ApplicationInfo.imagesPath + "alu.png"));
       }
 
       int transparency = im.getColorModel().getTransparency();
@@ -575,7 +575,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     } catch (IOException e) {
       System.out.println(
           "Load Image error for "
-              + getClass().getResource(LegacyMetadata.imagesPath + "register.png")
+              + getClass().getResource(ApplicationInfo.imagesPath + "register.png")
               + ":\n"
               + e);
     }

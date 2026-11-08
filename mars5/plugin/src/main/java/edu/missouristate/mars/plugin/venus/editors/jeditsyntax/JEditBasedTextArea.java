@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.EditPane;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
@@ -51,7 +51,7 @@ public class JEditBasedTextArea extends JEditTextArea
           }
         };
     this.getDocument().addUndoableEditListener(undoableEditListener);
-    this.setFont(EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
+    this.setFont(EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
     this.setTokenMarker(new MIPSTokenMarker());
 
     addCaretListener(this);

@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.plugin.runtime.DesktopApplication;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.plugin.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.JEditBasedTextArea;
@@ -68,11 +68,11 @@ public class EditPane extends JPanel {
     String currentDirectoryPath = System.getProperty("user.dir");
     // mainUI.editor = new Editor(mainUI);
     // We want to be notified of editor font changes! See update() below.
-    LegacyApplication.services().getSettings().subscribeChange(s -> this.handleSettingsChange());
+    DesktopApplication.services().getSettings().subscribeChange(s -> this.handleSettingsChange());
     this.fileStatus = new FileStatus();
     lineNumbers = new JLabel();
 
-    if (LegacyApplication.services()
+    if (DesktopApplication.services()
         .getSettings()
         .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
       this.sourceCode = new GenericTextArea(this, lineNumbers);
@@ -145,7 +145,7 @@ public class EditPane extends JPanel {
     showLineNumbers.setEnabled(false);
     // Show line numbers by default.
     showLineNumbers.setSelected(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED));
 
@@ -167,7 +167,7 @@ public class EditPane extends JPanel {
             lineNumbers.setVisible(false);
           }
           sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
-          LegacyApplication.services()
+          DesktopApplication.services()
               .getSettings()
               .setBooleanSetting(
                   edu.missouristate.mars.Settings.EDITOR_LINE_NUMBERS_DISPLAYED,
@@ -548,13 +548,13 @@ public class EditPane extends JPanel {
 
   private void handleSettingsChange() {
     sourceCode.setFont(
-        EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
+        EditorSettings.of(DesktopApplication.services().getSettings()).getEditorFont());
     sourceCode.setLineHighlightEnabled(
-        LegacyApplication.services()
+        DesktopApplication.services()
             .getSettings()
             .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
-    sourceCode.setCaretBlinkRate(LegacyApplication.services().getSettings().getCaretBlinkRate());
-    sourceCode.setTabSize(LegacyApplication.services().getSettings().getEditorTabSize());
+    sourceCode.setCaretBlinkRate(DesktopApplication.services().getSettings().getCaretBlinkRate());
+    sourceCode.setTabSize(DesktopApplication.services().getSettings().getEditorTabSize());
     sourceCode.updateSyntaxStyles();
     sourceCode.revalidate();
     lineNumbers.setFont(getLineNumberFont(sourceCode.getFont()));

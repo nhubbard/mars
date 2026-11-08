@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.legacy.LegacyMetadata;
+import edu.missouristate.mars.ApplicationInfo;
 import java.awt.*;
 import javax.swing.*;
 
@@ -73,13 +73,13 @@ public class MarsSplashScreen extends JWindow {
     JLabel copyrt1 =
         new JLabel(
             "<html><br><br>Version "
-                + LegacyMetadata.version
+                + ApplicationInfo.version
                 + " Copyright (c) "
-                + LegacyMetadata.copyrightYears
+                + ApplicationInfo.copyrightYears
                 + "</html>",
             JLabel.CENTER);
     JLabel copyrt2 =
-        new JLabel("<html><br><br>" + LegacyMetadata.copyrightHolders + "</html>", JLabel.CENTER);
+        new JLabel("<html><br><br>" + ApplicationInfo.copyrightHolders + "</html>", JLabel.CENTER);
     title.setFont(new Font("Sans-Serif", Font.BOLD, 16));
     title.setForeground(Color.black);
     copyrt1.setFont(new Font("Sans-Serif", Font.BOLD, 14));
@@ -112,7 +112,7 @@ public class MarsSplashScreen extends JWindow {
                         .getImage(
                             this.getClass()
                                 .getResource(
-                                    LegacyMetadata.imagesPath + "MarsSurfacePathfinder.jpg")))
+                                    ApplicationInfo.imagesPath + "MarsSurfacePathfinder.jpg")))
                 .getImage();
       } catch (Exception e) {
         System.out.println(e); /*handled in paintComponent()*/
