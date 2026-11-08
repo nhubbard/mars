@@ -36,8 +36,9 @@ private name ::= WORD | DIRECTIVE | REGISTER
 // Include expansion can supply either macro boundary from a different file.
 macro_definition ::= MACRO macro_signature (NEWLINE (NEWLINE | macro_statement)* END_MACRO? | <<eof>>) {pin=1}
 private macro_statement ::= !END_MACRO statement
-macro_signature ::= name (LEFT_PAREN parameter_list? RIGHT_PAREN | parameter_list)?
-parameter_list ::= macro_parameter (COMMA? macro_parameter)*
+macro_signature ::= name parameter_list?
+// The assembler ignores commas and parentheses anywhere in a macro declaration.
+parameter_list ::= (macro_parameter | LEFT_PAREN | RIGHT_PAREN | COMMA)+
 macro_parameter ::= PARAMETER | REGISTER
 // Equivalence replacement is source text, not an eagerly evaluated expression.
 equivalence ::= EQV name COMMA? replacement+ {pin=1}

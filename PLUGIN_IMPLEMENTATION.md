@@ -146,10 +146,23 @@ diagnostics for unmatched macro boundaries after include and equivalence expansi
 The clean sandbox launch ran all 1,257 tests, loaded the plugin, and opened the smoke project.
 The installable distribution was rebuilt after startup verification.
 
+## Macro parameter spellings
+
+Macro signatures preserve parentheses and commas as tokens. The assembler ignores those tokens
+when collecting formal parameters, so the grammar accepts them in any order. The scanner keeps
+punctuation inside percent-prefixed names and follows the assembler's signed exponent token rule.
+It preserves exact spans when restarted inside a bounded source slice. Both declaration and include
+index versions advance because the same lexical change affects their stored facts.
+
+The assembler and PSI fixtures verify `%value!`, `%value-7`, and SPIM-style `$value`. The include
+fixture verifies that `.include` inside a percent-prefixed token does not create an include path.
+The clean sandbox launch ran 1,259 tests and opened the smoke project with the plugin loaded.
+The rebuilt distribution passed its ZIP integrity check. Visual editor acceptance remains open.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler, including macro formal parameter
-spellings and punctuation. Then add symbol reference sentinels,
+Continue checking parser edge cases against the Java assembler. Macro call arguments can be raw
+tokens, including a standalone `+`, and still need native PSI support. Then add symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

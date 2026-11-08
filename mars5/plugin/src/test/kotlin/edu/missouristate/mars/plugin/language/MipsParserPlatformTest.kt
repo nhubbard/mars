@@ -1,25 +1,25 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
-import com.intellij.psi.TokenType
-import com.intellij.lang.LanguageParserDefinitions
-import org.junit.jupiter.api.assertThrows
+import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.TokenType
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
-import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.mips.instructions.InstructionSet
+import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
@@ -80,6 +80,29 @@ class MipsParserPlatformTest {
         """.trimIndent()
         assertAssembles(directory, source)
         readAction { assertParses(source) }
+    }
+
+    @Test
+    fun `macro signatures preserve percent names and assembler accepted punctuation`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val signatures = listOf(
+            "%value!" to ")%value!(,",
+            "%value-7" to "(%value-7",
+            "\$value" to "\$value)",
+        )
+        for ((name, signature) in signatures) {
+            val source = ".macro emit $signature\naddiu \$t0, \$zero, $name\n.end_macro\nemit(7)"
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                val macro = file.children.mapNotNull { it.node.findChildByType(MipsTypes.psi("MACRO_DEFINITION")) }.single()
+                val formals = macro.findChildByType(MipsTypes.psi("MACRO_SIGNATURE"))!!
+                    .findChildByType(MipsTypes.psi("PARAMETER_LIST"))!!
+                val parameters = formals.getChildren(null)
+                    .filter { it.elementType == MipsTypes.psi("MACRO_PARAMETER") }
+                    .map { it.text }
+                assertEquals(listOf(name), parameters)
+            }
+        }
     }
 
     private fun assertAssembles(directory: Path, source: String) {
@@ -185,7 +208,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".macro foo (%x")) {
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".macro foo (1")) {
                 val text = broken + "\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)
                 assertEquals(text, file.text)

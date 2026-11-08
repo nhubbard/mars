@@ -33,6 +33,7 @@ class MipsIncludeProviderPlatformTest {
         val source = """
             # .include "comment.asm"
             .asciiz ".include \"string.asm\""
+            %arg!.include "parameter.asm"
             before: .INCLUDE, "parts/first.asm" .include "second-on-line.asm"
             .macro m
               .include "macro-body.asm"
@@ -62,7 +63,7 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(2, provider.version)
+        assertEquals(3, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
     }

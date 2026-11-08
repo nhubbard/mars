@@ -60,22 +60,30 @@ object MipsScanner {
                 '+' -> MipsTokenKind.PLUS
                 else -> MipsTokenKind.MINUS
             }
-            first.isLetterOrDigit() || first in "_.$%" -> {
+            first == '%' -> {
+                // MARS accepts any percent-prefixed token as a parameter name.
+                while (position < end) {
+                    val character = source[position]
+                    if (character in " \t\r\n,:()#\"'" ||
+                        character in "+-" && !continuesSignedExponent(source, position, end)) break
+                    position++
+                }
+                MipsTokenKind.PARAMETER
+            }
+            first.isLetterOrDigit() || first in "_.$" -> {
                 val numeric = first.isDigit() || (first == '.' && position < end && source[position].isDigit())
                 val hex = first == '0' && position < end && source[position] in "xX"
                 while (position < end) {
                     val character = source[position]
                     if (character.isLetterOrDigit() || character in "_.$%") {
                         position++
-                    } else if (numeric && !hex && character in "+-" && source[position - 1] in "eE" &&
-                        position + 1 < end && source[position + 1].isDigit()) {
+                    } else if (numeric && !hex && character in "+-" && continuesSignedExponent(source, position, end)) {
                         position++
                     } else break
                 }
                 when {
                     numeric -> MipsTokenKind.NUMBER
                     first == '$' -> MipsTokenKind.REGISTER
-                    first == '%' -> MipsTokenKind.PARAMETER
                     first == '.' -> MipsTokenKind.DIRECTIVE
                     else -> MipsTokenKind.WORD
                 }
@@ -84,4 +92,7 @@ object MipsScanner {
         }
         return MipsToken(kind, start, position)
     }
+
+    private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int): Boolean =
+        source[position - 1] in "eE" && position + 1 < end && source[position + 1].isDigit()
 }

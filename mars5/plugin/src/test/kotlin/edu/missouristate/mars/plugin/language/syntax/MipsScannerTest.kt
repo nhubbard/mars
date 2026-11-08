@@ -8,6 +8,20 @@ class MipsScannerTest {
     private fun kinds(text: String) = MipsScanner.scan(text).map { it.kind }
 
     @Test
+    fun `percent names follow assembler token boundaries and restart within bounded slices`() {
+        val name = "%input!@=?.part"
+        for (separator in " \t\r\n,:()#\"'+-") {
+            val source = "$name${separator}next"
+            assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, name.length), MipsScanner.next(source, 0))
+        }
+        val source = "%value-7(%name+8)"
+        val tokens = MipsScanner.scan(source)
+        assertEquals(listOf("%value-7", "(", "%name+8", ")"), tokens.map { source.substring(it.start, it.end) })
+        assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, 6), MipsScanner.next(source, 0, 7))
+        assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, 1), MipsScanner.next("%", 0))
+    }
+
+    @Test
     fun `all token kinds preserve source and restart exactly at token boundaries`() {
         val cases = mapOf(
             " " to MipsTokenKind.SPACE, "\t\u000c " to MipsTokenKind.SPACE,
