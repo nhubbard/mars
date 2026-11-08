@@ -73,7 +73,7 @@ public class SyscallInputDialogDouble extends AbstractSyscall {
     // An empty string returned (that is, inputValue.length() of zero)
     // means that OK was chosen but no string was input.
     String inputValue;
-    inputValue = context.environment(env).showInputDialog(message);
+    inputValue = context.environment().showInputDialog(message);
 
     try {
       context.setRegisterPairToDouble(0, 0.0); // set $f0 to zero

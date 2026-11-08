@@ -163,8 +163,7 @@ public class ErrorList {
    */
   public int getErrorLimit() {
     if (sessionSettings != null) return sessionSettings.getAssemblerErrorLimit();
-    Settings settings = Globals.getSettings();
-    return settings == null ? Globals.maximumErrorMessages : settings.getAssemblerErrorLimit();
+    return ApplicationInfo.maximumErrorMessages;
   }
 
   /**

@@ -55,7 +55,7 @@ public class MemoryAccessNotice extends AccessNotice {
   public MemoryAccessNotice(int type, int address, int value) {
     super(type);
     this.address = address;
-    this.length = Memory.WORD_LENGTH_BYTES;
+    this.length = MemoryState.WORD_LENGTH_BYTES;
     this.value = value;
   }
 

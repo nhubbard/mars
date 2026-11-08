@@ -35,6 +35,20 @@ public final class SimulationSettings implements MarsSettings {
     legacySettings = Objects.requireNonNull(settings);
   }
 
+  public void setBackstepStatus(java.util.function.BooleanSupplier status) {
+    if (legacySettings != null) legacySettings.setBackstepStatus(status);
+  }
+
+  public boolean displayAddressesInHex() {
+    return legacySettings == null
+        || legacySettings.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX);
+  }
+
+  public boolean displayValuesInHex() {
+    return legacySettings == null
+        || legacySettings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX);
+  }
+
   public String getMemoryConfiguration() {
     return legacySettings == null ? memoryConfiguration : legacySettings.getMemoryConfiguration();
   }

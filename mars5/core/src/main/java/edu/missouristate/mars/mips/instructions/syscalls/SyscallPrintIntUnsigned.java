@@ -49,7 +49,7 @@ public class SyscallPrintIntUnsigned extends AbstractSyscall {
    */
   public void simulate(ProgramStatement statement, InstructionContext context) {
     context
-        .environment(env)
+        .environment()
         .printString(Binary.unsignedIntToIntString(context.registerFile.getValue(4)));
   }
 }

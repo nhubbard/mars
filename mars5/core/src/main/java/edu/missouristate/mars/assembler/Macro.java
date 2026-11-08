@@ -3,9 +3,6 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.MIPSprogram;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -216,10 +213,10 @@ public class Macro {
       // DPS  7-July-2014.
       if (!tokenValue.isEmpty()
           && tokenValue.charAt(0) == '$'
-          && RegisterFile.getUserRegister(tokenValue) == null
-          && Coprocessor0.getRegister(tokenValue) == null
+          && RegisterNames.integer(tokenValue) == null
+          && RegisterNames.coprocessor0(tokenValue) == null
           && // added 7-July-2014
-          Coprocessor1.getRegister(tokenValue) == null) // added 7-July-2014
+          RegisterNames.floating(tokenValue) == null) // added 7-July-2014
       {
         return true;
       }

@@ -10,6 +10,16 @@ import java.util.Objects;
  * the console streams. Call only while the session is stopped or from its execution thread.
  */
 public final class SessionSyscallEnvironment implements SyscallEnvironment, AutoCloseable {
+  private final edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator tones =
+      new edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator();
+
+  @Override
+  public void playTone(int pitch, int duration, int instrument, int volume, boolean synchronous) {
+    if (synchronous)
+      tones.generateToneSynchronously((byte) pitch, duration, (byte) instrument, (byte) volume);
+    else tones.generateTone((byte) pitch, duration, (byte) instrument, (byte) volume);
+  }
+
   private final MemoryState memory;
   private final InputStream input;
   private final PrintStream output;
@@ -157,6 +167,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
 
   /** Releases this environment's open files; the environment can subsequently be reused. */
   public void close() {
+    tones.close();
     for (int fd = 3; fd < files.length; fd++) closeFile(fd);
   }
 

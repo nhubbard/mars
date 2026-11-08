@@ -36,8 +36,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Owns the integer registers of one simulation, including PC, HI, LO, and access listeners. This
- * class does not consult Globals or record backsteps; the deprecated RegisterFile facade retains
- * those legacy responsibilities until execution is migrated.
+ * class does not consult process-wide state or record backsteps; the deprecated RegisterFile facade
+ * retains those legacy responsibilities until execution is migrated.
  *
  * @author Jason Bumgarner, Jason Shrewsbury
  * @version June 2003
@@ -102,7 +102,7 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   private final Register lo =
       new Register("lo", 34, 0); // this is an internal register with arbitrary number
 
-  /** Creates registers using the standard MARS reset addresses without initializing Globals. */
+  /** Creates registers using the standard MARS reset addresses without initializing a runtime. */
   public IntegerRegisterFile() {
     this(
         MemoryConfigurations.getDefaultGlobalPointer(),

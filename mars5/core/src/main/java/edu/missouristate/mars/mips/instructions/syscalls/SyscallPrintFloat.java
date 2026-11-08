@@ -44,6 +44,6 @@ public class SyscallPrintFloat extends AbstractSyscall {
 
   /** Performs syscall function to display float whose bits are stored in $f12 */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    context.environment(env).printFloat(Float.intBitsToFloat(context.coprocessor1.getValue(12)));
+    context.environment().printFloat(Float.intBitsToFloat(context.coprocessor1.getValue(12)));
   }
 }

@@ -48,7 +48,7 @@ public class SyscallReadInt extends AbstractSyscall {
       throws ProcessingException {
     int value;
     try {
-      value = context.environment(env).readInt();
+      value = context.environment().readInt();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
           context,

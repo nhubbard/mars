@@ -47,6 +47,6 @@ public class SyscallPrintChar extends AbstractSyscall {
     // mask off the lower byte of register $a0.
     // Convert to a one-character string and use the string technique.
     char t = (char) (context.registerFile.getValue(4) & 0x000000ff);
-    context.environment(env).printChar(t);
+    context.environment().printChar(t);
   }
 }

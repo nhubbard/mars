@@ -44,6 +44,6 @@ public class SyscallPrintInt extends AbstractSyscall {
 
   /** Performs syscall function to print on the console the integer stored in $a0. */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    context.environment(env).printInt(context.registerFile.getValue(4));
+    context.environment().printInt(context.registerFile.getValue(4));
   }
 }

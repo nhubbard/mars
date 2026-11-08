@@ -42,6 +42,21 @@ public record MemoryConfiguration(
     String configurationName,
     String[] configurationItemNames,
     int[] configurationItemValues) {
+  public MemoryConfiguration {
+    configurationItemNames = configurationItemNames.clone();
+    configurationItemValues = configurationItemValues.clone();
+  }
+
+  @Override
+  public String[] configurationItemNames() {
+    return configurationItemNames.clone();
+  }
+
+  @Override
+  public int[] configurationItemValues() {
+    return configurationItemValues.clone();
+  }
+
   public int getTextBaseAddress() {
     return configurationItemValues[0];
   }

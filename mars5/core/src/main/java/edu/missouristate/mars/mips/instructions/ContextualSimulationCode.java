@@ -12,6 +12,6 @@ public interface ContextualSimulationCode extends SimulationCode {
 
   @Override
   default void simulate(ProgramStatement statement) throws ProcessingException {
-    simulate(statement, InstructionContext.legacy());
+    throw new IllegalStateException("An instruction context is required");
   }
 }

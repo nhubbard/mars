@@ -137,6 +137,6 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
         || !Globals.getSettings().getProgramArguments()) {
       return;
     }
-    new ProgramArgumentList(programArguments).storeProgramArguments();
+    new ProgramArgumentList(programArguments).storeProgramArguments(Globals.context());
   }
 }

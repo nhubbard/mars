@@ -67,7 +67,7 @@ public class SyscallMessageDialogDouble extends AbstractSyscall {
     // Display the dialog.
     try {
       context
-          .environment(env)
+          .environment()
           .showMessageDialog(
               message + context.coprocessor1.getDoubleFromRegisterPair("$f12"), null, 1);
     } catch (InvalidRegisterAccessException e) // register ID error in this method

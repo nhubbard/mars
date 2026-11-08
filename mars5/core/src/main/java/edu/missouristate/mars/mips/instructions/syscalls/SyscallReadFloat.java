@@ -48,7 +48,7 @@ public class SyscallReadFloat extends AbstractSyscall {
       throws ProcessingException {
     float floatValue;
     try {
-      floatValue = context.environment(env).readFloat();
+      floatValue = context.environment().readFloat();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
           context,

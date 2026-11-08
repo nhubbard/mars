@@ -53,11 +53,13 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
   private final AssemblyContext assemblyContext;
   private SyscallEnvironment syscallEnvironment;
   private InstructionContext sessionExecution;
+  private ErrorList assemblyDiagnostics;
+
+  public ErrorList getAssemblyDiagnostics() {
+    return assemblyDiagnostics;
+  }
 
   /** Legacy program bound to the process-global assembler and simulator. */
-  public MIPSprogram() {
-    assemblyContext = AssemblyContext.legacy();
-  }
 
   /** Program whose sources, symbols, memory, and synchronous execution belong to one session. */
   public MIPSprogram(MarsContext session) {
@@ -73,9 +75,7 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
   }
 
   public MIPSprogram createRelatedProgram() {
-    return assemblyContext.session() == null
-        ? new MIPSprogram()
-        : new MIPSprogram(assemblyContext.session());
+    return new MIPSprogram(assemblyContext.session());
   }
 
   // See explanation of method inSteppedExecution() below.
@@ -263,9 +263,7 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
     this.tokenizer = assemblyContext.tokenizer(this);
     this.tokenList = tokenizer.tokenize(this);
     this.localSymbolTable =
-        assemblyContext.session() == null
-            ? new SymbolTable(this.filename)
-            : new SymbolTable(this.filename, assemblyContext.symbols()); // prepare for assembly
+        new SymbolTable(this.filename, assemblyContext.symbols()); // prepare for assembly
   }
 
   /**
@@ -343,7 +341,9 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
       boolean warningsAreErrors)
       throws ProcessingException {
     try (var lease =
-        assemblyContext.session() == null ? null : assemblyContext.session().claimExecution()) {
+        assemblyContext.session() == null
+            ? null
+            : assemblyContext.session().claimStoppedSession()) {
       return assembleStopped(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
     }
   }
@@ -369,13 +369,11 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
     Assembler asm = new Assembler(assemblyContext);
     this.machineList =
         asm.assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
-    this.backStepper =
-        assemblyContext.session() == null
-            ? new BackStepper()
-            : assemblyContext.session().backStepper;
+    this.backStepper = assemblyContext.session().backStepper;
     sessionExecution = null;
     assemblyContext.finishAssembly(this);
-    return asm.getErrorList();
+    assemblyDiagnostics = asm.getErrorList();
+    return assemblyDiagnostics;
   }
 
   /**
@@ -417,9 +415,7 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
   public boolean simulateFromPC(int[] breakPoints, int maxSteps, SimulatorActionSource a)
       throws ProcessingException {
     steppedExecution = false;
-    if (assemblyContext.session() != null) return simulateSession(breakPoints, maxSteps);
-    Simulator sim = Simulator.getInstance();
-    return sim.simulate(this, RegisterFile.getProgramCounter(), maxSteps, breakPoints, a);
+    return simulateSession(breakPoints, maxSteps);
   }
 
   /**
@@ -432,27 +428,20 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
    */
   public boolean simulateStepAtPC(SimulatorActionSource a) throws ProcessingException {
     steppedExecution = true;
-    if (assemblyContext.session() != null) return simulateSession(null, 1);
-    Simulator sim = Simulator.getInstance();
-    return sim.simulate(this, RegisterFile.getProgramCounter(), 1, null, a);
+    return simulateSession(null, 1);
   }
 
   /** Sets I/O for a session program; call while execution is stopped. */
   public void setSyscallEnvironment(SyscallEnvironment environment) {
     Objects.requireNonNull(environment);
-    if (assemblyContext.session() == null) Globals.setSyscallEnvironment(environment);
-    else {
-      try (var lease = assemblyContext.session().claimExecution()) {
-        syscallEnvironment = environment;
-        sessionExecution = null;
-      }
+    try (var lease = assemblyContext.session().claimStoppedSession()) {
+      syscallEnvironment = environment;
+      sessionExecution = null;
     }
   }
 
   public int getExitCode() {
-    return assemblyContext.session() == null
-        ? Globals.exitCode
-        : sessionExecution == null ? 0 : sessionExecution.getExitCode();
+    return sessionExecution == null ? 0 : sessionExecution.getExitCode();
   }
 
   @Override
@@ -521,10 +510,10 @@ public class MIPSprogram implements edu.missouristate.mars.api.Program {
   /** Synchronous, frontend-independent execution for a session-owned program. */
   private boolean simulateSession(int[] breakPoints, int maxSteps) throws ProcessingException {
     MarsContext session = assemblyContext.session();
-    try (var lease = session.claimExecution()) {
+    try (var lease = session.claimStoppedSession()) {
       int steps = 0;
       while (maxSteps <= 0 || steps < maxSteps) {
-        if (Thread.currentThread().isInterrupted()) return false;
+        if (Thread.currentThread().isInterrupted() || session.isClosing()) return false;
         if (executeSessionInstruction().stopReason() != null) return true;
         steps++;
         if (breakPoints != null) {

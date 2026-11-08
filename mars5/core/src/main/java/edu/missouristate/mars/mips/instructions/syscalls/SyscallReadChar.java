@@ -48,7 +48,7 @@ public class SyscallReadChar extends AbstractSyscall {
       throws ProcessingException {
     int value;
     try {
-      value = context.environment(env).readChar();
+      value = context.environment().readChar();
     } catch (IndexOutOfBoundsException e) // means null input
     {
       throw new ProcessingException(

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.Binary;
@@ -72,22 +71,23 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+  public void dumpMemoryRange(
+      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
       throws AddressErrorException, IOException {
 
     PrintStream out = new PrintStream(new FileOutputStream(file));
 
-    boolean hexAddresses = Globals.getSettings().getDisplayAddressesInHex();
+    boolean hexAddresses = session.settings.displayAddressesInHex();
 
     // If address in data segment, print in same format as Data Segment Window
-    if (Memory.inDataSegment(firstAddress)) {
-      boolean hexValues = Globals.getSettings().getDisplayValuesInHex();
+    if (session.memory.inDataSegment(firstAddress)) {
+      boolean hexValues = session.settings.displayValuesInHex();
       int offset = 0;
       StringBuilder string = new StringBuilder();
       try {
         for (int address = firstAddress;
             address <= lastAddress;
-            address += Memory.WORD_LENGTH_BYTES) {
+            address += MemoryState.WORD_LENGTH_BYTES) {
           if (offset % 8 == 0) {
             string =
                 new StringBuilder(
@@ -97,7 +97,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
                         + "    ");
           }
           offset++;
-          Integer temp = Globals.memory.getRawWordOrNull(address);
+          Integer temp = session.memory.getRawWordOrNull(address);
           if (temp == null) break;
           string
               .append(
@@ -116,7 +116,7 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
       return;
     }
 
-    if (!Memory.inTextSegment(firstAddress)) {
+    if (!session.memory.inTextSegment(firstAddress)) {
       return;
     }
     // If address in text segment, print in same format as Text Segment Window
@@ -128,17 +128,17 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
     try {
       for (int address = firstAddress;
           address <= lastAddress;
-          address += Memory.WORD_LENGTH_BYTES) {
+          address += MemoryState.WORD_LENGTH_BYTES) {
         string =
             ((hexAddresses)
                     ? Binary.intToHexString(address)
                     : Binary.unsignedIntToIntString(address))
                 + "  ";
-        Integer temp = Globals.memory.getRawWordOrNull(address);
+        Integer temp = session.memory.getRawWordOrNull(address);
         if (temp == null) break;
         string += Binary.intToHexString(temp) + "  ";
         try {
-          ProgramStatement ps = Globals.memory.getStatement(address);
+          ProgramStatement ps = session.memory.getStatement(address);
           string +=
               (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
           string +=

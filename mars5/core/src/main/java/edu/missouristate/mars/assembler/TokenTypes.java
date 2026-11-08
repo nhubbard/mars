@@ -2,6 +2,7 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.util.*;
 
@@ -100,7 +101,7 @@ public final class TokenTypes {
    *     token type, else returns <code>null</code>.
    */
   public static TokenTypes matchTokenType(String value) {
-    return matchTokenType(value, Globals.instructionSet);
+    return matchTokenType(value, InstructionDefaults.get());
   }
 
   /** Classifies an operator using an explicit instruction set. */
@@ -135,14 +136,14 @@ public final class TokenTypes {
     if (Macro.tokenIsMacroParameter(value, false)) return TokenTypes.MACRO_PARAMETER;
 
     // See if it is a register
-    Register reg = RegisterFile.getUserRegister(value);
+    Register reg = RegisterNames.integer(value);
     if (reg != null)
       if (reg.getName().equals(value)) return TokenTypes.REGISTER_NAME;
       else return TokenTypes.REGISTER_NUMBER;
 
     // See if it is a floating point register
 
-    reg = Coprocessor1.getRegister(value);
+    reg = RegisterNames.floating(value);
     if (reg != null) return TokenTypes.FP_REGISTER_NAME;
 
     // See if it is an immediate (constant) integer value

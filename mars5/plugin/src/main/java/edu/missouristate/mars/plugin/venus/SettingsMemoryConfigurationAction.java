@@ -86,7 +86,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       dialogPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
       JPanel configInfo = new JPanel(new FlowLayout());
-      MemoryConfigurations.buildConfigurationCollection();
+      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
+          .buildConfigurationCollection();
       configInfo.add(buildConfigChooser());
       configInfo.add(buildConfigDisplay());
       dialogPanel.add(configInfo);
@@ -98,7 +99,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       JPanel chooserPanel = new JPanel(new GridLayout(4, 1));
       ButtonGroup choices = new ButtonGroup();
       Iterator<MemoryConfiguration> configurationsIterator =
-          MemoryConfigurations.getConfigurationsIterator();
+          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
+              .getConfigurationsIterator();
       while (configurationsIterator.hasNext()) {
         MemoryConfiguration config = configurationsIterator.next();
         ConfigurationButton button = new ConfigurationButton(config);
@@ -118,7 +120,8 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
     private Component buildConfigDisplay() {
       JPanel displayPanel = new JPanel();
-      MemoryConfiguration config = MemoryConfigurations.getCurrentConfiguration();
+      MemoryConfiguration config =
+          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getCurrentConfiguration();
       String[] configurationItemNames = config.configurationItemNames();
       int numItems = configurationItemNames.length;
       JPanel namesPanel = new JPanel(new GridLayout(numItems, 1));
@@ -186,7 +189,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     }
 
     private void performApply() {
-      if (MemoryConfigurations.setCurrentConfiguration(
+      if (edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
           this.selectedConfigurationButton.getConfiguration())) {
         Globals.getSettings()
             .setMemoryConfiguration(
@@ -256,7 +259,11 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     private final MemoryConfiguration configuration;
 
     public ConfigurationButton(MemoryConfiguration config) {
-      super(config.configurationName(), config == MemoryConfigurations.getCurrentConfiguration());
+      super(
+          config.configurationName(),
+          config
+              == edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
+                  .getCurrentConfiguration());
       this.configuration = config;
     }
 

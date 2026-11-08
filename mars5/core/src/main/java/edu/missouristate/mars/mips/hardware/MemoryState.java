@@ -2,6 +2,8 @@ package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.MarsSettings;
+import edu.missouristate.mars.mips.hardware.memory.TextMemorySegment;
+import edu.missouristate.mars.mips.hardware.memory.WordMemorySegment;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -40,8 +42,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /**
  * Owns a simulation's memory contents, address configuration, heap, byte order, and observers.
- * Settings and binary decoding are supplied by the owner. This class does not consult Globals or
- * record undo history; the Memory compatibility facade retains those legacy responsibilities.
+ * Settings and binary decoding are supplied by the owner. This class does not consult process-wide
+ * state or record undo history; the Memory compatibility facade retains those legacy
+ * responsibilities.
  *
  * @author Pete Sanderson
  * @version August 2003
@@ -153,8 +156,8 @@ public class MemoryState {
 
   private static final int BLOCK_LENGTH_WORDS = 1024; // allocated blocksize 1024 ints == 4K bytes
   private static final int BLOCK_TABLE_LENGTH = 1024; // Each entry of table points to a block.
-  private int[][] dataBlockTable;
-  private int[][] kernelDataBlockTable;
+  private WordMemorySegment dataBlockTable;
+  private WordMemorySegment kernelDataBlockTable;
 
   // The stack is modeled similarly to the data segment.  It cannot share the same
   // data structure because the stack base address is very large.  To store it in the
@@ -171,7 +174,7 @@ public class MemoryState {
   // Everything else works the same, so it shares some private helper methods with
   // data segment algorithms.
 
-  private int[][] stackBlockTable;
+  private WordMemorySegment stackBlockTable;
 
   // Memory mapped I/O is simulated with a separate table using the same structure and
   // logic as data segment.  Memory is allocated in 4K byte blocks.  But since MMIO
@@ -184,7 +187,7 @@ public class MemoryState {
   // into a table offset, this is of no concern.
 
   private static final int MMIO_TABLE_LENGTH = 16; // Each entry of table points to a 4K block.
-  private int[][] memoryMapBlockTable;
+  private WordMemorySegment memoryMapBlockTable;
 
   // I use a similar scheme for storing instructions.  MIPS text segment ranges from
   // 0x00400000 all the way to data segment (0x10000000) a range of about 250 MB!  So
@@ -195,8 +198,8 @@ public class MemoryState {
   private static final int TEXT_BLOCK_LENGTH_WORDS =
       1024; // allocated blocksize 1024 ints == 4K bytes
   private static final int TEXT_BLOCK_TABLE_LENGTH = 1024; // Each entry of table points to a block.
-  private ProgramStatement[][] textBlockTable;
-  private ProgramStatement[][] kernelTextBlockTable;
+  private TextMemorySegment textBlockTable;
+  private TextMemorySegment kernelTextBlockTable;
 
   // Set "top" address boundary to go with each "base" address.  This determines permissable
   // address range for user program.  Currently limit is 4MB, or 1024 * 1024 * 4 bytes based
@@ -306,12 +309,14 @@ public class MemoryState {
 
   private void initialize() {
     heapAddress = heapBaseAddress;
-    textBlockTable = new ProgramStatement[TEXT_BLOCK_TABLE_LENGTH][];
-    dataBlockTable = new int[BLOCK_TABLE_LENGTH][]; // array of null int[] references
-    kernelTextBlockTable = new ProgramStatement[TEXT_BLOCK_TABLE_LENGTH][];
-    kernelDataBlockTable = new int[BLOCK_TABLE_LENGTH][];
-    stackBlockTable = new int[BLOCK_TABLE_LENGTH][];
-    memoryMapBlockTable = new int[MMIO_TABLE_LENGTH][];
+    textBlockTable = new TextMemorySegment(TEXT_BLOCK_TABLE_LENGTH);
+    dataBlockTable =
+        new WordMemorySegment(
+            BLOCK_TABLE_LENGTH, false, this::getByteOrder); // array of null int[] references
+    kernelTextBlockTable = new TextMemorySegment(TEXT_BLOCK_TABLE_LENGTH);
+    kernelDataBlockTable = new WordMemorySegment(BLOCK_TABLE_LENGTH, false, this::getByteOrder);
+    stackBlockTable = new WordMemorySegment(BLOCK_TABLE_LENGTH, true, this::getByteOrder);
+    memoryMapBlockTable = new WordMemorySegment(MMIO_TABLE_LENGTH, false, this::getByteOrder);
   }
 
   /**
@@ -712,7 +717,7 @@ public class MemoryState {
       throw new AddressErrorException(
           "address out of range ", Exceptions.ADDRESS_EXCEPTION_LOAD, address);
     }
-    notifyAnyObservers(AccessNotice.READ, address, Memory.WORD_LENGTH_BYTES, value);
+    notifyAnyObservers(AccessNotice.READ, address, MemoryState.WORD_LENGTH_BYTES, value);
     return value;
   }
 
@@ -790,7 +795,7 @@ public class MemoryState {
    */
   public int getAddressOfFirstNull(int baseAddress, int limitAddress) throws AddressErrorException {
     int address = baseAddress;
-    for (; address < limitAddress; address += Memory.WORD_LENGTH_BYTES) {
+    for (; address < limitAddress; address += MemoryState.WORD_LENGTH_BYTES) {
       if (getRawWordOrNull(address) == null) {
         break;
       }
@@ -952,8 +957,8 @@ public class MemoryState {
 
   /**
    * Handy little utility to find out if given address is in MARS text segment (starts at
-   * Memory.textBaseAddress). Note that MARS does not implement the entire MIPS text segment space,
-   * but it does implement enough for hundreds of thousands of lines of code.
+   * MemoryState.textBaseAddress). Note that MARS does not implement the entire MIPS text segment
+   * space, but it does implement enough for hundreds of thousands of lines of code.
    *
    * @param address integer memory address
    * @return true if that address is within MARS-defined text segment, false otherwise.
@@ -964,7 +969,7 @@ public class MemoryState {
 
   /**
    * Handy little utility to find out if given address is in MARS kernel text segment (starts at
-   * Memory.kernelTextBaseAddress).
+   * MemoryState.kernelTextBaseAddress).
    *
    * @param address integer memory address
    * @return true if that address is within MARS-defined kernel text segment, false otherwise.
@@ -975,8 +980,8 @@ public class MemoryState {
 
   /**
    * Handy little utility to find out if given address is in MARS data segment (starts at
-   * Memory.dataSegmentBaseAddress). Note that MARS does not implement the entire MIPS data segment
-   * space, but it does support at least 4MB.
+   * MemoryState.dataSegmentBaseAddress). Note that MARS does not implement the entire MIPS data
+   * segment space, but it does support at least 4MB.
    *
    * @param address integer memory address
    * @return true if that address is within MARS-defined data segment, false otherwise.
@@ -987,7 +992,7 @@ public class MemoryState {
 
   /**
    * Handy little utility to find out if given address is in MARS kernel data segment (starts at
-   * Memory.kernelDataSegmentBaseAddress).
+   * MemoryState.kernelDataSegmentBaseAddress).
    *
    * @param address integer memory address
    * @return true if that address is within MARS-defined kernel data segment, false otherwise.
@@ -998,7 +1003,7 @@ public class MemoryState {
 
   /**
    * Handy little utility to find out if given address is in the Memory Map area starts at
-   * Memory.memoryMapBaseAddress, range 0xffff0000 to 0xffffffff.
+   * MemoryState.memoryMapBaseAddress, range 0xffff0000 to 0xffffffff.
    *
    * @param address integer memory address
    * @return true if that address is within MARS-defined memory map (MMIO) area, false otherwise.
@@ -1019,7 +1024,7 @@ public class MemoryState {
       this.addObserver(callback, 0, 0x7ffffffc);
       this.addObserver(callback, 0x80000000, 0xfffffffc);
     } catch (AddressErrorException aee) {
-      System.out.println("Internal Error in Memory.addObserver: " + aee);
+      System.out.println("Internal Error in MemoryState.addObserver: " + aee);
     }
   }
 
@@ -1112,160 +1117,24 @@ public class MemoryState {
   // and block size.
   // Modified 29 Dec 2005 to return old value of replaced bytes.
   //
-  private static final boolean STORE = true;
-  private static final boolean FETCH = false;
-
-  private int storeBytesInTable(
-      int[][] blockTable, int relativeByteAddress, int length, int value) {
-    return storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, value, STORE);
+  private int storeBytesInTable(WordMemorySegment segment, int relative, int length, int value) {
+    return segment.storeBytes(relative, length, value);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Helper method to fetch 1, 2 or 4 byte value from table that represents MIPS
-  // memory.  Originally used just for data segment, but now also used for stack.
-  // Both use different tables but same storage method and same table size
-  // and block size.
-  //
-
-  private int fetchBytesFromTable(int[][] blockTable, int relativeByteAddress, int length) {
-    return storeOrFetchBytesInTable(blockTable, relativeByteAddress, length, 0, FETCH);
+  private int fetchBytesFromTable(WordMemorySegment segment, int relative, int length) {
+    return segment.fetchBytes(relative, length);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // The helper's helper.  Works for either storing or fetching, little or big endian.
-  // When storing/fetching bytes, most of the work is calculating the correct array element(s)
-  // and element byte(s).  This method performs either store or fetch, as directed by its
-  // client using STORE or FETCH in last arg.
-  // Modified 29 Dec 2005 to return old value of replaced bytes, for STORE.
-  //
-  private synchronized int storeOrFetchBytesInTable(
-      int[][] blockTable, int relativeByteAddress, int length, int value, boolean op) {
-    int relativeWordAddress, block, offset, bytePositionInMemory, bytePositionInValue;
-    int oldValue = 0; // for STORE, return old values of replaced bytes
-    int loopStopper = 3 - length;
-    // IF added DPS 22-Dec-2008. NOTE: has NOT been tested with Big-Endian.
-    // Fix provided by Saul Spatz; comments that follow are his.
-    // If address in stack segment is 4k + m, with 0 < m < 4, then the
-    // relativeByteAddress we want is stackBaseAddress - 4k + m, but the
-    // address actually passed in is stackBaseAddress - (4k + m), so we
-    // need to add 2m.  Because of the change in sign, we get the
-    // expression 4-delta below in place of m.
-    if (blockTable == stackBlockTable) {
-      int delta = relativeByteAddress % 4;
-      if (delta != 0) {
-        relativeByteAddress += (4 - delta) << 1;
-      }
-    }
-    for (bytePositionInValue = 3; bytePositionInValue > loopStopper; bytePositionInValue--) {
-      bytePositionInMemory = relativeByteAddress % 4;
-      relativeWordAddress = relativeByteAddress >> 2;
-      block = relativeWordAddress / BLOCK_LENGTH_WORDS; // Block number
-      offset = relativeWordAddress % BLOCK_LENGTH_WORDS; // Word within that block
-      if (blockTable[block] == null) {
-        if (op == STORE) blockTable[block] = new int[BLOCK_LENGTH_WORDS];
-        else return 0;
-      }
-      if (byteOrder == LITTLE_ENDIAN) bytePositionInMemory = 3 - bytePositionInMemory;
-      if (op == STORE) {
-        oldValue =
-            replaceByte(
-                blockTable[block][offset], bytePositionInMemory, oldValue, bytePositionInValue);
-        blockTable[block][offset] =
-            replaceByte(
-                value, bytePositionInValue, blockTable[block][offset], bytePositionInMemory);
-      } else { // op == FETCH
-        value =
-            replaceByte(
-                blockTable[block][offset], bytePositionInMemory, value, bytePositionInValue);
-      }
-      relativeByteAddress++;
-    }
-    return (op == STORE) ? oldValue : value;
+  private int storeWordInTable(WordMemorySegment segment, int relative, int value) {
+    return segment.storeWord(relative, value);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Helper method to store 4 byte value in table that represents MIPS memory.
-  // Originally used just for data segment, but now also used for stack.
-  // Both use different tables but same storage method and same table size
-  // and block size.  Assumes address is word aligned, no endian processing.
-  // Modified 29 Dec 2005 to return overwritten value.
-
-  private synchronized int storeWordInTable(int[][] blockTable, int relative, int value) {
-    int block, offset, oldValue;
-    block = relative / BLOCK_LENGTH_WORDS;
-    offset = relative % BLOCK_LENGTH_WORDS;
-    if (blockTable[block] == null) {
-      // First time writing to this block, so allocate the space.
-      blockTable[block] = new int[BLOCK_LENGTH_WORDS];
-    }
-    oldValue = blockTable[block][offset];
-    blockTable[block][offset] = value;
-    return oldValue;
+  private int fetchWordFromTable(WordMemorySegment segment, int relative) {
+    return segment.fetchWord(relative);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Helper method to fetch 4 byte value from table that represents MIPS memory.
-  // Originally used just for data segment, but now also used for stack.
-  // Both use different tables but same storage method and same table size
-  // and block size.  Assumes word alignment, no endian processing.
-  //
-
-  private synchronized int fetchWordFromTable(int[][] blockTable, int relative) {
-    int value;
-    int block, offset;
-    block = relative / BLOCK_LENGTH_WORDS;
-    offset = relative % BLOCK_LENGTH_WORDS;
-    if (blockTable[block] == null) {
-      // first reference to an address in this block.  Assume initialized to 0.
-      value = 0;
-    } else {
-      value = blockTable[block][offset];
-    }
-    return value;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  //
-  // Helper method to fetch 4 byte value from table that represents MIPS memory.
-  // Originally used just for data segment, but now also used for stack.
-  // Both use different tables but same storage method and same table size
-  // and block size.  Assumes word alignment, no endian processing.
-  //
-  // This differs from "fetchWordFromTable()" in that it returns an Integer and
-  // returns null instead of 0 if the 4K table has not been allocated.  Developed
-  // by Greg Gibeling of UC Berkeley, fall 2007.
-  //
-
-  private synchronized Integer fetchWordOrNullFromTable(int[][] blockTable, int relative) {
-    int value;
-    int block, offset;
-    block = relative / BLOCK_LENGTH_WORDS;
-    offset = relative % BLOCK_LENGTH_WORDS;
-    if (blockTable[block] == null) {
-      // first reference to an address in this block.  Assume initialized to 0.
-      return null;
-    } else {
-      value = blockTable[block][offset];
-    }
-    return value;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////////
-  // Returns result of substituting specified byte of source value into specified byte
-  // of destination value. Byte positions are 0-1-2-3, listed from most to least
-  // significant.  No endian issues.  This is a private helper method used by get() & set().
-  private int replaceByte(int sourceValue, int bytePosInSource, int destValue, int bytePosInDest) {
-    return
-    // Set source byte value into destination byte position; set other 24 bits to 0's...
-    ((sourceValue >> (24 - (bytePosInSource << 3)) & 0xFF) << (24 - (bytePosInDest << 3)))
-        // and bitwise-OR it with...
-        |
-        // Set 8 bits in destination byte position to 0's, other 24 bits are unchanged.
-        (destValue & ~(0xFF << (24 - (bytePosInDest << 3))));
+  private Integer fetchWordOrNullFromTable(WordMemorySegment segment, int relative) {
+    return segment.fetchWordOrNull(relative);
   }
 
   ///////////////////////////////////////////////////////////////////////
@@ -1281,47 +1150,20 @@ public class MemoryState {
   ///////////////////////////////////////////////////////////////////////
   // Store a program statement at the given address.  Address has already been verified
   // as valid.  It may be either in user or kernel text segment, as specified by arguments.
-  private synchronized void storeProgramStatement(
-      int address, ProgramStatement statement, int baseAddress, ProgramStatement[][] blockTable) {
-    int relative = (address - baseAddress) >> 2; // convert byte address to words
-    int block = relative / BLOCK_LENGTH_WORDS;
-    int offset = relative % BLOCK_LENGTH_WORDS;
-    if (block < TEXT_BLOCK_TABLE_LENGTH) {
-      if (blockTable[block] == null) {
-        // No instructions are stored in this block, so allocate the block.
-        blockTable[block] = new ProgramStatement[BLOCK_LENGTH_WORDS];
-      }
-      blockTable[block][offset] = statement;
-    }
+  private void storeProgramStatement(
+      int address, ProgramStatement statement, int baseAddress, TextMemorySegment segment) {
+    segment.store((address - baseAddress) >> 2, statement);
   }
 
-  ///////////////////////////////////////////////////////////////////////
-  // Read a program statement from the given address.  Address has already been verified
-  // as valid.  It may be either in user or kernel text segment, as specified by arguments.
-  // Returns associated ProgramStatement or null if none.
-  // Last parameter controls whether or not observers will be notified.
-  private synchronized ProgramStatement readProgramStatement(
-      int address, int baseAddress, ProgramStatement[][] blockTable, boolean notify) {
-    int relative = (address - baseAddress) >> 2; // convert byte address to words
-    int block = relative / TEXT_BLOCK_LENGTH_WORDS;
-    int offset = relative % TEXT_BLOCK_LENGTH_WORDS;
-    if (block < TEXT_BLOCK_TABLE_LENGTH) {
-      if (blockTable[block] == null || blockTable[block][offset] == null) {
-        // No instructions are stored in this block or offset.
-        if (notify)
-          notifyAnyObservers(AccessNotice.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
-        return null;
-      } else {
-        if (notify)
-          notifyAnyObservers(
-              AccessNotice.READ,
-              address,
-              Instruction.INSTRUCTION_LENGTH,
-              blockTable[block][offset].getBinaryStatement());
-        return blockTable[block][offset];
-      }
-    }
-    if (notify) notifyAnyObservers(AccessNotice.READ, address, Instruction.INSTRUCTION_LENGTH, 0);
-    return null;
+  private ProgramStatement readProgramStatement(
+      int address, int baseAddress, TextMemorySegment segment, boolean notify) {
+    ProgramStatement statement = segment.read((address - baseAddress) >> 2);
+    if (notify)
+      notifyAnyObservers(
+          AccessNotice.READ,
+          address,
+          Instruction.INSTRUCTION_LENGTH,
+          statement == null ? 0 : statement.getBinaryStatement());
+    return statement;
   }
 }

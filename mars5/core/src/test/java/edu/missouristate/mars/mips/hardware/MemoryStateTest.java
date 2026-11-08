@@ -69,7 +69,9 @@ class MemoryStateTest {
 
   @Test
   void layoutsAndConfigurationSnapshotsDoNotAffectOtherInstances() throws Exception {
-    var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
+    var configuration =
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(
+            "CompactDataAtZero");
     var first =
         new MemoryState(
             configuration,
@@ -214,7 +216,7 @@ class MemoryStateTest {
 
   private static MemoryState memory(String layout, SimulationSettings settings) {
     return new MemoryState(
-        MemoryConfigurations.createConfiguration(layout),
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration(layout),
         settings,
         (binary, address) -> new ProgramStatement(binary, address, instructions));
   }

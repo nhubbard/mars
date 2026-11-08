@@ -74,7 +74,7 @@ public class SyscallWrite extends AbstractSyscall {
     }
     int retValue =
         context
-            .environment(env)
+            .environment()
             .writeToFile(
                 context.registerFile.getValue(4), // fd
                 myBuffer, // buffer

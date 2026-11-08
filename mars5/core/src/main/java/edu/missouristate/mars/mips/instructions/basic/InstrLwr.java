@@ -19,7 +19,7 @@ public class InstrLwr extends BasicInstruction {
           try {
             int address = context.registerFile.getValue(operands[2]) + operands[1];
             int result = context.registerFile.getValue(operands[0]);
-            for (int i = 0; i <= 3 - (address % Memory.WORD_LENGTH_BYTES); i++) {
+            for (int i = 0; i <= 3 - (address % MemoryState.WORD_LENGTH_BYTES); i++) {
               result = Binary.setByte(result, i, context.memory().getByte(address + i));
             }
             context.updateRegister(operands[0], result);

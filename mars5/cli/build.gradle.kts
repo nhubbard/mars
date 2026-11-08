@@ -21,8 +21,9 @@ tasks.test {
 }
 
 tasks.jar {
+  dependsOn(configurations.runtimeClasspath)
   manifest {
-    attributes("Main-Class" to "edu.missouristate.mars.Mars")
+    attributes("Main-Class" to "edu.missouristate.mars.cli.MarsCli")
   }
   // Fat jar: include all runtime deps so the jar is self-contained.
   from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })

@@ -62,7 +62,6 @@ public class ProcessingException extends Exception {
    */
   public ProcessingException(ErrorList e, AddressErrorException aee) {
     errs = e;
-    Exceptions.setRegisters(aee.getType(), aee.getAddress());
   }
 
   /**
@@ -75,12 +74,7 @@ public class ProcessingException extends Exception {
     errs = new ErrorList();
     errs.add(
         new ErrorMessage(
-            ps,
-            "Runtime exception at "
-                + Binary.intToHexString(
-                    RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH)
-                + ": "
-                + m));
+            ps, "Runtime exception at " + Binary.intToHexString(ps.getAddress()) + ": " + m));
     // Stopped using ps.getAddress() because of pseudo-instructions.  All instructions in
     // the macro expansion point to the same ProgramStatement, and thus all will return the
     // same value for getAddress(). But only the first such expanded instruction will
@@ -97,7 +91,6 @@ public class ProcessingException extends Exception {
    */
   public ProcessingException(ProgramStatement ps, String m, int cause) {
     this(ps, m);
-    Exceptions.setRegisters(cause);
   }
 
   /**
@@ -108,7 +101,6 @@ public class ProcessingException extends Exception {
    */
   public ProcessingException(ProgramStatement ps, AddressErrorException aee) {
     this(ps, aee.getMessage());
-    Exceptions.setRegisters(aee.getType(), aee.getAddress());
   }
 
   /**

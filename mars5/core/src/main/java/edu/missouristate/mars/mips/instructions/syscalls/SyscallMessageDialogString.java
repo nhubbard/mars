@@ -79,6 +79,6 @@ public class SyscallMessageDialogString extends AbstractSyscall {
     }
 
     // Display the dialog.
-    context.environment(env).showMessageDialog(message + message2, null, 1);
+    context.environment().showMessageDialog(message + message2, null, 1);
   }
 }

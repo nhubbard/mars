@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.*;
 import java.io.*;
 
@@ -60,14 +59,15 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+  public void dumpMemoryRange(
+      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
       throws AddressErrorException, IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
       StringBuilder string;
       for (int address = firstAddress;
           address <= lastAddress;
-          address += Memory.WORD_LENGTH_BYTES) {
-        Integer temp = Globals.memory.getRawWordOrNull(address);
+          address += MemoryState.WORD_LENGTH_BYTES) {
+        Integer temp = session.memory.getRawWordOrNull(address);
         if (temp == null) break;
         string = new StringBuilder(Integer.toHexString(temp));
         while (string.length() < 8) {

@@ -72,6 +72,6 @@ public class SyscallMessageDialog extends AbstractSyscall {
     int msgType = context.registerFile.getValue(5);
     if (msgType < 0 || msgType > 3)
       msgType = -1; // See values in http://java.sun.com/j2se/1.5.0/docs/api/constant-values.html
-    context.environment(env).showMessageDialog(message, null, msgType);
+    context.environment().showMessageDialog(message, null, msgType);
   }
 }

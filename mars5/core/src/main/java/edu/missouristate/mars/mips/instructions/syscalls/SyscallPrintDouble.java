@@ -50,7 +50,7 @@ public class SyscallPrintDouble extends AbstractSyscall {
   public void simulate(ProgramStatement statement, InstructionContext context) {
     // Note: Higher numbered reg contains high order word so concat 13-12.
     context
-        .environment(env)
+        .environment()
         .printDouble(
             Double.longBitsToDouble(
                 Binary.twoIntsToLong(

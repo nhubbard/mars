@@ -21,7 +21,8 @@ public class InstrSdc1 extends BasicInstruction {
                 context, statement, "first register must be even-numbered");
           }
 
-          if (!Memory.doublewordAligned(context.registerFile.getValue(operands[2]) + operands[1])) {
+          if (!MemoryState.doublewordAligned(
+              context.registerFile.getValue(operands[2]) + operands[1])) {
             throw new ProcessingException(
                 context,
                 statement,

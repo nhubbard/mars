@@ -95,16 +95,22 @@ class IntegerRegisterFileTest {
 
   @Test
   void configurationSnapshotsDoNotShareMutableArrays() {
-    var first = MemoryConfigurations.createConfiguration("Default");
+    var first =
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("Default");
     int expected = first.getTextBaseAddress();
     first.configurationItemValues()[0] = 123;
     first.configurationItemNames()[0] = "changed";
-    var second = MemoryConfigurations.createConfiguration("Default");
+    var second =
+        edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("Default");
     assertThat(second.getTextBaseAddress()).isEqualTo(expected);
     assertThat(second.configurationItemNames()[0]).isNotEqualTo("changed");
-    assertThat(MemoryConfigurations.createConfiguration("").getTextBaseAddress())
+    assertThat(
+            edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("")
+                .getTextBaseAddress())
         .isEqualTo(expected);
-    assertThat(MemoryConfigurations.createConfiguration("unknown").getTextBaseAddress())
+    assertThat(
+            edu.missouristate.mars.mips.hardware.MemoryConfigurations.createConfiguration("unknown")
+                .getTextBaseAddress())
         .isEqualTo(expected);
   }
 }

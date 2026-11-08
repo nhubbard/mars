@@ -28,6 +28,7 @@ class SimulatorEngineTest {
       assertThat(events.getFirst())
           .isEqualTo(new StepEvent(pc, session.memory.getStatement(pc).getBinaryStatement(), 1));
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(events.getLast()).isEqualTo(new StopEvent(StopEvent.Reason.BACKSTEP, 0));
       assertThat(session.registerFile.getPC()).isEqualTo(pc);
       assertThat(session.registerFile.getValue(8)).isZero();
       assertThat(engine.runAsync(0, new int[] {pc + 8}).get(5, TimeUnit.SECONDS).reason())
@@ -129,7 +130,7 @@ class SimulatorEngineTest {
 
   @Test
   void assemblyApiReturnsProgramAndSourceDiagnostics() throws Exception {
-    try (var session = SessionSyscallTest.session()) {
+    try (var session = TestSessions.create()) {
       var assembler = new SessionAssembler(session);
       var source = directory.resolve("api.s");
       Files.writeString(source, ".text\naddiu $t0,$zero,1\n");
@@ -145,10 +146,53 @@ class SimulatorEngineTest {
     }
   }
 
+  @Test
+  void closingStopsTheWorkerAtABoundaryAndRejectsNewFrontendWork() throws Exception {
+    try (var session = load(".text\nloop: addiu $t0,$t0,1\nb loop\n")) {
+      var engine = session.simulator();
+      var entered = new CountDownLatch(1);
+      var release = new CountDownLatch(1);
+      var rejected = new java.util.concurrent.atomic.AtomicBoolean();
+      engine.addListener(
+          new SimulatorListener() {
+            public void onStep(StepEvent event) {
+              try {
+                session.setMemoryConfiguration("Default");
+              } catch (IllegalStateException expected) {
+                rejected.set(true);
+              }
+              entered.countDown();
+              try {
+                release.await(5, TimeUnit.SECONDS);
+              } catch (InterruptedException failure) {
+                Thread.currentThread().interrupt();
+              }
+            }
+
+            public void onStop(StopEvent event) {}
+
+            public void onError(ErrorEvent event) {}
+          });
+      var run = engine.runAsync(0, null);
+      assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+      try {
+        assertThat(rejected).isTrue();
+        session.close();
+        assertThatThrownBy(() -> session.setMemoryConfiguration("Default"))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(engine::run).isInstanceOf(IllegalStateException.class);
+      } finally {
+        release.countDown();
+      }
+      assertThat(run.get(5, TimeUnit.SECONDS).reason()).isEqualTo(StopEvent.Reason.STOP_REQUEST);
+      assertThat(session.registerFile.getValue(8)).isEqualTo(1);
+    }
+  }
+
   private MarsContext load(String source) throws Exception {
     var file = directory.resolve(UUID.randomUUID() + ".s");
     Files.writeString(file, source);
-    var session = SessionSyscallTest.session();
+    var session = TestSessions.create();
     session.assemble(List.of(file));
     return session;
   }

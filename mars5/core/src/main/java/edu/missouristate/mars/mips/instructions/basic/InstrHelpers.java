@@ -4,7 +4,6 @@ import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.instructions.Instruction;
-import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.mips.instructions.syscalls.Syscall;
 import edu.missouristate.mars.simulator.Exceptions;
 
@@ -39,7 +38,7 @@ class InstrHelpers {
   static void findAndSimulateSyscall(
       InstructionContext context, int number, ProgramStatement statement)
       throws ProcessingException {
-    Syscall service = SyscallRegistry.findByNumber(number);
+    Syscall service = context.syscalls().findByNumber(number);
     if (service != null) {
       service.simulate(statement, context);
       return;

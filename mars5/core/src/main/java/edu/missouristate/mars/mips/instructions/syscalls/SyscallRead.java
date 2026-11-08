@@ -58,7 +58,7 @@ public class SyscallRead extends AbstractSyscall {
     // Call to SystemIO.xxxx.read(xxx,xxx,xxx)  returns actual length
     int retLength =
         context
-            .environment(env)
+            .environment()
             .readFromFile(
                 context.registerFile.getValue(4), // fd
                 myBuffer, // buffer

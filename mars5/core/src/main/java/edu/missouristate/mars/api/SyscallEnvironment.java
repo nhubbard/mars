@@ -96,7 +96,9 @@ public interface SyscallEnvironment {
   // Dialog I/O (GUI: modal dialog; headless: stderr/stdin)
   // -------------------------------------------------------------------------
 
-  /** Shows a message dialog. {@code messageType}: 0=ERROR, 1=INFO, 2=WARNING, 3=QUESTION, -1=PLAIN */
+  /**
+   * Shows a message dialog. {@code messageType}: 0=ERROR, 1=INFO, 2=WARNING, 3=QUESTION, -1=PLAIN
+   */
   void showMessageDialog(String message, String title, int messageType);
 
   /** Shows an input dialog. Returns the entered string, or {@code null} if cancelled. */
@@ -111,4 +113,7 @@ public interface SyscallEnvironment {
 
   /** Clears the run I/O console (no-op in headless mode). */
   void clearConsole();
+
+  /** Plays a normalized MIDI tone; frontends without audio support may keep the default silence. */
+  default void playTone(int pitch, int duration, int instrument, int volume, boolean synchronous) {}
 }

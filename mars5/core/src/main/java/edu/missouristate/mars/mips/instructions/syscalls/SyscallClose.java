@@ -41,6 +41,6 @@ public class SyscallClose extends AbstractSyscall {
 
   /** Performs syscall function to close file descriptor given in $a0. */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    context.environment(env).closeFile(context.registerFile.getValue(4));
+    context.environment().closeFile(context.registerFile.getValue(4));
   }
 }

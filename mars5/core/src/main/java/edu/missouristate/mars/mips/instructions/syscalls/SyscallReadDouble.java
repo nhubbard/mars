@@ -53,7 +53,7 @@ public class SyscallReadDouble extends AbstractSyscall {
     //  Higher numbered reg contains high order word so order is $f1 - $f0.
     double doubleValue;
     try {
-      doubleValue = context.environment(env).readDouble();
+      doubleValue = context.environment().readDouble();
     } catch (NumberFormatException e) {
       throw new ProcessingException(
           context,

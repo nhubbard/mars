@@ -1,8 +1,8 @@
 package edu.missouristate.mars.api;
 
 /**
- * Minimal GUI abstraction visible to mars-core. Decouples the simulator core from VenusUI so
- * Globals can live in mars-core without a compile-time dependency on mars-plugin.
+ * Minimal GUI abstraction visible to mars-core. Decouples the simulator core from VenusUI so The
+ * core can communicate with frontends without depending on a UI implementation.
  *
  * <p>Two implementations are provided:
  *
@@ -19,8 +19,8 @@ public interface MarsGuiProxy {
   boolean isGuiMode();
 
   /**
-   * Posts a message to the "MARS Messages" console (the non-program output area). In headless
-   * mode, writes to {@code System.err}.
+   * Posts a message to the "MARS Messages" console (the non-program output area). In headless mode,
+   * writes to {@code System.err}.
    */
   void postMessage(String message);
 
@@ -38,9 +38,9 @@ public interface MarsGuiProxy {
   String readInput(int maxLength);
 
   /**
-   * Reads a string, showing {@code prompt} to the user first. In GUI mode this may display a
-   * pop-up dialog (when the POPUP_SYSCALL_INPUT setting is enabled). In headless mode the prompt
-   * is written to {@code System.err} and input is read from {@code System.in}.
+   * Reads a string, showing {@code prompt} to the user first. In GUI mode this may display a pop-up
+   * dialog (when the POPUP_SYSCALL_INPUT setting is enabled). In headless mode the prompt is
+   * written to {@code System.err} and input is read from {@code System.in}.
    */
   String readInputWithPrompt(String prompt);
 

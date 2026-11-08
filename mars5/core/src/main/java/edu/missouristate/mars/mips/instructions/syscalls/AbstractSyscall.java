@@ -1,8 +1,6 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
 import edu.missouristate.mars.*;
-import edu.missouristate.mars.api.SyscallEnvironment;
-import edu.missouristate.mars.core.InstructionContext;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -44,7 +42,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public abstract class AbstractSyscall implements Syscall {
   private int serviceNumber;
   private final String serviceName;
-  protected SyscallEnvironment env;
 
   /**
    * Constructor is provided so subclass may initialize instance variables.
@@ -87,11 +84,6 @@ public abstract class AbstractSyscall implements Syscall {
     return serviceNumber;
   }
 
-  @Override
-  public void setEnvironment(SyscallEnvironment env) {
-    this.env = env;
-  }
-
   /**
    * Performs syscall function. It will be invoked when the service is invoked at simulation time.
    * Service is identified by value stored in $v0.
@@ -100,7 +92,7 @@ public abstract class AbstractSyscall implements Syscall {
    */
   @Override
   public void simulate(ProgramStatement statement) throws ProcessingException {
-    simulate(statement, InstructionContext.legacy());
+    throw new IllegalStateException("An instruction context is required");
   }
 
   // Subclasses override either the context-aware overload or the original legacy overload.

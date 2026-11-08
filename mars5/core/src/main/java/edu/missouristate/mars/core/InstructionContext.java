@@ -1,25 +1,20 @@
 package edu.missouristate.mars.core;
 
 import edu.missouristate.mars.ErrorList;
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.MarsSettings;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.hardware.MemoryState;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
-import edu.missouristate.mars.simulator.DelayedBranch;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.util.Binary;
@@ -53,39 +48,24 @@ public final class InstructionContext {
     delayedBranch = session.delayedBranch;
   }
 
-  private InstructionContext() {
-    session = null;
-    environment = null;
-    registerFile = RegisterFile.legacyState();
-    coprocessor0 = Coprocessor0.legacyState();
-    coprocessor1 = Coprocessor1.legacyState();
-    delayedBranch = DelayedBranch.legacyState();
-  }
-
-  private static class LegacyHolder {
-    private static final InstructionContext INSTANCE = new InstructionContext();
-  }
-
-  /** Transitional entry point for existing simulator and syscall callers. */
-  public static InstructionContext legacy() {
-    return LegacyHolder.INSTANCE;
+  public edu.missouristate.mars.mips.instructions.SyscallRegistry syscalls() {
+    return session.syscalls;
   }
 
   public RandomStreams randomStreams() {
-    return session == null ? RandomStreams.legacy() : session.randomStreams;
+    return session.randomStreams;
   }
 
   public MarsSettings settings() {
-    return session == null ? Globals.getSettings().getSimulationSettings() : session.settings;
+    return session.settings;
   }
 
   /** Retains the configured legacy syscall environment only for legacy execution. */
-  public SyscallEnvironment environment(SyscallEnvironment legacyEnvironment) {
-    return session == null ? legacyEnvironment : environment;
+  public SyscallEnvironment environment() {
+    return environment;
   }
 
   public int updateRegister(int number, int value) {
-    if (session == null) return RegisterFile.updateRegister(number, value);
     if (number == 32) return setProgramCounter(value);
     int old = registerFile.updateRegister(number, value);
     if (number != 0 && session.backStepper.enabled()) {
@@ -95,14 +75,12 @@ public final class InstructionContext {
   }
 
   public int setProgramCounter(int value) {
-    if (session == null) return RegisterFile.setProgramCounter(value);
     int old = registerFile.setProgramCounter(value);
     if (session.backStepper.enabled()) session.backStepper.addPCRestore(old);
     return old;
   }
 
   public int updateCoprocessor0(int number, int value) {
-    if (session == null) return Coprocessor0.updateRegister(number, value);
     int old = coprocessor0.updateRegister(number, value);
     if (session.backStepper.enabled()
         && (number == Coprocessor0State.VADDR
@@ -115,7 +93,6 @@ public final class InstructionContext {
   }
 
   public int updateCoprocessor1(int number, int value) {
-    if (session == null) return Coprocessor1.updateRegister(number, value);
     int old = coprocessor1.updateRegister(number, value);
     if (number >= 0 && number < 32 && session.backStepper.enabled()) {
       session.backStepper.addCoprocessor1Restore(number, old);
@@ -124,7 +101,6 @@ public final class InstructionContext {
   }
 
   public int setConditionFlag(int flag) {
-    if (session == null) return Coprocessor1.setConditionFlag(flag);
     int old = coprocessor1.setConditionFlag(flag);
     if (flag >= 0 && flag < coprocessor1.getConditionFlagCount() && session.backStepper.enabled()) {
       if (old == 0) session.backStepper.addConditionFlagClear(flag);
@@ -134,7 +110,6 @@ public final class InstructionContext {
   }
 
   public int clearConditionFlag(int flag) {
-    if (session == null) return Coprocessor1.clearConditionFlag(flag);
     int old = coprocessor1.clearConditionFlag(flag);
     if (flag >= 0 && flag < coprocessor1.getConditionFlagCount() && session.backStepper.enabled()) {
       if (old == 0) session.backStepper.addConditionFlagClear(flag);
@@ -145,32 +120,28 @@ public final class InstructionContext {
 
   /** Memory belonging to this invocation, including its address layout and heap. */
   public MemoryState memory() {
-    return session == null ? Globals.memory.legacyState() : session.memory;
+    return session.memory;
   }
 
   public int setMemoryWord(int address, int value) throws AddressErrorException {
-    if (session == null) return Globals.memory.setWord(address, value);
     int old = session.memory.setWord(address, value);
     if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreWord(address, old);
     return old;
   }
 
   public int setMemoryHalf(int address, int value) throws AddressErrorException {
-    if (session == null) return Globals.memory.setHalf(address, value);
     int old = session.memory.setHalf(address, value);
     if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreHalf(address, old);
     return old;
   }
 
   public int setMemoryByte(int address, int value) throws AddressErrorException {
-    if (session == null) return Globals.memory.setByte(address, value);
     int old = session.memory.setByte(address, value);
     if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreByte(address, old);
     return old;
   }
 
   public int allocateBytesFromHeap(int bytes) {
-    if (session == null) return Globals.memory.allocateBytesFromHeap(bytes);
     int previousHeap = session.memory.heapAddress;
     int result = session.memory.allocateBytesFromHeap(bytes);
     if (previousHeap != session.memory.heapAddress && session.backStepper.enabled()) {
@@ -181,7 +152,6 @@ public final class InstructionContext {
 
   /** Records a raw memory write in session history, preserving legacy write behavior. */
   public int setMemoryRawWord(int address, int value) throws AddressErrorException {
-    if (session == null) return Globals.memory.setRawWord(address, value);
     int old = session.memory.setRawWord(address, value);
     if (session.backStepper.enabled()) session.backStepper.addMemoryRestoreRawWord(address, old);
     return old;
@@ -191,8 +161,7 @@ public final class InstructionContext {
    * Float helper writes are undoable in sessions; legacy helpers retain their original behavior.
    */
   public void setRegisterToFloat(int number, float value) {
-    if (session == null) coprocessor1.setRegisterToFloat(number, value);
-    else if (number >= 0 && number < 32) updateCoprocessor1(number, Float.floatToRawIntBits(value));
+    if (number >= 0 && number < 32) updateCoprocessor1(number, Float.floatToRawIntBits(value));
   }
 
   public void setRegisterToFloat(String name, float value) {
@@ -201,10 +170,6 @@ public final class InstructionContext {
 
   public void setRegisterPairToDouble(int number, double value)
       throws InvalidRegisterAccessException {
-    if (session == null) {
-      coprocessor1.setRegisterPairToDouble(number, value);
-      return;
-    }
     if (number % 2 != 0) throw new InvalidRegisterAccessException();
     if (number < 0 || number >= coprocessor1.getRegisters().length - 1) {
       throw new ArrayIndexOutOfBoundsException(number);
@@ -234,21 +199,21 @@ public final class InstructionContext {
   }
 
   public ErrorList newErrorList() {
-    return session == null ? new ErrorList() : new ErrorList(session.settings);
+    return new ErrorList(session.settings);
   }
 
   private void execute(ProgramStatement statement, boolean dispatchHandler)
       throws ProcessingException {
     Objects.requireNonNull(statement);
-    BackStepper history =
-        session == null
-            ? (Globals.program == null ? null : Globals.program.getBackStepper())
-            : session.backStepper;
+    BackStepper history = session.backStepper;
     boolean recording =
         history != null && history.beginInstruction(registerFile.getProgramCounter(), statement);
     try {
       registerFile.incrementPC();
       try {
+        int interrupt = session.takeExternalInterrupt();
+        if (interrupt != 0)
+          throw new ProcessingException(this, statement, "External interrupt", interrupt);
         if (!(statement.getInstruction() instanceof BasicInstruction instruction)) {
           throw new ProcessingException(
               this, statement, "invalid instruction", Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
@@ -296,19 +261,15 @@ public final class InstructionContext {
 
   /** Normal termination preserves the legacy process exit code. */
   public void exit() {
-    if (session != null) exit(0);
+    exit(0);
   }
 
   public void exit(int code) {
-    if (session == null) {
-      if (!Globals.getGui().isGuiMode()) Globals.exitCode = code;
-    } else {
-      exitCode = session.gui.isGuiMode() ? 0 : code;
-      environment.exit(exitCode);
-    }
+    exitCode = session.gui.isGuiMode() ? 0 : code;
+    environment.exit(exitCode);
   }
 
   public int getExitCode() {
-    return session == null ? Globals.exitCode : exitCode;
+    return exitCode;
   }
 }

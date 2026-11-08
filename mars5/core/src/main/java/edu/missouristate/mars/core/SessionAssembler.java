@@ -33,24 +33,26 @@ public final class SessionAssembler implements MarsAssembler {
       boolean extendedAssemblerEnabled,
       boolean warningsAreErrors) {
     try {
-      return new AssemblyResult(
-          session.assemble(sources, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors),
-          List.of());
+      var program =
+          session.assemble(sources, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors);
+      return new AssemblyResult(program, diagnostics(program.getAssemblyDiagnostics()));
     } catch (ProcessingException error) {
-      var errors =
-          error.errors().getErrorMessages().stream()
-              .map(
-                  message ->
-                      new AssemblyError(
-                          message.getFilename() == null || message.getFilename().isEmpty()
-                              ? null
-                              : Path.of(message.getFilename()),
-                          message.getLine(),
-                          message.getPosition(),
-                          message.getMessage(),
-                          message.isWarning()))
-              .toList();
-      return new AssemblyResult(null, errors);
+      return new AssemblyResult(null, diagnostics(error.errors()));
     }
+  }
+
+  private static List<AssemblyError> diagnostics(edu.missouristate.mars.ErrorList errors) {
+    return errors.getErrorMessages().stream()
+        .map(
+            message ->
+                new AssemblyError(
+                    message.getFilename() == null || message.getFilename().isEmpty()
+                        ? null
+                        : Path.of(message.getFilename()),
+                    message.getLine(),
+                    message.getPosition(),
+                    message.getMessage(),
+                    message.isWarning()))
+        .toList();
   }
 }

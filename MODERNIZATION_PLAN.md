@@ -4,6 +4,14 @@
 **Scope:** Full modernization from legacy Swing/batch-script monolith to a Gradle multi-module project with a clean core library and an IntelliJ IDE plugin.  
 **Codebase baseline:** 217 Java files, ~60,400 LOC, no tests, no build tool, Java 5–8 era code.
 
+**Current status (2026-11-08): Phase 2 is complete; stop before Phase 3 implementation.**
+The implemented layout is `mars5/core`, `mars5/cli`, `mars5/plugin`, plus a separate
+`mars5/legacy` compatibility module for the frozen Venus frontend. The independent core and CLI
+have no dependency on that module. All modules target Java 25 with Gradle 9.9.
+See [Phase 2 completion and acceptance evidence](PHASE_2_COMPLETION.md) for the verified boundary,
+API entry points, test coverage, benchmark, and deliberate adaptations to this original plan.
+
+
 ---
 
 ## Table of Contents
@@ -239,7 +247,7 @@ Seed the file with the known high-risk areas found during the smoke test pass:
 
 | Area | Known gaps to document |
 |---|---|
-| `BasicInstruction` | Per-instruction encoding mask correctness; simulation semantics for each of ~178 basic instructions |
+| `BasicInstruction` | Per-instruction encoding mask correctness; simulation semantics for each of 155 registered basic instruction implementations |
 | `Memory` | All boundary addresses per `MemoryConfiguration`; aligned vs. unaligned access; segment overlap edge cases |
 | `Assembler` | Macro expansion; `.eqv` / `.set` substitution; forward-reference resolution; error-message content |
 | `PseudoInstructions` | Each extended instruction's expansion — verify the generated basic instruction sequence |
@@ -879,7 +887,7 @@ edu.missouristate.mars.mips.instructions.impl/
 
 This reduces the monolithic file to ~50 lines and makes instruction definitions individually testable.
 
-**Write unit tests for every instruction:** Given input register/memory state, verify output state. This is ~178 test cases and is the highest-value test investment in the project.
+**Write unit tests for every instruction:** Given input register/memory state, verify output state. This is 155 registered implementation cases and is the highest-value test investment in the project.
 
 ### 2.6 — Refactor `Memory.java` (74 KB)
 
@@ -965,7 +973,7 @@ Once all core classes use `MarsContext` via constructor injection, the `Globals`
 **Phase 2 exit criteria:**
 - `./gradlew :mars-core:build` compiles cleanly with zero `-Xlint:rawtypes` / `-Xlint:unchecked` warnings.
 - All characterization tests still pass.
-- New instruction unit tests pass (178 basic instruction tests).
+- New instruction unit tests pass (155 basic instruction semantic cases plus 155 encoding cases).
 - No `java.util.Observable`, `Vector`, or `Hashtable` remaining in `mars-core`.
 - No `Globals` references in `mars-core`.
 - `MarsContext` can be instantiated twice in the same JVM without interference (test this explicitly).

@@ -23,9 +23,9 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Holds the complete state of one MIPS simulation session. Replaces the process-global {@code
- * Globals} singleton so that two independent simulations can run in the same JVM without
- * interfering (needed for tests and parallel plugin simulations).
+ * Holds the complete state of one MIPS simulation session. Owns simulation state so that two
+ * independent simulations can run in the same JVM without interfering (needed for tests and
+ * parallel plugin simulations).
  *
  * <p>Obtain an instance via {@link edu.missouristate.mars.di.MarsComponent}:
  *
@@ -36,9 +36,8 @@ import javax.inject.Singleton;
  * MarsContext ctx = component.context();
  * }</pre>
  *
- * <p><b>Migration note.</b> As core classes are moved from the legacy {@code Globals} statics to
- * this context, add them as constructor parameters and expose them via final fields. Legacy GUI
- * simulator control will be migrated separately.
+ * <p>All hardware, symbols, assembly and execution services belong to this component. The legacy
+ * frontend adapters are packaged separately and are not required to use this library.
  */
 @Singleton
 public final class MarsContext implements AutoCloseable {
@@ -81,12 +80,33 @@ public final class MarsContext implements AutoCloseable {
   /** Random streams shared by instructions of this session, independent of other sessions. */
   public final RandomStreams randomStreams = new RandomStreams();
 
+  public final edu.missouristate.mars.mips.instructions.SyscallRegistry syscalls =
+      new edu.missouristate.mars.mips.instructions.SyscallRegistry();
+
+  private final java.util.concurrent.atomic.AtomicInteger interrupt =
+      new java.util.concurrent.atomic.AtomicInteger();
+
+  /** Requests an interrupt to be handled at the next instruction boundary. */
+  public void requestExternalInterrupt(int cause) {
+    interrupt.set(cause);
+  }
+
+  int takeExternalInterrupt() {
+    return interrupt.getAndSet(0);
+  }
+
   private volatile MIPSprogram program;
   private final ReentrantLock executionLock = new ReentrantLock();
   private volatile SimulatorEngine simulator;
+  private volatile boolean closing;
+
+  public boolean isClosing() {
+    return closing;
+  }
 
   /** The asynchronous controller for this session, created only when needed. */
   public synchronized SimulatorEngine simulator() {
+    if (closing) throw new IllegalStateException("Session is closed");
     if (simulator == null) simulator = new SimulatorEngine(this);
     return simulator;
   }
@@ -97,6 +117,28 @@ public final class MarsContext implements AutoCloseable {
       throw new IllegalStateException("Simulator is running");
     if (!executionLock.tryLock()) throw new IllegalStateException("Session is already in use");
     return new ExecutionLease();
+  }
+
+  /** Claims an operation that requires stopped execution, including frontend callbacks. */
+  public ExecutionLease claimStoppedSession() {
+    if (closing) throw new IllegalStateException("Session is closed");
+    var lease = claimExecution();
+    if (simulator != null
+        && simulator.state() == edu.missouristate.mars.api.SimulatorState.RUNNING) {
+      lease.close();
+      throw new IllegalStateException("Simulator is running");
+    }
+    return lease;
+  }
+
+  /** Lifecycle cleanup waits for an instruction boundary before closing default resources. */
+  public void releaseDefaultResources() {
+    executionLock.lock();
+    try {
+      syscallEnvironment.close();
+    } finally {
+      executionLock.unlock();
+    }
   }
 
   public final class ExecutionLease implements AutoCloseable {
@@ -134,6 +176,7 @@ public final class MarsContext implements AutoCloseable {
     this.memory = memory;
     this.instructionSet = instructionSet;
     this.backStepper = backStepper;
+    settings.setBackstepStatus(() -> program != null && this.backStepper.enabled());
     this.symbolTable = symbolTable;
     this.syscallEnvironment = new SessionSyscallEnvironment(memory);
   }
@@ -143,7 +186,7 @@ public final class MarsContext implements AutoCloseable {
    * while execution is stopped. Other sessions and legacy memory are unaffected.
    */
   public void setMemoryConfiguration(String identifier) {
-    try (var lease = claimExecution()) {
+    try (var lease = claimStoppedSession()) {
       setMemoryConfigurationStopped(identifier);
     }
   }
@@ -162,6 +205,7 @@ public final class MarsContext implements AutoCloseable {
     registerFile.getProgramCounterRegister().changeResetValue(configuration.getTextBaseAddress());
     registerFile.reset();
     delayedBranch.clear();
+    interrupt.set(0);
   }
 
   /**
@@ -175,7 +219,7 @@ public final class MarsContext implements AutoCloseable {
 
   public MIPSprogram assemble(List<Path> sources, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
-    try (var lease = claimExecution()) {
+    try (var lease = claimStoppedSession()) {
       return assembleStopped(sources, handler, extended, warnings);
     }
   }
@@ -212,6 +256,7 @@ public final class MarsContext implements AutoCloseable {
     coprocessor0.resetRegisters();
     coprocessor1.resetRegisters();
     delayedBranch.clear();
+    interrupt.set(0);
   }
 
   /** Releases default I/O files. Custom program environments are owned by their callers. */
@@ -219,10 +264,12 @@ public final class MarsContext implements AutoCloseable {
   public void close() {
     SimulatorEngine controller;
     synchronized (this) {
+      if (closing) return;
+      closing = true;
       controller = simulator;
     }
     if (controller != null) controller.close();
-    else syscallEnvironment.close();
+    else releaseDefaultResources();
   }
 
   void finishAssembly(MIPSprogram candidate) {

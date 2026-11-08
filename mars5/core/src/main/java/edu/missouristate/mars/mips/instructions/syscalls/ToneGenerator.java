@@ -1,6 +1,6 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -57,7 +57,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*
  * Creates a Tone object and passes it to a thread to "play" it using MIDI.
  */
-class ToneGenerator {
+public final class ToneGenerator implements AutoCloseable {
 
   /** The default pitch value for the tone: 60 / middle C. */
   public static final byte DEFAULT_PITCH = 60;
@@ -71,7 +71,27 @@ class ToneGenerator {
   /** The default volume of the tone: 100 (of 127). */
   public static final byte DEFAULT_VOLUME = 100;
 
-  private static final Executor threadPool = Executors.newCachedThreadPool();
+  private ExecutorService threadPool;
+
+  private synchronized ExecutorService pool() {
+    if (threadPool == null)
+      threadPool =
+          Executors.newCachedThreadPool(
+              task -> {
+                var thread = new Thread(task, "mars-midi");
+                thread.setDaemon(true);
+                return thread;
+              });
+    return threadPool;
+  }
+
+  @Override
+  public synchronized void close() {
+    if (threadPool != null) {
+      threadPool.shutdownNow();
+      threadPool = null;
+    }
+  }
 
   /**
    * Produces a Tone with the specified pitch, duration, and instrument, and volume.
@@ -87,7 +107,7 @@ class ToneGenerator {
    */
   public void generateTone(byte pitch, int duration, byte instrument, byte volume) {
     Runnable tone = new Tone(pitch, duration, instrument, volume);
-    threadPool.execute(tone);
+    pool().execute(tone);
   }
 
   /**

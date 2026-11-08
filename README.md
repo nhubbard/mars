@@ -1,4 +1,26 @@
 # MARS
+
+The modernization work has completed the core rewrite and stops before the IntelliJ plugin phase.
+The independent assembler and simulator can run without Venus. The historical project description
+below is retained; see [the completion report](PHASE_2_COMPLETION.md) and
+[the modernization plan](MODERNIZATION_PLAN.md) for the current architecture.
+
+Build with JDK 25:
+
+```sh
+cd mars5
+./gradlew build :core:benchmarkClasses
+java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
+java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar path/to/program.s
+```
+
+The CLI supports multiple sources, program arguments after `--`, assembly-only mode, memory layouts,
+branch delay slots, start-at-main, pseudo-instruction policy, warnings-as-errors, and step limits.
+Use the `core` module for embedding; `MarsComponent.assembler()`, `simulator()`, `memory()`, and
+`registerFile()` expose the frontend contracts. Close the owning `MarsContext` when finished.
+The `plugin` jar currently packages the frozen Venus frontend and its separate legacy adapters;
+IntelliJ Platform integration is the next phase.
+
 MARS (official) MIPS Assembler and Runtime Simulator
 
  MARS is a lightweight interactive development environment (IDE) for programming in MIPS assembly language, intended for educational-level use with Patterson and Hennessy's Computer Organization and Design.

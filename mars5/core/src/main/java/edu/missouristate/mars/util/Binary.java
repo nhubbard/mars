@@ -1,6 +1,5 @@
 package edu.missouristate.mars.util;
 
-import edu.missouristate.mars.Globals;
 import java.util.*;
 
 /*
@@ -344,9 +343,9 @@ public class Binary {
     for (int i = 3; i >= 0; i--) {
       int byteValue = getByte(d, i);
       result.append(
-          (byteValue < Globals.ASCII_TABLE.length)
-              ? Globals.ASCII_TABLE[byteValue]
-              : Globals.ASCII_NON_PRINT);
+          (byteValue < edu.missouristate.mars.ApplicationInfo.ASCII_TABLE.length)
+              ? edu.missouristate.mars.ApplicationInfo.ASCII_TABLE[byteValue]
+              : edu.missouristate.mars.ApplicationInfo.ASCII_NON_PRINT);
     }
     return result.toString();
   }

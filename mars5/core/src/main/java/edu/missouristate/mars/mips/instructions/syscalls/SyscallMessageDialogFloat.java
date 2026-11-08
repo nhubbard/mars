@@ -65,7 +65,7 @@ public class SyscallMessageDialogFloat extends AbstractSyscall {
 
     // Display the dialog.
     context
-        .environment(env)
+        .environment()
         .showMessageDialog(message + context.coprocessor1.getFloatFromRegister("$f12"), null, 1);
   }
 }

@@ -12,12 +12,13 @@ public interface MarsSimulator {
   /** Executes exactly one instruction and then pauses. */
   void step();
 
-  /**
-   * Pauses execution at the next instruction boundary. Has no effect if not currently running.
-   */
+  /** Pauses execution at the next instruction boundary. Has no effect if not currently running. */
   void pause();
 
-  /** Stops execution unconditionally and resets the simulator to idle. */
+  /**
+   * Stops execution at the next instruction boundary. Execution remains stopped until a new program
+   * is assembled or an instruction is undone.
+   */
   void stop();
 
   /**

@@ -116,6 +116,7 @@ public abstract class AbstractDumpFormat implements DumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  public abstract void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+  public abstract void dumpMemoryRange(
+      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
       throws AddressErrorException, IOException;
 }

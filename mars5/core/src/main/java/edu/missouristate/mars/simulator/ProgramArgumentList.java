@@ -114,7 +114,7 @@ public class ProgramArgumentList {
   // pointer register $sp is adjusted accordingly and $a0 is set
   // to the argument count (argc), and $a1 is set to the stack
   // address holding the first argument pointer (argv).
-  public void storeProgramArguments() {
+  public void storeProgramArguments(edu.missouristate.mars.core.MarsContext session) {
     if (programArgumentList == null || programArgumentList.isEmpty()) {
       return;
     }
@@ -129,7 +129,7 @@ public class ProgramArgumentList {
     // $a1 will be set to stack address just "below" arg list size (argv)
     //
     // Each of the arguments themselves will be stored starting at
-    // Memory.stackBaseAddress (0x7ffffffc) and working down from there:
+    // session.memory.stackBaseAddress (0x7ffffffc) and working down from there:
     // 0x7ffffffc will contain null terminator for first arg
     // 0x7ffffffb will contain last character of first arg
     // 0x7ffffffa will contain next-to-last character of first arg
@@ -139,52 +139,60 @@ public class ProgramArgumentList {
     // Etc down to first character of second arg.
     // Follow this pattern for all remaining arguments.
 
-    int highAddress = Memory.stackBaseAddress; // highest non-kernel address, sits "under" stack
+    int highAddress =
+        session.memory.stackBaseAddress; // highest non-kernel address, sits "under" stack
     String programArgument;
     int[] argStartAddress = new int[programArgumentList.size()];
     try { // needed for all memory writes
       for (int i = 0; i < programArgumentList.size(); i++) {
         programArgument = programArgumentList.get(i);
-        Globals.memory.set(highAddress, 0, 1); // trailing null byte for each argument
+        session.memory.set(highAddress, 0, 1); // trailing null byte for each argument
         highAddress--;
         for (int j = programArgument.length() - 1; j >= 0; j--) {
-          Globals.memory.set(highAddress, programArgument.charAt(j), 1);
+          session.memory.set(highAddress, programArgument.charAt(j), 1);
           highAddress--;
         }
         argStartAddress[i] = highAddress + 1;
       }
       // now place a null word, the arg starting addresses, and arg count onto stack.
-      int stackAddress = Memory.stackPointer; // base address for runtime stack.
-      if (highAddress < Memory.stackPointer) {
+      int stackAddress = session.memory.stackPointer; // base address for runtime stack.
+      if (highAddress < session.memory.stackPointer) {
         // Based on current values for stackBaseAddress and stackPointer, this will
         // only happen if the combined lengths of program arguments is greater than
         // 0x7ffffffc - 0x7fffeffc = 0x00001000 = 4096 bytes.  In this case, set
         // stackAddress to next lower word boundary minus 4 for clearance (since every
         // byte from highAddress+1 is filled).
         stackAddress =
-            highAddress - (highAddress % Memory.WORD_LENGTH_BYTES) - Memory.WORD_LENGTH_BYTES;
+            highAddress
+                - (highAddress % MemoryState.WORD_LENGTH_BYTES)
+                - MemoryState.WORD_LENGTH_BYTES;
       }
-      Globals.memory.set(
-          stackAddress, 0, Memory.WORD_LENGTH_BYTES); // null word for end of argv array
-      stackAddress -= Memory.WORD_LENGTH_BYTES;
+      session.memory.set(
+          stackAddress, 0, MemoryState.WORD_LENGTH_BYTES); // null word for end of argv array
+      stackAddress -= MemoryState.WORD_LENGTH_BYTES;
       for (int i = argStartAddress.length - 1; i >= 0; i--) {
-        Globals.memory.set(stackAddress, argStartAddress[i], Memory.WORD_LENGTH_BYTES);
-        stackAddress -= Memory.WORD_LENGTH_BYTES;
+        session.memory.set(stackAddress, argStartAddress[i], MemoryState.WORD_LENGTH_BYTES);
+        stackAddress -= MemoryState.WORD_LENGTH_BYTES;
       }
-      Globals.memory.set(stackAddress, argStartAddress.length, Memory.WORD_LENGTH_BYTES); // argc
-      stackAddress -= Memory.WORD_LENGTH_BYTES;
+      session.memory.set(
+          stackAddress, argStartAddress.length, MemoryState.WORD_LENGTH_BYTES); // argc
+      stackAddress -= MemoryState.WORD_LENGTH_BYTES;
 
       // Need to set $sp register to stack address, $a0 to argc, $a1 to argv
       // Need to by-pass the backstepping mechanism so go directly to Register instead of
       // RegisterFile
-      RegisterFile.getUserRegister("$sp").setValue(stackAddress + Memory.WORD_LENGTH_BYTES);
-      RegisterFile.getUserRegister("$a0").setValue(argStartAddress.length); // argc
-      RegisterFile.getUserRegister("$a1")
-          .setValue(stackAddress + Memory.WORD_LENGTH_BYTES + Memory.WORD_LENGTH_BYTES); // argv
+      session
+          .registerFile
+          .getUserRegister("$sp")
+          .setValue(stackAddress + MemoryState.WORD_LENGTH_BYTES);
+      session.registerFile.getUserRegister("$a0").setValue(argStartAddress.length); // argc
+      session
+          .registerFile
+          .getUserRegister("$a1")
+          .setValue(
+              stackAddress + MemoryState.WORD_LENGTH_BYTES + MemoryState.WORD_LENGTH_BYTES); // argv
     } catch (AddressErrorException aee) {
-      System.out.println(
-          "Internal Error: Memory write error occurred while storing program arguments! " + aee);
-      System.exit(0);
+      throw new IllegalArgumentException("Program arguments exceed session stack memory", aee);
     }
   }
 }

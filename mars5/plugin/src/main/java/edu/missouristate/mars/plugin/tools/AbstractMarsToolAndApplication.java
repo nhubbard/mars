@@ -643,7 +643,7 @@ public abstract class AbstractMarsToolAndApplication extends JFrame implements M
 
       Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
       Thread.yield();
-      MIPSprogram program = new MIPSprogram();
+      MIPSprogram program = new edu.missouristate.mars.LegacyProgram();
       Globals.program = program; // Shouldn't have to do this...
       String fileToAssemble = mostRecentlyOpenedFile.getPath();
       ArrayList<String> filesToAssemble;

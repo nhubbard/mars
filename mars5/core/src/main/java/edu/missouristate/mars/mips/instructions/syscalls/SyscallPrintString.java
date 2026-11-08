@@ -51,7 +51,7 @@ public class SyscallPrintString extends AbstractSyscall {
       ch = (char) context.memory().getByte(byteAddress);
       // won't stop until NULL byte reached!
       while (ch != 0) {
-        context.environment(env).printChar(ch);
+        context.environment().printChar(ch);
         byteAddress++;
         ch = (char) context.memory().getByte(byteAddress);
       }

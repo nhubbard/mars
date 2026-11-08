@@ -85,7 +85,6 @@ public class SyscallMidiOutSync extends AbstractSyscall {
     if (instrument < rangeLowEnd || instrument > rangeHighEnd)
       instrument = ToneGenerator.DEFAULT_INSTRUMENT;
     if (volume < rangeLowEnd || volume > rangeHighEnd) volume = ToneGenerator.DEFAULT_VOLUME;
-    new ToneGenerator()
-        .generateToneSynchronously((byte) pitch, duration, (byte) instrument, (byte) volume);
+    context.environment().playTone(pitch, duration, instrument, volume, true);
   }
 }

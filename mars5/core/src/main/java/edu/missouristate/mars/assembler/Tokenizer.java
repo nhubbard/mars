@@ -297,7 +297,7 @@ public class Tokenizer {
     int tokenPos = 0;
     int tokenStartPos = 1;
     boolean insideQuotedString = false;
-    if (sourceMIPSprogram == null ? Globals.debug : sourceMIPSprogram.assemblyContext().debug())
+    if (sourceMIPSprogram != null && sourceMIPSprogram.assemblyContext().debug())
       System.out.println("source line --->" + theLine + "<---");
     // Each iteration of this loop processes one character in the source line.
     while (linePos < line.length) {
@@ -595,7 +595,10 @@ public class Tokenizer {
     if (!value.isEmpty() && value.charAt(0) == '\'') value = preprocessCharacterLiteral(value);
     TokenTypes type =
         TokenTypes.matchTokenType(
-            value, instructions == null ? Globals.instructionSet : instructions);
+            value,
+            instructions == null
+                ? edu.missouristate.mars.mips.instructions.InstructionDefaults.get()
+                : instructions);
     if (type == TokenTypes.ERROR) {
       errors.add(
           new ErrorMessage(

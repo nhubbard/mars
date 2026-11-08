@@ -396,7 +396,7 @@ public class Settings {
 
   private final Preferences preferences;
   private final SimulationSettings simulationSettings = new SimulationSettings(this);
-  private int assemblerErrorLimit = Globals.maximumErrorMessages;
+  private int assemblerErrorLimit = ApplicationInfo.maximumErrorMessages;
 
   /** Returns the live simulation view of these settings. */
   public SimulationSettings getSimulationSettings() {
@@ -456,10 +456,14 @@ public class Settings {
    *
    * @return true if backstepping is permitted, false otherwise.
    */
+  private java.util.function.BooleanSupplier backstepStatus = () -> false;
+
+  public void setBackstepStatus(java.util.function.BooleanSupplier status) {
+    backstepStatus = status;
+  }
+
   public boolean getBackSteppingEnabled() {
-    return (Globals.program != null
-        && Globals.program.getBackStepper() != null
-        && Globals.program.getBackStepper().enabled());
+    return backstepStatus.getAsBoolean();
   }
 
   /** Reset settings to default values, as described in the constructor comments. */
@@ -1345,7 +1349,7 @@ public class Settings {
   //           In either case, use these values as defaults in call to Preferences.
 
   private void initialize() {
-    assemblerErrorLimit = Globals.maximumErrorMessages;
+    assemblerErrorLimit = ApplicationInfo.maximumErrorMessages;
     applyDefaultSettings();
     if (!readSettingsFromPropertiesFile()) {
       System.out.println(
@@ -1440,7 +1444,8 @@ public class Settings {
   // defaultXSettingsValues arrays (x=boolean,string,color).  The latter will overwrite the
   // last-resort default values hardcoded into the arrays above.
   //
-  // NOTE: If there is NO ENTRY for the specified property, Globals.getPropertyEntry() returns
+  // NOTE: If there is NO ENTRY for the specified property, ApplicationInfo.getPropertyEntry()
+  // returns
   // null.  This is no cause for alarm.  It will occur during system development or upon the
   // first use of a new MARS release in which new settings have been defined.
   // In that case, this method will NOT make an assignment to the settings array!
@@ -1450,30 +1455,36 @@ public class Settings {
     String settingValue;
     try {
       for (int i = 0; i < booleanSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, booleanSettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, booleanSettingsKeys[i]);
         if (settingValue != null) {
           booleanSettingsValues[i] =
               defaultBooleanSettingsValues[i] = Boolean.parseBoolean(settingValue);
         }
       }
       for (int i = 0; i < stringSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, stringSettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, stringSettingsKeys[i]);
         if (settingValue != null)
           stringSettingsValues[i] = defaultStringSettingsValues[i] = settingValue;
       }
       for (int i = 0; i < fontFamilySettingsValues.length; i++) {
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontFamilySettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontFamilySettingsKeys[i]);
         if (settingValue != null)
           fontFamilySettingsValues[i] = defaultFontFamilySettingsValues[i] = settingValue;
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontStyleSettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontStyleSettingsKeys[i]);
         if (settingValue != null)
           fontStyleSettingsValues[i] = defaultFontStyleSettingsValues[i] = settingValue;
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, fontSizeSettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, fontSizeSettingsKeys[i]);
         if (settingValue != null)
           fontSizeSettingsValues[i] = defaultFontSizeSettingsValues[i] = settingValue;
       }
       for (int i = 0; i < colorSettingsKeys.length; i++) {
-        settingValue = Globals.getPropertyEntry(Settings.settingsFile, colorSettingsKeys[i]);
+        settingValue =
+            ApplicationInfo.getPropertyEntry(Settings.settingsFile, colorSettingsKeys[i]);
         if (settingValue != null)
           colorSettingsValues[i] = defaultColorSettingsValues[i] = settingValue;
       }

@@ -48,6 +48,6 @@ public class SyscallPrintIntHex extends AbstractSyscall {
    * format.
    */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    context.environment(env).printString(Binary.intToHexString(context.registerFile.getValue(4)));
+    context.environment().printString(Binary.intToHexString(context.registerFile.getValue(4)));
   }
 }

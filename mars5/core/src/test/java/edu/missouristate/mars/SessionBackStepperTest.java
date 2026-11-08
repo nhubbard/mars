@@ -3,7 +3,6 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.core.MarsContext;
@@ -313,7 +312,7 @@ class SessionBackStepperTest {
   }
 
   private static InstructionContext execution(MarsContext session) {
-    return new InstructionContext(session, new HeadlessSyscallEnvironment());
+    return new InstructionContext(session, session.syscallEnvironment);
   }
 
   private static ProgramStatement statement(BasicInstruction instruction, int... operands) {

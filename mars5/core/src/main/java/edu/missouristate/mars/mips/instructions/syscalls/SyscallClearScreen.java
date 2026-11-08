@@ -16,6 +16,6 @@ public class SyscallClearScreen extends AbstractSyscall {
 
   @Override
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    context.environment(env).clearConsole();
+    context.environment().clearConsole();
   }
 }

@@ -54,7 +54,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
 
   /** Completes after the stop callbacks; nonpositive limits mean unlimited execution. */
   public synchronized CompletableFuture<StopEvent> runAsync(long maximumSteps, int[] breakpoints) {
-    if (closed) throw new IllegalStateException("Simulator is closed");
+    if (closed || session.isClosing()) throw new IllegalStateException("Simulator is closed");
     if (state == SimulatorState.RUNNING) throw new IllegalStateException("Simulator is running");
     var current = session.getProgram();
     if (current == null) throw new IllegalStateException("No program assembled");
@@ -123,7 +123,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     synchronized (this) {
       state =
           switch (reason) {
-            case PAUSE, BREAKPOINT, STEP_LIMIT -> SimulatorState.PAUSED;
+            case PAUSE, BREAKPOINT, STEP_LIMIT, BACKSTEP -> SimulatorState.PAUSED;
             default -> SimulatorState.STOPPED;
           };
     }
@@ -145,14 +145,17 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
       executor.execute(
           () -> {
             worker = Thread.currentThread();
-            session.syscallEnvironment.close();
+            StopEvent.Reason reason = StopEvent.Reason.STOP_REQUEST;
+            try (var lease = session.claimExecution()) {
+              session.syscallEnvironment.close();
+            } catch (Exception error) {
+              reason = StopEvent.Reason.EXCEPTION;
+              notifyListeners(
+                  listener -> listener.onError(new ErrorEvent(error.getMessage(), error)));
+            }
             state = SimulatorState.STOPPED;
-            notifyListeners(
-                listener ->
-                    listener.onStop(
-                        new StopEvent(
-                            StopEvent.Reason.STOP_REQUEST,
-                            program == null ? 0 : program.getExitCode())));
+            var event = new StopEvent(reason, program == null ? 0 : program.getExitCode());
+            notifyListeners(listener -> listener.onStop(event));
           });
     }
   }
@@ -163,7 +166,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
   }
 
   public synchronized CompletableFuture<Void> backstepAsync() {
-    if (closed) throw new IllegalStateException("Simulator is closed");
+    if (closed || session.isClosing()) throw new IllegalStateException("Simulator is closed");
     if (state == SimulatorState.RUNNING) throw new IllegalStateException("Simulator is running");
     var current = session.getProgram();
     if (current == null) return CompletableFuture.completedFuture(null);
@@ -183,14 +186,24 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
               session.backStepper.backStep();
               if (stepCount > 0) stepCount--;
             }
-            state = SimulatorState.PAUSED;
-            completion.complete(null);
           } catch (Exception error) {
             state = SimulatorState.STOPPED;
             notifyListeners(
                 listener -> listener.onError(new ErrorEvent(error.getMessage(), error)));
+            notifyListeners(
+                listener ->
+                    listener.onStop(
+                        new StopEvent(
+                            StopEvent.Reason.EXCEPTION,
+                            program == null ? 0 : program.getExitCode())));
             completion.completeExceptionally(error);
+            return;
           }
+          state = SimulatorState.PAUSED;
+          notifyListeners(
+              listener ->
+                  listener.onStop(new StopEvent(StopEvent.Reason.BACKSTEP, program.getExitCode())));
+          completion.complete(null);
         });
     return completion;
   }
@@ -233,7 +246,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     request = Request.STOP;
     executor.execute(
         () -> {
-          session.syscallEnvironment.close();
+          session.releaseDefaultResources();
           state = SimulatorState.STOPPED;
         });
     executor.shutdown();

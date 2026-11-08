@@ -2,7 +2,6 @@ package edu.missouristate.mars.mips.instructions;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
@@ -66,7 +65,7 @@ public class ExtendedInstruction extends Instruction {
     this(example, translation, compactTranslation, description, null);
   }
 
-  /** Builds example tokens against the owning instruction set without a Globals lookup. */
+  /** Builds example tokens against the owning instruction set without a process-wide lookup. */
   public ExtendedInstruction(
       String example,
       String translation,
@@ -114,7 +113,7 @@ public class ExtendedInstruction extends Instruction {
    * @return int length in bytes of corresponding binary instruction(s).
    */
   public int getInstructionLength() {
-    return getInstructionLength(translationStrings, null);
+    return getInstructionLength(translationStrings, false);
   }
 
   /** Computes expansion length using the owning session's delayed-branch setting. */
@@ -146,7 +145,7 @@ public class ExtendedInstruction extends Instruction {
    *     expansion is not defined for this instruction.
    */
   public int getCompactInstructionLength() {
-    return getInstructionLength(compactTranslationStrings, null);
+    return getInstructionLength(compactTranslationStrings, false);
   }
 
   /**
@@ -237,7 +236,7 @@ public class ExtendedInstruction extends Instruction {
    */
   public static String makeTemplateSubstitutions(
       MIPSprogram program, String template, TokenList theTokenList) {
-    var context = program == null ? AssemblyContext.legacy() : program.assemblyContext();
+    var context = program.assemblyContext();
     String instruction = template;
     int index;
     // Added 22 Jan 2008 by DPS.  The DBNOP template means to generate a "nop" instruction if
@@ -661,7 +660,7 @@ public class ExtendedInstruction extends Instruction {
    * Returns length in bytes of corresponding binary instruction(s).
    * Returns 0 if the ArrayList is null or empty.
    */
-  private int getInstructionLength(ArrayList<String> translationList, Boolean delayedBranching) {
+  private int getInstructionLength(ArrayList<String> translationList, boolean delayedBranching) {
     if (translationList == null || translationList.isEmpty()) {
       return 0;
     }
@@ -670,10 +669,7 @@ public class ExtendedInstruction extends Instruction {
     // then don't count the nop in the instruction length.   DPS 23-Jan-2008
     int instructionCount = 0;
     for (String s : translationList) {
-      if (s.contains("DBNOP")
-          && !(delayedBranching != null
-              ? delayedBranching
-              : Globals.getSettings().getDelayedBranchingEnabled())) continue;
+      if (s.contains("DBNOP") && !delayedBranching) continue;
       instructionCount++;
     }
     return 4 * instructionCount;

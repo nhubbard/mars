@@ -13,6 +13,8 @@ public record StopEvent(Reason reason, int exitCode) {
     BREAKPOINT,
     /** Caller requested a pause (e.g. the IDE paused the run). */
     PAUSE,
+    /** A reverse instruction command completed. */
+    BACKSTEP,
     /** Maximum step limit was reached. */
     STEP_LIMIT,
     /** Program counter ran off the bottom of the text segment with no halt. */

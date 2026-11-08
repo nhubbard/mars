@@ -1,6 +1,5 @@
 package edu.missouristate.mars.util;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.mips.hardware.*;
 import java.util.*;
 
@@ -35,11 +34,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class MemoryDump {
 
   /** A list of segmentname/dumpformat/filename triples which should be dumped */
-  public static ArrayList<String[]> dumpTriples = null;
-
   private static final String[] segmentNames = {".text", ".data"};
-  private static final int[] baseAddresses = new int[2];
-  private static final int[] limitAddresses = new int[2];
 
   /**
    * Return array with segment address bounds for specified segment.
@@ -48,12 +43,12 @@ public class MemoryDump {
    * @return array of two Integer, the base and limit address for that segment. Null if parameter
    *     name does not match a known segment name.
    */
-  public static Integer[] getSegmentBounds(String segment) {
+  public static Integer[] getSegmentBounds(String segment, MemoryState memory) {
     for (int i = 0; i < segmentNames.length; i++) {
       if (segmentNames[i].equals(segment)) {
         Integer[] bounds = new Integer[2];
-        bounds[0] = getBaseAddresses(segmentNames)[i];
-        bounds[1] = getLimitAddresses(segmentNames)[i];
+        bounds[0] = getBaseAddresses(segmentNames, memory)[i];
+        bounds[1] = getLimitAddresses(segmentNames, memory)[i];
         return bounds;
       }
     }
@@ -77,10 +72,9 @@ public class MemoryDump {
    * @param segments Array of Strings containing segment names (".text", ".data")
    * @return Array of int containing corresponding base addresses.
    */
-  public static int[] getBaseAddresses(String[] segments) {
-    baseAddresses[0] = Memory.textBaseAddress;
-    baseAddresses[1] = Memory.dataBaseAddress;
-    return baseAddresses;
+  public static int[] getBaseAddresses(
+      String[] segments, edu.missouristate.mars.mips.hardware.MemoryState memory) {
+    return new int[] {memory.textBaseAddress, memory.dataBaseAddress};
   }
 
   /**
@@ -91,10 +85,9 @@ public class MemoryDump {
    * @param segments Array of Strings containing segment names (".text", ".data")
    * @return Array of int containing corresponding limit addresses.
    */
-  public static int[] getLimitAddresses(String[] segments) {
-    limitAddresses[0] = Memory.textLimitAddress;
-    limitAddresses[1] = Memory.dataSegmentLimitAddress;
-    return limitAddresses;
+  public static int[] getLimitAddresses(
+      String[] segments, edu.missouristate.mars.mips.hardware.MemoryState memory) {
+    return new int[] {memory.textLimitAddress, memory.dataSegmentLimitAddress};
   }
 
   /**
@@ -108,11 +101,12 @@ public class MemoryDump {
    * @return lowest address within specified range that contains "null" value as described above.
    * @throws AddressErrorException if the base address is not on a word boundary
    */
-  public static int getAddressOfFirstNull(int baseAddress, int limitAddress)
+  public static int getAddressOfFirstNull(
+      int baseAddress, int limitAddress, edu.missouristate.mars.mips.hardware.MemoryState memory)
       throws AddressErrorException {
     int address = baseAddress;
-    for (; address < limitAddress; address += Memory.WORD_LENGTH_BYTES) {
-      if (Globals.memory.getRawWordOrNull(address) == null) {
+    for (; address < limitAddress; address += MemoryState.WORD_LENGTH_BYTES) {
+      if (memory.getRawWordOrNull(address) == null) {
         break;
       }
     }

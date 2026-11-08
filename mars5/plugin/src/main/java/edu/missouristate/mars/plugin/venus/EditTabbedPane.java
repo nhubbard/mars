@@ -589,7 +589,7 @@ public class EditTabbedPane extends JTabbedPane {
       FileStatus.setFile(theFile);
       FileStatus.set(FileStatus.OPENING); // DPS 9-Aug-2011
       if (theFile.canRead()) {
-        Globals.program = new MIPSprogram();
+        Globals.program = new edu.missouristate.mars.LegacyProgram();
         try {
           Globals.program.readSource(currentFilePath);
         } catch (ProcessingException ignored) {

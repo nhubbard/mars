@@ -59,7 +59,7 @@ public class SyscallReadString extends AbstractSyscall {
       maxLength = 0;
       addNullByte = false;
     }
-    inputString = context.environment(env).readString(maxLength);
+    inputString = context.environment().readString(maxLength);
     if (inputString == null) inputString = "";
     int stringLength = Math.min(maxLength, inputString.length());
     try {

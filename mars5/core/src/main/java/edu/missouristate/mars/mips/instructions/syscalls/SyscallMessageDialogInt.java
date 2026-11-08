@@ -64,6 +64,6 @@ public class SyscallMessageDialogInt extends AbstractSyscall {
     }
 
     // Display the dialog.
-    context.environment(env).showMessageDialog(message + context.registerFile.getValue(5), null, 1);
+    context.environment().showMessageDialog(message + context.registerFile.getValue(5), null, 1);
   }
 }

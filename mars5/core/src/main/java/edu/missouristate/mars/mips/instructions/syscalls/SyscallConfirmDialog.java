@@ -69,6 +69,6 @@ public class SyscallConfirmDialog extends AbstractSyscall {
     //    0 ---> meaning Yes
     //    1 ---> meaning No
     //    2 ---> meaning Cancel
-    context.updateRegister(4, context.environment(env).showConfirmDialog(message));
+    context.updateRegister(4, context.environment().showConfirmDialog(message));
   }
 }

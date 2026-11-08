@@ -4,9 +4,9 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.plugin.venus.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
-import edu.missouristate.mars.plugin.venus.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.*;
@@ -155,9 +155,11 @@ public class MarsLaunch {
       registerDisplayList = new ArrayList<>();
       memoryDisplayList = new ArrayList<>();
       filenameList = new ArrayList<>();
-      MemoryConfigurations.setCurrentConfiguration(MemoryConfigurations.getDefaultConfiguration());
+      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
+          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
+              .getDefaultConfiguration());
       // do NOT use Globals.program for command line MARS -- it triggers 'backstep' log.
-      code = new MIPSprogram();
+      code = new edu.missouristate.mars.LegacyProgram();
       maxSteps = -1;
       out = System.out;
       if (parseCommandArgs(args)) {
@@ -182,7 +184,7 @@ public class MarsLaunch {
 
     for (String[] triple : dumpTriples) {
       File file = new File(triple[2]);
-      Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0]);
+      Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0], Globals.context().memory);
       // If not segment name, see if it is address range instead.  DPS 14-July-2008
       if (segInfo == null) {
         try {
@@ -213,7 +215,7 @@ public class MarsLaunch {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
         }
-        format.dumpMemoryRange(file, segInfo[0], highAddress);
+        format.dumpMemoryRange(file, segInfo[0], highAddress, Globals.context());
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {
@@ -305,12 +307,15 @@ public class MarsLaunch {
       }
       if (args[i].equalsIgnoreCase("mc")) {
         String configName = args[++i];
-        MemoryConfiguration config = MemoryConfigurations.getConfigurationByName(configName);
+        MemoryConfiguration config =
+            edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getConfigurationByName(
+                configName);
         if (config == null) {
           out.println("Invalid memory configuration: " + configName);
           argsOK = false;
         } else {
-          MemoryConfigurations.setCurrentConfiguration(config);
+          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
+              config);
         }
         continue;
       }
@@ -495,7 +500,7 @@ public class MarsLaunch {
       RegisterFile.initializeProgramCounter(startAtMain); // DPS 3/9/09
       if (simulate) {
         // store program args (if any) in MIPS memory
-        new ProgramArgumentList(programArgumentList).storeProgramArguments();
+        new ProgramArgumentList(programArgumentList).storeProgramArguments(Globals.context());
         // establish observer if specified
         establishObserver();
         if (Globals.debug) {
@@ -562,7 +567,8 @@ public class MarsLaunch {
             Memory.textLimitAddress);
       } catch (AddressErrorException aee) {
         out.println(
-            "Internal error: MarsLaunch uses incorrect text segment address for instruction observer");
+            "Internal error: MarsLaunch uses incorrect text segment address for instruction"
+                + " observer");
       }
     }
   }
@@ -776,10 +782,12 @@ public class MarsLaunch {
     out.println(
         "      p  -- Project mode - assemble all files in the same directory as given file.");
     out.println(
-        "  se<n>  -- terminate MARS with integer exit code <n> if a simulation (run) error occurs.");
+        "  se<n>  -- terminate MARS with integer exit code <n> if a simulation (run) error"
+            + " occurs.");
     out.println("     sm  -- start execution at statement with global label main, if defined");
     out.println(
-        "    smc  -- Self Modifying Code - Program can write and branch to either text or data segment");
+        "    smc  -- Self Modifying Code - Program can write and branch to either text or data"
+            + " segment");
     out.println("    <n>  -- where <n> is an integer maximum count of steps to simulate.");
     out.println("            If 0, negative or not specified, there is no maximum.");
     out.println(" $<reg>  -- where <reg> is number or name (e.g. 5, t3, f10) of register whose ");

@@ -203,6 +203,6 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
         || !Globals.getSettings().getProgramArguments()) {
       return;
     }
-    new ProgramArgumentList(programArguments).storeProgramArguments();
+    new ProgramArgumentList(programArguments).storeProgramArguments(Globals.context());
   }
 }

@@ -1,6 +1,5 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.Globals;
 import java.util.*;
 
 /*
@@ -42,12 +41,11 @@ public class MemoryConfigurations {
 
   private static ArrayList<MemoryConfiguration> configurations = null;
   private static MemoryConfiguration defaultConfiguration;
-  private static MemoryConfiguration currentConfiguration;
 
   // Be careful, these arrays are parallel and position-sensitive.
   // The getters in this and in MemoryConfiguration depend on this
   // sequence.  Should be refactored...  The order comes from the
-  // original listed order in Memory.java, where most of these were
+  // original listed order in MemoryState.java, where most of these were
   // "final" until Mars 3.7 and changeable memory configurations.
   private static final String[] configurationItemNames = {
     ".text base address",
@@ -151,7 +149,7 @@ public class MemoryConfigurations {
   public MemoryConfigurations() {}
 
   /**
-   * Creates a configuration snapshot without selecting it globally or initializing Globals. Empty
+   * Creates a configuration snapshot without selecting it globally or initializing a runtime. Empty
    * or unknown identifiers select the default, matching legacy startup behavior.
    */
   public static MemoryConfiguration createConfiguration(String identifier) {
@@ -174,7 +172,7 @@ public class MemoryConfigurations {
     return new MemoryConfiguration(id, name, configurationItemNames.clone(), values.clone());
   }
 
-  public static void buildConfigurationCollection() {
+  public static synchronized void buildConfigurationCollection() {
     if (configurations == null) {
       configurations = new ArrayList<>();
       configurations.add(
@@ -193,11 +191,6 @@ public class MemoryConfigurations {
               configurationItemNames,
               textBasedCompactConfigurationItemValues));
       defaultConfiguration = configurations.getFirst();
-      currentConfiguration = defaultConfiguration;
-      // Get current config from settings
-      // String currentConfigurationIdentifier = Globals.getSettings().getMemoryConfiguration();
-      setCurrentConfiguration(
-          getConfigurationByName(Globals.getSettings().getMemoryConfiguration()));
     }
   }
 
@@ -205,7 +198,7 @@ public class MemoryConfigurations {
     if (configurations == null) {
       buildConfigurationCollection();
     }
-    return configurations.iterator();
+    return List.copyOf(configurations).iterator();
   }
 
   public static MemoryConfiguration getConfigurationByName(String name) {
@@ -225,31 +218,6 @@ public class MemoryConfigurations {
     }
     return defaultConfiguration;
   }
-
-  public static MemoryConfiguration getCurrentConfiguration() {
-    if (currentConfiguration == null) {
-      buildConfigurationCollection();
-    }
-    return currentConfiguration;
-  }
-
-  public static boolean setCurrentConfiguration(MemoryConfiguration config) {
-    if (config == null) return false;
-    if (config != currentConfiguration) {
-      currentConfiguration = config;
-      Globals.memory.clear();
-      RegisterFile.getUserRegister("$gp").changeResetValue(config.getGlobalPointer());
-      RegisterFile.getUserRegister("$sp").changeResetValue(config.getStackPointer());
-      RegisterFile.getProgramCounterRegister().changeResetValue(config.getTextBaseAddress());
-      RegisterFile.initializeProgramCounter(config.getTextBaseAddress());
-      RegisterFile.resetRegisters();
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  ////  Use these to intialize Memory static variables at launch
 
   public static int getDefaultTextBaseAddress() {
     return defaultConfigurationItemValues[0];

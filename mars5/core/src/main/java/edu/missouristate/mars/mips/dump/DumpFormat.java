@@ -82,6 +82,7 @@ public interface DumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  void dumpMemoryRange(File file, int firstAddress, int lastAddress)
+  void dumpMemoryRange(
+      File file, int firstAddress, int lastAddress, edu.missouristate.mars.core.MarsContext session)
       throws AddressErrorException, IOException;
 }

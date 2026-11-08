@@ -56,6 +56,7 @@ public class ProgramStatement {
   private int sourceLine;
   private int binaryStatement;
   private final boolean altered;
+  private edu.missouristate.mars.core.SimulationSettings displaySettings;
   private static final String invalidOperator = "<INVALID>";
 
   //////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +82,8 @@ public class ProgramStatement {
       int textAddress,
       int sourceLine) {
     this.sourceMIPSprogram = sourceMIPSprogram;
+    this.displaySettings =
+        sourceMIPSprogram == null ? null : sourceMIPSprogram.assemblyContext().session().settings;
     this.source = source;
     this.originalTokenList = origTokenList;
     this.strippedTokenList = strippedTokenList;
@@ -108,11 +111,23 @@ public class ProgramStatement {
    *     statement is stored.
    */
   public ProgramStatement(int binaryStatement, int textAddress) {
-    this(binaryStatement, textAddress, Globals.instructionSet);
+    this(
+        binaryStatement,
+        textAddress,
+        edu.missouristate.mars.mips.instructions.InstructionDefaults.get());
   }
 
   /** Decodes binary code using the owning session's instruction set. */
   public ProgramStatement(int binaryStatement, int textAddress, InstructionSet instructions) {
+    this(binaryStatement, textAddress, instructions, null);
+  }
+
+  public ProgramStatement(
+      int binaryStatement,
+      int textAddress,
+      InstructionSet instructions,
+      edu.missouristate.mars.core.SimulationSettings displaySettings) {
+    this.displaySettings = displaySettings;
     this.sourceMIPSprogram = null;
     this.binaryStatement = binaryStatement;
     this.textAddress = textAddress;
@@ -160,9 +175,9 @@ public class ProgramStatement {
   }
 
   private AssemblyContext assemblyContext() {
-    return sourceMIPSprogram == null
-        ? AssemblyContext.legacy()
-        : sourceMIPSprogram.assemblyContext();
+    if (sourceMIPSprogram == null)
+      throw new IllegalStateException("Source program is required for assembly");
+    return sourceMIPSprogram.assemblyContext();
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -366,7 +381,7 @@ public class ProgramStatement {
 
     try {
       // mask indicates bit positions for 'f'irst, 's'econd, 't'hird operand
-      this.machineStatement = ((BasicInstruction) instruction).getOperationMask();
+      this.machineStatement = ((BasicInstruction) instruction).getOperationMask().replace('c', '0');
     } // This means the pseudo-instruction expansion generated another
     // pseudo-instruction (expansion must be to all basic instructions).
     // This is an error on the part of the pseudo-instruction author.
@@ -726,7 +741,7 @@ public class ProgramStatement {
   //
   //  DPS 29-July-2010
 
-  private static class BasicStatementList {
+  private class BasicStatementList {
 
     private final ArrayList<ListElement> list;
 
@@ -747,15 +762,12 @@ public class ProgramStatement {
     }
 
     public String toString() {
-      Settings displaySettings = Globals.getSettings();
       int addressBase =
-          (displaySettings == null
-                  || displaySettings.getBooleanSetting(Settings.DISPLAY_ADDRESSES_IN_HEX))
+          (displaySettings == null || displaySettings.displayAddressesInHex())
               ? NumberDisplayBase.HEXADECIMAL
               : NumberDisplayBase.DECIMAL;
       int valueBase =
-          (displaySettings == null
-                  || displaySettings.getBooleanSetting(Settings.DISPLAY_VALUES_IN_HEX))
+          (displaySettings == null || displaySettings.displayValuesInHex())
               ? NumberDisplayBase.HEXADECIMAL
               : NumberDisplayBase.DECIMAL;
 

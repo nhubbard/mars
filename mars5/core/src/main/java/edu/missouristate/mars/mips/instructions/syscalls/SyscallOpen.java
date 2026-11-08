@@ -81,7 +81,7 @@ public class SyscallOpen extends AbstractSyscall {
     } catch (AddressErrorException e) {
       throw new ProcessingException(context, statement, e);
     }
-    int retValue = context.environment(env).openFile(filename, context.registerFile.getValue(5));
+    int retValue = context.environment().openFile(filename, context.registerFile.getValue(5));
     context.updateRegister(2, retValue); // set returned fd value in register
   }
 }

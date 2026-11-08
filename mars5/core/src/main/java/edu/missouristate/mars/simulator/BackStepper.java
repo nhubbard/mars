@@ -87,16 +87,6 @@ public class BackStepper {
    * Create a fresh BackStepper. It is enabled, which means all subsequent instruction executions
    * will have their "undo" action recorded here.
    */
-  public BackStepper() {
-    this(
-        Memory.getInstance().legacyState(),
-        RegisterFile.legacyState(),
-        Coprocessor0.legacyState(),
-        Coprocessor1.legacyState(),
-        DelayedBranch.legacyState(),
-        Globals.maximumBacksteps);
-  }
-
   /** Creates an undo history bound to explicit hardware, without global simulation state. */
   public BackStepper(
       MemoryState memory,

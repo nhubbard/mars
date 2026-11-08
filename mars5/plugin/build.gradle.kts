@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-  implementation(project(":core"))
+  implementation(project(":legacy"))
   implementation("com.google.dagger:dagger:2.59.2")
   annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
 
@@ -20,9 +20,12 @@ dependencies {
 }
 
 tasks.jar {
+  dependsOn(configurations.runtimeClasspath)
   manifest {
-    attributes("Main-Class" to "edu.missouristate.mars.Mars")
+    attributes("Main-Class" to "edu.missouristate.mars.plugin.Mars")
   }
+  from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 

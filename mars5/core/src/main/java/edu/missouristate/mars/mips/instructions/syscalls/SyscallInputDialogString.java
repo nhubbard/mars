@@ -74,7 +74,7 @@ public class SyscallInputDialogString extends AbstractSyscall {
     // An empty string returned (that is, inputString.length() of zero)
     // means that OK was chosen but no string was input.
     String inputString;
-    inputString = context.environment(env).showInputDialog(message);
+    inputString = context.environment().showInputDialog(message);
     byteAddress = context.registerFile.getValue(5); // byteAddress of string is in $a1
     int maxLength =
         context.registerFile.getValue(6); // input buffer size for input string is in $a2

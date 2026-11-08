@@ -55,8 +55,7 @@ public class OperandFormat {
    */
 
   static boolean tokenOperandMatch(TokenList candidateList, Instruction inst, ErrorList errors) {
-    return tokenOperandMatch(
-        candidateList, inst, errors, Globals.getSettings().getBareMachineEnabled());
+    return tokenOperandMatch(candidateList, inst, errors, false);
   }
 
   static boolean tokenOperandMatch(
@@ -71,7 +70,7 @@ public class OperandFormat {
    * return the first Instruction and let client deal with operand mismatches.
    */
   static Instruction bestOperandMatch(TokenList tokenList, ArrayList<Instruction> instrMatches) {
-    return bestOperandMatch(tokenList, instrMatches, Globals.getSettings().getBareMachineEnabled());
+    return bestOperandMatch(tokenList, instrMatches, false);
   }
 
   static Instruction bestOperandMatch(

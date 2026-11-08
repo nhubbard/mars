@@ -34,12 +34,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** A collection of numbered pseudorandom streams owned by one simulation session. */
 public final class RandomStreams {
   private final HashMap<Integer, Random> streams = new HashMap<>();
-  private static final RandomStreams LEGACY = new RandomStreams();
-
-  /** Process-wide stream collection retained for legacy execution. */
-  public static RandomStreams legacy() {
-    return LEGACY;
-  }
 
   public Random get(int index) {
     return streams.computeIfAbsent(index, ignored -> new Random());

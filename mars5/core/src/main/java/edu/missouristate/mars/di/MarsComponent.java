@@ -32,10 +32,8 @@ import javax.inject.Singleton;
  *     .build();
  * }</pre>
  *
- * <p>When the component is used alongside legacy code, initialize Globals first and supply {@code
- * .coreModule(new CoreModule(Globals.getSettings()))} to the builder. This keeps GUI preferences
- * and temporary CLI overrides visible to both paths. Omit the module to create a separate settings
- * owner for a new session.
+ * <p>Supply {@code .coreModule(new CoreModule(existingSettings))} to share a frontend's
+ * preferences. Omit the module to create a separate settings owner for a new session.
  *
  * <p>Tests can pass a mock or no-op {@link MarsGuiProxy} to isolate the core from any UI.
  */

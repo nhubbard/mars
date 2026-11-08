@@ -76,7 +76,7 @@ public class RunAssembleAction extends GuiAction {
         mainUI.editor.save();
       }
       try {
-        Globals.program = new MIPSprogram();
+        Globals.program = new edu.missouristate.mars.LegacyProgram();
         ArrayList<String> filesToAssemble;
         if (Globals.getSettings()
             .getAssembleAllEnabled()) { // setting calls for multiple file assembly

@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-/** Thread-safe, typed event bus. Replaces the deprecated java.util.Observable/Observer pattern. */
+/** Thread-safe, typed event bus. Replaces the deprecated untyped observer pattern. */
 public final class EventEmitter<T> {
   private final List<Consumer<T>> listeners = new CopyOnWriteArrayList<>();
 
