@@ -12,7 +12,7 @@ source contracts guide parser, PSI, indexing, worker, UI and lifecycle choices.
   signs, address arithmetic, every token boundary and incremental restart slices. All scanner lines
   and branches are covered.
 
-## Native parser integration under acceptance
+## Native parser integration
 
 `src/main/grammar/Mips.bnf` is the parser source. Grammar-Kit 2023.3.4 generates Kotlin parser/type
 code against IntelliJ's `syntax-api`. Generated sources live in the build directory.
@@ -54,6 +54,11 @@ From `mars5`, use `./gradlew clean cleanSandbox runIde` for every sandbox launch
 The launch depends on plugin/core/CLI/desktop checks and the architectural guard. Sandbox preparation
 runs after cleaning when both tasks are requested. Use a separate smoke project to avoid disturbing
 the development checkout. Record startup/log/UI evidence before calling the integration accepted.
+
+The first clean launch passed all 1,233 tests and coverage checks. The IDE log confirmed that
+`MARS MIPS` loaded in the separate `/tmp/mars-plugin-smoke` project without a plugin error.
+The UI automation could not attach to the sandbox Java window. Visual editor acceptance remains
+open; log evidence does not replace it. The test process was stopped without closing the development IDE.
 
 ## Next slices
 
