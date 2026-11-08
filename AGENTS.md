@@ -15,6 +15,9 @@ Follow the API contracts and implementation patterns in the read-only IntelliJ 2
 `/Users/nhubbard/IdeaProjects/intellij-community`. Prefer native parsers, PSI, indexes, fixtures,
 coroutine scopes and lifecycle facilities. Do not introduce parallel frameworks or custom adapter
 layers where the platform provides the required mechanism. Keep custom code focused on MARS semantics.
+Before designing a plugin mechanism, inspect the corresponding platform implementation and its current
+API contracts. Use the supported API even when an older bundled example still calls a deprecated overload.
+Explain a concrete platform gap before introducing a custom mechanism.
 Write new plugin code in Kotlin. Use Jupiter tests, preserve near-full meaningful branch coverage,
 and commit each tested implementation step. Before every sandbox launch, run the real Gradle tasks
 `clean cleanSandbox runIde`; do not add aliases. Never modify the IntelliJ reference checkout.

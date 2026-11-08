@@ -94,9 +94,27 @@ The index has 100% line and branch coverage. The clean launch passed all 1,242 t
 confirmed that `mars.declarations` initialized and the plugin loaded without a plugin error.
 The visual acceptance limit above still applies.
 
+## Shared include index
+
+`MipsIncludeProvider` contributes unresolved paths to IntelliJ's existing `fileIncludes` index.
+It uses the current `acceptFile(IndexedFile)` contract. There is no additional MARS include store.
+Extraction uses the native MARS lexer and follows the assembler's include prepass: first include
+per line, case variations, optional comma separators, macro/replacement content and raw quoted paths.
+
+Four Jupiter tests cover extraction, malformed input, native relative/absolute resolution, spaces,
+Unicode, dot segments, reverse lookups, cycle-safe traversal, newly created targets and unsaved edits.
+The producer has 100% line and branch coverage. The clean launch passed 1,245 tests and loaded the
+plugin without a plugin error. The final path compatibility test then passed with all 47 plugin tests,
+bringing the verified total to 1,246. The distribution was rebuilt successfully.
+
+The pinned platform's cached forward include graph can retain an empty result after a missing target
+is created. Tests verify fresh native resolution and reverse lookup for that case. The component plan
+requires unresolved path sentinels and VFS structure dependencies for future semantic caches.
+Production query consumers must follow that rule. Visual acceptance remains open as described above.
+
 ## Next slices
 
-Finish syntax and semantic edge cases from MARS characterization, then add reference/include indexes,
+Finish syntax and semantic edge cases from MARS characterization, then add reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

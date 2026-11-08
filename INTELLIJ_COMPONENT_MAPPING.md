@@ -244,9 +244,9 @@ publication owner, a cancellable background coordinator and a project light serv
 The coordinator uses the platform-supplied service coroutine scope. Its builder performs no
 IntelliJ index or PSI access. Failed builds preserve the last publication; disposal rejects late work.
 
-This is the query/publication foundation. Persistent IntelliJ index producers, PSI extraction,
-include graphs, semantic resolution, editor subscriptions and executable/source-map analysis are
-subsequent implementation slices. They are still committed scope, not deferred features.
+This first slice established the query/publication foundation. The native producers described below
+extend it. Semantic resolution, editor subscriptions and executable/source-map analysis remain
+committed implementation scope.
 The existing Java simulator and the execution-session starter are unchanged by this analysis slice.
 
 Jupiter tests cover producer order independence, both lookup directions, known-empty versus pending,
@@ -275,6 +275,39 @@ Implementation entry points:
 
 Reproduce with `./gradlew :plugin:test :plugin:jacocoTestReport :plugin:jacocoTestCoverageVerification`
 from `mars5`. HTML and XML coverage appear under `plugin/build/reports/jacoco/test`.
+
+#### Native index producers and include resolution
+
+Use IntelliJ's mechanisms for each data type. `MipsDeclarationIndex` is a native
+`FileBasedIndexExtension`, following the reference checkout's `EditorConfigIdentifierIndex`.
+It collects syntactic label, macro and constant candidates from the indexed file's PSI. Its values
+retain offsets, duplicates and enclosing macro offsets. It does not resolve visibility or read
+another file. Native query scopes, document overlays and index invalidation own those operations.
+
+`MipsIncludeProvider` supplies unresolved `FileIncludeInfo` values to the platform's shared
+`fileIncludes` index. Do not add a parallel persistent MARS include index. Override the current
+`acceptFile(IndexedFile)` API, not the deprecated overloads used by some older platform examples.
+Keep path extraction a pure function of the provided content.
+
+The producer follows the assembler's include prepass. It accepts the first matching include on
+each line, including inside macro bodies and replacement text. It accepts case variations and
+comma separators. It strips the enclosing quotes without decoding string escapes. Comments,
+quoted directive text, missing arguments and unfinished strings do not create include links.
+Relative paths remain unresolved until query time.
+
+Use `FileIncludeManager` for native reverse lookups and fresh path resolution. Its cached forward
+graph has a verified limit in the pinned source: an unresolved target that appears later does not
+invalidate the cached empty result. `IncludedFilesProvider` tracks the source document and existing
+targets, but does not track VFS structure changes. Do not use that cached result as proof that the
+source still has no dependency. Retain the unresolved path sentinel and resolve it again when needed.
+Any MARS semantic cache for forward dependencies must use the platform's cache facilities and include
+`VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS`, source revisions and build options as dependencies.
+This is a required correctness rule for the query layer, not a reason to create another include store.
+
+Real Jupiter fixture tests exercise persistent declaration queries, native scope filtering, unsaved
+edits, deletion, relative includes, reverse lookups, cycle-safe graph traversal, newly created targets
+and the producer contracts. See [PLUGIN_IMPLEMENTATION.md](/Users/nhubbard/IdeaProjects/mars-original/PLUGIN_IMPLEMENTATION.md)
+for current acceptance results and the separate visual startup check.
 
 
 ## 3. Engine component mapping
