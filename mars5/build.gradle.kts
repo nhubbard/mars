@@ -50,7 +50,7 @@ val verifyNoLegacyRuntime = tasks.register("verifyNoLegacyRuntime") {
   val sources = files(
     fileTree("core/src") { include("**/*.java") },
     fileTree("cli/src") { include("**/*.java") },
-    fileTree("plugin/src") { include("**/*.java") }
+    fileTree("desktop/src") { include("**/*.java") }
   )
   inputs.files(sources)
   doLast {

@@ -11,7 +11,7 @@
             <option value="$PROJECT_DIR$/mars5" />
             <option value="$PROJECT_DIR$/mars5/cli" />
             <option value="$PROJECT_DIR$/mars5/core" />
-            <option value="$PROJECT_DIR$/mars5/plugin" />
+            <option value="$PROJECT_DIR$/mars5/desktop" />
           </set>
         </option>
       </GradleProjectSettings>

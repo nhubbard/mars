@@ -31,7 +31,7 @@
           <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/13.0/919f0dfe192fb4e063e7dacadee7f8bb9a2672a9/annotations-13.0.jar" />
         </processorPath>
         <module name="mars5.core.main" />
-        <module name="mars5.plugin.main" />
+        <module name="mars5.desktop.main" />
       </profile>
       <profile name="Gradle Imported" enabled="true">
         <outputRelativeToContentRoot value="true" />
@@ -62,9 +62,9 @@
       <module name="mars5.mars-plugin" target="25" />
       <module name="mars5.mars-plugin.main" target="25" />
       <module name="mars5.mars-plugin.test" target="25" />
-      <module name="mars5.plugin" target="25" />
-      <module name="mars5.plugin.main" target="25" />
-      <module name="mars5.plugin.test" target="25" />
+      <module name="mars5.desktop" target="25" />
+      <module name="mars5.desktop.main" target="25" />
+      <module name="mars5.desktop.test" target="25" />
       <module name="mars5.test" target="25" />
     </bytecodeTargetLevel>
   </component>
@@ -77,9 +77,9 @@
       <module name="mars5.core.benchmark" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
       <module name="mars5.core.main" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
       <module name="mars5.core.test" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
-      <module name="mars5.plugin" options="-Xlint:deprecation -Xlint:removal -Werror" />
-      <module name="mars5.plugin.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
-      <module name="mars5.plugin.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.desktop" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.desktop.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.desktop.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
     </option>
   </component>
 </project>

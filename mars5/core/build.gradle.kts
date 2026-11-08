@@ -49,7 +49,7 @@ val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
   val sources = fileTree("src/main/java") { include("**/*.java") }
   inputs.files(sources)
   doLast {
-    val forbidden = Regex("(?m)^\\s*import\\s+(javax\\.swing|java\\.awt|edu\\.missouristate\\.mars\\.(Globals|plugin\\.|util\\.SystemIO))")
+    val forbidden = Regex("(?m)^\\s*import\\s+(javax\\.swing|java\\.awt|edu\\.missouristate\\.mars\\.(Globals|plugin\\.|desktop\\.|util\\.SystemIO))")
     val violations = sources.files.filter { forbidden.containsMatchIn(it.readText()) }
     check(violations.isEmpty()) { "Core has UI or compatibility dependencies: $violations" }
   }
