@@ -1,12 +1,12 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.plugin.venus.VenusUI;
+import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
@@ -172,10 +172,10 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
    * overriding the inherited update() method. The inherited method will filter out notices
    * triggered by the MARS GUI or the user.
    *
-   * @param register the attached register
    * @param accessNotice information provided by register in RegisterAccessNotice object
    */
-  public void update(Observable register, Object accessNotice) {
+  @Override
+  protected void handleAccess(AccessNotice accessNotice) {
     if (((AccessNotice) accessNotice).getAccessType() == AccessNotice.WRITE) {
       updateDisplays(new FlavorsOfFloat().buildOneFromInt(attachedRegister.getValue()));
     }
@@ -361,7 +361,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // Means of selecting and deselecting an attached floating point register
 
-    fpRegisters = Coprocessor1.getRegisters();
+    fpRegisters = LegacyApplication.services().context().coprocessor1.getRegisters();
     String[] registerList = new String[fpRegisters.length + 1];
     registerList[0] = "None";
     for (int i = 0; i < fpRegisters.length; i++) {
@@ -409,7 +409,7 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
   // If display is attached to a register then update the register value.
   private synchronized void updateAnyAttachedRegister(int intValue) {
     if (attachedRegister != null) {
-      synchronized (Globals.memoryAndRegistersLock) {
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
         attachedRegister.setValue(intValue);
       }
       // HERE'S A HACK!!  Want to immediately display the updated register value in MARS
@@ -630,7 +630,9 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // will consume the stroke and beep.
     public void keyTyped(KeyEvent e) {
       JTextField source = (JTextField) e.getComponent();
-      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB) return;
+      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE || e.getKeyChar() == KeyEvent.VK_TAB) {
+        return;
+      }
       if (!isHexDigit(e.getKeyChar())
           || source.getText().length() == digitLength && source.getSelectedText() == null) {
         if (e.getKeyChar() != KeyEvent.VK_ENTER && e.getKeyChar() != KeyEvent.VK_TAB) {
@@ -658,34 +660,32 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility.
     private boolean isHexDigit(char digit) {
-      boolean result =
-          switch (digit) {
-            case '0',
-                '1',
-                '2',
-                '3',
-                '4',
-                '5',
-                '6',
-                '7',
-                '8',
-                '9',
-                'a',
-                'b',
-                'c',
-                'd',
-                'e',
-                'f',
-                'A',
-                'B',
-                'C',
-                'D',
-                'E',
-                'F' ->
-                true;
-            default -> false;
-          };
-      return result;
+      return switch (digit) {
+        case '0',
+            '1',
+            '2',
+            '3',
+            '4',
+            '5',
+            '6',
+            '7',
+            '8',
+            '9',
+            'a',
+            'b',
+            'c',
+            'd',
+            'e',
+            'f',
+            'A',
+            'B',
+            'C',
+            'D',
+            'E',
+            'F' ->
+            true;
+        default -> false;
+      };
     }
   }
 
@@ -705,7 +705,9 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // will consume the stroke and beep.
     public void keyTyped(KeyEvent e) {
       JTextField source = (JTextField) e.getComponent();
-      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) return;
+      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
+        return;
+      }
       if (!isBinaryDigit(e.getKeyChar())
           || e.getKeyChar() == KeyEvent.VK_ENTER
           || source.getText().length() == bitLength && source.getSelectedText() == null) {
@@ -733,12 +735,10 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility
     private boolean isBinaryDigit(char digit) {
-      boolean result =
-          switch (digit) {
-            case '0', '1' -> true;
-            default -> false;
-          };
-      return result;
+      return switch (digit) {
+        case '0', '1' -> true;
+        default -> false;
+      };
     }
   }
 
@@ -752,7 +752,9 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
     // will consume the stroke and beep.
     public void keyTyped(KeyEvent e) {
       JTextField source = (JTextField) e.getComponent();
-      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) return;
+      if (e.getKeyChar() == KeyEvent.VK_BACK_SPACE) {
+        return;
+      }
       if (!isDecimalFloatDigit(e.getKeyChar())) {
         if (e.getKeyChar() != KeyEvent.VK_ENTER) {
           instructions.setText(
@@ -785,12 +787,10 @@ public class FloatRepresentation extends AbstractMarsToolAndApplication {
 
     // handy utility
     private boolean isDecimalFloatDigit(char digit) {
-      boolean result =
-          switch (digit) {
-            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '+', '.', 'e', 'E' -> true;
-            default -> false;
-          };
-      return result;
+      return switch (digit) {
+        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '+', '.', 'e', 'E' -> true;
+        default -> false;
+      };
     }
   }
 

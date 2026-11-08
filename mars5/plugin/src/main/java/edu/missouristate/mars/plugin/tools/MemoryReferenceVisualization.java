@@ -222,21 +222,10 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     return results;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Rest of the protected methods.  These override do-nothing methods inherited from
   //  the abstract superclass.
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Update display when connected MIPS program accesses (data) memory.
-   *
-   * @param memory the attached memory
-   * @param accessNotice information provided by memory in MemoryAccessNotice object
-   */
-  protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
-    incrementReferenceCountForAddress(((MemoryAccessNotice) accessNotice).getAddress());
-    updateDisplay();
-  }
+  // ////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * Initialize all JComboBox choice structures not already initialized at declaration. Overrides
@@ -550,17 +539,6 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
     return new Grid(rows, columns);
   }
 
-  // Given memory address, increment the counter for the corresponding grid element.
-  // Need to consider words per unit (number of memory words that each visual element represents).
-  // If address maps to invalid grid element (e.g. is outside the current bounds based on all
-  // display settings) then nothing happens.
-  private void incrementReferenceCountForAddress(int address) {
-    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES / wordsPerUnit;
-    // If you care to do anything with it, the following will return -1 if the address
-    // maps outside the dimensions of the grid (e.g. below the base address or beyond end).
-    theGrid.incrementElement(offset / theGrid.getColumns(), offset % theGrid.getColumns());
-  }
-
   //////////////////////////////////////////////////////////////////////////////////////
   //  Specialized inner classes for modeling and animation.
   //////////////////////////////////////////////////////////////////////////////////////
@@ -829,5 +807,18 @@ public class MemoryReferenceVisualization extends AbstractMarsToolAndApplication
         }
       }
     }
+  }
+
+  @Override
+  protected void processMIPSUpdate(AccessNotice accessNotice) {
+    incrementReferenceCountForAddress(((MemoryAccessNotice) accessNotice).getAddress());
+    updateDisplay();
+  }
+
+  private void incrementReferenceCountForAddress(int address) {
+    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES / wordsPerUnit;
+    // If you care to do anything with it, the following will return -1 if the address
+    // maps outside the dimensions of the grid (e.g. below the base address or beyond end).
+    theGrid.incrementElement(offset / theGrid.getColumns(), offset % theGrid.getColumns());
   }
 }

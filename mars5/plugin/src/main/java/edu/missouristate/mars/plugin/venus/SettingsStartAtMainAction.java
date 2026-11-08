@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -44,6 +45,8 @@ public class SettingsStartAtMainAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    Globals.getSettings().setStartAtMain(((JCheckBoxMenuItem) e.getSource()).isSelected());
+    LegacyApplication.services()
+        .getSettings()
+        .setStartAtMain(((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

@@ -4,29 +4,31 @@ import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.util.SystemIO;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class LegacyRuntimeTest {
-  @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory;
+  @TempDir Path directory;
 
   @Test
   void assemblyInitializesOnlyTheCanonicalLegacyFileTable() throws Exception {
     var source = directory.resolve("program.s");
-    java.nio.file.Files.writeString(source, ".text\nnop\n");
+    Files.writeString(source, ".text\nnop\n");
     var program = new LegacyProgram();
     var sources =
         program.prepareFilesForAssembly(
-            new java.util.ArrayList<>(java.util.List.of(source.toString())),
-            source.toString(),
-            null);
+            new ArrayList<>(List.of(source.toString())), source.toString(), null);
     program.assemble(sources, true, false);
-    int descriptor =
-        edu.missouristate.mars.util.SystemIO.openFile(
-            directory.resolve("output.bin").toString(), 1);
+    int descriptor = SystemIO.openFile(directory.resolve("output.bin").toString(), 1);
     try {
       assertThat(descriptor).isEqualTo(3);
     } finally {
-      edu.missouristate.mars.util.SystemIO.closeFile(descriptor);
+      SystemIO.closeFile(descriptor);
     }
   }
 

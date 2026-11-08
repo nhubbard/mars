@@ -1,23 +1,26 @@
 package edu.missouristate.mars.api;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator;
 import edu.missouristate.mars.util.SystemIO;
 
 /**
  * Legacy compatibility environment. New sessions use {@link SessionSyscallEnvironment}. Provides
  * default implementations of all non-dialog {@link SyscallEnvironment} methods by delegating to
- * {@link SystemIO} and {@link Globals#memory}. Subclasses supply the dialog and console-control
- * methods that differ between headless (CLI) and GUI environments.
+ * {@link SystemIO} and {@link edu.missouristate.mars.legacy.LegacyServices#memory}. Subclasses
+ * supply the dialog and console-control methods that differ between headless (CLI) and GUI
+ * environments.
  */
 public abstract class BaseSyscallEnvironment implements SyscallEnvironment {
-  private final edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator tones =
-      new edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator();
+  private final ToneGenerator tones = new ToneGenerator();
 
   @Override
   public void playTone(int pitch, int duration, int instrument, int volume, boolean synchronous) {
-    if (synchronous)
+    if (synchronous) {
       tones.generateToneSynchronously((byte) pitch, duration, (byte) instrument, (byte) volume);
-    else tones.generateTone((byte) pitch, duration, (byte) instrument, (byte) volume);
+    } else {
+      tones.generateTone((byte) pitch, duration, (byte) instrument, (byte) volume);
+    }
   }
 
   @Override
@@ -97,6 +100,6 @@ public abstract class BaseSyscallEnvironment implements SyscallEnvironment {
 
   @Override
   public int sbrk(int bytes) {
-    return Globals.memory.allocateBytesFromHeap(bytes);
+    return LegacyApplication.services().memory.allocateBytesFromHeap(bytes);
   }
 }

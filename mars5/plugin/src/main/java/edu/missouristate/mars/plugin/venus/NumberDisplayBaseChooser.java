@@ -1,12 +1,11 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.util.Binary;
-
-import javax.swing.JCheckBox;
-import javax.swing.JCheckBoxMenuItem;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
+import javax.swing.JCheckBox;
+import javax.swing.JCheckBoxMenuItem;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -129,13 +128,11 @@ public class NumberDisplayBaseChooser extends JCheckBox {
    * @return a String equivalent of the value rendered appropriately.
    */
   public static String formatNumber(int value, int base) {
-    String result =
-        switch (base) {
-          case HEXADECIMAL -> Binary.intToHexString(value);
-          case ASCII -> Binary.intToAscii(value);
-          default -> Integer.toString(value);
-        };
-    return result;
+    return switch (base) {
+      case HEXADECIMAL -> Binary.intToHexString(value);
+      case ASCII -> Binary.intToAscii(value);
+      default -> Integer.toString(value);
+    };
   }
 
   /**

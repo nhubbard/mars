@@ -1,7 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -81,7 +82,7 @@ public class DataSegmentWindow extends JInternalFrame {
   static final boolean USER_MODE = false;
   static final boolean KERNEL_MODE = true;
 
-  private boolean addressHighlighting = false;
+  private boolean addressHighlighting;
   private boolean asciiDisplay = false;
   private int addressColumn;
   private int addressRowFirstAddress;
@@ -93,8 +94,9 @@ public class DataSegmentWindow extends JInternalFrame {
 
   private final Consumer<MemoryAccessNotice> memoryListener =
       notice -> {
-        if (notice.getAccessType() == AccessNotice.WRITE)
+        if (notice.getAccessType() == AccessNotice.WRITE) {
           this.highlightCellForAddress(notice.getAddress());
+        }
       };
 
   Consumer<MemoryAccessNotice> getMemoryListener() {
@@ -121,7 +123,7 @@ public class DataSegmentWindow extends JInternalFrame {
     super("Data Segment", true, false, true, true);
 
     Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = Globals.getSettings();
+    settings = LegacyApplication.services().getSettings();
 
     homeAddress = Memory.dataBaseAddress; // address for Home button
     firstAddress = homeAddress; // first address to display at any given time
@@ -138,14 +140,14 @@ public class DataSegmentWindow extends JInternalFrame {
               new ImageIcon(
                   tk.getImage(
                       cs.getResource(
-                          Globals.imagesPath
+                          LegacyMetadata.imagesPath
                               + "Previous22.png")))); // "Back16.gif"))));//"Down16.gif"))));
       nextButton =
           new NextButton(
               new ImageIcon(
                   tk.getImage(
                       cs.getResource(
-                          Globals.imagesPath
+                          LegacyMetadata.imagesPath
                               + "Next22.png")))); // "Forward16.gif")))); //"Up16.gif"))));
       //  This group of buttons was replaced by a combo box.  Keep the JButton objects for their
       // action listeners.
@@ -234,7 +236,7 @@ public class DataSegmentWindow extends JInternalFrame {
             dataTable,
             MouseEvent.MOUSE_PRESSED,
             new Date().getTime(),
-            MouseEvent.BUTTON1_MASK,
+            MouseEvent.BUTTON1_DOWN_MASK,
             (int) addressCell.getX() + 1,
             (int) addressCell.getY() + 1,
             1,
@@ -303,12 +305,26 @@ public class DataSegmentWindow extends JInternalFrame {
     if (baseAddress == -1) {
       if (desiredComboBoxIndex == GLOBAL_POINTER_ADDRESS_INDEX) {
         baseAddress =
-            RegisterFile.getValue(RegisterFile.GLOBAL_POINTER_REGISTER)
-                - (RegisterFile.getValue(RegisterFile.GLOBAL_POINTER_REGISTER) % BYTES_PER_ROW);
+            LegacyApplication.services()
+                    .context()
+                    .registerFile
+                    .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER)
+                - (LegacyApplication.services()
+                        .context()
+                        .registerFile
+                        .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER)
+                    % BYTES_PER_ROW);
       } else if (desiredComboBoxIndex == STACK_POINTER_BASE_ADDRESS_INDEX) {
         baseAddress =
-            RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER)
-                - (RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER) % BYTES_PER_ROW);
+            LegacyApplication.services()
+                    .context()
+                    .registerFile
+                    .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER)
+                - (LegacyApplication.services()
+                        .context()
+                        .registerFile
+                        .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER)
+                    % BYTES_PER_ROW);
       } else {
         return null; // shouldn't happen since these are the only two
       }
@@ -428,8 +444,12 @@ public class DataSegmentWindow extends JInternalFrame {
     thisDistance =
         Math.abs(
             address
-                - RegisterFile.getValue(
-                    RegisterFile.GLOBAL_POINTER_REGISTER)); // distance from global pointer
+                - LegacyApplication.services()
+                    .context()
+                    .registerFile
+                    .getValue(
+                        IntegerRegisterFile
+                            .GLOBAL_POINTER_REGISTER)); // distance from global pointer
     if (thisDistance < shortDistance) {
       shortDistance = thisDistance;
       desiredComboBoxIndex = GLOBAL_POINTER_ADDRESS_INDEX;
@@ -447,7 +467,13 @@ public class DataSegmentWindow extends JInternalFrame {
       desiredComboBoxIndex = HEAP_BASE_ADDRESS_INDEX;
     }
     // Check distance from stack pointer.  Can be on either side of it...
-    thisDistance = Math.abs(address - RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
+    thisDistance =
+        Math.abs(
+            address
+                - LegacyApplication.services()
+                    .context()
+                    .registerFile
+                    .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER));
     if (thisDistance < shortDistance) {
       desiredComboBoxIndex = STACK_POINTER_BASE_ADDRESS_INDEX;
     }
@@ -468,7 +494,8 @@ public class DataSegmentWindow extends JInternalFrame {
       for (int column = 1; column < NUMBER_OF_COLUMNS; column++) {
         try {
           dataData[row][column] =
-              NumberDisplayBaseChooser.formatNumber(Globals.memory.getRawWord(address), valueBase);
+              NumberDisplayBaseChooser.formatNumber(
+                  LegacyApplication.services().memory.getRawWord(address), valueBase);
         } catch (AddressErrorException aee) {
           dataData[row][column] = NumberDisplayBaseChooser.formatNumber(0, valueBase);
         }
@@ -548,7 +575,9 @@ public class DataSegmentWindow extends JInternalFrame {
    * @param firstAddr the first address in the memory range to be placed in the model.
    */
   public void updateModelForMemoryRange(int firstAddr) {
-    if (tablePanel.getComponentCount() == 0) return; // ignore if no content to change
+    if (tablePanel.getComponentCount() == 0) {
+      return; // ignore if no content to change
+    }
     int valueBase = getValueDisplayFormat();
     int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address = firstAddr;
@@ -564,7 +593,7 @@ public class DataSegmentWindow extends JInternalFrame {
           ((DataTableModel) dataModel)
               .setDisplayAndModelValueAt(
                   NumberDisplayBaseChooser.formatNumber(
-                      Globals.memory.getWordNoNotify(address), valueBase),
+                      LegacyApplication.services().memory.getWordNoNotify(address), valueBase),
                   row,
                   column);
         } catch (AddressErrorException aee) {
@@ -578,16 +607,20 @@ public class DataSegmentWindow extends JInternalFrame {
           // registry.
           if (Memory.inTextSegment(address)) {
             int displayValue = 0;
-            if (!Globals.getSettings().getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
-              Globals.getSettings()
+            if (!LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(Settings.SELF_MODIFYING_CODE_ENABLED)) {
+              LegacyApplication.services()
+                  .getSettings()
                   .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, true);
               try {
-                displayValue = Globals.memory.getWordNoNotify(address);
+                displayValue = LegacyApplication.services().memory.getWordNoNotify(address);
               } catch (AddressErrorException e) {
                 // Still got an exception?  Doesn't seem possible but if we drop through it will
                 // write default value 0.
               }
-              Globals.getSettings()
+              LegacyApplication.services()
+                  .getSettings()
                   .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, false);
             }
             ((DataTableModel) dataModel)
@@ -633,7 +666,9 @@ public class DataSegmentWindow extends JInternalFrame {
    * between base 16, hex, and base 10, dec).
    */
   public void updateDataAddresses() {
-    if (tablePanel.getComponentCount() == 0) return; // ignore if no content to change
+    if (tablePanel.getComponentCount() == 0) {
+      return; // ignore if no content to change
+    }
     int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
     int address = this.firstAddress;
     String formattedAddress;
@@ -754,7 +789,10 @@ public class DataSegmentWindow extends JInternalFrame {
           firstAddress =
               Math.max(
                   Memory.dataSegmentBaseAddress,
-                  RegisterFile.getValue(RegisterFile.GLOBAL_POINTER_REGISTER));
+                  LegacyApplication.services()
+                      .context()
+                      .registerFile
+                      .getValue(IntegerRegisterFile.GLOBAL_POINTER_REGISTER));
           // updateModelForMemoryRange requires argument to be multiple of 4
           // but for cleaner display we'll make it multiple of 32 (last nibble is 0).
           // This makes it easier to mentally calculate address from row address + column offset.
@@ -771,7 +809,10 @@ public class DataSegmentWindow extends JInternalFrame {
           firstAddress =
               Math.max(
                   Memory.dataSegmentBaseAddress,
-                  RegisterFile.getValue(RegisterFile.STACK_POINTER_REGISTER));
+                  LegacyApplication.services()
+                      .context()
+                      .registerFile
+                      .getValue(IntegerRegisterFile.STACK_POINTER_REGISTER));
           // See comment above for gloButton...
           firstAddress = firstAddress - (firstAddress % BYTES_PER_ROW);
           homeAddress = Memory.stackBaseAddress;
@@ -989,9 +1030,9 @@ public class DataSegmentWindow extends JInternalFrame {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (Globals.memoryAndRegistersLock) {
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
         try {
-          Globals.memory.setRawWord(address, val);
+          LegacyApplication.services().memory.setRawWord(address, val);
         }
         // somehow, user was able to display out-of-range address.  Most likely to occur between
         // stack base and Kernel.  Also text segment with self-modifying-code setting off.

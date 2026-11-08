@@ -32,8 +32,11 @@ class InstructionSetTest {
     basicInstructions = new ArrayList<>();
     extendedInstructions = new ArrayList<>();
     for (Object o : raw) {
-      if (o instanceof BasicInstruction b) basicInstructions.add(b);
-      else if (o instanceof ExtendedInstruction e) extendedInstructions.add(e);
+      if (o instanceof BasicInstruction b) {
+        basicInstructions.add(b);
+      } else if (o instanceof ExtendedInstruction e) {
+        extendedInstructions.add(e);
+      }
     }
   }
 

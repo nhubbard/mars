@@ -1,5 +1,6 @@
 package edu.missouristate.mars.simulator;
 
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
@@ -18,16 +19,31 @@ public final class LegacyExceptions {
     // keeping all the others.  Left-shift by 2 to put cause value into position then OR it in.
     // Bits 8-9 used to
     // identify devices for External Interrupt (8=keyboard,9=display).
-    Coprocessor0.updateRegister(
-        Coprocessor0.CAUSE,
-        (Coprocessor0.getValue(Coprocessor0.CAUSE) & 0xFFFFFC83 | (cause << 2)));
+    LegacyApplication.services()
+        .instructionContext()
+        .updateCoprocessor0(
+            Coprocessor0State.CAUSE,
+            (LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.CAUSE)
+                    & 0xFFFFFC83
+                | (cause << 2)));
     // When exception occurred, PC had already been incremented so need to subtract 4 here.
-    Coprocessor0.updateRegister(
-        Coprocessor0.EPC, RegisterFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH);
+    LegacyApplication.services()
+        .instructionContext()
+        .updateCoprocessor0(
+            Coprocessor0State.EPC,
+            LegacyApplication.services().context().registerFile.getProgramCounter()
+                - Instruction.INSTRUCTION_LENGTH);
     // Set EXL (Exception Level) bit, bit position 1, in STATUS register to 1.
-    Coprocessor0.updateRegister(
-        Coprocessor0.STATUS,
-        Binary.setBit(Coprocessor0.getValue(Coprocessor0.STATUS), Coprocessor0.EXCEPTION_LEVEL));
+    LegacyApplication.services()
+        .instructionContext()
+        .updateCoprocessor0(
+            Coprocessor0State.STATUS,
+            Binary.setBit(
+                LegacyApplication.services()
+                    .context()
+                    .coprocessor0
+                    .getValue(Coprocessor0State.STATUS),
+                Coprocessor0State.EXCEPTION_LEVEL));
   }
 
   /**
@@ -38,7 +54,9 @@ public final class LegacyExceptions {
    * @param addr The address that caused the exception.
    */
   public static void setRegisters(int cause, int addr) {
-    Coprocessor0.updateRegister(Coprocessor0.VADDR, addr);
+    LegacyApplication.services()
+        .instructionContext()
+        .updateCoprocessor0(Coprocessor0State.VADDR, addr);
     setRegisters(cause);
   }
 }

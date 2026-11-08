@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -49,6 +50,6 @@ public class SettingsAddressDisplayBaseAction extends GuiAction {
         .getExecutePane()
         .getAddressDisplayBaseChooser()
         .setSelected(isHex);
-    Globals.getSettings().setDisplayAddressesInHex(isHex);
+    LegacyApplication.services().getSettings().setDisplayAddressesInHex(isHex);
   }
 }

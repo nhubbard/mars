@@ -6,6 +6,7 @@ import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
 import org.assertj.core.api.Assertions;
@@ -33,7 +34,7 @@ class MemoryTest {
     RegisterFile.resetRegisters();
     Coprocessor0.resetRegisters();
     Coprocessor1.resetRegisters();
-    Globals.symbolTable = new SymbolTable("global");
+    Globals.symbolTable = new SymbolTable();
     memory = Globals.memory;
   }
 
@@ -43,18 +44,14 @@ class MemoryTest {
 
   @Test
   void dataSegment_wordRoundTrip() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setWord(addr, 0xDEADBEEF);
     assertThat(memory.getWord(addr)).isEqualTo(0xDEADBEEF);
   }
 
   @Test
   void dataSegment_consecutiveWordsAreIndependent() throws AddressErrorException {
-    int base =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int base = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setWord(base, 0x11111111);
     memory.setWord(base + 4, 0x22222222);
     assertThat(memory.getWord(base)).isEqualTo(0x11111111);
@@ -63,18 +60,14 @@ class MemoryTest {
 
   @Test
   void dataSegment_halfWordRoundTrip() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setHalf(addr, 0xABCD);
     assertThat(memory.getHalf(addr)).isEqualTo(0xABCD);
   }
 
   @Test
   void dataSegment_byteRoundTrip() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setByte(addr, 0x42);
     assertThat(memory.getByte(addr)).isEqualTo(0x42);
   }
@@ -85,9 +78,7 @@ class MemoryTest {
 
   @Test
   void dataSegment_bytesComposeWord() throws AddressErrorException {
-    int base =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int base = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setByte(base, 0x01);
     memory.setByte(base + 1, 0x02);
     memory.setByte(base + 2, 0x03);
@@ -104,9 +95,7 @@ class MemoryTest {
 
   @Test
   void afterClear_dataSegmentReadsZero() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getDataBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress();
     memory.setWord(addr, 0xCAFEBABE);
     memory.clear();
     assertThat(memory.getWord(addr)).isEqualTo(0);
@@ -118,9 +107,7 @@ class MemoryTest {
 
   @Test
   void heapBase_wordRoundTrip() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getHeapBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getHeapBaseAddress();
     memory.setWord(addr, 0x12345678);
     assertThat(memory.getWord(addr)).isEqualTo(0x12345678);
   }
@@ -131,20 +118,14 @@ class MemoryTest {
 
   @Test
   void unalignedWordAccess_throwsAddressErrorException() {
-    int misaligned =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-                .getDataBaseAddress()
-            + 1;
+    int misaligned = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress() + 1;
     Assertions.assertThatThrownBy(() -> memory.setWord(misaligned, 0))
         .isInstanceOf(AddressErrorException.class);
   }
 
   @Test
   void unalignedHalfWordAccess_throwsAddressErrorException() {
-    int misaligned =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-                .getDataBaseAddress()
-            + 1;
+    int misaligned = LegacyMemoryConfigurations.getDefaultConfiguration().getDataBaseAddress() + 1;
     Assertions.assertThatThrownBy(() -> memory.setHalf(misaligned, 0))
         .isInstanceOf(AddressErrorException.class);
   }
@@ -155,9 +136,7 @@ class MemoryTest {
 
   @Test
   void kernelDataSegment_wordRoundTrip() throws AddressErrorException {
-    int addr =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getDefaultConfiguration()
-            .getKernelDataBaseAddress();
+    int addr = LegacyMemoryConfigurations.getDefaultConfiguration().getKernelDataBaseAddress();
     memory.setWord(addr, 0xFEEDFACE);
     assertThat(memory.getWord(addr)).isEqualTo(0xFEEDFACE);
   }

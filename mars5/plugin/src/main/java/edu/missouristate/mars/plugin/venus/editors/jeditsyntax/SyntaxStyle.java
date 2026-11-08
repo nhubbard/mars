@@ -65,8 +65,12 @@ public class SyntaxStyle {
 
   /** Returns the specified font, but with the style's bold and italic flags applied. */
   public Font getStyledFont(Font font) {
-    if (font == null) throw new NullPointerException("font param must not" + " be null");
-    if (font.equals(lastFont)) return lastStyledFont;
+    if (font == null) {
+      throw new NullPointerException("font param must not" + " be null");
+    }
+    if (font.equals(lastFont)) {
+      return lastStyledFont;
+    }
     lastFont = font;
     lastStyledFont =
         new Font(
@@ -76,8 +80,12 @@ public class SyntaxStyle {
 
   /** Returns the font metrics for the styled font. */
   public FontMetrics getFontMetrics(Font font) {
-    if (font == null) throw new NullPointerException("font param must not" + " be null");
-    if (font.equals(lastFont) && fontMetrics != null) return fontMetrics;
+    if (font == null) {
+      throw new NullPointerException("font param must not" + " be null");
+    }
+    if (font.equals(lastFont) && fontMetrics != null) {
+      return fontMetrics;
+    }
     lastFont = font;
     lastStyledFont =
         new Font(

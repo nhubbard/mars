@@ -6,6 +6,7 @@ import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor1;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.instructions.basic.InstrAddS;
 import java.util.ArrayList;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -20,10 +21,12 @@ class LegacyCoprocessor1Test {
     int previousPc = RegisterFile.getProgramCounter();
     int previousFlags = Coprocessor1.getConditionFlags();
     int[] previousValues = new int[32];
-    for (int i = 0; i < 32; i++) previousValues[i] = Coprocessor1.getValue(i);
+    for (int i = 0; i < 32; i++) {
+      previousValues[i] = Coprocessor1.getValue(i);
+    }
     try {
-      Globals.symbolTable = new SymbolTable("global");
-      var program = new edu.missouristate.mars.LegacyProgram();
+      Globals.symbolTable = new SymbolTable();
+      var program = new LegacyProgram();
       String path = SimulatorSmokeTest.resourcePath("01_helloworld.asm");
       program.readSource(path);
       program.tokenize();
@@ -47,7 +50,7 @@ class LegacyCoprocessor1Test {
 
       Coprocessor1.setRegisterToFloat(12, 1.5f);
       RegisterFile.initializeProgramCounter(pc);
-      var add = new edu.missouristate.mars.mips.instructions.basic.InstrAddS();
+      var add = new InstrAddS();
       var statement =
           new ProgramStatement(null, "add.s $f14,$f12,$f12", null, null, add, pc - 4, 1);
       System.arraycopy(new int[] {14, 12, 12}, 0, statement.getOperands(), 0, 3);
@@ -60,8 +63,11 @@ class LegacyCoprocessor1Test {
       for (int initial = 0; initial <= 1; initial++) {
         for (boolean set : new boolean[] {true, false}) {
           // Whole-flag setters have historically bypassed undo recording.
-          if (initial == 0) Coprocessor1.clearConditionFlags();
-          else Coprocessor1.setConditionFlags();
+          if (initial == 0) {
+            Coprocessor1.clearConditionFlags();
+          } else {
+            Coprocessor1.setConditionFlags();
+          }
           int flagsBefore = Coprocessor1.getConditionFlags();
           assertThat(backStepper.empty()).isTrue();
           RegisterFile.initializeProgramCounter(pc);
@@ -86,12 +92,20 @@ class LegacyCoprocessor1Test {
       assertThat(backStepper.empty()).isTrue();
     } finally {
       Globals.program = null;
-      for (int i = 0; i < 32; i++) Coprocessor1.setRegisterToInt(i, previousValues[i]);
-      if ((previousFlags & ~0xff) == 0) Coprocessor1.clearConditionFlags();
-      else Coprocessor1.setConditionFlags();
+      for (int i = 0; i < 32; i++) {
+        Coprocessor1.setRegisterToInt(i, previousValues[i]);
+      }
+      if ((previousFlags & ~0xff) == 0) {
+        Coprocessor1.clearConditionFlags();
+      } else {
+        Coprocessor1.setConditionFlags();
+      }
       for (int i = 0; i < 8; i++) {
-        if ((previousFlags & (1 << i)) == 0) Coprocessor1.clearConditionFlag(i);
-        else Coprocessor1.setConditionFlag(i);
+        if ((previousFlags & (1 << i)) == 0) {
+          Coprocessor1.clearConditionFlag(i);
+        } else {
+          Coprocessor1.setConditionFlag(i);
+        }
       }
       RegisterFile.initializeProgramCounter(previousPc);
       Globals.program = previousProgram;

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -44,7 +45,8 @@ public class SettingsExtendedAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    Globals.getSettings()
+    LegacyApplication.services()
+        .getSettings()
         .setExtendedAssemblerEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

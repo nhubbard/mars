@@ -1,6 +1,7 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.*;
 import java.util.*;
 
@@ -176,7 +177,8 @@ public class EditorFont {
   private static final String SPACES = "                                                  ";
 
   public static String substituteSpacesForTabs(String string) {
-    return substituteSpacesForTabs(string, Globals.getSettings().getEditorTabSize());
+    return substituteSpacesForTabs(
+        string, LegacyApplication.services().getSettings().getEditorTabSize());
   }
 
   /**
@@ -190,7 +192,9 @@ public class EditorFont {
    * @throws NullPointerException if string is null
    */
   public static String substituteSpacesForTabs(String string, int tabSize) {
-    if (!string.contains(TAB_STRING)) return string;
+    if (!string.contains(TAB_STRING)) {
+      return string;
+    }
     StringBuilder result = new StringBuilder(string);
     for (int i = 0; i < result.length(); i++) {
       if (result.charAt(i) == TAB_CHAR) {

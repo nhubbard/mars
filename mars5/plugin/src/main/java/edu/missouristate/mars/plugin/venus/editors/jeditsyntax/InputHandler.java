@@ -138,7 +138,9 @@ public abstract class InputHandler extends KeyAdapter {
    */
   public static String getActionName(ActionListener listener) {
     for (String name : actions.keySet()) {
-      if (getAction(name) == listener) return name;
+      if (getAction(name) == listener) {
+        return name;
+      }
     }
     return null;
   }
@@ -263,7 +265,9 @@ public abstract class InputHandler extends KeyAdapter {
     if (listener instanceof InputHandler.NonRepeatable) {
       listener.actionPerformed(evt);
     } else {
-      for (int i = 0; i < Math.max(1, repeatCount); i++) listener.actionPerformed(evt);
+      for (int i = 0; i < Math.max(1, repeatCount); i++) {
+        listener.actionPerformed(evt);
+      }
     }
 
     // do recording. Notice that we do no recording whatsoever
@@ -271,7 +275,9 @@ public abstract class InputHandler extends KeyAdapter {
     if (grabAction == null) {
       if (recorder != null) {
         if (!(listener instanceof InputHandler.NonRecordable)) {
-          if (_repeatCount != 1) recorder.actionPerformed(REPEAT, String.valueOf(_repeatCount));
+          if (_repeatCount != 1) {
+            recorder.actionPerformed(REPEAT, String.valueOf(_repeatCount));
+          }
 
           recorder.actionPerformed(listener, actionCommand);
         }
@@ -498,7 +504,9 @@ public abstract class InputHandler extends KeyAdapter {
       int lastVisibleLine = textArea.getFirstLine() + textArea.getVisibleLines();
       if (lastVisibleLine >= textArea.getLineCount()) {
         lastVisibleLine = Math.min(textArea.getLineCount() - 1, lastVisibleLine);
-      } else lastVisibleLine -= (textArea.getElectricScroll() + 1);
+      } else {
+        lastVisibleLine -= (textArea.getElectricScroll() + 1);
+      }
 
       int lastVisible = textArea.getLineEndOffset(lastVisibleLine) - 1;
       int lastDocument = textArea.getDocumentLength();
@@ -506,14 +514,21 @@ public abstract class InputHandler extends KeyAdapter {
       if (caret == lastDocument) {
         textArea.getToolkit().beep();
         return;
-      } else if (!Boolean.TRUE.equals(textArea.getClientProperty(SMART_HOME_END_PROPERTY)))
+      } else if (!Boolean.TRUE.equals(textArea.getClientProperty(SMART_HOME_END_PROPERTY))) {
         caret = lastOfLine;
-      else if (caret == lastVisible) caret = lastDocument;
-      else if (caret == lastOfLine) caret = lastVisible;
-      else caret = lastOfLine;
+      } else if (caret == lastVisible) {
+        caret = lastDocument;
+      } else if (caret == lastOfLine) {
+        caret = lastVisible;
+      } else {
+        caret = lastOfLine;
+      }
 
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
     }
   }
 
@@ -533,8 +548,11 @@ public abstract class InputHandler extends KeyAdapter {
 
     public void actionPerformed(ActionEvent evt) {
       JEditTextArea textArea = getTextArea(evt);
-      if (select) textArea.select(textArea.getMarkPosition(), textArea.getDocumentLength());
-      else textArea.setCaretPosition(textArea.getDocumentLength());
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), textArea.getDocumentLength());
+      } else {
+        textArea.setCaretPosition(textArea.getDocumentLength());
+      }
     }
   }
 
@@ -559,14 +577,21 @@ public abstract class InputHandler extends KeyAdapter {
       if (caret == 0) {
         textArea.getToolkit().beep();
         return;
-      } else if (!Boolean.TRUE.equals(textArea.getClientProperty(SMART_HOME_END_PROPERTY)))
+      } else if (!Boolean.TRUE.equals(textArea.getClientProperty(SMART_HOME_END_PROPERTY))) {
         caret = firstOfLine;
-      else if (caret == firstVisible) caret = 0;
-      else if (caret == firstOfLine) caret = firstVisible;
-      else caret = firstOfLine;
+      } else if (caret == firstVisible) {
+        caret = 0;
+      } else if (caret == firstOfLine) {
+        caret = firstVisible;
+      } else {
+        caret = firstOfLine;
+      }
 
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
     }
   }
 
@@ -579,8 +604,11 @@ public abstract class InputHandler extends KeyAdapter {
 
     public void actionPerformed(ActionEvent evt) {
       JEditTextArea textArea = getTextArea(evt);
-      if (select) textArea.select(textArea.getMarkPosition(), 0);
-      else textArea.setCaretPosition(0);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), 0);
+      } else {
+        textArea.setCaretPosition(0);
+      }
     }
   }
 
@@ -625,8 +653,11 @@ public abstract class InputHandler extends KeyAdapter {
         return;
       }
 
-      if (select) textArea.select(textArea.getMarkPosition(), caret + 1);
-      else textArea.setCaretPosition(caret + 1);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret + 1);
+      } else {
+        textArea.setCaretPosition(caret + 1);
+      }
     }
   }
 
@@ -653,8 +684,11 @@ public abstract class InputHandler extends KeyAdapter {
       }
 
       caret = textArea.getLineStartOffset(line + 1) + textArea.xToOffset(line + 1, magic);
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
       textArea.setMagicCaretPosition(magic);
     }
   }
@@ -675,14 +709,19 @@ public abstract class InputHandler extends KeyAdapter {
 
       firstLine += visibleLines;
 
-      if (firstLine + visibleLines >= lineCount - 1) firstLine = lineCount - visibleLines;
+      if (firstLine + visibleLines >= lineCount - 1) {
+        firstLine = lineCount - visibleLines;
+      }
 
       textArea.setFirstLine(firstLine);
 
       int caret =
           textArea.getLineStartOffset(Math.min(textArea.getLineCount() - 1, line + visibleLines));
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
     }
   }
 
@@ -713,8 +752,11 @@ public abstract class InputHandler extends KeyAdapter {
         caret = TextUtilities.findWordEnd(lineText, caret, noWordSep);
       }
 
-      if (select) textArea.select(textArea.getMarkPosition(), lineStart + caret);
-      else textArea.setCaretPosition(lineStart + caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), lineStart + caret);
+      } else {
+        textArea.setCaretPosition(lineStart + caret);
+      }
     }
   }
 
@@ -740,8 +782,11 @@ public abstract class InputHandler extends KeyAdapter {
         return;
       }
 
-      if (select) textArea.select(textArea.getMarkPosition(), caret - 1);
-      else textArea.setCaretPosition(caret - 1);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret - 1);
+      } else {
+        textArea.setCaretPosition(caret - 1);
+      }
     }
   }
 
@@ -768,8 +813,11 @@ public abstract class InputHandler extends KeyAdapter {
       }
 
       caret = textArea.getLineStartOffset(line - 1) + textArea.xToOffset(line - 1, magic);
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
       textArea.setMagicCaretPosition(magic);
     }
   }
@@ -787,13 +835,18 @@ public abstract class InputHandler extends KeyAdapter {
       int visibleLines = textArea.getVisibleLines();
       int line = textArea.getCaretLine();
 
-      if (firstLine < visibleLines) firstLine = visibleLines;
+      if (firstLine < visibleLines) {
+        firstLine = visibleLines;
+      }
 
       textArea.setFirstLine(firstLine - visibleLines);
 
       int caret = textArea.getLineStartOffset(Math.max(0, line - visibleLines));
-      if (select) textArea.select(textArea.getMarkPosition(), caret);
-      else textArea.setCaretPosition(caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), caret);
+      } else {
+        textArea.setCaretPosition(caret);
+      }
     }
   }
 
@@ -824,8 +877,11 @@ public abstract class InputHandler extends KeyAdapter {
         caret = TextUtilities.findWordStart(lineText, caret, noWordSep);
       }
 
-      if (select) textArea.select(textArea.getMarkPosition(), lineStart + caret);
-      else textArea.setCaretPosition(lineStart + caret);
+      if (select) {
+        textArea.select(textArea.getMarkPosition(), lineStart + caret);
+      } else {
+        textArea.setCaretPosition(lineStart + caret);
+      }
     }
   }
 
@@ -854,9 +910,8 @@ public abstract class InputHandler extends KeyAdapter {
       int repeatCount = textArea.getInputHandler().getRepeatCount();
 
       if (textArea.isEditable()) {
-        StringBuilder buf = new StringBuilder();
-        buf.repeat(String.valueOf(str), Math.max(0, repeatCount));
-        textArea.overwriteSetSelectedText(buf.toString());
+        textArea.overwriteSetSelectedText(
+            String.valueOf(String.valueOf(str)).repeat(Math.max(0, repeatCount)));
       } else {
         textArea.getToolkit().beep();
       }

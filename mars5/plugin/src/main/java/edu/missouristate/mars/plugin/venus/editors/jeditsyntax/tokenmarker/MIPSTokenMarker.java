@@ -9,11 +9,9 @@
 
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.assembler.*;
-import edu.missouristate.mars.mips.hardware.Coprocessor1;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.Register;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import java.util.*;
@@ -88,8 +86,9 @@ public class MIPSTokenMarker extends TokenMarker {
           switch (c) {
             case '"':
               doKeyword(line, i, c);
-              if (backslash) backslash = false;
-              else {
+              if (backslash) {
+                backslash = false;
+              } else {
                 addToken(i - lastOffset, token);
                 token = Token.LITERAL1;
                 lastOffset = lastKeyword = i;
@@ -97,8 +96,9 @@ public class MIPSTokenMarker extends TokenMarker {
               break;
             case '\'':
               doKeyword(line, i, c);
-              if (backslash) backslash = false;
-              else {
+              if (backslash) {
+                backslash = false;
+              } else {
                 addToken(i - lastOffset, token);
                 token = Token.LITERAL2;
                 lastOffset = lastKeyword = i;
@@ -150,22 +150,25 @@ public class MIPSTokenMarker extends TokenMarker {
             default:
               backslash = false;
               // . and $ added 4/6/10 DPS; % added 12/12 M.Sekhavat
-              if (!Character.isLetterOrDigit(c) && c != '_' && c != '.' && c != '$' && c != '%')
+              if (!Character.isLetterOrDigit(c) && c != '_' && c != '.' && c != '$' && c != '%') {
                 doKeyword(line, i, c);
+              }
               break;
           }
           break;
         case Token.LITERAL1:
-          if (backslash) backslash = false;
-          else if (c == '"') {
+          if (backslash) {
+            backslash = false;
+          } else if (c == '"') {
             addToken(i1 - lastOffset, token);
             token = Token.NULL;
             lastOffset = lastKeyword = i1;
           }
           break;
         case Token.LITERAL2:
-          if (backslash) backslash = false;
-          else if (c == '\'') {
+          if (backslash) {
+            backslash = false;
+          } else if (c == '\'') {
             addToken(i1 - lastOffset, Token.LITERAL1);
             token = Token.NULL;
             lastOffset = lastKeyword = i1;
@@ -176,7 +179,9 @@ public class MIPSTokenMarker extends TokenMarker {
       }
     }
 
-    if (token == Token.NULL) doKeyword(line, length, '\0');
+    if (token == Token.NULL) {
+      doKeyword(line, length, '\0');
+    }
 
     switch (token) {
       case Token.LITERAL1:
@@ -186,7 +191,9 @@ public class MIPSTokenMarker extends TokenMarker {
         break;
       case Token.KEYWORD2:
         addToken(length - lastOffset, token);
-        if (!backslash) token = Token.NULL;
+        if (!backslash) {
+          token = Token.NULL;
+        }
       default:
         addToken(length - lastOffset, token);
         break;
@@ -205,12 +212,13 @@ public class MIPSTokenMarker extends TokenMarker {
   public ArrayList<PopupHelpItem> getTokenExactMatchHelp(Token token, String tokenText) {
     ArrayList<PopupHelpItem> matches = null;
     if (token != null && token.id == Token.KEYWORD1) {
-      ArrayList<Instruction> instrMatches = Globals.instructionSet.matchOperator(tokenText);
+      ArrayList<Instruction> instrMatches =
+          LegacyApplication.services().instructionSet.matchOperator(tokenText);
       if (!instrMatches.isEmpty()) {
         int realMatches = 0;
         matches = new ArrayList<>();
         for (Instruction inst : instrMatches) {
-          if (Globals.getSettings().getExtendedAssemblerEnabled()
+          if (LegacyApplication.services().getSettings().getExtendedAssemblerEnabled()
               || inst instanceof BasicInstruction) {
             matches.add(
                 new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription()));
@@ -347,7 +355,8 @@ public class MIPSTokenMarker extends TokenMarker {
       // token.
       if (trimmedTokenText.charAt(0) == '.') {
         return getTextFromDirectiveMatch(trimmedTokenText, false);
-      } else if (trimmedTokenText.length() >= Globals.getSettings().getEditorPopupPrefixLength()) {
+      } else if (trimmedTokenText.length()
+          >= LegacyApplication.services().getSettings().getEditorPopupPrefixLength()) {
         return getTextFromInstructionMatch(trimmedTokenText, false);
       }
     }
@@ -388,9 +397,9 @@ public class MIPSTokenMarker extends TokenMarker {
     ArrayList<Instruction> matches;
     ArrayList<PopupHelpItem> results = new ArrayList<>();
     if (exact) {
-      matches = Globals.instructionSet.matchOperator(tokenText);
+      matches = LegacyApplication.services().instructionSet.matchOperator(tokenText);
     } else {
-      matches = Globals.instructionSet.prefixMatchOperator(tokenText);
+      matches = LegacyApplication.services().instructionSet.prefixMatchOperator(tokenText);
     }
     if (matches == null) {
       return null;
@@ -399,7 +408,8 @@ public class MIPSTokenMarker extends TokenMarker {
     HashMap<String, String> insts = new HashMap<>();
     TreeSet<String> mnemonics = new TreeSet<>();
     for (Instruction inst : matches) {
-      if (Globals.getSettings().getExtendedAssemblerEnabled() || inst instanceof BasicInstruction) {
+      if (LegacyApplication.services().getSettings().getExtendedAssemblerEnabled()
+          || inst instanceof BasicInstruction) {
         if (exact) {
           results.add(
               new PopupHelpItem(tokenText, inst.getExampleFormat(), inst.getDescription(), true));
@@ -441,7 +451,8 @@ public class MIPSTokenMarker extends TokenMarker {
     if (cKeywords == null) {
       cKeywords = new KeywordMap(false);
       // add Instruction mnemonics
-      ArrayList<Instruction> instructionSet = Globals.instructionSet.getInstructionList();
+      ArrayList<Instruction> instructionSet =
+          LegacyApplication.services().instructionSet.getInstructionList();
       for (Instruction instruction : instructionSet) {
         cKeywords.add(instruction.getName(), Token.KEYWORD1);
       }
@@ -451,13 +462,14 @@ public class MIPSTokenMarker extends TokenMarker {
         cKeywords.add(directives.getName(), Token.KEYWORD2);
       }
       // add integer register file
-      Register[] registerFile = RegisterFile.getRegisters();
+      Register[] registerFile = LegacyApplication.services().context().registerFile.getRegisters();
       for (int i = 0; i < registerFile.length; i++) {
         cKeywords.add(registerFile[i].getName(), Token.KEYWORD3);
         cKeywords.add("$" + i, Token.KEYWORD3); // also recognize $0, $1, $2, etc
       }
       // add Coprocessor 1 (floating point) register file
-      Register[] coprocessor1RegisterFile = Coprocessor1.getRegisters();
+      Register[] coprocessor1RegisterFile =
+          LegacyApplication.services().context().coprocessor1.getRegisters();
       for (Register register : coprocessor1RegisterFile) {
         cKeywords.add(register.getName(), Token.KEYWORD3);
       }
@@ -486,7 +498,9 @@ public class MIPSTokenMarker extends TokenMarker {
       //   if (id == Token.KEYWORD1 && tokenListContainsKeyword()) {
       //    }
       //    else {
-      if (lastKeyword != lastOffset) addToken(lastKeyword - lastOffset, Token.NULL);
+      if (lastKeyword != lastOffset) {
+        addToken(lastKeyword - lastOffset, Token.NULL);
+      }
       addToken(len, id);
       lastOffset = i;
       //  }
@@ -501,8 +515,9 @@ public class MIPSTokenMarker extends TokenMarker {
     StringBuilder str = new StringBuilder();
     while (token != null) {
       str.append(token.id).append("(").append(token.length).append(") ");
-      if (token.id == Token.KEYWORD1 || token.id == Token.KEYWORD2 || token.id == Token.KEYWORD3)
+      if (token.id == Token.KEYWORD1 || token.id == Token.KEYWORD2 || token.id == Token.KEYWORD3) {
         result = true;
+      }
       token = token.next;
     }
     System.out.println(result + " " + str);

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -43,6 +44,6 @@ public class SettingsLabelAction extends GuiAction {
   public void actionPerformed(ActionEvent e) {
     boolean visibility = ((JCheckBoxMenuItem) e.getSource()).isSelected();
     VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(visibility);
-    Globals.getSettings().setLabelWindowVisibility(visibility);
+    LegacyApplication.services().getSettings().setLabelWindowVisibility(visibility);
   }
 }

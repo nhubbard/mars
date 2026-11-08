@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.util.FilenameFinder;
 import java.io.File;
 import javax.swing.filechooser.FileFilter;
@@ -10,7 +10,8 @@ public final class FileChooserFilters {
   private FileChooserFilters() {}
 
   public static FileFilter assemblyFiles() {
-    var delegate = FilenameFinder.getFileFilter(Globals.fileExtensions, "Assembler Files", true);
+    var delegate =
+        FilenameFinder.getFileFilter(LegacyMetadata.fileExtensions, "Assembler Files", true);
     return new FileFilter() {
       @Override
       public boolean accept(File file) {

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.awt.event.*;
@@ -48,7 +49,7 @@ public class RunResetAction extends GuiAction {
     String name = this.getValue(Action.NAME).toString();
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     // The difficult part here is resetting the data segment.  Two approaches are:
-    // 1. After each assembly, get a deep copy of the Globals.memory array
+    // 1. After each assembly, get a deep copy of the LegacyApplication.services().memory array
     //    containing data segment.  Then replace it upon reset.
     // 2. Simply re-assemble the program upon reset, and the assembler will
     //    build a new data segment.  Reset can only be done after a successful
@@ -56,10 +57,12 @@ public class RunResetAction extends GuiAction {
     // I am choosing the second approach although it will slow down the reset
     // operation.  The first approach requires additional Memory class methods.
     try {
-      Globals.program.assemble(
-          RunAssembleAction.getMIPSprogramsToAssemble(),
-          RunAssembleAction.getExtendedAssemblerEnabled(),
-          RunAssembleAction.getWarningsAreErrors());
+      LegacyApplication.services()
+          .getProgram()
+          .assemble(
+              RunAssembleAction.getMIPSprogramsToAssemble(),
+              RunAssembleAction.getExtendedAssemblerEnabled(),
+              RunAssembleAction.getWarningsAreErrors());
     } catch (ProcessingException pe) {
       mainUI
           .getMessagesPane()
@@ -68,9 +71,9 @@ public class RunResetAction extends GuiAction {
               "Unable to reset.  Please close file then re-open and re-assemble.\n");
       return;
     }
-    RegisterFile.resetRegisters();
-    Coprocessor1.resetRegisters();
-    Coprocessor0.resetRegisters();
+    LegacyApplication.services().resetRegisters();
+    LegacyApplication.services().context().coprocessor1.resetRegisters();
+    LegacyApplication.services().context().coprocessor0.resetRegisters();
 
     executePane.getRegistersWindow().clearHighlighting();
     executePane.getRegistersWindow().updateRegisters();

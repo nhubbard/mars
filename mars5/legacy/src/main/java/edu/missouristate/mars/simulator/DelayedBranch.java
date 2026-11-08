@@ -1,5 +1,7 @@
 package edu.missouristate.mars.simulator;
 
+import edu.missouristate.mars.legacy.LegacyApplication;
+
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
 
@@ -33,7 +35,7 @@ public class DelayedBranch {
 
   /** Transitional access for the legacy instruction execution context. */
   public static DelayedBranchState legacyState() {
-    return edu.missouristate.mars.Globals.context().delayedBranch;
+    return LegacyApplication.services().context().delayedBranch;
   }
 
   public static void register(int targetAddress) {

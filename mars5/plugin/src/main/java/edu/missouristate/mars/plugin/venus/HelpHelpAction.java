@@ -2,6 +2,8 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.instructions.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -67,7 +69,7 @@ public class HelpHelpAction extends GuiAction {
     tabbedPane.addTab("Acknowledgements", createHTMLHelpPanel("Acknowledgements.html"));
     tabbedPane.addTab("Instruction Set Song", createHTMLHelpPanel("MIPSInstructionSetSong.html"));
     // Create non-modal dialog. Based on java.sun.com "How to Make Dialogs", DialogDemo.java
-    final JDialog dialog = new JDialog(mainUI, "MARS " + Globals.version + " Help");
+    final JDialog dialog = new JDialog(mainUI, "MARS " + LegacyMetadata.version + " Help");
     // assure the dialog goes away if user clicks the X
     dialog.addWindowListener(
         new WindowAdapter() {
@@ -110,7 +112,7 @@ public class HelpHelpAction extends GuiAction {
     JScrollPane helpScrollPane;
     JEditorPane helpDisplay;
     try {
-      InputStream is = this.getClass().getResourceAsStream(Globals.helpPath + filename);
+      InputStream is = this.getClass().getResourceAsStream(LegacyMetadata.helpPath + filename);
       BufferedReader in = new BufferedReader(new InputStreamReader(is));
       String line;
       StringBuilder text = new StringBuilder();
@@ -193,59 +195,35 @@ public class HelpHelpAction extends GuiAction {
             + helpRemarksColor
             + "\" border=0 cellpadding=0>"
             + // width="+this.getSize().getWidth()+">"+
-            "<tr>"
-            + "<th colspan=2><b><i><font size=+1>&nbsp;&nbsp;Operand Key for Example Instructions&nbsp;&nbsp;</font></i></b></th>"
-            + "</tr>"
-            + "<tr>"
-            + "<td><tt>label, target</tt></td><td>any textual label</td>"
-            + "</tr><tr>"
-            + "<td><tt>$t1, $t2, $t3</tt></td><td>any integer register</td>"
-            + "</tr><tr>"
-            + "<td><tt>$f2, $f4, $f6</tt></td><td><i>even-numbered</i> floating point register</td>"
-            + "</tr><tr>"
-            + "<td><tt>$f0, $f1, $f3</tt></td><td><i>any</i> floating point register</td>"
-            + "</tr><tr>"
-            + "<td><tt>$8</tt></td><td>any Coprocessor 0 register</td>"
-            + "</tr><tr>"
-            + "<td><tt>1</tt></td><td>condition flag (0 to 7)</td>"
-            + "</tr><tr>"
-            + "<td><tt>10</tt></td><td>unsigned 5-bit integer (0 to 31)</td>"
-            + "</tr><tr>"
-            + "<td><tt>-100</tt></td><td>signed 16-bit integer (-32768 to 32767)</td>"
-            + "</tr><tr>"
-            + "<td><tt>100</tt></td><td>unsigned 16-bit integer (0 to 65535)</td>"
-            + "</tr><tr>"
-            + "<td><tt>100000</tt></td><td>signed 32-bit integer (-2147483648 to 2147483647)</td>"
-            + "</tr><tr>"
-            + "</tr><tr>"
-            + "<td colspan=2><b><i><font size=+1>Load & Store addressing mode, basic instructions</font></i></b></td>"
-            + "</tr><tr>"
-            + "<td><tt>-100($t2)</tt></td><td>sign-extended 16-bit integer added to contents of $t2</td>"
-            + "</tr><tr>"
-            + "</tr><tr>"
-            + "<td colspan=2><b><i><font size=+1>Load & Store addressing modes, pseudo instructions</font></i></b></td>"
-            + "</tr><tr>"
-            + "<td><tt>($t2)</tt></td><td>contents of $t2</td>"
-            + "</tr><tr>"
-            + "<td><tt>-100</tt></td><td>signed 16-bit integer</td>"
-            + "</tr><tr>"
-            + "<td><tt>100</tt></td><td>unsigned 16-bit integer</td>"
-            + "</tr><tr>"
-            + "<td><tt>100000</tt></td><td>signed 32-bit integer</td>"
-            + "</tr><tr>"
-            + "<td><tt>100($t2)</tt></td><td>zero-extended unsigned 16-bit integer added to contents of $t2</td>"
-            + "</tr><tr>"
-            + "<td><tt>100000($t2)</tt></td><td>signed 32-bit integer added to contents of $t2</td>"
-            + "</tr><tr>"
-            + "<td><tt>label</tt></td><td>32-bit address of label</td>"
-            + "</tr><tr>"
-            + "<td><tt>label($t2)</tt></td><td>32-bit address of label added to contents of $t2</td>"
-            + "</tr><tr>"
-            + "<td><tt>label+100000</tt></td><td>32-bit integer added to label's address</td>"
-            + "</tr><tr>"
-            + "<td><tt>label+100000($t2)&nbsp;&nbsp;&nbsp;</tt></td><td>sum of 32-bit integer, label's address, and contents of $t2</td>"
-            + "</tr>"
-            + "</table></center></html>";
+            "<tr><th colspan=2><b><i><font size=+1>&nbsp;&nbsp;Operand Key for Example"
+          + " Instructions&nbsp;&nbsp;</font></i></b></th></tr><tr><td><tt>label,"
+          + " target</tt></td><td>any textual label</td></tr><tr><td><tt>$t1, $t2,"
+          + " $t3</tt></td><td>any integer register</td></tr><tr><td><tt>$f2, $f4,"
+          + " $f6</tt></td><td><i>even-numbered</i> floating point register</td>"
+          + "</tr><tr><td><tt>$f0, $f1, $f3</tt></td><td><i>any</i> floating point register</td>"
+          + "</tr><tr><td><tt>$8</tt></td><td>any Coprocessor 0 register</td>"
+          + "</tr><tr><td><tt>1</tt></td><td>condition flag (0 to 7)</td>"
+          + "</tr><tr><td><tt>10</tt></td><td>unsigned 5-bit integer (0 to 31)</td>"
+          + "</tr><tr><td><tt>-100</tt></td><td>signed 16-bit integer (-32768 to 32767)</td>"
+          + "</tr><tr><td><tt>100</tt></td><td>unsigned 16-bit integer (0 to 65535)</td>"
+          + "</tr><tr><td><tt>100000</tt></td><td>signed 32-bit integer (-2147483648 to"
+          + " 2147483647)</td></tr><tr></tr><tr><td colspan=2><b><i><font size=+1>Load & Store"
+          + " addressing mode, basic instructions</font></i></b></td>"
+          + "</tr><tr><td><tt>-100($t2)</tt></td><td>sign-extended 16-bit integer added to contents"
+          + " of $t2</td></tr><tr></tr><tr><td colspan=2><b><i><font size=+1>Load & Store"
+          + " addressing modes, pseudo instructions</font></i></b></td>"
+          + "</tr><tr><td><tt>($t2)</tt></td><td>contents of $t2</td>"
+          + "</tr><tr><td><tt>-100</tt></td><td>signed 16-bit integer</td>"
+          + "</tr><tr><td><tt>100</tt></td><td>unsigned 16-bit integer</td>"
+          + "</tr><tr><td><tt>100000</tt></td><td>signed 32-bit integer</td>"
+          + "</tr><tr><td><tt>100($t2)</tt></td><td>zero-extended unsigned 16-bit integer added to"
+          + " contents of $t2</td></tr><tr><td><tt>100000($t2)</tt></td><td>signed 32-bit integer"
+          + " added to contents of $t2</td></tr><tr><td><tt>label</tt></td><td>32-bit address of"
+          + " label</td></tr><tr><td><tt>label($t2)</tt></td><td>32-bit address of label added to"
+          + " contents of $t2</td></tr><tr><td><tt>label+100000</tt></td><td>32-bit integer added"
+          + " to label's address</td>"
+          + "</tr><tr><td><tt>label+100000($t2)&nbsp;&nbsp;&nbsp;</tt></td><td>sum of 32-bit"
+          + " integer, label's address, and contents of $t2</td></tr></table></center></html>";
     // Original code:         mipsHelpInfo.add(new JLabel(helpRemarks, JLabel.CENTER),
     // BorderLayout.NORTH);
     JLabel helpRemarksLabel = new JLabel(helpRemarks, JLabel.CENTER);
@@ -310,7 +288,8 @@ public class HelpHelpAction extends GuiAction {
 
   ////////////////////////////////////////////////////////////////////////////
   private JScrollPane createMipsInstructionHelpPane(String instructionClassName) {
-    ArrayList<Instruction> instructionList = Globals.instructionSet.getInstructionList();
+    ArrayList<Instruction> instructionList =
+        LegacyApplication.services().instructionSet.getInstructionList();
     ArrayList<String> exampleList = new ArrayList<>(instructionList.size());
     Iterator<Instruction> it = instructionList.iterator();
     Instruction instr;
@@ -376,7 +355,8 @@ public class HelpHelpAction extends GuiAction {
     JDialog webpageDisplay;
     JTextField webpageURL;
     private static final String cannotDisplayMessage =
-        "<html><title></title><body><strong>Unable to display requested document.</strong></body></html>";
+        "<html><title></title><body><strong>Unable to display requested"
+            + " document.</strong></body></html>";
 
     public void hyperlinkUpdate(HyperlinkEvent e) {
       if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {

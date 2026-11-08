@@ -1,6 +1,7 @@
 package edu.missouristate.mars.util;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.io.*;
 
 /*
@@ -75,17 +76,20 @@ public class SystemIO {
    */
   public static int readInteger(int serviceNumber) {
     String input = "0";
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
-    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+    } else if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
       input =
-          Globals.getGui()
+          LegacyApplication.services()
+              .getGui()
               .readInputWithPrompt("Enter an integer value (syscall " + serviceNumber + ")");
     } else {
-      input = Globals.getGui().readInput(-1);
+      input = LegacyApplication.services().getGui().readInput(-1);
     }
 
     // Client is responsible for catching NumberFormatException
@@ -101,17 +105,20 @@ public class SystemIO {
    */
   public static float readFloat(int serviceNumber) {
     String input = "0";
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
-    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+    } else if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
       input =
-          Globals.getGui()
+          LegacyApplication.services()
+              .getGui()
               .readInputWithPrompt("Enter a float value (syscall " + serviceNumber + ")");
     } else {
-      input = Globals.getGui().readInput(-1);
+      input = LegacyApplication.services().getGui().readInput(-1);
     }
     return Float.parseFloat(input.trim());
   }
@@ -126,27 +133,30 @@ public class SystemIO {
    */
   public static double readDouble(int serviceNumber) {
     String input = "0";
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
-    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+    } else if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
       input =
-          Globals.getGui()
+          LegacyApplication.services()
+              .getGui()
               .readInputWithPrompt("Enter a double value (syscall " + serviceNumber + ")");
     } else {
-      input = Globals.getGui().readInput(-1);
+      input = LegacyApplication.services().getGui().readInput(-1);
     }
     return Double.parseDouble(input.trim());
   }
 
   /** Implements syscall having 4 in $v0, to print a string. */
   public static void printString(String string) {
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       System.out.print(string);
     } else {
-      Globals.getGui().postRunMessage(string);
+      LegacyApplication.services().getGui().postRunMessage(string);
     }
   }
 
@@ -159,14 +169,17 @@ public class SystemIO {
    */
   public static String readString(int serviceNumber, int maxLength) {
     String input = "";
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
-    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+    } else if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
       input =
-          Globals.getGui()
+          LegacyApplication.services()
+              .getGui()
               .readInputWithPrompt(
                   "Enter a string of maximum length "
                       + maxLength
@@ -174,7 +187,7 @@ public class SystemIO {
                       + serviceNumber
                       + ")");
     } else {
-      input = Globals.getGui().readInput(maxLength);
+      input = LegacyApplication.services().getGui().readInput(maxLength);
       if (input.endsWith("\n")) {
         input = input.substring(0, input.length() - 1);
       }
@@ -197,17 +210,20 @@ public class SystemIO {
   public static int readChar(int serviceNumber) {
     String input = "0";
     int returnValue;
-    if (!Globals.getGui().isGuiMode()) {
+    if (!LegacyApplication.services().getGui().isGuiMode()) {
       try {
         input = getInputReader().readLine();
       } catch (IOException ignored) {
       }
-    } else if (Globals.getSettings().getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
+    } else if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_SYSCALL_INPUT)) {
       input =
-          Globals.getGui()
+          LegacyApplication.services()
+              .getGui()
               .readInputWithPrompt("Enter a character value (syscall " + serviceNumber + ")");
     } else {
-      input = Globals.getGui().readInput(1);
+      input = LegacyApplication.services().getGui().readInput(1);
     }
     returnValue = input.charAt(0);
 
@@ -225,9 +241,9 @@ public class SystemIO {
   public static int writeToFile(int fd, byte[] myBuffer, int lengthRequested) {
     /////////////// DPS 8-Jan-2013  ////////////////////////////////////////////////////
     /// Write to STDOUT or STDERR file descriptor while using IDE - write to Messages pane.
-    if ((fd == STDOUT || fd == STDERR) && Globals.getGui().isGuiMode()) {
+    if ((fd == STDOUT || fd == STDERR) && LegacyApplication.services().getGui().isGuiMode()) {
       String data = new String(myBuffer);
-      Globals.getGui().postRunMessage(data);
+      LegacyApplication.services().getGui().postRunMessage(data);
       return data.length();
     }
     ///////////////////////////////////////////////////////////////////////////////////
@@ -281,8 +297,8 @@ public class SystemIO {
     int retValue;
     /////////////// DPS 8-Jan-2013  //////////////////////////////////////////////////
     /// Read from STDIN file descriptor while using IDE - get input from Messages pane.
-    if (fd == STDIN && Globals.getGui().isGuiMode()) {
-      String input = Globals.getGui().readInput(lengthRequested);
+    if (fd == STDIN && LegacyApplication.services().getGui().isGuiMode()) {
+      String input = LegacyApplication.services().getGui().readInput(lengthRequested);
       byte[] bytesRead = input.getBytes();
       for (int i = 0; i < myBuffer.length; i++) {
         myBuffer[i] = (i < bytesRead.length) ? bytesRead[i] : 0;
@@ -469,14 +485,18 @@ public class SystemIO {
       } else // O_WRONLY write-only
       if (fileNames[fd] != null && fileFlags[fd] == 0 && flag == 0) { // O_RDONLY read-only
         return true;
-      } else return fileNames[fd] != null && ((fileFlags[fd] & flag & O_WRONLY) == O_WRONLY);
+      } else {
+        return fileNames[fd] != null && ((fileFlags[fd] & flag & O_WRONLY) == O_WRONLY);
+      }
     }
 
     // Close the file with file descriptor fd. No errors are recoverable -- if the user's
     // made an error in the call, it will come back to him.
     private static void close(int fd) {
       // Can't close STDIN, STDOUT, STDERR, or invalid fd
-      if (fd <= STDERR || fd >= SYSCALL_MAXFILES) return;
+      if (fd <= STDERR || fd >= SYSCALL_MAXFILES) {
+        return;
+      }
 
       fileNames[fd] = null;
       // All this code will be executed only if the descriptor is open.
@@ -486,8 +506,11 @@ public class SystemIO {
         fileFlags[fd] = -1;
         streams[fd] = null;
         try {
-          if (keepFlag == O_RDONLY) ((FileInputStream) keepStream).close();
-          else ((FileOutputStream) keepStream).close();
+          if (keepFlag == O_RDONLY) {
+            ((FileInputStream) keepStream).close();
+          } else {
+            ((FileOutputStream) keepStream).close();
+          }
         } catch (IOException ioe) {
           // not concerned with this exception
         }

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.*;
 import javax.swing.*;
 
@@ -68,15 +69,19 @@ public class ExecutePane extends JDesktopPane {
     // windows within the Execute pane.  So they will be housed here.
     addressDisplayBase =
         new NumberDisplayBaseChooser(
-            "Hexadecimal Addresses", Globals.getSettings().getDisplayAddressesInHex());
+            "Hexadecimal Addresses",
+            LegacyApplication.services().getSettings().getDisplayAddressesInHex());
     valueDisplayBase =
         new NumberDisplayBaseChooser(
             "Hexadecimal Values",
-            Globals.getSettings().getDisplayValuesInHex()); // VenusUI.DEFAULT_NUMBER_BASE);
+            LegacyApplication.services()
+                .getSettings()
+                .getDisplayValuesInHex()); // VenusUI.DEFAULT_NUMBER_BASE);
     addressDisplayBase.setToolTipText(
         "If checked, displays all memory addresses in hexadecimal.  Otherwise, decimal.");
     valueDisplayBase.setToolTipText(
-        "If checked, displays all memory and register contents in hexadecimal.  Otherwise, decimal.");
+        "If checked, displays all memory and register contents in hexadecimal.  Otherwise,"
+            + " decimal.");
     NumberDisplayBaseChooser[] choosers = {addressDisplayBase, valueDisplayBase};
     registerValues = regs;
     coprocessor1Values = cop1Regs;
@@ -84,7 +89,7 @@ public class ExecutePane extends JDesktopPane {
     textSegment = new TextSegmentWindow();
     dataSegment = new DataSegmentWindow(choosers);
     labelValues = new LabelsWindow();
-    labelWindowVisible = Globals.getSettings().getLabelWindowVisibility();
+    labelWindowVisible = LegacyApplication.services().getSettings().getLabelWindowVisibility();
     layoutPending = false;
     this.add(textSegment); // these 3 LOC moved up.  DPS 3-Sept-2014
     this.add(dataSegment);

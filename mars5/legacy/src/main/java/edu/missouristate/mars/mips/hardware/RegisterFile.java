@@ -1,7 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.assembler.SymbolTable;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.util.function.Consumer;
 
 /*
@@ -45,7 +45,7 @@ public class RegisterFile {
 
   /** Transitional access for the legacy instruction execution context. */
   public static IntegerRegisterFile legacyState() {
-    return Globals.context().registerFile;
+    return LegacyApplication.services().context().registerFile;
   }
 
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
@@ -61,24 +61,29 @@ public class RegisterFile {
   }
 
   public static int updateRegister(int num, int val) {
-    if (num == 0 || num == 32 || num < 0 || num > 34) return 0;
+    if (num == 0 || num == 32 || num < 0 || num > 34) {
+      return 0;
+    }
     int old = legacyState().updateRegister(num, val);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addRegisterFileRestore(num, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addRegisterFileRestore(num, old);
     }
     return old;
   }
 
   public static void updateRegister(String reg, int val) {
     int number = legacyState().getNumber(reg);
-    if (number >= 0) updateRegister(number, val);
+    if (number >= 0) {
+      updateRegister(number, val);
+    }
   }
 
   public static int getValue(int num) {
     // The historical API exposes PC through getProgramCounter(), not register 32.
-    if (num < 0 || num == 32 || num > 34) throw new ArrayIndexOutOfBoundsException(num);
+    if (num < 0 || num == 32 || num > 34) {
+      throw new ArrayIndexOutOfBoundsException(num);
+    }
     return legacyState().getValue(num);
   }
 
@@ -99,7 +104,7 @@ public class RegisterFile {
   }
 
   public static void initializeProgramCounter(boolean startAtMain) {
-    int mainAddr = Globals.symbolTable.getAddress(SymbolTable.getStartLabel());
+    int mainAddr = LegacyApplication.services().symbolTable.getAddress(SymbolTable.getStartLabel());
     if (startAtMain
         && mainAddr != SymbolTable.NOT_FOUND
         && (Memory.inTextSegment(mainAddr) || Memory.inKernelTextSegment(mainAddr))) {
@@ -111,10 +116,9 @@ public class RegisterFile {
 
   public static int setProgramCounter(int value) {
     int old = legacyState().setProgramCounter(value);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addPCRestore(old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addPCRestore(old);
     }
     return old;
   }
@@ -133,7 +137,7 @@ public class RegisterFile {
 
   public static void resetRegisters() {
     legacyState().resetRegisters();
-    initializeProgramCounter(Globals.getSettings().getStartAtMain());
+    initializeProgramCounter(LegacyApplication.services().getSettings().getStartAtMain());
   }
 
   public static void incrementPC() {

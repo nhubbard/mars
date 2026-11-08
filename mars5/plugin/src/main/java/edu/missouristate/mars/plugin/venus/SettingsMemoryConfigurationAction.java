@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -86,8 +87,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       dialogPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
       JPanel configInfo = new JPanel(new FlowLayout());
-      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
-          .buildConfigurationCollection();
+      LegacyMemoryConfigurations.buildConfigurationCollection();
       configInfo.add(buildConfigChooser());
       configInfo.add(buildConfigDisplay());
       dialogPanel.add(configInfo);
@@ -99,8 +99,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
       JPanel chooserPanel = new JPanel(new GridLayout(4, 1));
       ButtonGroup choices = new ButtonGroup();
       Iterator<MemoryConfiguration> configurationsIterator =
-          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
-              .getConfigurationsIterator();
+          LegacyMemoryConfigurations.getConfigurationsIterator();
       while (configurationsIterator.hasNext()) {
         MemoryConfiguration config = configurationsIterator.next();
         ConfigurationButton button = new ConfigurationButton(config);
@@ -120,8 +119,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
 
     private Component buildConfigDisplay() {
       JPanel displayPanel = new JPanel();
-      MemoryConfiguration config =
-          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getCurrentConfiguration();
+      MemoryConfiguration config = LegacyMemoryConfigurations.getCurrentConfiguration();
       String[] configurationItemNames = config.configurationItemNames();
       int numItems = configurationItemNames.length;
       JPanel namesPanel = new JPanel(new GridLayout(numItems, 1));
@@ -189,9 +187,10 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     }
 
     private void performApply() {
-      if (edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
+      if (LegacyMemoryConfigurations.setCurrentConfiguration(
           this.selectedConfigurationButton.getConfiguration())) {
-        Globals.getSettings()
+        LegacyApplication.services()
+            .getSettings()
             .setMemoryConfiguration(
                 this.selectedConfigurationButton.getConfiguration().configurationIdentifier());
         VenusUI.instance().getRegistersPane().getRegistersWindow().clearHighlighting();
@@ -261,9 +260,7 @@ public class SettingsMemoryConfigurationAction extends GuiAction {
     public ConfigurationButton(MemoryConfiguration config) {
       super(
           config.configurationName(),
-          config
-              == edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
-                  .getCurrentConfiguration());
+          config == LegacyMemoryConfigurations.getCurrentConfiguration());
       this.configuration = config;
     }
 

@@ -236,7 +236,7 @@ public class RepeatButton extends JButton implements ActionListener, MouseListen
     if (me.getSource() == this && this.isEnabled() && this.isRepeatEnabled()) {
       this.pressed = true;
       if (!this.timer.isRunning()) {
-        this.modifiers = me.getModifiers();
+        this.modifiers = actionModifiers(me);
         this.timer.setInitialDelay(this.initialDelay);
         this.timer.start();
       }
@@ -267,7 +267,7 @@ public class RepeatButton extends JButton implements ActionListener, MouseListen
     // process events only from this components
     if (me.getSource() == this && this.isEnabled() && this.isRepeatEnabled()) {
       if (this.pressed && !this.timer.isRunning()) {
-        this.modifiers = me.getModifiers();
+        this.modifiers = actionModifiers(me);
         this.timer.setInitialDelay(this.delay);
         this.timer.start();
       }
@@ -309,5 +309,14 @@ public class RepeatButton extends JButton implements ActionListener, MouseListen
     f.getContentPane().add(p);
     f.pack();
     f.setVisible(true);
+  }
+
+  static int actionModifiers(MouseEvent event) {
+    int flags = 0;
+    if (event.isShiftDown()) flags |= ActionEvent.SHIFT_MASK;
+    if (event.isControlDown()) flags |= ActionEvent.CTRL_MASK;
+    if (event.isMetaDown()) flags |= ActionEvent.META_MASK;
+    if (event.isAltDown()) flags |= ActionEvent.ALT_MASK;
+    return flags;
   }
 }

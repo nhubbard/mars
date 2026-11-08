@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -58,15 +59,31 @@ public class RunBackstepAction extends GuiAction {
     mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
     executePane.getTextSegmentWindow().setCodeHighlighting(true);
 
-    if (Globals.getSettings().getBackSteppingEnabled()) {
-      boolean inDelaySlot = Globals.program.getBackStepper().inDelaySlot(); // Added 25 June 2007
+    if (LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      boolean inDelaySlot =
+          LegacyApplication.services()
+              .getProgram()
+              .getBackStepper()
+              .inDelaySlot(); // Added 25 June 2007
       Memory.getInstance().addObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      RegisterFile.addRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
-      Coprocessor0.addRegistersObserver(executePane.getCoprocessor0Window().getRegistersListener());
-      Coprocessor1.addRegistersObserver(executePane.getCoprocessor1Window().getRegistersListener());
-      Globals.program.getBackStepper().backStep();
+      LegacyApplication.services()
+          .context()
+          .registerFile
+          .addRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
+      LegacyApplication.services()
+          .context()
+          .coprocessor0
+          .addRegistersObserver(executePane.getCoprocessor0Window().getRegistersListener());
+      LegacyApplication.services()
+          .context()
+          .coprocessor1
+          .addRegistersObserver(executePane.getCoprocessor1Window().getRegistersListener());
+      LegacyApplication.services().getProgram().getBackStepper().backStep();
       Memory.getInstance().deleteObserver(executePane.getDataSegmentWindow().getMemoryListener());
-      RegisterFile.deleteRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
+      LegacyApplication.services()
+          .context()
+          .registerFile
+          .deleteRegistersObserver(executePane.getRegistersWindow().getRegistersListener());
       executePane.getRegistersWindow().updateRegisters();
       executePane.getCoprocessor1Window().updateRegisters();
       executePane.getCoprocessor0Window().updateRegisters();

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
+import edu.missouristate.mars.mips.instructions.basic.InstrAddi;
 import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 
@@ -19,8 +20,8 @@ class LegacyRegisterFileTest {
       previousValues[i] = i == 32 ? RegisterFile.getProgramCounter() : RegisterFile.getValue(i);
     }
     try {
-      Globals.symbolTable = new SymbolTable("global");
-      var program = new edu.missouristate.mars.LegacyProgram();
+      Globals.symbolTable = new SymbolTable();
+      var program = new LegacyProgram();
       String path = SimulatorSmokeTest.resourcePath("01_helloworld.asm");
       program.readSource(path);
       program.tokenize();
@@ -53,7 +54,7 @@ class LegacyRegisterFileTest {
 
       // The explicit compatibility-session invocation must keep recording undo history.
       RegisterFile.initializeProgramCounter(pc + 4);
-      var add = new edu.missouristate.mars.mips.instructions.basic.InstrAddi();
+      var add = new InstrAddi();
       var statement = new ProgramStatement(null, "addi $t0,$zero,42", null, null, add, pc, 1);
       System.arraycopy(new int[] {8, 0, 42}, 0, statement.getOperands(), 0, 3);
       add.getSimulationCode().simulate(statement, Globals.instructionContext());
@@ -72,8 +73,11 @@ class LegacyRegisterFileTest {
     } finally {
       Globals.program = null;
       for (int i = 1; i < 35; i++) {
-        if (i == 32) RegisterFile.initializeProgramCounter(previousValues[i]);
-        else RegisterFile.updateRegister(i, previousValues[i]);
+        if (i == 32) {
+          RegisterFile.initializeProgramCounter(previousValues[i]);
+        } else {
+          RegisterFile.updateRegister(i, previousValues[i]);
+        }
       }
       Globals.program = previousProgram;
       Globals.symbolTable = previousSymbols;

@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.dump.DumpFormat;
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
@@ -105,8 +105,10 @@ public class FileDumpMemoryAction extends GuiAction {
 
     // A series of parallel arrays representing the memory segments that can be dumped.
     String[] segmentArray = MemoryDump.getSegmentNames();
-    int[] baseAddressArray = MemoryDump.getBaseAddresses(segmentArray, Globals.context().memory);
-    int[] limitAddressArray = MemoryDump.getLimitAddresses(segmentArray, Globals.context().memory);
+    int[] baseAddressArray =
+        MemoryDump.getBaseAddresses(segmentArray, LegacyApplication.services().context().memory);
+    int[] limitAddressArray =
+        MemoryDump.getLimitAddresses(segmentArray, LegacyApplication.services().context().memory);
     int[] highAddressArray = new int[segmentArray.length];
 
     // These three are allocated and filled by buildDialogPanel() and used by action listeners.
@@ -128,7 +130,9 @@ public class FileDumpMemoryAction extends GuiAction {
     for (int i = 0; i < segmentArray.length; i++) {
       try {
         highAddressArray[i] =
-            Globals.memory.getAddressOfFirstNull(baseAddressArray[i], limitAddressArray[i])
+            LegacyApplication.services()
+                    .memory
+                    .getAddressOfFirstNull(baseAddressArray[i], limitAddressArray[i])
                 - Memory.WORD_LENGTH_BYTES;
 
       } // Exception will not happen since the Memory base and limit addresses are on word
@@ -247,7 +251,8 @@ public class FileDumpMemoryAction extends GuiAction {
       }
       if (operationOK) {
         try {
-          format.dumpMemoryRange(theFile, firstAddress, lastAddress, Globals.context());
+          format.dumpMemoryRange(
+              theFile, firstAddress, lastAddress, LegacyApplication.services().context());
         } catch (AddressErrorException | IOException ignored) {
 
         }

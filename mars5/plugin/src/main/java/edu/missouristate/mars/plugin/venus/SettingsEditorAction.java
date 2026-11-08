@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.*;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
@@ -56,7 +56,7 @@ public class SettingsEditorAction extends GuiAction {
             VenusUI.instance(),
             "Text Editor Settings",
             true,
-            EditorSettings.of(Globals.getSettings()).getEditorFont());
+            EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
     editorDialog.setVisible(true);
   }
 
@@ -122,7 +122,9 @@ public class SettingsEditorAction extends GuiAction {
 
     public EditorFontDialog(Frame owner, String title, boolean modality, Font font) {
       super(owner, title, modality, font);
-      if (Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
+      if (LegacyApplication.services()
+          .getSettings()
+          .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
         syntaxStylePanel.setVisible(false);
         otherSettingsPanel.setVisible(false);
       }
@@ -165,7 +167,9 @@ public class SettingsEditorAction extends GuiAction {
       resetButton.setToolTipText(SettingsHighlightingAction.RESET_TOOL_TIP_TEXT);
       resetButton.addActionListener(e -> reset());
       initialGenericTextEditor =
-          Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR);
+          LegacyApplication.services()
+              .getSettings()
+              .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR);
       genericEditorCheck = new JCheckBox("Use Generic Editor", initialGenericTextEditor);
       genericEditorCheck.setToolTipText(GENERIC_TOOL_TIP_TEXT);
       genericEditorCheck.addItemListener(
@@ -196,17 +200,23 @@ public class SettingsEditorAction extends GuiAction {
     // User has clicked "Apply" or "Apply and Close" button.  Required method, is
     // abstract in superclass.
     protected void apply(Font font) {
-      Globals.getSettings()
+      LegacyApplication.services()
+          .getSettings()
           .setBooleanSetting(Settings.GENERIC_TEXT_EDITOR, genericEditorCheck.isSelected());
-      Globals.getSettings()
+      LegacyApplication.services()
+          .getSettings()
           .setBooleanSetting(
               Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING, lineHighlightCheck.isSelected());
-      Globals.getSettings().setBooleanSetting(Settings.AUTO_INDENT, autoIndentCheck.isSelected());
-      Globals.getSettings().setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
-      Globals.getSettings().setEditorTabSize(tabSizeSelector.getValue());
+      LegacyApplication.services()
+          .getSettings()
+          .setBooleanSetting(Settings.AUTO_INDENT, autoIndentCheck.isSelected());
+      LegacyApplication.services()
+          .getSettings()
+          .setCaretBlinkRate((Integer) blinkRateSpinSelector.getValue());
+      LegacyApplication.services().getSettings().setEditorTabSize(tabSizeSelector.getValue());
       if (syntaxStylesAction) {
         for (int i = 0; i < syntaxStyleIndex.length; i++) {
-          EditorSettings.of(Globals.getSettings())
+          EditorSettings.of(LegacyApplication.services().getSettings())
               .setEditorSyntaxStyleByPosition(
                   syntaxStyleIndex[i],
                   samples[i].getForeground(),
@@ -215,14 +225,18 @@ public class SettingsEditorAction extends GuiAction {
         }
         syntaxStylesAction = false; // reset
       }
-      EditorSettings.of(Globals.getSettings()).setEditorFont(font);
+      EditorSettings.of(LegacyApplication.services().getSettings()).setEditorFont(font);
       for (int i = 0; i < popupGuidanceOptions.length; i++) {
         if (popupGuidanceOptions[i].isSelected()) {
           if (i == 0) {
-            Globals.getSettings().setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, false);
+            LegacyApplication.services()
+                .getSettings()
+                .setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, false);
           } else {
-            Globals.getSettings().setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, true);
-            Globals.getSettings().setEditorPopupPrefixLength(i);
+            LegacyApplication.services()
+                .getSettings()
+                .setBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE, true);
+            LegacyApplication.services().getSettings().setEditorPopupPrefixLength(i);
           }
           break;
         }
@@ -254,7 +268,7 @@ public class SettingsEditorAction extends GuiAction {
       JPanel otherSettingsPanel = new JPanel();
 
       // Tab size selector
-      initialEditorTabSize = Globals.getSettings().getEditorTabSize();
+      initialEditorTabSize = LegacyApplication.services().getSettings().getEditorTabSize();
       tabSizeSelector = new JSlider(Editor.MIN_TAB_SIZE, Editor.MAX_TAB_SIZE, initialEditorTabSize);
       tabSizeSelector.setToolTipText(
           "Use slider to select tab size from "
@@ -279,19 +293,22 @@ public class SettingsEditorAction extends GuiAction {
 
       // highlighting of current line
       initialLineHighlighting =
-          Globals.getSettings().getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
+          LegacyApplication.services()
+              .getSettings()
+              .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING);
       lineHighlightCheck = new JCheckBox("Highlight the line currently being edited");
       lineHighlightCheck.setSelected(initialLineHighlighting);
       lineHighlightCheck.setToolTipText(CURRENT_LINE_HIGHLIGHT_TOOL_TIP_TEXT);
 
       // auto-indent
-      initialAutoIndent = Globals.getSettings().getBooleanSetting(Settings.AUTO_INDENT);
+      initialAutoIndent =
+          LegacyApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT);
       autoIndentCheck = new JCheckBox("Auto-Indent");
       autoIndentCheck.setSelected(initialAutoIndent);
       autoIndentCheck.setToolTipText(AUTO_INDENT_TOOL_TIP_TEXT);
 
       // cursor blink rate selector
-      initialCaretBlinkRate = Globals.getSettings().getCaretBlinkRate();
+      initialCaretBlinkRate = LegacyApplication.services().getSettings().getCaretBlinkRate();
       blinkSample = new JTextField("     ");
       blinkSample.setCaretPosition(2);
       blinkSample.setToolTipText(BLINK_SAMPLE_TOOL_TIP_TEXT);
@@ -342,8 +359,10 @@ public class SettingsEditorAction extends GuiAction {
         popupGuidanceButtons.add(popupGuidanceOptions[i]);
       }
       initialPopupGuidance =
-          Globals.getSettings().getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)
-              ? Globals.getSettings().getEditorPopupPrefixLength()
+          LegacyApplication.services()
+                  .getSettings()
+                  .getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)
+              ? LegacyApplication.services().getSettings().getEditorPopupPrefixLength()
               : 0;
       popupGuidanceOptions[initialPopupGuidance].setSelected(true);
       JPanel popupPanel = new JPanel(new GridLayout(3, 1));

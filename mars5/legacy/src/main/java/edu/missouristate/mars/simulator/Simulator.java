@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.EventEmitter;
 import edu.missouristate.mars.api.SimulatorActionSource;
 import edu.missouristate.mars.api.SimulatorObserver;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
@@ -178,7 +179,9 @@ public class Simulator {
       Object dun = simulatorThread.get(); // this should emulate join()
       ProcessingException pe = simulatorThread.pe;
       boolean done = simulatorThread.done;
-      if (done) SystemIO.resetFiles(); // close any files opened in MIPS progra
+      if (done) {
+        SystemIO.resetFiles(); // close any files opened in MIPS progra
+      }
       this.simulatorThread = null;
       if (pe != null) {
         throw pe;
@@ -332,10 +335,14 @@ public class Simulator {
 
       Simulator.getInstance().notifyObserversOfExecutionStart(maxSteps, pc);
 
-      RegisterFile.initializeProgramCounter(pc);
+      LegacyApplication.services().context().registerFile.initializeProgramCounter(pc);
       ProgramStatement statement;
       try {
-        statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
+        statement =
+            LegacyApplication.services()
+                .memory
+                .getStatement(
+                    LegacyApplication.services().context().registerFile.getProgramCounter());
       } catch (AddressErrorException e) {
         ErrorList el = new ErrorList();
         el.add(
@@ -344,7 +351,8 @@ public class Simulator {
                 0,
                 0,
                 "invalid program counter value: "
-                    + Binary.intToHexString(RegisterFile.getProgramCounter())));
+                    + Binary.intToHexString(
+                        LegacyApplication.services().context().registerFile.getProgramCounter())));
         LegacyExceptions.setRegisters(e.getType(), e.getAddress());
         this.pe = new ProcessingException(el, e);
         // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
@@ -353,7 +361,11 @@ public class Simulator {
         // incremented.  In this case, bad address is the instruction fetch itself so Program
         // Counter has
         // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-        Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter());
+        LegacyApplication.services()
+            .instructionContext()
+            .updateCoprocessor0(
+                Coprocessor0State.EPC,
+                LegacyApplication.services().context().registerFile.getProgramCounter());
         this.constructReturnReason = EXCEPTION;
         this.done = true;
         SystemIO.resetFiles(); // close any files opened in MIPS program
@@ -395,19 +407,23 @@ public class Simulator {
       int pc = 0; // added: 7/26/06 (explanation above)
 
       while (statement != null) {
-        pc = RegisterFile.getProgramCounter(); // added: 7/26/06 (explanation above)
-        RegisterFile.incrementPC();
+        pc =
+            LegacyApplication.services()
+                .context()
+                .registerFile
+                .getProgramCounter(); // added: 7/26/06 (explanation above)
+        LegacyApplication.services().context().registerFile.incrementPC();
         // Perform the MIPS instruction in synchronized block.  If external threads agree
         // to access MIPS memory and registers only through synchronized blocks on same
         // lock variable, then full (albeit heavy-handed) protection of MIPS memory and
         // registers is assured.  Not as critical for reading from those resources.
-        synchronized (Globals.memoryAndRegistersLock) {
+        synchronized (LegacyApplication.services().memoryAndRegistersLock) {
           try {
             if (Simulator.externalInterruptingDevice != NO_DEVICE) {
               int deviceInterruptCode = externalInterruptingDevice;
               Simulator.externalInterruptingDevice = NO_DEVICE;
               throw new ProcessingException(
-                  Globals.instructionContext(),
+                  LegacyApplication.services().instructionContext(),
                   statement,
                   "External Interrupt",
                   deviceInterruptCode);
@@ -415,7 +431,7 @@ public class Simulator {
             BasicInstruction instruction = (BasicInstruction) statement.getInstruction();
             if (instruction == null) {
               throw new ProcessingException(
-                  Globals.instructionContext(),
+                  LegacyApplication.services().instructionContext(),
                   statement,
                   "undefined instruction ("
                       + Binary.intToHexString(statement.getBinaryStatement())
@@ -423,13 +439,14 @@ public class Simulator {
                   Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
             }
             // THIS IS WHERE THE INSTRUCTION EXECUTION IS ACTUALLY SIMULATED!
-            instruction.getSimulationCode().simulate(statement, Globals.instructionContext());
+            instruction
+                .getSimulationCode()
+                .simulate(statement, LegacyApplication.services().instructionContext());
 
             // IF statement added 7/26/06 (explanation above)
-            if (Globals.program != null
-                && Globals.program != null
-                && Globals.getSettings().getBackSteppingEnabled()) {
-              Globals.program.getBackStepper().addDoNothing(pc);
+            if (LegacyApplication.services().getProgram() != null
+                && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+              LegacyApplication.services().getProgram().getBackStepper().addDoNothing(pc);
             }
           } catch (ProcessingException pe) {
             if (pe.errors() == null) {
@@ -446,11 +463,16 @@ public class Simulator {
               // MIPS program with appropriate error message.
               ProgramStatement exceptionHandler = null;
               try {
-                exceptionHandler = Globals.memory.getStatement(Memory.exceptionHandlerAddress);
+                exceptionHandler =
+                    LegacyApplication.services()
+                        .memory
+                        .getStatement(Memory.exceptionHandlerAddress);
               } catch (AddressErrorException ignored) {
               } // will not occur with this well-known addres
               if (exceptionHandler != null) {
-                RegisterFile.setProgramCounter(Memory.exceptionHandlerAddress);
+                LegacyApplication.services()
+                    .instructionContext()
+                    .setProgramCounter(Memory.exceptionHandlerAddress);
               } else {
                 this.constructReturnReason = EXCEPTION;
                 this.pe = pe;
@@ -465,7 +487,9 @@ public class Simulator {
 
         ///////// DPS 15 June 2007.  Handle delayed branching if it occurs./////
         if (DelayedBranch.isTriggered()) {
-          RegisterFile.setProgramCounter(DelayedBranch.getBranchTargetAddress());
+          LegacyApplication.services()
+              .instructionContext()
+              .setProgramCounter(DelayedBranch.getBranchTargetAddress());
           DelayedBranch.clear();
         } else if (DelayedBranch.isRegistered()) {
           DelayedBranch.trigger();
@@ -481,7 +505,10 @@ public class Simulator {
         }
         //	Return if we've reached a breakpoint.
         if ((breakPoints != null)
-            && (Arrays.binarySearch(breakPoints, RegisterFile.getProgramCounter()) >= 0)) {
+            && (Arrays.binarySearch(
+                    breakPoints,
+                    LegacyApplication.services().context().registerFile.getProgramCounter())
+                >= 0)) {
           this.constructReturnReason = BREAKPOINT;
           this.done = false;
           Simulator.getInstance().notifyObserversOfExecutionStop(maxSteps, pc);
@@ -505,7 +532,8 @@ public class Simulator {
         if (observer != null && maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
           observer.onStepComplete(pc);
         }
-        if (Globals.getGui().isGuiMode() || Globals.runSpeedPanelExists) {
+        if (LegacyApplication.services().getGui().isGuiMode()
+            || LegacyApplication.services().runSpeedPanelExists()) {
           if (maxSteps != 1 && currentSpeed < UNLIMITED_SPEED) {
             try {
               Thread.sleep((int) (1000 / currentSpeed)); // make sure it's never zero!
@@ -517,7 +545,11 @@ public class Simulator {
         // Get next instruction in preparation for next iteration.
 
         try {
-          statement = Globals.memory.getStatement(RegisterFile.getProgramCounter());
+          statement =
+              LegacyApplication.services()
+                  .memory
+                  .getStatement(
+                      LegacyApplication.services().context().registerFile.getProgramCounter());
         } catch (AddressErrorException e) {
           ErrorList el = new ErrorList();
           el.add(
@@ -526,7 +558,11 @@ public class Simulator {
                   0,
                   0,
                   "invalid program counter value: "
-                      + Binary.intToHexString(RegisterFile.getProgramCounter())));
+                      + Binary.intToHexString(
+                          LegacyApplication.services()
+                              .context()
+                              .registerFile
+                              .getProgramCounter())));
           LegacyExceptions.setRegisters(e.getType(), e.getAddress());
           this.pe = new ProcessingException(el, e);
           // Next statement is a hack.  Previous statement sets EPC register to ProgramCounter-4
@@ -535,7 +571,11 @@ public class Simulator {
           // incremented.  In this case, bad address is the instruction fetch itself so Program
           // Counter has
           // not yet been incremented.  We'll set the EPC directly here.  DPS 8-July-2013
-          Coprocessor0.updateRegister(Coprocessor0.EPC, RegisterFile.getProgramCounter());
+          LegacyApplication.services()
+              .instructionContext()
+              .updateCoprocessor0(
+                  Coprocessor0State.EPC,
+                  LegacyApplication.services().context().registerFile.getProgramCounter());
           this.constructReturnReason = EXCEPTION;
           this.done = true;
           SystemIO.resetFiles(); // close any files opened in MIPS program
@@ -567,7 +607,7 @@ public class Simulator {
      * call of construct() in the first place.
      */
     public void finished() {
-      if (!Globals.getGui().isGuiMode()) {
+      if (!LegacyApplication.services().getGui().isGuiMode()) {
         return;
       }
       if (!(starter instanceof SimFinishCallback cb)) {

@@ -1,15 +1,15 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.plugin.venus.VenusUI;
+import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.*;
 import javax.swing.*;
 
 /* Add these two lines in exceptions.java file
@@ -65,23 +65,32 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
   }
 
-  public void update(Observable ressource, Object accessNotice) {
+  @Override
+  protected void handleAccess(AccessNotice accessNotice) {
     MemoryAccessNotice notice = (MemoryAccessNotice) accessNotice;
     int address = notice.getAddress();
     char value = (char) notice.getValue();
-    if (address == IN_ADRESS_DISPLAY_1) updateSevenSegment(1, value);
-    else if (address == IN_ADRESS_DISPLAY_2) updateSevenSegment(0, value);
-    else if (address == IN_ADRESS_HEXA_KEYBOARD) updateHexaKeyboard(value);
-    else if (address == IN_ADRESS_COUNTER) updateOneSecondCounter(value);
-    if (CounterInterruptOnOff)
+    if (address == IN_ADRESS_DISPLAY_1) {
+      updateSevenSegment(1, value);
+    } else if (address == IN_ADRESS_DISPLAY_2) {
+      updateSevenSegment(0, value);
+    } else if (address == IN_ADRESS_HEXA_KEYBOARD) {
+      updateHexaKeyboard(value);
+    } else if (address == IN_ADRESS_COUNTER) {
+      updateOneSecondCounter(value);
+    }
+    if (CounterInterruptOnOff) {
       if (CounterValue > 0) {
         CounterValue--;
       } else {
         CounterValue = CounterValueMax;
-        if ((Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
+        if ((LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+                & 2)
+            == 0) {
           Simulator.externalInterruptingDevice = /*Exceptions.*/ EXTERNAL_INTERRUPT_TIMER;
         }
       }
+    }
   }
 
   protected void reset() {
@@ -103,9 +112,9 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
   private synchronized void updateMMIOControlAndData(int dataAddr, int dataValue) {
     if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
-      synchronized (Globals.memoryAndRegistersLock) {
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
         try {
-          Globals.memory.setByte(dataAddr, dataValue);
+          LegacyApplication.services().memory.setByte(dataAddr, dataValue);
         } catch (AddressErrorException aee) {
           System.out.println("Tool author specified incorrect MMIO address!" + aee);
           System.exit(0);
@@ -146,7 +155,8 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         Counter
          Byte value at address 0xFFFF0013 : If one bit of this byte is set, the counter interruption is enable.
          If counter interruption is enable, every 30 instructions, an exception is started with cause register bit number 10.
-           (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)""";
+           (contributed by Didier Teifreto, dteifreto@lifc.univ-fcomte.fr)\
+        """;
     JButton help = new JButton("Help");
     help.addActionListener(
         e -> {
@@ -249,8 +259,11 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
     public void paint(Graphics g) {
       char c = 'a';
       while (c <= 'h') {
-        if ((aff & 0x1) == 1) g.setColor(Color.RED);
-        else g.setColor(Color.LIGHT_GRAY);
+        if ((aff & 0x1) == 1) {
+          g.setColor(Color.RED);
+        } else {
+          g.setColor(Color.LIGHT_GRAY);
+        }
         SwitchSegment(g, c);
         aff = (char) (aff >>> 1);
         c++;
@@ -279,7 +292,9 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
 
     public void resetSevenSegment() {
       int i;
-      for (i = 0; i < 2; i++) modifyDisplay(i, (char) 0);
+      for (i = 0; i < 2; i++) {
+        modifyDisplay(i, (char) 0);
+      }
     }
   }
 
@@ -341,11 +356,19 @@ public class DigitalLabSim extends AbstractMarsToolAndApplication {
         if (KeyBoardValueButtonClick != -1) { // Button already pressed -> now realease
           KeyBoardValueButtonClick = -1;
           updateMMIOControlAndData(OUT_ADRESS_HEXA_KEYBOARD, 0);
-          for (i = 0; i < 16; i++) button[i].setBackground(Color.WHITE);
+          for (i = 0; i < 16; i++) {
+            button[i].setBackground(Color.WHITE);
+          }
         } else { // new button pressed
           KeyBoardValueButtonClick = buttonValue;
           button[KeyBoardValueButtonClick].setBackground(Color.GREEN);
-          if (KeyboardInterruptOnOff && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0) {
+          if (KeyboardInterruptOnOff
+              && (LegacyApplication.services()
+                          .context()
+                          .coprocessor0
+                          .getValue(Coprocessor0State.STATUS)
+                      & 2)
+                  == 0) {
             Simulator.externalInterruptingDevice = /*Exceptions.*/ EXTERNAL_INTERRUPT_HEXA_KEYBOARD;
           }
         }

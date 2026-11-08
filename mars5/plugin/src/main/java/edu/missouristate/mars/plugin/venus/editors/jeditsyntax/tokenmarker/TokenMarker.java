@@ -42,8 +42,11 @@ public abstract class TokenMarker {
 
     LineInfo info = lineInfo[lineIndex];
     LineInfo prev;
-    if (lineIndex == 0) prev = null;
-    else prev = lineInfo[lineIndex - 1];
+    if (lineIndex == 0) {
+      prev = null;
+    } else {
+      prev = lineInfo[lineIndex - 1];
+    }
 
     byte oldToken = info.token;
     byte token = markTokensImpl(prev == null ? Token.NULL : prev.token, line, lineIndex);
@@ -84,7 +87,9 @@ public abstract class TokenMarker {
      * This bug took me ages to track down, that's why I wrote all the
      * relevant info down so that others wouldn't duplicate it.
      */
-    if (!(lastLine == lineIndex && nextLineRequested)) nextLineRequested = (oldToken != token);
+    if (!(lastLine == lineIndex && nextLineRequested)) {
+      nextLineRequested = (oldToken != token);
+    }
 
     lastLine = lineIndex;
 
@@ -129,7 +134,9 @@ public abstract class TokenMarker {
    * @param lines The number of lines
    */
   public void insertLines(int index, int lines) {
-    if (lines <= 0) return;
+    if (lines <= 0) {
+      return;
+    }
     length += lines;
     ensureCapacity(length);
     int len = index + lines;
@@ -148,7 +155,9 @@ public abstract class TokenMarker {
    * @param lines The number of lines
    */
   public void deleteLines(int index, int lines) {
-    if (lines <= 0) return;
+    if (lines <= 0) {
+      return;
+    }
     int len = index + lines;
     length -= lines;
     System.arraycopy(lineInfo, len, lineInfo, index, lineInfo.length - len);
@@ -245,8 +254,9 @@ public abstract class TokenMarker {
    * @param index The array index
    */
   protected void ensureCapacity(int index) {
-    if (lineInfo == null) lineInfo = new LineInfo[index + 1];
-    else if (lineInfo.length <= index) {
+    if (lineInfo == null) {
+      lineInfo = new LineInfo[index + 1];
+    } else if (lineInfo.length <= index) {
       LineInfo[] lineInfoN = new LineInfo[(index + 1) * 2];
       System.arraycopy(lineInfo, 0, lineInfoN, 0, lineInfo.length);
       lineInfo = lineInfoN;
@@ -260,10 +270,13 @@ public abstract class TokenMarker {
    * @param id The id of the token
    */
   protected void addToken(int length, byte id) {
-    if (id >= Token.INTERNAL_FIRST && id <= Token.INTERNAL_LAST)
+    if (id >= Token.INTERNAL_FIRST && id <= Token.INTERNAL_LAST) {
       throw new InternalError("Invalid id: " + id);
+    }
 
-    if (length == 0 && id != Token.END) return;
+    if (length == 0 && id != Token.END) {
+      return;
+    }
 
     if (firstToken == null) {
       firstToken = new Token(length, id);

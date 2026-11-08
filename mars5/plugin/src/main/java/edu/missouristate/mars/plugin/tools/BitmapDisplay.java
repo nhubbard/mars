@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.tools;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.Binary;
 import java.awt.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
@@ -160,22 +159,10 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     return results;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////////////
   //  Rest of the protected methods.  These override do-nothing methods inherited from
   //  the abstract superclass.
-  //////////////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Update display when connected MIPS program accesses (data) memory.
-   *
-   * @param memory the attached memory
-   * @param accessNotice information provided by memory in MemoryAccessNotice object
-   */
-  protected void processMIPSUpdate(Observable memory, AccessNotice accessNotice) {
-    if (accessNotice.getAccessType() == AccessNotice.WRITE) {
-      updateColorForAddress((MemoryAccessNotice) accessNotice);
-    }
-  }
+  // ////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * Initialize all JComboBox choice structures not already initialized at declaration. Overrides
@@ -452,18 +439,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
     return new Grid(rows, columns);
   }
 
-  // Given memory address, update color for the corresponding grid element.
-  private void updateColorForAddress(MemoryAccessNotice notice) {
-    int address = notice.getAddress();
-    int value = notice.getValue();
-    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
-    try {
-      theGrid.setElement(offset / theGrid.getColumns(), offset % theGrid.getColumns(), value);
-    } catch (IndexOutOfBoundsException e) {
-      // If address is out of range for display, do nothing.
-    }
-  }
-
   //////////////////////////////////////////////////////////////////////////////////////
   //  Specialized inner classes for modeling and animation.
   //////////////////////////////////////////////////////////////////////////////////////
@@ -549,6 +524,24 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
           grid[i][j] = Color.BLACK;
         }
       }
+    }
+  }
+
+  @Override
+  protected void processMIPSUpdate(AccessNotice accessNotice) {
+    if (accessNotice.getAccessType() == AccessNotice.WRITE) {
+      updateColorForAddress((MemoryAccessNotice) accessNotice);
+    }
+  }
+
+  private void updateColorForAddress(MemoryAccessNotice notice) {
+    int address = notice.getAddress();
+    int value = notice.getValue();
+    int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
+    try {
+      theGrid.setElement(offset / theGrid.getColumns(), offset % theGrid.getColumns(), value);
+    } catch (IndexOutOfBoundsException e) {
+      // If address is out of range for display, do nothing.
     }
   }
 }

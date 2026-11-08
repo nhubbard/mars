@@ -41,3 +41,27 @@ subprojects {
     }
   }
 }
+
+// Deprecated public facades remain available to compatibility clients. Production code must
+// receive the canonical state through the legacy composition boundary instead.
+val verifyLegacyFacadeBoundary = tasks.register("verifyLegacyFacadeBoundary") {
+  val applicationSources = files(
+    fileTree("legacy/src/main/java") { include("**/*.java") },
+    fileTree("plugin/src/main/java") { include("**/*.java") }
+  )
+  inputs.files(applicationSources)
+  doLast {
+    val directAccess = Regex("""\b(Globals|RegisterFile|Coprocessor0|Coprocessor1)\s*\.""")
+    val violations = applicationSources.files.filter { source ->
+      source.name != "Globals.java" &&
+          source.relativeTo(projectDir).invariantSeparatorsPath !=
+              "legacy/src/main/java/edu/missouristate/mars/legacy/di/LegacyBindings.java" &&
+          directAccess.containsMatchIn(source.readText())
+    }
+    check(violations.isEmpty()) {
+      "Deprecated static facade access outside the Dagger boundary: " +
+          violations.joinToString { it.relativeTo(projectDir).path }
+    }
+  }
+}
+tasks.check { dependsOn(verifyLegacyFacadeBoundary) }

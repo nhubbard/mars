@@ -2,6 +2,8 @@ package edu.missouristate.mars.plugin;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.dump.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.plugin.venus.*;
@@ -132,13 +134,13 @@ public class MarsLaunch {
 
   public MarsLaunch(String[] args) {
     boolean gui = (args.length == 0);
-    Globals.initialize();
+    LegacyApplication.services();
     if (gui) {
       launchIDE();
     } else { // running from command line.
       // assure command mode works in headless environment (generates exception if not)
       System.setProperty("java.awt.headless", "true");
-      Globals.setSyscallEnvironment(new HeadlessSyscallEnvironment());
+      LegacyApplication.services().setSyscallEnvironment(new HeadlessSyscallEnvironment());
       simulate = true;
       displayFormat = HEXADECIMAL;
       verbose = true;
@@ -155,11 +157,11 @@ public class MarsLaunch {
       registerDisplayList = new ArrayList<>();
       memoryDisplayList = new ArrayList<>();
       filenameList = new ArrayList<>();
-      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
-          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations
-              .getDefaultConfiguration());
-      // do NOT use Globals.program for command line MARS -- it triggers 'backstep' log.
-      code = new edu.missouristate.mars.LegacyProgram();
+      LegacyMemoryConfigurations.setCurrentConfiguration(
+          LegacyMemoryConfigurations.getDefaultConfiguration());
+      // do NOT use LegacyApplication.services().getProgram() for command line MARS -- it triggers
+      // 'backstep' log.
+      code = new LegacyProgram();
       maxSteps = -1;
       out = System.out;
       if (parseCommandArgs(args)) {
@@ -170,7 +172,7 @@ public class MarsLaunch {
         }
         dumpSegments();
       }
-      System.exit(Globals.exitCode);
+      System.exit(LegacyApplication.services().exitCode());
     }
   }
 
@@ -180,11 +182,14 @@ public class MarsLaunch {
 
   private void dumpSegments() {
 
-    if (dumpTriples == null) return;
+    if (dumpTriples == null) {
+      return;
+    }
 
     for (String[] triple : dumpTriples) {
       File file = new File(triple[2]);
-      Integer[] segInfo = MemoryDump.getSegmentBounds(triple[0], Globals.context().memory);
+      Integer[] segInfo =
+          MemoryDump.getSegmentBounds(triple[0], LegacyApplication.services().context().memory);
       // If not segment name, see if it is address range instead.  DPS 14-July-2008
       if (segInfo == null) {
         try {
@@ -210,12 +215,14 @@ public class MarsLaunch {
       }
       try {
         int highAddress =
-            Globals.memory.getAddressOfFirstNull(segInfo[0], segInfo[1]) - Memory.WORD_LENGTH_BYTES;
+            LegacyApplication.services().memory.getAddressOfFirstNull(segInfo[0], segInfo[1])
+                - Memory.WORD_LENGTH_BYTES;
         if (highAddress < segInfo[0]) {
           out.println("This segment has not been written to, there is nothing to dump.");
           continue;
         }
-        format.dumpMemoryRange(file, segInfo[0], highAddress, Globals.context());
+        format.dumpMemoryRange(
+            file, segInfo[0], highAddress, LegacyApplication.services().context());
       } catch (FileNotFoundException e) {
         out.println("Error while attempting to save dump, file " + file + " was not found!");
       } catch (AddressErrorException e) {
@@ -243,7 +250,7 @@ public class MarsLaunch {
         () -> {
           // Turn off metal's use of bold fonts
           // UIManager.put("swing.boldMetal", Boolean.FALSE);
-          new VenusUI("MARS " + Globals.version);
+          new VenusUI("MARS " + LegacyMetadata.version);
         });
   }
 
@@ -260,7 +267,9 @@ public class MarsLaunch {
     boolean argsOK = true;
     boolean inProgramArgumentList = false;
     programArgumentList = null;
-    if (args.length == 0) return true; // should not get here...
+    if (args.length == 0) {
+      return true; // should not get here...
+    }
     // If the option to display MARS messages to standard erro is used,
     // it must be processed before any others (since messages may be
     // generated during option parsing).
@@ -299,7 +308,9 @@ public class MarsLaunch {
           out.println("Dump command line argument requires a segment, format and file name.");
           argsOK = false;
         } else {
-          if (dumpTriples == null) dumpTriples = new ArrayList<>();
+          if (dumpTriples == null) {
+            dumpTriples = new ArrayList<>();
+          }
           dumpTriples.add(new String[] {args[++i], args[++i], args[++i]});
           // simulate = false;
         }
@@ -307,15 +318,12 @@ public class MarsLaunch {
       }
       if (args[i].equalsIgnoreCase("mc")) {
         String configName = args[++i];
-        MemoryConfiguration config =
-            edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getConfigurationByName(
-                configName);
+        MemoryConfiguration config = LegacyMemoryConfigurations.getConfigurationByName(configName);
         if (config == null) {
           out.println("Invalid memory configuration: " + configName);
           argsOK = false;
         } else {
-          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
-              config);
+          LegacyMemoryConfigurations.setCurrentConfiguration(config);
         }
         continue;
       }
@@ -340,7 +348,7 @@ public class MarsLaunch {
         }
       }
       if (args[i].equalsIgnoreCase("d")) {
-        Globals.debug = true;
+        LegacyApplication.services().setDebug(true);
         continue;
       }
       if (args[i].equalsIgnoreCase("a")) {
@@ -348,7 +356,7 @@ public class MarsLaunch {
         continue;
       }
       if (args[i].equalsIgnoreCase("ad") || args[i].equalsIgnoreCase("da")) {
-        Globals.debug = true;
+        LegacyApplication.services().setDebug(true);
         simulate = false;
         continue;
       }
@@ -398,8 +406,8 @@ public class MarsLaunch {
       }
 
       if (args[i].indexOf("$") == 0) {
-        if (RegisterFile.getUserRegister(args[i]) == null
-            && Coprocessor1.getRegister(args[i]) == null) {
+        if (LegacyApplication.services().context().registerFile.getUserRegister(args[i]) == null
+            && LegacyApplication.services().context().coprocessor1.getRegister(args[i]) == null) {
           out.println("Invalid Register Name: " + args[i]);
         } else {
           registerDisplayList.add(args[i]);
@@ -407,8 +415,9 @@ public class MarsLaunch {
         continue;
       }
       // check for register name w/o $.  added 14-July-2008 DPS
-      if (RegisterFile.getUserRegister("$" + args[i]) != null
-          || Coprocessor1.getRegister("$" + args[i]) != null) {
+      if (LegacyApplication.services().context().registerFile.getUserRegister("$" + args[i]) != null
+          || LegacyApplication.services().context().coprocessor1.getRegister("$" + args[i])
+              != null) {
         registerDisplayList.add("$" + args[i]);
         continue;
       }
@@ -452,16 +461,18 @@ public class MarsLaunch {
       return false;
     }
     try {
-      Globals.getSettings()
+      LegacyApplication.services()
+          .getSettings()
           .setBooleanSettingNonPersistent(Settings.DELAYED_BRANCHING_ENABLED, delayedBranching);
-      Globals.getSettings()
+      LegacyApplication.services()
+          .getSettings()
           .setBooleanSettingNonPersistent(Settings.SELF_MODIFYING_CODE_ENABLED, selfModifyingCode);
       File mainFile =
           new File(filenameList.getFirst()).getAbsoluteFile(); // First file is "main" file
       ArrayList<String> filesToAssemble;
       if (assembleProject) {
         filesToAssemble =
-            FilenameFinder.getFilenameList(mainFile.getParent(), Globals.fileExtensions);
+            FilenameFinder.getFilenameList(mainFile.getParent(), LegacyMetadata.fileExtensions);
         if (filenameList.size() > 1) {
           // Using "p" project option PLUS listing more than one filename on command line.
           // Add the additional files, avoiding duplicates.
@@ -484,12 +495,12 @@ public class MarsLaunch {
         filesToAssemble =
             FilenameFinder.getFilenameList(filenameList, FilenameFinder.MATCH_ALL_EXTENSIONS);
       }
-      if (Globals.debug) {
+      if (LegacyApplication.services().debug()) {
         out.println("--------  TOKENIZING BEGINS  -----------");
       }
       ArrayList<MIPSprogram> MIPSprogramsToAssemble =
           code.prepareFilesForAssembly(filesToAssemble, mainFile.getAbsolutePath(), null);
-      if (Globals.debug) {
+      if (LegacyApplication.services().debug()) {
         out.println("--------  ASSEMBLY BEGINS  -----------");
       }
       // Added logic to check for warnings and print if any. DPS 11/28/06
@@ -497,13 +508,14 @@ public class MarsLaunch {
       if (warnings != null && warnings.warningsOccurred()) {
         out.println(warnings.generateWarningReport());
       }
-      RegisterFile.initializeProgramCounter(startAtMain); // DPS 3/9/09
+      LegacyApplication.services().initializeProgramCounter(startAtMain); // DPS 3/9/09
       if (simulate) {
         // store program args (if any) in MIPS memory
-        new ProgramArgumentList(programArgumentList).storeProgramArguments(Globals.context());
+        new ProgramArgumentList(programArgumentList)
+            .storeProgramArguments(LegacyApplication.services().context());
         // establish observer if specified
         establishObserver();
-        if (Globals.debug) {
+        if (LegacyApplication.services().debug()) {
           out.println("--------  SIMULATION BEGINS  -----------");
         }
         programRan = true;
@@ -512,11 +524,12 @@ public class MarsLaunch {
           out.println("\nProgram terminated when maximum step limit " + maxSteps + " reached.");
         }
       }
-      if (Globals.debug) {
+      if (LegacyApplication.services().debug()) {
         out.println("\n--------  ALL PROCESSING COMPLETE  -----------");
       }
     } catch (ProcessingException e) {
-      Globals.exitCode = (programRan) ? simulateErrorExitCode : assembleErrorExitCode;
+      LegacyApplication.services()
+          .setExitCode((programRan) ? simulateErrorExitCode : assembleErrorExitCode);
       out.println(e.errors().generateErrorAndWarningReport());
       out.println("Processing terminated due to errors.");
     }
@@ -554,17 +567,25 @@ public class MarsLaunch {
     if (countInstructions) {
       final int[] lastAddress = {0};
       try {
-        Globals.memory.addObserver(
-            notice -> {
-              if (!notice.accessIsFromMIPS()) return;
-              if (notice.getAccessType() != AccessNotice.READ) return;
-              int a = notice.getAddress();
-              if (a == lastAddress[0]) return;
-              lastAddress[0] = a;
-              instructionCount++;
-            },
-            Memory.textBaseAddress,
-            Memory.textLimitAddress);
+        LegacyApplication.services()
+            .memory
+            .addObserver(
+                notice -> {
+                  if (!notice.accessIsFromMIPS()) {
+                    return;
+                  }
+                  if (notice.getAccessType() != AccessNotice.READ) {
+                    return;
+                  }
+                  int a = notice.getAddress();
+                  if (a == lastAddress[0]) {
+                    return;
+                  }
+                  lastAddress[0] = a;
+                  instructionCount++;
+                },
+                Memory.textBaseAddress,
+                Memory.textLimitAddress);
       } catch (AddressErrorException aee) {
         out.println(
             "Internal error: MarsLaunch uses incorrect text segment address for instruction"
@@ -591,21 +612,25 @@ public class MarsLaunch {
     // Display requested register contents
     out.println();
     for (String reg : registerDisplayList) {
-      if (RegisterFile.getUserRegister(reg) != null) {
+      if (LegacyApplication.services().context().registerFile.getUserRegister(reg) != null) {
         // integer register
-        if (verbose) out.print(reg + "\t");
-        value = RegisterFile.getUserRegister(reg).getValue();
+        if (verbose) {
+          out.print(reg + "\t");
+        }
+        value = LegacyApplication.services().context().registerFile.getUserRegister(reg).getValue();
         out.println(formatIntForDisplay(value));
       } else {
         // floating point register
-        float fvalue = Coprocessor1.getFloatFromRegister(reg);
-        int ivalue = Coprocessor1.getIntFromRegister(reg);
+        float fvalue =
+            LegacyApplication.services().context().coprocessor1.getFloatFromRegister(reg);
+        int ivalue = LegacyApplication.services().context().coprocessor1.getIntFromRegister(reg);
         double dvalue = Double.NaN;
         long lvalue = 0;
         boolean hasDouble = false;
         try {
-          dvalue = Coprocessor1.getDoubleFromRegisterPair(reg);
-          lvalue = Coprocessor1.getLongFromRegisterPair(reg);
+          dvalue =
+              LegacyApplication.services().context().coprocessor1.getDoubleFromRegisterPair(reg);
+          lvalue = LegacyApplication.services().context().coprocessor1.getLongFromRegisterPair(reg);
           hasDouble = true;
         } catch (InvalidRegisterAccessException ignored) {
         }
@@ -646,13 +671,11 @@ public class MarsLaunch {
   //////////////////////////////////////////////////////////////////////
   // Formats int value for display: decimal, hex, ascii
   private String formatIntForDisplay(int value) {
-    String strValue =
-        switch (displayFormat) {
-          case DECIMAL -> "" + value;
-          case ASCII -> Binary.intToAscii(value);
-          default -> Binary.intToHexString(value);
-        };
-    return strValue;
+    return switch (displayFormat) {
+      case DECIMAL -> "" + value;
+      case ASCII -> Binary.intToAscii(value);
+      default -> Binary.intToHexString(value);
+    };
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -671,7 +694,9 @@ public class MarsLaunch {
       }
       int valuesDisplayed = 0;
       for (int addr = addressStart; addr <= addressEnd; addr += Memory.WORD_LENGTH_BYTES) {
-        if (addr < 0 && addressEnd > 0) break; // happens only if addressEnd is 0x7ffffffc
+        if (addr < 0 && addressEnd > 0) {
+          break; // happens only if addressEnd is 0x7ffffffc
+        }
         if (valuesDisplayed % memoryWordsPerLine == 0) {
           out.print((valuesDisplayed > 0) ? "\n" : "");
           if (verbose) {
@@ -681,10 +706,10 @@ public class MarsLaunch {
         try {
           // Allow display of binary text segment (machine code) DPS 14-July-2008
           if (Memory.inTextSegment(addr) || Memory.inKernelTextSegment(addr)) {
-            Integer iValue = Globals.memory.getRawWordOrNull(addr);
+            Integer iValue = LegacyApplication.services().memory.getRawWordOrNull(addr);
             value = (iValue == null) ? 0 : iValue;
           } else {
-            value = Globals.memory.getWord(addr);
+            value = LegacyApplication.services().memory.getWord(addr);
           }
           out.print(formatIntForDisplay(value) + "\t");
         } catch (AddressErrorException aee) {
@@ -722,11 +747,11 @@ public class MarsLaunch {
     }
     out.println(
         "MARS "
-            + Globals.version
+            + LegacyMetadata.version
             + "  Copyright "
-            + Globals.copyrightYears
+            + LegacyMetadata.copyrightYears
             + " "
-            + Globals.copyrightHolders
+            + LegacyMetadata.copyrightHolders
             + "\n");
   }
 

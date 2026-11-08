@@ -101,7 +101,9 @@ public class HardcopyWriter extends Writer {
       job = toolkit.getPrintJob(frame, jobname, ja, pa);
       // *******************************************
     }
-    if (job == null) throw new PrintCanceledException("User cancelled print request");
+    if (job == null) {
+      throw new PrintCanceledException("User cancelled print request");
+    }
     /* ******************************************************
      * SANDERSON OVERRIDE 8-17-2004:
      * I didn't like the results produced by the code below, so am commenting
@@ -168,27 +170,37 @@ public class HardcopyWriter extends Writer {
       // Loop through all the characters passed to us
       for (int i = index; i < index + len; i++) {
         // If we haven't begun a page (or a new page), do that now.
-        if (page == null) newpage();
+        if (page == null) {
+          newpage();
+        }
         // If the character is a line terminator, then begin new line,
         // unless it is a \n immediately after a \r.
         if (buffer[i] == '\n') {
-          if (!last_char_was_return) newline();
+          if (!last_char_was_return) {
+            newline();
+          }
           continue;
         }
         if (buffer[i] == '\r') {
           newline();
           last_char_was_return = true;
           continue;
-        } else last_char_was_return = false;
+        } else {
+          last_char_was_return = false;
+        }
         // If it's some other non-printing character, ignore it.
         if (Character.isWhitespace(buffer[i])
             && !Character.isSpaceChar(buffer[i])
-            && (buffer[i] != '\t')) continue;
+            && (buffer[i] != '\t')) {
+          continue;
+        }
         // If no more characters will fit on the line, start new line.
         if (charnum >= chars_per_line) {
           newline();
           // Also start a new page, if necessary
-          if (page == null) newpage();
+          if (page == null) {
+            newpage();
+          }
         }
         // Now print the character:
         // If it is a space, skip one space, without output.
@@ -197,9 +209,11 @@ public class HardcopyWriter extends Writer {
         // It is inefficient to draw only one character at a time, but
         // because our FontMetrics don't match up exactly to what the
         // printer uses, we need to position each character individually
-        if (Character.isSpaceChar(buffer[i])) charnum++;
-        else if (buffer[i] == '\t') charnum += chars_per_tab - (charnum % chars_per_tab);
-        else {
+        if (Character.isSpaceChar(buffer[i])) {
+          charnum++;
+        } else if (buffer[i] == '\t') {
+          charnum += chars_per_tab - (charnum % chars_per_tab);
+        } else {
           page.drawChars(
               buffer, i, 1, x0 + charnum * charwidth, y0 + (linenum * lineheight) + lineascent);
           charnum++;
@@ -222,7 +236,9 @@ public class HardcopyWriter extends Writer {
    */
   public void close() {
     synchronized (this.lock) {
-      if (page != null) page.dispose(); // Send page to the printer
+      if (page != null) {
+        page.dispose(); // Send page to the printer
+      }
       job.end(); // Terminate the job
     }
   }
@@ -242,7 +258,9 @@ public class HardcopyWriter extends Writer {
         font = current;
       }
       // If a page is pending, set the new font. Otherwise newpage( ) will
-      if (page != null) page.setFont(font);
+      if (page != null) {
+        page.setFont(font);
+      }
     }
   }
 
@@ -306,7 +324,9 @@ public class HardcopyWriter extends Writer {
   /** A program that prints the specified file using HardcopyWriter */
   public static void main(String[] args) {
     try {
-      if (args.length != 1) throw new IllegalArgumentException("Wrong # of arguments");
+      if (args.length != 1) {
+        throw new IllegalArgumentException("Wrong # of arguments");
+      }
       FileReader in = new FileReader(args[0]);
       HardcopyWriter out = null;
       Frame f = new Frame("PrintFile: " + args[0]);
@@ -320,7 +340,9 @@ public class HardcopyWriter extends Writer {
       f.setVisible(false);
       char[] buffer = new char[4096];
       int numchars;
-      while ((numchars = in.read(buffer)) != -1) out.write(buffer, 0, numchars);
+      while ((numchars = in.read(buffer)) != -1) {
+        out.write(buffer, 0, numchars);
+      }
       in.close();
       out.close();
     } catch (Exception e) {

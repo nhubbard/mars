@@ -617,7 +617,9 @@ class MagnifierImage extends JPanel {
     super.paintComponent(g);
     // If an image has been defined, draw that image using the Component
     // layer of this MagnifierImage object as the ImageObserver.
-    if (image != null) g.drawImage(image, 0, 0, this);
+    if (image != null) {
+      g.drawImage(image, 0, 0, this);
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import java.awt.*;
 import javax.swing.*;
 
@@ -72,13 +73,13 @@ public class MarsSplashScreen extends JWindow {
     JLabel copyrt1 =
         new JLabel(
             "<html><br><br>Version "
-                + Globals.version
+                + LegacyMetadata.version
                 + " Copyright (c) "
-                + Globals.copyrightYears
+                + LegacyMetadata.copyrightYears
                 + "</html>",
             JLabel.CENTER);
     JLabel copyrt2 =
-        new JLabel("<html><br><br>" + Globals.copyrightHolders + "</html>", JLabel.CENTER);
+        new JLabel("<html><br><br>" + LegacyMetadata.copyrightHolders + "</html>", JLabel.CENTER);
     title.setFont(new Font("Sans-Serif", Font.BOLD, 16));
     title.setForeground(Color.black);
     copyrt1.setFont(new Font("Sans-Serif", Font.BOLD, 14));
@@ -110,7 +111,8 @@ public class MarsSplashScreen extends JWindow {
                     Toolkit.getDefaultToolkit()
                         .getImage(
                             this.getClass()
-                                .getResource(Globals.imagesPath + "MarsSurfacePathfinder.jpg")))
+                                .getResource(
+                                    LegacyMetadata.imagesPath + "MarsSurfacePathfinder.jpg")))
                 .getImage();
       } catch (Exception e) {
         System.out.println(e); /*handled in paintComponent()*/
@@ -120,7 +122,9 @@ public class MarsSplashScreen extends JWindow {
     @Override
     protected void paintComponent(Graphics g) {
       super.paintComponent(g);
-      if (image != null) g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), this);
+      if (image != null) {
+        g.drawImage(image, 0, 0, this.getWidth(), this.getHeight(), this);
+      }
     }
   }
 }

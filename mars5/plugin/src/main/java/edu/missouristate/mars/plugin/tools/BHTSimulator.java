@@ -28,11 +28,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
-import edu.missouristate.mars.mips.hardware.RegisterFile;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.JComponent;
@@ -98,7 +98,7 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
   /** Adds BHTSimulator as observer of the text segment. */
   protected void addAsObserver() {
     addAsObserver(Memory.textBaseAddress, Memory.textLimitAddress);
-    addAsObserver(RegisterFile.getProgramCounterRegister());
+    addAsObserver(LegacyApplication.services().context().registerFile.getProgramCounterRegister());
   }
 
   /** Creates a GUI and initialize the GUI with the default values. */
@@ -262,11 +262,17 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     int funct = stmt.getBinaryStatement() & 0x1F;
 
     if (opCode == 0x01) {
-      if (funct <= 0x07) return true; //  bltz, bgez, bltzl, bgezl
-      if (0x10 <= funct && funct <= 0x13) return true; // bltzal, bgezal, bltzall, bgczall
+      if (funct <= 0x07) {
+        return true; //  bltz, bgez, bltzl, bgezl
+      }
+      if (0x10 <= funct && funct <= 0x13) {
+        return true; // bltzal, bgezal, bltzall, bgczall
+      }
     }
 
-    if (0x04 <= opCode && opCode <= 0x07) return true; // beq, bne, blez, bgtz
+    if (0x04 <= opCode && opCode <= 0x07) {
+      return true; // beq, bne, blez, bgtz
+    }
     return 0x14 <= opCode && opCode <= 0x17; // beql, bnel, blezl, bgtzl
   }
 
@@ -282,8 +288,8 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
     int rs = stmt.getBinaryStatement() >>> (32 - 6 - 5) & 0x1F;
     int rt = stmt.getBinaryStatement() >>> (32 - 6 - 5 - 5) & 0x1F;
 
-    int valRS = RegisterFile.getRegisters()[rs].getValue();
-    int valRT = RegisterFile.getRegisters()[rt].getValue();
+    int valRS = LegacyApplication.services().context().registerFile.getRegisters()[rs].getValue();
+    int valRT = LegacyApplication.services().context().registerFile.getRegisters()[rt].getValue();
 
     if (opCode == 0x01) {
       switch (funct) {
@@ -333,7 +339,9 @@ public class BHTSimulator extends AbstractMarsToolAndApplication implements Acti
    */
   protected void processMIPSUpdate(AccessNotice notice) {
 
-    if (!notice.accessIsFromMIPS()) return;
+    if (!notice.accessIsFromMIPS()) {
+      return;
+    }
 
     if (notice.getAccessType() == AccessNotice.READ
         && notice instanceof MemoryAccessNotice memAccNotice) {

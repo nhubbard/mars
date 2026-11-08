@@ -1,6 +1,7 @@
 package edu.missouristate.mars.mips.hardware;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.util.function.Consumer;
 
 /*
@@ -134,20 +135,25 @@ public class Memory {
   public static int memoryMapLimitAddress =
       memoryMapBaseAddress + BLOCK_LENGTH_WORDS * MMIO_TABLE_LENGTH * WORD_LENGTH_BYTES;
 
-  private static class Holder {
-    static final Memory INSTANCE = new Memory();
-  }
-
+  private static volatile Memory instance;
   private final MemoryState state;
 
-  private Memory() {
-    state = Globals.context().memory;
-    heapAddress = state.heapAddress;
+  private Memory(MemoryState state) {
+    this.state = state;
+    syncAddresses(state);
   }
 
-  /** Returns the legacy singleton. */
+  /** Binds the compatibility facade during composition, before frontend services are exposed. */
+  public static synchronized Memory bindLegacyState(MemoryState state) {
+    if (instance == null) instance = new Memory(state);
+    else if (instance.state != state)
+      throw new IllegalStateException("Legacy memory already bound");
+    return instance;
+  }
+
   public static Memory getInstance() {
-    return Holder.INSTANCE;
+    if (instance == null) edu.missouristate.mars.legacy.LegacyApplication.services();
+    return instance;
   }
 
   /** Transitional access for the legacy instruction execution context. */
@@ -156,33 +162,37 @@ public class Memory {
   }
 
   public static void setConfiguration() {
-    Holder.INSTANCE.state.setConfiguration(LegacyMemoryConfigurations.getCurrentConfiguration());
+    getInstance().state.setConfiguration(LegacyMemoryConfigurations.getCurrentConfiguration());
     syncAddresses();
   }
 
   private static void syncAddresses() {
-    textBaseAddress = Holder.INSTANCE.state.textBaseAddress;
-    dataSegmentBaseAddress = Holder.INSTANCE.state.dataSegmentBaseAddress;
-    externBaseAddress = Holder.INSTANCE.state.externBaseAddress;
-    globalPointer = Holder.INSTANCE.state.globalPointer;
-    dataBaseAddress = Holder.INSTANCE.state.dataBaseAddress;
-    heapBaseAddress = Holder.INSTANCE.state.heapBaseAddress;
-    stackPointer = Holder.INSTANCE.state.stackPointer;
-    stackBaseAddress = Holder.INSTANCE.state.stackBaseAddress;
-    userHighAddress = Holder.INSTANCE.state.userHighAddress;
-    kernelBaseAddress = Holder.INSTANCE.state.kernelBaseAddress;
-    kernelTextBaseAddress = Holder.INSTANCE.state.kernelTextBaseAddress;
-    exceptionHandlerAddress = Holder.INSTANCE.state.exceptionHandlerAddress;
-    kernelDataBaseAddress = Holder.INSTANCE.state.kernelDataBaseAddress;
-    memoryMapBaseAddress = Holder.INSTANCE.state.memoryMapBaseAddress;
-    kernelHighAddress = Holder.INSTANCE.state.kernelHighAddress;
-    heapAddress = Holder.INSTANCE.state.heapAddress;
-    dataSegmentLimitAddress = Holder.INSTANCE.state.dataSegmentLimitAddress;
-    textLimitAddress = Holder.INSTANCE.state.textLimitAddress;
-    kernelDataSegmentLimitAddress = Holder.INSTANCE.state.kernelDataSegmentLimitAddress;
-    kernelTextLimitAddress = Holder.INSTANCE.state.kernelTextLimitAddress;
-    stackLimitAddress = Holder.INSTANCE.state.stackLimitAddress;
-    memoryMapLimitAddress = Holder.INSTANCE.state.memoryMapLimitAddress;
+    syncAddresses(instance.state);
+  }
+
+  private static void syncAddresses(MemoryState state) {
+    textBaseAddress = state.textBaseAddress;
+    dataSegmentBaseAddress = state.dataSegmentBaseAddress;
+    externBaseAddress = state.externBaseAddress;
+    globalPointer = state.globalPointer;
+    dataBaseAddress = state.dataBaseAddress;
+    heapBaseAddress = state.heapBaseAddress;
+    stackPointer = state.stackPointer;
+    stackBaseAddress = state.stackBaseAddress;
+    userHighAddress = state.userHighAddress;
+    kernelBaseAddress = state.kernelBaseAddress;
+    kernelTextBaseAddress = state.kernelTextBaseAddress;
+    exceptionHandlerAddress = state.exceptionHandlerAddress;
+    kernelDataBaseAddress = state.kernelDataBaseAddress;
+    memoryMapBaseAddress = state.memoryMapBaseAddress;
+    kernelHighAddress = state.kernelHighAddress;
+    heapAddress = state.heapAddress;
+    dataSegmentLimitAddress = state.dataSegmentLimitAddress;
+    textLimitAddress = state.textLimitAddress;
+    kernelDataSegmentLimitAddress = state.kernelDataSegmentLimitAddress;
+    kernelTextLimitAddress = state.kernelTextLimitAddress;
+    stackLimitAddress = state.stackLimitAddress;
+    memoryMapLimitAddress = state.memoryMapLimitAddress;
   }
 
   public void clear() {
@@ -215,40 +225,39 @@ public class Memory {
 
   public int setRawWord(int address, int value) throws AddressErrorException {
     int old = state.setRawWord(address, value);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addMemoryRestoreRawWord(address, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services()
+          .getProgram()
+          .getBackStepper()
+          .addMemoryRestoreRawWord(address, old);
     }
     return old;
   }
 
   public int setWord(int address, int value) throws AddressErrorException {
     int old = state.setWord(address, value);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addMemoryRestoreWord(address, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addMemoryRestoreWord(address, old);
     }
     return old;
   }
 
   public int setHalf(int address, int value) throws AddressErrorException {
     int old = state.setHalf(address, value);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addMemoryRestoreHalf(address, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addMemoryRestoreHalf(address, old);
     }
     return old;
   }
 
   public int setByte(int address, int value) throws AddressErrorException {
     int old = state.setByte(address, value);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addMemoryRestoreByte(address, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addMemoryRestoreByte(address, old);
     }
     return old;
   }
@@ -340,22 +349,22 @@ public class Memory {
   }
 
   public static boolean inTextSegment(int address) {
-    return Holder.INSTANCE.state.inTextSegment(address);
+    return getInstance().state.inTextSegment(address);
   }
 
   public static boolean inKernelTextSegment(int address) {
-    return Holder.INSTANCE.state.inKernelTextSegment(address);
+    return getInstance().state.inKernelTextSegment(address);
   }
 
   public static boolean inDataSegment(int address) {
-    return Holder.INSTANCE.state.inDataSegment(address);
+    return getInstance().state.inDataSegment(address);
   }
 
   public static boolean inKernelDataSegment(int address) {
-    return Holder.INSTANCE.state.inKernelDataSegment(address);
+    return getInstance().state.inKernelDataSegment(address);
   }
 
   public static boolean inMemoryMapSegment(int address) {
-    return Holder.INSTANCE.state.inMemoryMapSegment(address);
+    return getInstance().state.inMemoryMapSegment(address);
   }
 }

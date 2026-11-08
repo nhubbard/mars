@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -61,7 +61,7 @@ public class RegistersWindow extends JPanel {
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public RegistersWindow() {
     Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = Globals.getSettings();
+    settings = LegacyApplication.services().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(25);
@@ -103,7 +103,7 @@ public class RegistersWindow extends JPanel {
   public Object[][] setupWindow() {
     int valueBase = NumberDisplayBaseChooser.getBase(settings.getDisplayValuesInHex());
     Object[][] tableData = new Object[35][3];
-    registers = RegisterFile.getRegisters();
+    registers = LegacyApplication.services().context().registerFile.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       tableData[i][0] = registers[i].getName();
       tableData[i][1] = registers[i].getNumber();
@@ -112,15 +112,20 @@ public class RegistersWindow extends JPanel {
     tableData[32][0] = "pc";
     tableData[32][1] = ""; // 32;
     tableData[32][2] =
-        NumberDisplayBaseChooser.formatUnsignedInteger(RegisterFile.getProgramCounter(), valueBase);
+        NumberDisplayBaseChooser.formatUnsignedInteger(
+            LegacyApplication.services().context().registerFile.getProgramCounter(), valueBase);
 
     tableData[33][0] = "hi";
     tableData[33][1] = ""; // 33;
-    tableData[33][2] = NumberDisplayBaseChooser.formatNumber(RegisterFile.getValue(33), valueBase);
+    tableData[33][2] =
+        NumberDisplayBaseChooser.formatNumber(
+            LegacyApplication.services().context().registerFile.getValue(33), valueBase);
 
     tableData[34][0] = "lo";
     tableData[34][1] = ""; // 34;
-    tableData[34][2] = NumberDisplayBaseChooser.formatNumber(RegisterFile.getValue(34), valueBase);
+    tableData[34][2] =
+        NumberDisplayBaseChooser.formatNumber(
+            LegacyApplication.services().context().registerFile.getValue(34), valueBase);
 
     return tableData;
   }
@@ -128,7 +133,7 @@ public class RegistersWindow extends JPanel {
   /** clear and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    RegisterFile.resetRegisters();
+    LegacyApplication.services().resetRegisters();
     this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
@@ -159,13 +164,14 @@ public class RegistersWindow extends JPanel {
    * @param base desired number base
    */
   public void updateRegisters(int base) {
-    registers = RegisterFile.getRegisters();
+    registers = LegacyApplication.services().context().registerFile.getRegisters();
     for (Register register : registers) {
       updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
-    updateRegisterUnsignedValue(32, RegisterFile.getProgramCounter(), base);
-    updateRegisterValue(33, RegisterFile.getValue(33), base);
-    updateRegisterValue(34, RegisterFile.getValue(34), base);
+    updateRegisterUnsignedValue(
+        32, LegacyApplication.services().context().registerFile.getProgramCounter(), base);
+    updateRegisterValue(33, LegacyApplication.services().context().registerFile.getValue(33), base);
+    updateRegisterValue(34, LegacyApplication.services().context().registerFile.getValue(34), base);
   }
 
   /**
@@ -188,19 +194,31 @@ public class RegistersWindow extends JPanel {
   private void handleSimulatorNotice(SimulatorNotice notice) {
     if (notice.action() == SimulatorNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        RegisterFile.addRegistersObserver(registersListener);
+        LegacyApplication.services().context().registerFile.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      RegisterFile.deleteRegistersObserver(registersListener);
+      LegacyApplication.services()
+          .context()
+          .registerFile
+          .deleteRegistersObserver(registersListener);
     }
   }
 
   private void handleRegisterAccess(RegisterAccessNotice access) {
-    if (access.getAccessType() != AccessNotice.WRITE) return;
+    if (access.getAccessType() != AccessNotice.WRITE) {
+      return;
+    }
     String name = access.getRegisterName();
-    int row = "hi".equals(name) ? 33 : "lo".equals(name) ? 34 : RegisterFile.getNumber(name);
-    if (row < 0) return;
+    int row =
+        "hi".equals(name)
+            ? 33
+            : "lo".equals(name)
+                ? 34
+                : LegacyApplication.services().context().registerFile.getNumber(name);
+    if (row < 0) {
+      return;
+    }
     this.highlighting = true;
     this.highlightRow = row;
     table.tableChanged(new TableModelEvent(table.getModel()));
@@ -333,8 +351,8 @@ public class RegistersWindow extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (Globals.memoryAndRegistersLock) {
-        RegisterFile.updateRegister(row, val);
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+        LegacyApplication.services().instructionContext().updateRegister(row, val);
       }
       int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);

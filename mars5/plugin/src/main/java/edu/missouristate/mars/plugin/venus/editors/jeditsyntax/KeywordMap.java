@@ -55,15 +55,21 @@ public class KeywordMap {
    * @param length The length of the substring
    */
   public byte lookup(Segment text, int offset, int length) {
-    if (length == 0) return Token.NULL;
-    if (text.array[offset] == '%') return Token.MACRO_ARG; // added 12/12 M. Sekhavat
+    if (length == 0) {
+      return Token.NULL;
+    }
+    if (text.array[offset] == '%') {
+      return Token.MACRO_ARG; // added 12/12 M. Sekhavat
+    }
     Keyword k = map[getSegmentMapKey(text, offset, length)];
     while (k != null) {
       if (length != k.keyword.length) {
         k = k.next;
         continue;
       }
-      if (SyntaxUtilities.regionMatches(ignoreCase, text, offset, k.keyword)) return k.id;
+      if (SyntaxUtilities.regionMatches(ignoreCase, text, offset, k.keyword)) {
+        return k.id;
+      }
       k = k.next;
     }
     return Token.NULL;

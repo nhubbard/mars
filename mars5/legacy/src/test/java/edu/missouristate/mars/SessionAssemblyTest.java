@@ -321,8 +321,7 @@ class SessionAssemblyTest {
     int address = session.symbolTable.getAddress("result");
     assertThatThrownBy(() -> old.simulate(100)).isInstanceOf(IllegalStateException.class);
     assertThat(old.getBackStepper()).isNull();
-    assertThatThrownBy(
-            () -> new Assembler(session).assemble(new edu.missouristate.mars.LegacyProgram(), true))
+    assertThatThrownBy(() -> new Assembler(session).assemble(new LegacyProgram(), true))
         .isInstanceOf(IllegalArgumentException.class);
     assertThat(session.getProgram()).isSameAs(current);
     assertThat(session.memory.getWord(address)).isEqualTo(2);

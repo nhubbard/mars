@@ -16,6 +16,7 @@ import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.mips.instructions.basic.*;
 import edu.missouristate.mars.mips.instructions.syscalls.AbstractSyscall;
+import edu.missouristate.mars.mips.instructions.syscalls.SyscallExit;
 import edu.missouristate.mars.simulator.Exceptions;
 import java.util.ArrayList;
 import java.util.List;
@@ -206,7 +207,7 @@ class InstructionContextTest {
     int previous = Globals.exitCode;
     try {
       Globals.exitCode = 7;
-      var exit = new edu.missouristate.mars.mips.instructions.syscalls.SyscallExit();
+      var exit = new SyscallExit();
       assertThatThrownBy(() -> exit.simulate(statement(new InstrSyscall())))
           .isInstanceOfSatisfying(
               ProcessingException.class, error -> assertThat(error.errors()).isNull());
@@ -266,7 +267,9 @@ class InstructionContextTest {
   private static void stepProgram(InstructionContext context, List<ProgramStatement> code)
       throws ProcessingException {
     int index = (context.registerFile.getProgramCounter() - BASE) / 4;
-    if (index == code.size()) return;
+    if (index == code.size()) {
+      return;
+    }
     assertThat(index).isBetween(0, code.size() - 1);
     var statement = code.get(index);
     context.registerFile.incrementPC();

@@ -94,13 +94,14 @@ public class BHTableModel extends AbstractTableModel {
    * @return name of the i-th column
    */
   public String getColumnName(int i) {
-    if (i < 0 || i > m_columnNames.length)
+    if (i < 0 || i > m_columnNames.length) {
       throw new IllegalArgumentException(
           "Illegal column index "
               + i
               + " (must be in range 0.."
               + (m_columnNames.length - 1)
               + ")");
+    }
 
     return m_columnNames[i];
   }
@@ -112,13 +113,14 @@ public class BHTableModel extends AbstractTableModel {
    * @return class representing the type of the i-th column
    */
   public Class<?> getColumnClass(int i) {
-    if (i < 0 || i > m_columnClasses.length)
+    if (i < 0 || i > m_columnClasses.length) {
       throw new IllegalArgumentException(
           "Illegal column index "
               + i
               + " (must be in range 0.."
               + (m_columnClasses.length - 1)
               + ")");
+    }
 
     return m_columnClasses[i];
   }
@@ -149,18 +151,19 @@ public class BHTableModel extends AbstractTableModel {
    * @return the value of the cell
    */
   public Object getValueAt(int row, int col) {
-
     BHTEntry e = m_entries.get(row);
-    if (e == null) return "";
-
-    if (col == 0) return row;
-    if (col == 1) return e.getHistoryAsStr();
-    if (col == 2) return e.getPredictionAsStr();
-    if (col == 3) return e.getStatsPredCorrect();
-    if (col == 4) return e.getStatsPredIncorrect();
-    if (col == 5) return e.getStatsPredPrecision();
-
-    return "";
+    if (e == null) {
+      return "";
+    }
+    return switch (col) {
+      case 0 -> row;
+      case 1 -> e.getHistoryAsStr();
+      case 2 -> e.getPredictionAsStr();
+      case 3 -> e.getStatsPredCorrect();
+      case 4 -> e.getStatsPredIncorrect();
+      case 5 -> e.getStatsPredPrecision();
+      default -> "";
+    };
   }
 
   /**
@@ -174,10 +177,12 @@ public class BHTableModel extends AbstractTableModel {
    */
   public void initBHT(int numEntries, int historySize, boolean initVal) {
 
-    if (numEntries <= 0 || (numEntries & (numEntries - 1)) != 0)
+    if (numEntries <= 0 || (numEntries & (numEntries - 1)) != 0) {
       throw new IllegalArgumentException("Number of entries must be a positive power of 2.");
-    if (historySize < 1 || historySize > 2)
+    }
+    if (historySize < 1 || historySize > 2) {
       throw new IllegalArgumentException("Only history sizes of 1 or 2 supported.");
+    }
 
     m_entryCnt = numEntries;
     m_entries = new ArrayList<>();
@@ -198,7 +203,9 @@ public class BHTableModel extends AbstractTableModel {
    * @return the index into the BHT
    */
   public int getIdxForAddress(int address) {
-    if (address < 0) throw new IllegalArgumentException("No negative addresses supported");
+    if (address < 0) {
+      throw new IllegalArgumentException("No negative addresses supported");
+    }
 
     return (address >> 2) % m_entryCnt;
   }
@@ -210,9 +217,10 @@ public class BHTableModel extends AbstractTableModel {
    * @return the prediction to take (true) or do not take (false) the branch
    */
   public boolean getPredictionAtIdx(int index) {
-    if (index < 0 || index > m_entryCnt)
+    if (index < 0 || index > m_entryCnt) {
       throw new IllegalArgumentException(
           "Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
+    }
 
     return m_entries.get(index).getPrediction();
   }
@@ -224,9 +232,10 @@ public class BHTableModel extends AbstractTableModel {
    * @param index the index of the entry in the BHT
    */
   public void updatePredictionAtIdx(int index, boolean branchTaken) {
-    if (index < 0 || index > m_entryCnt)
+    if (index < 0 || index > m_entryCnt) {
       throw new IllegalArgumentException(
           "Only indexes in the range 0 to " + (m_entryCnt - 1) + " allowed");
+    }
 
     m_entries.get(index).updatePrediction(branchTaken);
     fireTableRowsUpdated(index, index);

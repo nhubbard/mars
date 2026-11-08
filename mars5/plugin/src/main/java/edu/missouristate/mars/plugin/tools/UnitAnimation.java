@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -99,12 +99,18 @@ class UnitAnimation extends JPanel implements ActionListener {
       this.isText = isText;
       this.color = new Color(0, 153, 0);
       if (isMovingXaxis) {
-        if (init < end) direction = movingLeft;
-        else direction = movingRight;
+        if (init < end) {
+          direction = movingLeft;
+        } else {
+          direction = movingRight;
+        }
 
       } else {
-        if (init < end) direction = movingUpside;
-        else direction = movingDownside;
+        if (init < end) {
+          direction = movingUpside;
+        } else {
+          direction = movingDownside;
+        }
       }
       String[] list = listTargetVertex.split("#");
       targetVertex = new ArrayList<>();
@@ -248,21 +254,24 @@ class UnitAnimation extends JPanel implements ActionListener {
   // set the binnary opcode value of the basic instructions of MIPS instruction set
   public void loadHashMapValues() {
     if (datapatTypeUsed == register) {
-      importXmlStringData("/registerDatapath.xml",
+      importXmlStringData(
+          "/registerDatapath.xml",
           registerEquivalenceTable,
           "register_equivalence",
           "bits",
           "mnemonic");
       importXmlDatapathMap("/registerDatapath.xml", "datapath_map");
     } else if (datapatTypeUsed == control) {
-      importXmlStringData("/controlDatapath.xml",
+      importXmlStringData(
+          "/controlDatapath.xml",
           registerEquivalenceTable,
           "register_equivalence",
           "bits",
           "mnemonic");
       importXmlDatapathMap("/controlDatapath.xml", "datapath_map");
     } else if (datapatTypeUsed == aluControl) {
-      importXmlStringData("/ALUcontrolDatapath.xml",
+      importXmlStringData(
+          "/ALUcontrolDatapath.xml",
           registerEquivalenceTable,
           "register_equivalence",
           "bits",
@@ -402,8 +411,6 @@ class UnitAnimation extends JPanel implements ActionListener {
         }
         outputGraph.add(vertexOfTargets);
       }
-      for (ArrayList<Vertex> vert : outputGraph) {}
-
       vertexList.getFirst().setActive(true);
       vertexTraversed.add(vertexList.getFirst());
     } catch (Exception e) {
@@ -551,13 +558,13 @@ class UnitAnimation extends JPanel implements ActionListener {
     try {
       BufferedImage im;
       if (datapatTypeUsed == register) {
-        im = ImageIO.read(getClass().getResource(Globals.imagesPath + "register.png"));
+        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "register.png"));
       } else if (datapatTypeUsed == control) {
-        im = ImageIO.read(getClass().getResource(Globals.imagesPath + "control.png"));
+        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "control.png"));
       } else if (datapatTypeUsed == aluControl) {
-        im = ImageIO.read(getClass().getResource(Globals.imagesPath + "ALUcontrol.png"));
+        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "ALUcontrol.png"));
       } else {
-        im = ImageIO.read(getClass().getResource(Globals.imagesPath + "alu.png"));
+        im = ImageIO.read(getClass().getResource(LegacyMetadata.imagesPath + "alu.png"));
       }
 
       int transparency = im.getColorModel().getTransparency();
@@ -568,7 +575,7 @@ class UnitAnimation extends JPanel implements ActionListener {
     } catch (IOException e) {
       System.out.println(
           "Load Image error for "
-              + getClass().getResource(Globals.imagesPath + "register.png")
+              + getClass().getResource(LegacyMetadata.imagesPath + "register.png")
               + ":\n"
               + e);
     }
@@ -581,9 +588,15 @@ class UnitAnimation extends JPanel implements ActionListener {
   public void actionPerformed(ActionEvent e)
         // triggered by the timer: update, repaint
       {
-    if (justStarted) justStarted = false;
-    if (xIsMoving) indexX++;
-    if (yIsMoving) indexY--;
+    if (justStarted) {
+      justStarted = false;
+    }
+    if (xIsMoving) {
+      indexX++;
+    }
+    if (yIsMoving) {
+      indexY--;
+    }
     repaint();
   }
 
@@ -608,7 +621,9 @@ class UnitAnimation extends JPanel implements ActionListener {
       g2d.fillOval(x, y, 20, 20);
       g2d.setColor(Color.black);
       g2d.drawString("   ", x, y);
-    } else g2d.drawImage(im, x, y, this);
+    } else {
+      g2d.drawImage(im, x, y, this);
+    }
   }
 
   // draw lines.
@@ -618,7 +633,9 @@ class UnitAnimation extends JPanel implements ActionListener {
     int[] track;
     size = v.getEnd() - v.getInit();
     track = new int[size];
-    for (int i = 0; i < size; i++) track[i] = v.getInit() + i;
+    for (int i = 0; i < size; i++) {
+      track[i] = v.getInit() + i;
+    }
     if (v.isActive()) {
       v.setFirst_interaction(false);
       for (int i = 0; i < size; i++) {
@@ -627,7 +644,9 @@ class UnitAnimation extends JPanel implements ActionListener {
           g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
         }
       }
-      if (v.getCurrent() == track[size - 1]) v.setActive(false);
+      if (v.getCurrent() == track[size - 1]) {
+        v.setActive(false);
+      }
       v.setCurrent(v.getCurrent() + 1);
     } else if (!v.isFirst_interaction()) {
       for (int i = 0; i < size; i++) {
@@ -647,7 +666,9 @@ class UnitAnimation extends JPanel implements ActionListener {
     size = v.getInit() - v.getEnd();
     track = new int[size];
 
-    for (int i = 0; i < size; i++) track[i] = v.getInit() - i;
+    for (int i = 0; i < size; i++) {
+      track[i] = v.getInit() - i;
+    }
 
     if (v.isActive()) {
       v.setFirst_interaction(false);
@@ -657,7 +678,9 @@ class UnitAnimation extends JPanel implements ActionListener {
           g2d.fillRect(track[i], v.getOppositeAxis(), 3, 3);
         }
       }
-      if (v.getCurrent() == track[size - 1]) v.setActive(false);
+      if (v.getCurrent() == track[size - 1]) {
+        v.setActive(false);
+      }
 
       v.setCurrent(v.getCurrent() - 1);
     } else if (!v.isFirst_interaction()) {
@@ -679,11 +702,15 @@ class UnitAnimation extends JPanel implements ActionListener {
     if (v.getInit() > v.getEnd()) {
       size = v.getInit() - v.getEnd();
       track = new int[size];
-      for (int i = 0; i < size; i++) track[i] = v.getInit() - i;
+      for (int i = 0; i < size; i++) {
+        track[i] = v.getInit() - i;
+      }
     } else {
       size = v.getEnd() - v.getInit();
       track = new int[size];
-      for (int i = 0; i < size; i++) track[i] = v.getInit() + i;
+      for (int i = 0; i < size; i++) {
+        track[i] = v.getInit() + i;
+      }
     }
 
     if (v.isActive()) {
@@ -694,7 +721,9 @@ class UnitAnimation extends JPanel implements ActionListener {
           g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
         }
       }
-      if (v.getCurrent() == track[size - 1]) v.setActive(false);
+      if (v.getCurrent() == track[size - 1]) {
+        v.setActive(false);
+      }
       v.setCurrent(v.getCurrent() - 1);
 
     } else if (!v.isFirst_interaction()) {
@@ -716,7 +745,9 @@ class UnitAnimation extends JPanel implements ActionListener {
     size = v.getEnd() - v.getInit();
     track = new int[size];
 
-    for (int i = 0; i < size; i++) track[i] = v.getInit() + i;
+    for (int i = 0; i < size; i++) {
+      track[i] = v.getInit() + i;
+    }
 
     if (v.isActive()) {
       v.setFirst_interaction(false);
@@ -726,7 +757,9 @@ class UnitAnimation extends JPanel implements ActionListener {
           g2d.fillRect(v.getOppositeAxis(), track[i], 3, 3);
         }
       }
-      if (v.getCurrent() == track[size - 1]) v.setActive(false);
+      if (v.getCurrent() == track[size - 1]) {
+        v.setActive(false);
+      }
       v.setCurrent(v.getCurrent() + 1);
     } else if (!v.isFirst_interaction()) {
       for (int i = 0; i < size; i++) {
@@ -804,9 +837,11 @@ class UnitAnimation extends JPanel implements ActionListener {
       } // end of condition of X axis
       else {
         if (vert.getDirection() == Vertex.movingDownside) {
-          if (vert.isText)
+          if (vert.isText) {
             ;
-          else printTrackDtoU(vert);
+          } else {
+            printTrackDtoU(vert);
+          }
 
           if (!vert.isActive()) {
             int j = vert.getTargetVertex().size();

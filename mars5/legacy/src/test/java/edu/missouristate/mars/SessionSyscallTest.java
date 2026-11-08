@@ -98,8 +98,9 @@ class SessionSyscallTest {
       assertThat(io.readFromFile(3, bytes, 4)).isEqualTo(-1);
       assertThat(io.writeToFile(99, bytes, 1)).isEqualTo(-1);
       assertThat(io.writeToFile(1, bytes, -1)).isEqualTo(-1);
-      for (int fd = 4; fd < 32; fd++)
+      for (int fd = 4; fd < 32; fd++) {
         assertThat(io.openFile(directory.resolve("file" + fd).toString(), 1)).isEqualTo(fd);
+      }
       assertThat(io.openFile(directory.resolve("overflow").toString(), 1)).isEqualTo(-1);
       io.closeFile(15);
       assertThat(io.openFile(directory.resolve("reused").toString(), 1)).isEqualTo(15);

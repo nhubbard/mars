@@ -27,7 +27,9 @@ public class TextUtilities {
    * @exception BadLocationException If an out-of-bounds access was attempted on the document text
    */
   public static int findMatchingBracket(Document doc, int offset) throws BadLocationException {
-    if (doc.getLength() == 0) return -1;
+    if (doc.getLength() == 0) {
+      return -1;
+    }
     char c = doc.getText(offset, 1).charAt(0);
     char cprime; // c` - corresponding character
     boolean direction; // true = back, false = forward
@@ -82,13 +84,17 @@ public class TextUtilities {
         // two opening brackets to complete the
         // match.
         char x = text.charAt(i);
-        if (x == c) count++;
+        if (x == c) {
+          count++;
+        }
 
         // If text[i] == cprime, we have found a
         // opening bracket, so we return i if
         // --count == 0
         else if (x == cprime) {
-          if (--count == 0) return i;
+          if (--count == 0) {
+            return i;
+          }
         }
       }
     } else {
@@ -113,13 +119,17 @@ public class TextUtilities {
         // match.
         char x = text.charAt(i);
 
-        if (x == c) count++;
+        if (x == c) {
+          count++;
+        }
 
         // If text[i] == cprime, we have found an
         // closing bracket, so we return i if
         // --count == 0
         else if (x == cprime) {
-          if (--count == 0) return i + offset;
+          if (--count == 0) {
+            return i + offset;
+          }
         }
       }
     }
@@ -137,7 +147,9 @@ public class TextUtilities {
   public static int findWordStart(String line, int pos, String noWordSep) {
     char ch = line.charAt(pos - 1);
 
-    if (noWordSep == null) noWordSep = "";
+    if (noWordSep == null) {
+      noWordSep = "";
+    }
     boolean selectNoLetter = (!Character.isLetterOrDigit(ch) && noWordSep.indexOf(ch) == -1);
 
     int wordStart = 0;
@@ -161,7 +173,9 @@ public class TextUtilities {
   public static int findWordEnd(String line, int pos, String noWordSep) {
     char ch = line.charAt(pos);
 
-    if (noWordSep == null) noWordSep = "";
+    if (noWordSep == null) {
+      noWordSep = "";
+    }
     boolean selectNoLetter = (!Character.isLetterOrDigit(ch) && noWordSep.indexOf(ch) == -1);
 
     int wordEnd = line.length();

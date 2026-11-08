@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
 import edu.missouristate.mars.plugin.venus.editors.generic.GenericTextArea;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.JEditBasedTextArea;
@@ -68,11 +68,13 @@ public class EditPane extends JPanel {
     String currentDirectoryPath = System.getProperty("user.dir");
     // mainUI.editor = new Editor(mainUI);
     // We want to be notified of editor font changes! See update() below.
-    Globals.getSettings().subscribeChange(s -> this.handleSettingsChange());
+    LegacyApplication.services().getSettings().subscribeChange(s -> this.handleSettingsChange());
     this.fileStatus = new FileStatus();
     lineNumbers = new JLabel();
 
-    if (Globals.getSettings().getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
+    if (LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.GENERIC_TEXT_EDITOR)) {
       this.sourceCode = new GenericTextArea(this, lineNumbers);
     } else {
       this.sourceCode = new JEditBasedTextArea(this, lineNumbers);
@@ -142,7 +144,8 @@ public class EditPane extends JPanel {
     showLineNumbers.setToolTipText("If checked, will display line number for each line of text.");
     showLineNumbers.setEnabled(false);
     // Show line numbers by default.
-    showLineNumbers.setSelected(Globals.getSettings().getEditorLineNumbersDisplayed());
+    showLineNumbers.setSelected(
+        LegacyApplication.services().getSettings().getEditorLineNumbersDisplayed());
 
     this.setSourceCode("", false);
 
@@ -162,7 +165,9 @@ public class EditPane extends JPanel {
             lineNumbers.setVisible(false);
           }
           sourceCode.revalidate(); // added 16 Jan 2012 to assure label redrawn.
-          Globals.getSettings().setEditorLineNumbersDisplayed(showLineNumbers.isSelected());
+          LegacyApplication.services()
+              .getSettings()
+              .setEditorLineNumbersDisplayed(showLineNumbers.isSelected());
           // needed because caret disappears when checkbox clicked
           sourceCode.setCaretVisible(true);
           sourceCode.requestFocusInWindow();
@@ -538,11 +543,14 @@ public class EditPane extends JPanel {
   }
 
   private void handleSettingsChange() {
-    sourceCode.setFont(EditorSettings.of(Globals.getSettings()).getEditorFont());
+    sourceCode.setFont(
+        EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
     sourceCode.setLineHighlightEnabled(
-        Globals.getSettings().getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
-    sourceCode.setCaretBlinkRate(Globals.getSettings().getCaretBlinkRate());
-    sourceCode.setTabSize(Globals.getSettings().getEditorTabSize());
+        LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(Settings.EDITOR_CURRENT_LINE_HIGHLIGHTING));
+    sourceCode.setCaretBlinkRate(LegacyApplication.services().getSettings().getCaretBlinkRate());
+    sourceCode.setTabSize(LegacyApplication.services().getSettings().getEditorTabSize());
     sourceCode.updateSyntaxStyles();
     sourceCode.revalidate();
     lineNumbers.setFont(getLineNumberFont(sourceCode.getFont()));

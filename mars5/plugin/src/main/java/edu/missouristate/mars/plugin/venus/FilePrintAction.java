@@ -50,7 +50,9 @@ public class FilePrintAction extends GuiAction {
   @SuppressWarnings("StringConcatenationInLoop")
   public void actionPerformed(ActionEvent e) {
     EditPane editPane = mainUI.getMainPane().getEditPane();
-    if (editPane == null) return;
+    if (editPane == null) {
+      return;
+    }
     int fontsize = 10; // fixed at 10 point
     double margins = .5; // all margins (left,right,top,bottom) fixed at .5"
     HardcopyWriter out;

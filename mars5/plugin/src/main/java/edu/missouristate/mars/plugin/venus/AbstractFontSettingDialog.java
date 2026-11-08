@@ -44,7 +44,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
   JLabel fontSample;
   protected final Font currentFont;
 
-  // Used to determine upon OK, whether or not anything has changed.
+  // Used to determine upon OK, whether anything has changed.
   String initialFontFamily, initialFontStyle, initialFontSize;
 
   /**
@@ -75,7 +75,6 @@ public abstract class AbstractFontSettingDialog extends JDialog {
     JPanel contents = new JPanel(new BorderLayout(20, 20));
     contents.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-    // Font currentFont = EditorSettings.of(Globals.getSettings()).getEditorFont();
     initialFontFamily = currentFont.getFamily();
     initialFontStyle = EditorFont.styleIntToStyleString(currentFont.getStyle());
     initialFontSize = EditorFont.sizeIntToSizeString(currentFont.getSize());
@@ -124,7 +123,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
           fontSample.setFont(getFont());
         });
     // Action listener to update sample when family or style selected
-    ActionListener updateSample = e -> fontSample.setFont(getFont());
+    ActionListener updateSample = _ -> fontSample.setFont(getFont());
     fontFamilySelector.addActionListener(updateSample);
     fontStyleSelector.addActionListener(updateSample);
 
@@ -188,7 +187,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
    */
   protected abstract void apply(Font font);
 
-  /////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////
   //
   // Method and two classes to permit one or more horizontal separators
   // within a combo box list.  I obtained this code on 13 July 2007
@@ -199,7 +198,7 @@ public abstract class AbstractFontSettingDialog extends JDialog {
   // to keep a list of recently-used fonts like Word does.  The list
   // of common font families is static.
   //
-  /////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////
 
   private static final String SEPARATOR = "___SEPARATOR____";
 

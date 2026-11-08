@@ -1,6 +1,6 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.util.function.Consumer;
 
 /*
@@ -42,7 +42,7 @@ public class Coprocessor1 {
 
   /** Transitional access for the legacy instruction execution context. */
   public static Coprocessor1State legacyState() {
-    return Globals.context().coprocessor1;
+    return LegacyApplication.services().context().coprocessor1;
   }
 
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
@@ -126,12 +126,13 @@ public class Coprocessor1 {
   }
 
   public static int updateRegister(int num, int val) {
-    if (num < 0 || num >= 32) return 0;
+    if (num < 0 || num >= 32) {
+      return 0;
+    }
     int old = legacyState().updateRegister(num, val);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addCoprocessor1Restore(num, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addCoprocessor1Restore(num, old);
     }
     return old;
   }
@@ -160,12 +161,12 @@ public class Coprocessor1 {
     int old = legacyState().setConditionFlag(flag);
     if (flag >= 0
         && flag < legacyState().getConditionFlagCount()
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
+        && LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
       if (old == 0) {
-        Globals.program.getBackStepper().addConditionFlagClear(flag);
+        LegacyApplication.services().getProgram().getBackStepper().addConditionFlagClear(flag);
       } else {
-        Globals.program.getBackStepper().addConditionFlagSet(flag);
+        LegacyApplication.services().getProgram().getBackStepper().addConditionFlagSet(flag);
       }
     }
     return old;
@@ -175,12 +176,12 @@ public class Coprocessor1 {
     int old = legacyState().clearConditionFlag(flag);
     if (flag >= 0
         && flag < legacyState().getConditionFlagCount()
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
+        && LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
       if (old == 0) {
-        Globals.program.getBackStepper().addConditionFlagClear(flag);
+        LegacyApplication.services().getProgram().getBackStepper().addConditionFlagClear(flag);
       } else {
-        Globals.program.getBackStepper().addConditionFlagSet(flag);
+        LegacyApplication.services().getProgram().getBackStepper().addConditionFlagSet(flag);
       }
     }
     return old;

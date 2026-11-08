@@ -192,21 +192,31 @@ public class InstructionCounter extends AbstractMarsToolAndApplication {
 
   //	@Override
   protected void processMIPSUpdate(AccessNotice notice) {
-    if (!notice.accessIsFromMIPS()) return;
-    if (notice.getAccessType() != AccessNotice.READ) return;
+    if (!notice.accessIsFromMIPS()) {
+      return;
+    }
+    if (notice.getAccessType() != AccessNotice.READ) {
+      return;
+    }
     MemoryAccessNotice m = (MemoryAccessNotice) notice;
     int a = m.getAddress();
-    if (a == lastAddress) return;
+    if (a == lastAddress) {
+      return;
+    }
     lastAddress = a;
     counter++;
     try {
       ProgramStatement stmt = Memory.getInstance().getStatement(a);
       BasicInstruction instr = (BasicInstruction) stmt.getInstruction();
       BasicInstructionFormat format = instr.getInstructionFormat();
-      if (format == BasicInstructionFormat.R_FORMAT) counterR++;
-      else if (format == BasicInstructionFormat.I_FORMAT
-          || format == BasicInstructionFormat.I_BRANCH_FORMAT) counterI++;
-      else if (format == BasicInstructionFormat.J_FORMAT) counterJ++;
+      if (format == BasicInstructionFormat.R_FORMAT) {
+        counterR++;
+      } else if (format == BasicInstructionFormat.I_FORMAT
+          || format == BasicInstructionFormat.I_BRANCH_FORMAT) {
+        counterI++;
+      } else if (format == BasicInstructionFormat.J_FORMAT) {
+        counterJ++;
+      }
     } catch (AddressErrorException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();

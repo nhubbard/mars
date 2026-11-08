@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -69,7 +70,8 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
         mainUI.setMenuState(FileStatus.RUNNING);
         try {
           int[] breakPoints = executePane.getTextSegmentWindow().getSortedBreakPointsArray();
-          boolean done = Globals.program.simulateFromPC(breakPoints, maxSteps, this);
+          boolean done =
+              LegacyApplication.services().getProgram().simulateFromPC(breakPoints, maxSteps, this);
         } catch (ProcessingException ignored) {
         }
       } else {
@@ -138,7 +140,8 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
       executePane.getTextSegmentWindow().unhighlightAllSteps();
       executePane
           .getTextSegmentWindow()
-          .highlightStepAtAddress(RegisterFile.getProgramCounter() - 4);
+          .highlightStepAtAddress(
+              LegacyApplication.services().context().registerFile.getProgramCounter() - 4);
     }
     switch (reason) {
       case Simulator.NORMAL_TERMINATION:
@@ -200,9 +203,10 @@ public class RunGoAction extends GuiAction implements Simulator.SimFinishCallbac
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !Globals.getSettings().getProgramArguments()) {
+        || !LegacyApplication.services().getSettings().getProgramArguments()) {
       return;
     }
-    new ProgramArgumentList(programArguments).storeProgramArguments(Globals.context());
+    new ProgramArgumentList(programArguments)
+        .storeProgramArguments(LegacyApplication.services().context());
   }
 }

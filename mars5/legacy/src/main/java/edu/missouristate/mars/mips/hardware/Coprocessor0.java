@@ -1,6 +1,6 @@
 package edu.missouristate.mars.mips.hardware;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.util.function.Consumer;
 
 /*
@@ -48,7 +48,7 @@ public class Coprocessor0 {
 
   /** Transitional access for the legacy instruction execution context. */
   public static Coprocessor0State legacyState() {
-    return Globals.context().coprocessor0;
+    return LegacyApplication.services().context().coprocessor0;
   }
 
   public static void addRegistersObserver(Consumer<RegisterAccessNotice> listener) {
@@ -68,12 +68,13 @@ public class Coprocessor0 {
   }
 
   public static int updateRegister(int num, int val) {
-    if (num != VADDR && num != STATUS && num != CAUSE && num != EPC) return 0;
+    if (num != VADDR && num != STATUS && num != CAUSE && num != EPC) {
+      return 0;
+    }
     int old = legacyState().updateRegister(num, val);
-    if (Globals.program != null
-        && Globals.program != null
-        && Globals.getSettings().getBackSteppingEnabled()) {
-      Globals.program.getBackStepper().addCoprocessor0Restore(num, old);
+    if (LegacyApplication.services().getProgram() != null
+        && LegacyApplication.services().getSettings().getBackSteppingEnabled()) {
+      LegacyApplication.services().getProgram().getBackStepper().addCoprocessor0Restore(num, old);
     }
     return old;
   }

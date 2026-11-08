@@ -9,13 +9,12 @@
 
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.Settings;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.plugin.venus.editors.jeditsyntax.tokenmarker.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.event.*;
-import java.util.ArrayList;
 import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -144,7 +143,7 @@ public class JEditTextArea extends JComponent {
             e -> {
               if (JEditTextArea.this.isFocusOwner()
                   && e.getKeyCode() == KeyEvent.VK_TAB
-                  && e.getModifiers() == 0) {
+                  && e.getModifiersEx() == 0) {
                 processKeyEvent(e);
                 return true;
               } else {
@@ -187,7 +186,9 @@ public class JEditTextArea extends JComponent {
    */
   public void setCaretBlinkEnabled(boolean caretBlinks) {
     this.caretBlinks = caretBlinks;
-    if (!caretBlinks) blink = false;
+    if (!caretBlinks) {
+      blink = false;
+    }
 
     painter.invalidateSelectedLines();
   }
@@ -214,7 +215,9 @@ public class JEditTextArea extends JComponent {
     if (caretBlinks) {
       blink = !blink;
       painter.invalidateSelectedLines();
-    } else blink = true;
+    } else {
+      blink = true;
+    }
   }
 
   /**
@@ -270,7 +273,9 @@ public class JEditTextArea extends JComponent {
 
   /** Sets the line displayed at the text area's origin and updates the scroll bars. */
   public void setFirstLine(int firstLine) {
-    if (firstLine == this.firstLine) return;
+    if (firstLine == this.firstLine) {
+      return;
+    }
     int oldFirstLine = this.firstLine;
     this.firstLine = firstLine;
     updateScrollBars();
@@ -284,7 +289,9 @@ public class JEditTextArea extends JComponent {
 
   /** Recalculates the number of visible lines. This should not be called directly. */
   public final void recalculateVisibleLines() {
-    if (painter == null) return;
+    if (painter == null) {
+      return;
+    }
     int height = painter.getHeight();
     int lineHeight = painter.getFontMetrics().getHeight();
     int oldVisibleLines = visibleLines;
@@ -303,9 +310,13 @@ public class JEditTextArea extends JComponent {
    * @param horizontalOffset offset The new horizontal offset
    */
   public void setHorizontalOffset(int horizontalOffset) {
-    if (horizontalOffset == this.horizontalOffset) return;
+    if (horizontalOffset == this.horizontalOffset) {
+      return;
+    }
     this.horizontalOffset = horizontalOffset;
-    if (horizontalOffset != horizontal.getValue()) updateScrollBars();
+    if (horizontalOffset != horizontal.getValue()) {
+      updateScrollBars();
+    }
     painter.repaint();
   }
 
@@ -375,9 +386,12 @@ public class JEditTextArea extends JComponent {
       newFirstLine = Math.max(0, line - electricScroll);
     } else if (line + electricScroll >= firstLine + visibleLines) {
       newFirstLine = (line - visibleLines) + electricScroll + 1;
-      if (newFirstLine + visibleLines >= getLineCount())
+      if (newFirstLine + visibleLines >= getLineCount()) {
         newFirstLine = getLineCount() - visibleLines;
-      if (newFirstLine < 0) newFirstLine = 0;
+      }
+      if (newFirstLine < 0) {
+        newFirstLine = 0;
+      }
     }
 
     int x = _offsetToX(line, offset);
@@ -453,9 +467,9 @@ public class JEditTextArea extends JComponent {
      * tokens can vary in width */
     else {
       Token tokens;
-      if (painter.currentLineIndex == line && painter.currentLineTokens != null)
+      if (painter.currentLineIndex == line && painter.currentLineTokens != null) {
         tokens = painter.currentLineTokens;
-      else {
+      } else {
         painter.currentLineIndex = line;
         tokens = painter.currentLineTokens = tokenMarker.markTokens(lineSegment, line);
       }
@@ -470,8 +484,11 @@ public class JEditTextArea extends JComponent {
           return x;
         }
 
-        if (id == Token.NULL) fm = painter.getFontMetrics();
-        else fm = styles[id].getFontMetrics(defaultFont);
+        if (id == Token.NULL) {
+          fm = painter.getFontMetrics();
+        } else {
+          fm = styles[id].getFontMetrics(defaultFont);
+        }
 
         int length = tokens.length;
 
@@ -512,13 +529,20 @@ public class JEditTextArea extends JComponent {
       for (int i = 0; i < segmentCount; i++) {
         char c = segmentArray[i + segmentOffset];
         int charWidth;
-        if (c == '\t') charWidth = (int) painter.nextTabStop(width, i) - width;
-        else charWidth = fm.charWidth(c);
+        if (c == '\t') {
+          charWidth = (int) painter.nextTabStop(width, i) - width;
+        } else {
+          charWidth = fm.charWidth(c);
+        }
 
         if (painter.isBlockCaretEnabled()) {
-          if (x - charWidth <= width) return i;
+          if (x - charWidth <= width) {
+            return i;
+          }
         } else {
-          if (x - charWidth / 2 <= width) return i;
+          if (x - charWidth / 2 <= width) {
+            return i;
+          }
         }
 
         width += charWidth;
@@ -527,9 +551,9 @@ public class JEditTextArea extends JComponent {
       return segmentCount;
     } else {
       Token tokens;
-      if (painter.currentLineIndex == line && painter.currentLineTokens != null)
+      if (painter.currentLineIndex == line && painter.currentLineTokens != null) {
         tokens = painter.currentLineTokens;
-      else {
+      } else {
         painter.currentLineIndex = line;
         tokens = painter.currentLineTokens = tokenMarker.markTokens(lineSegment, line);
       }
@@ -541,23 +565,35 @@ public class JEditTextArea extends JComponent {
 
       for (; ; ) {
         byte id = tokens.id;
-        if (id == Token.END) return offset;
+        if (id == Token.END) {
+          return offset;
+        }
 
-        if (id == Token.NULL) fm = painter.getFontMetrics();
-        else fm = styles[id].getFontMetrics(defaultFont);
+        if (id == Token.NULL) {
+          fm = painter.getFontMetrics();
+        } else {
+          fm = styles[id].getFontMetrics(defaultFont);
+        }
 
         int length = tokens.length;
 
         for (int i = 0; i < length; i++) {
           char c = segmentArray[segmentOffset + offset + i];
           int charWidth;
-          if (c == '\t') charWidth = (int) painter.nextTabStop(width, offset + i) - width;
-          else charWidth = fm.charWidth(c);
+          if (c == '\t') {
+            charWidth = (int) painter.nextTabStop(width, offset + i) - width;
+          } else {
+            charWidth = fm.charWidth(c);
+          }
 
           if (painter.isBlockCaretEnabled()) {
-            if (x - charWidth <= width) return offset + i;
+            if (x - charWidth <= width) {
+              return offset + i;
+            }
           } else {
-            if (x - charWidth / 2 <= width) return offset + i;
+            if (x - charWidth / 2 <= width) {
+              return offset + i;
+            }
           }
 
           width += charWidth;
@@ -592,8 +628,12 @@ public class JEditTextArea extends JComponent {
    * @param document The document
    */
   public void setDocument(SyntaxDocument document) {
-    if (this.document == document) return;
-    if (this.document != null) this.document.removeDocumentListener(documentHandler);
+    if (this.document == document) {
+      return;
+    }
+    if (this.document != null) {
+      this.document.removeDocumentListener(documentHandler);
+    }
     this.document = document;
 
     document.addDocumentListener(documentHandler);
@@ -651,8 +691,11 @@ public class JEditTextArea extends JComponent {
    */
   public int getLineStartOffset(int line) {
     Element lineElement = document.getDefaultRootElement().getElement(line);
-    if (lineElement == null) return -1;
-    else return lineElement.getStartOffset();
+    if (lineElement == null) {
+      return -1;
+    } else {
+      return lineElement.getStartOffset();
+    }
   }
 
   /**
@@ -663,8 +706,11 @@ public class JEditTextArea extends JComponent {
    */
   public int getLineEndOffset(int line) {
     Element lineElement = document.getDefaultRootElement().getElement(line);
-    if (lineElement == null) return -1;
-    else return lineElement.getEndOffset();
+    if (lineElement == null) {
+      return -1;
+    } else {
+      return lineElement.getEndOffset();
+    }
   }
 
   /**
@@ -674,8 +720,11 @@ public class JEditTextArea extends JComponent {
    */
   public int getLineLength(int line) {
     Element lineElement = document.getDefaultRootElement().getElement(line);
-    if (lineElement == null) return -1;
-    else return lineElement.getEndOffset() - lineElement.getStartOffset() - 1;
+    if (lineElement == null) {
+      return -1;
+    } else {
+      return lineElement.getEndOffset() - lineElement.getStartOffset() - 1;
+    }
   }
 
   /** Returns the entire text of this text area. */
@@ -763,8 +812,9 @@ public class JEditTextArea extends JComponent {
 
   /** Returns the offset where the selection starts on the specified line. */
   public int getSelectionStart(int line) {
-    if (line == selectionStartLine) return selectionStart;
-    else if (rectSelect) {
+    if (line == selectionStartLine) {
+      return selectionStart;
+    } else if (rectSelect) {
       Element map = document.getDefaultRootElement();
       int start = selectionStart - map.getElement(selectionStartLine).getStartOffset();
 
@@ -772,7 +822,9 @@ public class JEditTextArea extends JComponent {
       int lineStart = lineElement.getStartOffset();
       int lineEnd = lineElement.getEndOffset() - 1;
       return Math.min(lineEnd, lineStart + start);
-    } else return getLineStartOffset(line);
+    } else {
+      return getLineStartOffset(line);
+    }
   }
 
   /** Returns the selection start line. */
@@ -798,8 +850,9 @@ public class JEditTextArea extends JComponent {
 
   /** Returns the offset where the selection ends on the specified line. */
   public int getSelectionEnd(int line) {
-    if (line == selectionEndLine) return selectionEnd;
-    else if (rectSelect) {
+    if (line == selectionEndLine) {
+      return selectionEnd;
+    } else if (rectSelect) {
       Element map = document.getDefaultRootElement();
       int end = selectionEnd - map.getElement(selectionEndLine).getStartOffset();
 
@@ -807,7 +860,9 @@ public class JEditTextArea extends JComponent {
       int lineStart = lineElement.getStartOffset();
       int lineEnd = lineElement.getEndOffset() - 1;
       return Math.min(lineEnd, lineStart + end);
-    } else return getLineEndOffset(line) - 1;
+    } else {
+      return getLineEndOffset(line) - 1;
+    }
   }
 
   /** Returns the selection end line. */
@@ -907,9 +962,13 @@ public class JEditTextArea extends JComponent {
       int newEndLine = getLineOfOffset(newEnd);
 
       if (painter.isBracketHighlightEnabled()) {
-        if (bracketLine != -1) painter.invalidateLine(bracketLine);
+        if (bracketLine != -1) {
+          painter.invalidateLine(bracketLine);
+        }
         updateBracketHighlight(end);
-        if (bracketLine != -1) painter.invalidateLine(bracketLine);
+        if (bracketLine != -1) {
+          painter.invalidateLine(bracketLine);
+        }
       }
 
       painter.invalidateLineRange(selectionStartLine, selectionEndLine);
@@ -932,7 +991,9 @@ public class JEditTextArea extends JComponent {
     caretTimer.restart();
 
     // Disable rectangle select if selection start = selection end
-    if (selectionStart == selectionEnd) rectSelect = false;
+    if (selectionStart == selectionEnd) {
+      rectSelect = false;
+    }
 
     // Clear the `magic' caret position used by up/down
     magicCaret = -1;
@@ -941,7 +1002,9 @@ public class JEditTextArea extends JComponent {
 
   /** Returns the selected text, or null if no selection is active. */
   public final String getSelectedText() {
-    if (selectionStart == selectionEnd) return null;
+    if (selectionStart == selectionEnd) {
+      return null;
+    }
 
     if (rectSelect) {
       // Return each row of the selection on a new line
@@ -973,7 +1036,9 @@ public class JEditTextArea extends JComponent {
         getText(lineStart, lineLen, seg);
         buf.append(seg.array, seg.offset, seg.count);
 
-        if (i != selectionEndLine) buf.append('\n');
+        if (i != selectionEndLine) {
+          buf.append('\n');
+        }
       }
 
       return buf.toString();
@@ -1019,10 +1084,14 @@ public class JEditTextArea extends JComponent {
 
           document.remove(rectStart, Math.min(lineEnd - rectStart, end - start));
 
-          if (selectedText == null) continue;
+          if (selectedText == null) {
+            continue;
+          }
 
           currNewline = selectedText.indexOf('\n', lastNewline);
-          if (currNewline == -1) currNewline = selectedText.length();
+          if (currNewline == -1) {
+            currNewline = selectedText.length();
+          }
 
           document.insertString(rectStart, selectedText.substring(lastNewline, currNewline), null);
 
@@ -1216,10 +1285,11 @@ public class JEditTextArea extends JComponent {
       String selection = getSelectedText();
 
       int repeatCount = inputHandler.getRepeatCount();
-      StringBuilder buf = new StringBuilder();
-      buf.repeat(String.valueOf(selection), Math.max(0, repeatCount));
 
-      clipboard.setContents(new StringSelection(buf.toString()), null);
+      clipboard.setContents(
+          new StringSelection(
+              String.valueOf(String.valueOf(selection)).repeat(Math.max(0, repeatCount))),
+          null);
     }
   }
 
@@ -1235,9 +1305,7 @@ public class JEditTextArea extends JComponent {
                 .replace('\r', '\n');
 
         int repeatCount = inputHandler.getRepeatCount();
-        StringBuilder buf = new StringBuilder();
-        buf.repeat(selection, Math.max(0, repeatCount));
-        selection = buf.toString();
+        selection = selection.repeat(Math.max(0, repeatCount));
         setSelectedText(selection);
       } catch (Exception e) {
         getToolkit().beep();
@@ -1252,7 +1320,9 @@ public class JEditTextArea extends JComponent {
    */
   public void removeNotify() {
     super.removeNotify();
-    if (focusedComponent == this) focusedComponent = null;
+    if (focusedComponent == this) {
+      focusedComponent = null;
+    }
   }
 
   /**
@@ -1260,7 +1330,9 @@ public class JEditTextArea extends JComponent {
    * KeyListener because some Swing overhead is avoided.
    */
   public void processKeyEvent(KeyEvent evt) {
-    if (inputHandler == null) return;
+    if (inputHandler == null) {
+      return;
+    }
     switch (evt.getID()) {
       case KeyEvent.KEY_TYPED:
         inputHandler.keyTyped(evt);
@@ -1364,8 +1436,11 @@ public class JEditTextArea extends JComponent {
     DocumentEvent.ElementChange ch = evt.getChange(document.getDefaultRootElement());
 
     int count;
-    if (ch == null) count = 0;
-    else count = ch.getChildrenAdded().length - ch.getChildrenRemoved().length;
+    if (ch == null) {
+      count = 0;
+    } else {
+      count = ch.getChildrenAdded().length - ch.getChildrenRemoved().length;
+    }
 
     int line = getLineOfOffset(evt.getOffset());
     if (count == 0) {
@@ -1393,10 +1468,17 @@ public class JEditTextArea extends JComponent {
     }
 
     public void removeLayoutComponent(Component comp) {
-      if (center == comp) center = null;
-      if (right == comp) right = null;
-      if (bottom == comp) bottom = null;
-      else leftOfScrollBar.remove(comp);
+      if (center == comp) {
+        center = null;
+      }
+      if (right == comp) {
+        right = null;
+      }
+      if (bottom == comp) {
+        bottom = null;
+      } else {
+        leftOfScrollBar.remove(comp);
+      }
     }
 
     public Dimension preferredLayoutSize(Container parent) {
@@ -1470,7 +1552,9 @@ public class JEditTextArea extends JComponent {
 
   static class CaretBlinker implements ActionListener {
     public void actionPerformed(ActionEvent evt) {
-      if (focusedComponent != null && focusedComponent.hasFocus()) focusedComponent.blinkCaret();
+      if (focusedComponent != null && focusedComponent.hasFocus()) {
+        focusedComponent.blinkCaret();
+      }
     }
   }
 
@@ -1490,15 +1574,20 @@ public class JEditTextArea extends JComponent {
 
   class AdjustHandler implements AdjustmentListener {
     public void adjustmentValueChanged(final AdjustmentEvent evt) {
-      if (!scrollBarsInitialized) return;
+      if (!scrollBarsInitialized) {
+        return;
+      }
 
       // If this is not done, mousePressed events accumulate
       // and the result is that scrolling doesn't stop after
       // the mouse is released
       SwingUtilities.invokeLater(
           () -> {
-            if (evt.getAdjustable() == vertical) setFirstLine(vertical.getValue());
-            else setHorizontalOffset(-horizontal.getValue());
+            if (evt.getAdjustable() == vertical) {
+              setFirstLine(vertical.getValue());
+            } else {
+              setHorizontalOffset(-horizontal.getValue());
+            }
           });
     }
   }
@@ -1526,12 +1615,17 @@ public class JEditTextArea extends JComponent {
       int newStart;
       int newEnd;
 
-      if (selectionStart > offset || (selectionStart == selectionEnd && selectionStart == offset))
+      if (selectionStart > offset || (selectionStart == selectionEnd && selectionStart == offset)) {
         newStart = selectionStart + length;
-      else newStart = selectionStart;
+      } else {
+        newStart = selectionStart;
+      }
 
-      if (selectionEnd >= offset) newEnd = selectionEnd + length;
-      else newEnd = selectionEnd;
+      if (selectionEnd >= offset) {
+        newEnd = selectionEnd + length;
+      } else {
+        newEnd = selectionEnd;
+      }
       select(newStart, newEnd);
     }
 
@@ -1552,14 +1646,24 @@ public class JEditTextArea extends JComponent {
       int newEnd;
 
       if (selectionStart > offset) {
-        if (selectionStart > offset + length) newStart = selectionStart - length;
-        else newStart = offset;
-      } else newStart = selectionStart;
+        if (selectionStart > offset + length) {
+          newStart = selectionStart - length;
+        } else {
+          newStart = offset;
+        }
+      } else {
+        newStart = selectionStart;
+      }
 
       if (selectionEnd > offset) {
-        if (selectionEnd > offset + length) newEnd = selectionEnd - length;
-        else newEnd = offset;
-      } else newEnd = selectionEnd;
+        if (selectionEnd > offset + length) {
+          newEnd = selectionEnd - length;
+        } else {
+          newEnd = offset;
+        }
+      } else {
+        newEnd = selectionEnd;
+      }
       select(newStart, newEnd);
     }
 
@@ -1568,9 +1672,11 @@ public class JEditTextArea extends JComponent {
 
   class DragHandler implements MouseMotionListener {
     public void mouseDragged(MouseEvent evt) {
-      if (popup != null && popup.isVisible()) return;
+      if (popup != null && popup.isVisible()) {
+        return;
+      }
 
-      setSelectionRectangular((evt.getModifiers() & InputEvent.CTRL_MASK) != 0);
+      setSelectionRectangular((evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0);
       select(getMarkPosition(), xyToOffset(evt.getX(), evt.getY()));
     }
 
@@ -1615,7 +1721,7 @@ public class JEditTextArea extends JComponent {
       setCaretVisible(true);
       focusedComponent = JEditTextArea.this;
 
-      if ((evt.getModifiers() & InputEvent.BUTTON3_MASK) != 0 && popup != null) {
+      if ((evt.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 && popup != null) {
         popup.show(painter, evt.getX(), evt.getY());
         return;
       }
@@ -1644,16 +1750,20 @@ public class JEditTextArea extends JComponent {
     }
 
     private void doSingleClick(MouseEvent evt, int line, int offset, int dot) {
-      if ((evt.getModifiers() & InputEvent.SHIFT_MASK) != 0) {
-        rectSelect = (evt.getModifiers() & InputEvent.CTRL_MASK) != 0;
+      if ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) != 0) {
+        rectSelect = (evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) != 0;
         select(getMarkPosition(), dot);
-      } else setCaretPosition(dot);
+      } else {
+        setCaretPosition(dot);
+      }
     }
 
     private void doDoubleClick(MouseEvent evt, int line, int offset, int dot)
         throws BadLocationException {
       // Ignore empty lines
-      if (getLineLength(line) == 0) return;
+      if (getLineLength(line) == 0) {
+        return;
+      }
 
       try {
         int bracket = TextUtilities.findMatchingBracket(document, Math.max(0, dot - 1));
@@ -1676,7 +1786,9 @@ public class JEditTextArea extends JComponent {
       char ch = lineText.charAt(Math.max(0, offset - 1));
 
       String noWordSep = (String) document.getProperty("noWordSep");
-      if (noWordSep == null) noWordSep = "";
+      if (noWordSep == null) {
+        noWordSep = "";
+      }
 
       // If the user clicked on a non-letter char,
       // we select the surrounding non-letters
@@ -1746,7 +1858,9 @@ public class JEditTextArea extends JComponent {
         cedit.die();
 
         return true;
-      } else return false;
+      } else {
+        return false;
+      }
     }
   }
 
@@ -1789,7 +1903,7 @@ public class JEditTextArea extends JComponent {
    * @return String containing auto-indent characters to be inserted into text
    */
   public String getAutoIndent() {
-    return (Globals.getSettings().getBooleanSetting(Settings.AUTO_INDENT))
+    return (LegacyApplication.services().getSettings().getBooleanSetting(Settings.AUTO_INDENT))
         ? getLeadingWhiteSpace()
         : "";
   }
@@ -1849,7 +1963,9 @@ public class JEditTextArea extends JComponent {
 
       for (; ; ) {
         byte id = tokens.id;
-        if (id == Token.END) break;
+        if (id == Token.END) {
+          break;
+        }
         int length = tokens.length;
         if (offset > tokenOffset && offset <= tokenOffset + length) {
           tokenAtOffset = tokens;
@@ -1877,7 +1993,9 @@ public class JEditTextArea extends JComponent {
   // Compose and display syntax-sensitive help. Typically invoked upon typing a key.
   // Results in popup menu.  Is not used for creating tool tips.
   private void applySyntaxSensitiveHelp() {
-    if (!Globals.getSettings().getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
+    if (!LegacyApplication.services()
+        .getSettings()
+        .getBooleanSetting(Settings.POPUP_INSTRUCTION_GUIDANCE)) {
       return;
     }
     int line = getCaretLine();
@@ -1970,10 +2088,14 @@ public class JEditTextArea extends JComponent {
   private void checkAutoIndent(KeyEvent evt) {
     if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
       int line = getCaretLine();
-      if (line <= 0) return;
+      if (line <= 0) {
+        return;
+      }
       int previousLine = line - 1;
       int previousLineLength = getLineLength(previousLine);
-      if (previousLineLength <= 0) return;
+      if (previousLineLength <= 0) {
+        return;
+      }
       String previous = getText(getLineStartOffset(previousLine), previousLineLength);
       String indent = "";
       for (int position = 0; position < previous.length(); position++) {
@@ -1993,11 +2115,14 @@ public class JEditTextArea extends JComponent {
   // Enter or Escape keys pressed.  Will update if Backspace or Delete pressed.
   // Not really concerned with modifiers here.
   private void checkPopupMenu(KeyEvent evt) {
-    if (evt.getKeyCode() == KeyEvent.VK_BACK_SPACE || evt.getKeyCode() == KeyEvent.VK_DELETE)
+    if (evt.getKeyCode() == KeyEvent.VK_BACK_SPACE || evt.getKeyCode() == KeyEvent.VK_DELETE) {
       applySyntaxSensitiveHelp();
+    }
     if ((evt.getKeyCode() == KeyEvent.VK_ENTER || evt.getKeyCode() == KeyEvent.VK_ESCAPE)
         && popupMenu != null
-        && popupMenu.isVisible()) popupMenu.setVisible(false);
+        && popupMenu.isVisible()) {
+      popupMenu.setVisible(false);
+    }
   }
 
   ////////////////////////////////////////////////////////////////////////////////////
@@ -2009,11 +2134,15 @@ public class JEditTextArea extends JComponent {
         && popupMenu.isVisible()
         && popupMenu.getComponentCount() > 0) {
       MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-      if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton)) return false;
+      if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton)) {
+        return false;
+      }
       AbstractButton item = (AbstractButton) path[path.length - 1].getComponent();
       if (item.isEnabled()) {
         int index = popupMenu.getComponentIndex(item);
-        if (index < 0) return false;
+        if (index < 0) {
+          return false;
+        }
         if (evt.getKeyCode() == KeyEvent.VK_UP) {
           index = (index == 0) ? popupMenu.getComponentCount() - 1 : index - 1;
         } else {
@@ -2025,7 +2154,7 @@ public class JEditTextArea extends JComponent {
         // The solution, as shown here, is to use invokeLater.
         final MenuElement[] newPath = new MenuElement[2];
         newPath[0] = path[0];
-        newPath[1] = (MenuElement) popupMenu.getComponentAtIndex(index);
+        newPath[1] = (MenuElement) popupMenu.getComponent(index);
         SwingUtilities.invokeLater(
             () -> MenuSelectionManager.defaultManager().setSelectedPath(newPath));
         return true;
@@ -2038,7 +2167,9 @@ public class JEditTextArea extends JComponent {
         && popupMenu.isVisible()
         && popupMenu.getComponentCount() > 0) {
       MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
-      if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton)) return false;
+      if (path.length < 1 || !(path[path.length - 1] instanceof AbstractButton)) {
+        return false;
+      }
       AbstractButton item = (AbstractButton) path[path.length - 1].getComponent();
       if (item.isEnabled()) {
         ActionListener[] listeners = item.getActionListeners();

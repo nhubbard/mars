@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -61,7 +61,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public Coprocessor1Window() {
     Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = Globals.getSettings();
+    settings = LegacyApplication.services().getSettings();
     // Display registers in table contained in scroll pane.
     this.setLayout(new BorderLayout()); // table display will occupy entire width if widened
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
@@ -97,7 +97,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     flagsPane.setToolTipText(
         "flags are used by certain floating point instructions, default flag is 0");
     flagsPane.add(new JLabel("Condition Flags", JLabel.CENTER), BorderLayout.NORTH);
-    int numFlags = Coprocessor1.getConditionFlagCount();
+    int numFlags = LegacyApplication.services().context().coprocessor1.getConditionFlagCount();
     conditionFlagCheckBox = new JCheckBox[numFlags];
     JPanel checksPane = new JPanel(new GridLayout(2, numFlags / 2));
     for (int i = 0; i < numFlags; i++) {
@@ -123,10 +123,10 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
     int i = Integer.parseInt(checkBox.getText());
     if (checkBox.isSelected()) {
       checkBox.setSelected(true);
-      Coprocessor1.setConditionFlag(i);
+      LegacyApplication.services().instructionContext().setConditionFlag(i);
     } else {
       checkBox.setSelected(false);
-      Coprocessor1.clearConditionFlag(i);
+      LegacyApplication.services().instructionContext().clearConditionFlag(i);
     }
   }
 
@@ -136,7 +136,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    registers = Coprocessor1.getRegisters();
+    registers = LegacyApplication.services().context().coprocessor1.getRegisters();
     this.highlighting = false;
     Object[][] tableData = new Object[registers.length][3];
     for (int i = 0; i < registers.length; i++) {
@@ -150,7 +150,11 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
       if (i % 2 == 0) { // even numbered double registers
         long longValue = 0;
         try {
-          longValue = Coprocessor1.getLongFromRegisterPair(registers[i].getName());
+          longValue =
+              LegacyApplication.services()
+                  .context()
+                  .coprocessor1
+                  .getLongFromRegisterPair(registers[i].getName());
         } catch (InvalidRegisterAccessException ignored) {
         } // cannot happen since i must be even
         tableData[i][2] =
@@ -166,9 +170,9 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   /** Reset and redisplay registers. */
   public void clearWindow() {
     this.clearHighlighting();
-    Coprocessor1.resetRegisters();
+    LegacyApplication.services().context().coprocessor1.resetRegisters();
     this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
-    Coprocessor1.clearConditionFlags();
+    LegacyApplication.services().context().coprocessor1.clearConditionFlags();
     this.updateConditionFlagDisplay();
   }
 
@@ -199,7 +203,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
    * @param base number base for display (10 or 16)
    */
   public void updateRegisters(int base) {
-    registers = Coprocessor1.getRegisters();
+    registers = LegacyApplication.services().context().coprocessor1.getRegisters();
     for (int i = 0; i < registers.length; i++) {
       updateFloatRegisterValue(registers[i].getNumber(), registers[i].getValue(), base);
       if (i % 2 == 0) {
@@ -211,7 +215,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
 
   private void updateConditionFlagDisplay() {
     for (int i = 0; i < conditionFlagCheckBox.length; i++) {
-      conditionFlagCheckBox[i].setSelected(Coprocessor1.getConditionFlag(i) != 0);
+      conditionFlagCheckBox[i].setSelected(
+          LegacyApplication.services().context().coprocessor1.getConditionFlag(i) != 0);
     }
   }
 
@@ -237,7 +242,11 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   public void updateDoubleRegisterValue(int number, int base) {
     long val = 0;
     try {
-      val = Coprocessor1.getLongFromRegisterPair(registers[number].getName());
+      val =
+          LegacyApplication.services()
+              .context()
+              .coprocessor1
+              .getLongFromRegisterPair(registers[number].getName());
     } catch (InvalidRegisterAccessException ignored) {
     } // happens only if number is not even
     ((RegTableModel) table.getModel())
@@ -248,18 +257,26 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
   private void handleSimulatorNotice(SimulatorNotice notice) {
     if (notice.action() == SimulatorNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        Coprocessor1.addRegistersObserver(registersListener);
+        LegacyApplication.services().context().coprocessor1.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      Coprocessor1.deleteRegistersObserver(registersListener);
+      LegacyApplication.services()
+          .context()
+          .coprocessor1
+          .deleteRegistersObserver(registersListener);
     }
   }
 
   private void handleRegisterAccess(RegisterAccessNotice access) {
-    if (access.getAccessType() != AccessNotice.WRITE) return;
-    Register reg = Coprocessor1.getRegister(access.getRegisterName());
-    if (reg == null) return;
+    if (access.getAccessType() != AccessNotice.WRITE) {
+      return;
+    }
+    Register reg =
+        LegacyApplication.services().context().coprocessor1.getRegister(access.getRegisterName());
+    if (reg == null) {
+      return;
+    }
     this.highlighting = true;
     this.highlightRow = reg.getNumber();
     table.tableChanged(new TableModelEvent(table.getModel()));
@@ -379,8 +396,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             int iVal = Binary.stringToInt(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
-              Coprocessor1.updateRegister(row, iVal);
+            synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+              LegacyApplication.services().instructionContext().updateCoprocessor1(row, iVal);
             }
             data[row][col] = NumberDisplayBaseChooser.formatFloatNumber(iVal, valueBase);
 
@@ -388,8 +405,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             fVal = Float.parseFloat(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
-              Coprocessor1.setRegisterToFloat(row, fVal);
+            synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+              LegacyApplication.services().context().coprocessor1.setRegisterToFloat(row, fVal);
             }
             data[row][col] = NumberDisplayBaseChooser.formatNumber(fVal, valueBase);
           }
@@ -397,7 +414,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
           int dReg = row - (row % 2);
           setDisplayAndModelValueAt(
               NumberDisplayBaseChooser.formatDoubleNumber(
-                  Coprocessor1.getLongFromRegisterPair(dReg), valueBase),
+                  LegacyApplication.services().context().coprocessor1.getLongFromRegisterPair(dReg),
+                  valueBase),
               dReg,
               DOUBLE_COLUMN);
         } else if (col == DOUBLE_COLUMN) {
@@ -405,8 +423,8 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             long lVal = Binary.stringToLong(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
-              Coprocessor1.setRegisterPairToLong(row, lVal);
+            synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+              LegacyApplication.services().context().coprocessor1.setRegisterPairToLong(row, lVal);
             }
             setDisplayAndModelValueAt(
                 NumberDisplayBaseChooser.formatDoubleNumber(lVal, valueBase), row, col);
@@ -414,19 +432,24 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
             dVal = Double.parseDouble(sVal);
             //  Assures that if changed during MIPS program execution, the update will
             //  occur only between MIPS instructions.
-            synchronized (Globals.memoryAndRegistersLock) {
-              Coprocessor1.setRegisterPairToDouble(row, dVal);
+            synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+              LegacyApplication.services()
+                  .context()
+                  .coprocessor1
+                  .setRegisterPairToDouble(row, dVal);
             }
             setDisplayAndModelValueAt(
                 NumberDisplayBaseChooser.formatNumber(dVal, valueBase), row, col);
           }
           // have to update corresponding float display
           setDisplayAndModelValueAt(
-              NumberDisplayBaseChooser.formatNumber(Coprocessor1.getValue(row), valueBase),
+              NumberDisplayBaseChooser.formatNumber(
+                  LegacyApplication.services().context().coprocessor1.getValue(row), valueBase),
               row,
               FLOAT_COLUMN);
           setDisplayAndModelValueAt(
-              NumberDisplayBaseChooser.formatNumber(Coprocessor1.getValue(row + 1), valueBase),
+              NumberDisplayBaseChooser.formatNumber(
+                  LegacyApplication.services().context().coprocessor1.getValue(row + 1), valueBase),
               row + 1,
               FLOAT_COLUMN);
         }
@@ -521,7 +544,7 @@ public class Coprocessor1Window extends JPanel implements ActionListener {
       /* name */ "Each register has a tool tip describing its usage convention",
       /* float */ "32-bit single precision IEEE 754 floating point register",
       /* double */ "64-bit double precision IEEE 754 floating point register (uses a pair of 32-bit"
-                       + " registers)"
+          + " registers)"
     };
 
     // Implement table header tool tips.

@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -53,8 +54,8 @@ public class SettingsExceptionHandlerAction extends GuiAction {
 
   // launch dialog for setting and filename specification
   public void actionPerformed(ActionEvent e) {
-    initialSelected = Globals.getSettings().getExceptionHandlerEnabled();
-    initialPathname = Globals.getSettings().getExceptionHandler();
+    initialSelected = LegacyApplication.services().getSettings().getExceptionHandlerEnabled();
+    initialPathname = LegacyApplication.services().getSettings().getExceptionHandler();
     exceptionHandlerDialog = new JDialog(VenusUI.instance(), "Exception Handler", true);
     exceptionHandlerDialog.setContentPane(buildDialogPanel());
     exceptionHandlerDialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
@@ -76,7 +77,8 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     // Top row - the check box for setting...
     exceptionHandlerSetting =
         new JCheckBox("Include this exception handler file in all assemble operations");
-    exceptionHandlerSetting.setSelected(Globals.getSettings().getExceptionHandlerEnabled());
+    exceptionHandlerSetting.setSelected(
+        LegacyApplication.services().getSettings().getExceptionHandlerEnabled());
     exceptionHandlerSetting.addActionListener(new ExceptionHandlerSettingAction());
     contents.add(exceptionHandlerSetting, BorderLayout.NORTH);
     // Middle row - the button and text field for exception handler file selection
@@ -84,7 +86,8 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     exceptionHandlerSelectionButton = new JButton("Browse");
     exceptionHandlerSelectionButton.setEnabled(exceptionHandlerSetting.isSelected());
     exceptionHandlerSelectionButton.addActionListener(new ExceptionHandlerSelectionAction());
-    exceptionHandlerDisplay = new JTextField(Globals.getSettings().getExceptionHandler(), 30);
+    exceptionHandlerDisplay =
+        new JTextField(LegacyApplication.services().getSettings().getExceptionHandler(), 30);
     exceptionHandlerDisplay.setEditable(false);
     exceptionHandlerDisplay.setEnabled(exceptionHandlerSetting.isSelected());
     specifyHandlerFile.add(exceptionHandlerSelectionButton);
@@ -117,9 +120,9 @@ public class SettingsExceptionHandlerAction extends GuiAction {
     if (initialSelected != finalSelected
         || initialPathname == null && finalPathname != null
         || initialPathname != null && !initialPathname.equals(finalPathname)) {
-      Globals.getSettings().setExceptionHandlerEnabled(finalSelected);
+      LegacyApplication.services().getSettings().setExceptionHandlerEnabled(finalSelected);
       if (finalSelected) {
-        Globals.getSettings().setExceptionHandler(finalPathname);
+        LegacyApplication.services().getSettings().setExceptionHandler(finalPathname);
       }
     }
   }
@@ -145,10 +148,12 @@ public class SettingsExceptionHandlerAction extends GuiAction {
   private class ExceptionHandlerSelectionAction implements ActionListener {
     public void actionPerformed(ActionEvent e) {
       JFileChooser chooser = new JFileChooser();
-      String pathname = Globals.getSettings().getExceptionHandler();
+      String pathname = LegacyApplication.services().getSettings().getExceptionHandler();
       if (pathname != null) {
         File file = new File(pathname);
-        if (file.exists()) chooser.setSelectedFile(file);
+        if (file.exists()) {
+          chooser.setSelectedFile(file);
+        }
       }
       int result = chooser.showOpenDialog(VenusUI.instance());
       if (result == JFileChooser.APPROVE_OPTION) {

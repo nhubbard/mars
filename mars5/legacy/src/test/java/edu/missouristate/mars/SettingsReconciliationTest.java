@@ -7,6 +7,8 @@ import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.di.MarsComponent;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -100,9 +102,7 @@ class SettingsReconciliationTest {
     first.registerFile().setValue(33, 45);
     assertThat(second.registerFile().getValue(8)).isZero();
     assertThat(second.registerFile().getValue(33)).isZero();
-    var configuration =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.createConfiguration(
-            "CompactDataAtZero");
+    var configuration = LegacyMemoryConfigurations.createConfiguration("CompactDataAtZero");
     assertThat(first.registerFile().getPC()).isEqualTo(configuration.getTextBaseAddress());
     assertThat(first.registerFile().getValue(28)).isEqualTo(configuration.getGlobalPointer());
     assertThat(first.registerFile().getValue(29)).isEqualTo(configuration.getStackPointer());
@@ -118,10 +118,10 @@ class SettingsReconciliationTest {
     assertThat(first.context().coprocessor0).isNotSameAs(second.context().coprocessor0);
     first.context().coprocessor0.updateRegister(12, 42);
     assertThat(second.context().coprocessor0.getValue(12))
-        .isEqualTo(edu.missouristate.mars.mips.hardware.Coprocessor0State.DEFAULT_STATUS_VALUE);
+        .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
     first.context().coprocessor0.resetRegisters();
     assertThat(first.context().coprocessor0.getValue(12))
-        .isEqualTo(edu.missouristate.mars.mips.hardware.Coprocessor0State.DEFAULT_STATUS_VALUE);
+        .isEqualTo(Coprocessor0State.DEFAULT_STATUS_VALUE);
   }
 
   @Test

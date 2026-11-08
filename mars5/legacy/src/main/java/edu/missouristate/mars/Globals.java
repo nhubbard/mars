@@ -4,6 +4,10 @@ import edu.missouristate.mars.api.HeadlessSyscallEnvironment;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.core.InstructionContext;
+import edu.missouristate.mars.core.MarsContext;
+import edu.missouristate.mars.di.CoreModule;
+import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
@@ -81,15 +85,15 @@ public class Globals {
 
   /* Flag that indicates whether or not instructionSet has been initialized. */
   private static boolean initialized = false;
-  private static edu.missouristate.mars.core.MarsContext context;
+  private static MarsContext context;
 
-  public static edu.missouristate.mars.core.MarsContext context() {
+  public static MarsContext context() {
     initialize();
     return context;
   }
 
-  public static edu.missouristate.mars.core.InstructionContext instructionContext() {
-    return new edu.missouristate.mars.core.InstructionContext(context(), syscallEnvironment);
+  public static InstructionContext instructionContext() {
+    return new InstructionContext(context(), syscallEnvironment);
   }
 
   private static SyscallEnvironment syscallEnvironment = new HeadlessSyscallEnvironment();
@@ -155,7 +159,8 @@ public class Globals {
   public static final String version = "4.6";
 
   /** List of accepted file extensions for MIPS assembly source files. */
-  public static final ArrayList<String> fileExtensions = getFileExtensions();
+  public static final ArrayList<String> fileExtensions =
+      edu.missouristate.mars.legacy.LegacyMetadata.fileExtensions;
 
   /** Maximum length of scrolled message window (MARS Messages and Run I/O) */
   public static final int maximumMessageCharacters = getMessageLimit();
@@ -179,7 +184,8 @@ public class Globals {
    * Array of strings to display for ASCII codes in ASCII display of data segment. ASCII code 0-255
    * is array index.
    */
-  public static final String[] ASCII_TABLE = getAsciiStrings();
+  public static final String[] ASCII_TABLE =
+      edu.missouristate.mars.legacy.LegacyMetadata.ASCII_TABLE;
 
   /** MARS exit code -- useful with SYSCALL 17 when running from command line (not GUI) */
   public static int exitCode = 0;
@@ -204,7 +210,9 @@ public class Globals {
 
   public static void setSyscallEnvironment(SyscallEnvironment env) {
     syscallEnvironment = env;
-    if (program != null) program.setSyscallEnvironment(env);
+    if (program != null) {
+      program.setSyscallEnvironment(env);
+    }
   }
 
   public static Settings getSettings() {
@@ -216,17 +224,16 @@ public class Globals {
     if (!initialized) {
       settings = new Settings();
       context =
-          edu.missouristate.mars.di.DaggerMarsComponent.builder()
-              .coreModule(new edu.missouristate.mars.di.CoreModule(settings))
+          DaggerMarsComponent.builder()
+              .coreModule(new CoreModule(settings))
               .guiProxy(FRONTEND)
               .build()
               .context();
       initialized = true;
       instructionSet = context.instructionSet;
       symbolTable = context.symbolTable;
-      memory = Memory.getInstance();
+      memory = Memory.bindLegacyState(context.memory);
       debug = false;
-      memory.clear();
     }
   }
 
@@ -260,9 +267,15 @@ public class Globals {
     String[] lets = let.split(" +");
     int maxLength = 0;
     for (int i = 0; i < lets.length; i++) {
-      if (lets[i].equals("null")) lets[i] = placeHolder;
-      if (lets[i].equals("space")) lets[i] = " ";
-      if (lets[i].length() > maxLength) maxLength = lets[i].length();
+      if (lets[i].equals("null")) {
+        lets[i] = placeHolder;
+      }
+      if (lets[i].equals("space")) {
+        lets[i] = " ";
+      }
+      if (lets[i].length() > maxLength) {
+        maxLength = lets[i].length();
+      }
     }
     String padding = "        ";
     maxLength++;

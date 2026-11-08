@@ -1,33 +1,16 @@
 package edu.missouristate.mars.plugin.tools;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.AccessNotice;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
-import edu.missouristate.mars.mips.hardware.Coprocessor0;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
+import edu.missouristate.mars.plugin.venus.AbstractFontSettingDialog;
+import edu.missouristate.mars.plugin.venus.VenusUI;
 import edu.missouristate.mars.simulator.Exceptions;
 import edu.missouristate.mars.simulator.Simulator;
 import edu.missouristate.mars.util.Binary;
-import edu.missouristate.mars.plugin.venus.AbstractFontSettingDialog;
-import edu.missouristate.mars.plugin.venus.VenusUI;
-
-import javax.swing.Box;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSlider;
-import javax.swing.JSplitPane;
-import javax.swing.JTextArea;
-import javax.swing.border.TitledBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.text.DefaultCaret;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dialog;
@@ -44,6 +27,22 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Arrays;
 import java.util.Random;
+import javax.swing.Box;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.text.DefaultCaret;
 
 /*
 Copyright (c) 2003-2014,  Pete Sanderson and Kenneth Vollmar
@@ -213,7 +212,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
     updateMMIOControl(TRANSMITTER_CONTROL, readyBitSet(TRANSMITTER_CONTROL));
     // We want to be an observer only of MIPS reads from RECEIVER_DATA and writes to
     // TRANSMITTER_DATA.
-    // Use the Globals.memory.addObserver() methods instead of inherited method to achieve this.
+    // Use the LegacyApplication.services().memory.addObserver() methods instead of inherited method
+    // to achieve this.
     addAsObserver(RECEIVER_DATA, RECEIVER_DATA);
     addAsObserver(TRANSMITTER_DATA, TRANSMITTER_DATA);
     // We want to be notified of each instruction execution, because instruction count is the
@@ -281,7 +281,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
         && notice.getAccessType() == AccessNotice.WRITE) {
       updateMMIOControl(TRANSMITTER_CONTROL, readyBitCleared(TRANSMITTER_CONTROL));
       intWithCharacterToDisplay = notice.getValue();
-      if (!displayAfterDelay) displayCharacter(intWithCharacterToDisplay);
+      if (!displayAfterDelay) {
+        displayCharacter(intWithCharacterToDisplay);
+      }
       this.countingInstructions = true;
       this.instructionCount = 0;
       this.transmitDelayInstructionCountLimit = generateDelay();
@@ -297,14 +299,25 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
             || Memory.inKernelTextSegment(notice.getAddress()))) {
       this.instructionCount++;
       if (this.instructionCount >= this.transmitDelayInstructionCountLimit) {
-        if (displayAfterDelay) displayCharacter(intWithCharacterToDisplay);
+        if (displayAfterDelay) {
+          displayCharacter(intWithCharacterToDisplay);
+        }
         this.countingInstructions = false;
         int updatedTransmitterControl = readyBitSet(TRANSMITTER_CONTROL);
         updateMMIOControl(TRANSMITTER_CONTROL, updatedTransmitterControl);
         if (updatedTransmitterControl != 1
-            && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2)
+            && (LegacyApplication.services()
+                        .context()
+                        .coprocessor0
+                        .getValue(Coprocessor0State.STATUS)
+                    & 2)
                 == 0 // Added by Carl Hauser Nov 2008
-            && (Coprocessor0.getValue(Coprocessor0.STATUS) & 1) == 1) {
+            && (LegacyApplication.services()
+                        .context()
+                        .coprocessor0
+                        .getValue(Coprocessor0State.STATUS)
+                    & 1)
+                == 1) {
           // interrupt-enabled bit is set in both Tranmitter Control and in
           // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external
           // interrupt.
@@ -346,8 +359,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       int x = (intWithCharacterToDisplay & 0xFFF00000) >>> 20;
       int y = (intWithCharacterToDisplay & 0x000FFF00) >>> 8;
       // If X or Y values are outside current range, set to range limit.
-      if (x >= columns) x = columns - 1;
-      if (y >= rows) y = rows - 1;
+      if (x >= columns) {
+        x = columns - 1;
+      }
+      if (y >= rows) {
+        y = rows - 1;
+      }
       // display is a JTextArea whose character positioning in the text is linear.
       // Converting (row,column) to linear position requires knowing how many columns
       // are in each row.  I add one because each row except the last ends with '\n' that
@@ -480,94 +497,113 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   protected JComponent getHelpComponent() {
     final String helpContent =
         "Keyboard And Display MMIO Simulator\n\n"
-            + "Use this program to simulate Memory-Mapped I/O (MMIO) for a keyboard input device and character "
-            + "display output device.  It may be run either from MARS' Tools menu or as a stand-alone application. "
-            + "For the latter, simply write a driver to instantiate a mars.tools.KeyboardAndDisplaySimulator object "
-            + "and invoke its go() method.\n"
+            + "Use this program to simulate Memory-Mapped I/O (MMIO) for a keyboard input device"
+            + " and character display output device.  It may be run either from MARS' Tools menu or"
+            + " as a stand-alone application. For the latter, simply write a driver to instantiate"
+            + " a mars.tools.KeyboardAndDisplaySimulator object and invoke its go() method.\n"
             + "\n"
-            + "While the tool is connected to MIPS, each keystroke in the text area causes the corresponding ASCII "
-            + "code to be placed in the Receiver Data register (low-order byte of memory word "
+            + "While the tool is connected to MIPS, each keystroke in the text area causes the"
+            + " corresponding ASCII code to be placed in the Receiver Data register (low-order byte"
+            + " of memory word "
             + Binary.intToHexString(RECEIVER_DATA)
             + "), and the "
             + "Ready bit to be set to 1 in the Receiver Control register (low-order bit of "
             + Binary.intToHexString(RECEIVER_CONTROL)
-            + ").  The Ready "
-            + "bit is automatically reset to 0 when the MIPS program reads the Receiver Data using an 'lw' instruction.\n"
+            + ").  The Ready bit is automatically reset to 0 when the MIPS program reads the"
+            + " Receiver Data using an 'lw' instruction.\n"
             + "\n"
-            + "A program may write to the display area by detecting the Ready bit set (1) in the Transmitter Control "
-            + "register (low-order bit of memory word "
+            + "A program may write to the display area by detecting the Ready bit set (1) in the"
+            + " Transmitter Control register (low-order bit of memory word "
             + Binary.intToHexString(TRANSMITTER_CONTROL)
             + "), then storing the ASCII code of the character to be "
             + "displayed in the Transmitter Data register (low-order byte of "
             + Binary.intToHexString(TRANSMITTER_DATA)
-            + ") using a 'sw' instruction.  This "
-            + "triggers the simulated display to clear the Ready bit to 0, delay awhile to simulate processing the data, "
-            + "then set the Ready bit back to 1.  The delay is based on a count of executed MIPS instructions.\n"
+            + ") using a 'sw' instruction.  This triggers the simulated display to clear the Ready"
+            + " bit to 0, delay awhile to simulate processing the data, then set the Ready bit back"
+            + " to 1.  The delay is based on a count of executed MIPS instructions.\n"
             + "\n"
-            + "In a polled approach to I/O, a MIPS program idles in a loop, testing the device's Ready bit on each "
-            + "iteration until it is set to 1 before proceeding.  This tool also supports an interrupt-driven approach "
-            + "which requires the program to provide an interrupt handler but allows it to perform useful processing "
-            + "instead of idly looping.  When the device is ready, it signals an interrupt and the MARS simuator will "
-            + "transfer control to the interrupt handler.  Note: in MARS, the interrupt handler has to co-exist with the "
-            + "exception handler in kernel memory, both having the same entry address.  Interrupt-driven I/O is enabled "
-            + "when the MIPS program sets the Interrupt-Enable bit in the device's control register.  Details below.\n"
+            + "In a polled approach to I/O, a MIPS program idles in a loop, testing the device's"
+            + " Ready bit on each iteration until it is set to 1 before proceeding.  This tool also"
+            + " supports an interrupt-driven approach which requires the program to provide an"
+            + " interrupt handler but allows it to perform useful processing instead of idly"
+            + " looping.  When the device is ready, it signals an interrupt and the MARS simuator"
+            + " will transfer control to the interrupt handler.  Note: in MARS, the interrupt"
+            + " handler has to co-exist with the exception handler in kernel memory, both having"
+            + " the same entry address.  Interrupt-driven I/O is enabled when the MIPS program sets"
+            + " the Interrupt-Enable bit in the device's control register.  Details below.\n"
             + "\n"
-            + "Upon setting the Receiver Controller's Ready bit to 1, its Interrupt-Enable bit (bit position 1) is tested. "
-            + "If 1, then an External Interrupt will be generated.  Before executing the next MIPS instruction, the runtime "
-            + "simulator will detect the interrupt, place the interrupt code (0) into bits 2-6 of Coprocessor 0's Cause "
-            + "register ($13), set bit 8 to 1 to identify the source as keyboard, place the program counter value (address "
-            + "of the NEXT instruction to be executed) into its EPC register ($14), and check to see if an interrupt/trap "
-            + "handler is present (looks for instruction code at address 0x80000180).  If so, the program counter is set to "
-            + "that address.  If not, program execution is terminated with a message to the Run I/O tab.  The Interrupt-Enable "
-            + "bit is 0 by default and has to be set by the MIPS program if interrupt-driven input is desired.  Interrupt-driven "
-            + "input permits the program to perform useful tasks instead of idling in a loop polling the Receiver Ready bit!  "
-            + "Very event-oriented.  The Ready bit is supposed to be read-only but in MARS it is not.\n"
+            + "Upon setting the Receiver Controller's Ready bit to 1, its Interrupt-Enable bit (bit"
+            + " position 1) is tested. If 1, then an External Interrupt will be generated.  Before"
+            + " executing the next MIPS instruction, the runtime simulator will detect the"
+            + " interrupt, place the interrupt code (0) into bits 2-6 of Coprocessor 0's Cause"
+            + " register ($13), set bit 8 to 1 to identify the source as keyboard, place the"
+            + " program counter value (address of the NEXT instruction to be executed) into its EPC"
+            + " register ($14), and check to see if an interrupt/trap handler is present (looks for"
+            + " instruction code at address 0x80000180).  If so, the program counter is set to that"
+            + " address.  If not, program execution is terminated with a message to the Run I/O"
+            + " tab.  The Interrupt-Enable bit is 0 by default and has to be set by the MIPS"
+            + " program if interrupt-driven input is desired.  Interrupt-driven input permits the"
+            + " program to perform useful tasks instead of idling in a loop polling the Receiver"
+            + " Ready bit!  Very event-oriented.  The Ready bit is supposed to be read-only but in"
+            + " MARS it is not.\n"
             + "\n"
-            + "A similar test and potential response occurs when the Transmitter Controller's Ready bit is set to 1.  This "
-            + "occurs after the simulated delay described above.  The only difference is the Cause register bit to identify "
-            + "the (simulated) display as external interrupt source is bit position 9 rather than 8.  This permits you to "
-            + "write programs that perform interrupt-driven output - the program can perform useful tasks while the "
-            + "output device is processing its data.  Much better than idling in a loop polling the Transmitter Ready bit! "
-            + "The Ready bit is supposed to be read-only but in MARS it is not.\n"
+            + "A similar test and potential response occurs when the Transmitter Controller's Ready"
+            + " bit is set to 1.  This occurs after the simulated delay described above.  The only"
+            + " difference is the Cause register bit to identify the (simulated) display as"
+            + " external interrupt source is bit position 9 rather than 8.  This permits you to"
+            + " write programs that perform interrupt-driven output - the program can perform"
+            + " useful tasks while the output device is processing its data.  Much better than"
+            + " idling in a loop polling the Transmitter Ready bit! The Ready bit is supposed to be"
+            + " read-only but in MARS it is not.\n"
             + "\n"
-            + "IMPORTANT NOTE: The Transmitter Controller Ready bit is set to its initial value of 1 only when you click the tool's "
-            + "'Connect to MIPS' button ('Assemble and Run' in the stand-alone version) or the tool's Reset button!  If you run a "
-            + "MIPS program and reset it in MARS, the controller's Ready bit is cleared to 0!  Configure the Data Segment Window to "
-            + "display the MMIO address range so you can directly observe values stored in the MMIO addresses given above.\n"
+            + "IMPORTANT NOTE: The Transmitter Controller Ready bit is set to its initial value of"
+            + " 1 only when you click the tool's 'Connect to MIPS' button ('Assemble and Run' in"
+            + " the stand-alone version) or the tool's Reset button!  If you run a MIPS program and"
+            + " reset it in MARS, the controller's Ready bit is cleared to 0!  Configure the Data"
+            + " Segment Window to display the MMIO address range so you can directly observe values"
+            + " stored in the MMIO addresses given above.\n"
             + "\n"
-            + "COOL NEW FEATURE (MARS 4.5, AUGUST 2014): Clear the display window from MIPS program\n"
+            + "COOL NEW FEATURE (MARS 4.5, AUGUST 2014): Clear the display window from MIPS"
+            + " program\n"
             + "\n"
-            + "When ASCII 12 (form feed) is stored in the Transmitter Data register, the tool's Display window will be cleared "
-            + "following the specified transmission delay.\n"
+            + "When ASCII 12 (form feed) is stored in the Transmitter Data register, the tool's"
+            + " Display window will be cleared following the specified transmission delay.\n"
             + "\n"
-            + "COOL NEW FEATURE (MARS 4.5, AUGUST 2014): Simulate a text-based virtual terminal with (x,y) positioning\n"
+            + "COOL NEW FEATURE (MARS 4.5, AUGUST 2014): Simulate a text-based virtual terminal"
+            + " with (x,y) positioning\n"
             + "\n"
-            + "When ASCII 7 (bell) is stored in the Transmitter Data register, the cursor in the tool's Display window will "
-            + "be positioned at the (X,Y) coordinate specified by its high-order 3 bytes, following the specfied transmission delay. "
-            + "Place the X position (column) in bit positions 20-31 of the "
-            + "Transmitter Data register and place the Y position (row) in bit positions 8-19.  The cursor is not displayed "
-            + "but subsequent transmitted characters will be displayed starting at that position. Position (0,0) is at upper left. "
-            + "Why did I select the ASCII Bell character?  Just for fun!\n"
+            + "When ASCII 7 (bell) is stored in the Transmitter Data register, the cursor in the"
+            + " tool's Display window will be positioned at the (X,Y) coordinate specified by its"
+            + " high-order 3 bytes, following the specfied transmission delay. Place the X position"
+            + " (column) in bit positions 20-31 of the Transmitter Data register and place the Y"
+            + " position (row) in bit positions 8-19.  The cursor is not displayed but subsequent"
+            + " transmitted characters will be displayed starting at that position. Position (0,0)"
+            + " is at upper left. Why did I select the ASCII Bell character?  Just for fun!\n"
             + "\n"
-            + "The dimensions (number of columns and rows) of the virtual text-based terminal are calculated based on the display "
-            + "window size and font specifications.  This calculation occurs during program execution upon first use of the ASCII 7 code. "
-            + "It will not change until the Reset button is clicked, even if the window is resized.  The window dimensions are included in "
-            + "its title, which will be updated upon window resize or font change.  No attempt is made to reposition data characters already "
-            + "transmitted by the program.  To change the dimensions of the virtual terminal, resize the Display window as desired (note there "
-            + "is an adjustible splitter between the Display and Keyboard windows) then click the tool's Reset button.  "
-            + "Implementation detail: the window is implemented by a JTextArea to which text is written as a string. "
-            + "Its caret (cursor) position is required to be a position within the string.  I simulated a text terminal with random positioning "
-            + "by pre-allocating a string of spaces with one space per (X,Y) position and an embedded newline where each line ends. Each character "
-            + "transmitted to the window thus replaces an existing character in the string.\n"
+            + "The dimensions (number of columns and rows) of the virtual text-based terminal are"
+            + " calculated based on the display window size and font specifications.  This"
+            + " calculation occurs during program execution upon first use of the ASCII 7 code. It"
+            + " will not change until the Reset button is clicked, even if the window is resized. "
+            + " The window dimensions are included in its title, which will be updated upon window"
+            + " resize or font change.  No attempt is made to reposition data characters already"
+            + " transmitted by the program.  To change the dimensions of the virtual terminal,"
+            + " resize the Display window as desired (note there is an adjustible splitter between"
+            + " the Display and Keyboard windows) then click the tool's Reset button. "
+            + " Implementation detail: the window is implemented by a JTextArea to which text is"
+            + " written as a string. Its caret (cursor) position is required to be a position"
+            + " within the string.  I simulated a text terminal with random positioning by"
+            + " pre-allocating a string of spaces with one space per (X,Y) position and an embedded"
+            + " newline where each line ends. Each character transmitted to the window thus"
+            + " replaces an existing character in the string.\n"
             + "\n"
-            + "Thanks to Eric Wang at Washington State University, who requested these features to enable use of this display as the target "
-            + "for programming MMIO text-based games.\n"
+            + "Thanks to Eric Wang at Washington State University, who requested these features to"
+            + " enable use of this display as the target for programming MMIO text-based games.\n"
             + "\n"
             + "Contact Pete Sanderson at psanderson@otterbein.edu with questions or comments.\n";
     JButton help = new JButton("Help");
     // TODO: Fix weird Java 1.5 backport/constraint.
     help.addActionListener(
-        e -> {
+        _ -> {
           JTextArea ja = new JTextArea(helpContent);
           ja.setRows(30);
           ja.setColumns(60);
@@ -714,10 +750,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   private synchronized void updateMMIOControlAndData(
       int controlAddr, int controlValue, int dataAddr, int dataValue, boolean controlOnly) {
     if (!this.isBeingUsedAsAMarsTool || connectButton.isConnected()) {
-      synchronized (Globals.memoryAndRegistersLock) {
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
         try {
-          Globals.memory.setRawWord(controlAddr, controlValue);
-          if (!controlOnly) Globals.memory.setRawWord(dataAddr, dataValue);
+          LegacyApplication.services().memory.setRawWord(controlAddr, controlValue);
+          if (!controlOnly) {
+            LegacyApplication.services().memory.setRawWord(dataAddr, dataValue);
+          }
         } catch (AddressErrorException aee) {
           System.out.println("Tool author specified incorrect MMIO address!" + aee);
           System.exit(0);
@@ -743,7 +781,9 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1)
   private static boolean isReadyBitSet(int mmioControlRegister) {
     try {
-      return (Globals.memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES) & 1) == 1;
+      return (LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+              & 1)
+          == 1;
     } catch (AddressErrorException aee) {
       System.out.println("Tool author specified incorrect MMIO address!" + aee);
       System.exit(0);
@@ -756,7 +796,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1)
   private static int readyBitSet(int mmioControlRegister) {
     try {
-      return Globals.memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES) | 1;
+      return LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+          | 1;
     } catch (AddressErrorException aee) {
       System.out.println("Tool author specified incorrect MMIO address!" + aee);
       System.exit(0);
@@ -769,7 +810,8 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
   // Have to preserve the value of Interrupt Enable bit (bit 1). Bits 2 and higher don't matter.
   private static int readyBitCleared(int mmioControlRegister) {
     try {
-      return Globals.memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES) & 2;
+      return LegacyApplication.services().memory.get(mmioControlRegister, Memory.WORD_LENGTH_BYTES)
+          & 2;
     } catch (AddressErrorException aee) {
       System.out.println("Tool author specified incorrect MMIO address!" + aee);
       System.exit(0);
@@ -808,8 +850,12 @@ public class KeyboardAndDisplaySimulator extends AbstractMarsToolAndApplication 
       updateMMIOControlAndData(
           RECEIVER_CONTROL, updatedReceiverControl, RECEIVER_DATA, e.getKeyChar() & 0x00000ff);
       if (updatedReceiverControl != 1
-          && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0 // Added by Carl Hauser Nov 2008
-          && (Coprocessor0.getValue(Coprocessor0.STATUS) & 1) == 1) {
+          && (LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+                  & 2)
+              == 0 // Added by Carl Hauser Nov 2008
+          && (LegacyApplication.services().context().coprocessor0.getValue(Coprocessor0State.STATUS)
+                  & 1)
+              == 1) {
         // interrupt-enabled bit is set in both Receiver Control and in
         // Coprocessor0 Status register, and Interrupt Level Bit is 0, so trigger external
         // interrupt.

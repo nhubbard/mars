@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import edu.missouristate.mars.util.*;
@@ -61,7 +61,7 @@ public class Coprocessor0Window extends JPanel {
   /** Constructor which sets up a fresh window with a table that contains the register values. */
   public Coprocessor0Window() {
     Simulator.getInstance().addSimulatorListener(this::handleSimulatorNotice);
-    settings = Globals.getSettings();
+    settings = LegacyApplication.services().getSettings();
     this.highlighting = false;
     table = new MyTippedJTable(new RegTableModel(setupWindow()));
     table.getColumnModel().getColumn(NAME_COLUMN).setPreferredWidth(50);
@@ -101,7 +101,7 @@ public class Coprocessor0Window extends JPanel {
    * @return The array object with the data for the window.
    */
   public Object[][] setupWindow() {
-    registers = Coprocessor0.getRegisters();
+    registers = LegacyApplication.services().context().coprocessor0.getRegisters();
     Object[][] tableData = new Object[registers.length][3];
     rowGivenRegNumber = new int[32]; // maximum number of registers
     for (int i = 0; i < registers.length; i++) {
@@ -119,7 +119,7 @@ public class Coprocessor0Window extends JPanel {
   /** Reset and redisplay registers */
   public void clearWindow() {
     this.clearHighlighting();
-    Coprocessor0.resetRegisters();
+    LegacyApplication.services().context().coprocessor0.resetRegisters();
     this.updateRegisters(VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase());
   }
 
@@ -150,7 +150,7 @@ public class Coprocessor0Window extends JPanel {
    * @param base number base for display (10 or 16)
    */
   public void updateRegisters(int base) {
-    registers = Coprocessor0.getRegisters();
+    registers = LegacyApplication.services().context().coprocessor0.getRegisters();
     for (Register register : registers) {
       this.updateRegisterValue(register.getNumber(), register.getValue(), base);
     }
@@ -171,20 +171,30 @@ public class Coprocessor0Window extends JPanel {
   private void handleSimulatorNotice(SimulatorNotice notice) {
     if (notice.action() == SimulatorNotice.SIMULATOR_START) {
       if (notice.runSpeed() != RunSpeedPanel.UNLIMITED_SPEED || notice.maxSteps() == 1) {
-        Coprocessor0.addRegistersObserver(registersListener);
+        LegacyApplication.services().context().coprocessor0.addRegistersObserver(registersListener);
         this.highlighting = true;
       }
     } else {
-      Coprocessor0.deleteRegistersObserver(registersListener);
+      LegacyApplication.services()
+          .context()
+          .coprocessor0
+          .deleteRegistersObserver(registersListener);
     }
   }
 
   private void handleRegisterAccess(RegisterAccessNotice access) {
-    if (access.getAccessType() != AccessNotice.WRITE) return;
-    Register reg = Coprocessor0.getRegister(access.getRegisterName());
-    if (reg == null) return;
-    int registerRow = Coprocessor0.getRegisterPosition(reg);
-    if (registerRow < 0) return;
+    if (access.getAccessType() != AccessNotice.WRITE) {
+      return;
+    }
+    Register reg =
+        LegacyApplication.services().context().coprocessor0.getRegister(access.getRegisterName());
+    if (reg == null) {
+      return;
+    }
+    int registerRow = LegacyApplication.services().context().coprocessor0.getRegisterPosition(reg);
+    if (registerRow < 0) {
+      return;
+    }
     this.highlighting = true;
     this.highlightRow = registerRow;
     table.tableChanged(new TableModelEvent(table.getModel()));
@@ -301,8 +311,10 @@ public class Coprocessor0Window extends JPanel {
       }
       //  Assures that if changed during MIPS program execution, the update will
       //  occur only between MIPS instructions.
-      synchronized (Globals.memoryAndRegistersLock) {
-        Coprocessor0.updateRegister(registers[row].getNumber(), val);
+      synchronized (LegacyApplication.services().memoryAndRegistersLock) {
+        LegacyApplication.services()
+            .instructionContext()
+            .updateCoprocessor0(registers[row].getNumber(), val);
       }
       int valueBase = VenusUI.instance().getMainPane().getExecutePane().getValueDisplayBase();
       data[row][col] = NumberDisplayBaseChooser.formatNumber(val, valueBase);

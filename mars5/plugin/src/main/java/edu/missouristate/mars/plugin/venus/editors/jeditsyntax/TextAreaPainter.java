@@ -309,9 +309,13 @@ public class TextAreaPainter extends JComponent implements TabExpander {
    * @param evt The mouse event
    */
   public String getToolTipText(MouseEvent evt) {
-    if (highlights != null) return highlights.getToolTipText(evt);
-    else if (this.textArea.getTokenMarker() == null) return null;
-    else return this.textArea.getSyntaxSensitiveToolTipText(evt.getX(), evt.getY());
+    if (highlights != null) {
+      return highlights.getToolTipText(evt);
+    } else if (this.textArea.getTokenMarker() == null) {
+      return null;
+    } else {
+      return this.textArea.getSyntaxSensitiveToolTipText(evt.getX(), evt.getY());
+    }
   }
 
   /** Returns the font metrics used by this component. */
@@ -536,14 +540,21 @@ public class TextAreaPainter extends JComponent implements TabExpander {
 
   protected void paintHighlight(
       Graphics gfx, int line, int y) { // System.out.println("paintHighlight "+ (++count));
-    if (line >= textArea.getSelectionStartLine() && line <= textArea.getSelectionEndLine())
+    if (line >= textArea.getSelectionStartLine() && line <= textArea.getSelectionEndLine()) {
       paintLineHighlight(gfx, line, y);
+    }
 
-    if (highlights != null) highlights.paintHighlight(gfx, line, y);
+    if (highlights != null) {
+      highlights.paintHighlight(gfx, line, y);
+    }
 
-    if (bracketHighlight && line == textArea.getBracketLine()) paintBracketHighlight(gfx, line, y);
+    if (bracketHighlight && line == textArea.getBracketLine()) {
+      paintBracketHighlight(gfx, line, y);
+    }
 
-    if (line == textArea.getCaretLine()) paintCaret(gfx, line, y);
+    if (line == textArea.getCaretLine()) {
+      paintCaret(gfx, line, y);
+    }
   }
 
   protected void paintLineHighlight(
@@ -578,7 +589,9 @@ public class TextAreaPainter extends JComponent implements TabExpander {
             textArea._offsetToX(
                 line,
                 Math.min(lineLen, selectionEnd - textArea.getLineStartOffset(selectionEndLine)));
-        if (x1 == x2) x2++;
+        if (x1 == x2) {
+          x2++;
+        }
       } else if (selectionStartLine == selectionEndLine) {
         x1 = textArea._offsetToX(line, selectionStart - lineStart);
         x2 = textArea._offsetToX(line, selectionEnd - lineStart);
@@ -599,7 +612,9 @@ public class TextAreaPainter extends JComponent implements TabExpander {
 
   protected void paintBracketHighlight(Graphics gfx, int line, int y) {
     int position = textArea.getBracketPosition();
-    if (position == -1) return;
+    if (position == -1) {
+      return;
+    }
     y += fm.getLeading() + fm.getMaxDescent();
     int x = textArea._offsetToX(line, position);
     gfx.setColor(bracketHighlightColor);

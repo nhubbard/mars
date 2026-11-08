@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.simulator.Simulator;
 import java.awt.*;
 import java.awt.event.*;
@@ -57,9 +58,9 @@ public class MessagesPane extends JTabbedPane {
   // reaches MAXIMUM_SCROLLED_CHARACTERS in length then cut off
   // the first NUMBER_OF_CHARACTERS_TO_CUT characters.  The latter
   // must obviously be smaller than the former.
-  public static final int MAXIMUM_SCROLLED_CHARACTERS = Globals.maximumMessageCharacters;
+  public static final int MAXIMUM_SCROLLED_CHARACTERS = LegacyMetadata.maximumMessageCharacters;
   public static final int NUMBER_OF_CHARACTERS_TO_CUT =
-      Globals.maximumMessageCharacters / 10; // 10%
+      LegacyMetadata.maximumMessageCharacters / 10; // 10%
 
   /** Constructor for the class, sets up two fresh tabbed text areas for program feedback. */
   public MessagesPane() {
@@ -95,7 +96,7 @@ public class MessagesPane extends JTabbedPane {
             int lineStart = 0;
             int lineEnd = 0;
             try {
-              int line = assemble.getLineOfOffset(assemble.viewToModel(e.getPoint()));
+              int line = assemble.getLineOfOffset(assemble.viewToModel2D(e.getPoint()));
               lineStart = assemble.getLineStartOffset(line);
               lineEnd = assemble.getLineEndOffset(line);
               text = assemble.getText(lineStart, lineEnd - lineStart);
@@ -119,10 +120,12 @@ public class MessagesPane extends JTabbedPane {
                 String lineString = "";
                 String columnString = "";
                 for (int i = 0; i < stringTokens.length; i++) {
-                  if (stringTokens[i].equals(lineToken) && i < stringTokens.length - 1)
+                  if (stringTokens[i].equals(lineToken) && i < stringTokens.length - 1) {
                     lineString = stringTokens[i + 1];
-                  if (stringTokens[i].equals(columnToken) && i < stringTokens.length - 1)
+                  }
+                  if (stringTokens[i].equals(columnToken) && i < stringTokens.length - 1) {
                     columnString = stringTokens[i + 1];
+                  }
                 }
                 int line;
                 int column;
@@ -352,7 +355,7 @@ public class MessagesPane extends JTabbedPane {
     JDialog dialog = pane.createDialog(VenusUI.instance(), "MIPS Keyboard Input");
     dialog.setVisible(true);
     input = (String) pane.getInputValue();
-    this.postRunMessage(Globals.userInputAlert + input + "\n");
+    this.postRunMessage(LegacyMetadata.userInputAlert + input + "\n");
     return input;
   }
 

@@ -12,3 +12,8 @@ dependencies {
 }
 sourceSets.test { resources.srcDir("../core/src/test/resources") }
 tasks.test { useJUnitPlatform() }
+
+dependencies {
+ implementation("com.google.dagger:dagger:2.59.2")
+ annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
+}

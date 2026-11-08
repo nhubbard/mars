@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
@@ -58,7 +59,7 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
       mainUI.messagesPane.setSelectedComponent(mainUI.messagesPane.runTab);
       executePane.getTextSegmentWindow().setCodeHighlighting(true);
       try {
-        Globals.program.simulateStepAtPC(this);
+        LegacyApplication.services().getProgram().simulateStepAtPC(this);
       } catch (ProcessingException ignored) {
       }
     } else {
@@ -114,7 +115,8 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
       executePane.getTextSegmentWindow().unhighlightAllSteps();
       executePane
           .getTextSegmentWindow()
-          .highlightStepAtAddress(RegisterFile.getProgramCounter() - 4);
+          .highlightStepAtAddress(
+              LegacyApplication.services().context().registerFile.getProgramCounter() - 4);
     }
     VenusUI.setReset(false);
   }
@@ -134,9 +136,10 @@ public class RunStepAction extends GuiAction implements Simulator.SimFinishCallb
     String programArguments = executePane.getTextSegmentWindow().getProgramArguments();
     if (programArguments == null
         || programArguments.isEmpty()
-        || !Globals.getSettings().getProgramArguments()) {
+        || !LegacyApplication.services().getSettings().getProgramArguments()) {
       return;
     }
-    new ProgramArgumentList(programArguments).storeProgramArguments(Globals.context());
+    new ProgramArgumentList(programArguments)
+        .storeProgramArguments(LegacyApplication.services().context());
   }
 }

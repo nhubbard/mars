@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.core.SimulationSettings;
+import edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.Memory;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.hardware.RegisterFile;
@@ -25,8 +26,8 @@ class LegacyMemoryTest {
     int previousT1 = RegisterFile.getValue(9);
     try {
       Globals.program = null;
-      Globals.symbolTable = new SymbolTable("global");
-      var program = new edu.missouristate.mars.LegacyProgram();
+      Globals.symbolTable = new SymbolTable();
+      var program = new LegacyProgram();
       String path = SimulatorSmokeTest.resourcePath("01_helloworld.asm");
       program.readSource(path);
       program.tokenize();
@@ -42,8 +43,7 @@ class LegacyMemoryTest {
       var backStepper = program.getBackStepper();
       var independent =
           new MemoryState(
-              edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.createConfiguration(
-                  "Default"),
+              LegacyMemoryConfigurations.createConfiguration("Default"),
               new SimulationSettings(),
               (binary, pc) -> new ProgramStatement(binary, pc, Globals.instructionSet));
       independent.setWord(address, 99);
@@ -82,8 +82,7 @@ class LegacyMemoryTest {
       throws Exception {
     Globals.initialize();
     var previousProgram = Globals.program;
-    var previousConfiguration =
-        edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getCurrentConfiguration();
+    var previousConfiguration = LegacyMemoryConfigurations.getCurrentConfiguration();
     int previousPc = RegisterFile.getProgramCounter();
     int[] previousValues = new int[35];
     for (int i = 0; i < 35; i++) {
@@ -93,16 +92,14 @@ class LegacyMemoryTest {
       Globals.program = null;
       var session =
           new MemoryState(
-              edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.createConfiguration(
-                  "CompactTextAtZero"),
+              LegacyMemoryConfigurations.createConfiguration("CompactTextAtZero"),
               new SimulationSettings(),
               (binary, address) -> new ProgramStatement(binary, address, Globals.instructionSet));
       session.setWord(session.dataBaseAddress, 42);
       session.allocateBytesFromHeap(8);
       var singleton = Memory.getInstance();
-      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
-          edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.getConfigurationByName(
-              "CompactDataAtZero"));
+      LegacyMemoryConfigurations.setCurrentConfiguration(
+          LegacyMemoryConfigurations.getConfigurationByName("CompactDataAtZero"));
       assertThat(Globals.memory).isSameAs(singleton);
       assertThat(Memory.textBaseAddress).isEqualTo(0x3000);
       assertThat(Memory.dataBaseAddress).isZero();
@@ -117,10 +114,11 @@ class LegacyMemoryTest {
       assertThat(session.getWord(session.dataBaseAddress)).isEqualTo(42);
       assertThat(session.heapAddress).isEqualTo(session.heapBaseAddress + 8);
     } finally {
-      edu.missouristate.mars.mips.hardware.LegacyMemoryConfigurations.setCurrentConfiguration(
-          previousConfiguration);
+      LegacyMemoryConfigurations.setCurrentConfiguration(previousConfiguration);
       for (int i = 1; i < 35; i++) {
-        if (i != 32) RegisterFile.updateRegister(i, previousValues[i]);
+        if (i != 32) {
+          RegisterFile.updateRegister(i, previousValues[i]);
+        }
       }
       RegisterFile.initializeProgramCounter(previousPc);
       Globals.program = previousProgram;

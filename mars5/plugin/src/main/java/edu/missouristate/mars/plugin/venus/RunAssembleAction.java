@@ -1,6 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
+import edu.missouristate.mars.legacy.LegacyMetadata;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -69,48 +71,53 @@ public class RunAssembleAction extends GuiAction {
     Component editPane = mainUI.getMainPane().getEditPane();
     ExecutePane executePane = mainUI.getMainPane().getExecutePane();
     RegistersPane registersPane = mainUI.getRegistersPane();
-    extendedAssemblerEnabled = Globals.getSettings().getExtendedAssemblerEnabled();
-    warningsAreErrors = Globals.getSettings().getWarningsAreErrors();
+    extendedAssemblerEnabled =
+        LegacyApplication.services().getSettings().getExtendedAssemblerEnabled();
+    warningsAreErrors = LegacyApplication.services().getSettings().getWarningsAreErrors();
     if (FileStatus.getFile() != null) {
       if (FileStatus.get() == FileStatus.EDITED) {
         mainUI.editor.save();
       }
       try {
-        Globals.program = new edu.missouristate.mars.LegacyProgram();
+        LegacyApplication.services().setProgram(new LegacyProgram());
         ArrayList<String> filesToAssemble;
-        if (Globals.getSettings()
+        if (LegacyApplication.services()
+            .getSettings()
             .getAssembleAllEnabled()) { // setting calls for multiple file assembly
           filesToAssemble =
               FilenameFinder.getFilenameList(
-                  new File(FileStatus.getName()).getParent(), Globals.fileExtensions);
+                  new File(FileStatus.getName()).getParent(), LegacyMetadata.fileExtensions);
         } else {
           filesToAssemble = new ArrayList<>();
           filesToAssemble.add(FileStatus.getName());
         }
         String exceptionHandler = null;
-        if (Globals.getSettings().getExceptionHandlerEnabled()
-            && Globals.getSettings().getExceptionHandler() != null
-            && !Globals.getSettings().getExceptionHandler().isEmpty()) {
-          exceptionHandler = Globals.getSettings().getExceptionHandler();
+        if (LegacyApplication.services().getSettings().getExceptionHandlerEnabled()
+            && LegacyApplication.services().getSettings().getExceptionHandler() != null
+            && !LegacyApplication.services().getSettings().getExceptionHandler().isEmpty()) {
+          exceptionHandler = LegacyApplication.services().getSettings().getExceptionHandler();
         }
         MIPSprogramsToAssemble =
-            Globals.program.prepareFilesForAssembly(
-                filesToAssemble, FileStatus.getFile().getPath(), exceptionHandler);
+            LegacyApplication.services()
+                .getProgram()
+                .prepareFilesForAssembly(
+                    filesToAssemble, FileStatus.getFile().getPath(), exceptionHandler);
         mainUI.messagesPane.postMarsMessage(
             buildFileNameList(name + ": assembling ", MIPSprogramsToAssemble));
         // added logic to receive any warnings and output them.... DPS 11/28/06
         ErrorList warnings =
-            Globals.program.assemble(
-                MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
+            LegacyApplication.services()
+                .getProgram()
+                .assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
         if (warnings.warningsOccurred()) {
           mainUI.messagesPane.postMarsMessage(warnings.generateWarningReport());
         }
         mainUI.messagesPane.postMarsMessage(name + ": operation completed successfully.\n\n");
         FileStatus.setAssembled(true);
         FileStatus.set(FileStatus.RUNNABLE);
-        RegisterFile.resetRegisters();
-        Coprocessor1.resetRegisters();
-        Coprocessor0.resetRegisters();
+        LegacyApplication.services().resetRegisters();
+        LegacyApplication.services().context().coprocessor1.resetRegisters();
+        LegacyApplication.services().context().coprocessor0.resetRegisters();
         executePane.getTextSegmentWindow().setupTable();
         executePane.getDataSegmentWindow().setupTable();
         executePane.getDataSegmentWindow().highlightCellForAddress(Memory.dataBaseAddress);

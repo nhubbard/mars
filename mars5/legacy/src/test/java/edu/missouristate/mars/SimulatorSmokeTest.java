@@ -41,7 +41,7 @@ class SimulatorSmokeTest {
     RegisterFile.resetRegisters();
     Coprocessor0.resetRegisters();
     Coprocessor1.resetRegisters();
-    Globals.symbolTable = new SymbolTable("global");
+    Globals.symbolTable = new SymbolTable();
     Globals.exitCode = 0;
 
     capturedOut = new ByteArrayOutputStream();
@@ -168,7 +168,7 @@ class SimulatorSmokeTest {
   // -------------------------------------------------------------------------
 
   private boolean runProgram(String filename) throws Exception {
-    MIPSprogram program = new edu.missouristate.mars.LegacyProgram();
+    MIPSprogram program = new LegacyProgram();
     String path = resourcePath(filename);
     program.readSource(path);
     program.tokenize();

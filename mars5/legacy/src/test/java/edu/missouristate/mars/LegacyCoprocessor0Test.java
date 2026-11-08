@@ -20,8 +20,8 @@ class LegacyCoprocessor0Test {
     int previousPc = RegisterFile.getProgramCounter();
     int previousValue = Coprocessor0.getValue(number);
     try {
-      Globals.symbolTable = new SymbolTable("global");
-      var program = new edu.missouristate.mars.LegacyProgram();
+      Globals.symbolTable = new SymbolTable();
+      var program = new LegacyProgram();
       String path = SimulatorSmokeTest.resourcePath("01_helloworld.asm");
       program.readSource(path);
       program.tokenize();

@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.assembler.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.*;
 import java.awt.*;
@@ -123,7 +124,7 @@ public class LabelsWindow extends JInternalFrame {
   public LabelsWindow() {
     super("Labels", true, false, true, true);
     try {
-      sortState = Integer.parseInt(Globals.getSettings().getLabelSortState());
+      sortState = Integer.parseInt(LegacyApplication.services().getSettings().getLabelSortState());
     } catch (NumberFormatException nfe) {
       sortState = 0;
     }
@@ -292,7 +293,9 @@ public class LabelsWindow extends JInternalFrame {
     public LabelsForSymbolTable(MIPSprogram myMIPSprogram) {
       this.myMIPSprogram = myMIPSprogram;
       symbolTable =
-          (myMIPSprogram == null) ? Globals.symbolTable : myMIPSprogram.getLocalSymbolTable();
+          (myMIPSprogram == null)
+              ? LegacyApplication.services().symbolTable
+              : myMIPSprogram.getLocalSymbolTable();
       tableName =
           (myMIPSprogram == null) ? "(global)" : new File(myMIPSprogram.getFilename()).getName();
     }
@@ -309,7 +312,9 @@ public class LabelsWindow extends JInternalFrame {
     // builds the Table containing labels and addresses for this symbol table.
     private JTable generateLabelTable() {
       SymbolTable symbolTable =
-          (myMIPSprogram == null) ? Globals.symbolTable : myMIPSprogram.getLocalSymbolTable();
+          (myMIPSprogram == null)
+              ? LegacyApplication.services().symbolTable
+              : myMIPSprogram.getLocalSymbolTable();
       int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
       if (textLabels.isSelected() && dataLabels.isSelected()) {
         symbols = symbolTable.getAllSymbols();
@@ -343,7 +348,9 @@ public class LabelsWindow extends JInternalFrame {
     }
 
     public void updateLabelAddresses() {
-      if (labelPanel.getComponentCount() == 0) return; // ignore if no content to change
+      if (labelPanel.getComponentCount() == 0) {
+        return; // ignore if no content to change
+      }
       int addressBase = VenusUI.instance().getMainPane().getExecutePane().getAddressDisplayBase();
       int address;
       String formattedAddress;
@@ -460,7 +467,7 @@ public class LabelsWindow extends JInternalFrame {
           sortState = sortStateTransitions[sortState][realIndex];
           tableSortComparator = tableSortingComparators.get(sortState);
           columnNames = sortColumnHeadings[sortState];
-          Globals.getSettings().setLabelSortState(Integer.toString(sortState));
+          LegacyApplication.services().getSettings().setLabelSortState(Integer.toString(sortState));
           setupTable();
           VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(false);
           VenusUI.instance().getMainPane().getExecutePane().setLabelWindowVisibility(true);

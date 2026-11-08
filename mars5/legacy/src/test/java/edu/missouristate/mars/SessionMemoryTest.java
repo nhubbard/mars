@@ -66,8 +66,12 @@ class SessionMemoryTest {
     boolean firstDone = false;
     boolean secondDone = false;
     for (int i = 0; i < 20 && !(firstDone && secondDone); i++) {
-      if (!firstDone) firstDone = step(firstContext);
-      if (!secondDone) secondDone = step(secondContext);
+      if (!firstDone) {
+        firstDone = step(firstContext);
+      }
+      if (!secondDone) {
+        secondDone = step(secondContext);
+      }
     }
     assertThat(firstDone).isTrue();
     assertThat(secondDone).isTrue();
@@ -218,7 +222,9 @@ class SessionMemoryTest {
       context.execute(statement);
       return false;
     } catch (ProcessingException error) {
-      if (error.errors() != null) throw error;
+      if (error.errors() != null) {
+        throw error;
+      }
       return true;
     }
   }
@@ -234,7 +240,9 @@ class SessionMemoryTest {
 
   private static void writeString(InstructionContext context, int address, String value)
       throws Exception {
-    for (int i = 0; i < value.length(); i++) context.memory().setByte(address + i, value.charAt(i));
+    for (int i = 0; i < value.length(); i++) {
+      context.memory().setByte(address + i, value.charAt(i));
+    }
     context.memory().setByte(address + value.length(), 0);
   }
 

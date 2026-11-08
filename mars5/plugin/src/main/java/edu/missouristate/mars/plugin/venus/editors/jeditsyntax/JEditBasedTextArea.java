@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus.editors.jeditsyntax;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.plugin.venus.EditPane;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
@@ -50,7 +51,7 @@ public class JEditBasedTextArea extends JEditTextArea
           }
         };
     this.getDocument().addUndoableEditListener(undoableEditListener);
-    this.setFont(EditorSettings.of(Globals.getSettings()).getEditorFont());
+    this.setFont(EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
     this.setTokenMarker(new MIPSTokenMarker());
 
     addCaretListener(this);
@@ -152,7 +153,9 @@ public class JEditBasedTextArea extends JEditTextArea
     this.setEnabled(editable);
     // this.getCaret().setVisible(editable);
     this.setCaretPosition(0);
-    if (editable) this.requestFocusInWindow();
+    if (editable) {
+      this.requestFocusInWindow();
+    }
   }
 
   /**

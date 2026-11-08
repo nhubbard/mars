@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.di;
 
+
 import dagger.Component;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.di.CoreModule;
@@ -15,12 +16,12 @@ import javax.inject.Singleton;
  * application-level service that owns the MARS tool window):
  *
  * <pre>{@code
- * Globals.initialize();
+ * LegacyApplication.services();
  * PluginComponent component = DaggerPluginComponent.builder()
- *     .coreModule(new CoreModule(Globals.getSettings()))
+ *     .coreModule(new CoreModule(LegacyApplication.services().getSettings()))
  *     .build();
  * MarsContext ctx = component.context();
- * Globals.setGui(ctx.gui);          // bridge to legacy code during migration
+ * LegacyApplication.services().setGui(ctx.gui);          // bridge to legacy code during migration
  * }</pre>
  *
  * <p>The {@link VenusMarsGuiProxy} returned by {@link #guiProxy()} is the same instance registered

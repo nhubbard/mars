@@ -1,8 +1,8 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -66,7 +66,9 @@ public class EditTabbedPane extends JTabbedPane {
           if (editPane != null) {
             // New IF statement to permit free traversal of edit panes w/o invalidating
             // assembly if assemble-all is selected.  DPS 9-Aug-2011
-            if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+            if (LegacyApplication.services()
+                .getSettings()
+                .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
               EditTabbedPane.this.updateTitles(editPane);
             } else {
               EditTabbedPane.this.updateTitlesAndMenuState(editPane);
@@ -133,7 +135,7 @@ public class EditTabbedPane extends JTabbedPane {
     FileStatus.setName(name);
     FileStatus.set(FileStatus.NEW_NOT_EDITED);
 
-    RegisterFile.resetRegisters();
+    LegacyApplication.services().resetRegisters();
     VenusUI.setReset(true);
     mainPane.getExecutePane().clearPane();
     mainPane.setSelectedComponent(this);
@@ -329,7 +331,9 @@ public class EditTabbedPane extends JTabbedPane {
           saveDialog = new JFileChooser(f.getParent());
         }
         String paneFile = editPane.getFilename();
-        if (paneFile != null) saveDialog.setSelectedFile(new File(paneFile));
+        if (paneFile != null) {
+          saveDialog.setSelectedFile(new File(paneFile));
+        }
         // end of 13-July-2011 code.
         saveDialog.setDialogTitle("Save As");
 
@@ -431,7 +435,9 @@ public class EditTabbedPane extends JTabbedPane {
     }
     // When last file is closed, menu is unable to respond to mnemonics
     // and accelerators.  Let's have it request focus so it may do so.
-    if (getTabCount() == 0) mainUI.haveMenuRequestFocus();
+    if (getTabCount() == 0) {
+      mainUI.haveMenuRequestFocus();
+    }
   }
 
   // Handy little utility to update the title on the current tab and the frame title bar
@@ -524,7 +530,7 @@ public class EditTabbedPane extends JTabbedPane {
       // Note: add sequence is significant - last one added becomes default.
       fileFilterList = new ArrayList<>();
       fileFilterList.add(fileChooser.getAcceptAllFileFilter());
-      fileFilterList.add(edu.missouristate.mars.plugin.venus.FileChooserFilters.assemblyFiles());
+      fileFilterList.add(FileChooserFilters.assemblyFiles());
       fileFilterCount = 0; // this will trigger fileChooser file filter load in next line
       setChoosableFileFilters();
     }
@@ -541,7 +547,8 @@ public class EditTabbedPane extends JTabbedPane {
       // Set default to previous file opened, if any.  This is useful in conjunction
       // with option to assemble file automatically upon opening.  File likely to have
       // been edited externally (e.g. by Mipster).
-      if (Globals.getSettings().getAssembleOnOpenEnabled() && mostRecentlyOpenedFile != null) {
+      if (LegacyApplication.services().getSettings().getAssembleOnOpenEnabled()
+          && mostRecentlyOpenedFile != null) {
         fileChooser.setSelectedFile(mostRecentlyOpenedFile);
       }
 
@@ -555,7 +562,8 @@ public class EditTabbedPane extends JTabbedPane {
 
         // possibly send this file right through to the assembler by firing Run->Assemble's
         // actionPerformed() method.
-        if (theFile.canRead() && Globals.getSettings().getAssembleOnOpenEnabled()) {
+        if (theFile.canRead()
+            && LegacyApplication.services().getSettings().getAssembleOnOpenEnabled()) {
           mainUI.getRunAssembleAction().actionPerformed(null);
         }
       }
@@ -589,9 +597,9 @@ public class EditTabbedPane extends JTabbedPane {
       FileStatus.setFile(theFile);
       FileStatus.set(FileStatus.OPENING); // DPS 9-Aug-2011
       if (theFile.canRead()) {
-        Globals.program = new edu.missouristate.mars.LegacyProgram();
+        LegacyApplication.services().setProgram(new LegacyProgram());
         try {
-          Globals.program.readSource(currentFilePath);
+          LegacyApplication.services().getProgram().readSource(currentFilePath);
         } catch (ProcessingException ignored) {
         }
         // DPS 1 Nov 2006.  Defined a StringBuffer to receive all file contents,
@@ -601,10 +609,10 @@ public class EditTabbedPane extends JTabbedPane {
         // to the Edit pane as it was read, way slower due to dynamic string alloc.
         StringBuilder fileContents = new StringBuilder((int) theFile.length());
         int lineNumber = 1;
-        String line = Globals.program.getSourceLine(lineNumber++);
+        String line = LegacyApplication.services().getProgram().getSourceLine(lineNumber++);
         while (line != null) {
           fileContents.append(line).append("\n");
-          line = Globals.program.getSourceLine(lineNumber++);
+          line = LegacyApplication.services().getProgram().getSourceLine(lineNumber++);
         }
         editPane.setSourceCode(fileContents.toString(), true);
         // The above operation generates an undoable edit, setting the initial
@@ -623,7 +631,9 @@ public class EditTabbedPane extends JTabbedPane {
 
         // If assemble-all, then allow opening of any file w/o invalidating assembly.
         // DPS 9-Aug-2011
-        if (Globals.getSettings().getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
+        if (LegacyApplication.services()
+            .getSettings()
+            .getBooleanSetting(Settings.ASSEMBLE_ALL_ENABLED)) {
           updateTitles(editPane);
         } else { // this was the original code...
           updateTitlesAndMenuState(editPane);

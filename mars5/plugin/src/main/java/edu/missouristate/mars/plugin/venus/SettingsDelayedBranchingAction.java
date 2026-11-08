@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.simulator.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -49,7 +50,8 @@ public class SettingsDelayedBranchingAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    Globals.getSettings()
+    LegacyApplication.services()
+        .getSettings()
         .setDelayedBranchingEnabled(((JCheckBoxMenuItem) e.getSource()).isSelected());
     // 25 June 2007 Re-assemble if the situation demands it to maintain consistency.
     if (VenusUI.instance() != null

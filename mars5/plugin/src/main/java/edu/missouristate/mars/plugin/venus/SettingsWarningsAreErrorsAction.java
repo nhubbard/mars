@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -44,6 +45,8 @@ public class SettingsWarningsAreErrorsAction extends GuiAction {
   }
 
   public void actionPerformed(ActionEvent e) {
-    Globals.getSettings().setWarningsAreErrors(((JCheckBoxMenuItem) e.getSource()).isSelected());
+    LegacyApplication.services()
+        .getSettings()
+        .setWarningsAreErrors(((JCheckBoxMenuItem) e.getSource()).isSelected());
   }
 }

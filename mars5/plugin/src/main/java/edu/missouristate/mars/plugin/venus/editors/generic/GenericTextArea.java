@@ -1,6 +1,6 @@
 package edu.missouristate.mars.plugin.venus.editors.generic;
 
-import edu.missouristate.mars.Globals;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.plugin.venus.EditPane;
 import edu.missouristate.mars.plugin.venus.EditorSettings;
 import edu.missouristate.mars.plugin.venus.editors.MARSTextEditingArea;
@@ -51,10 +51,10 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
   public GenericTextArea(EditPane editPain, JComponent lineNumbers) {
     this.editPane = editPain;
     this.sourceCode = this;
-    this.setFont(EditorSettings.of(Globals.getSettings()).getEditorFont());
-    this.setTabSize(Globals.getSettings().getEditorTabSize());
+    this.setFont(EditorSettings.of(LegacyApplication.services().getSettings()).getEditorFont());
+    this.setTabSize(LegacyApplication.services().getSettings().getEditorTabSize());
     this.setMargin(new Insets(0, 3, 3, 3));
-    this.setCaretBlinkRate(Globals.getSettings().getCaretBlinkRate());
+    this.setCaretBlinkRate(LegacyApplication.services().getSettings().getCaretBlinkRate());
 
     JPanel source = new JPanel(new BorderLayout());
     source.add(lineNumbers, BorderLayout.WEST);
@@ -128,7 +128,9 @@ public class GenericTextArea extends JTextArea implements MARSTextEditingArea {
     this.setEnabled(editable);
     this.getCaret().setVisible(editable);
     this.setCaretPosition(0);
-    if (editable) this.requestFocusInWindow();
+    if (editable) {
+      this.requestFocusInWindow();
+    }
   }
 
   /** Tell UndoManager to discard all its collected undoable edits. */

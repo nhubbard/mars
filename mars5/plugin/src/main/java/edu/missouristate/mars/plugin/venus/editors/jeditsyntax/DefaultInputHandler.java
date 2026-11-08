@@ -93,7 +93,9 @@ public class DefaultInputHandler extends InputHandler {
     StringTokenizer st = new StringTokenizer(keyBinding);
     while (st.hasMoreTokens()) {
       KeyStroke keyStroke = parseKeyStroke(st.nextToken());
-      if (keyStroke == null) return;
+      if (keyStroke == null) {
+        return;
+      }
 
       if (st.hasMoreTokens()) {
         Binding b = current.get(keyStroke);
@@ -142,7 +144,9 @@ public class DefaultInputHandler extends InputHandler {
     if (keyCode == KeyEvent.VK_CONTROL
         || keyCode == KeyEvent.VK_SHIFT
         || keyCode == KeyEvent.VK_ALT
-        || keyCode == KeyEvent.VK_META) return;
+        || keyCode == KeyEvent.VK_META) {
+      return;
+    }
 
     if ((modifiers & ~KeyEvent.SHIFT_DOWN_MASK) != 0
         || evt.isActionKey()
@@ -201,7 +205,9 @@ public class DefaultInputHandler extends InputHandler {
     // being echoed to the text area.  E.g. Command-s, for Save, will echo
     // the 's' character unless filtered out here.  Command modifier
     // matches KeyEvent.META_MASK.   DPS 30-Nov-2010
-    if ((modifiers & KeyEvent.META_DOWN_MASK) != 0) return;
+    if ((modifiers & KeyEvent.META_DOWN_MASK) != 0) {
+      return;
+    }
     // DPS 9-Jan-2013.  Umberto Villano from Italy describes Alt combinations
     // not working on Italian Mac keyboards, where # requires Alt (Option).
     // This is preventing him from writing comments.  Similar complaint from
@@ -285,7 +291,9 @@ public class DefaultInputHandler extends InputHandler {
    * @param keyStroke A string description of the key stroke
    */
   public static KeyStroke parseKeyStroke(String keyStroke) {
-    if (keyStroke == null) return null;
+    if (keyStroke == null) {
+      return null;
+    }
     int modifiers = 0;
     int index = keyStroke.indexOf('+');
     if (index != -1) {
@@ -309,8 +317,11 @@ public class DefaultInputHandler extends InputHandler {
     String key = keyStroke.substring(index + 1);
     if (key.length() == 1) {
       char ch = Character.toUpperCase(key.charAt(0));
-      if (modifiers == 0) return KeyStroke.getKeyStroke(ch);
-      else return KeyStroke.getKeyStroke(ch, modifiers);
+      if (modifiers == 0) {
+        return KeyStroke.getKeyStroke(ch);
+      } else {
+        return KeyStroke.getKeyStroke(ch, modifiers);
+      }
     } else if (key.isEmpty()) {
       System.err.println("Invalid key stroke: " + keyStroke);
       return null;

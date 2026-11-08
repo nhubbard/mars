@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-import edu.missouristate.mars.Globals;
 import edu.missouristate.mars.api.BaseSyscallEnvironment;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import javax.swing.JOptionPane;
 
 /** GUI (Venus IDE) implementation of the syscall I/O environment. */
@@ -24,6 +24,6 @@ public class VenusSyscallEnvironment extends BaseSyscallEnvironment {
 
   @Override
   public void clearConsole() {
-    Globals.getGui().clearRunConsole();
+    LegacyApplication.services().getGui().clearRunConsole();
   }
 }

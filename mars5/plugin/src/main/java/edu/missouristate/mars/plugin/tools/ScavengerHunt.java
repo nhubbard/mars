@@ -1,9 +1,10 @@
 package edu.missouristate.mars.plugin.tools;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import edu.missouristate.mars.mips.hardware.*;
-import edu.missouristate.mars.util.*;
 import edu.missouristate.mars.plugin.venus.VenusUI;
+import edu.missouristate.mars.util.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
@@ -431,10 +432,15 @@ public class ScavengerHunt implements MarsTool {
     // Register as observer for a particular MIPS data range. Other ranges
     // are not used by this Tool.
     try {
-      Globals.memory.addObserver(this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
+      LegacyApplication.services()
+          .memory
+          .addObserver(
+              this::handleMemoryAccess, 0xffff8000, 0xfffffff0); // must be on word boundaries
     } catch (AddressErrorException e) {
       System.out.println(
-          "\n\nScavengerHunt.action: Globals.memory.addObserver caused AddressErrorException.\n\n");
+          "\n\n"
+              + "ScavengerHunt.action: LegacyApplication.services().memory.addObserver caused"
+              + " AddressErrorException.\n\n");
       System.exit(0);
     }
   } // end ScavengerHunt.action()
@@ -461,7 +467,9 @@ public class ScavengerHunt implements MarsTool {
     // If we are only interested in MIPS memory WRITES, then just return on READS.
     // That's a matter of policy: perhaps players should be prohibited from
     // reading each other's memory spaces.
-    if (!isWrite) return;
+    if (!isWrite) {
+      return;
+    }
 
     // Take the appropriate action, depending on data written and priority of user.
     if (playerID == ADMINISTRATOR_ID && address == ADDR_GAME_ON) {
@@ -508,7 +516,9 @@ public class ScavengerHunt implements MarsTool {
 
       energyLevel = toolReadPlayerData(playerID, OFFSET_ENERGY); // find if player has energy
       if (energyLevel <= 0) // No energy. Player not allowed to move
-      return;
+      {
+        return;
+      }
 
       if (toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) < 0
           || toolReadPlayerData(playerID, OFFSET_MOVE_TO_X) > GRAPHIC_WIDTH
@@ -663,7 +673,7 @@ public class ScavengerHunt implements MarsTool {
     SetWordCounter++;
 
     try {
-      Globals.memory.setWord(address, data); // Write
+      LegacyApplication.services().memory.setWord(address, data); // Write
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolSetWord: deliberate exit on AEE exception.");
       System.out.println("     SetWordCounter = " + SetWordCounter);
@@ -688,12 +698,13 @@ public class ScavengerHunt implements MarsTool {
         System.out.println("     data = " + data);
         System.out.println("     verifyData = " + verifyData);
         System.exit(0);
-      } else
+      } else {
         System.out.println(
             "  ScavengerHunt.toolSetWord: Mem["
                 + Binary.intToHexString(address)
                 + " verified as "
                 + Binary.intToHexString(data));
+      }
     }
   } // end toolSetWord
 
@@ -702,7 +713,7 @@ public class ScavengerHunt implements MarsTool {
     int returnValue;
 
     try {
-      returnValue = Globals.memory.getWord(address);
+      returnValue = LegacyApplication.services().memory.getWord(address);
       return returnValue;
     } catch (AddressErrorException e) {
       System.out.println("ScavengerHunt.toolGetWord: deliberate exit on AEE exception.");
@@ -772,12 +783,13 @@ public class ScavengerHunt implements MarsTool {
         System.out.println(
             "      actual data at that loc is " + Binary.intToHexString(toolGetWord(address)));
         System.exit(0);
-      } else
+      } else {
         System.out.println(
             "  ScavengerHunt.toolWritePlayerData: Mem["
                 + Binary.intToHexString(address)
                 + " verified as "
                 + Binary.intToHexString(data));
+      }
     }
   } // end toolWritePlayerData
 

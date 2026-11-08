@@ -1,7 +1,7 @@
 package edu.missouristate.mars.plugin.venus;
 
-
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.legacy.LegacyApplication;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -285,7 +285,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Called once, upon dialog setup.
   private void initializeButtonColors() {
-    Settings settings = Globals.getSettings();
+    Settings settings = LegacyApplication.services().getSettings();
     LineBorder lineBorder = new LineBorder(Color.BLACK);
     Color backgroundSetting, foregroundSetting;
     Font fontSetting;
@@ -332,7 +332,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Set the color settings according to current button colors.  Occurs when "Apply" selected.
   private void setHighlightingSettings() {
-    Settings settings = Globals.getSettings();
+    Settings settings = LegacyApplication.services().getSettings();
     for (int i = 0; i < backgroundSettingPositions.length; i++) {
       EditorSettings.of(settings)
           .setColorSettingByPosition(
@@ -363,7 +363,7 @@ public class SettingsHighlightingAction extends GuiAction {
 
   // Called when Reset selected.
   private void resetButtonColors() {
-    Settings settings = Globals.getSettings();
+    Settings settings = LegacyApplication.services().getSettings();
     dataHighlightButton.setText(getHighlightControlText(initialDataHighlightSetting));
     registerHighlightButton.setText(getHighlightControlText(initialRegisterHighlightSetting));
     Color backgroundSetting, foregroundSetting;
@@ -490,13 +490,13 @@ public class SettingsHighlightingAction extends GuiAction {
         foregroundButtons[position].setEnabled(false);
         fontButtons[position].setEnabled(false);
         newBackground =
-            EditorSettings.of(Globals.getSettings())
+            EditorSettings.of(LegacyApplication.services().getSettings())
                 .getDefaultColorSettingByPosition(backgroundSettingPositions[position]);
         newForeground =
-            EditorSettings.of(Globals.getSettings())
+            EditorSettings.of(LegacyApplication.services().getSettings())
                 .getDefaultColorSettingByPosition(foregroundSettingPositions[position]);
         newFont =
-            EditorSettings.of(Globals.getSettings())
+            EditorSettings.of(LegacyApplication.services().getSettings())
                 .getDefaultFontByPosition(fontSettingPositions[position]);
         currentNondefaultBackground[position] = backgroundButtons[position].getBackground();
         currentNondefaultForeground[position] = foregroundButtons[position].getBackground();

@@ -120,7 +120,9 @@ public class BHTEntry {
         }
       }
 
-      if (changePrediction) m_prediction = !m_prediction;
+      if (changePrediction) {
+        m_prediction = !m_prediction;
+      }
     }
   }
 
@@ -162,7 +164,9 @@ public class BHTEntry {
     StringBuilder result = new StringBuilder();
 
     for (int i = 0; i < m_history.length; i++) {
-      if (i > 0) result.append(", ");
+      if (i > 0) {
+        result.append(", ");
+      }
       result.append(m_history[i] ? "T" : "NT");
     }
     return result.toString();

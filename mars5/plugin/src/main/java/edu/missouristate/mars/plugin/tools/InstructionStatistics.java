@@ -209,32 +209,49 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
     int funct = stmt.getBinaryStatement() & 0x1F;
 
     if (opCode == 0x00) {
-      if (funct == 0x00) return InstructionStatistics.CATEGORY_ALU; // sll
-      if (0x02 <= funct && funct <= 0x07)
+      if (funct == 0x00) {
+        return InstructionStatistics.CATEGORY_ALU; // sll
+      }
+      if (0x02 <= funct && funct <= 0x07) {
         return InstructionStatistics.CATEGORY_ALU; // srl, sra, sllv, srlv, srav
-      if (funct == 0x08 || funct == 0x09) return InstructionStatistics.CATEGORY_JUMP; // jr, jalr
-      if (0x10 <= funct)
+      }
+      if (funct == 0x08 || funct == 0x09) {
+        return InstructionStatistics.CATEGORY_JUMP; // jr, jalr
+      }
+      if (0x10 <= funct) {
         return InstructionStatistics
             .CATEGORY_ALU; // mfhi, mthi, mflo, mtlo, mult, multu, div, divu, add, addu, sub, subu,
+      }
       // and, or, xor, nor, slt, sltu
       return InstructionStatistics.CATEGORY_OTHER;
     }
     if (opCode == 0x01) {
-      if (funct <= 0x07) return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
-      if (0x10 <= funct && funct <= 0x13)
+      if (funct <= 0x07) {
+        return InstructionStatistics.CATEGORY_BRANCH; // bltz, bgez, bltzl, bgezl
+      }
+      if (0x10 <= funct && funct <= 0x13) {
         return InstructionStatistics.CATEGORY_BRANCH; // bltzal, bgezal, bltzall, bgczall
+      }
       return InstructionStatistics.CATEGORY_OTHER;
     }
-    if (opCode == 0x02 || opCode == 0x03) return InstructionStatistics.CATEGORY_JUMP; // j, jal
-    if (opCode <= 0x07) return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
-    if (opCode <= 0x0F)
+    if (opCode == 0x02 || opCode == 0x03) {
+      return InstructionStatistics.CATEGORY_JUMP; // j, jal
+    }
+    if (opCode <= 0x07) {
+      return InstructionStatistics.CATEGORY_BRANCH; // beq, bne, blez, bgtz
+    }
+    if (opCode <= 0x0F) {
       return InstructionStatistics.CATEGORY_ALU; // addi, addiu, slti, sltiu, andi, ori, xori, lui
-    if (0x14 <= opCode && opCode <= 0x17)
+    }
+    if (0x14 <= opCode && opCode <= 0x17) {
       return InstructionStatistics.CATEGORY_BRANCH; // beql, bnel, blezl, bgtzl
-    if (0x20 <= opCode && opCode <= 0x26)
+    }
+    if (0x20 <= opCode && opCode <= 0x26) {
       return InstructionStatistics.CATEGORY_MEM; // lb, lh, lwl, lw, lbu, lhu, lwr
-    if (0x28 <= opCode && opCode <= 0x2E)
+    }
+    if (0x28 <= opCode && opCode <= 0x2E) {
       return InstructionStatistics.CATEGORY_MEM; // sb, sh, swl, sw, swr
+    }
 
     return InstructionStatistics.CATEGORY_OTHER;
   }
@@ -250,7 +267,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
    */
   protected void processMIPSUpdate(AccessNotice notice) {
 
-    if (!notice.accessIsFromMIPS()) return;
+    if (!notice.accessIsFromMIPS()) {
+      return;
+    }
 
     // check for a read access in the text segment
     if (notice.getAccessType() == AccessNotice.READ
@@ -261,7 +280,9 @@ public class InstructionStatistics extends AbstractMarsToolAndApplication {
       // The next three statments are from Felipe Lessa's instruction counter.  Prevents
       // double-counting.
       int a = memAccNotice.getAddress();
-      if (a == lastAddress) return;
+      if (a == lastAddress) {
+        return;
+      }
       lastAddress = a;
 
       try {
