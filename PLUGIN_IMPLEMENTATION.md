@@ -75,9 +75,28 @@ Authored plugin code retains 100% line and branch coverage.
 The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
 plugin without a plugin error. The visual acceptance limit above still applies.
 
+## Native declaration index
+
+`MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.
+It is a registered `FileBasedIndexExtension` with a MARS file filter, native string keys and
+a value externalizer. IntelliJ owns storage, scheduling, invalidation, document overlays and query
+scopes. The producer reads only `FileContent.psiFile`. It never resolves a symbol or queries an index.
+
+The values record syntactic label, macro and constant candidates. Each value contains its name
+offset and enclosing macro offset. Duplicate declarations remain distinct. These facts do not
+claim that a declaration is valid or visible in an assembly context. References and include
+sentinels will join these facts when queries have the relevant build context.
+
+Four Jupiter tests cover actual index registration and queries, every declaration kind, duplicate
+names, macro ownership, malformed declarations, comments/strings, `.asm`/`.s` filtering, empty
+contributions, value serialization, unsaved document edits, deletion and native file scopes.
+The index has 100% line and branch coverage. The clean launch passed all 1,242 tests. The IDE log
+confirmed that `mars.declarations` initialized and the plugin loaded without a plugin error.
+The visual acceptance limit above still applies.
+
 ## Next slices
 
-Finish syntax and semantic edge cases from MARS characterization, then add native named PSI/stubs,
-reference/include indexes, query-time sentinel joins, completion/navigation/docs, detached source
+Finish syntax and semantic edge cases from MARS characterization, then add reference/include indexes,
+query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.
