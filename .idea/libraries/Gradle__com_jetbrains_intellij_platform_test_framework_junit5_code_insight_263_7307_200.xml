@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.jetbrains.intellij.platform:test-framework-junit5-code-insight:263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.jetbrains.intellij.platform" artifactId="test-framework-junit5-code-insight" version="263.7307.200" baseVersion="263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/test-framework-junit5-code-insight/263.7307.200/ef765509ed058a3220e965fab053821113ab70ec/test-framework-junit5-code-insight-263.7307.200.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.jetbrains.intellij.platform/test-framework-junit5-code-insight/263.7307.200/137b1535a55128a4015bc81637a961fc1e49fd6b/test-framework-junit5-code-insight-263.7307.200-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
