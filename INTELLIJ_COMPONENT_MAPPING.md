@@ -307,7 +307,9 @@ Retain all core instruction, directive, macro, syscall, and memory-layout behavi
 Native editor integration replaces `MARSTextEditingArea`, both editor implementations, and the custom syntax document.
 Do not embed the old editor in a tool window. Use IntelliJ documents, PSI, editors, inspections, commands, and indices.
 The lexer/parser implementation must be Kotlin. Grammar generation that emits Java is not the default path.
-A hand-written tolerant lexer/parser is viable; generation must support Kotlin before adopting it.
+The implemented path uses Grammar-Kit Kotlin generation for the native `syntax-api`, Kotlin PSI adapters,
+and the platform lexer bridge. The hand-written parser prototype was discarded. The lexer remains
+a lossless Kotlin implementation of MARS token rules. See [implementation progress](PLUGIN_IMPLEMENTATION.md).
 
 | ID | User capability and current source | Intended Kotlin component and platform API | Acceptance and branch cases |
 | --- | --- | --- | --- |

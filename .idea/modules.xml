@@ -3,8 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/mars-original.iml" filepath="$PROJECT_DIR$/mars-original.iml" />
-      <module fileurl="file://$PROJECT_DIR$/mars5.iml" filepath="$PROJECT_DIR$/mars5.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mars-cli/mars5.cli.iml" filepath="$PROJECT_DIR$/.idea/modules/mars-cli/mars5.cli.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mars5.iml" filepath="$PROJECT_DIR$/.idea/modules/mars5.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/cli/mars5.cli.iml" filepath="$PROJECT_DIR$/.idea/modules/cli/mars5.cli.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/cli/mars5.cli.main.iml" filepath="$PROJECT_DIR$/.idea/modules/cli/mars5.cli.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/cli/mars5.cli.test.iml" filepath="$PROJECT_DIR$/.idea/modules/cli/mars5.cli.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.iml" />
@@ -17,6 +17,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/mars5.main.iml" filepath="$PROJECT_DIR$/.idea/modules/mars5.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.parserGenerator.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.parserGenerator.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.test.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.testUi.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/mars5.plugin.testUi.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/mars5.test.iml" filepath="$PROJECT_DIR$/.idea/modules/mars5.test.iml" />

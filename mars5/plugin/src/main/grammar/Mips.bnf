@@ -1,0 +1,61 @@
+{
+  generate=[psi="no" parser-api="syntax"]
+  parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
+  syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
+  extends(".*_expr")=expr
+  tokens=[
+    WORD="regexp:[a-zA-Z_][a-zA-Z0-9_]*"
+    DIRECTIVE="regexp:\\.[a-zA-Z_]+"
+    REGISTER="regexp:\\$[a-zA-Z0-9_]+"
+    PARAMETER="regexp:%[a-zA-Z0-9_]+"
+    NUMBER="regexp:[0-9]+"
+    STRING="regexp:\"[^\"]*\""
+    CHARACTER="regexp:'[^']*'"
+    NEWLINE="regexp:\\r?\\n"
+    COMMENT="regexp:#[^\\r\\n]*"
+    UNCLOSED_STRING="regexp:\"[^\"]*"
+    UNCLOSED_CHARACTER="regexp:'[^']*"
+    BAD_CHARACTER="regexp:!"
+    MACRO=".macro"
+    END_MACRO=".end_macro"
+    EQV=".eqv"
+    COMMA=","
+    COLON=":"
+    LEFT_PAREN="("
+    RIGHT_PAREN=")"
+    PLUS="+"
+    MINUS="-"
+  ]
+}
+file ::= (NEWLINE | statement)*
+statement ::= (label+ body? | body) {recoverWhile=line_recover}
+private body ::= macro_definition | equivalence | directive_statement | instruction | data_continuation
+private line_recover ::= !NEWLINE
+label ::= name COLON
+private name ::= WORD | DIRECTIVE | REGISTER
+macro_definition ::= MACRO macro_signature NEWLINE (NEWLINE | macro_statement)* END_MACRO {pin=1}
+private macro_statement ::= !END_MACRO statement
+macro_signature ::= name (LEFT_PAREN parameter_list? RIGHT_PAREN | parameter_list)?
+parameter_list ::= macro_parameter (COMMA? macro_parameter)*
+macro_parameter ::= PARAMETER | REGISTER
+// Equivalence replacement is source text, not an eagerly evaluated expression.
+equivalence ::= EQV name COMMA? replacement+ {pin=1}
+replacement ::= WORD | DIRECTIVE | REGISTER | PARAMETER | NUMBER | STRING | CHARACTER | COMMA | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS
+// Directive-specific semantic checks use the canonical Java assembler catalog.
+directive_statement ::= DIRECTIVE operand_list? {pin=1}
+instruction ::= operation (arguments | operand_list)? {pin=1}
+operation ::= WORD | REGISTER | PARAMETER
+arguments ::= LEFT_PAREN operand_list? RIGHT_PAREN {pin=1}
+data_continuation ::= operand_list
+operand_list ::= operand (COMMA? operand)* COMMA?
+operand ::= expr repetition?
+repetition ::= COLON expr {pin=1}
+expr ::= add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+add_expr ::= expr (PLUS | MINUS) expr {pin=2}
+unary_expr ::= (PLUS | MINUS) expr
+address_expr ::= expr LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
+group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
+literal_expr ::= NUMBER | STRING | CHARACTER
+reference_expr ::= WORD | REGISTER | PARAMETER | DIRECTIVE
+
+private nested_expression ::= expr

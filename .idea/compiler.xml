@@ -67,6 +67,7 @@
       <module name="mars5.mars-plugin.test" target="25" />
       <module name="mars5.plugin" target="25" />
       <module name="mars5.plugin.main" target="25" />
+      <module name="mars5.plugin.parserGenerator" target="25" />
       <module name="mars5.plugin.test" target="25" />
       <module name="mars5.plugin.testUi" target="25" />
       <module name="mars5.test" target="25" />
@@ -86,6 +87,7 @@
       <module name="mars5.desktop.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.plugin.parserGenerator" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.plugin.testUi" options="-Xlint:deprecation -Xlint:removal -Werror" />
     </option>

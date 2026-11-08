@@ -2,7 +2,7 @@
 <module external.linked.project.id=":plugin:main" external.linked.project.path="$MODULE_DIR$/../../../mars5/plugin" external.root.project.path="$MODULE_DIR$/../../../mars5" external.system.id="GRADLE" external.system.module.group="edu.missouristate" external.system.module.type="sourceSet" external.system.module.version="1.0-SNAPSHOT" type="JAVA_MODULE" version="4">
   <component name="FacetManager">
     <facet external-system-id="GRADLE" type="kotlin-language" name="Kotlin">
-      <configuration version="5" platform="JVM 25" allPlatforms="JVM [25]" useProjectSettings="false" pureKotlinSourceFolders="$MODULE_DIR$/../../../mars5/plugin/src/main/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/test/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/testUi/kotlin">
+      <configuration version="5" platform="JVM 25" allPlatforms="JVM [25]" useProjectSettings="false" pureKotlinSourceFolders="$MODULE_DIR$/../../../mars5/plugin/src/parserGenerator/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/test/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/build/generated/sources/mips/kotlin;/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/testUi/kotlin">
         <compilerSettings>
           <option name="additionalArguments" value="-Werror" />
         </compilerSettings>
@@ -37,6 +37,9 @@
   <component name="NewModuleRootManager">
     <output url="file://$MODULE_DIR$/../../../mars5/plugin/build/classes/kotlin/main" />
     <exclude-output />
+    <content url="file://$MODULE_DIR$/../../../mars5/plugin/build/generated/sources/mips/kotlin">
+      <sourceFolder url="file://$MODULE_DIR$/../../../mars5/plugin/build/generated/sources/mips/kotlin" isTestSource="false" />
+    </content>
     <content url="file://$MODULE_DIR$/../../../mars5/plugin/src/main">
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/plugin/src/main/kotlin" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/plugin/src/main/resources" type="java-resource" />
