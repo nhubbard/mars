@@ -19,7 +19,8 @@ branch delay slots, start-at-main, pseudo-instruction policy, warnings-as-errors
 Use the `core` module for embedding; `MarsComponent.assembler()`, `simulator()`, `memory()`, and
 `registerFile()` expose the frontend contracts. Close the owning `MarsContext` when finished.
 The `plugin` jar currently packages the frozen Venus frontend and its separate legacy adapters;
-IntelliJ Platform integration is the next phase.
+The next step is [Phase 2.5 legacy-deprecation cleanup](PHASE_2_5_PLAN.md), followed by IntelliJ
+Platform integration in Phase 3.
 
 MARS (official) MIPS Assembler and Runtime Simulator
 

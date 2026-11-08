@@ -4,7 +4,7 @@
 **Scope:** Full modernization from legacy Swing/batch-script monolith to a Gradle multi-module project with a clean core library and an IntelliJ IDE plugin.  
 **Codebase baseline:** 217 Java files, ~60,400 LOC, no tests, no build tool, Java 5–8 era code.
 
-**Current status (2026-11-08): Phase 2 is complete; stop before Phase 3 implementation.**
+**Current status (2026-11-08): Phase 2 is complete; Phase 2.5 cleans the legacy baseline before Phase 3.**
 The implemented layout is `mars5/core`, `mars5/cli`, `mars5/plugin`, plus a separate
 `mars5/legacy` compatibility module for the frozen Venus frontend. The independent core and CLI
 have no dependency on that module. All modules target Java 25 with Gradle 9.9.
@@ -22,10 +22,11 @@ API entry points, test coverage, benchmark, and deliberate adaptations to this o
 4. [Phase 1 — Core Isolation and Interface Design](#phase-1--core-isolation-and-interface-design)
 5. [Phase 2 — Core Rewrite](#phase-2--core-rewrite)
    - [2.0 — Decouple Globals from VenusUI](#20--decouple-globals-from-venusui-prerequisite-for-all-module-moves)
-6. [Phase 3 — IntelliJ Plugin](#phase-3--intellij-plugin)
-7. [Cross-Cutting Concerns](#cross-cutting-concerns)
-8. [Risk Register](#risk-register)
-9. [Dependency Map (Phases)](#dependency-map-phases)
+6. [Phase 2.5 — Legacy Deprecation Cleanup](#phase-25--legacy-deprecation-cleanup)
+7. [Phase 3 — IntelliJ Plugin](#phase-3--intellij-plugin)
+8. [Cross-Cutting Concerns](#cross-cutting-concerns)
+9. [Risk Register](#risk-register)
+10. [Dependency Map (Phases)](#dependency-map-phases)
 
 ---
 
@@ -594,7 +595,9 @@ public final class HeadlessGuiProxy implements MarsGuiProxy {
     @Override public String readInput(int maxLength) {
         try {
             String line = stdin.readLine();
-            if (line == null) return "";
+            if (line == null) {
+              return "";
+            }
             return maxLength < 0 ? line
                 : line.substring(0, Math.min(line.length(), maxLength));
         } catch (IOException e) {
@@ -980,11 +983,29 @@ Once all core classes use `MarsContext` via constructor injection, the `Globals`
 
 ---
 
+## Phase 2.5 — Legacy Deprecation Cleanup
+
+**Goal:** Remove deprecated API usages from the legacy runtime, Venus frontend, and tools to
+establish a clean baseline before IntelliJ implementation. Preserve the existing behavior and
+the independent core's isolation boundary.
+
+Follow [the Phase 2.5 implementation plan](PHASE_2_5_PLAN.md): audit compiler diagnostics, migrate
+compatibility/settings call sites to supported APIs, finish typed tool callbacks, replace obsolete
+desktop APIs, and enforce warning-clean compilation. Removing deprecation annotations or adding
+blanket warning suppressions does not satisfy this phase.
+
+**Exit criteria:** No deprecated API calls in application code; explicit deprecation/removal checks
+in the build; the full test suite and packaged launchers pass; intentional compatibility-contract
+coverage remains identified. Record interactive desktop validation separately.
+
+---
+
 ## Phase 3 — IntelliJ Plugin
 
 **Goal:** Replace the Venus Swing GUI with a first-class IntelliJ IDEA plugin. The plugin uses `mars-core` as a library. The Venus code in `mars-plugin` is frozen during this phase and progressively replaced.
 
-**Prerequisites:** Phase 2 complete (clean, headless `mars-core`).
+**Prerequisites:** Phase 2 complete (clean, headless `mars-core`) and Phase 2.5 complete
+(warning-clean legacy/runtime baseline).
 
 ### Plugin module setup
 

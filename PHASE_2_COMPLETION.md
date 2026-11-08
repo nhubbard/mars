@@ -1,6 +1,7 @@
 # Phase 2 completion — independent MARS core
 
-Status: complete on 2026-11-08. The repository is ready to begin Phase 3, IntelliJ plugin implementation.
+Status: Phase 2 completed on 2026-11-08. A subsequent Phase 2.5 legacy-deprecation cleanup now
+precedes Phase 3, IntelliJ plugin implementation; see [the Phase 2.5 plan](PHASE_2_5_PLAN.md).
 No Phase 3 language support, tool windows, or IntelliJ SDK integration has been started.
 
 ## Delivered architecture
