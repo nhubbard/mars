@@ -1,4 +1,5 @@
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
   kotlin("jvm") version "2.4.21"
@@ -24,8 +25,11 @@ dependencies {
     } else {
       intellijIdea("2026.3")
     }
+    testFramework(TestFrameworkType.Platform)
+    testFramework(TestFrameworkType.JUnit5)
+    testFramework(TestFrameworkType.JUnit5CodeInsight)
   }
-  testImplementation(platform("org.junit:junit-bom:6.0.0"))
+  testImplementation(platform("org.junit:junit-bom:6.1.3"))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -90,3 +94,9 @@ tasks.jacocoTestCoverageVerification {
 }
 
 tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
+
+// A launch always verifies the plugin; callers clean the build and sandbox first.
+tasks.named("runIde") { dependsOn(tasks.check) }
+tasks.matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }.configureEach {
+  mustRunAfter(tasks.named("cleanSandbox"))
+}

@@ -1,7 +1,5 @@
 package edu.missouristate.mars.plugin.analysis
 
-import java.util.List.copyOf as copyOfList
-
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -22,7 +20,7 @@ class AnalysisCoordinator(
 
     /** Replaces the complete captured fact view. Per-file deltas must be merged by the acquisition layer. */
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> {
-        val captured = copyOfList(contributions)
+        val captured = listOf(*contributions.toTypedArray())
         return synchronized(lock) {
             val ticket = core.beginUpdate()
             work?.cancel()
