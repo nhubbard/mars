@@ -49,4 +49,3 @@ kotlin {
 }
 
 tasks.test { useJUnitPlatform() }
-

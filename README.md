@@ -1,26 +1,43 @@
-# MARS
+# MARS 5
 
-The modernization work has completed the core rewrite and stops before the IntelliJ plugin phase.
-The independent assembler and simulator can run without Venus. The historical project description
-below is retained; see [the completion report](PHASE_2_COMPLETION.md) and
-[the modernization plan](MODERNIZATION_PLAN.md) for the current architecture.
+MARS 5 is becoming a Kotlin assembler, simulator, CLI, and IntelliJ plugin. Phase 2.5 has removed
+the deprecated global runtime and compatibility module. The independent core and CLI run without
+Venus, and the standalone desktop application now uses the same session-owned core.
 
-Build with JDK 25:
+The IntelliJ plugin starter is Kotlin. The existing core, CLI, and desktop implementations are
+still Java; the next engine milestone is an idiomatic Kotlin implementation with the current
+behavior tests as its acceptance baseline. See [the current plan](MODERNIZATION_PLAN.md) and
+[the Phase 2.5 completion record](PHASE_2_5_PLAN.md).
+
+| Module | Responsibility |
+| --- | --- |
+| `mars5/core` | Independent assembler, simulator, hardware, undo, and frontend contracts |
+| `mars5/cli` | Standalone command-line launcher |
+| `mars5/desktop` | Existing Venus editor and tools with explicit session ownership |
+| `mars5/plugin` | Kotlin IntelliJ plugin; lazy project-scoped core lifecycle |
+
+Build with JDK 25 and the Gradle wrapper:
 
 ```sh
 cd mars5
-./gradlew build :core:benchmarkClasses
+./gradlew build :plugin:buildPlugin :core:benchmarkClasses
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
 java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar path/to/program.s
+java -jar desktop/build/libs/desktop-1.0-SNAPSHOT.jar
 ```
+
+The plugin targets IntelliJ IDEA 2026.3 (build 263) using Kotlin 2.4.21 and IntelliJ Platform
+Gradle Plugin 2.20.0. It uses the IDE's Kotlin runtime. Its ZIP is produced in
+`mars5/plugin/build/distributions`. To use an installed IDE instead of downloading the pinned SDK,
+pass `-PlocalIdePath="/path/to/IntelliJ IDEA.app"`. Language support, consoles, and debugging
+are future milestones; the starter currently establishes project session ownership and disposal.
 
 The CLI supports multiple sources, program arguments after `--`, assembly-only mode, memory layouts,
 branch delay slots, start-at-main, pseudo-instruction policy, warnings-as-errors, and step limits.
-Use the `core` module for embedding; `MarsComponent.assembler()`, `simulator()`, `memory()`, and
-`registerFile()` expose the frontend contracts. Close the owning `MarsContext` when finished.
-The `plugin` jar currently packages the frozen Venus frontend and its separate legacy adapters;
-The next step is [Phase 2.5 legacy-deprecation cleanup](PHASE_2_5_PLAN.md), followed by IntelliJ
-Platform integration in Phase 3.
+For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
+close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
+
+The original project description follows.
 
 MARS (official) MIPS Assembler and Runtime Simulator
 

@@ -1,5 +1,9 @@
 # Phase 2.4 Implementation Plan — Dependency Injection for the Simulator
 
+> Historical implementation plan for commit `cba254a`. This work and the later compatibility-runtime
+> removal are complete; use [the Phase 2.5 completion record](PHASE_2_5_PLAN.md) for the current state.
+
+
 **Scope:** Complete MODERNIZATION_PLAN.md step 2.4 ("Replace the `Globals` singleton with
 constructor-injected dependencies"). This document is an implementation-ready breakdown for
 whoever (human or agent) picks up the work. It reflects the actual state of the codebase as of

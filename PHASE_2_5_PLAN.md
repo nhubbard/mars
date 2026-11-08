@@ -1,7 +1,42 @@
 # Phase 2.5 — clean legacy baseline
 
-Status: audit and implementation, before Phase 3. This phase cleans the existing runtime adapters,
-Venus frontend, and tools while preserving their behavior. IntelliJ integration remains out of scope.
+Status: completed on 2026-11-08. The subsequent scope expansion eliminated the compatibility
+runtime entirely and imported the replacement Kotlin scaffold as the final integration step.
+The original audit and interim checkpoint below are historical; their warnings and compatibility
+exceptions no longer describe the current tree.
+
+## Completion record
+
+- Removed the legacy module and its global/static facades, duplicate execution loop, global I/O,
+  and Dagger bridge. Supported callers now use explicit session-owned APIs.
+- Migrated Venus windows, editors, register views, settings, tools, and syscall I/O to independent
+  desktop sessions. Tool providers receive their session; no global UI singleton is required.
+- Moved useful characterization tests into core. Removed tests whose sole contract was the retired
+  compatibility lifecycle; retained behavior coverage for assembly, execution, hardware, undo,
+  settings, events, I/O, and multiple sessions.
+- Replaced deprecated settings helpers and JDK desktop APIs. Java production and test compilation
+  rejects deprecation/removal warnings; Kotlin compilation treats warnings as errors.
+- Replaced thread-name inference with lexically scoped execution origins for tool notifications.
+- Split `desktop` from `plugin`. The Kotlin plugin depends only on core and owns a lazy session per
+  IntelliJ project, disposing it with that project. No Venus classes are packaged in the plugin.
+- Imported the supplied Kotlin 2.4.21 / JDK 25 scaffold into `mars5/plugin`; reused the repository's
+  Gradle 9.9 wrapper and kept the original scaffold metadata in a temporary backup.
+
+Acceptance evidence: the full build and plugin packaging pass, with 1,201 tests (core 1,183,
+CLI 2, desktop 14, plugin 2). Packaged CLI/desktop launchers execute Hello World, and a native
+smoke check creates two windows with independent registers and editor state. Detailed visual
+interaction, every tool, and IntelliJ language/debugger behavior remain outside these checks.
+
+## Kotlin destination and next milestone
+
+MARS 5 is intended to be fully Kotlin, including the engine. The existing Java core is the tested
+behavioral reference, not the final language choice. Port coherent subsystems behind the existing
+session boundary, preserve encoding/execution/undo/I/O semantics, and move or adapt each relevant
+test alongside its implementation. Start with value types and session contracts, then hardware,
+instruction execution, assembly, simulation/I/O, and the CLI. The Swing desktop remains a working
+transition frontend; all new IntelliJ features use Kotlin and native platform APIs.
+
+## Original audit plan (historical)
 
 ## Acceptance criteria
 
@@ -57,7 +92,7 @@ uses of deprecated APIs and should not be removed merely to make a build quiet.
 Phase 3 begins only after the clean legacy baseline is validated. No IntelliJ Platform SDK setup,
 PSI/language support, new tool windows, or replacement UI belongs to Phase 2.5.
 
-## First cleanup checkpoint — 2026-11-08
+## First cleanup checkpoint — 2026-11-08 (historical)
 
 The current checkpoint prioritizes non-Dagger production uses of deprecated static globals.
 It does not complete the settings/JDK cleanup or enable blanket deprecation-as-error enforcement.

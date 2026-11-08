@@ -1,8 +1,10 @@
 # Phase 2 completion — independent MARS core
 
-Status: Phase 2 completed on 2026-11-08. A subsequent Phase 2.5 legacy-deprecation cleanup now
-precedes Phase 3, IntelliJ plugin implementation; see [the Phase 2.5 plan](PHASE_2_5_PLAN.md).
-No Phase 3 language support, tool windows, or IntelliJ SDK integration has been started.
+This is the historical Phase 2 checkpoint. Phase 2.5 subsequently removed the legacy module,
+moved Venus into `mars5/desktop`, and introduced a separate Kotlin IntelliJ starter in `mars5/plugin`.
+See [the Phase 2.5 completion record](PHASE_2_5_PLAN.md) and [the current plan](MODERNIZATION_PLAN.md)
+for the current architecture and Kotlin destination. The tables and compatibility descriptions
+below document the earlier checkpoint.
 
 ## Delivered architecture
 

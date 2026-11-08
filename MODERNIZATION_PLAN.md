@@ -4,12 +4,22 @@
 **Scope:** Full modernization from legacy Swing/batch-script monolith to a Gradle multi-module project with a clean core library and an IntelliJ IDE plugin.  
 **Codebase baseline:** 217 Java files, ~60,400 LOC, no tests, no build tool, Java 5–8 era code.
 
-**Current status (2026-11-08): Phase 2 is complete; Phase 2.5 cleans the legacy baseline before Phase 3.**
-The implemented layout is `mars5/core`, `mars5/cli`, `mars5/plugin`, plus a separate
-`mars5/legacy` compatibility module for the frozen Venus frontend. The independent core and CLI
-have no dependency on that module. All modules target Java 25 with Gradle 9.9.
-See [Phase 2 completion and acceptance evidence](PHASE_2_COMPLETION.md) for the verified boundary,
-API entry points, test coverage, benchmark, and deliberate adaptations to this original plan.
+**Current status (2026-11-08): Phase 2.5 complete; Kotlin plugin bootstrap integrated.**
+The implemented modules are `mars5/core`, `mars5/cli`, `mars5/desktop`, and `mars5/plugin`.
+The compatibility runtime has been deleted. Core is independent of both desktop and IntelliJ;
+all frontends use explicit session ownership. The plugin is Kotlin; core, CLI, and desktop are
+currently Java. All modules target JDK 25 with Gradle 9.9.
+
+**MARS 5 destination:** fully Kotlin engine, CLI, and IntelliJ plugin. The next engine milestone
+ports the tested core to idiomatic Kotlin in coherent subsystems, preserving MIPS semantics and
+session isolation. Begin with value types/contracts, then hardware, instruction execution,
+assembly, simulation/I/O, and CLI. The current Java implementation provides the behavioral
+reference during migration. Keep each increment green; avoid retaining Java-shaped compatibility
+facades in the new Kotlin design. Kotlin plugin language/UI work can build on the stable session
+boundary, while Venus remains available in the separate desktop module.
+
+See [Phase 2.5 completion and acceptance evidence](PHASE_2_5_PLAN.md). Earlier phase sketches below
+are historical design notes where they differ from this status and the checked-in build files.
 
 
 ---
@@ -36,34 +46,25 @@ API entry points, test coverage, benchmark, and deliberate adaptations to this o
 - **Incremental, always-green.** Each phase ends with a working build. No "big bang" rewrite.
 - **Tests before refactoring, not after.** Capture existing behavior as characterization tests before changing anything.
 - **Interfaces before implementations.** Define the public API surface of the core before rewriting internals.
+- **Kotlin for MARS 5.** Write new engine and IntelliJ implementation in idiomatic Kotlin; migrate the existing Java core against its behavior tests.
 - **No new Swing.** The existing Venus GUI is frozen: bug-fix only. All new UI goes into the IntelliJ plugin.
 
 ---
 
 ## Target Architecture
 
-```
-mars-original/                   ← git root
-├── mars-core/                   ← pure Java library, zero UI dependencies
-│   └── src/main/java/edu/missouristate/mars/
-│       ├── assembler/
-│       ├── simulator/
-│       ├── mips/
-│       │   ├── hardware/
-│       │   ├── instructions/
-│       │   └── dump/
-│       └── util/
-├── mars-cli/                    ← thin CLI wrapper, depends on mars-core
-│   └── src/main/java/edu/missouristate/mars/cli/
-├── mars-plugin/                 ← IntelliJ Platform plugin, depends on mars-core
-│   └── src/main/java/edu/missouristate/mars/plugin/
-│       ├── language/            ← PSI, lexer, parser, file type
-│       ├── run/                 ← Run/Debug configurations
-│       ├── toolwindow/          ← Registers, Memory, Console tool windows
-│       └── settings/            ← IDE settings pages
-├── build.gradle.kts             ← root build
+```text
+mars5/
+├── core/       independent engine; Java behavioral reference, Kotlin migration next
+├── cli/        standalone launcher; migrates with the engine
+├── desktop/    existing Venus frontend; depends only on core
+├── plugin/     Kotlin IntelliJ plugin; depends only on core
+├── build.gradle.kts
 └── settings.gradle.kts
 ```
+
+The final engine and CLI source roots will be Kotlin. The desktop transition frontend is kept
+separate from the plugin artifact and from the core dependency graph.
 
 ---
 
@@ -985,58 +986,33 @@ Once all core classes use `MarsContext` via constructor injection, the `Globals`
 
 ## Phase 2.5 — Legacy Deprecation Cleanup
 
-**Goal:** Remove deprecated API usages from the legacy runtime, Venus frontend, and tools to
-establish a clean baseline before IntelliJ implementation. Preserve the existing behavior and
-the independent core's isolation boundary.
-
-Follow [the Phase 2.5 implementation plan](PHASE_2_5_PLAN.md): audit compiler diagnostics, migrate
-compatibility/settings call sites to supported APIs, finish typed tool callbacks, replace obsolete
-desktop APIs, and enforce warning-clean compilation. Removing deprecation annotations or adding
-blanket warning suppressions does not satisfy this phase.
-
-**Exit criteria:** No deprecated API calls in application code; explicit deprecation/removal checks
-in the build; the full test suite and packaged launchers pass; intentional compatibility-contract
-coverage remains identified. Record interactive desktop validation separately.
+**Completed:** Deprecated usages and compatibility facades were removed, desktop session
+ownership was made explicit, strict compilation was enabled, and the full build and packaged
+launchers were verified. The final step imported the Kotlin plugin scaffold. See
+[the completion record](PHASE_2_5_PLAN.md) for details and the historical warning inventory.
 
 ---
 
 ## Phase 3 — IntelliJ Plugin
 
-**Goal:** Replace the Venus Swing GUI with a first-class IntelliJ IDEA plugin. The plugin uses `mars-core` as a library. The Venus code in `mars-plugin` is frozen during this phase and progressively replaced.
+**Goal:** A Kotlin IntelliJ plugin backed by the independent Kotlin engine. The existing Venus
+frontend is retained in `desktop` while native language, execution, and debugger features arrive.
 
-**Prerequisites:** Phase 2 complete (clean, headless `mars-core`) and Phase 2.5 complete
-(warning-clean legacy/runtime baseline).
+**Prerequisites:** Phase 2 and Phase 2.5 are complete. The Kotlin engine migration is now an
+explicit milestone; the current Java engine remains the tested integration reference meanwhile.
 
-### Plugin module setup
+### Plugin module setup (implemented)
 
-Add the IntelliJ Platform Gradle Plugin to `mars-plugin/build.gradle.kts`:
+`mars5/plugin` uses Kotlin JVM 2.4.21, IntelliJ Platform Gradle Plugin 2.20.0, JDK 25, and IntelliJ
+IDEA 2026.3 (build 263). `MarsSessionService` lazily owns one core session per project and closes it
+on disposal. Core has no IntelliJ dependency. The IDE supplies Kotlin runtime libraries; do not
+bundle an additional standard library or coroutine runtime. The starter has no Java plugin
+sources. See the checked-in Gradle build for the executable configuration.
 
-```kotlin
-plugins {
-    java
-    id("org.jetbrains.intellij.platform") version "2.3.0"
-}
-
-dependencies {
-    intellijPlatform {
-        intellijIdeaCommunity("2025.1")
-        pluginVerifier()
-        zipSigner()
-    }
-    implementation(project(":mars-core"))
-}
-
-intellijPlatform {
-    pluginConfiguration {
-        name = "MARS MIPS"
-        version = "4.6.0"
-        ideaVersion {
-            sinceBuild = "251"
-            untilBuild = provider { null }
-        }
-    }
-}
-```
+Build with `./gradlew :plugin:buildPlugin`; a local installed SDK may be supplied with
+`-PlocalIdePath="/path/to/IntelliJ IDEA.app"`. Future native UI, PSI, console, and debugger code is
+Kotlin. Historical Java examples below describe feature intent and must be implemented using
+current Kotlin/platform APIs, rather than copied as new Java code.
 
 ### 3.1 — MIPS Language Support (PSI layer)
 
