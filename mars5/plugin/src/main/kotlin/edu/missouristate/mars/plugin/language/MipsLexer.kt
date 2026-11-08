@@ -29,7 +29,7 @@ class MipsLexer : LexerBase() {
         val current = token ?: return null
         if (current.kind == MipsTokenKind.SPACE) return SyntaxTokenTypes.WHITE_SPACE
         if (current.kind == MipsTokenKind.DIRECTIVE) {
-            when (buffer.subSequence(current.start, current.end).toString()) {
+            when (buffer.subSequence(current.start, current.end).toString().lowercase()) {
                 ".macro" -> return MipsTypes.syntax.getValue("MACRO")
                 ".end_macro" -> return MipsTypes.syntax.getValue("END_MACRO")
                 ".eqv" -> return MipsTypes.syntax.getValue("EQV")

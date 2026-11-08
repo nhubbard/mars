@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
@@ -13,13 +14,80 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.mips.instructions.InstructionSet
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsParserPlatformTest {
     private val project = projectFixture()
+
+    @Test
+    fun `mixed case macro and equivalence directives assemble and produce native PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .EqV LIMIT 7
+            .MaCrO emit (%value)
+              addiu ${'$'}t0, ${'$'}zero, %value
+            .EnD_MaCrO
+            emit(LIMIT)
+        """.trimIndent()
+        assertAssembles(directory, source)
+        readAction {
+            val file = assertParses(source)
+            assertEquals(".EqV LIMIT 7", file.node.findChildByType(MipsTypes.psi("STATEMENT"))
+                ?.findChildByType(MipsTypes.psi("EQUIVALENCE"))?.text)
+            val macro = file.children.mapNotNull { it.node.findChildByType(MipsTypes.psi("MACRO_DEFINITION")) }.single()
+            assertEquals(".MaCrO", macro.firstChildNode.text)
+            assertEquals(".EnD_MaCrO", macro.lastChildNode.text)
+        }
+    }
+
+    @Test
+    fun `macros with boundaries in different files assemble and each file parses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val open = ".macro emit (%value)"
+        val body = "addiu \$t0, \$zero, %value"
+        val close = ".end_macro"
+        val call = "emit(7)"
+
+        directory.resolve("open.s").writeText(open)
+        val closesInEntry = ".include \"open.s\"\n$body\n$close\n$call"
+        assertAssembles(directory, closesInEntry)
+
+        val closesInInclude = "$body\n$close"
+        directory.resolve("close.s").writeText(closesInInclude)
+        val opensInEntry = "$open\n.include \"close.s\"\n$call"
+        assertAssembles(directory, opensInEntry)
+        readAction {
+            for (fragment in listOf(open, closesInEntry, closesInInclude, opensInEntry)) assertParses(fragment)
+        }
+    }
+
+    @Test
+    fun `macro boundary keywords remain replacement text and expand during assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv BEGIN .macro emit (%value)
+            .eqv END .end_macro
+            .eqv DECLARE .eqv
+            DECLARE LIMIT 7
+            BEGIN
+              addiu ${'$'}t0, ${'$'}zero, %value
+            END
+            emit(LIMIT)
+        """.trimIndent()
+        assertAssembles(directory, source)
+        readAction { assertParses(source) }
+    }
+
+    private fun assertAssembles(directory: Path, source: String) {
+        val entry = directory.resolve("entry.asm").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        val program = context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+    }
 
     @Test
     fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
@@ -167,12 +235,13 @@ class MipsParserPlatformTest {
         readAction { for (text in cases) assertParses(text) }
     }
 
-    private fun assertParses(source: String) {
+    private fun assertParses(source: String): MipsFile {
         val file = PsiFileFactory.getInstance(project.get()).createFileFromText("example.asm", MipsFileType, source)
-        assertInstanceOf(MipsFile::class.java, file)
+        val mips = assertInstanceOf(MipsFile::class.java, file)
         assertSame(MipsFileType, file.fileType)
         assertEquals(source, file.text)
         val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
         assertTrue(errors.isEmpty(), source + "\n" + errors.joinToString { it.errorDescription + " at " + it.textRange })
+        return mips
     }
 }

@@ -131,12 +131,25 @@ that could conceal a failed absolute lookup. All 1,254 tests passed in the clean
 runtime line and branch coverage remains 100%. The IDE loaded the plugin and opened the smoke
 project without a plugin error. Visual editor acceptance remains open as described above.
 
+## Macro boundaries and directive case
+
+The lexer recognizes macro and equivalence keywords case-insensitively and preserves the source
+spelling in PSI. The parser accepts physical files containing only one macro boundary, including
+an opening directive at end of file. Macro and equivalence keywords inside `.eqv` replacement
+text remain replacement tokens. The declaration index version advances so existing projects
+rebuild their candidates. Its macro offsets describe physical PSI nesting before expansion.
+
+Three fixtures use the Java assembler to verify the emitted instruction and the IntelliJ parser
+to verify each physical file. They cover mixed case, both directions of split include boundaries,
+and `.eqv` aliases that introduce macro and equivalence directives. Build-context analysis owns
+diagnostics for unmatched macro boundaries after include and equivalence expansion.
+The clean sandbox launch ran all 1,257 tests, loaded the plugin, and opened the smoke project.
+The installable distribution was rebuilt after startup verification.
+
 ## Next slices
 
-Finish syntax and semantic edge cases from MARS characterization. The assembler matches directive
-names without case sensitivity; the lexer still needs that behavior for macro and equivalence tokens.
-Characterize macro boundaries across includes with the real assembler before changing the grammar.
-Then add symbol reference sentinels,
+Continue checking parser edge cases against the Java assembler, including macro formal parameter
+spellings and punctuation. Then add symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

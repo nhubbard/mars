@@ -19,13 +19,13 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import java.io.DataInput
 import java.io.DataOutput
 
-/** A syntactic candidate. Visibility and assembly validity require the source's build context. */
+/** A syntactic candidate. The macro offset describes physical PSI nesting before source expansion. */
 data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroOffset: Int)
 
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 1
+    override fun getVersion(): Int = 2
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE

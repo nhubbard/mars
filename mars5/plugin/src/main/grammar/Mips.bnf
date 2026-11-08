@@ -29,18 +29,19 @@
 }
 file ::= (NEWLINE | statement)*
 statement ::= (label+ body? | body) {recoverWhile=line_recover}
-private body ::= macro_definition | equivalence | directive_statement | instruction | data_continuation
+private body ::= macro_definition | END_MACRO | equivalence | directive_statement | instruction | data_continuation
 private line_recover ::= !NEWLINE
 label ::= name COLON
 private name ::= WORD | DIRECTIVE | REGISTER
-macro_definition ::= MACRO macro_signature NEWLINE (NEWLINE | macro_statement)* END_MACRO {pin=1}
+// Include expansion can supply either macro boundary from a different file.
+macro_definition ::= MACRO macro_signature (NEWLINE (NEWLINE | macro_statement)* END_MACRO? | <<eof>>) {pin=1}
 private macro_statement ::= !END_MACRO statement
 macro_signature ::= name (LEFT_PAREN parameter_list? RIGHT_PAREN | parameter_list)?
 parameter_list ::= macro_parameter (COMMA? macro_parameter)*
 macro_parameter ::= PARAMETER | REGISTER
 // Equivalence replacement is source text, not an eagerly evaluated expression.
 equivalence ::= EQV name COMMA? replacement+ {pin=1}
-replacement ::= WORD | DIRECTIVE | REGISTER | PARAMETER | NUMBER | STRING | CHARACTER | COMMA | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS
+replacement ::= WORD | DIRECTIVE | REGISTER | PARAMETER | NUMBER | STRING | CHARACTER | COMMA | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS | MACRO | END_MACRO | EQV
 // Directive-specific semantic checks use the canonical Java assembler catalog.
 directive_statement ::= DIRECTIVE operand_list? {pin=1}
 instruction ::= operation (arguments | operand_list)? {pin=1}

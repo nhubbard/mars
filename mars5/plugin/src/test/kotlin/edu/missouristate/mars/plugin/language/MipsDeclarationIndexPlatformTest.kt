@@ -34,13 +34,13 @@ class MipsDeclarationIndexPlatformTest {
     @Test
     fun `native index records all declaration kinds duplicates and macro ownership`() = timeoutRunBlocking<Unit> {
         val source = """
-            .eqv shared 7
+            .EqV shared 7
             shared: nop
             shared: nop
-            .macro emit(%x)
+            .MaCrO emit(%x)
               local: li ${'$'}v0, %x
               .eqv inside 2
-            .end_macro
+            .EnD_MaCrO
             .data
             .private: .word 1
             ${'$'}gcc: .word 2
@@ -62,7 +62,7 @@ class MipsDeclarationIndexPlatformTest {
                 ), sites("shared"),
             )
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("emit"), -1)), sites("emit"))
-            val macro = source.indexOf(".macro emit")
+            val macro = source.indexOf(".MaCrO emit")
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)), sites("local"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("inside"), macro)), sites("inside"))
             assertEquals(1, sites(".private").size)
@@ -88,7 +88,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(1, extension.version)
+            assertEquals(2, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))
