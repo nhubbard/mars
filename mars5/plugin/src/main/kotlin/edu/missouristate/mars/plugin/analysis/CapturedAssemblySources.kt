@@ -44,6 +44,7 @@ internal fun collectAssemblySources(
     val visited = HashSet<Path>()
     val texts = HashMap<Path, String>()
     val revisions = HashMap<Path, Long>()
+    val resolvedIncludes = HashMap<Path, Path>()
     val tokenizer = Tokenizer()
 
     while (pending.isNotEmpty()) {
@@ -62,13 +63,18 @@ internal fun collectAssemblySources(
             ProgressManager.checkCanceled()
             val include = tokenizer.findIncludePath(line) ?: continue
             try {
-                pending.addLast(path.resolveSibling(include).normalize())
+                val request = path.resolveSibling(include)
+                // The VFS must see '..' before normalization because it may follow a symlink.
+                val target = files.findFileByNioPath(request) ?: continue
+                val resolved = target.toNioPath().toAbsolutePath().normalize()
+                resolvedIncludes[request] = resolved
+                pending.addLast(resolved)
             } catch (_: InvalidPathException) {
                 // The assembler reports the malformed path at the captured include site.
             }
         }
     }
-    return CapturedAssemblySources(AssemblySourceSnapshot(ordered, texts), handler, copyOfMap(revisions))
+    return CapturedAssemblySources(AssemblySourceSnapshot(ordered, texts, resolvedIncludes), handler, copyOfMap(revisions))
 }
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */

@@ -29,6 +29,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -568,6 +569,72 @@ class MarsBuildPlatformTest {
                 }
             }
         }
+
+    @Test
+    fun `build and include navigation follow a symlink before resolving a parent segment`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "shortcut/../value.s"
+            .include "value.s"
+            .text
+            addiu ${'$'}t0, ${'$'}zero, REMOTE
+            addiu ${'$'}t1, ${'$'}zero, LOCAL
+            addiu ${'$'}t2, ${'$'}zero, NESTED
+        """.trimIndent()
+        val (entry, remote, local) = withContext(Dispatchers.EDT) {
+            val temp = fixture.tempDirFixture
+            val main = fixture.addFileToProject("local/main.asm", source).virtualFile
+            val localValue = fixture.addFileToProject("local/value.s", ".eqv LOCAL 2\n").virtualFile
+            val remoteValue = fixture.addFileToProject("actual/value.s", ".eqv REMOTE 7\n.include \"next.s\"\n").virtualFile
+            fixture.addFileToProject("actual/next.s", ".eqv NESTED 8\n")
+            val target = temp.findOrCreateDir("actual/dir").toNioPath()
+            val link = Files.createSymbolicLink(main.toNioPath().resolveSibling("shortcut"), target)
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(link))
+            fixture.configureFromExistingVirtualFile(main)
+            Triple(main.toNioPath(), remoteValue, localValue)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val file = fixture.file
+            val first = source.indexOf("value.s")
+            val second = source.lastIndexOf("value.s")
+            assertEquals(remote, file.findReferenceAt(first)?.resolve()?.containingFile?.virtualFile)
+            assertEquals(local, file.findReferenceAt(second)?.resolve()?.containingFile?.virtualFile)
+            assertEquals(
+                setOf(remote, local),
+                FileIncludeManager.getManager(project).getIncludedFiles(file.virtualFile, true).toSet(),
+            )
+        }
+        val expected = listOf(0x24080007, 0x24090002, 0x240a0008)
+        MarsSessionService.createMarsComponent().context().use { disk ->
+            assertEquals(expected, disk.assemble(listOf(entry)).machineList.map { it.binaryStatement })
+        }
+        val capture = captureAssemblySources(listOf(entry), null)
+        assertEquals(
+            setOf(entry, remote.toNioPath(), local.toNioPath(), remote.toNioPath().resolveSibling("next.s")),
+            capture.revisions.keys,
+        )
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { session ->
+            val build = project.service<MarsBuildService>()
+            assertTrue(build.assemble(entry, component, activateBuildView = false))
+            assertEquals(expected, session.program.machineList.map { it.binaryStatement })
+
+            withContext(Dispatchers.EDT) { edit(remote, ".eqv REMOTE 11\n.include \"next.s\"\n") }
+            assertTrue(build.assemble(entry, component, activateBuildView = false))
+            assertEquals(listOf(0x2408000b, 0x24090002, 0x240a0008), session.program.machineList.map { it.binaryStatement })
+            assertTrue(Files.readString(remote.toNioPath()).contains(".eqv REMOTE 7"))
+
+            val broken = withContext(Dispatchers.EDT) {
+                fixture.tempDirFixture.createFile("local/broken.asm", ".include \"value.s\"\n.include \"missing/../value.s\"\n")
+            }.toNioPath()
+            val failure = captureAssemblySources(listOf(broken), null).assembleIn(component)
+            assertFalse(failure.succeeded())
+            val error = failure.errors().single()
+            assertEquals(broken, error.file())
+            assertEquals(2, error.line())
+            assertTrue(error.message().contains("Error reading include file"))
+        }
+    }
 
     @Test
     fun `build reports an unfinished string on an unsaved included data continuation`() = timeoutRunBlocking<Unit> {

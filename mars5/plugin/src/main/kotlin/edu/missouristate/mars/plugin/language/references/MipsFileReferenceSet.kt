@@ -2,9 +2,12 @@ package edu.missouristate.mars.plugin.language.references
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiFileSystemItem
+import com.intellij.psi.ResolveResult
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceHelper
 import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet
@@ -46,6 +49,19 @@ class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileRefer
     override fun createFileReference(range: TextRange, index: Int, text: String): FileReference =
         object : FileReference(this, range, index, text) {
             override fun decode(text: String): String = text
+
+            override fun innerResolveInContext(
+                text: String, context: PsiFileSystemItem, result: MutableCollection<in ResolveResult>,
+                caseSensitive: Boolean,
+            ) {
+                if (text == ".." && context.virtualFile.`is`(VFileProperty.SYMLINK)) {
+                    val parent = context.virtualFile.findFileByRelativePath("..")?.let(context.manager::findDirectory)
+                    if (parent != null) result.add(PsiElementResolveResult(parent))
+                } else {
+                    super.innerResolveInContext(text, context, result, caseSensitive)
+                }
+            }
+
             override fun getContextsForBindToElement(
                 curVFile: VirtualFile, project: Project, helper: FileReferenceHelper,
             ): Collection<PsiFileSystemItem> = this@MipsFileReferenceSet.parentDirectoryContext

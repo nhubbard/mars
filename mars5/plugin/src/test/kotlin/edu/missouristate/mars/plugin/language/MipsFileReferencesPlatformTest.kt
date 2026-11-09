@@ -5,6 +5,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.ElementManipulators
@@ -21,6 +22,8 @@ import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsFileReferencesPlatformTest {
@@ -93,6 +97,29 @@ class MipsFileReferencesPlatformTest {
                 assertEquals(path, references.pathString)
                 assertEquals(path.startsWith('/'), references.isAbsolutePathReference)
             }
+        }
+    }
+
+    @Test
+    fun `native include navigation does not substitute a lexical parent when the symlink target has no VFS parent`(
+        @TempDir outsideProject: Path,
+    ) = timeoutRunBlocking<Unit> {
+        val psi = withContext(Dispatchers.EDT) {
+            val path = Files.writeString(outsideProject.resolve("main.asm"), ".include \"shortcut/../value.s\"\n")
+            Files.writeString(outsideProject.resolve("value.s"), "nop\n")
+            val link = Files.createSymbolicLink(outsideProject.resolve("shortcut"), outsideProject.root)
+            val manager = VirtualFileManager.getInstance()
+            checkNotNull(manager.refreshAndFindFileByNioPath(link))
+            val source = checkNotNull(manager.refreshAndFindFileByNioPath(path))
+            fixture.configureFromExistingVirtualFile(source)
+            fixture.file
+        }
+        readAction {
+            val literal = PsiTreeUtil.findChildOfType(psi, MipsStringLiteral::class.java)!!
+            val references = literal.references
+            assertNotNull(references.first().resolve())
+            assertNull(references[1].resolve())
+            assertNull(references.last().resolve())
         }
     }
 
