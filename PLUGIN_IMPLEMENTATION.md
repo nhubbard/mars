@@ -30,6 +30,10 @@ Real PSI tests cover every canonical basic/pseudo-instruction example, every pro
 assembly corpus, directive/macro variants, malformed lines, truncated input, native syntax entry
 points, file associations, lexer restoration and highlighting.
 
+The editor colors instruction mnemonics from the parsed operation, including built-in and
+pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
+The mnemonic style is editable under **Editor → Color Scheme → MARS MIPS**.
+
 ### Build-tool detail
 
 Grammar-Kit's released command-line entry point always creates its Java generator. The build-only

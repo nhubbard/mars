@@ -12,7 +12,7 @@ import com.intellij.psi.tree.IElementType
 
 class MipsSyntaxHighlighter : SyntaxHighlighterBase() {
     private val colors = buildMap<IElementType, TextAttributesKey> {
-        for (name in listOf("MNEMONIC", "DIRECTIVE", "MACRO", "END_MACRO", "EQV", "INCLUDE", "SET", "SEGMENT", "EXTERN")) {
+        for (name in listOf("DIRECTIVE", "MACRO", "END_MACRO", "EQV", "INCLUDE", "SET", "SEGMENT", "EXTERN")) {
             put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.KEYWORD)
         }
         for (name in listOf("STRING", "CHARACTER")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.STRING)

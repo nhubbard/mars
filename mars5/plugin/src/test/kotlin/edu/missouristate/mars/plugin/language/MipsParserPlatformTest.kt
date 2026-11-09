@@ -577,17 +577,13 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `basic and pseudo instruction mnemonics use the IDE keyword color`() {
+    fun `lexer preserves mnemonic tokens for contextual highlighting`() {
         val highlighter = MipsSyntaxHighlighter()
         val lexer = highlighter.highlightingLexer
         for (mnemonic in listOf("addiu", "LI", "c.eq.s")) {
             lexer.start(mnemonic)
             assertSame(MipsTypes.psi("MNEMONIC"), lexer.tokenType)
-            assertArrayEquals(
-                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
-                highlighter.getTokenHighlights(lexer.tokenType!!),
-                mnemonic,
-            )
+            assertTrue(highlighter.getTokenHighlights(lexer.tokenType!!).isEmpty(), mnemonic)
         }
     }
 

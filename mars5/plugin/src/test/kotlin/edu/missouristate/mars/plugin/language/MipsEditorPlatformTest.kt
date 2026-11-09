@@ -6,6 +6,9 @@ import com.intellij.lang.LanguageCommenters
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.HighlighterColors
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -20,6 +23,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.awt.Color
+import java.awt.Font
 
 @TestApplication
 class MipsEditorPlatformTest {
@@ -27,14 +32,15 @@ class MipsEditorPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
-    fun `assembly editors render basic and pseudo instruction mnemonics as keywords`() = timeoutRunBlocking<Unit> {
+    fun `assembly editors highlight mnemonics only in instruction positions`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = """
                 .text
-                entry: addiu ${'$'}t0, ${'$'}zero, 1
+                addiu: addiu ${'$'}t0, ${'$'}zero, 1
                     LI ${'$'}v0, 10
                     c.eq.s ${'$'}f0, ${'$'}f2
-                    s.s ${'$'}f0, value
+                    s.s ${'$'}f0, addiu
+                    # syscall
                     syscall
             """.trimIndent()
             for (extension in listOf("asm", "s")) {
@@ -42,17 +48,52 @@ class MipsEditorPlatformTest {
                 fixture.configureFromExistingVirtualFile(file.virtualFile)
                 assertSame(MipsFileType, fixture.file.fileType)
                 val editor = fixture.editor
-                val expected = editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.KEYWORD)
-                val label = editor.highlighter.createIterator(source.indexOf("entry")).textAttributes
-                for (mnemonic in listOf("addiu", "LI", "c.eq.s", "s.s", "syscall")) {
-                    val offset = source.indexOf(mnemonic)
-                    val token = editor.highlighter.createIterator(offset)
-                    assertEquals(mnemonic, source.substring(token.start, token.end), "$extension at $offset")
-                    assertEquals(expected.foregroundColor, token.textAttributes.foregroundColor, mnemonic)
-                    assertEquals(expected.fontType, token.textAttributes.fontType, mnemonic)
-                    assertNotEquals(label, token.textAttributes, mnemonic)
+                val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
+                val expectedSpans = listOf("addiu", "LI", "c.eq.s", "s.s").map { mnemonic ->
+                    val start = source.indexOf(" $mnemonic ") + 1
+                    start until (start + mnemonic.length)
+                } + listOf(source.lastIndexOf("syscall") until source.length)
+                assertEquals(
+                    expectedSpans,
+                    highlights.sortedBy { it.startOffset }.map { it.startOffset until it.endOffset },
+                    extension,
+                )
+                val expected = editor.colorsScheme.getAttributes(instructionMnemonicColor)
+                val label = editor.highlighter.createIterator(source.indexOf("addiu:")).textAttributes
+                assertNotEquals(label, expected)
+                for (highlight in highlights) {
+                    assertEquals(expected, highlight.getTextAttributes(fixture.file, editor.colorsScheme))
                 }
+                val register = editor.highlighter.createIterator(source.indexOf("${'$'}t0")).textAttributes
+                assertEquals(
+                    editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.INSTANCE_FIELD).foregroundColor,
+                    register.foregroundColor,
+                )
             }
+        }
+    }
+
+    @Test
+    fun `color settings expose a mnemonic preview and distinct light and dark defaults`() {
+        val page = ColorSettingsPages.getInstance().registeredPages.filterIsInstance<MipsColorSettingsPage>().single()
+        assertEquals("MARS MIPS", page.displayName)
+        assertSame(MipsFileType.icon, page.icon)
+        assertInstanceOf(MipsSyntaxHighlighter::class.java, page.highlighter)
+        assertTrue(page.colorDescriptors.isEmpty())
+        val descriptor = page.attributeDescriptors.single()
+        assertEquals("Instruction mnemonic", descriptor.displayName)
+        assertSame(instructionMnemonicColor, descriptor.key)
+        assertEquals(mapOf("instruction" to instructionMnemonicColor), page.additionalHighlightingTagToDescriptorMap)
+        assertTrue(page.demoText.contains("<instruction>li</instruction>"))
+        assertSame(DefaultLanguageHighlighterColors.KEYWORD, instructionMnemonicColor.fallbackAttributeKey)
+
+        val colors = EditorColorsManager.getInstance()
+        for ((name, accent) in mapOf("Default" to 0x0033B3, "Darcula" to 0xCF8E6D)) {
+            val scheme = checkNotNull(colors.getScheme(name)) { name }
+            val mnemonic = scheme.getAttributes(instructionMnemonicColor)
+            assertEquals(Color(accent), mnemonic.foregroundColor, name)
+            assertEquals(Font.BOLD, mnemonic.fontType, name)
+            assertNotEquals(scheme.getAttributes(HighlighterColors.TEXT).foregroundColor, mnemonic.foregroundColor, name)
         }
     }
 

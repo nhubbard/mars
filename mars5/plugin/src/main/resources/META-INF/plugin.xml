@@ -14,6 +14,10 @@
   <extensions defaultExtensionNs="com.intellij">
     <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s"/>
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
+    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
+    <colorSettings implementation="edu.missouristate.mars.plugin.language.MipsColorSettingsPage" bundle="messages.MarsBundle" key="colors.name"/>
+    <additionalTextAttributes scheme="Default" file="colors/MipsDefault.xml"/>
+    <additionalTextAttributes scheme="Darcula" file="colors/MipsDarcula.xml"/>
     <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
     <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
