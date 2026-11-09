@@ -569,6 +569,45 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `commas preserve label offsets and their optional base registers`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val header = ".eqv DELTA 4\n.data\ntarget: .word 0\n\$target: .word 0\nnop: .word 0\n.text\n"
+        val operands = listOf(
+            "target,,+4",
+            "\$target,+4",
+            "target,,+,,DELTA,,(\$sp)",
+            "nop,,+ 4,,(\$sp)",
+        )
+        val canonical = listOf(
+            "la \$t0,target+4",
+            "la \$t0,\$target+4",
+            "lw \$t0,target+4(\$sp)",
+            "lw \$t0,nop+ 4(\$sp)",
+        )
+        val alternate = canonical.zip(operands) { line, operand ->
+            "${line.substringBefore(',')},$operand"
+        }
+        val context = project.get().service<MarsSessionService>().context
+        fun assemble(lines: List<String>): List<Int> {
+            val entry = directory.resolve("label-offsets.asm").also { it.writeText(header + lines.joinToString("\n", postfix = "\n")) }
+            return context.assemble(listOf(entry), null, true, false).machineList.map { it.binaryStatement }
+        }
+        assertEquals(assemble(canonical), assemble(alternate))
+        readAction {
+            val source = header + alternate.joinToString("\n", postfix = "\n")
+            val instructions = descendants(assertParses(source).node, "INSTRUCTION").toList()
+            assertEquals(
+                operands.map { listOf("\$t0", it) },
+                instructions.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() },
+            )
+            assertEquals(operands, instructions.flatMap { descendants(it, "ADD_EXPR").map { offset -> offset.text } })
+            assertEquals(listOf("DELTA,,(\$sp)", "4,,(\$sp)"),
+                instructions.flatMap { descendants(it, "ADDRESS_EXPR").map { address -> address.text } })
+            val signed = assertParses("la \$t0,nop,+4\n")
+            assertEquals(listOf("\$t0", "nop", "+4"), descendants(signed.node, "OPERAND").map { it.text }.toList())
+        }
+    }
+
+    @Test
     fun `named floating point values use numeric PSI and preserve assembler output`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = ".data\n.double NaN, Infinity, -1.2e-5, 0x1.8p2, .5f\n.float NaN\n.text\nnop\n"
         assertAssembles(directory, source, 0)

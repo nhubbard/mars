@@ -631,6 +631,11 @@ punctuation leaves and exact source text. A predicate on infix and postfix
 operators keeps a comma-delimited operand separate, including signed data
 values and parenthesized operands.
 
+Commas around a label's plus and offset remain part of the address operand,
+including when an equivalence supplies the offset and a base register follows.
+When an instruction mnemonic names a label, a plus joined directly to digits
+still starts a signed literal under the assembler's tokenization rules.
+
 For comma-free operands, the parser follows MARS's signed-token rule. A sign
 immediately followed by a digit begins a new operand after a number, register,
 or character literal. A sign after an identifier can still introduce a label

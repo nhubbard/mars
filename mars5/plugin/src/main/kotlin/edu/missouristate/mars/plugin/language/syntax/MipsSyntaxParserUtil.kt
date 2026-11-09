@@ -21,6 +21,7 @@ internal object DebuggerExpressionParsing : ParserUserState
 
 private val signs = setOf(PLUS, MINUS)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
+private val addressLabels = identifiers + MNEMONIC
 private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER)
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val spacing = setOf(WHITE_SPACE)
@@ -39,7 +40,12 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
         if (previous != COMMA) return previous != REGISTER
         return builder.lookAhead(1) in addressBases && builder.previousToken(separators) in addressOffsets
     }
-    if (previous == COMMA) return false
+    if (previous == COMMA) {
+        // Label+offset forms accept commas around the plus. A mnemonic can name a label,
+        // but a plus joined to digits after a mnemonic is still a signed literal.
+        val label = builder.previousToken(separators)
+        return builder.tokenType == PLUS && label in addressLabels && !builder.signAttachesToNumber(label)
+    }
     if (builder.tokenType !in signs) return true
 
     return !builder.signAttachesToNumber(previous)
