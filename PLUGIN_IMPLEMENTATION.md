@@ -167,6 +167,20 @@ The query uses the current file as its entry. Equivalence definitions created on
 expansion and full build-context binding remain separate. Native fixtures cover ordering,
 label precedence, include cycles, incomplete definitions, and navigation through the IDE.
 
+## Go to Declaration for macro calls
+
+Direct macro calls resolve by case-sensitive name and token argument count. The plugin uses
+the Java tokenizer and shares the assembler's rule for removing one outer pair of call
+parentheses. Navigation selects the latest matching definition that closed before the call.
+Macro boundary facts are cached on each file's PSI and combined with physical includes in
+source order, so a macro can open and close in different files. Missing and cyclic includes
+leave the editor query usable while the assembler reports source errors.
+
+The query uses the current file as its entry. Calls in macro bodies depend on when that body
+expands, and argument equivalences can change the token count. Both require build-context
+binding. IDE fixtures exercise redefinitions, arity, case, incomplete definitions, raw call
+arguments, nested includes, and the indexing guard.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.

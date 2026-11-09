@@ -14,6 +14,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
@@ -71,12 +72,55 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return local.ifEmpty { outer }
     }
 
-    /** Finds the first physical .eqv in the expanded prefix of the current entry. */
-    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
+    internal fun macroTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
         if (DumbService.isDumb(project)) return null
         val name = position.text
+        val offset = position.textOffset
+        val tokens = macroLineTokens(position)
+        val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
         val visited = hashSetOf(root.viewProvider.virtualFile)
-        val pending = ArrayDeque(listOf(equivalenceScope(root, name, position.textOffset)))
+        val pending = ArrayDeque(listOf(mipsMacroEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
+        var open: MipsMacroEvent.Begin? = null
+        var target: MipsDeclaration? = null
+        while (pending.isNotEmpty()) {
+            ProgressManager.checkCanceled()
+            val events = pending.last()
+            if (!events.hasNext()) {
+                pending.removeLast()
+                continue
+            }
+            when (val event = events.next()) {
+                is MipsMacroEvent.Begin -> open = open ?: event
+                is MipsMacroEvent.End -> {
+                    if (open?.arity == arity && open.declaration.name == name) target = open.declaration
+                    open = null
+                }
+                is MipsMacroEvent.Include -> {
+                    val included = resolveInclude(event.literal, event.path)
+                    if (included is MipsFile && visited.add(included.viewProvider.virtualFile)) {
+                        pending.addLast(mipsMacroEvents(included).iterator())
+                    }
+                }
+            }
+        }
+        if (open != null || target == null) return null
+        // An equivalence can insert or remove argument tokens. Leave that call to build-context binding.
+        for (index in 1 until tokens.size()) {
+            val token = tokens[index]
+            if (token.type == TokenTypes.IDENTIFIER &&
+                equivalenceTarget(root, token.value, offset + token.startPos - 1) != null) return null
+        }
+        return target
+    }
+
+    /** Finds the first physical .eqv in the expanded prefix of the current entry. */
+    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): MipsDeclaration? =
+        equivalenceTarget(root, position.text, position.textOffset)
+
+    private fun equivalenceTarget(root: MipsFile, name: String, offset: Int): MipsDeclaration? {
+        if (DumbService.isDumb(project)) return null
+        val visited = hashSetOf(root.viewProvider.virtualFile)
+        val pending = ArrayDeque(listOf(equivalenceScope(root, name, offset)))
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val scope = pending.last()

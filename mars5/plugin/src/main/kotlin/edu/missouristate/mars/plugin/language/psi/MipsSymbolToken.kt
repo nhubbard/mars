@@ -22,18 +22,27 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val label = context == referenceExpression && MipsInstructionOperand.at(this)?.acceptsLabel == true
         val equivalence = elementType != mnemonic && context in equivalenceContexts
         if (!label && !equivalence) return null
-        return SymbolReference(this, label, equivalence)
+        return SymbolReference(this, label, equivalence, context == operationCandidate)
     }
 
     override fun getReferences(): Array<PsiReference> = listOfNotNull(reference).toTypedArray()
 
-    private class SymbolReference(element: MipsSymbolToken, private val label: Boolean, private val equivalence: Boolean) :
+    private class SymbolReference(
+        element: MipsSymbolToken,
+        private val label: Boolean,
+        private val equivalence: Boolean,
+        private val macroCall: Boolean,
+    ) :
         PsiPolyVariantReferenceBase<MipsSymbolToken>(element, TextRange.from(0, element.textLength), true) {
         override fun multiResolve(incompleteCode: Boolean): Array<PsiElementResolveResult> {
             val file = element.containingFile as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()
             if (equivalence) {
                 val target = analysis.equivalenceTarget(file, element)
+                if (target != null) return arrayOf(PsiElementResolveResult(target))
+            }
+            if (macroCall) {
+                val target = analysis.macroTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
             }
             return if (label) analysis.labelTargets(file, element).map(::PsiElementResolveResult).toTypedArray() else emptyArray()
@@ -43,9 +52,10 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     private companion object {
         val mnemonic = MipsTypes.psi("MNEMONIC")
         val referenceExpression = MipsTypes.psi("REFERENCE_EXPR")
+        val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val equivalenceContexts = TokenSet.create(
             referenceExpression, MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
-            MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"),
+            operationCandidate, MipsTypes.psi("INVOCATION_TOKEN"),
         )
     }
 }

@@ -88,9 +88,7 @@ final class Parser {
 
     // SPIM-style macro calling:
     TokenList parenFreeTokens = tokens;
-    if (tokens.size() > 2
-        && tokens.get(1).getType() == TokenTypes.LEFT_PAREN
-        && tokens.get(tokens.size() - 1).getType() == TokenTypes.RIGHT_PAREN) {
+    if (Macro.hasCallParentheses(tokens)) {
       parenFreeTokens = (TokenList) tokens.clone();
       parenFreeTokens.remove(tokens.size() - 1);
       parenFreeTokens.remove(1);

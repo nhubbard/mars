@@ -207,6 +207,13 @@ public class Macro {
     return tokenValue.length() > 1 && tokenValue.charAt(0) == '%';
   }
 
+  /** Whether a comment-free invocation has the optional outer SPIM-style parentheses. */
+  public static boolean hasCallParentheses(TokenList tokens) {
+    return tokens.size() > 2
+        && tokens.get(1).getType() == TokenTypes.LEFT_PAREN
+        && tokens.get(tokens.size() - 1).getType() == TokenTypes.RIGHT_PAREN;
+  }
+
   public void addLabel(String value) {
     labels.add(value);
   }

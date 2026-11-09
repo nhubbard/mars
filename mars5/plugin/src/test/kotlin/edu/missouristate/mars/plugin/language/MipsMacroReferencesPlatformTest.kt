@@ -1,0 +1,116 @@
+package edu.missouristate.mars.plugin.language
+
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
+import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
+
+@TestApplication
+class MipsMacroReferencesPlatformTest {
+    private val project = codeInsightProjectFixture()
+    private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `navigation selects the latest closed definition with the same case and argument count`() = timeoutRunBlocking<Unit> {
+        val first = ".macro emit\nnop\n.end_macro\n"
+        val second = ".macro emit (\$arg)\nnop\n.end_macro\n"
+        val newer = ".macro emit ((%replacement))\nnop\n.end_macro\n"
+        val definitions = first + second + newer
+        assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it(,,+,,) # one token\n")?.offset)
+        assertEquals(first.indexOf("emit"), target("${definitions}em<caret>it()\n")?.offset)
+        assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it \$t0\n$newer")?.offset)
+        assertNull(target("${definitions}Em<caret>it(1)\n"))
+        assertNull(target("${definitions}em<caret>it(1,2,3)\n"))
+        assertNull(target("em<caret>it\n$first"))
+        assertNull(target(".macro emit\nem<caret>it\n"))
+        assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it(symbol)\n")?.offset)
+        assertNull(target("$first$second.eqv ARGS 1,2\nem<caret>it(ARGS)\n"))
+    }
+
+    @Test
+    fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("parts/open.s", ".macro emit (%value)\nnop\n")
+            fixture.addFileToProject("parts/close.s", ".end_macro\n")
+            fixture.addFileToProject("parts/wrapper.s", ".include \"open.s\"\n.include \"close.s\"\n")
+            fixture.addFileToProject("parts/cycle.s", ".include \"cycle.s\"\n")
+        }
+        val call = ".include \"parts/wrapper.s\"\nem<caret>it(1)\n"
+        val expected = Target("open.s", 7, SymbolKind.MACRO)
+        assertEquals(expected, target(call))
+        assertEquals(expected, target(".include \"missing.s\"\n.include \"parts/cycle.s\"\n$call"))
+        assertNull(target(".include \"parts/open.s\"\nem<caret>it(1)\n.include \"parts/close.s\"\n"))
+        assertEquals(SymbolKind.CONSTANT, target(".eqv emit nop\nem<caret>it\n")?.kind)
+    }
+
+    @Test
+    fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking<Unit> {
+        val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
+        assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))
+        val nested = ".macro emit\n.macro other\n.end_macro\n"
+        assertEquals(nested.indexOf("emit"), target("${nested}em<caret>it\n")?.offset)
+    }
+
+    @Test
+    fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val included = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("macros.s", ".macro emit (%x)\n.end_macro\n").virtualFile
+        }
+        assertEquals("macros.s", target(".include \"macros.s\"\nem<caret>it(1)\n")?.file)
+        withContext(Dispatchers.EDT) {
+            val document = FileDocumentManager.getInstance().getDocument(included)!!
+            WriteCommandAction.runWriteCommandAction(current) {
+                document.setText(".macro emit (%x,%y)\n.end_macro\n")
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+            }
+        }
+        readAction { assertNull(fixture.file.findReferenceAt(fixture.editor.caretModel.offset)?.resolve()) }
+    }
+
+    @Test
+    fun `macro lookup yields during indexing`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("macro-call.asm", ".macro emit\n.end_macro\nem<caret>it\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val file = fixture.file as MipsFile
+            val use = file.findElementAt(fixture.editor.caretModel.offset)!!
+            val analysis = current.service<MarsAnalysisService>()
+            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertNull(analysis.macroTarget(file, use)) }
+            assertEquals(7, analysis.macroTarget(file, use)?.textOffset)
+        }
+    }
+
+    private data class Target(val file: String, val offset: Int, val kind: SymbolKind)
+
+    private suspend fun target(source: String): Target? {
+        withContext(Dispatchers.EDT) { fixture.configureByText("macro-call.asm", source) }
+        val current = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        return readAction {
+            val declaration = GotoDeclarationAction.findTargetElement(current, fixture.editor, fixture.editor.caretModel.offset)
+                as? MipsDeclaration ?: return@readAction null
+            Target(declaration.containingFile.name, declaration.textOffset, declaration.kind)
+        }
+    }
+}
