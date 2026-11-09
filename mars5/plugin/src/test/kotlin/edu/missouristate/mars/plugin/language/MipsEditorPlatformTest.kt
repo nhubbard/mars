@@ -177,6 +177,48 @@ class MipsEditorPlatformTest {
     }
 
     @Test
+    fun `platform quote typing pairs skips and deletes literal delimiters`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            for ((directive, quote, content) in listOf(
+                Triple(".include ", '"', "part.s"),
+                Triple(".byte ", '\'', "A"),
+            )) {
+                fixture.configureByText(MipsFileType, "$directive<caret>\nnext: nop")
+                fixture.type(quote)
+                fixture.checkResult("$directive$quote<caret>$quote\nnext: nop")
+                fixture.performEditorAction(IdeActions.ACTION_EDITOR_BACKSPACE)
+                fixture.checkResult("$directive<caret>\nnext: nop")
+                fixture.type("$quote$content$quote")
+                fixture.checkResult("$directive$quote$content$quote<caret>\nnext: nop")
+            }
+            fixture.configureByText(MipsFileType, ".asciiz <caret>\"")
+            fixture.type('"')
+            fixture.checkResult(".asciiz \"<caret>\"")
+        }
+    }
+
+    @Test
+    fun `platform quote typing preserves escaped delimiters and comments`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText(MipsFileType, ".byte '\\<caret>'")
+            fixture.type('\'')
+            fixture.checkResult(".byte '\\'<caret>'")
+
+            fixture.configureByText(MipsFileType, ".asciiz \"a\\<caret>\"")
+            fixture.type('"')
+            fixture.checkResult(".asciiz \"a\\\"<caret>\"")
+
+            fixture.configureByText(MipsFileType, """.asciiz "a\\<caret>" # tail""")
+            fixture.type('"')
+            fixture.checkResult(""".asciiz "a\\"<caret>" # tail""")
+
+            fixture.configureByText(MipsFileType, "# <caret>")
+            fixture.type("\"'`")
+            fixture.checkResult("# \"'`<caret>")
+        }
+    }
+
+    @Test
     fun `platform matches nested parentheses and ignores parentheses in strings and comments`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = ".word <caret>(1+(2-3)) # )\n.asciiz \"(\"\n"

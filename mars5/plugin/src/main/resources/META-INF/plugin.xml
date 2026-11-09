@@ -28,6 +28,7 @@
     <lang.elementManipulator forClass="edu.missouristate.mars.plugin.language.psi.MipsStringLiteral" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsStringManipulator"/>
     <lang.commenter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
     <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
+    <lang.quoteHandler language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsQuoteHandler"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
     <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>

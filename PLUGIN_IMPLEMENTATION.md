@@ -76,14 +76,14 @@ open; log evidence does not replace it. The test process was stopped without clo
 
 ## Native editor actions
 
-MARS registers `Commenter` and `PairedBraceMatcher` implementations, following the TOML and
-EditorConfig examples in the reference checkout. IntelliJ owns comment toggling, parenthesis
-insertion, closing-parenthesis skipping, paired deletion and brace matching. There is no MARS
-typing handler or replacement editor action.
+MARS registers `Commenter`, `PairedBraceMatcher`, and `QuoteHandler` implementations.
+IntelliJ owns comment toggling, paired insertion and deletion, skipping closing delimiters,
+and brace matching. The quote handler uses the lexer's closed and unclosed tokens for
+MIPS double-quoted strings and single-quoted characters.
 
-Five Jupiter tests use the platform's `codeInsightProjectFixture` and `codeInsightFixture`.
+Jupiter tests use the platform's `codeInsightProjectFixture` and `codeInsightFixture`.
 They exercise real editor actions, selected lines, existing comments, hashes inside strings,
-parenthesis typing/deletion, nested matching, token registration and the extension contracts.
+parenthesis typing and deletion, nested matching, and quote typing around escaped delimiters.
 Authored plugin code retains 100% line and branch coverage.
 
 The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
