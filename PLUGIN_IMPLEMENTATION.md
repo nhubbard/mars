@@ -465,8 +465,27 @@ Core fixtures assemble captured files with nested includes, macros, a pseudo-op,
 and separate entry and handler files. They verify the forward and reverse
 lookups and confirm that a runtime text write leaves the newly decoded
 instruction without an origin. The map describes the assembled image. The
-native debugger will use live instruction metadata when presenting a current
+native debugger uses live instruction metadata when presenting a current
 execution position.
+
+## Native line debugging
+
+The Debug executor starts a native XDebugger session for the MIPS Run
+configuration. It shares captured-source assembly, console I/O, process
+termination, and session ownership with Run. The native breakpoint handler
+resolves physical lines against the assembled image and publishes an address
+lookup to the simulator worker. Registration changes update that lookup
+without scanning the registered lines for each instruction.
+
+The Debug view shows one simulated CPU frame. Resume, Pause, Stop, instruction
+Step Into, and Run to Cursor are wired. The platform handles breakpoint
+enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
+expressions and call-aware stepping report that they are unavailable.
+Register and memory inspection are upcoming debugger steps.
+
+Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
+include and repeated macro expansions, instruction stepping, Run to Cursor,
+breakpoint updates, logpoints, unmapped positions, and process shutdown.
 
 ## Next slices
 

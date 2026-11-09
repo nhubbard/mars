@@ -6,6 +6,7 @@
   <depends>com.intellij.modules.platform</depends>
   <dependencies>
     <module name="intellij.platform.buildView"/>
+    <module name="intellij.platform.debugger"/>
     <module name="intellij.platform.syntax"/>
     <module name="intellij.platform.syntax.psi"/>
     <module name="intellij.platform.syntax.util"/>
@@ -24,6 +25,8 @@
     <configurationType implementation="edu.missouristate.mars.plugin.run.MarsRunType"/>
     <runConfigurationProducer implementation="edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer"/>
     <programRunner implementation="edu.missouristate.mars.plugin.run.MarsRunRunner"/>
+    <programRunner implementation="edu.missouristate.mars.plugin.debug.MarsDebugRunner"/>
+    <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsLineBreakpointType"/>
     <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
     <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>

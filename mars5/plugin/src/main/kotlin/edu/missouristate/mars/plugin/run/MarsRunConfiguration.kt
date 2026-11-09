@@ -29,6 +29,8 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.InvalidPathException
@@ -87,10 +89,18 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
         val entry = entryPath() ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
-        return object : CommandLineState(environment) {
-            override fun startProcess() = project.getService(MarsRunService::class.java).createProcess(entry)
-        }
+        return MarsRunState(environment, entry)
     }
+}
+
+internal class MarsRunState(private val environment: ExecutionEnvironment, private val entry: Path) :
+    CommandLineState(environment) {
+    override fun startProcess() = service().createProcess(entry)
+
+    fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
+        service().createProcess(entry, execute)
+
+    private fun service() = environment.project.getService(MarsRunService::class.java)
 }
 
 internal class MarsRunConfigurationProducer : LazyRunConfigurationProducer<MarsRunConfiguration>() {

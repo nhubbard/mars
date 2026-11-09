@@ -31,6 +31,7 @@ dependencies {
       intellijIdea("2026.3")
     }
     bundledModule("intellij.platform.buildView")
+    bundledModule("intellij.platform.debugger")
     grammarKit("2023.3.4")
     testFramework(TestFrameworkType.Platform)
     testFramework(TestFrameworkType.JUnit5)

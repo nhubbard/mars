@@ -4,6 +4,7 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.util.io.IOUtil
@@ -12,8 +13,10 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -23,6 +26,7 @@ import java.nio.channels.Channels
 import java.nio.channels.Pipe
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.file.Path
+import java.util.function.IntPredicate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -35,11 +39,15 @@ import kotlinx.coroutines.withContext
 
 @Service(Service.Level.PROJECT)
 internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) {
-    fun createProcess(entry: Path) = MarsProcessHandler(project, scope, entry, Pipe.open())
+    fun createProcess(
+        entry: Path,
+        execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
+    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), execute)
 }
 
 internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val entry: Path, private val input: Pipe,
+    private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -54,7 +62,10 @@ internal class MarsProcessHandler(
             try {
                 IOUtil.closeSafe(thisLogger(), input.source(), input.sink())
             } finally {
-                notifyProcessTerminated(if (cause is CancellationException) 130 else status)
+                // Native debugger listeners clean up services even when the simulation was canceled.
+                ProgressManager.getInstance().executeNonCancelableSection {
+                    notifyProcessTerminated(if (cause is CancellationException) 130 else status)
+                }
             }
         }
     }
@@ -68,6 +79,21 @@ internal class MarsProcessHandler(
     override fun detachProcessImpl() = destroyProcessImpl()
     override fun detachIsDefault() = false
     override fun getProcessInput() = consoleInput
+
+    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent {
+        execution.ensureActive()
+        val future = if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAsync(steps, breakpoint)
+        val completion = future.asDeferred()
+        try {
+            return completion.await()
+        } catch (cancel: CancellationException) {
+            simulator.close()
+            // Closing the source releases the simulator even if a syscall is blocked in read().
+            IOUtil.closeSafe(thisLogger(), input.source())
+            withContext(NonCancellable) { completion.await() }
+            throw cancel
+        }
+    }
 
     private suspend fun runProgram(): Int {
         val component = MarsSessionService.createMarsComponent()
@@ -93,17 +119,7 @@ internal class MarsProcessHandler(
                                 }
                             }
                         })
-                        execution.ensureActive()
-                        val completion = simulator.runAsync(0, null).asDeferred()
-                        val stop = try {
-                            completion.await()
-                        } catch (cancel: CancellationException) {
-                            simulator.close()
-                            // Closing the source releases the simulator even if a syscall is blocked in read().
-                            IOUtil.closeSafe(thisLogger(), input.source())
-                            withContext(NonCancellable) { completion.await() }
-                            throw cancel
-                        }
+                        val stop = execute(session)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
                             else -> 1
