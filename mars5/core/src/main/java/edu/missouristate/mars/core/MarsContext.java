@@ -2,6 +2,7 @@ package edu.missouristate.mars.core;
 
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.api.SimulatorState;
@@ -229,17 +230,26 @@ public final class MarsContext implements AutoCloseable {
   public MIPSprogram assemble(List<Path> sources, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
     try (var lease = claimStoppedSession()) {
-      return assembleStopped(sources, handler, extended, warnings);
+      return assembleStopped(sources, handler, extended, warnings, null);
+    }
+  }
+
+  public MIPSprogram assembleSnapshot(
+      AssemblySourceSnapshot snapshot, Path handler, boolean extended, boolean warnings)
+      throws ProcessingException {
+    try (var lease = claimStoppedSession()) {
+      return assembleStopped(snapshot.entries(), handler, extended, warnings, snapshot);
     }
   }
 
   private MIPSprogram assembleStopped(
-      List<Path> sources, Path handler, boolean extended, boolean warnings)
+      List<Path> sources, Path handler, boolean extended, boolean warnings,
+      AssemblySourceSnapshot snapshot)
       throws ProcessingException {
     if (sources == null || sources.isEmpty()) {
       throw new IllegalArgumentException("At least one source file is required");
     }
-    var root = new MIPSprogram(this);
+    var root = new MIPSprogram(this, snapshot);
     var filenames = new ArrayList<String>();
     for (Path source : sources) {
       filenames.add(source.toAbsolutePath().normalize().toString());

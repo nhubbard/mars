@@ -3,17 +3,21 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.core.MarsContext;
+import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -184,6 +188,118 @@ class SessionAssemblyTest {
               syscall
             """);
     assertThat(assembleAndRun(session("Default"), main)).containsExactly(42);
+  }
+
+  @Test
+  void capturedSourcesAssembleNestedIncludesAndOrderedEntriesWithoutReadingDisk() throws Exception {
+    var main = directory.resolve("main.s");
+    var library = directory.resolve("library.s");
+    var handler = directory.resolve("handler.s");
+    var outer = directory.resolve("outer.s");
+    var inner = source("inner.s", ".eqv VALUE 99\n");
+    var entries = new ArrayList<>(List.of(main, library));
+    var texts = new HashMap<Path, String>();
+    texts.put(main, """
+        .include "./outer.s"
+        .text
+        main:
+          emit ($a0)
+          li $v0, 1
+          syscall
+          jal finish
+          nop
+        """);
+    texts.put(library, ".text\n.globl finish\nfinish: li $v0, 10\nsyscall\n");
+    texts.put(handler, ".text\naddiu $s0, $zero, 17\n");
+    texts.put(outer, ".include \"" + inner + "\"\n");
+    texts.put(directory.resolve("unused/../inner.s"),
+        ".eqv VALUE 42\r\n.macro emit (%reg)\r  li %reg, VALUE\n.end_macro");
+    var snapshot = new AssemblySourceSnapshot(entries, texts);
+    entries.clear();
+    texts.clear();
+    assertThatThrownBy(() -> snapshot.entries().clear()).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> snapshot.texts().clear()).isInstanceOf(UnsupportedOperationException.class);
+
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, handler, true, false);
+      assertThat(result.errors()).isEmpty();
+      assertThat(result.succeeded()).isTrue();
+      var program = session.getProgram();
+      assertThat(result.program()).isSameAs(program);
+      assertThat(program.getFilename()).isEqualTo(main.toString());
+      assertThat(program.getSourceLineList())
+          .anySatisfy(line -> assertThat(line.getFilename()).isEqualTo(inner.toString()));
+      var output = new RecordingEnvironment();
+      program.setSyscallEnvironment(output);
+      assertThat(program.simulate(100)).isTrue();
+      assertThat(output.printed).containsExactly(42);
+      assertThat(session.registerFile.getValue(16)).isEqualTo(17);
+    }
+    assertThat(Files.readString(inner)).isEqualTo(".eqv VALUE 99\n");
+    assertThat(main).doesNotExist();
+    assertThat(handler).doesNotExist();
+  }
+
+  @Test
+  void capturedAssemblyReportsMissingSourcesAndNestedDiagnosticsAtTheirOriginalPaths() throws Exception {
+    var main = source("disk-main.s", "nop\n");
+    var outer = directory.resolve("outer.s");
+    var inner = source("disk-inner.s", "nop\n");
+    var entries = List.of(main);
+    var mainText = "# comment\n.include \"outer.s\"\n";
+    var outerText = "# comment\n\n.include \"disk-inner.s\"\n";
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var absentMain = assembler.assembleSnapshot(
+          new AssemblySourceSnapshot(entries, Map.of()), null, true, false);
+      assertThat(absentMain.succeeded()).isFalse();
+      assertThat(absentMain.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(main);
+        assertThat(error.message()).contains("Source was not captured");
+      });
+      var absentInclude = assembler.assembleSnapshot(
+          new AssemblySourceSnapshot(entries, Map.of(main, mainText, outer, outerText)),
+          null, true, false);
+      assertThat(absentInclude.succeeded()).isFalse();
+      assertThat(absentInclude.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(outer);
+        assertThat(error.line()).isEqualTo(3);
+        assertThat(error.message()).contains("Error reading include file", inner.toString());
+      });
+      var invalidInclude = assembler.assembleSnapshot(
+          new AssemblySourceSnapshot(entries, Map.of(main, mainText, outer, outerText, inner, "# comment\r\n  j undefined\r\n")),
+          null, true, false);
+      assertThat(invalidInclude.succeeded()).isFalse();
+      assertThat(invalidInclude.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(inner);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.message()).contains("undefined", "not found");
+      });
+      assertThat(assembler.assemble(entries).succeeded()).isTrue();
+    }
+  }
+
+  @Test
+  void capturedSourceAliasesCannotBypassIncludeRecursionChecks() {
+    var main = directory.resolve("main.s");
+    var snapshot = new AssemblySourceSnapshot(List.of(main),
+        Map.of(main, ".include \"sub/.././main.s\"\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.succeeded()).isFalse();
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(main);
+        assertThat(error.line()).isEqualTo(1);
+        assertThat(error.message()).contains("Recursive include of file", main.toString());
+      });
+    }
+    assertThatThrownBy(() -> new AssemblySourceSnapshot(List.of(main),
+        Map.of(main, "", directory.resolve("./main.s"), "nop")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Multiple source texts");
+    assertThatThrownBy(() -> new AssemblySourceSnapshot(List.of(), Map.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("At least one source file");
   }
 
   @Test

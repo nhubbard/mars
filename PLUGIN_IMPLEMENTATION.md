@@ -254,6 +254,19 @@ IntelliJ loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256. Visual verification
 remains open because the window controls could not attach to the temporary IDE.
 
+## Captured source assembly
+
+The Java `MarsAssembler` API accepts an immutable `AssemblySourceSnapshot` with
+ordered entries and captured text keyed by normalized absolute paths. The same
+tokenizer and assembler handle captured and disk sources. Snapshot assembly reads
+the handler and nested includes from the capture, preserves diagnostic paths and
+line numbers, and detects cycles through aliased include paths.
+
+Core fixtures run a program assembled from a captured handler, ordered entries,
+and nested includes, including text that differs from the existing disk file.
+They also verify missing captures, mixed line endings, nested diagnostics, and
+the existing disk entry point.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

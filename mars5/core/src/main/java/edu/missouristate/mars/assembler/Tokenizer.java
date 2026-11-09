@@ -97,7 +97,7 @@ public class Tokenizer {
     equivalents = new HashMap<>(); // DPS 11-July-2012
     ArrayList<TokenList> tokenList = new ArrayList<>();
     // ArrayList source = p.getSourceList();
-    ArrayList<SourceLine> source = processIncludes(p, new HashMap<>()); // DPS 9-Jan-2013
+    ArrayList<SourceLine> source = processIncludes(p, new HashSet<>()); // DPS 9-Jan-2013
     p.setSourceLineList(source);
     TokenList currentLineTokens;
     String sourceLine;
@@ -132,7 +132,7 @@ public class Tokenizer {
   // files that themselves have .include.  Plus it will detect and report recursive
   // includes both direct and indirect.
   // DPS 11-Jan-2013
-  private ArrayList<SourceLine> processIncludes(MIPSprogram program, Map<String, String> inclFiles)
+  private ArrayList<SourceLine> processIncludes(MIPSprogram program, Set<String> includedPaths)
       throws ProcessingException {
     ArrayList<String> source = program.getSourceList();
     ArrayList<SourceLine> result = new ArrayList<>(source.size());
@@ -150,18 +150,6 @@ public class Tokenizer {
           if (!new File(filename).isAbsolute()) {
             filename = new File(program.getFilename()).getParent() + File.separator + filename;
           }
-          if (inclFiles.containsKey(filename)) {
-            // This is a recursive include.  Generate error message and return immediately.
-            Token t = tl.get(ii + 1);
-            errors.add(
-                new ErrorMessage(
-                    program,
-                    t.getSourceLine(),
-                    t.getStartPos(),
-                    "Recursive include of file " + filename));
-            throw new ProcessingException(errors);
-          }
-          inclFiles.put(filename, filename);
           MIPSprogram incl = program.createRelatedProgram();
           try {
             incl.readSource(filename);
@@ -175,7 +163,18 @@ public class Tokenizer {
                     "Error reading include file " + filename));
             throw new ProcessingException(errors);
           }
-          ArrayList<SourceLine> allLines = processIncludes(incl, inclFiles);
+          String includedPath = incl.getFilename();
+          if (!includedPaths.add(includedPath)) {
+            Token t = tl.get(ii + 1);
+            errors.add(
+                new ErrorMessage(
+                    program,
+                    t.getSourceLine(),
+                    t.getStartPos(),
+                    "Recursive include of file " + includedPath));
+            throw new ProcessingException(errors);
+          }
+          ArrayList<SourceLine> allLines = processIncludes(incl, includedPaths);
           result.addAll(allLines);
           hasInclude = true;
           break;

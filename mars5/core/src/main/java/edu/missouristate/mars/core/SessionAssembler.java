@@ -42,6 +42,22 @@ public final class SessionAssembler implements MarsAssembler {
     }
   }
 
+  @Override
+  public AssemblyResult assembleSnapshot(
+      AssemblySourceSnapshot snapshot,
+      Path exceptionHandler,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors) {
+    try {
+      var program =
+          session.assembleSnapshot(
+              snapshot, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors);
+      return new AssemblyResult(program, diagnostics(program.getAssemblyDiagnostics()));
+    } catch (ProcessingException error) {
+      return new AssemblyResult(null, diagnostics(error.errors()));
+    }
+  }
+
   private static List<AssemblyError> diagnostics(ErrorList errors) {
     return errors.getErrorMessages().stream()
         .map(

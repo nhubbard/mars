@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.Program;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
@@ -10,6 +11,7 @@ import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.simulator.*;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 
 /*
@@ -50,6 +52,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class MIPSprogram implements Program {
   private final AssemblyContext assemblyContext;
+  private final AssemblySourceSnapshot sourceSnapshot;
   private SyscallEnvironment syscallEnvironment;
   private InstructionContext sessionExecution;
   private ErrorList assemblyDiagnostics;
@@ -60,7 +63,13 @@ public class MIPSprogram implements Program {
 
   /** Program whose sources, symbols, memory, and synchronous execution belong to one session. */
   public MIPSprogram(MarsContext session) {
+    this(session, null);
+  }
+
+  /** Program that reads one immutable assembly snapshot, or uses disk sources if it is null. */
+  public MIPSprogram(MarsContext session, AssemblySourceSnapshot sourceSnapshot) {
     assemblyContext = new AssemblyContext(session);
+    this.sourceSnapshot = sourceSnapshot;
   }
 
   public AssemblyContext assemblyContext() {
@@ -72,7 +81,7 @@ public class MIPSprogram implements Program {
   }
 
   public MIPSprogram createRelatedProgram() {
-    return new MIPSprogram(assemblyContext.session());
+    return new MIPSprogram(assemblyContext.session(), sourceSnapshot);
   }
 
   private String filename;
@@ -227,9 +236,7 @@ public class MIPSprogram implements Program {
   }
 
   /**
-   * Reads MIPS source code from file into structure. Will always read from file. It is GUI
-   * responsibility to assure that source edits are written to file when user selects compile or
-   * run/step options.
+   * Reads MIPS source code using the program's source snapshot or disk source.
    *
    * @param file String containing name of MIPS source code file.
    * @throws ProcessingException Will throw exception if there is any problem reading the file.
@@ -237,9 +244,10 @@ public class MIPSprogram implements Program {
   public void readSource(String file) throws ProcessingException {
     this.filename = file;
     this.sourceList = new ArrayList<>();
+    this.sourceLineList = null;
     ErrorList errors;
     String line;
-    try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
+    try (BufferedReader inputFile = new BufferedReader(openSource(file))) {
       line = inputFile.readLine();
       while (line != null) {
         sourceList.add(line);
@@ -247,13 +255,26 @@ public class MIPSprogram implements Program {
       }
     } catch (Exception e) {
       errors = newErrorList();
-      errors.add(new ErrorMessage((MIPSprogram) null, 0, 0, e.toString()));
+      errors.add(new ErrorMessage(sourceSnapshot == null ? null : this, 0, 0, e.toString()));
       throw new ProcessingException(errors);
     }
   }
 
+  private Reader openSource(String file) throws IOException {
+    if (sourceSnapshot == null) {
+      return new FileReader(file);
+    }
+    Path path = Path.of(file).toAbsolutePath().normalize();
+    filename = path.toString();
+    String text = sourceSnapshot.texts().get(path);
+    if (text == null) {
+      throw new FileNotFoundException("Source was not captured: " + path);
+    }
+    return new StringReader(text);
+  }
+
   /**
-   * Tokenizes the MIPS source program. Program must have already been read from file.
+   * Tokenizes the MIPS source program. Source text must already be loaded.
    *
    * @throws ProcessingException Will throw exception if errors occured while tokenizing.
    */

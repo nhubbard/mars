@@ -29,4 +29,12 @@ public interface MarsAssembler {
   AssemblyResult assemble(
       List<Path> sources, Path exceptionHandler, boolean extendedAssemblerEnabled,
       boolean warningsAreErrors);
+
+  /**
+   * Assembles captured text for the ordered entries, optional exception handler, and all
+   * includes. An uncaptured source produces an assembly diagnostic.
+   */
+  AssemblyResult assembleSnapshot(
+      AssemblySourceSnapshot snapshot, Path exceptionHandler, boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors);
 }
