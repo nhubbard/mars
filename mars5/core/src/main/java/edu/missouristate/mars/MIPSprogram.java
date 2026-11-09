@@ -254,12 +254,21 @@ public class MIPSprogram implements Program {
   }
 
   public void readSource(String file, Runnable checkCancellation) throws ProcessingException {
+    readSource(file, checkCancellation, false);
+  }
+
+  public void readIncludedSource(String file, Runnable checkCancellation) throws ProcessingException {
+    readSource(file, checkCancellation, true);
+  }
+
+  private void readSource(String file, Runnable checkCancellation, boolean include)
+      throws ProcessingException {
     this.filename = file;
     this.sourceList = new ArrayList<>();
     this.sourceLineList = null;
     ErrorList errors;
     String line;
-    try (BufferedReader inputFile = new BufferedReader(openSource(file))) {
+    try (BufferedReader inputFile = new BufferedReader(openSource(file, include))) {
       line = inputFile.readLine();
       while (line != null) {
         checkCancellation.run();
@@ -275,16 +284,19 @@ public class MIPSprogram implements Program {
     }
   }
 
-  private Reader openSource(String file) throws IOException {
+  private Reader openSource(String file, boolean include) throws IOException {
     if (sourceSnapshot == null) {
       return openDiskSource(file);
     }
-    Path path = Path.of(file).toAbsolutePath().normalize();
-    filename = path.toString();
-    String text = sourceSnapshot.texts().get(path);
+    Path requested = Path.of(file);
+    Path path = include
+        ? sourceSnapshot.resolveInclude(requested)
+        : requested.toAbsolutePath().normalize();
+    String text = path == null ? null : sourceSnapshot.texts().get(path);
     if (text == null) {
-      throw new FileNotFoundException("Source was not captured: " + path);
+      throw new FileNotFoundException("Source was not captured: " + file);
     }
+    filename = path.toString();
     return new StringReader(text);
   }
 

@@ -578,6 +578,45 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void capturedIncludeRequestsKeepDistinctFilesystemTargets() {
+    var main = directory.resolve("main.s");
+    var local = directory.resolve("value.s");
+    var remote = directory.resolve("remote/value.s");
+    var throughLink = directory.resolve("shortcut/../value.s");
+    var entries = List.of(main);
+    var source = """
+        .include "shortcut/../value.s"
+        .include "value.s"
+        .text
+        addiu $t0, $zero, REMOTE
+        addiu $t1, $zero, LOCAL
+        """;
+    var texts = Map.of(main, source, local, ".eqv LOCAL 2\n", remote, ".eqv REMOTE 7\n");
+    var resolved = new HashMap<>(Map.of(local, local, throughLink, remote));
+    var snapshot = new AssemblySourceSnapshot(entries, texts, resolved);
+    resolved.clear();
+
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var result = assembler.assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.succeeded()).isTrue();
+      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+          .containsExactly(0x24080007, 0x24090002);
+      assertThat(session.getProgram().getSourceLineList())
+          .anySatisfy(line -> assertThat(line.getFilename()).isEqualTo(remote.toString()));
+
+      var missing = new AssemblySourceSnapshot(entries, texts, Map.of(local, local));
+      var failure = assembler.assembleSnapshot(missing, null, true, false);
+      assertThat(failure.succeeded()).isFalse();
+      assertThat(failure.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(main);
+        assertThat(error.line()).isEqualTo(1);
+        assertThat(error.message()).contains("Error reading include file", throughLink.toString());
+      });
+    }
+  }
+
+  @Test
   void capturedSourceAliasesCannotBypassIncludeRecursionChecks() {
     var main = directory.resolve("main.s");
     var snapshot = new AssemblySourceSnapshot(List.of(main),

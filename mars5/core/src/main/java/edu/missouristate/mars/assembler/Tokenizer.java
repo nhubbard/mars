@@ -166,7 +166,7 @@ public class Tokenizer {
       }
       MIPSprogram incl = program.createRelatedProgram();
       try {
-        incl.readSource(filename, checkCancellation);
+        incl.readIncludedSource(filename, checkCancellation);
       } catch (ProcessingException p) {
         errors.add(
             new ErrorMessage(
