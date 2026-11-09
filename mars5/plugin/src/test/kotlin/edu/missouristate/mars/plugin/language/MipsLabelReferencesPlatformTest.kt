@@ -3,20 +3,25 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsLabelReferencesPlatformTest {
@@ -92,6 +97,32 @@ class MipsLabelReferencesPlatformTest {
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
         configure("\$target: nop\n.macro emit (\$target)\nb \$tar<caret>get\n.end_macro\n")
         readAction { assertEquals(fixture.file.text.indexOf("\$target", startIndex = 1), referenceAtCaret()?.resolve()?.textOffset) }
+    }
+
+    @Test
+    fun `aliased instructions resolve label slots after expanding earlier operands`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv DEFINE .eqv\nDEFINE BRANCH bne \$t0, \$zero\n"
+        val include = ".include \"aliases.s\"\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
+        val branch = "entry: BRANCH tar<caret>get\ntarget: nop\n"
+        configure(include + branch)
+        readAction { assertEquals(fixture.file.text.indexOf("target:"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure(branch + include)
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+
+        configure(".eqv BR j\nBR n<caret>op\nnop: nop\n")
+        readAction { assertEquals(fixture.file.text.indexOf("nop:"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure(".eqv LOAD lw \$t0\n.eqv OFFSET address+4\nLOAD OFFSET(\$ba<caret>se)\n\$base: nop\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+        configure(".eqv LOAD lw \$t0\nLOAD addr<caret>ess+4(\$sp)\naddress: nop\n")
+        readAction { assertEquals(fixture.file.text.indexOf("address:"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure(".eqv SHIFT sll \$t0, \$t1\nSHIFT shi<caret>ft\nshift: nop\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+
+        directory.resolve("aliases.s").writeText(definitions)
+        val entry = directory.resolve("entry.asm").also { it.writeText(include + branch.replace("<caret>", "")) }
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x15000000, 0), program.machineList.map { it.binaryStatement })
     }
 
     private suspend fun configure(source: String) {

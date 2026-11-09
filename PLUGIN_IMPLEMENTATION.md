@@ -32,6 +32,7 @@ points, file associations, lexer restoration and highlighting.
 
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
+An operation-head alias receives the mnemonic style when its expansion supplies an instruction.
 The mnemonic style is editable under **Editor → Color Scheme → MARS MIPS**.
 
 ### Build-tool detail
@@ -93,17 +94,19 @@ stays out of operands, declarations, strings and comments.
 
 ## Instruction register completion
 
-Register completion uses the instruction PSI and the core's tokenized operand formats.
+Register completion uses instruction PSI or an expanded operation candidate, together with
+the core's tokenized operand formats.
 The assembler tokenizer counts the tokens before the caret, including address parentheses,
 and handles whitespace, optional commas and signed offsets. Candidate formats must agree
 with the address punctuation already typed. Completion offers canonical integer names and
 numbers, floating-point registers, or the implemented CP0 register numbers for the second
 operand of `mfc0` and `mtc0`. The spelling lists come from the Java register banks.
 
+The include-ordered source cache supplies visible equivalences for operation candidates.
+Label navigation and completion count tokens in the expanded prefix, including operands
+supplied by an alias. Go to Declaration on the alias itself follows its equivalence definition.
 Native fixtures cover basic and pseudo formats, omitted and symbolic address offsets,
-CP0 and CP1 transfers, non-register operands, and replacement inside a register token.
-The contributor uses local source text and catalog metadata, so it needs no project index
-or live assembler session to produce these candidates.
+CP0 and CP1 transfers, aliased instructions, non-register operands, and register insertion.
 
 ## Instruction label completion
 

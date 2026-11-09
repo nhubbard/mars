@@ -32,12 +32,12 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
         extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
                 val position = parameters.position
-                val operand = MipsInstructionOperand.at(position) ?: return
+                val root = parameters.originalFile as MipsFile
+                val operand = MipsInstructionOperand.at(position, root) ?: return
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
                 lookup.addAllElements(registerCandidates(operand.formats, operand.index).map(LookupElementBuilder::create))
                 if (operand.acceptsLabel) {
-                    val root = parameters.originalFile as MipsFile
                     val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
                 }

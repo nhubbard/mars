@@ -78,14 +78,17 @@ class MipsCompletionPlatformTest {
             assertEquals(integer, registers("lw \$t0, address+4(<caret>)"))
             assertEquals(integer, registers("div \$t0 \$t1 <caret>"))
             assertEquals(integer, registers("mtc0 <caret>, \$12"))
+            assertEquals(integer, registers(".eqv LOAD lw \$t0\nLOAD 4(<caret>)"))
 
             val floating = (0..31).map { "\$f$it" }.toSet()
             assertEquals(floating, registers("add.s \$f0, <caret>"))
             assertEquals(floating, registers("mtc1 \$t0, <caret>"))
+            assertEquals(floating, registers(".eqv TRANSFER mtc1 \$t0\nTRANSFER <caret>"))
 
             val system = setOf("\$8", "\$12", "\$13", "\$14")
             assertEquals(system, registers("mfc0 \$t0, <caret>"))
             assertEquals(system, registers("mtc0 \$t0, <caret>"))
+            assertEquals(system, registers(".eqv TRANSFER mtc0 \$t0\nTRANSFER <caret>"))
 
             for (source in listOf("lw \$t0, address <caret>", "sll \$t0, \$t1, <caret>", "nop <caret>", "emit <caret>")) {
                 assertTrue(registers(source).isEmpty(), source)

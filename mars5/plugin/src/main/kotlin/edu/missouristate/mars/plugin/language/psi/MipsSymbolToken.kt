@@ -22,12 +22,14 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val identifier = TokenTypes.isValidIdentifier(text)
         val context = PsiUtilCore.getElementType(parent)
         val parameter = elementType in parameterTypes && context in parameterContexts && Macro.tokenIsMacroParameter(text, true)
-        val label = identifier && context == referenceExpression && MipsInstructionOperand.at(this)?.acceptsLabel == true
+        val label = identifier && context == referenceExpression &&
+            MipsInstructionOperand.at(this, containingFile as MipsFile)?.acceptsLabel == true
+        val aliasOperand = identifier && context == invocationToken
         val equivalence = identifier && elementType != mnemonic &&
             (context in equivalenceContexts || context in macroHeaderContexts)
-        if (!label && !equivalence && !parameter) return null
+        if (!label && !aliasOperand && !equivalence && !parameter) return null
         val data = if (equivalence) DataLabelOperand.at(this, context) else null
-        return SymbolReference(this, label, equivalence, parameter, context == operationCandidate, data)
+        return SymbolReference(this, label, aliasOperand, equivalence, parameter, context == operationCandidate, data)
     }
 
     override fun getReferences(): Array<PsiReference> = listOfNotNull(reference).toTypedArray()
@@ -35,6 +37,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     private class SymbolReference(
         element: MipsSymbolToken,
         private val label: Boolean,
+        private val aliasOperand: Boolean,
         private val equivalence: Boolean,
         private val parameter: Boolean,
         private val macroCall: Boolean,
@@ -56,7 +59,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 val target = analysis.macroTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
             }
-            val resolvesLabel = label || data == DataLabelOperand.EXPORT ||
+            val resolvesLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true ||
+                data == DataLabelOperand.EXPORT ||
                 data != null && resolvesDataLabel(file, analysis)
             return if (resolvesLabel) {
                 analysis.labelTargets(file, element, allowExternal = data != DataLabelOperand.EXPORT)
@@ -76,9 +80,10 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val mnemonic = MipsTypes.psi("MNEMONIC")
         val referenceExpression = MipsTypes.psi("REFERENCE_EXPR")
         val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
+        val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
         val equivalenceContexts = TokenSet.create(
             referenceExpression, MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
-            operationCandidate, MipsTypes.psi("INVOCATION_TOKEN"),
+            operationCandidate, invocationToken,
         )
         val macroHeaderContexts = TokenSet.create(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER"))
         val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))

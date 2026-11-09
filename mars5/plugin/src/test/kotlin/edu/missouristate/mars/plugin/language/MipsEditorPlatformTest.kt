@@ -5,6 +5,7 @@ import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
@@ -12,7 +13,10 @@ import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -69,6 +73,43 @@ class MipsEditorPlatformTest {
                     editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.INSTANCE_FIELD).foregroundColor,
                     register.foregroundColor,
                 )
+            }
+        }
+    }
+
+    @Test
+    fun `only aliases supplying an instruction are colored as mnemonics`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.s", ".eqv DEFINE .eqv\nDEFINE BRANCH bne \$t0, \$zero\n")
+            fixture.configureByText("alias-highlight.asm", """
+                .include "aliases.s"
+                .eqv DATA_SEG .data
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST
+                .eqv LABEL row:
+                entry: BRANCH target
+                DATA_SEG
+                FIRST
+                LABEL
+                BRANCH: nop
+                target: nop
+                LATE target
+                .eqv LATE j
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val file = fixture.file as MipsFile
+            val source = file.text
+            val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
+            assertEquals(listOf("BRANCH", "nop", "nop"), highlights.sortedBy { it.startOffset }.map {
+                source.substring(it.startOffset, it.endOffset)
+            })
+            val head = file.findElementAt(source.indexOf("BRANCH target"))!!
+            val analysis = current.service<MarsAnalysisService>()
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertNull(analysis.expandedInstructionAlias(file, head, head.text))
             }
         }
     }

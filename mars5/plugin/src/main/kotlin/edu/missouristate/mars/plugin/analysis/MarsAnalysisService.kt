@@ -213,14 +213,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, position.textOffset)
-        val tokens = expandedOperation(prefix, position) ?: return null
+        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true)) ?: return null
         return matchingMacro(prefix, tokens)
     }
 
-    private fun expandedOperation(prefix: MipsSourceTimeline.Prefix, head: PsiElement): TokenList? {
+    internal fun expandedInstructionAlias(root: MipsFile, head: PsiElement, source: String): TokenList? {
+        if (DumbService.isDumb(project)) return null
+        val prefix = editorPrefix(root, head.textOffset)
+        if (prefix.equivalence(head.text) == null) return null
+        return expandedOperation(prefix, source)?.takeIf { it[0].type == TokenTypes.OPERATOR }
+    }
+
+    private fun expandedOperation(prefix: MipsSourceTimeline.Prefix, source: String): TokenList? {
         val errors = ErrorList()
         val tokens = Tokenizer.tokenizeWithEquivalences(
-            sourceLine(head, fromLineStart = true), errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+            source, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
         if (errors.errorsOccurred()) return null
         tokens.discardTrailingComment()
@@ -279,7 +286,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     /** An ambiguous physical operation may be a data directive or a continuation after substitution. */
     internal fun isIntegerDataCandidate(root: MipsFile, head: PsiElement, macroHead: Boolean): Boolean {
         val prefix = editorPrefix(root, head.textOffset)
-        val tokens = expandedOperation(prefix, head) ?: return false
+        val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return false
         val integerOperands = (0 until tokens.size()).all { index ->
             val token = tokens[index]
             when (token.type) {
