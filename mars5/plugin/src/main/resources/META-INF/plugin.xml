@@ -16,6 +16,8 @@
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
     <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
+    <platform.backend.documentation.targetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
+    <platform.backend.documentation.lookupElementTargetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
     <lang.parserDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParserDefinition"/>
     <lang.ast.factory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsAstFactory"/>
     <lang.elementManipulator forClass="edu.missouristate.mars.plugin.language.psi.MipsStringLiteral" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsStringManipulator"/>

@@ -15,7 +15,6 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.ProcessingContext
 import edu.missouristate.mars.ErrorList
-import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
@@ -30,9 +29,10 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
     init {
         extend(CompletionType.BASIC, statementHead, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
-                result.withPrefixMatcher(prefix(parameters)).caseInsensitive().addAllElements(catalog.map { (name, tail) ->
-                    LookupElementBuilder.create(name).withTailText(tail, true)
-                })
+                val items = MipsDocumentationCatalog.entries.map { entry ->
+                    LookupElementBuilder.create(entry, entry.name).withTailText(entry.completionTail, true)
+                }
+                result.withPrefixMatcher(prefix(parameters)).caseInsensitive().addAllElements(items)
             }
         })
         extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
@@ -109,16 +109,6 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             val actual = tokens[index].type
             val expected = format[index].type
             actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)
-        }
-
-        val catalog by lazy {
-            // IntelliJ attaches lookup-session data to items. Cache only the catalog text.
-            val instructions = InstructionDefaults.get().instructionList.distinctBy { it.name }.map {
-                it.name to it.exampleFormat.removePrefix(it.name)
-            }
-            instructions + Directives.getDirectiveList().map {
-                it.name to "  ${it.description}"
-            }
         }
     }
 }

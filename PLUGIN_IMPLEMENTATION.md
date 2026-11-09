@@ -128,6 +128,19 @@ performs no index query.
 Jupiter fixtures invoke the registered editor action and inspect the rendered popup for
 overloaded instructions, missing operands, and positions outside instruction operands.
 
+## Quick Documentation
+
+Native documentation targets show the Java catalog's instruction forms and descriptions
+and its directive descriptions. The editor provider checks the keyword's PSI role, so a
+label or operand that shares a mnemonic spelling keeps its own meaning. The lookup provider
+uses the same immutable catalog entries for completion documentation. Only lookup elements
+are created per invocation. The documentation pointers retain no file or editor state, and
+the presentation uses the platform's documentation markup with escaped catalog text.
+
+Jupiter fixtures use IntelliJ's documentation service to resolve source and lookup targets,
+render their content, and verify that comments, strings, labels and unrelated lookup items
+stay outside the catalog provider.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.
