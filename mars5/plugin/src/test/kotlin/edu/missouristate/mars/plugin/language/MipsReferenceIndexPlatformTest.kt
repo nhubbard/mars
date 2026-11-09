@@ -49,11 +49,11 @@ class MipsReferenceIndexPlatformTest {
         val source = """
             .eqv Alias .emit
             .eqv Literal NOP
-            .macro .emit (%arg)
-              local: lw ${'$'}t0,Shared+4(${'$'}sp)
+            ,,.macro,, .emit (%arg)
+              local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
             .end_macro
-            top: .emit(Shared,NOP)
+            ,,top,, :,, .emit(,,Shared,,,NOP)
             b NOP
             .globl Shared
             .word ${'$'}gcc
@@ -98,7 +98,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(1, extension.version)
+            assertEquals(2, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
@@ -126,10 +126,11 @@ class MipsReferenceIndexPlatformTest {
             assertEquals(setOf(definition.virtualFile), index.getContainingFiles(MipsDeclarationIndex.NAME, "remote", scope).toSet())
             assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
         }
+        val editedSource = ",,b,,,unsaved,,\n"
         withContext(Dispatchers.EDT) {
             fixture.configureFromExistingVirtualFile(use.virtualFile)
             val document = fixture.editor.document
-            WriteCommandAction.runWriteCommandAction(project) { document.setText("b unsaved\n") }
+            WriteCommandAction.runWriteCommandAction(project) { document.setText(editedSource) }
             PsiDocumentManager.getInstance(project).commitAllDocuments()
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         }
@@ -139,7 +140,7 @@ class MipsReferenceIndexPlatformTest {
         }
         val edited = project.service<MarsAnalysisService>().lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
         assertEquals(
-            IndexedSymbolCandidates(emptyList(), listOf(IndexedSymbolSite(SourceId(use.virtualFile.url), 2, -1))),
+            IndexedSymbolCandidates(emptyList(), listOf(IndexedSymbolSite(SourceId(use.virtualFile.url), editedSource.indexOf("unsaved"), -1))),
             edited,
         )
         withContext(Dispatchers.EDT) {

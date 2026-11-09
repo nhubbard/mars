@@ -352,6 +352,26 @@ and authored plugin code covered all 690 lines and 424 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
 
+## Comma separators
+
+MARS accepts commas wherever it accepts a token delimiter. IntelliJ's syntax
+builder now skips them during grammar matching while the AST keeps distinct
+punctuation leaves and exact source text. A predicate on infix and postfix
+operators keeps a comma-delimited operand separate, including signed data
+values and parenthesized operands.
+
+Assembler and PSI fixtures cover leading, repeated, trailing, and standalone
+commas in directives, macro signatures and invocations, instruction operands,
+and labels. The declaration and reference indexes rebuild with the updated
+grammar. Index fixtures verify source offsets through comma-heavy lines and an
+unsaved edit. The generated parser coverage ledger was reviewed for the new
+grammar output.
+
+The clean IntelliJ 2026.3 launch passed 1,291 tests, including 84 plugin tests,
+and authored plugin code covered all 696 lines and 430 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

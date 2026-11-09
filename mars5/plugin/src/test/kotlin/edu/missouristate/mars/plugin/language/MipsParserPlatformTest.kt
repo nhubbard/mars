@@ -133,12 +133,12 @@ class MipsParserPlatformTest {
     @Test
     fun `macro calls retain raw punctuation and tokens accepted by the assembler`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val calls = listOf(
-            Triple("emit", "(+,7)", listOf("(", "+", ",", "7", ")")),
-            Triple(".emit", "(:,7)", listOf("(", ":", ",", "7", ")")),
-            Triple("\$emit", " ),7", listOf(")", ",", "7")),
-            Triple("emit", "((,7)", listOf("(", "(", ",", "7", ")")),
-            Triple("emit", "(nop,7)", listOf("(", "nop", ",", "7", ")")),
-            Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", ",", "7", ")")),
+            Triple("emit", "(+,7)", listOf("(", "+", "7", ")")),
+            Triple(".emit", "(:,7)", listOf("(", ":", "7", ")")),
+            Triple("\$emit", " ),7", listOf(")", "7")),
+            Triple("emit", "((,7)", listOf("(", "(", "7", ")")),
+            Triple("emit", "(nop,7)", listOf("(", "nop", "7", ")")),
+            Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", "7", ")")),
         )
         for ((name, arguments, tokens) in calls) {
             val call = name + arguments
@@ -258,6 +258,36 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `assembler commas remain punctuation without blocking native syntax`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            , , # separators alone
+            ,,.eqv ,, VALUE ,, 7 ,, # ignored trailing separators
+            ,,.macro,, emit,,(,,%value,,,),,
+              ,,addiu,, ${'$'}t0,,, ${'$'}zero,,,%value,,
+            ,,.end_macro,,,
+            ,,.data,,
+            ,,.word,, 1,, -2,, +3,,
+            ,,.text,,
+            ,,entry,, :,, emit,,(,,VALUE,,),,
+            ,,,
+        """.trimIndent()
+        assertAssembles(directory, source)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        assertEquals(listOf(1, -2, 3), (0..2).map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
+        readAction {
+            val file = assertParses(source)
+            assertEquals(source.count { it == ',' }, descendants(file.node, "COMMA").count())
+            assertEquals(listOf("entry,, :"), descendants(file.node, "LABEL").map { it.text }.toList())
+            assertEquals(listOf("${'$'}t0", "${'$'}zero", "%value", "1", "-2", "+3"),
+                descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("(", "VALUE", ")"), descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
+            val adjacent = assertParses(".word 1, (2)\n")
+            assertEquals(2, descendants(adjacent.node, "OPERAND").count())
+            assertTrue(descendants(adjacent.node, "ADDRESS_EXPR").none())
+        }
+    }
+
+    @Test
     fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
         val instructions = InstructionSet().also { it.populate() }
         assertTrue(instructions.instructionList.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
@@ -355,7 +385,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".macro foo (1")) {
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1")) {
                 val text = broken + "\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)
                 assertEquals(text, file.text)
