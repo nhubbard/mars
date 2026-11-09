@@ -44,6 +44,7 @@
     <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
     <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
+    <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle" key="export.title"/>
   </extensions>
   <actions resource-bundle="messages.MarsBundle">
     <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
@@ -52,5 +53,8 @@
     <group id="Mars.AssembleContainingEntry" class="edu.missouristate.mars.plugin.build.MarsContainingEntriesGroup" popup="true">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </group>
+    <action id="Mars.ExportMemory" class="edu.missouristate.mars.plugin.build.MarsMemoryExportAction">
+      <add-to-group group-id="BuildMenu" anchor="last"/>
+    </action>
   </actions>
 </idea-plugin>
