@@ -50,7 +50,14 @@ class MipsLexer : LexerBase() {
                     MipsSyntaxTypes.DOLLAR_WORD
                 }
             }
-            MipsTokenKind.WORD -> if (textOf(current) in mnemonics) MipsSyntaxTypes.MNEMONIC else MipsSyntaxTypes.WORD
+            MipsTokenKind.WORD -> {
+                val text = textOf(current)
+                when {
+                    text == "NaN" || text == "Infinity" -> MipsSyntaxTypes.NUMBER
+                    text in mnemonics -> MipsSyntaxTypes.MNEMONIC
+                    else -> MipsSyntaxTypes.WORD
+                }
+            }
             else -> MipsTypes.syntax.getValue(current.kind.name)
         }
     }

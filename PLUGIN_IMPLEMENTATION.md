@@ -372,6 +372,17 @@ and authored plugin code covered all 696 lines and 430 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
 
+## Named floating-point literals
+
+The lexer classifies the exact spellings `NaN` and `Infinity` as numeric
+literals, matching the assembler. Their PSI and highlighting use the same
+types as other numeric literals. Differently cased or longer identifier
+spellings remain available to the declaration index. Both symbol indexes
+rebuild with the updated lexer.
+
+The assembler-backed fixture checks IEEE-754 data for the named values and
+numeric PSI for decimal, hexadecimal, suffixed, and signed exponent forms.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

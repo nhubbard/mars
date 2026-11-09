@@ -25,7 +25,7 @@ data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOff
 
 class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 2
+    override fun getVersion(): Int = 3
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -40,7 +40,7 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
                     val kinds = targetKinds(element)
                     if (kinds.isNotEmpty()) {
                         val name = element.text
-                        if (name !in NON_SYMBOLS && TokenTypes.isValidIdentifier(name)) {
+                        if (TokenTypes.isValidIdentifier(name)) {
                             val macro = PsiTreeUtil.findFirstParent(element, true) {
                                 PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
                             }
@@ -63,7 +63,6 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
         private val EXPANSION_CONTEXTS = TokenSet.create(
             MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("REPLACEMENT"),
         )
-        private val NON_SYMBOLS = setOf("NaN", "Infinity")
         private val LABEL_KINDS = listOf(SymbolKind.LABEL)
         private val OPERAND_KINDS = listOf(SymbolKind.LABEL, SymbolKind.CONSTANT)
 

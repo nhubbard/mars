@@ -38,6 +38,10 @@ class MipsDeclarationIndexPlatformTest {
             ,,shared,, :,, nop
             shared: nop
             NOP: nop
+            NaN: nop
+            Infinity: nop
+            nan: nop
+            infinity: nop
             .MaCrO emit(%x)
               local: li ${'$'}v0, %x
               .eqv inside 2
@@ -65,13 +69,15 @@ class MipsDeclarationIndexPlatformTest {
                 ), sites("shared"),
             )
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("NOP:"), -1)), sites("NOP"))
+            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("nan:"), -1)), sites("nan"))
+            assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("infinity:"), -1)), sites("infinity"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.MACRO, source.indexOf("emit"), -1)), sites("emit"))
             val macro = source.indexOf(".MaCrO emit")
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.LABEL, source.indexOf("local:"), macro)), sites("local"))
             assertEquals(listOf(MipsDeclarationSite(SymbolKind.CONSTANT, source.indexOf("inside"), macro)), sites("inside"))
             assertEquals(1, sites(".private").size)
             assertEquals(1, sites("\$gcc").size)
-            for (absent in listOf("ghost", "fake", "ignored", "\$v0", "%x", "replaced", "REMOVED")) {
+            for (absent in listOf("ghost", "fake", "ignored", "\$v0", "%x", "replaced", "REMOVED", "NaN", "Infinity")) {
                 assertTrue(sites(absent).isEmpty(), absent)
             }
         }
@@ -94,7 +100,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(7, extension.version)
+            assertEquals(8, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

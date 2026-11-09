@@ -301,6 +301,29 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `named floating point values use numeric PSI and preserve assembler output`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = ".data\n.double NaN, Infinity, -1.2e-5, 0x1.8p2, .5f\n.float NaN\n.text\nnop\n"
+        assertAssembles(directory, source, 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        val base = memory.dataBaseAddress
+        val doubles = listOf(Double.NaN, Double.POSITIVE_INFINITY, -1.2e-5, 6.0, 0.5)
+        for ((i, value) in doubles.withIndex()) {
+            val bits = value.toBits()
+            assertEquals(bits.toInt(), memory.getWordNoNotify(base + i * 8))
+            assertEquals((bits ushr 32).toInt(), memory.getWordNoNotify(base + i * 8 + 4))
+        }
+        assertEquals(Float.NaN.toBits(), memory.getWordNoNotify(base + doubles.size * 8))
+        readAction {
+            val file = assertParses(source)
+            assertEquals(listOf("NaN", "Infinity", "1.2e-5", "0x1.8p2", ".5f", "NaN"),
+                descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
+            assertTrue(descendants(file.node, "REFERENCE_EXPR").none())
+            val labels = assertParses("nan: nop\ninfinity: nop\nInfinityCount: nop\n")
+            assertEquals(listOf("nan:", "infinity:", "InfinityCount:"), descendants(labels.node, "LABEL").map { it.text }.toList())
+        }
+    }
+
+    @Test
     fun `registered native parser handles macros data directives repeats and equivalences`() = timeoutRunBlocking<Unit> {
         readAction {
             assertParses("""
