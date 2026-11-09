@@ -149,10 +149,23 @@ indexed name and offset against current PSI. Macro-local labels take precedence,
 labels introduced by a nested include inside the macro. Duplicate candidates remain separate
 navigation targets. References are soft while build-context binding is still in progress.
 
-The resolver skips same-file equivalence substitutions already in effect and SPIM macro
-parameters. Full expansion and multi-entry build binding remain separate from this physical
+The resolver prioritizes visible equivalence definitions and skips SPIM macro parameters
+when looking for a direct label. Full expansion and multi-entry build binding remain separate from this physical
 scope query. The IDE fixtures check native target lookup, case sensitivity, nested includes,
 macro shadowing, duplicate declarations, and non-label operands.
+
+## Go to Declaration for equivalences
+
+Symbol references navigate to the first case-sensitive `.eqv` definition in the source
+prefix after expanding physical includes in order. The analysis service reads the per-file
+declaration index, stops at the first match, and guards against include cycles and indexing
+mode. A visible equivalence takes precedence over a same-named label. Supported use sites
+include immediates, segment addresses, operation aliases, macro arguments, and partial
+operands. Replacement text retains its deferred meaning until an alias is expanded.
+
+The query uses the current file as its entry. Equivalence definitions created only by another
+expansion and full build-context binding remain separate. Native fixtures cover ordering,
+label precedence, include cycles, incomplete definitions, and navigation through the IDE.
 
 ## Native declaration index
 

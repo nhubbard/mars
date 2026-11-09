@@ -61,10 +61,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val outer = ArrayList<MipsDeclaration>()
         for (scope in labelScopes(root, activeMacro)) {
             val sites = declarations(scope.file)[name].orEmpty()
-            // A same-file equivalence already in effect is a substitution, not a direct label use.
-            if (scope.file === root && sites.any { it.kind == SymbolKind.CONSTANT && it.offset < position.textOffset }) {
-                return emptyList()
-            }
             for (site in sites) {
                 ProgressManager.checkCanceled()
                 if (site.kind != SymbolKind.LABEL || !visibleInMacro(site.macroOffset, scope.macro)) continue
@@ -74,6 +70,46 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
         return local.ifEmpty { outer }
     }
+
+    /** Finds the first physical .eqv in the expanded prefix of the current entry. */
+    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
+        if (DumbService.isDumb(project)) return null
+        val name = position.text
+        val visited = hashSetOf(root.viewProvider.virtualFile)
+        val pending = ArrayDeque(listOf(equivalenceScope(root, name, position.textOffset)))
+        while (pending.isNotEmpty()) {
+            ProgressManager.checkCanceled()
+            val scope = pending.last()
+            if (scope.includes.hasNext()) {
+                val (offset, path) = scope.includes.next()
+                val target = resolveInclude(scope.file.findElementAt(offset) as MipsStringLiteral, path)
+                if (target is MipsFile && visited.add(target.viewProvider.virtualFile)) {
+                    pending.addLast(equivalenceScope(target, name, target.textLength))
+                }
+            } else {
+                pending.removeLast()
+                scope.declaration?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun equivalenceScope(file: MipsFile, name: String, limit: Int): EquivalenceScope {
+        val declaration = declarations(file)[name].orEmpty().asSequence()
+            .filter { it.kind == SymbolKind.CONSTANT && it.offset < limit }
+            .mapNotNull { MipsDeclaration.findAt(file, it.offset, name) }
+            .firstOrNull { it.node.findChildByType(MipsTypes.psi("REPLACEMENT")) != null }
+        val before = declaration?.textOffset ?: limit
+        // The shared include path cache preserves ascending physical offsets.
+        val includes = mipsIncludePaths(file).entries.asSequence().takeWhile { it.key < before }.iterator()
+        return EquivalenceScope(file, includes, declaration)
+    }
+
+    private data class EquivalenceScope(
+        val file: MipsFile,
+        val includes: Iterator<Map.Entry<Int, String>>,
+        val declaration: MipsDeclaration?,
+    )
 
     private data class LabelScope(val file: MipsFile, val macro: Int, val inheritedMacro: Boolean)
 
@@ -95,12 +131,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 val literal = file.findElementAt(offset) as MipsStringLiteral
                 val owner = macroOffset(literal)
                 if (visibleInMacro(owner, scope.macro)) {
-                    val target = MipsFileReferenceSet(path, literal).resolve()
+                    val target = resolveInclude(literal, path)
                     if (target is MipsFile) pending.addLast(LabelScope(target, -1, scope.inheritedMacro || owner != -1))
                 }
             }
         }
     }
+
+    private fun resolveInclude(literal: MipsStringLiteral, path: String) = MipsFileReferenceSet(path, literal).resolve()
 
     private fun visibleInMacro(owner: Int, active: Int): Boolean = owner == -1 || owner == active
 

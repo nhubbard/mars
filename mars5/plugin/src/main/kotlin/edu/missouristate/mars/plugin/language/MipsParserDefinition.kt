@@ -11,7 +11,6 @@ import com.intellij.psi.FileViewProvider
 import com.intellij.psi.tree.TokenSet
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
-import edu.missouristate.mars.plugin.language.psi.MipsOperandReferenceElement
 
 class MipsParserDefinition : ParserDefinition {
     override fun createLexer(project: Project?) = LexerAdapter(MipsLexer(), MipsTypes.converter)
@@ -25,7 +24,6 @@ class MipsParserDefinition : ParserDefinition {
         MipsTypes.psi("LABEL") -> MipsDeclaration(node, SymbolKind.LABEL)
         MipsTypes.psi("MACRO_SIGNATURE") -> MipsDeclaration(node, SymbolKind.MACRO)
         MipsTypes.psi("EQUIVALENCE") -> MipsDeclaration(node, SymbolKind.CONSTANT)
-        MipsTypes.psi("REFERENCE_EXPR") -> MipsOperandReferenceElement(node)
         else -> ASTWrapperPsiElement(node)
     }
     override fun createFile(viewProvider: FileViewProvider) = MipsFile(viewProvider)

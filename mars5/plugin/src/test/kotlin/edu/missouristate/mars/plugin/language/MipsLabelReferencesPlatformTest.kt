@@ -9,6 +9,7 @@ import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -70,20 +71,23 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `references follow assembler label slots and exclude registers and immediates`() = timeoutRunBlocking<Unit> {
+    fun `label binding follows assembler operand formats`() = timeoutRunBlocking<Unit> {
         configure("nop: nop\nlw \$t0, n<caret>op+4(\$sp)\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
-        for (source in listOf("lw \$t0, 4(\$s<caret>p)\n", "sll \$t0, \$t1, shi<caret>ft\n", ".word val<caret>ue\n",
-            "b invalid<caret>%name\n")) {
+        for (source in listOf("lw \$t0, 4(\$s<caret>p)\n", "b invalid<caret>%name\n")) {
             configure(source)
             readAction { assertNull(referenceAtCaret(), source) }
+        }
+        for (source in listOf("sll \$t0, \$t1, shi<caret>ft\n", ".word shi<caret>ft\n")) {
+            configure("shift: nop\n$source")
+            readAction { assertNull((referenceAtCaret() as PsiPolyVariantReference).resolve(), source) }
         }
     }
 
     @Test
     fun `direct label resolution avoids active equivalence and macro parameter substitutions`() = timeoutRunBlocking<Unit> {
         configure("target: nop\n.eqv target somewhere\nb tar<caret>get\n")
-        readAction { assertNull((referenceAtCaret() as PsiPolyVariantReference).resolve()) }
+        readAction { assertEquals(SymbolKind.CONSTANT, (referenceAtCaret()?.resolve() as MipsDeclaration).kind) }
         configure("target: nop\nb tar<caret>get\n.eqv target somewhere\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
         configure("\$target: nop\n.macro emit (\$target)\nb \$tar<caret>get\n.end_macro\n")
