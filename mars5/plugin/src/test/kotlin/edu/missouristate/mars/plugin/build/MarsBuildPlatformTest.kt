@@ -637,6 +637,43 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build links a recursive include to the directive that closes the cycle`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val path = "\".././main.asm\""
+            val child = "# child\n  .include $path\n"
+            val (entry, include) = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", ".include \"parts/child.s\"\nnop\n").virtualFile
+                val part = fixture.addFileToProject("parts/child.s", "nop\n").virtualFile
+                edit(part, child)
+                main to part
+            }
+
+            invokeAction(entry)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertTrue(error.message.contains("Recursive include of file"))
+            assertEquals(include.toNioPath(), error.filePosition.path)
+            assertEquals(1, error.filePosition.startLine)
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(include, link.file)
+                assertEquals(child.indexOf(path), link.offset)
+            }
+            assertInstanceOf(FailureResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+
+            withContext(Dispatchers.EDT) { edit(include, "nop\n") }
+            invokeAction(entry)
+            assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            assertInstanceOf(SuccessResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `build reports an unfinished string on an unsaved included data continuation`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {
