@@ -6,6 +6,7 @@ import com.intellij.openapi.diagnostic.Logger
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.DaggerMarsComponent
+import edu.missouristate.mars.di.MarsComponent
 
 /** Owns the project's core session, shared by future language, console, and debugger integrations. */
 @Service(Service.Level.PROJECT)
@@ -18,11 +19,7 @@ class MarsSessionService : Disposable {
     val context: MarsContext
         get() = synchronized(lock) {
             check(!disposed) { "MARS project session is disposed" }
-            ownedContext ?: DaggerMarsComponent.builder()
-                .guiProxy(ProjectFrontend())
-                .build()
-                .context()
-                .also { ownedContext = it }
+            ownedContext ?: createMarsComponent().context().also { ownedContext = it }
         }
 
     override fun dispose() {
@@ -32,6 +29,12 @@ class MarsSessionService : Disposable {
             ownedContext.also { ownedContext = null }
         }
         owned?.close()
+    }
+
+    companion object {
+        internal fun createMarsComponent(): MarsComponent = DaggerMarsComponent.builder()
+            .guiProxy(ProjectFrontend())
+            .build()
     }
 
     /** Routes core messages before a project console is attached. */

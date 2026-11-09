@@ -411,10 +411,11 @@ The plugin runtime uses the IDE's JDK. A user does not need Gradle, Maven, or a 
 
 ### 5.1 Build path and API choice
 
-Create a build ID and `DefaultBuildDescriptor`. Publish `StartBuildEvent`, file/message events, output, and `FinishBuildEvent`
-through public builders and `BuildViewManager`'s event listener contract. Do not construct `events.impl` classes.
-Check builder return types and defaults against 263 before implementation. The convenience `createBuildProgress` factory is experimental;
-this plan selects event builders so the normal path does not require that experimental API. [BuildViewManager], [AbstractViewManager], [StartBuildEvent], [FinishBuildEvent], [FileMessageEvent]
+Create a build ID and `DefaultBuildDescriptor`. Use `BuildViewManager.createBuildProgress` for the
+start, success, failure, and cancellation lifecycle. Its public experimental API in 263 supplies
+the terminal results, whose concrete classes are in `events.impl`. Use public event builders for
+source messages that need both a file position and a range-tracking navigator.
+[BuildViewManager], [AbstractViewManager], [StartBuildEvent], [FinishBuildEvent], [FileMessageEvent]
 
 The build coordinator serves the toolbar action, before-run task, directory builds, and automated task entry points.
 No runner should call a separate private assembler path. Diagnostics and images must come from the same source snapshot.

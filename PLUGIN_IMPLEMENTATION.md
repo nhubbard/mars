@@ -281,6 +281,29 @@ and authored plugin code covered all 620 lines and 378 branch outcomes.
 The startup log confirmed that MARS MIPS loaded and opened the smoke project.
 All six JARs in the distribution ZIP matched the launched plugin by SHA-256.
 
+## Assemble Current MIPS File
+
+The Build menu action captures the selected local MIPS file and its transitive
+includes. A project-owned coroutine assembles that capture in a fresh core
+session and reports one start and one terminal event through IntelliJ Build View.
+The implementation uses the pinned platform's experimental `BuildProgress`
+lifecycle and public diagnostic event builders. It converts the assembler's
+one-based positions to editor offsets, checks the captured document revision,
+and uses an IntelliJ range marker for each clickable diagnostic. Stale or missing
+positions stay visible as messages.
+
+Jupiter IDE fixtures invoke the registered action with an unsaved include,
+verify an exact Unicode and tab-aware diagnostic offset, and check success,
+failure, cancellation, and isolation from the current simulation program.
+Cancellation is observed at capture and publication boundaries. The Java assembly
+passes still need cooperative checks for prompt cancellation during assembly.
+
+The clean IntelliJ 2026.3 launch passed 1,281 tests, including 79 plugin tests,
+and authored plugin code covered all 689 lines and 424 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256. Visual verification
+remains open.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

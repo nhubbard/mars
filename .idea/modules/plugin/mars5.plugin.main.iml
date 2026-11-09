@@ -47,6 +47,7 @@
     <orderEntry type="jdk" jdkName="homebrew-25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="mars5.core.main" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.buildView:IU-263.7307.200" level="project" />
     <orderEntry type="module-library" scope="PROVIDED">
       <library name="Gradle: idea:idea:aarch64:2026.3">
         <CLASSES>
