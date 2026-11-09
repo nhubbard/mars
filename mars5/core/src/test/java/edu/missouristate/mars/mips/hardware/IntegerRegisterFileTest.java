@@ -75,6 +75,8 @@ class IntegerRegisterFileTest {
     first.getValue(8);
     first.setValue(33, 5);
     first.setValue(34, 6);
+    assertThat(first.getValueNoNotify(IntegerRegisterFile.HI_REGISTER)).isEqualTo(5);
+    assertThat(first.getValueNoNotify(IntegerRegisterFile.LO_REGISTER)).isEqualTo(6);
     assertThat(notices)
         .extracting(RegisterAccessNotice::getAccessType)
         .containsExactly(
@@ -92,6 +94,7 @@ class IntegerRegisterFileTest {
   void invalidRegisterNumbersAreRejected(int number) {
     var registers = new IntegerRegisterFile();
     assertThatIllegalArgumentException().isThrownBy(() -> registers.getValue(number));
+    assertThatIllegalArgumentException().isThrownBy(() -> registers.getValueNoNotify(number));
     assertThatIllegalArgumentException().isThrownBy(() -> registers.setValue(number, 42));
   }
 

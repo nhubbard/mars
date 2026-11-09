@@ -33,6 +33,12 @@ import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
+import com.intellij.xdebugger.impl.actions.XDebuggerActions
+import com.intellij.xdebugger.impl.ui.tree.XDebuggerTree
+import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
+import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
+import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
+import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunType
 import kotlin.time.Duration.Companion.milliseconds
@@ -171,6 +177,82 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(if (invalidAddress) 1 else 0, debug.exit.await())
         }
+    }
+
+    @Test
+    fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("registers.s", """
+                addiu ${'$'}t0, ${'$'}zero, -2
+                addiu ${'$'}t1, ${'$'}zero, 3
+                mult ${'$'}t0, ${'$'}t1
+                lui ${'$'}t2, 0x3ff8
+                mtc1 ${'$'}t2, ${'$'}f1
+                c.eq.s ${'$'}f0, ${'$'}f0
+                addiu ${'$'}t3, ${'$'}zero, 0x1234
+                mtc0 ${'$'}t3, ${'$'}14
+                nop
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 0)
+                addBreakpoint(it, 8)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 0)
+            val first = withContext(Dispatchers.EDT) { requireNotNull(debug.session.currentStackFrame) }
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 8)
+            withContext(Dispatchers.EDT) {
+                val second = requireNotNull(debug.session.currentStackFrame)
+                assertNotSame(first, second)
+                assertEquals(first.equalityObject, second.equalityObject)
+                // Open the original frame after running further to prove that its values were captured.
+                val initial = registerValues(debug.session, first)
+                val current = registerValues(debug.session, second)
+                assertEquals("0x00400000", initial["pc"])
+                assertEquals("0x00400020", current["pc"])
+                assertEquals("0x00000000", initial["\$t0"])
+                assertEquals("0xfffffffe", current["\$t0"])
+                assertEquals("0xffffffff", current["hi"])
+                assertEquals("0xfffffffa", current["lo"])
+                assertEquals("0x00000000", initial["\$14 (epc)"])
+                assertEquals("0x00001234", current["\$14 (epc)"])
+                assertEquals("0x00000000", initial["FCC"])
+                assertEquals("0x00000001", current["FCC"])
+                assertEquals("1.9375 (0x3ff80000)", current["\$f1"])
+                assertEquals("1.5 (0x3ff8000000000000)", current["\$f0/\$f1"])
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    private suspend fun registerValues(session: XDebugSession, frame: XStackFrame): Map<String, String> {
+        val tree = XDebuggerTree(
+            project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
+        )
+        try {
+            val root = XStackFrameNode(tree, frame, null)
+            tree.setRoot(root, true)
+            val (cpu, cp0, cp1) = children(root, 3).map { assertInstanceOf(XValueGroupNodeImpl::class.java, it) }
+            assertTrue(cpu.valueContainer.isAutoExpand)
+            assertFalse(cp1.valueContainer.isAutoExpand)
+            assertTrue(cp0.valueContainer.isRestoreExpansion)
+            val floating = children(cp1, 34)
+            val pairs = assertInstanceOf(XValueGroupNodeImpl::class.java, floating.last())
+            val nodes = children(cpu, 35) + children(cp0, 4) + floating.dropLast(1) + children(pairs, 16)
+            val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+            pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
+            return values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
+        } finally {
+            Disposer.dispose(tree)
+        }
+    }
+
+    private suspend fun children(node: XValueContainerNode<*>, expected: Int): List<XValueContainerNode<*>> {
+        node.childCount
+        pollAssertionsAsync(3.seconds, 10.milliseconds) { assertEquals(expected, node.loadedChildren.size) }
+        return node.loadedChildren
     }
 
     @Test

@@ -308,6 +308,8 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.ui:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.shared:IU-263.7307.200" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: com.jetbrains.intellij.platform:test-framework:263.7307.200" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: com.jetbrains.intellij.platform:test-framework-junit5:263.7307.200" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: com.jetbrains.intellij.platform:test-framework-junit5-code-insight:263.7307.200" level="project" />

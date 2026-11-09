@@ -11,6 +11,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class Coprocessor1StateTest {
   @Test
+  void inspectingConditionFlagsDoesNotEmitAnAccessEvent() {
+    var state = new Coprocessor1State();
+    state.setConditionFlag(7);
+    var notices = new ArrayList<RegisterAccessNotice>();
+    state.addRegistersObserver(notices::add);
+    assertThat(state.getConditionFlagsNoNotify()).isEqualTo(0x80);
+    assertThat(notices).isEmpty();
+    assertThat(state.getConditionFlags()).isEqualTo(0x80);
+    assertThat(notices).extracting(RegisterAccessNotice::getAccessType).containsExactly(AccessNotice.READ);
+  }
+
+  @Test
   void allRegistersAndFlagsBelongToTheirOwnInstance() {
     var first = new Coprocessor1State();
     var second = new Coprocessor1State();

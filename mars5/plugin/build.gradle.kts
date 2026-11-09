@@ -32,6 +32,8 @@ dependencies {
     }
     bundledModule("intellij.platform.buildView")
     bundledModule("intellij.platform.debugger")
+    testBundledModule("intellij.platform.debugger.impl.ui")
+    testBundledModule("intellij.platform.debugger.impl.shared")
     grammarKit("2023.3.4")
     testFramework(TestFrameworkType.Platform)
     testFramework(TestFrameworkType.JUnit5)

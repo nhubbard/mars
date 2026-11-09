@@ -45,6 +45,8 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
 
   public static final int GLOBAL_POINTER_REGISTER = 28;
   public static final int STACK_POINTER_REGISTER = 29;
+  public static final int HI_REGISTER = 33;
+  public static final int LO_REGISTER = 34;
 
   private final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
 
@@ -97,9 +99,9 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
 
   private final Register programCounter;
   private final Register hi =
-      new Register("hi", 33, 0); // this is an internal register with arbitrary number
+      new Register("hi", HI_REGISTER, 0);
   private final Register lo =
-      new Register("lo", 34, 0); // this is an internal register with arbitrary number
+      new Register("lo", LO_REGISTER, 0);
 
   /** Creates registers using the standard MARS reset addresses without initializing a runtime. */
   public IntegerRegisterFile() {
@@ -176,6 +178,12 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   public int getValue(int num) {
     checkRegisterNumber(num);
     return register(num).getValue();
+  }
+
+  /** Reads a register for inspection without emitting an access event. */
+  public int getValueNoNotify(int num) {
+    checkRegisterNumber(num);
+    return register(num).getValueNoNotify();
   }
 
   /**
@@ -311,7 +319,7 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   }
 
   private static void checkRegisterNumber(int number) {
-    if (number < 0 || number > 34) {
+    if (number < 0 || number > LO_REGISTER) {
       throw new IllegalArgumentException("Invalid register number: " + number);
     }
   }
@@ -319,8 +327,8 @@ public final class IntegerRegisterFile implements MarsRegisterFile {
   private Register register(int number) {
     return switch (number) {
       case 32 -> programCounter;
-      case 33 -> hi;
-      case 34 -> lo;
+      case HI_REGISTER -> hi;
+      case LO_REGISTER -> lo;
       default -> regFile[number];
     };
   }

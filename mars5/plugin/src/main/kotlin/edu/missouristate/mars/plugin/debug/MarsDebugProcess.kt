@@ -174,17 +174,21 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         }
     }
 
-    private fun suspendContext(machine: MarsContext): XSuspendContext {
+    private fun suspendContext(machine: MarsContext): XSuspendContext = machine.claimStoppedSession().use {
+        MarsSuspendContext(MarsStackFrame(sourcePosition(machine), machine))
+    }
+
+    private fun sourcePosition(machine: MarsContext): XSourcePosition? {
         val origin = try {
-            machine.memory.getStatementNoNotify(machine.registerFile.pc)?.instructionOrigin
+            val pc = machine.registerFile.programCounterRegister.valueNoNotify
+            machine.memory.getStatementNoNotify(pc)?.instructionOrigin
         } catch (_: AddressErrorException) {
             null
         }
-        if (origin == null) return MarsSuspendContext(null)
+        if (origin == null) return null
         val location = origin.location()
         val file = LocalFileSystem.getInstance().findFileByNioFile(location.file())
-        val position = XDebuggerUtil.getInstance().createPosition(file, location.line() - 1)
-        return MarsSuspendContext(position)
+        return XDebuggerUtil.getInstance().createPosition(file, location.line() - 1)
     }
 
     private fun VirtualFile.location(line: Int): Location? {
@@ -199,10 +203,7 @@ private object MarsDebugEditors : XDebuggerEditorsProvider() {
         EditorFactory.getInstance().createDocument(expression.expression)
 }
 
-private class MarsSuspendContext(position: XSourcePosition?) : XSuspendContext() {
-    private val frame = object : XStackFrame() {
-        override fun getSourcePosition() = position
-    }
+private class MarsSuspendContext(frame: XStackFrame) : XSuspendContext() {
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame
         override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {

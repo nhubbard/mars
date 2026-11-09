@@ -481,11 +481,23 @@ The Debug view shows one simulated CPU frame. Resume, Pause, Stop, instruction
 Step Into, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 expressions and call-aware stepping report that they are unavailable.
-Register and memory inspection are upcoming debugger steps.
 
 Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
 include and repeated macro expansions, instruction stepping, Run to Cursor,
 breakpoint updates, logpoints, unmapped positions, and process shutdown.
+
+## Register inspection in Debug Variables
+
+Each suspension captures the integer registers, PC, HI and LO, the implemented
+Coprocessor 0 registers, and all Coprocessor 1 registers and condition flags.
+The Variables tree uses native debugger groups. Coprocessor 1 shows both raw
+bits and decoded single- and double-precision values. Reading the registers
+for a frame does not emit simulated access events.
+
+A fixture expands IntelliJ's Variables tree for two native debugger frames
+after execution advances. It checks the program counter, multiply result,
+exception PC, floating-point condition flags, and paired floating-point
+values against the machine state at each suspension.
 
 ## Next slices
 

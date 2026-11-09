@@ -456,6 +456,11 @@ public final class Coprocessor1State {
     return condition.getValue();
   }
 
+  /** Reads the condition flags for inspection without emitting an access event. */
+  public int getConditionFlagsNoNotify() {
+    return condition.getValueNoNotify();
+  }
+
   /** Clear all condition flags (0-7). */
   public void clearConditionFlags() {
     condition.setValue(0); // sets all 32 bits to 0.
