@@ -115,8 +115,9 @@ final class FirstPassProcessor {
       this.fileCurrentlyBeingAssembled = programFile;
       // List of labels declared ".globl". new list for each file assembled
       this.globalDeclarationList = new TokenList();
-      // Parser begins by default in text segment until directed otherwise.
+      // Each top-level source starts in user text and retains the accumulated segment addresses.
       this.inDataSegment = false;
+      this.textAddress.setAddressSpace(this.textAddress.USER);
       // Macro segment will be started by .macro directive
       this.inMacroSegment = false;
       // Default is to align data from directives on appropriate boundary (word, half, byte)

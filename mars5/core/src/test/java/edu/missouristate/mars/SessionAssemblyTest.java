@@ -125,6 +125,36 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void separateKernelHandlerDoesNotChangeTheDefaultSegmentOfUserSources() throws Exception {
+    var handler =
+        source(
+            "handler.s",
+            """
+            .ktext 0x80000180
+            li $a0, 42
+            li $v0, 1
+            syscall
+            li $v0, 10
+            syscall
+            """);
+    var lead = source("lead.s", "break\n");
+    var sibling = source("sibling.s", "nop\n");
+    try (var session = session("Default")) {
+      var program = session.assemble(List.of(lead, sibling), handler, true, false);
+      assertThat(program.sourceMap().breakpoints().get(new Location(lead, 1)))
+          .containsExactly(session.memory.textBaseAddress);
+      assertThat(program.sourceMap().breakpoints().get(new Location(sibling, 1)))
+          .containsExactly(session.memory.textBaseAddress + 4);
+      assertThat(program.sourceMap().breakpoints().get(new Location(handler, 2)))
+          .containsExactly(session.memory.exceptionHandlerAddress);
+      var output = new RecordingEnvironment();
+      program.setSyscallEnvironment(output);
+      assertThat(program.simulate(20)).isTrue();
+      assertThat(output.printed).containsExactly(42);
+    }
+  }
+
+  @Test
   void multiFileForwardReferencesResolveOnlyThroughTheOwningGlobalScope() throws Exception {
     var session = session("Default");
     var lead =
