@@ -160,6 +160,22 @@ public final class MarsContext implements AutoCloseable {
     }
   }
 
+  /** Changes an implemented Coprocessor 0 register and establishes a new backstep baseline. */
+  public boolean editCoprocessor0Register(int number, int bits) {
+    var register = coprocessor0.getRegister(number);
+    if (register == null) {
+      throw new IllegalArgumentException("Coprocessor 0 register is not implemented: " + number);
+    }
+    try (var lease = claimStoppedSession()) {
+      if (register.getValueNoNotify() == bits) {
+        return false;
+      }
+      backStepper.clear();
+      register.setValue(bits);
+      return true;
+    }
+  }
+
   /** Lifecycle cleanup waits for an instruction boundary before closing default resources. */
   public void releaseDefaultResources() {
     executionLock.lock();

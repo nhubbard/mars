@@ -8,7 +8,10 @@ import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 
+internal enum class RegisterBank { CPU, COPROCESSOR_0 }
+
 internal data class RegisterEditRequest(
+    val bank: RegisterBank,
     val register: Int,
     val expression: String,
     val callback: XModificationCallback,
@@ -20,6 +23,7 @@ internal fun registerEditRequests(): Channel<RegisterEditRequest> =
     Channel(16, onUndeliveredElement = RegisterEditRequest::unavailable)
 
 internal class RegisterModifier(
+    private val bank: RegisterBank,
     private val register: Int,
     private val bits: Int,
     private val edits: SendChannel<RegisterEditRequest>,
@@ -28,7 +32,7 @@ internal class RegisterModifier(
     override fun getInitialValueEditorText() = Binary.intToHexString(bits)
 
     override fun setValue(expression: XExpression, callback: XModificationCallback) {
-        val request = RegisterEditRequest(register, expression.expression, callback)
+        val request = RegisterEditRequest(bank, register, expression.expression, callback)
         if (!isCurrent() || edits.trySend(request).isFailure) request.unavailable()
     }
 }

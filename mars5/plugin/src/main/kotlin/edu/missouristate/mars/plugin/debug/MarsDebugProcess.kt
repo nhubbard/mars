@@ -338,7 +338,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             }
             return
         }
-        if (machine.editIntegerRegister(request.register, bits)) {
+        val changed = when (request.bank) {
+            RegisterBank.CPU -> machine.editIntegerRegister(request.register, bits)
+            RegisterBank.COPROCESSOR_0 -> machine.editCoprocessor0Register(request.register, bits)
+        }
+        if (changed) {
             machine.claimStoppedSession().use { context.refresh(machine) }
         }
         withContext(Dispatchers.EDT) { request.callback.valueModified() }

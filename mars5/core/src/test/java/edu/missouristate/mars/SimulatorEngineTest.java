@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import edu.missouristate.mars.api.*;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -66,6 +67,26 @@ class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(session.registerFile.getValueNoNotify(8)).isEqualTo(42);
+    }
+  }
+
+  @Test
+  void stoppedCoprocessor0EditBecomesTheBaselineForReversingInstructionWrites() throws Exception {
+    try (var session = load(".text\naddiu $t0,$zero,7\nmtc0 $t0,$14\nnop\n")) {
+      var engine = session.simulator();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.editCoprocessor0Register(Coprocessor0State.EPC, 0)).isFalse();
+      assertThatThrownBy(() -> session.editCoprocessor0Register(9, 1))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThat(session.backStepper.canBackstep()).isTrue();
+
+      assertThat(session.editCoprocessor0Register(Coprocessor0State.EPC, 42)).isTrue();
+      assertThat(session.coprocessor0.getValue(Coprocessor0State.EPC)).isEqualTo(42);
+      assertThat(session.backStepper.canBackstep()).isFalse();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.coprocessor0.getValue(Coprocessor0State.EPC)).isEqualTo(7);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(session.coprocessor0.getValue(Coprocessor0State.EPC)).isEqualTo(42);
     }
   }
 
@@ -217,6 +238,8 @@ class SimulatorEngineTest {
         assertThatThrownBy(engine::step).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(engine::backstep).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.editIntegerRegister(8, 42))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editCoprocessor0Register(Coprocessor0State.EPC, 42))
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.setMemoryConfiguration("Default"))
             .isInstanceOf(IllegalStateException.class);

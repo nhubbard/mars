@@ -15,6 +15,8 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.Register
+import edu.missouristate.mars.plugin.debug.RegisterBank.COPROCESSOR_0
+import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.SendChannel
@@ -47,13 +49,13 @@ internal class MarsStackFrame(
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
             add(hexRegister(cpu.programCounterRegister))
             cpu.registers.forEach {
-                add(if (it.number == 0) hexRegister(it) else editableWord(it.name, it.valueNoNotify, it.number))
+                add(if (it.number == 0) hexRegister(it) else editableWord(CPU, it.name, it.valueNoNotify, it.number))
             }
-            add(editableWord("hi", cpu.getValueNoNotify(HI_REGISTER), HI_REGISTER))
-            add(editableWord("lo", cpu.getValueNoNotify(LO_REGISTER), LO_REGISTER))
+            add(editableWord(CPU, "hi", cpu.getValueNoNotify(HI_REGISTER), HI_REGISTER))
+            add(editableWord(CPU, "lo", cpu.getValueNoNotify(LO_REGISTER), LO_REGISTER))
         }, initiallyExpanded = true))
         addTopGroup(RegisterGroup("debug.registers.cp0", XValueChildrenList().apply {
-            machine.coprocessor0.registers.forEach { add(hexRegister(it)) }
+            machine.coprocessor0.registers.forEach { add(editableWord(COPROCESSOR_0, it.name, it.valueNoNotify, it.number)) }
         }))
 
         val fpu = machine.coprocessor1
@@ -74,8 +76,8 @@ internal class MarsStackFrame(
         }))
     }
 
-    private fun editableWord(name: String, bits: Int, number: Int) =
-        RegisterValue(name, RegisterModifier(number, bits, registerEdits, isCurrent)) { Binary.intToHexString(bits) }
+    private fun editableWord(bank: RegisterBank, name: String, bits: Int, number: Int) =
+        RegisterValue(name, RegisterModifier(bank, number, bits, registerEdits, isCurrent)) { Binary.intToHexString(bits) }
 
     override fun getSourcePosition() = position
     override fun getEvaluator() = snapshot.evaluator

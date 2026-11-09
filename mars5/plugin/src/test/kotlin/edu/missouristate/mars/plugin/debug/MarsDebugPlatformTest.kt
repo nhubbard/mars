@@ -976,10 +976,55 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `native Coprocessor 0 edits update watches and execution without writing CPU registers`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("edit-cp0.s", """
+                addiu ${'$'}t0, ${'$'}zero, 7
+                mfc0 ${'$'}t1, ${'$'}14
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 1)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
+                    nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
+                }
+                val epc = requireNotNull(edits.getValue("\$14 (epc)"))
+                assertEquals("0x00000000", epc.initialValueEditorText)
+                assertNull(editValue(epc, "cp0.\$14"))
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                assertNull(editValue(epc, "\$t0 + 35"))
+                assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                assertNull(editValue(requireNotNull(edits.getValue("\$8 (vaddr)")), "0x80000000"))
+                assertNull(editValue(requireNotNull(edits.getValue("\$12 (status)")), "0xff10"))
+                assertNull(editValue(requireNotNull(edits.getValue("\$13 (cause)")), "0x10"))
+                assertEquals("0x0000002a", evaluate(debug.session, frame, "cp0.\$14"))
+                assertEquals("0x80000000", evaluate(debug.session, frame, "cp0.\$8"))
+                val values = registerValues(debug.session, frame)
+                assertEquals("0x0000002a", values["\$14 (epc)"])
+                assertEquals("0x80000000", values["\$8 (vaddr)"])
+                assertEquals("0x0000ff10", values["\$12 (status)"])
+                assertEquals("0x00000010", values["\$13 (cause)"])
+                assertEquals("0x00000007", values["\$t0"])
+                assertEquals("0x00000000", values["\$t6"])
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val requests = registerEditRequests()
-            val modifier = RegisterModifier(8, 0, requests) { true }
+            val modifier = RegisterModifier(RegisterBank.CPU, 8, 0, requests) { true }
             val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
             val errors = mutableListOf<String>()
             repeat(17) {

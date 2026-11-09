@@ -108,14 +108,8 @@ public final class Coprocessor0State {
    * @return old value in register prior to update
    */
   public int updateRegister(int num, int val) {
-    int old = 0;
-    for (Register register : registers) {
-      if (register.getNumber() == num) {
-        old = register.setValue(val);
-        break;
-      }
-    }
-    return old;
+    var register = getRegister(num);
+    return register == null ? 0 : register.setValue(val);
   }
 
   /**
@@ -125,12 +119,18 @@ public final class Coprocessor0State {
    * @return The value of the given register. 0 for non-implemented registers
    */
   public int getValue(int num) {
+    var register = getRegister(num);
+    return register == null ? 0 : register.getValue();
+  }
+
+  /** Finds the implemented register with this architectural number, or returns null. */
+  public Register getRegister(int number) {
     for (Register register : registers) {
-      if (register.getNumber() == num) {
-        return register.getValue();
+      if (register.getNumber() == number) {
+        return register;
       }
     }
-    return 0;
+    return null;
   }
 
   /**
