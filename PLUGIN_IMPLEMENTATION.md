@@ -404,6 +404,13 @@ references can navigate to valid formals before the first invalid argument.
 Label resolution continues to distinguish macro-local and outer names. The
 malformed signature cannot match a macro invocation.
 
+A physical `.macro` opener inside another macro stays on its own line. The next
+standalone terminator closes the outer body in the physical syntax tree. The opener
+retains its signature for include-aware resolution, since an earlier include can close
+the first macro before the assembler reaches the second opener. An include on the
+opener line itself still takes precedence. The declaration and reference indexes rebuild
+affected entries, including names that start with a dot and a digit.
+
 ## Macro parameter spellings
 
 Macro signatures preserve parentheses and commas as tokens. The assembler ignores those tokens

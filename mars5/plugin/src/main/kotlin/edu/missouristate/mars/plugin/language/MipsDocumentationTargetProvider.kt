@@ -61,7 +61,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         val macroEndOwners = TokenSet.create(MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("STATEMENT"))
         val headOwners = TokenSet.create(
             MipsTypes.psi("OPERATION"), MipsTypes.psi("DIRECTIVE_STATEMENT"),
-            MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("MACRO_DEFINITION"),
+            MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("MACRO_HEADER"),
         )
     }
 }

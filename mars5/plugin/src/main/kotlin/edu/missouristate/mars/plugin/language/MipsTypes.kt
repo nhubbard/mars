@@ -30,6 +30,7 @@ object MipsTypes {
         "LABEL" to MipsSyntaxTypes.LABEL,
         "LITERAL_EXPR" to MipsSyntaxTypes.LITERAL_EXPR,
         "MACRO_DEFINITION" to MipsSyntaxTypes.MACRO_DEFINITION,
+        "MACRO_HEADER" to MipsSyntaxTypes.MACRO_HEADER,
         "MACRO_PARAMETER" to MipsSyntaxTypes.MACRO_PARAMETER,
         "MACRO_SIGNATURE" to MipsSyntaxTypes.MACRO_SIGNATURE,
         "OPERAND" to MipsSyntaxTypes.OPERAND,

@@ -16,6 +16,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -310,16 +311,19 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `an include can replace a macro closing line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `an include can replace a macro boundary line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         directory.resolve("body.s").writeText("addiu \$t0,\$zero,7")
-        val include = ".end_macro .include \"body.s\""
-        val source = ".macro emit\n$include\n.end_macro\nemit"
-        assertAssembles(directory, source)
+        for (prefix in listOf(".end_macro", ".macro replaced")) {
+            val include = "$prefix .include \"body.s\""
+            val source = ".macro emit\n$include\n.end_macro\nemit"
+            assertAssembles(directory, source)
+            readAction {
+                val macro = descendants(assertParses(source).node, "MACRO_DEFINITION").single()
+                assertEquals(include, descendants(macro, "INCLUDE_LINE").single().text)
+                assertEquals(".end_macro", macro.lastChildNode.text)
+            }
+        }
         readAction {
-            val file = assertParses(source)
-            val macro = descendants(file.node, "MACRO_DEFINITION").single()
-            assertEquals(include, descendants(macro, "INCLUDE_LINE").single().text)
-            assertEquals(".end_macro", macro.lastChildNode.text)
             assertTrue(descendants(assertParses(".include 1").node, "INCLUDE_LINE").none())
         }
     }
@@ -339,6 +343,40 @@ class MipsParserPlatformTest {
                 val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
                 assertTrue(errors.isNotEmpty() && errors.all { it.textOffset < source.indexOf("body:") }, tail)
                 assertEquals(listOf("emit(7)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
+            }
+        }
+    }
+
+    @Test
+    fun `a nested macro opener does not consume the outer terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro outer (%value)
+            .macro inner (%other)
+            inside: li ${'$'}t0, %value
+            .end_macro
+            outside: nop
+            outer(7)
+        """.trimIndent()
+        val entry = directory.resolve("nested.asm").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        val error = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+        val messages = error.errors().errorMessages.map { it.message }
+        assertTrue("Nested macros are not allowed" in messages, messages.toString())
+        readAction {
+            val openers = listOf(
+                ".macro inner (%other)" to emptyList(),
+                ".macro" to emptyList(),
+                "nested_label: .macro inner" to listOf("nested_label:"),
+                "first_label: nested_label: .macro inner" to listOf("first_label:", "nested_label:"),
+            )
+            for ((opener, labels) in openers) {
+                val file = assertParses(source.replace(".macro inner (%other)", opener))
+                val outer = descendants(file.node, "MACRO_DEFINITION").single()
+                assertEquals(".end_macro", outer.lastChildNode.text)
+                assertEquals(labels + "inside:", descendants(outer, "LABEL").map { it.text }.toList())
+                assertEquals(opener, descendants(outer, "STATEMENT").first().text)
+                val topLevel = file.children.filter { it.node.elementType == MipsTypes.psi("STATEMENT") }
+                assertEquals(listOf("outside: nop", "outer(7)"), topLevel.drop(1).map { it.text })
             }
         }
     }

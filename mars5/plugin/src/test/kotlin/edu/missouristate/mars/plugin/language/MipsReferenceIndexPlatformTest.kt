@@ -50,6 +50,7 @@ class MipsReferenceIndexPlatformTest {
             .eqv Alias .emit
             .eqv Literal NOP
             ,,.macro,, .emit (%arg FORMALS, 7)
+              .macro rejected
               .end_macro stray
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
@@ -59,7 +60,7 @@ class MipsReferenceIndexPlatformTest {
             ,,top,, :,, .emit(,,Shared,,,NOP)
             b NOP
             .globl Shared
-            .word ${'$'}gcc
+            .word ${'$'}gcc, .1_private
             .float NaN, Infinity
             .set noat ), :
             .data DATA_ADDRESS trailing
@@ -99,7 +100,9 @@ class MipsReferenceIndexPlatformTest {
                 sites(".emit"),
             )
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)), sites("FORMALS"))
+            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("rejected"), macro)), sites("rejected"))
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
+            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf(".1_private"), -1) }, sites(".1_private"))
             for (name in listOf("DATA_ADDRESS", "\$textAddress")) {
                 assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
             }
@@ -110,7 +113,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(12, extension.version)
+            assertEquals(13, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

@@ -181,6 +181,21 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    fun `a written macro opener can follow a terminator supplied by an include`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val close = ".end_macro\n"
+        val prefix = ".macro first\nnop\n.include \"close.s\"\n"
+        val second = "label: .macro NAME (%value)\naddiu \$t0, \$zero, %value\n.end_macro\n"
+        val source = ".eqv NAME emit\n$prefix$second"
+        val call = "em<caret>it(7)\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("close.s", close) }
+        assertEquals(Target("macro-call.asm", source.lastIndexOf("NAME"), SymbolKind.MACRO), target(source + call))
+        directory.resolve("close.s").writeText(close)
+        val entry = directory.resolve("entry.asm").also { it.writeText(source + call.replace("<caret>", "")) }
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
     fun `macro binding follows unsaved edits to the included header`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {
