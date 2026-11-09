@@ -25,6 +25,9 @@
     <localInspection language="MARS_MIPS" shortName="MipsMacroParameter" bundle="messages.MarsBundle"
                      groupKey="inspection.group" key="inspection.macro.parameters" enabledByDefault="true" level="WARNING"
                      implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection"/>
+    <localInspection language="MARS_MIPS" shortName="MipsMacroArity" bundle="messages.MarsBundle"
+                     groupKey="inspection.group" key="inspection.macro.arity" enabledByDefault="true" level="WARNING"
+                     implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection"/>
     <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
     <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>

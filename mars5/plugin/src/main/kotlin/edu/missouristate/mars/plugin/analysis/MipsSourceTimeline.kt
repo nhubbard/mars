@@ -8,6 +8,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -17,12 +18,14 @@ import java.util.TreeMap
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
     val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
-    val events = ArrayList<MipsSourceEvent.Effective>()
+    var eventCount = 0
     val files = LinkedHashMap<VirtualFile, SourceFileEvents>()
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
     val generatedLabels = LinkedHashMap<String, MutableList<GeneratedLabel>>()
-    val macroBoundaries = TreeMap<Int, MipsSourceEvent.Begin?>()
+    val macroBoundaries = TreeMap<Int, Begin?>()
+    val macroNames = HashSet<String>()
+    val closedMacros = LinkedHashMap<String, MutableMap<Int, TreeMap<Int, Begin>>>()
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
@@ -32,7 +35,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     }
 
     enter(entry)
-    var macro: MipsSourceEvent.Begin? = null
+    var macro: Begin? = null
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
@@ -44,7 +47,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         ProgressManager.checkCanceled()
         val cursor = pending.last()
         if (!cursor.events.hasNext()) {
-            cursor.locations.end = events.size
+            cursor.locations.end = eventCount
             pending.removeLast()
             continue
         }
@@ -60,17 +63,23 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.Effective -> physical
         }
-        val index = events.size
+        val index = eventCount++
         cursor.locations.sites.add(SourceEventSite(event.offset, index))
-        events.add(event)
         when (event) {
-            is MipsSourceEvent.Begin -> {
+            is Begin -> {
+                macroNames.add(event.name)
                 macro = macro ?: event
-                macroBoundaries[events.size] = macro
+                macroBoundaries[eventCount] = macro
             }
             is MipsSourceEvent.End -> {
+                val definition = macro
+                val arity = definition?.arity
+                if (arity != null) {
+                    closedMacros.getOrPut(definition.name, ::LinkedHashMap)
+                        .getOrPut(arity, ::TreeMap)[eventCount] = definition
+                }
                 macro = null
-                macroBoundaries[events.size] = null
+                macroBoundaries[eventCount] = null
             }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
@@ -89,26 +98,24 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
             }
         }
-        if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(events.size)
+        if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(events, files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries),
+        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries, macroNames, closedMacros),
         dependencies,
     )
 }
 
 internal class MipsSourceTimeline(
-    private val events: List<MipsSourceEvent.Effective>,
     private val files: Map<VirtualFile, SourceFileEvents>,
     private val equivalences: Map<String, IndexedEquivalence>,
     private val integerDataPrefixes: BitSet,
     val externalStorage: Map<String, PsiElement>,
     val generatedLabels: Map<String, List<GeneratedLabel>>,
-    private val macroBoundaries: TreeMap<Int, MipsSourceEvent.Begin?>,
+    private val macroBoundaries: TreeMap<Int, Begin?>,
+    val macroNames: Set<String>,
+    private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
 ) {
-    val macroNames: Set<String> by lazy {
-        events.filterIsInstance<MipsSourceEvent.Begin>().mapTo(HashSet(), MipsSourceEvent.Begin::name)
-    }
     val generatedLabelSites: Set<PsiElement> by lazy {
         generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
     }
@@ -119,12 +126,11 @@ internal class MipsSourceTimeline(
 
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
-    fun macroAt(file: MipsFile, offset: Int): MipsSourceEvent.Begin? = macroBoundaries.floorEntry(prefixEnd(file, offset))?.value
+    fun macroAt(file: MipsFile, offset: Int): Begin? = openMacro(prefixEnd(file, offset))
 
-    fun prefix(file: MipsFile, offset: Int): Prefix {
-        val end = prefixEnd(file, offset)
-        return Prefix(events.subList(0, end), equivalences, end, integerDataPrefixes[end])
-    }
+    private fun openMacro(end: Int): Begin? = macroBoundaries.floorEntry(end)?.value
+
+    fun prefix(file: MipsFile, offset: Int): Prefix = Prefix(prefixEnd(file, offset))
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
         val locations = files.getValue(file.viewProvider.virtualFile)
@@ -133,14 +139,29 @@ internal class MipsSourceTimeline(
         return locations.sites.getOrNull(insertion)?.index ?: locations.end
     }
 
-    class Prefix(
-        val events: List<MipsSourceEvent.Effective>,
-        private val equivalences: Map<String, IndexedEquivalence>,
-        private val end: Int,
-        val hasIntegerDataList: Boolean,
-    ) {
+    inner class Prefix(private val end: Int) {
+        val hasIntegerDataList: Boolean get() = integerDataPrefixes[end]
+        val openMacro: Begin? get() = openMacro(end)
+
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition
+
+        // Each history is keyed by the position after .end_macro, when that overload becomes visible.
+        fun macroOverloads(name: String): Map<Int, Begin> = buildMap {
+            for ((arity, history) in closedMacros[name].orEmpty()) {
+                val definition = history.floorEntry(end) ?: continue
+                put(arity, definition.value)
+            }
+        }
+
+        fun macroOverload(name: String, arity: Int): Begin? =
+            closedMacros[name]?.get(arity)?.floorEntry(end)?.value
+
+        fun macroOverloads(acceptsName: (String) -> Boolean): List<Begin> =
+            closedMacros.keys.filter {
+                ProgressManager.checkCanceled()
+                acceptsName(it)
+            }.flatMap { macroOverloads(it).values }
     }
 }
 

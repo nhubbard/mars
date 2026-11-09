@@ -46,6 +46,8 @@ internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
 )
 
+internal data class MacroArityMismatch(val site: PsiElement, val name: String, val actual: Int, val expected: List<Int>)
+
 private val mnemonicType = MipsTypes.psi("MNEMONIC")
 
 internal data class IndexedSymbolCandidates(
@@ -212,7 +214,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
         if (DumbService.isDumb(project)) return emptyMap()
         val prefix = editorPrefix(root, offset)
-        return visibleMacros(prefix) { it.startsWith(namePrefix) && prefix.equivalence(it) == null }
+        return prefix.macroOverloads { it.startsWith(namePrefix) && prefix.equivalence(it) == null }
             .groupBy(MipsSourceEvent.Begin::name) { definition ->
                 definition.parameters.joinToString(prefix = "(", postfix = ")") { it.value }
             }
@@ -223,20 +225,36 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val prefix = editorPrefix(root, head.textOffset)
         val tokens = expandedOperation(prefix, source, allowIncompleteOperand = true)
             ?.takeUnless(TokenList::isEmpty) ?: return null
-        val definitions = visibleMacros(prefix) { it == tokens[0].value }
+        val definitions = prefix.macroOverloads(tokens[0].value)
         if (definitions.isEmpty()) return null
         val fullTokens = expandedOperation(prefix, sourceLine(head), allowIncompleteOperand = true)
-        return MacroInvocation(tokens, fullTokens, definitions.map { definition -> definition.parameters.map { it.value } })
+        return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
-    private fun visibleMacros(prefix: MipsSourceTimeline.Prefix, acceptsName: (String) -> Boolean): Collection<MipsSourceEvent.Begin> {
-        val definitions = LinkedHashMap<Pair<String, Int>, MipsSourceEvent.Begin>()
-        visitMacroPrefix(prefix.events) { definition ->
-            val arity = definition.arity ?: return@visitMacroPrefix
-            val name = definition.name
-            if (acceptsName(name)) definitions[name to arity] = definition
+    internal fun macroArityMismatch(root: MipsFile, timeline: MipsSourceTimeline, head: PsiElement): MacroArityMismatch? {
+        val start = sourceLineStart(head)
+        val prefix = timeline.prefix(root, start)
+        // Calls in a macro body are resolved when the body expands, in the invocation's scope.
+        if (prefix.openMacro != null) return null
+        val replacement: (String) -> String? = { prefix.equivalence(it)?.replacement }
+        if (head.text !in timeline.macroNames && !hasLeadingEquivalence(head, replacement)) {
+            val first = CharArrayUtil.shiftForward(root.viewProvider.contents, start, " \t,")
+            if (replacement(root.findElementAt(first)!!.text) == null) return null
         }
-        return definitions.values
+        val errors = ErrorList()
+        val expanded = Tokenizer.tokenizeMappedLine(
+            sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
+        )
+        if (errors.errorsOccurred()) return null
+        val tokens = expanded.tokens().operationTokens()
+        if (tokens.isEmpty) return null
+        val name = tokens[0].value
+        val definitions = prefix.macroOverloads(name)
+        if (definitions.isEmpty()) return null
+        val actual = macroArgumentCount(tokens)
+        if (actual in definitions) return null
+        val offset = start + expanded.originalOffset(tokens[0].startPos - 1)
+        return MacroArityMismatch(root.findElementAt(offset)!!, name, actual, definitions.keys.sorted())
     }
 
     internal fun expandedInstructionAlias(
@@ -293,7 +311,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val type = when {
             operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
             recognizeMacros && operation.value in editorTimeline(root).macroNames &&
-                visibleMacros(prefix) { it == operation.value }.isNotEmpty() -> TokenTypes.IDENTIFIER
+                prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
             operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
             else -> return null
         }
@@ -346,14 +364,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
-        val name = tokens[0].value
-        val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
-        var target: PsiElement? = null
-        val open = visitMacroPrefix(prefix.events) { definition ->
-            if (definition.arity == arity && definition.name == name) target = definition.header
-        }
-        return target.takeIf { open == null }
+        if (prefix.openMacro != null) return null
+        val arity = macroArgumentCount(tokens)
+        return prefix.macroOverload(tokens[0].value, arity)?.header
     }
+
+    private fun macroArgumentCount(tokens: TokenList): Int = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
 
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
@@ -366,22 +382,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // Expanded token columns need not correspond to a physical token in the header.
         if (macro.expanded) return listOf(macro.header)
         return listOfNotNull(macro.header.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
-    }
-
-    private fun visitMacroPrefix(events: List<MipsSourceEvent>, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
-        var open: MipsSourceEvent.Begin? = null
-        for (event in events) {
-            ProgressManager.checkCanceled()
-            when (event) {
-                is MipsSourceEvent.Begin -> open = open ?: event
-                is MipsSourceEvent.End -> {
-                    open?.let(onClosed)
-                    open = null
-                }
-                else -> Unit
-            }
-        }
-        return open
     }
 
     internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {
