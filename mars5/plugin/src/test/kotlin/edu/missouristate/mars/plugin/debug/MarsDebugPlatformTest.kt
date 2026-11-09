@@ -203,8 +203,10 @@ class MarsDebugPlatformTest {
         }
         withDebug(entry) { debug ->
             debug.assertPausedAt(include, 2)
-            val counter = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler).instructionCounter
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val counter = process.instructionCounter
             assertEquals(2L, counter.snapshot().total)
+            assertEquals(listOf(2L, 0L, 0L, 0L, 0L), process.instructionStatistics.countsSnapshot().counts)
             assertEquals("", debug.stdout.toString())
             withContext(Dispatchers.EDT) {
                 val stack = requireNotNull(requireNotNull(debug.session.suspendContext).activeExecutionStack)
@@ -234,6 +236,7 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             debug.assertPausedAt(include, 3)
             assertEquals(3L, counter.snapshot().total)
+            assertEquals(listOf(2L, 0L, 0L, 0L, 1L), process.instructionStatistics.countsSnapshot().counts)
             assertEquals("42", debug.stdout.toString())
             withContext(Dispatchers.EDT) {
                 debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(entry, 2)!!, false)

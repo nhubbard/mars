@@ -133,6 +133,7 @@ class MarsRunPlatformTest {
         for ((enabled, expected) in listOf(true to "3", false to "1")) {
             val disposable = Disposer.newDisposable()
             val recording = Recording()
+            val process = CompletableDeferred<MarsProcessHandler>()
             try {
                 withContext(Dispatchers.EDT) {
                     val config = type.createTemplateConfiguration(project)
@@ -141,13 +142,18 @@ class MarsRunPlatformTest {
                     val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
                     project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                         override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
-                            if (env === environment) handler.addProcessListener(recording)
+                            if (env === environment) {
+                                handler.addProcessListener(recording)
+                                process.complete(handler as MarsProcessHandler)
+                            }
                         }
                     })
                     environment.runner.execute(environment)
                 }
                 assertEquals(0, recording.exit.await())
                 assertEquals(expected, recording.stdout.toString())
+                val alu = if (enabled) 3L else 2L
+                assertEquals(listOf(alu, 0L, 1L, 0L, 1L), process.await().instructionStatistics.countsSnapshot().counts)
             } finally {
                 Disposer.dispose(disposable)
             }
@@ -647,6 +653,7 @@ class MarsRunPlatformTest {
         assertEquals(1, recording.exit.await())
         assertEquals(3, handler.instructionCounter.snapshot().total)
         assertEquals(3, handler.instructionCounter.snapshot().j)
+        assertEquals(listOf(0L, 3L, 0L, 0L, 0L), handler.instructionStatistics.countsSnapshot().counts)
         assertEquals("", recording.stderr.toString())
     }
 

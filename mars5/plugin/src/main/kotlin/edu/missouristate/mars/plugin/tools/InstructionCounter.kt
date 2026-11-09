@@ -1,17 +1,27 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.mips.instructions.BasicInstruction
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.J_FORMAT
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.R_FORMAT
-import edu.missouristate.mars.mips.instructions.InstructionSet
+
+internal data class InstructionCountsSnapshot(val connected: Boolean, val counts: List<Long>) {
+    val total = counts.sum()
+
+    fun percent(count: Long): Int = if (total == 0L) 0 else (count * 100.0 / total).toInt()
+}
+
+internal interface InstructionCounts {
+    fun countsSnapshot(): InstructionCountsSnapshot
+    fun setConnected(value: Boolean)
+    fun reset()
+}
 
 /** Counts forward simulator events. Undo keeps past events, and executing an instruction again counts again. */
-internal class InstructionCounter {
+internal class InstructionCounter : InstructionCounts {
     data class Snapshot(val connected: Boolean, val r: Long, val i: Long, val j: Long, val other: Long) {
         val total = r + i + j + other
-
-        fun percent(count: Long): Int = if (total == 0L) 0 else (count * 100.0 / total).toInt()
     }
 
     private var connected = true
@@ -21,9 +31,9 @@ internal class InstructionCounter {
     private var other = 0L
 
     @Synchronized
-    fun record(word: Int, instructions: InstructionSet) {
+    fun record(instruction: BasicInstruction?) {
         if (!connected) return
-        when (instructions.findByBinaryCode(word)?.instructionFormat) {
+        when (instruction?.instructionFormat) {
             R_FORMAT -> r++
             I_FORMAT, I_BRANCH_FORMAT -> i++
             J_FORMAT -> j++
@@ -35,12 +45,15 @@ internal class InstructionCounter {
     fun snapshot() = Snapshot(connected, r, i, j, other)
 
     @Synchronized
-    fun setConnected(value: Boolean) {
+    override fun countsSnapshot() = InstructionCountsSnapshot(connected, listOf(r, i, j, other))
+
+    @Synchronized
+    override fun setConnected(value: Boolean) {
         connected = value
     }
 
     @Synchronized
-    fun reset() {
+    override fun reset() {
         r = 0
         i = 0
         j = 0

@@ -23,8 +23,10 @@ import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
+import javax.swing.JProgressBar
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
@@ -47,21 +49,29 @@ class InstructionCounterPlatformTest {
         val debug = DefaultDebugExecutor.getDebugExecutorInstance()
         val container = JPanel()
         val window = withContext(Dispatchers.EDT) { manager.registerToolWindow(RegisterToolWindowTask("MARS Tools")) }
-        val panel = withContext(Dispatchers.EDT) {
+        val (panel, statistics) = withContext(Dispatchers.EDT) {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
-            val content = window.contentManager.contents.single()
-            assertEquals("Instruction Counter", content.displayName)
+            val (counter, stats) = window.contentManager.contents
+            assertEquals("Instruction Counter", counter.displayName)
+            assertEquals("Instruction Statistics", stats.displayName)
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
                 UIUtil.dispatchAllInvocationEvents()
-                withShowingChanged { container.add(content.component) }
+                withShowingChanged {
+                    container.add(counter.component)
+                    container.add(stats.component)
+                }
                 UIUtil.dispatchAllInvocationEvents()
             }
-            content.component
+            counter.component to stats.component
         }
         val selector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JComboBox::class.java).single() }
-        fun button(text: String) = UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == text }
+        val statsSelector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(statistics, JComboBox::class.java).single() }
+        fun button(text: String, component: JComponent = panel) =
+            UIUtil.findComponentsOfType(component, JButton::class.java).single { it.text == text }
         fun labels() = UIUtil.findComponentsOfType(panel, JBLabel::class.java).map { it.text }
+        fun percentages() = UIUtil.findComponentsOfType(statistics, JProgressBar::class.java)
+            .associate { it.accessibleContext.accessibleName to it.value }
 
         suspend fun waitFor(entries: Int, count: String) {
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
@@ -69,6 +79,7 @@ class InstructionCounterPlatformTest {
                     val nativeEntries = RunContentManager.getInstance(project).allDescriptors.count { it.processHandler is MarsProcessHandler }
                     assertEquals(entries, nativeEntries, "native execution descriptors")
                     assertEquals(entries, selector.itemCount)
+                    assertEquals(entries, statsSelector.itemCount)
                     assertTrue(count in labels(), labels().toString())
                 }
             }
@@ -115,6 +126,15 @@ class InstructionCounterPlatformTest {
             }
             waitFor(2, "2 (100%)")
             withContext(Dispatchers.EDT) {
+                assertEquals(mapOf("ALU" to 100, "Jump" to 0, "Branch" to 0, "Memory" to 0, "Other" to 0), percentages())
+                statsSelector.selectedIndex = 0
+                button("Disconnect", statistics).doClick()
+                button("Reset", statistics).doClick()
+                assertEquals(setOf(0), percentages().values.toSet())
+                assertTrue("2 (100%)" in labels())
+                button("Connect", statistics).doClick()
+                statsSelector.selectedIndex = 1
+                assertEquals(100, percentages()["ALU"])
                 @Suppress("UNCHECKED_CAST")
                 val combo = selector as JComboBox<Any>
                 val display = combo.renderer.getListCellRendererComponent(JList(), combo.selectedItem, -1, false, false)
@@ -133,7 +153,12 @@ class InstructionCounterPlatformTest {
         } finally {
             withContext(Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
-                withForcedRespectIsShowingClientProperty { withShowingChanged { container.remove(panel) } }
+                withForcedRespectIsShowingClientProperty {
+                    withShowingChanged {
+                        container.remove(panel)
+                        container.remove(statistics)
+                    }
+                }
             }
         }
     }

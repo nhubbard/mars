@@ -23,6 +23,7 @@ import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.tools.InstructionCounter
+import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -63,6 +64,7 @@ internal class MarsProcessHandler(
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
+    val instructionStatistics = InstructionStatistics()
 
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -138,7 +140,12 @@ internal class MarsProcessHandler(
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
                         simulator.addListener(object : SimulatorListener {
-                            override fun onStep(event: StepEvent) = instructionCounter.record(event.instruction(), session.instructionSet)
+                            override fun onStep(event: StepEvent) {
+                                val word = event.instruction()
+                                val instruction = session.instructionSet.findByBinaryCode(word)
+                                instructionCounter.record(instruction)
+                                instructionStatistics.record(word, instruction)
+                            }
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
                                 if (execution.isActive) {

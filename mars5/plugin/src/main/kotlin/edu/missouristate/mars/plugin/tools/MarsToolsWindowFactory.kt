@@ -18,22 +18,35 @@ import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
+import javax.swing.JProgressBar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val view = InstructionCounterView(project)
-        val content = ContentFactory.getInstance().createContent(view.component, toolsMessages.getMessage("counter.name"), false)
-        content.setDisposer(view)
-        toolWindow.contentManager.addContent(content)
+        fun addTab(name: String, view: InstructionCountsView) {
+            val content = ContentFactory.getInstance().createContent(view.component, toolsMessages.getMessage(name), false)
+            content.setDisposer(view)
+            toolWindow.contentManager.addContent(content)
+        }
+        addTab("counter.name", InstructionCountsView(
+            project, listOf("counter.r", "counter.i", "counter.j", "counter.other"), showBars = false,
+            MarsProcessHandler::instructionCounter,
+        ))
+        addTab("statistics.name", InstructionCountsView(
+            project, InstructionStatistics.Category.entries.map { it.messageKey }, showBars = true,
+            MarsProcessHandler::instructionStatistics,
+        ))
     }
 }
 
 private val toolsMessages = DynamicBundle(MarsToolsWindowFactory::class.java, "messages.MarsBundle")
 
-private class InstructionCounterView(private val project: Project) : Disposable {
+private class InstructionCountsView(
+    private val project: Project, categories: List<String>, showBars: Boolean,
+    private val counts: (MarsProcessHandler) -> InstructionCounts,
+) : Disposable {
     private data class Execution(val id: Long, val name: String, val process: MarsProcessHandler)
 
     private val selector = ComboBox<Execution>().apply {
@@ -44,10 +57,11 @@ private class InstructionCounterView(private val project: Project) : Disposable 
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val total = JBLabel()
-    private val r = JBLabel()
-    private val i = JBLabel()
-    private val j = JBLabel()
-    private val other = JBLabel()
+    private val labels = categories.map { JBLabel() }
+    private val bars = if (showBars) categories.map { key ->
+        JProgressBar(0, 100).apply { accessibleContext.accessibleName = toolsMessages.getMessage(key) }
+    } else emptyList()
+    private val emptySnapshot = InstructionCountsSnapshot(false, List(categories.size) { 0L })
     private var executions = emptyList<Execution>()
 
     val component = panel {
@@ -59,22 +73,24 @@ private class InstructionCounterView(private val project: Project) : Disposable 
             cell(reset)
         }
         row(toolsMessages.getMessage("counter.total")) { cell(total) }
-        row(toolsMessages.getMessage("counter.r")) { cell(r) }
-        row(toolsMessages.getMessage("counter.i")) { cell(i) }
-        row(toolsMessages.getMessage("counter.j")) { cell(j) }
-        row(toolsMessages.getMessage("counter.other")) { cell(other) }
+        categories.forEachIndexed { index, key ->
+            row(toolsMessages.getMessage(key)) {
+                cell(labels[index])
+                bars.getOrNull(index)?.let { cell(it).align(AlignX.FILL).resizableColumn() }
+            }
+        }
         row { comment(toolsMessages.getMessage("counter.reverse.policy")) }
     }
 
     init {
         selector.addActionListener { render() }
         toggle.addActionListener {
-            val counter = (selector.selectedItem as Execution).process.instructionCounter
-            counter.setConnected(!counter.snapshot().connected)
+            val counter = counts((selector.selectedItem as Execution).process)
+            counter.setConnected(!counter.countsSnapshot().connected)
             render()
         }
         reset.addActionListener {
-            (selector.selectedItem as Execution).process.instructionCounter.reset()
+            counts((selector.selectedItem as Execution).process).reset()
             render()
         }
         refresh()
@@ -104,20 +120,17 @@ private class InstructionCounterView(private val project: Project) : Disposable 
 
     private fun render() {
         val execution = selector.selectedItem as Execution?
-        val snapshot = execution?.let { it.process.instructionCounter.snapshot() }
-            ?: InstructionCounter.Snapshot(false, 0, 0, 0, 0)
+        val snapshot = execution?.let { counts(it.process).countsSnapshot() } ?: emptySnapshot
         toggle.isEnabled = execution != null
         reset.isEnabled = execution != null
         toggle.text = toolsMessages.getMessage(if (snapshot.connected) "counter.disconnect" else "counter.connect")
         total.text = snapshot.total.toString()
-        r.text = format(snapshot.r, snapshot)
-        i.text = format(snapshot.i, snapshot)
-        j.text = format(snapshot.j, snapshot)
-        other.text = format(snapshot.other, snapshot)
+        for ((index, count) in snapshot.counts.withIndex()) {
+            val percent = snapshot.percent(count)
+            labels[index].text = toolsMessages.getMessage("counter.count", count.toString(), percent)
+            bars.getOrNull(index)?.value = percent
+        }
     }
-
-    private fun format(count: Long, snapshot: InstructionCounter.Snapshot) =
-        toolsMessages.getMessage("counter.count", count.toString(), snapshot.percent(count))
 
     override fun dispose() {
         refreshJob.cancel()
