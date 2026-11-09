@@ -108,6 +108,32 @@ class SessionSyscallTest {
   }
 
   @Test
+  void relativeFilePathsUseTheEnvironmentWorkingDirectory() throws Exception {
+    var firstDirectory = Files.createDirectory(directory.resolve("first"));
+    var secondDirectory = Files.createDirectory(directory.resolve("second"));
+    Files.writeString(firstDirectory.resolve("input"), "A");
+    Files.writeString(secondDirectory.resolve("input"), "B");
+    try (var first = session();
+        var second = session();
+        var firstIo = new SessionSyscallEnvironment(first.memory, InputStream.nullInputStream(),
+            System.out, System.err, firstDirectory);
+        var secondIo = new SessionSyscallEnvironment(second.memory, InputStream.nullInputStream(),
+            System.out, System.err, secondDirectory)) {
+      var bytes = new byte[1];
+      assertThat(firstIo.openFile("input", 0)).isEqualTo(3);
+      assertThat(secondIo.openFile("input", 0)).isEqualTo(3);
+      assertThat(firstIo.readFromFile(3, bytes, 1)).isEqualTo(1);
+      assertThat(bytes).containsExactly(65);
+      assertThat(secondIo.readFromFile(3, bytes, 1)).isEqualTo(1);
+      assertThat(bytes).containsExactly(66);
+      assertThat(firstIo.openFile(secondDirectory.resolve("input").toString(), 0)).isEqualTo(4);
+      assertThat(firstIo.readFromFile(4, bytes, 1)).isEqualTo(1);
+      assertThat(bytes).containsExactly(66);
+      assertThat(firstIo.openFile("bad\0name", 0)).isEqualTo(-1);
+    }
+  }
+
+  @Test
   void consoleInputDialogsAndRawDescriptorsShareOnlyTheirSuppliedStreams() throws Exception {
     try (var session = session()) {
       var output = new ByteArrayOutputStream();

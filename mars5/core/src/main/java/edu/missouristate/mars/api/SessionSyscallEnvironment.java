@@ -4,6 +4,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Objects;
 
 /**
@@ -27,6 +28,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   private final InputStream input;
   private final PrintStream output;
   private final PrintStream error;
+  private final Path workingDirectory;
   private final Closeable[] files = new Closeable[32];
   private final String[] paths = new String[32];
 
@@ -36,10 +38,17 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
 
   public SessionSyscallEnvironment(
       MemoryState memory, InputStream input, PrintStream output, PrintStream error) {
+    this(memory, input, output, error, Path.of(""));
+  }
+
+  public SessionSyscallEnvironment(
+      MemoryState memory, InputStream input, PrintStream output, PrintStream error,
+      Path workingDirectory) {
     this.memory = Objects.requireNonNull(memory);
     this.input = Objects.requireNonNull(input);
     this.output = Objects.requireNonNull(output);
     this.error = Objects.requireNonNull(error);
+    this.workingDirectory = Objects.requireNonNull(workingDirectory);
   }
 
   public void printString(String value) {
@@ -125,10 +134,11 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
         continue;
       }
       try {
-        files[fd] = flags == 0 ? new FileInputStream(path) : new FileOutputStream(path, flags == 9);
+        File file = workingDirectory.resolve(path).toFile();
+        files[fd] = flags == 0 ? new FileInputStream(file) : new FileOutputStream(file, flags == 9);
         paths[fd] = path;
         return fd;
-      } catch (IOException | SecurityException e) {
+      } catch (IOException | SecurityException | IllegalArgumentException e) {
         return -1;
       }
     }
