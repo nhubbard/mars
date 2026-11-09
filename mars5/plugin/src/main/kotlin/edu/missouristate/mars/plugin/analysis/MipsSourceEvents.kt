@@ -198,7 +198,10 @@ internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): St
 }
 
 internal fun sourceLineStart(element: PsiElement): Int =
-    CharArrayUtil.shiftBackwardUntil(element.containingFile.viewProvider.contents, element.textOffset - 1, "\r\n") + 1
+    sourceLineStart(element.containingFile.viewProvider.contents, element.textOffset)
+
+internal fun sourceLineStart(source: CharSequence, offset: Int): Int =
+    CharArrayUtil.shiftBackwardUntil(source, offset - 1, "\r\n") + 1
 
 /** A candidate can acquire an operation or label from either of its first two written tokens. */
 internal fun hasLeadingEquivalence(head: PsiElement, replacement: (String) -> String?): Boolean {

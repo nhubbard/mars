@@ -391,8 +391,9 @@ that can change the expanded token sequence. Test formatting for idempotence and
 including when replacements introduce an instruction, address, label separator, or macro boundary.
 
 Use the expanded role of label and directive aliases to place their statements at the margin.
-For future formatter work, project alias-generated macro scopes and composite operand layouts onto
-the written tokens, including aliases that supply several operands or punctuation within an operand.
+Indent macro bodies using the include-ordered scope, including boundaries supplied by aliases.
+For future formatter work, project composite operand layouts onto the written tokens, including
+aliases that supply several operands or punctuation within an operand.
 Apply spacing or indentation only at physical boundaries that preserve the assembler's token sequence
 and the stored replacement text. An alias spanning several roles should retain its own editor color.
 

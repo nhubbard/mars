@@ -12,6 +12,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -177,6 +178,104 @@ class MipsFormattingPlatformTest {
         """.trimIndent(), formatted)
         assertEquals(assemble(directory.resolve("margins-before.asm"), source),
             assemble(directory.resolve("margins-after.asm"), formatted))
+    }
+
+    @Test
+    fun `macro indentation follows effective boundaries inside and outside physical macro blocks`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv OPEN .macro
+            .eqv CLOSE .end_macro
+            .text
+              OPEN first (%arg)
+            local: addiu ${'$'}t0, ${'$'}zero, %arg
+            .eqv VALUE 6
+                 CLOSE # closes the aliased opener
+                outside: nop
+              .macro second
+            inside: nop
+                 CLOSE # closes the written opener
+                next: nop
+              .macro third
+            third_label: nop
+                 .end_macro
+            first(7)
+            second
+            third
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("macro-boundaries.asm", source)
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertEquals("""
+            .eqv OPEN .macro
+            .eqv CLOSE .end_macro
+            .text
+            OPEN first (%arg)
+                local: addiu ${'$'}t0, ${'$'}zero, %arg
+                .eqv VALUE 6
+            CLOSE # closes the aliased opener
+            outside: nop
+            .macro second
+                inside: nop
+            CLOSE # closes the written opener
+            next: nop
+            .macro third
+                third_label: nop
+            .end_macro
+                first(7)
+                second
+                third
+        """.trimIndent(), formatted)
+        assertEquals(assemble(directory.resolve("boundaries-before.asm"), source),
+            assemble(directory.resolve("boundaries-after.asm"), formatted))
+    }
+
+    @Test
+    fun `an included body takes its indentation from the enclosing entry macro`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val entry = ".eqv OPEN .macro\n.eqv STOP .end_macro\n.text\nOPEN emit\n.include \"macro-body.s\"\n    emit\n"
+        val body = "inside :   nop\nsecond :  nop\n    STOP\n    outside :   nop\n  nop\n"
+        val current = project.get()
+        val parent = withContext(Dispatchers.EDT) {
+            val parent = fixture.addFileToProject("entry.asm", entry)
+            val part = fixture.addFileToProject("macro-body.s", body)
+            fixture.configureFromExistingVirtualFile(part.virtualFile)
+            parent.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val (formattedBody, formattedEntry) = withContext(Dispatchers.EDT) {
+            val part = reformat()
+            assertEquals(part, reformat())
+            fixture.configureFromExistingVirtualFile(parent)
+            val parent = reformat()
+            assertEquals(parent, reformat())
+            part to parent
+        }
+        assertEquals("    inside: nop\n    second: nop\nSTOP\noutside: nop\n    nop\n", formattedBody)
+        assertEquals(entry.replace("\n.include", "\n    .include"), formattedEntry)
+        val include = directory.resolve("macro-body.s")
+        include.writeText(body)
+        val before = assemble(directory.resolve("include-before.asm"), entry)
+        include.writeText(formattedBody)
+        assertEquals(before, assemble(directory.resolve("include-after.asm"), formattedEntry))
+    }
+
+    @Test
+    fun `an invalid macro name retains physical indentation while editing`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("invalid-macro.asm", ".macro nop\nlabel :    nop\n.end_macro\nnext: nop\n")
+            assertEquals(".macro nop\n    label: nop\n.end_macro\nnext: nop\n", reformat())
+        }
+    }
+
+    @Test
+    fun `an incomplete aliased closer keeps the macro body indented`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val header = ".eqv OPEN .macro\n.eqv STOP .end_macro\nOPEN emit\n"
+            fixture.configureByText("incomplete-macro.asm", header + "STOP stray\ninside: nop\n.end_macro\n    outside: nop\n")
+            assertEquals(header + "    STOP stray\n    inside: nop\n.end_macro\noutside: nop\n", reformat())
+        }
     }
 
     @Test

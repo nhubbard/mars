@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language.format
 
+import com.intellij.formatting.Alignment
 import com.intellij.formatting.Block
 import com.intellij.formatting.FormattingContext
 import com.intellij.formatting.FormattingModel
@@ -16,10 +17,12 @@ import com.intellij.psi.formatter.common.AbstractBlock
 import com.intellij.psi.impl.source.tree.TreeUtil
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
+import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.FormattingLine
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
+import edu.missouristate.mars.plugin.analysis.sourceLineStart
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationHead
@@ -44,8 +47,14 @@ private class MipsBlock(
     private val analysis: MarsAnalysisService,
     private val timeline: Lazy<MipsSourceTimeline?>,
     private val line: FormattingLine? = null,
-) : AbstractBlock(node, null, null) {
+    alignment: Alignment? = null,
+) : AbstractBlock(node, null, alignment) {
     private val rawOperation = line?.operationType.takeIf { node.elementType == candidate }
+    private val hasSemanticMacroHeader by lazy(LazyThreadSafetyMode.NONE) {
+        val context = timeline.value ?: return@lazy false
+        val headerEnd = CharArrayUtil.shiftForwardUntil(source, myNode.startOffset, "\r\n")
+        context.macroAt(myNode.psi.containingFile as MipsFile, headerEnd) != null
+    }
 
     private fun isOpaque() = myNode.elementType in opaque ||
         myNode.elementType == candidate && rawOperation !in formatOperations
@@ -54,14 +63,24 @@ private class MipsBlock(
 
     override fun isLeaf() = myNode.firstChildNode == null || isOpaque()
 
-    override fun buildChildren(): List<Block> =
-        if (isOpaque()) emptyList() else myNode.getChildren(null).asSequence()
+    override fun buildChildren(): List<Block> {
+        if (isOpaque()) return emptyList()
+        var fileIndentAlignment: Alignment? = null
+        return myNode.getChildren(null).asSequence()
             .filter { it.textLength > 0 && it.elementType !in trivia }
-            .map { child ->
+            .mapIndexed { index, child ->
                 val childLine = if (child.elementType == statement) layoutOf(child) else line
-                MipsBlock(child, indentOf(child, childLine), source, analysis, timeline, childLine)
+                val childIndent = indentOf(child, childLine)
+                val indented = childIndent.type == Indent.Type.NORMAL
+                // An indented first line also indents the file block's anchor.
+                if (myNode.elementType == MipsTypes.file && index == 0 && indented) {
+                    fileIndentAlignment = Alignment.createAlignment()
+                }
+                val alignment = fileIndentAlignment.takeIf { indented }
+                MipsBlock(child, childIndent, source, analysis, timeline, childLine, alignment)
             }
             .toList()
+    }
 
     override fun getChildIndent(): Indent = if (myNode.elementType in indentedScopes) {
         Indent.getNormalIndent()
@@ -76,11 +95,21 @@ private class MipsBlock(
     }
 
     private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
-        if (child.elementType == statement && (myNode.elementType == macro ||
-                PsiUtilCore.getElementType(child.firstChildNode) in executableHeads && childLine?.atMargin != true)) {
+        if (child.elementType != statement) return Indent.getNoneIndent()
+        val context = timeline.value
+        if (context != null) {
+            val file = child.psi.containingFile as MipsFile
+            val lineStart = sourceLineStart(source, child.startOffset)
+            if (context.closesMacroOnLine(file, lineStart)) return Indent.getAbsoluteNoneIndent()
+            if (context.macroAt(file, lineStart) != null) return Indent.getNormalIndent()
+        }
+        // An incomplete header can still give its body a physical PSI scope.
+        if (myNode.elementType == macro && !hasSemanticMacroHeader ||
+            PsiUtilCore.getElementType(child.firstChildNode) in executableHeads && childLine?.atMargin != true
+        ) {
             return Indent.getNormalIndent()
         }
-        return Indent.getNoneIndent()
+        return Indent.getAbsoluteNoneIndent()
     }
 
     override fun getSpacing(child1: Block?, child2: Block): Spacing? {

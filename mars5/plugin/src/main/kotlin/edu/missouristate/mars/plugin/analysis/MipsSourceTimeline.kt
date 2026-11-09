@@ -76,6 +76,8 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macroBoundaries[eventCount] = macro
             }
             is MipsSourceEvent.End -> {
+                val lineStart = sourceLineStart(cursor.locations.file.viewProvider.contents, event.offset)
+                cursor.locations.macroClosingLines.add(lineStart)
                 val definition = macro
                 val arity = definition?.arity
                 if (arity != null) {
@@ -133,6 +135,9 @@ internal class MipsSourceTimeline(
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
     fun macroAt(file: MipsFile, offset: Int): Begin? = openMacro(prefixEnd(file, offset))
+
+    fun closesMacroOnLine(file: MipsFile, lineStart: Int): Boolean =
+        lineStart in files.getValue(file.viewProvider.virtualFile).macroClosingLines
 
     private fun openMacro(end: Int): Begin? = macroBoundaries.floorEntry(end)?.value
 
@@ -193,6 +198,7 @@ internal data class SourceEventSite(val offset: Int, val index: Int)
 internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
     val replacedLabels = HashSet<Int>()
+    val macroClosingLines = HashSet<Int>()
     var end = 0
 }
 
