@@ -202,6 +202,14 @@ The IDE fixtures check these bindings alongside case sensitivity, macro shadowin
 declarations, and non-label operands. Labels supplied by macro arguments still use assembly
 results.
 
+## Find Usages
+
+IntelliJ's Find Usages locates references to written labels, macros, equivalences,
+and named external symbols. The platform word index finds candidates and the
+existing PSI references resolve them using include order, macro scope, and call
+arity. Code, comments, and strings keep their separate search contexts. Labels
+such as `.target.label`, `$buffer`, and `.` remain searchable.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source
