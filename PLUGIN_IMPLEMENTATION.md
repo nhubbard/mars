@@ -75,6 +75,18 @@ Authored plugin code retains 100% line and branch coverage.
 The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
 plugin without a plugin error. The visual acceptance limit above still applies.
 
+## Mnemonic and directive completion
+
+IntelliJ's basic completion uses the generated parser's statement-head PSI and the Java core's
+instruction and directive catalogs. Suggestions include each mnemonic once, with an example
+operand list, and directives with their catalog descriptions. Matching is case-insensitive.
+Tab replaces the full mnemonic, including dots, while IntelliJ owns the lookup and insertion.
+
+The contributor uses no indexes and caches only catalog text. It creates new lookup elements
+per request because IntelliJ attaches editor and project state to them. Native Jupiter fixtures
+exercise suggestions and insertion after labels and inside macros, and verify that the catalog
+stays out of operands, declarations, strings and comments.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.
