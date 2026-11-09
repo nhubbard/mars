@@ -5,8 +5,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
-import com.intellij.openapi.fileEditor.OpenFileDescriptor
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
@@ -17,6 +15,7 @@ import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XDebuggerUtil
+import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.breakpoints.XBreakpointListener
 import edu.missouristate.mars.api.InstructionSourceMap.Location
@@ -57,7 +56,11 @@ internal fun disassemblyWindow(memory: MemoryState, pc: Long): List<DisassemblyR
     }
 }
 
-internal class MarsDisassemblyView(private val session: XDebugSession, private val entry: String) : Disposable {
+internal class MarsDisassemblyView(
+    private val session: XDebugSession,
+    private val entry: String,
+    private val sourcePosition: (Location) -> XSourcePosition,
+) : Disposable {
     private val breakpointManager = XDebuggerManager.getInstance(session.project).breakpointManager
     private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
     private val status = JBLabel()
@@ -81,7 +84,7 @@ internal class MarsDisassemblyView(private val session: XDebugSession, private v
         columnModel.getColumn(0).maxWidth = getFontMetrics(font).stringWidth(" PC ")
         columnModel.getColumn(3).preferredWidth = getFontMetrics(font).stringWidth("addiu $00, $00, 0x00000000")
     }
-    private var target: OpenFileDescriptor? = null
+    private var target: Location? = null
     private val revision = AtomicLong()
     @Volatile private var disposed = false
 
@@ -97,7 +100,7 @@ internal class MarsDisassemblyView(private val session: XDebugSession, private v
 
     init {
         table.selectionModel.addListSelectionListener { updateSelection() }
-        openSource.addActionListener { target!!.navigate(true) }
+        openSource.addActionListener { sourcePosition(target!!).createNavigatable(session.project).navigate(true) }
         toggleBreakpoint.addActionListener { toggleSelectedBreakpoint() }
         breakpointManager.addBreakpointListener(breakpointType, object : XBreakpointListener<AddressBreakpoint> {
             override fun breakpointAdded(breakpoint: AddressBreakpoint) = onEdt(::reloadBreakpoints)
@@ -153,11 +156,7 @@ internal class MarsDisassemblyView(private val session: XDebugSession, private v
     private fun updateSelection() {
         val selected = model.items.getOrNull(table.selectedRow)
         toggleBreakpoint.isEnabled = selected != null
-        target = selected?.location?.let { location ->
-            LocalFileSystem.getInstance().findFileByNioFile(location.file())?.let { file ->
-                OpenFileDescriptor(session.project, file, location.line() - 1, 0)
-            }
-        }
+        target = selected?.location
         openSource.isEnabled = target != null
     }
 

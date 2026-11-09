@@ -21,7 +21,6 @@ import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
-import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.di.MarsComponent
@@ -44,7 +43,7 @@ import org.jetbrains.concurrency.asPromise
 
 internal val buildMessages = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
 
-internal class MarsAssembledProgram(val image: AssemblyImage, val snapshot: AssemblySourceSnapshot)
+internal class MarsAssembledProgram(val image: AssemblyImage, val sources: CapturedAssemblySources)
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
@@ -73,7 +72,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         return component.context().use { session ->
             var program: MarsAssembledProgram? = null
             assemble(sources, component, activateBuildView, options) { capture ->
-                program = MarsAssembledProgram(session.captureAssemblyImage(context::ensureActive), capture.snapshot)
+                program = MarsAssembledProgram(session.captureAssemblyImage(context::ensureActive), capture)
             }
             program
         }

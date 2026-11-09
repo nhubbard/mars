@@ -929,6 +929,14 @@ or interrupted instruction when available. Calls from executable data show an
 address. Older frames show read-only call metadata. Live registers and expression
 evaluation belong to the current CPU frame.
 
+Debugger frames and **Disassembly → Open Source** use the source captured with
+the running image. Unchanged files open in the project editor. If a file has
+been edited or removed, the debugger opens a read-only **assembled snapshot**
+tab at the original line. **Run to Cursor** accepts positions in that snapshot
+or an unchanged file. A cursor in changed text cannot select a line in the
+running image. New or updated line breakpoints resolve only when their
+source matches the assembled text.
+
 Resume, Pause, Stop, source
 Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint

@@ -25,6 +25,7 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -99,7 +100,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectMarsBot: Boolean = false,
         connectScavengerHunt: Boolean = false,
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
-        execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
+        execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
@@ -118,7 +119,7 @@ internal class MarsProcessHandler(
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
-    private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
+    private val execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
     private val entry = launch.sources.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
@@ -265,7 +266,7 @@ internal class MarsProcessHandler(
                                     dataCache.observe(session.memory).use {
                                         digitalLab.observe(session).use {
                                             keyboardDisplay.observe(session).use {
-                                                executeWithWorldDevices(session)
+                                                executeWithWorldDevices(session, program.sources)
                                             }
                                         }
                                     }
@@ -275,7 +276,7 @@ internal class MarsProcessHandler(
                             // The execution tab can still show the final words after the session closes.
                             readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
-                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.snapshot.texts().keys + entry)
+                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.sources.snapshot.texts().keys + entry)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
                             else -> 1
@@ -285,14 +286,14 @@ internal class MarsProcessHandler(
             }
         }
     }
-    private suspend fun executeWithWorldDevices(session: MarsContext): StopEvent {
+    private suspend fun executeWithWorldDevices(session: MarsContext, sources: CapturedAssemblySources): StopEvent {
         val (bot, hunt) = synchronized(this) {
             val device = ScavengerHuntDevice(session, connectScavengerHunt).also { scavengerHunt = it }
             marsBot.observe(session) to device
         }
         return bot.use {
             try {
-                execute(session)
+                execute(session, sources)
             } finally {
                 synchronized(this) {
                     hunt.close()

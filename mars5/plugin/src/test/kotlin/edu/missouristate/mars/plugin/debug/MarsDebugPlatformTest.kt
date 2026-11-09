@@ -36,9 +36,11 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
@@ -81,6 +83,7 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
+import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.mips.dump.DumpFormat
@@ -88,6 +91,7 @@ import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
@@ -1823,6 +1827,85 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `captured positions recognize unopened files and reject a snapshot from another image`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val path = Files.writeString(directory.resolve("unopened.asm"), "nop\n").toRealPath()
+            val otherPath = Files.writeString(directory.resolve("unrelated.asm"), "nop\n").toRealPath()
+            withContext(Dispatchers.EDT) {
+                val fs = LocalFileSystem.getInstance()
+                val file = requireNotNull(fs.refreshAndFindFileByNioFile(path))
+                val other = requireNotNull(fs.refreshAndFindFileByNioFile(otherPath))
+                val documents = FileDocumentManager.getInstance()
+                assertNull(documents.getCachedDocument(file))
+                val capture = CapturedAssemblySources(
+                    AssemblySourceSnapshot(listOf(path), mapOf(path to "nop\n")), null,
+                    mapOf(path to file.modificationStamp), mapOf(path to path),
+                )
+                val sources = MarsDebugSources(capture)
+                val location = Location(path, 1)
+                assertEquals(file, sources.position(location).file)
+                assertEquals(location, sources.location(file, 0))
+                assertNull(sources.location(other, 0))
+                WriteAction.run<RuntimeException> { file.setBinaryContent("nop\nnop\n".toByteArray()) }
+                assertNull(documents.getCachedDocument(file))
+                assertNull(sources.location(file, 0))
+                val snapshot = sources.position(location).file
+                WriteAction.run<RuntimeException> { file.delete(this) }
+                assertSame(snapshot, sources.position(location).file)
+                assertEquals(location, sources.location(snapshot, 0))
+                assertNull(MarsDebugSources(capture).location(snapshot, 0))
+            }
+        }
+
+    @Test
+    fun `Debug shows the assembled include and runs to a cursor in the captured text`() = timeoutRunBlocking<Unit> {
+        val body = "nop\naddiu \$t0, \$zero, 42\nnop\n"
+        val (source, include) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("captured.asm", ".include \"captured-body.s\"\nnop\n").virtualFile
+            val include = fixture.addFileToProject("captured-body.s", body).virtualFile.also { addBreakpoint(it, 0) }
+            entry to include
+        }
+        withDebug(source, beforeLaunch = true) { debug ->
+            val initial = requireNotNull(debug.nextPosition())
+            assertEquals(include, initial.file)
+            assertEquals(0, initial.line)
+            val capturedFile = withContext(Dispatchers.EDT) {
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(include))
+                WriteAction.run<RuntimeException> { document.setText("# changed\n" + body.replace("42", "99")) }
+                val descriptor = assertInstanceOf(OpenFileDescriptor::class.java, initial.createNavigatable(project))
+                assertEquals(0, descriptor.line)
+                val captured = descriptor.file
+                assertNotSame(include, captured)
+                assertFalse(captured.isWritable)
+                assertSame(MipsFileType, captured.fileType)
+                assertEquals(body, FileDocumentManager.getInstance().getDocument(captured)?.text)
+                debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(include, 2)!!, false)
+                captured
+            }
+            debug.assertPausedAt(include, 0)
+            val staleBreakpoint = withContext(Dispatchers.EDT) {
+                val breakpoint = addBreakpoint(include, 1)
+                debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(capturedFile, 2)!!, false)
+                breakpoint
+            }
+            debug.assertPausedAt(capturedFile, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(include))
+                WriteAction.run<RuntimeException> {
+                    debugger.breakpointManager.removeBreakpoint(staleBreakpoint)
+                    document.setText(body)
+                }
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(include, 1)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `native Disassembly shows live code follows PC and navigates to source`() = timeoutRunBlocking<Unit> {
         val (source, fragment) = withContext(Dispatchers.EDT) {
             val fragment = fixture.addFileToProject("disassembly-body.s", "li \$t1, 0x240b0043\n").virtualFile
@@ -1843,7 +1926,7 @@ class MarsDebugPlatformTest {
             val disposable = Disposer.newDisposable()
             try {
                 val discarded = withContext(Dispatchers.EDT) {
-                    MarsDisassemblyView(debug.session, source.path).also(Disposer::dispose)
+                    MarsDisassemblyView(debug.session, source.path) { error("Disposed view") }.also(Disposer::dispose)
                 }
                 val (table, open, status) = withContext(Dispatchers.EDT) {
                     val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsDisassemblyTest", "Debug", "MIPS", disposable)
@@ -1884,9 +1967,19 @@ class MarsDebugPlatformTest {
                     val includeRow = (0 until table.rowCount).first { table.getValueAt(it, 4) == "disassembly-body.s:1" }
                     WriteAction.run<RuntimeException> { fragment.delete(this) }
                     table.setRowSelectionInterval(includeRow, includeRow)
-                    assertFalse(open.isEnabled)
-                    debug.session.stepInto()
+                    assertTrue(open.isEnabled)
+                    open.doClick(0)
                 }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                        val captured = requireNotNull(FileDocumentManager.getInstance().getFile(editor.document))
+                        assertEquals("disassembly-body.s (assembled snapshot)", captured.name)
+                        assertFalse(captured.isWritable)
+                        assertEquals("li \$t1, 0x240b0043\n", editor.document.text)
+                    }
+                }
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
                 assertNull(debug.nextPosition())
                 pollAssertionsAsync(3.seconds, 10.milliseconds) {
                     withContext(Dispatchers.EDT) {

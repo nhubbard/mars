@@ -14,8 +14,6 @@ import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.xdebugger.XDebugProcess
 import com.intellij.xdebugger.XDebugSession
@@ -93,7 +91,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private var sourceMap: InstructionSourceMap? = null
     @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
     private var suspensionNumber = 0L
-    private val handler = state.debugProcess { debug(this, it) }
+    @Volatile private lateinit var sources: MarsDebugSources
+    private val handler = state.debugProcess { machine, capture ->
+        sources = MarsDebugSources(capture)
+        debug(this, machine)
+    }
 
     private val lineHandler = bindingHandler(MarsLineBreakpointType::class.java, registeredLines)
     private val addressHandler = bindingHandler(MarsAddressBreakpointType::class.java, registeredAddresses)
@@ -130,7 +132,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             content.isCloseable = false
             content.setDisposer(view)
             ui.addContent(content, 0, PlaceInGrid.right, true)
-            val disassembly = MarsDisassemblyView(session, entry)
+            val disassembly = MarsDisassemblyView(session, entry, ::sourcePosition)
             val listing = ui.createContent("MarsMipsDisassembly", disassembly.component, runMessages.getMessage("debug.disassembly"), null, disassembly.focus)
             listing.isCloseable = false
             listing.setDisposer(disassembly)
@@ -188,8 +190,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         else commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOut = target))
     }
     override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
-        val target = position.file.location(position.line)
-        if (target == null) rejectCommand("debug.breakpoint.no.code", context)
+        val target = sources.location(position.file, position.line)
+        if (target == null) rejectCommand("debug.source.not.in.image", context)
         else commands.trySend(Command(target = target))
     }
 
@@ -203,7 +205,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val next = mutableMapOf<Int, MutableList<XBreakpoint<*>>>()
         for (breakpoint in registeredLines) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
-            val points = file?.location(breakpoint.line)?.let { map.breakpoints()[it] }.orEmpty()
+            val location = file?.let { sources.location(it, breakpoint.line) }
+            val points = location?.let { map.breakpoints()[it] }.orEmpty()
             if (points.isEmpty()) {
                 session.setBreakpointInvalid(breakpoint, runMessages.getMessage("debug.breakpoint.no.code"))
             } else {
@@ -407,17 +410,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         )
     }
 
-    private fun sourcePosition(origin: Origin?): XSourcePosition? {
-        if (origin == null) return null
-        val location = origin.location()
-        val file = LocalFileSystem.getInstance().findFileByNioFile(location.file())
-        return XDebuggerUtil.getInstance().createPosition(file, location.line() - 1)
-    }
+    private fun sourcePosition(origin: Origin?): XSourcePosition? =
+        origin?.let { sourcePosition(it.location()) }
 
-    private fun VirtualFile.location(line: Int): Location? {
-        if (line !in 0 until Int.MAX_VALUE) return null
-        return fileSystem.getNioPath(this)?.let { Location(it, line + 1) }
-    }
+    private fun sourcePosition(location: Location): XSourcePosition = sources.position(location)
+
 }
 
 internal object MarsDebugEditors : XDebuggerEditorsProvider() {

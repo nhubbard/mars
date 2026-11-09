@@ -196,7 +196,7 @@ class MarsToolProviderPlatformTest {
             nop
             nop
         """.trimIndent()).virtualFile
-        val process = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList()) { session ->
+        val process = project.service<MarsRunService>().createProcess(file.toNioPath(), memoryDumps = emptyList()) { session, _ ->
             val simulator = session.simulator()
             runSlice(simulator, 1)
             ready.complete(Unit)

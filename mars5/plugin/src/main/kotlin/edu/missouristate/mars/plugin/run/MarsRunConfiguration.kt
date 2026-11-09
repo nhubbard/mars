@@ -41,6 +41,7 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -258,7 +259,7 @@ internal class MarsRunState(
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch)
 
-    fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
+    fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, execute = execute)

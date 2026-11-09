@@ -1108,8 +1108,8 @@ class MarsRunPlatformTest {
     @Test
     fun `instruction counter records repeat executions and retains counts across backstep`() = timeoutRunBlocking<Unit> {
         val entry = withContext(Dispatchers.EDT) { fixture.addFileToProject("loop.asm", "again: j again\n").virtualFile }
-        val handler = project.getService(MarsRunService::class.java).createProcess(entry.toNioPath(), memoryDumps = emptyList()) {
-            val simulator = it.simulator()
+        val handler = project.getService(MarsRunService::class.java).createProcess(entry.toNioPath(), memoryDumps = emptyList()) { machine, _ ->
+            val simulator = machine.simulator()
             runSlice(simulator, 2)
             backstepSlice(simulator, wholeSource = false)
             runSlice(simulator, 1)
@@ -1150,7 +1150,7 @@ class MarsRunPlatformTest {
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("run${++runCount}.asm", source).virtualFile }
         val handler = project.getService(MarsRunService::class.java).createProcess(
             file.toNioPath(), memoryDumps = dumps.map { requireNotNull(it.resolve(project)) },
-        ) { runSlice(it.simulator(), limit) }
+        ) { machine, _ -> runSlice(machine.simulator(), limit) }
         val recording = Recording()
         handler.addProcessListener(recording)
         withContext(Dispatchers.EDT) { handler.startNotify() }
