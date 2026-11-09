@@ -7,6 +7,7 @@ import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.tree.TokenSet
@@ -23,6 +24,7 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 
 class MipsCompletionContributor : CompletionContributor(), DumbAware {
     init {
@@ -33,7 +35,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 })
             }
         })
-        extend(CompletionType.BASIC, registerPosition, object : CompletionProvider<CompletionParameters>() {
+        extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
                 val position = parameters.position
                 val instruction = PsiTreeUtil.findFirstParent(position, true) {
@@ -43,16 +45,25 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val text = parameters.editor.document.immutableCharSequence
                 val before = text.subSequence(operation.textOffset, position.textOffset).toString()
                 val tokens = Tokenizer().tokenizeLine(1, before, ErrorList(), false)
-                result.withPrefixMatcher(prefix(parameters)).addAllElements(
-                    registerCandidates(operation.text, tokens).map(LookupElementBuilder::create),
-                )
+                val index = tokens.size()
+                val formats = InstructionDefaults.get().matchOperator(operation.text).filter {
+                    index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
+                }
+                val prefix = prefix(parameters)
+                val lookup = result.withPrefixMatcher(prefix)
+                lookup.addAllElements(registerCandidates(formats, index).map(LookupElementBuilder::create))
+                if (formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }) {
+                    val root = parameters.originalFile as MipsFile
+                    val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
+                    lookup.addAllElements(names.map(LookupElementBuilder::create))
+                }
             }
         })
     }
 
     override fun duringCompletion(context: CompletionInitializationContext) {
         val token = context.file.findElementAt(context.startOffset) ?: return
-        if (statementHead.accepts(token)) {
+        if (statementHead.accepts(token) || operandPosition.accepts(token)) {
             context.setReplacementOffset(token.textRange.endOffset)
         }
     }
@@ -62,7 +73,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
         val statementHead = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC")))
             .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
-        val registerPosition = psiElement()
+        val operandPosition = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
             .andNot(statementHead)
 
@@ -83,16 +94,13 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             return position.text.substring(0, parameters.offset - position.textOffset)
         }
 
-        fun registerCandidates(operation: String, tokens: TokenList): Set<String> = buildSet {
-            val index = tokens.size()
-            for (instruction in InstructionDefaults.get().matchOperator(operation)) {
-                val format = instruction.tokenList
-                if (index >= format.size() || !matchesAddressShape(tokens, format)) continue
+        fun registerCandidates(formats: List<Instruction>, index: Int): Set<String> = buildSet {
+            for (instruction in formats) {
                 // The core tokenizes the second operand of a CP0 transfer as a numeric GPR.
                 if (index == 2 && instruction.javaClass in systemTransfers) {
                     addAll(systemRegisters)
                 } else {
-                    addAll(registerSpellings[format[index].type].orEmpty())
+                    addAll(registerSpellings[instruction.tokenList[index].type].orEmpty())
                 }
             }
         }

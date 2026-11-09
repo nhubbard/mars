@@ -101,6 +101,21 @@ CP0 and CP1 transfers, non-register operands, and replacement inside a register 
 The contributor uses local source text and catalog metadata, so it needs no project index
 or live assembler session to produce these candidates.
 
+## Instruction label completion
+
+The operand contributor also offers case-sensitive label names when a matching core format
+expects an identifier. The project analysis service reads per-file declarations from IntelliJ's
+file index for the current source file and reachable indexed MIPS includes. It shares cached
+include paths and native file reference resolution with include navigation, and visits each file
+once per request. It reads the index only after indexing is ready and never scans project-wide
+symbol keys. Completion accepts forward labels and committed unsaved edits.
+
+This query uses the current file as the entry and filters by physical macro scope. Separate
+build entries, macro expansion that changes the physical scope, and labels in includes without
+the MARS file type require build-context binding. Fixtures exercise nested and cyclic includes,
+an unrelated export, an unresolved include, unsaved label edits, macro-local visibility,
+indexing mode and Tab replacement of dotted names.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.
