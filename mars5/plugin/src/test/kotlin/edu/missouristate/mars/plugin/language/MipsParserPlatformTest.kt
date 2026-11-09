@@ -15,6 +15,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Path
@@ -320,6 +321,69 @@ class MipsParserPlatformTest {
             assertTrue(descendants(file.node, "REFERENCE_EXPR").none())
             val labels = assertParses("nan: nop\ninfinity: nop\nInfinityCount: nop\n")
             assertEquals(listOf("nan:", "infinity:", "InfinityCount:"), descendants(labels.node, "LABEL").map { it.text }.toList())
+        }
+    }
+
+    @Test
+    fun `every core directive parses and assembles in ordinary and comma-heavy source`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv WORD_VALUE 7
+            .macro emit (%x)
+              addiu ${'$'}t0, ${'$'}zero, %x
+            .end_macro
+            .include "data.s"
+            .extern externalWord 4
+            .kdata
+            kernelData: .word 99
+            .ktext
+            kernelEntry: nop
+            .text
+            .globl entry
+            .set noat
+            entry: emit(WORD_VALUE)
+        """.trimIndent()
+        val data = """
+            .data
+            .ascii "A", "B"
+            .asciiz "C"
+            .byte 3
+            .align 1
+            .half -6
+            .space 4
+            .align 2
+            .word WORD_VALUE
+            .float 1.5
+            .double 2.25
+        """.trimIndent()
+        fun withSeparators(text: String) = text.lineSequence().joinToString("\n") { ",,${it.replaceFirst(" ", ",,")},," }
+        val context = project.get().service<MarsSessionService>().context
+        for ((entry, included) in listOf(source to data, withSeparators(source) to withSeparators(data))) {
+            directory.resolve("data.s").writeText(included)
+            val file = directory.resolve("entry.asm").also { it.writeText(entry) }
+            val program = context.assemble(listOf(file), null, true, false)
+            val memory = context.memory
+            val base = memory.dataBaseAddress
+            assertEquals(listOf(memory.textBaseAddress, memory.kernelTextBaseAddress), program.machineList.map { it.address })
+            assertEquals(listOf(0x24080007, 0), program.machineList.map { it.binaryStatement })
+            assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("externalWord"))
+            assertEquals(memory.textBaseAddress, context.symbolTable.getAddress("entry"))
+            assertEquals(99, memory.getWordNoNotify(memory.kernelDataBaseAddress))
+            assertEquals(listOf(65, 66, 67, 0, 3), (0..4).map { memory.getByte(base + it) })
+            assertEquals(0xfffa, memory.getHalf(base + 6))
+            assertEquals(0, memory.getWordNoNotify(base + 8))
+            assertEquals(7, memory.getWordNoNotify(base + 12))
+            assertEquals(1.5f.toBits(), memory.getWordNoNotify(base + 16))
+            assertEquals((2.25.toBits() ushr 32).toInt(), memory.getWordNoNotify(base + 28))
+            assertTrue(program.assemblyDiagnostics.errorMessages.single().isWarning)
+            assertTrue(program.assemblyDiagnostics.errorMessages.single().message.contains(".set"))
+
+            readAction {
+                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE").map(MipsTypes::psi).toSet()
+                val parsed = listOf(entry, included).flatMap { text ->
+                    SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
+                }.toSet()
+                assertEquals(Directives.getDirectiveList().map { it.name }.toSet(), parsed)
+            }
         }
     }
 

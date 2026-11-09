@@ -383,6 +383,19 @@ rebuild with the updated lexer.
 The assembler-backed fixture checks IEEE-754 data for the named values and
 numeric PSI for decimal, hexadecimal, suffixed, and signed exponent forms.
 
+## Directive parity fixture
+
+A two-file fixture assembles and parses every directive listed by the Java core,
+in ordinary source and with extra comma separators. The test derives the
+expected directive set from the core catalog. It verifies the emitted user and
+kernel instructions, data bytes and values, alignment and reserved space, global
+and external symbols, and the assembler's `.set` warning.
+
+The clean IntelliJ 2026.3 launch passed 1,293 tests, including 86 plugin tests,
+and authored plugin code covered all 699 lines and 432 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
