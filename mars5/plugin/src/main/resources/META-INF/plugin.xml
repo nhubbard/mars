@@ -21,6 +21,9 @@
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
     <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>
+    <configurationType implementation="edu.missouristate.mars.plugin.run.MarsRunType"/>
+    <runConfigurationProducer implementation="edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer"/>
+    <programRunner implementation="edu.missouristate.mars.plugin.run.MarsRunRunner"/>
     <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
     <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>

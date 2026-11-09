@@ -36,10 +36,15 @@ internal class MarsBuildService(private val project: Project, private val scope:
     }
 
     internal suspend fun assemble(entry: Path) {
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { assemble(entry, component, activateBuildView = true) }
+    }
+
+    internal suspend fun assemble(entry: Path, component: MarsComponent, activateBuildView: Boolean): Boolean {
         val descriptor = DefaultBuildDescriptor(
             Any(), bundle.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
-        ).apply { isActivateToolWindowWhenAdded = true }
+        ).apply { isActivateToolWindowWhenAdded = activateBuildView }
         val progressDescriptor = object : BuildProgressDescriptor {
             override fun getTitle() = descriptor.title
             override fun getBuildDescriptor() = descriptor
@@ -50,8 +55,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         try {
             val capture = captureAssemblySources(listOf(entry), null)
             checkCanceled()
-            val component = MarsSessionService.createMarsComponent()
-            val result = component.context().use { capture.assembleIn(component) }
+            val result = capture.assembleIn(component)
             checkCanceled()
             val events = readAction {
                 result.errors().map { diagnosticEvent(project, progress.id, it, capture.revisions) }
@@ -64,6 +68,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             }
             checkCanceled()
             succeeded = result.succeeded()
+            return succeeded
         } catch (cancel: CancellationException) {
             cancelled = true
             throw cancel

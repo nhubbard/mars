@@ -396,6 +396,31 @@ and authored plugin code covered all 699 lines and 432 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
 
+## Native Run for a MIPS source file
+
+The registered MARS run configuration stores a source path and can be created
+from an assembly file's editor context. The runner uses IntelliJ's execution
+manager and console, with a separate core session for each launch. Run uses the
+same captured-source assembly and Build diagnostics as Assemble Current MIPS
+File. It passes the assembled program to the simulator in the session that
+produced it.
+
+The process handler preserves simulated exit values, routes stdout and stderr
+to their matching console streams, and requests a stop before releasing the
+session on cancellation or detach. Relative file syscalls resolve from the
+entry file's directory. The output decoder retains UTF-8 sequences split across
+descriptor writes. Standard input reaches EOF in this slice. Interactive input,
+additional run options, and debugger integration remain open.
+
+The IDE fixtures exercise native Run with an unsaved include and a nonzero exit
+value, the configuration editor and persistence, runtime and assembly failures,
+split console output, relative file access, and stop and detach.
+
+The clean IntelliJ 2026.3 launch passed 1,300 tests, including 92 plugin tests,
+and authored plugin code covered all 815 lines and 480 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
