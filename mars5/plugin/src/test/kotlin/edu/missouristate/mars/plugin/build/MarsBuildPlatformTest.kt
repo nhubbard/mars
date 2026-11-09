@@ -674,6 +674,46 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build reports each malformed token once at its physical source`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val mainSource = ".include \"child.s\"\n\tfake/.include \"missing.s\"\nnop\n"
+            val childSource = "\tbad%name: nop\n"
+            val (main, child) = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", mainSource).virtualFile
+                val child = fixture.addFileToProject("child.s", "nop\n").virtualFile
+                edit(child, childSource)
+                main to child
+            }
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            for ((file, source, token) in listOf(
+                Triple(child, childSource, "bad%name"),
+                Triple(main, mainSource, "fake/.include"),
+            )) {
+                val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+                assertEquals(start.id, error.parentId)
+                assertTrue(error.message.endsWith("Invalid language element: $token"), error.message)
+                assertEquals(file.toNioPath(), error.filePosition.path)
+                val offset = source.indexOf(token)
+                assertEquals(source.take(offset).count { it == '\n' }, error.filePosition.startLine)
+                assertEquals(1, error.filePosition.startColumn)
+                readAction {
+                    val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                    assertEquals(file, link.file)
+                    assertEquals(offset, link.offset)
+                }
+            }
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(FailureResult::class.java, finish.result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `build reports an unfinished string on an unsaved included data continuation`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {

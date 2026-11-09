@@ -510,6 +510,29 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void malformedTokensOnReplacedIncludeLinesAreStillReportedOnce() {
+    var main = directory.resolve("main.s");
+    var part = directory.resolve("part.s");
+    String directive = "bad%name .InClUdE \"part.s\" bad%name";
+    var snapshot = new AssemblySourceSnapshot(
+        List.of(main),
+        Map.of(
+            main, "# comment\n" + directive + "\n",
+            part, "addiu $t0, $zero, 7\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.succeeded()).isFalse();
+      assertThat(result.errors()).hasSize(2).allSatisfy(error -> {
+        assertThat(error.file()).isEqualTo(main);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.message()).endsWith("Invalid language element: bad%name");
+      });
+      assertThat(result.errors()).extracting(error -> error.column())
+          .containsExactly(1, directive.lastIndexOf("bad%name") + 1);
+    }
+  }
+
+  @Test
   void unfinishedIncludePathsReportSourceDiagnosticsWithoutLoadingTruncatedFiles() {
     var main = directory.resolve("main.s");
     var part = directory.resolve("part.s");
@@ -1050,14 +1073,17 @@ class SessionAssemblyTest {
       throws Exception {
     var session = session("Default");
     var valid = session.assemble(List.of(source("valid-before-token-error.s", program(42, false))));
-    session.settings.setAssemblerErrorLimit(1);
-    var invalid = source("token-errors.s", ".data\n.byte 'ab'\n.byte 'cd'\n");
+    session.settings.setAssemblerErrorLimit(2);
+    var invalid = source("token-errors.s", ".data\n.byte 'ab'\n.byte 'cd'\n.byte 'ef'\n");
     assertThatThrownBy(() -> session.assemble(List.of(invalid)))
         .isInstanceOfSatisfying(
             ProcessingException.class,
             error -> {
-              assertThat(error.errors().getErrorLimit()).isEqualTo(1);
-              assertThat(error.errors().getErrorMessages()).hasSize(2);
+              assertThat(error.errors().getErrorLimit()).isEqualTo(2);
+              assertThat(error.errors().getErrorMessages()).satisfiesExactly(
+                  first -> assertThat(first.getMessage()).endsWith("Invalid language element: 'ab'"),
+                  second -> assertThat(second.getMessage()).endsWith("Invalid language element: 'cd'"),
+                  limit -> assertThat(limit.getMessage()).isEqualTo("Error Limit of 2 exceeded."));
             });
     assertThat(session.getProgram()).isSameAs(valid);
     assertThat(session.memory.getWord(session.symbolTable.getAddress("result"))).isEqualTo(42);

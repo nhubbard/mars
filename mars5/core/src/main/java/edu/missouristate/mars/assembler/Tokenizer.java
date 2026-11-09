@@ -155,8 +155,8 @@ public class Tokenizer {
       MIPSprogram program = frame.program();
       String line = frame.lines().next();
       int lineNumber = frame.lines().nextIndex();
-      Token include =
-          firstIncludePath(tokenizeLine(program, lineNumber, line, false, checkCancellation));
+      TokenList candidates = scanPossibleInclude(program, lineNumber, line, checkCancellation);
+      Token include = firstIncludePath(candidates);
       String filename = quotedIncludePath(include);
       if (filename == null) {
         if (include != null) {
@@ -170,6 +170,8 @@ public class Tokenizer {
         result.add(new SourceLine(line, program, lineNumber));
         continue;
       }
+      // This line is replaced by the include, so the assembly pass will not check its tokens.
+      reportLexicalErrors(program, lineNumber, line, candidates);
       // Handle either absolute or relative pathname for .include file.
       if (!new File(filename).isAbsolute()) {
         File parent = new File(program.getFilename()).getAbsoluteFile().getParentFile();
@@ -209,13 +211,19 @@ public class Tokenizer {
    * null when the include prepass would leave the line in place. The path's spelling is literal.
    */
   public String findIncludePath(String sourceLine) {
-    if (sourceLine.indexOf('.') < 0) {
-      return null;
-    }
-    return quotedIncludePath(firstIncludePath(tokenizeLine(1, sourceLine, new ErrorList(), false)));
+    var candidates = scanPossibleInclude(sourceMIPSprogram, 1, sourceLine, () -> {});
+    return quotedIncludePath(firstIncludePath(candidates));
+  }
+
+  private TokenList scanPossibleInclude(
+      MIPSprogram program, int lineNumber, String line, Runnable checkCancellation) {
+    return line.indexOf('.') < 0 ? null : scanLine(program, lineNumber, line, checkCancellation);
   }
 
   private static Token firstIncludePath(TokenList tokens) {
+    if (tokens == null) {
+      return null;
+    }
     for (int i = 1; i < tokens.size(); i++) {
       if (tokens.get(i - 1).getValue().equalsIgnoreCase(Directives.INCLUDE.getName())
           && tokens.get(i).getType() == TokenTypes.QUOTED_STRING) {
@@ -446,6 +454,16 @@ public class Tokenizer {
   private TokenList tokenizeLine(
       MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes,
       Runnable checkCancellation) {
+    TokenList result = scanLine(program, lineNum, theLine, checkCancellation);
+    reportLexicalErrors(program, lineNum, theLine, result);
+    if (doEqvSubstitutes && !theLine.isEmpty()) {
+      return processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation, null);
+    }
+    return result;
+  }
+
+  private TokenList scanLine(
+      MIPSprogram program, int lineNum, String theLine, Runnable checkCancellation) {
     checkCancellation.run();
     TokenList result = new TokenList();
     if (theLine.isEmpty()) {
@@ -475,7 +493,7 @@ public class Tokenizer {
         if (c == '"'
             && token[tokenPos - 2] != '\\') { // If quote not preceded by backslash, this is end
           this.processCandidateToken(
-              token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+              token, program, lineNum, tokenPos, tokenStartPos, result);
           tokenPos = 0;
           insideQuotedString = false;
         }
@@ -484,13 +502,13 @@ public class Tokenizer {
           case '#': // # denotes comment that takes remainder of line
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
             }
             tokenStartPos = linePos + 1;
             tokenPos = line.length - linePos;
             System.arraycopy(line, linePos, token, 0, tokenPos);
             this.processCandidateToken(
-                token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                token, program, lineNum, tokenPos, tokenStartPos, result);
             linePos = line.length;
             tokenPos = 0;
             break;
@@ -499,7 +517,7 @@ public class Tokenizer {
           case ',': // space, tab or comma is delimiter
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             break;
@@ -523,7 +541,7 @@ public class Tokenizer {
             // End of REAL hack.
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             tokenStartPos = linePos + 1;
@@ -533,7 +551,7 @@ public class Tokenizer {
                 && (line.length >= linePos + 2 && Character.isDigit(line[linePos + 1])))) {
               // treat it as binary.....
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             break;
@@ -543,19 +561,19 @@ public class Tokenizer {
           case ')':
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             tokenStartPos = linePos + 1;
             token[tokenPos++] = c;
             this.processCandidateToken(
-                token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                token, program, lineNum, tokenPos, tokenStartPos, result);
             tokenPos = 0;
             break;
           case '"': // we're not inside a quoted string, so start a new token...
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             tokenStartPos = linePos + 1;
@@ -565,7 +583,7 @@ public class Tokenizer {
           case '\'': // start of character constant (single quote).
             if (tokenPos > 0) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
             }
             // Our strategy is to process the whole thing right now...
@@ -586,7 +604,7 @@ public class Tokenizer {
             // Process if we've either reached second, non-escaped, quote or end of line.
             if (c == '\'' && token[1] != '\\' || lookaheadChars == 2) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
               tokenStartPos = linePos + 1;
               break;
@@ -599,7 +617,7 @@ public class Tokenizer {
             // Process, if this is ending quote for escaped character or if at end of line
             if (c == '\'' || lookaheadChars == 3) {
               this.processCandidateToken(
-                  token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                  token, program, lineNum, tokenPos, tokenStartPos, result);
               tokenPos = 0;
               tokenStartPos = linePos + 1;
               break;
@@ -617,7 +635,7 @@ public class Tokenizer {
             }
             // process no matter what...we either have a valid character by now or not
             this.processCandidateToken(
-                token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
+                token, program, lineNum, tokenPos, tokenStartPos, result);
             tokenPos = 0;
             tokenStartPos = linePos + 1;
             break;
@@ -632,11 +650,7 @@ public class Tokenizer {
       linePos++;
     } // while
     if (tokenPos > 0) {
-      this.processCandidateToken(token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
-    }
-    if (doEqvSubstitutes) {
-      result =
-          processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation, null);
+      this.processCandidateToken(token, program, lineNum, tokenPos, tokenStartPos, result);
     }
     return result;
   }
@@ -770,7 +784,6 @@ public class Tokenizer {
       char[] token,
       MIPSprogram program,
       int line,
-      String theLine,
       int tokenPos,
       int tokenStartPos,
       TokenList tokenList) {
@@ -781,13 +794,22 @@ public class Tokenizer {
     TokenTypes type =
         TokenTypes.matchTokenType(
             value, instructions == null ? InstructionDefaults.get() : instructions);
-    if (type == TokenTypes.ERROR) {
-      errors.add(
-          new ErrorMessage(
-              program, line, tokenStartPos, theLine + "\nInvalid language element: " + value));
-    }
     Token toke = new Token(type, value, program, line, tokenStartPos, tokenPos);
     tokenList.add(toke);
+  }
+
+  private void reportLexicalErrors(
+      MIPSprogram program, int line, String source, TokenList tokens) {
+    for (int i = 0; i < tokens.size(); i++) {
+      Token token = tokens.get(i);
+      if (token.getType() == TokenTypes.ERROR) {
+        errors.add(new ErrorMessage(program, line, token.getStartPos(),
+            source + "\nInvalid language element: " + token.getValue()));
+        if (errors.errorLimitExceeded()) {
+          return;
+        }
+      }
+    }
   }
 
   // If passed a candidate character literal, attempt to translate it into integer constant.
