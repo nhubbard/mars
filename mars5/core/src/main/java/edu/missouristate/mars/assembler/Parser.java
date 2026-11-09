@@ -188,7 +188,7 @@ final class Parser {
               ErrorMessage.WARNING,
               token.getSourceMIPSprogram(),
               token.getSourceLine(),
-              token.getStartPos(),
+              token.getOriginalStartPos(),
               "MARS does not recognize the " + token.getValue() + " directive.  Ignored."));
       return null;
     }
@@ -233,7 +233,7 @@ final class Parser {
             new ErrorMessage(
                 token.getSourceMIPSprogram(),
                 token.getSourceLine(),
-                token.getStartPos(),
+                token.getOriginalStartPos(),
                 "Extended (pseudo) instruction or format not permitted.  See Settings."));
       }
       if (OperandFormat.tokenOperandMatch(

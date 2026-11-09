@@ -12,6 +12,7 @@ import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
 import edu.missouristate.mars.assembler.SourceLine;
 import edu.missouristate.mars.assembler.SymbolTable;
+import edu.missouristate.mars.assembler.Token;
 import edu.missouristate.mars.assembler.Tokenizer;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
@@ -781,6 +782,9 @@ class SessionAssemblyTest {
     assertThat(tokens).extracting(token -> mapped.originalOffset(token.getStartPos() - 1))
         .containsExactly(0, 0, source.indexOf("OP"), source.indexOf("$t0"),
             source.indexOf("$zero"), source.indexOf("COUNT"));
+    assertThat(tokens).extracting(Token::getOriginalStartPos)
+        .containsExactly(1, 1, source.indexOf("OP") + 1, source.indexOf("$t0") + 1,
+            source.indexOf("$zero") + 1, source.indexOf("COUNT") + 1);
   }
 
   @Test
@@ -794,6 +798,39 @@ class SessionAssemblyTest {
     assertThat(mapped.expanded().definition())
         .isEqualTo(new Tokenizer.EquivalenceDefinition("PAIR", "7,   9"));
     assertThat(mapped.originalOffset(mapped.tokens().get(0).getStartPos() - 1)).isZero();
+  }
+
+  static Stream<Arguments> equivalenceDiagnosticCases() {
+    return Stream.of(
+        Arguments.of(".eqv DEST $f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n",
+            "\tentry: lwc1 DEST, ADDRESS $s29)", "$s29", "operand is of incorrect type"),
+        Arguments.of(".eqv BOTH -4($s29\n",
+            "lwc1 $f0, BOTH)", "BOTH", "operand is of incorrect type"),
+        Arguments.of(".eqv REGS $t0, $t1\n.eqv TARGET nop\n",
+            "beq REGS, TARGET", "TARGET", "Symbol \"nop\" not found"),
+        Arguments.of(".eqv DATA .word\n.eqv VALUE missing\n.data\n",
+            "DATA VALUE", "VALUE", "Symbol \"missing\" not found"),
+        Arguments.of(".eqv DEFINE .eqv\n.eqv VALUE 1\n",
+            "DEFINE VALUE 2", "VALUE", "is already defined"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("equivalenceDiagnosticCases")
+  void equivalenceSemanticErrorsUseWrittenColumnsInAnInclude(
+      String definitions, String use, String target, String message) {
+    var main = directory.resolve("main.s");
+    var include = directory.resolve("body.s");
+    var snapshot = new AssemblySourceSnapshot(List.of(main),
+        Map.of(main, ".include \"body.s\"\n", include, definitions + use + "\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(include);
+        assertThat(error.line()).isEqualTo(definitions.lines().count() + 1);
+        assertThat(error.message()).contains(message);
+        assertThat(error.column()).isEqualTo(use.indexOf(target) + 1);
+      });
+    }
   }
 
   @Test

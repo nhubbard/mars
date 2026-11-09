@@ -80,7 +80,7 @@ public class SymbolTable {
           new ErrorMessage(
               token.getSourceMIPSprogram(),
               token.getSourceLine(),
-              token.getStartPos(),
+              token.getOriginalStartPos(),
               "label \"" + label + "\" already defined"));
     } else {
       Symbol s = new Symbol(label, address, kind, origin, macroPrivate);

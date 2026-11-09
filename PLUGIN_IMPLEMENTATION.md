@@ -668,6 +668,12 @@ do not emit diagnostics. An invalid token introduced by the finished expansion
 links to the written alias that supplied it, using the same offset mapping as
 the editor's expanded token analysis.
 
+Operand, directive, and symbol diagnostics also use the written column.
+Tokens retain their expanded spans for parsing and macro substitution. A
+diagnostic for text supplied by an equivalence points to the alias use, and an
+operand written after that alias keeps its own column. The Build fixture
+checks navigation to an invalid operand in an unsaved include.
+
 Core fixtures cover a 6,000-link chain, repeated aliases inside one replacement,
 and cycles in included source after an earlier alias changes the line length.
 An IntelliJ fixture exercises the same cycle in an unsaved include through the

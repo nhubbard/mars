@@ -131,14 +131,7 @@ public class OperandFormat {
       // Not an error if spec calls for identifier and candidate is operator, since operator names
       // can be used as labels.
       if (specType == TokenTypes.IDENTIFIER && candType == TokenTypes.OPERATOR) {
-        Token replacement =
-            new Token(
-                TokenTypes.IDENTIFIER,
-                candToken.getValue(),
-                candToken.getSourceMIPSprogram(),
-                candToken.getSourceLine(),
-                candToken.getStartPos());
-        cand.set(i, replacement);
+        cand.set(i, candToken.withType(TokenTypes.IDENTIFIER));
         continue;
       }
       // end 2-July-2010 addition
@@ -204,7 +197,7 @@ public class OperandFormat {
         new ErrorMessage(
             token.getSourceMIPSprogram(),
             token.getSourceLine(),
-            token.getStartPos(),
+            token.getOriginalStartPos(),
             "\"" + token.getValue() + "\": " + mess));
   }
 }

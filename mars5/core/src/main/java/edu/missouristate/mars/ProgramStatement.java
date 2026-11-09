@@ -229,7 +229,7 @@ public class ProgramStatement {
               new ErrorMessage(
                   this.sourceMIPSprogram,
                   token.getSourceLine(),
-                  token.getStartPos(),
+                  token.getOriginalStartPos(),
                   "invalid register name"));
           return;
         }
@@ -245,7 +245,7 @@ public class ProgramStatement {
               new ErrorMessage(
                   this.sourceMIPSprogram,
                   token.getSourceLine(),
-                  token.getStartPos(),
+                  token.getOriginalStartPos(),
                   "invalid register name"));
           return;
         }
@@ -261,7 +261,7 @@ public class ProgramStatement {
               new ErrorMessage(
                   this.sourceMIPSprogram,
                   token.getSourceLine(),
-                  token.getStartPos(),
+                  token.getOriginalStartPos(),
                   "invalid FPU register name"));
           return;
         }
@@ -274,7 +274,7 @@ public class ProgramStatement {
               new ErrorMessage(
                   this.sourceMIPSprogram,
                   token.getSourceLine(),
-                  token.getStartPos(),
+                  token.getOriginalStartPos(),
                   "Symbol \"" + tokenValue + "\" not found in symbol table."));
           return;
         }

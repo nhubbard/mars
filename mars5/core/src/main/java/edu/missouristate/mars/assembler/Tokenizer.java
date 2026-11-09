@@ -661,7 +661,7 @@ public class Tokenizer {
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
       Function<String, String> replacements, Runnable checkCancellation, List<SourceEdit> edits) {
-    EquivalenceUse use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
+    EquivalenceUse use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, List.of());
     if (use == null) {
       return tokens;
     }
@@ -701,9 +701,14 @@ public class Tokenizer {
       theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = scanLine(program, lineNum, theLine, checkCancellation);
-      use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
+      use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, edits);
     } while (use != null);
-    reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, edits, originalTokens);
+    for (int i = 0; i < tokens.size(); i++) {
+      checkCancellation.run();
+      Token token = tokens.get(i);
+      token.setOriginalStartPos(originalColumn(token, edits));
+    }
+    reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, originalTokens);
     return tokens;
   }
 
@@ -716,9 +721,10 @@ public class Tokenizer {
       int lineNum,
       String line,
       TokenList tokens,
-      Function<String, String> replacements) {
+      Function<String, String> replacements,
+      List<SourceEdit> edits) {
     tokens.setProcessedLine(line);
-    if (recordEquivalence(program, lineNum, line, tokens)) {
+    if (recordEquivalence(program, lineNum, line, tokens, edits)) {
       return null;
     }
     for (int i = 0; i < tokens.size(); i++) {
@@ -733,7 +739,12 @@ public class Tokenizer {
     return null;
   }
 
-  private boolean recordEquivalence(MIPSprogram program, int lineNum, String line, TokenList tokens) {
+  private static int originalColumn(Token token, List<SourceEdit> edits) {
+    return originalOffset(edits, token.getStartPos() - 1) + 1;
+  }
+
+  private boolean recordEquivalence(
+      MIPSprogram program, int lineNum, String line, TokenList tokens, List<SourceEdit> edits) {
     if (tokens.size() < 3) {
       return false;
     }
@@ -747,19 +758,19 @@ public class Tokenizer {
     int last = tokens.size() - (tokens.get(tokens.size() - 1).getType() == TokenTypes.COMMENT ? 2 : 1);
     if (last < directive + 2) {
       errors.add(new ErrorMessage(
-          program, lineNum, directiveToken.getStartPos(), "Too few operands for .eqv directive"));
+          program, lineNum, originalColumn(directiveToken, edits), "Too few operands for .eqv directive"));
       return true;
     }
     Token name = tokens.get(directive + 1);
     if (name.getType() != TokenTypes.IDENTIFIER) {
       errors.add(new ErrorMessage(
-          program, lineNum, directiveToken.getStartPos(), "Malformed .eqv directive"));
+          program, lineNum, originalColumn(directiveToken, edits), "Malformed .eqv directive"));
       return true;
     }
     String symbol = name.getValue();
     for (int i = directive + 2; i <= last; i++) {
       if (tokens.get(i).getValue().equals(symbol)) {
-        errors.add(new ErrorMessage(program, lineNum, directiveToken.getStartPos(),
+        errors.add(new ErrorMessage(program, lineNum, originalColumn(directiveToken, edits),
             "Cannot substitute " + symbol + " for itself in .eqv directive"));
         return true;
       }
@@ -769,7 +780,7 @@ public class Tokenizer {
     String expression = line.substring(start, end);
     String previous = equivalents.putIfAbsent(symbol, expression);
     if (previous != null && !previous.equals(expression)) {
-      errors.add(new ErrorMessage(program, lineNum, name.getStartPos(),
+      errors.add(new ErrorMessage(program, lineNum, originalColumn(name, edits),
           "\"" + symbol + "\" is already defined"));
     }
     return true;
@@ -808,17 +819,16 @@ public class Tokenizer {
 
   private void reportLexicalErrors(
       MIPSprogram program, int line, String source, TokenList tokens) {
-    reportLexicalErrors(program, line, source, tokens, List.of(), null);
+    reportLexicalErrors(program, line, source, tokens, null);
   }
 
   private void reportLexicalErrors(
-      MIPSprogram program, int line, String source, TokenList tokens,
-      List<SourceEdit> edits, TokenList originalTokens) {
+      MIPSprogram program, int line, String source, TokenList tokens, TokenList originalTokens) {
     int originalIndex = 0;
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
       if (token.getType() == TokenTypes.ERROR) {
-        int column = originalOffset(edits, token.getStartPos() - 1) + 1;
+        int column = token.getOriginalStartPos();
         if (originalTokens != null) {
           // Mapped offsets stay in source order. Skip errors already reported on the written line.
           while (originalIndex < originalTokens.size()

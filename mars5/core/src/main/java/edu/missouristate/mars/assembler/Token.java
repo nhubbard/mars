@@ -45,6 +45,7 @@ public class Token {
   private final int sourceLine;
   private final int sourcePos;
   private final int sourceEndPos;
+  private int originalStartPos;
   // original program and line will differ from the above if token was defined in an included file
   private MIPSprogram originalMIPSprogram;
   private int originalSourceLine;
@@ -71,6 +72,7 @@ public class Token {
     this.sourceLine = line;
     this.sourcePos = start;
     this.sourceEndPos = start + sourceLength;
+    this.originalStartPos = start;
     this.originalMIPSprogram = sourceMIPSprogram;
     this.originalSourceLine = line;
   }
@@ -125,6 +127,14 @@ public class Token {
     this.type = type;
   }
 
+  Token withType(TokenTypes type) {
+    Token copy = new Token(type, value, sourceMIPSprogram, sourceLine, sourcePos,
+        sourceEndPos - sourcePos);
+    copy.setOriginal(originalMIPSprogram, originalSourceLine);
+    copy.originalStartPos = originalStartPos;
+    return copy;
+  }
+
   /**
    * Returns the token value used by the assembler. A character literal's value is its
    * decoded integer spelling.
@@ -168,16 +178,23 @@ public class Token {
   }
 
   /**
-   * Produces position within source line of this token.
-   *
-   * @return first character position within source program line of this token.
+   * Returns the one-based start of this token in the line that was tokenized, after substitutions.
    */
   public int getStartPos() {
     return sourcePos;
   }
 
-  /** Returns the one-based exclusive end of this token's original spelling on its source line. */
+  /** Returns the one-based exclusive end of the token in the same line as {@link #getStartPos()}. */
   public int getEndPos() {
     return sourceEndPos;
+  }
+
+  /** Returns the one-based column in the tokenizer input, before equivalence substitutions. */
+  public int getOriginalStartPos() {
+    return originalStartPos;
+  }
+
+  void setOriginalStartPos(int column) {
+    originalStartPos = column;
   }
 }

@@ -833,6 +833,40 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build links invalid operands after equivalence expansion to the written operand`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val use = "\tentry: lwc1 DEST, ADDRESS \$s29)"
+            val source = ".eqv DEST \$f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n$use\n"
+            val (main, child) = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", ".include \"child.s\"\n").virtualFile
+                val child = fixture.addFileToProject("child.s", "nop\n").virtualFile
+                edit(child, source)
+                main to child
+            }
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertTrue(error.message.contains("operand is of incorrect type"), error.message)
+            assertEquals(child.toNioPath(), error.filePosition.path)
+            assertEquals(3, error.filePosition.startLine)
+            assertEquals(use.indexOf("\$s29"), error.filePosition.startColumn)
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(child, link.file)
+                assertEquals(source.indexOf("\$s29"), link.offset)
+            }
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(FailureResult::class.java, finish.result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `circular equivalences keep valid editor syntax and link a build error to the original use`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {

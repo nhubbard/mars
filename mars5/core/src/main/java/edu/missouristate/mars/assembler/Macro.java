@@ -175,7 +175,7 @@ public class Macro {
         } else {
           errors.add(
               new ErrorMessage(
-                  program, token.getSourceLine(), token.getStartPos(), "Unknown macro parameter"));
+                  program, token.getSourceLine(), token.getOriginalStartPos(), "Unknown macro parameter"));
         }
         renamed = repl != -1 && privateArguments.contains(substitute);
       } else if (tokenIsMacroLabel(token.getValue())) {
