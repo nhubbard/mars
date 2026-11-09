@@ -204,9 +204,21 @@ The clean launch ran all 1,264 tests and loaded the plugin in the smoke project.
 passed its integrity check, and all six packaged JARs matched the sandbox JARs by SHA-256.
 The window was unavailable to UI automation, so visual editor acceptance remains open.
 
+## Native symbol reference index
+
+The `mars.references` file-based index records source offsets, physical macro nesting, and
+possible target kinds. It reads the indexed file's PSI and emits facts even when the declaration
+does not exist. Ordinary operands can refer to labels or equivalences. Operation and expansion
+tokens can also name macros. Mnemonics in operand positions can name labels through the core's
+operand conversion rules. Include replacement lines, register names, literals, and comments
+contribute no symbol sites.
+
+Native fixtures verify index registration, source offsets, candidate kinds, file scopes,
+unsaved edits, declaration creation, reference deletion, and value serialization.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler while building symbol reference sentinels,
-query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
+Continue checking parser edge cases against the Java assembler while building query-time sentinel joins,
+native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.
