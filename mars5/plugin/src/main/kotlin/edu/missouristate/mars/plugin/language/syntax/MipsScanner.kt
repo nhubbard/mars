@@ -12,6 +12,7 @@ data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
 /** Lossless file-local scanning. Every token ends at a restartable boundary; strings end at EOL. */
 object MipsScanner {
     private const val characterDelimiters = " \t,:()#\"+-"
+    private const val assemblyDelimiters = " \t\r\n,:()#\"'"
 
     fun scan(source: CharSequence): List<MipsToken> = buildList {
         var position = 0
@@ -100,13 +101,13 @@ object MipsScanner {
                 // MARS accepts any percent-prefixed token as a parameter name.
                 while (position < end) {
                     val character = source[position]
-                    if (character in " \t\r\n,:()#\"'" ||
+                    if (character in assemblyDelimiters ||
                         character in "+-" && !continuesSignedExponent(source, position, end)) break
                     position++
                 }
                 MipsTokenKind.PARAMETER
             }
-            first.isLetterOrDigit() || first in "_.$" -> {
+            first.isNameCharacter() || !debuggerExpression -> {
                 val numeric = first.isDigit() || (first == '.' && position < end && source[position].isDigit())
                 val exponentMarkers = when {
                     !debuggerExpression -> "eE"
@@ -115,18 +116,23 @@ object MipsScanner {
                     else -> "eE"
                 }
                 var signedExponent = false
+                var invalidCharacter = !first.isNameCharacter()
                 while (position < end) {
                     val character = source[position]
-                    if (character.isLetterOrDigit() || character in "_.$%") {
+                    if (character.isNameCharacter() || debuggerExpression && character == '%') {
                         position++
                     } else if (character in "+-" && continuesSignedExponent(source, position, end, exponentMarkers)) {
                         signedExponent = true
                         position++
+                    } else if (!debuggerExpression && character !in assemblyDelimiters && character !in "+-") {
+                        // MARS classifies the whole candidate, even when it contains illegal characters.
+                        invalidCharacter = true
+                        position++
                     } else break
                 }
                 when {
-                    // The assembler absorbs a sign after E even in a nonnumeric candidate.
-                    signedExponent && !debuggerExpression -> {
+                    // A floating-point value can contain a signed exponent or trailing ASCII control whitespace.
+                    invalidCharacter || signedExponent && !debuggerExpression -> {
                         val value = source.subSequence(start, position).toString().toDoubleOrNull()
                         if (value == null) MipsTokenKind.BAD_CHARACTER else MipsTokenKind.NUMBER
                     }
@@ -145,6 +151,8 @@ object MipsScanner {
         }
         return MipsToken(kind, start, position)
     }
+
+    private fun Char.isNameCharacter(): Boolean = isLetterOrDigit() || this in "_.$"
 
     private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int, markers: String = "eE"): Boolean =
         source[position - 1] in markers && position + 1 < end && source[position + 1].isDigit()

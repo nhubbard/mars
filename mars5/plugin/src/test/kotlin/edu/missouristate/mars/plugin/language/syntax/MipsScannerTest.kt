@@ -60,7 +60,7 @@ class MipsScannerTest {
             val source = "1${operator}2"
             assertEquals(MipsToken(expected, 1, 1 + operator.length),
                 MipsScanner.next(source, 1, debuggerExpression = true))
-            assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 1, 2), MipsScanner.next(source, 1))
+            assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 0, source.length), MipsScanner.next(source, 0))
         }
         assertEquals(MipsToken(MipsTokenKind.SHIFT, 0, 2),
             MipsScanner.next(">>>", 0, 2, debuggerExpression = true))
@@ -112,7 +112,7 @@ class MipsScannerTest {
     }
 
     @Test
-    fun `source exponent boundaries and errors agree with the MARS tokenizer`() {
+    fun `source candidates preserve MARS token boundaries and lexical errors`() {
         val tokenizer = Tokenizer()
         for (source in listOf(
             ".double .5e-2, 1.0E+5, 0X1.EP2",
@@ -121,6 +121,13 @@ class MipsScannerTest {
             "bge-7",
             "1.2fake-4",
             ".eqv TOKEN %value-7",
+            "bad%name: nop",
+            ".eqv bad@name 7",
+            "foo/.include \"file.asm\"",
+            "4?5, a!e-7, 7*8",
+            "@name-7, @name+value",
+            ".double 1.5\u000c, NaN\u000b",
+            ".macro emit (%value!@?, \$argument)",
         )) {
             val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
             val tokens = MipsScanner.scan(source).filter { it.kind !in setOf(MipsTokenKind.SPACE, MipsTokenKind.COMMA) }
@@ -130,6 +137,14 @@ class MipsScannerTest {
                 tokens.indices.filter { tokens[it].kind == MipsTokenKind.BAD_CHARACTER }, source)
             for (token in tokens) assertEquals(token, MipsScanner.next(source, token.start))
         }
+    }
+
+    @Test
+    fun `assembly recovery leaves debugger token boundaries unchanged`() {
+        assertEquals(MipsToken(MipsTokenKind.WORD, 0, 8),
+            MipsScanner.next("bad%name", 0, debuggerExpression = true))
+        assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 0, 1),
+            MipsScanner.next("@name", 0, debuggerExpression = true))
     }
 
     @Test

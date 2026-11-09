@@ -444,6 +444,7 @@ class MipsFormattingPlatformTest {
                 unknown 'X,   7
                 lw ${'$'}t0 , 4  ( ${'$'}sp
                 lw ${'$'}t1  ,  0(${'$'}sp)
+                lw ${'$'}t2   ,  4(${'$'}sp)
                 addiu ${'$'}t0, ${'$'}t0, - 4
                 next :   nop
             """.trimIndent()
@@ -456,6 +457,7 @@ class MipsFormattingPlatformTest {
             assertTrue("malformed: )  6  (" in result, result)
             assertTrue("unknown 'X,   7" in result, result)
             assertTrue("${'$'}t1  " in result, result)
+            assertTrue("${'$'}t2   ," in result, result)
             assertTrue("- 4" in result, result)
             assertTrue("next: nop" in result, result)
             assertEquals(result, reformat())

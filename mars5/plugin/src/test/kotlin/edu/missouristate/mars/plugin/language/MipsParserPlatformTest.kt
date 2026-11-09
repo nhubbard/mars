@@ -631,16 +631,39 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `invalid signed exponent candidates keep their full span and recover the following line`() = timeoutRunBlocking<Unit> {
+    fun `malformed lexical candidates keep their full span and recover the following line`() = timeoutRunBlocking<Unit> {
         readAction {
-            val source = ".data\n.word 0x1e-5, 7\n.text\nname-2: nop\nnext: nop\n"
+            val source = """
+                .data
+                .word 0x1e-5, 7
+                .text
+                name-2: nop
+                bad%name: nop
+                .eqv bad@name 7
+                fake/.include "missing.asm"
+                next: nop
+            """.trimIndent()
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("exponent.asm", MipsFileType, source)
             assertEquals(source, file.text)
-            assertEquals(listOf("0x1e-5", "name-2"), descendants(file.node, "BAD_CHARACTER").map { it.text }.toList())
+            assertEquals(listOf("0x1e-5", "name-2", "bad%name", "bad@name", "fake/.include"),
+                descendants(file.node, "BAD_CHARACTER").map { it.text }.toList())
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
+            assertTrue(descendants(file.node, "INCLUDE_LINE").none())
             assertEquals("nop", descendants(file.node, "INSTRUCTION").last().text)
         }
     }
+
+    @Test
+    fun `punctuation in percent formals survives parsing and macro substitution`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val formal = "%value!@?.part"
+            val source = ".macro emit ($formal)\naddiu \$t0, \$zero, $formal\n.end_macro\nemit(7)"
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf(formal, formal), descendants(file.node, "PARAMETER").map { it.text }.toList())
+            }
+        }
 
     @Test
     fun `invalid statement heads preserve macro scope and later labels`() = timeoutRunBlocking<Unit> {

@@ -485,6 +485,12 @@ The rebuilt distribution passed its ZIP integrity check. Visual editor acceptanc
 
 ## Raw macro arguments
 
+The source lexer keeps a malformed assembler candidate together. A spelling
+such as `bad%name` cannot become a declaration, and `fake/.include` cannot
+introduce an include edge. Percent-prefixed macro formals still accept the
+punctuation allowed by MARS. The declaration, reference, and include indexes
+rebuild on upgrade. Debugger expressions keep their own operator boundaries.
+
 The lexer recognizes instruction and directive names from the Java core catalogs. Known
 instructions retain structured operand PSI. Other operation-shaped lines preserve their token
 sequence in `OPERATION_CANDIDATE`, including punctuation that the assembler can pass to macros.

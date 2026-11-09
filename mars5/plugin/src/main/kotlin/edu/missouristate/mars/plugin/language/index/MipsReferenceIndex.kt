@@ -13,7 +13,6 @@ import com.intellij.util.indexing.FileContent
 import com.intellij.util.indexing.ID
 import com.intellij.util.io.DataExternalizer
 import com.intellij.util.io.EnumeratorStringDescriptor
-import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -25,7 +24,7 @@ data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOff
 
 class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 14
+    override fun getVersion(): Int = 15
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -39,14 +38,11 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
                 if (element.node.elementType in SYMBOL_TOKENS) {
                     val kinds = targetKinds(element)
                     if (kinds.isNotEmpty()) {
-                        val name = element.text
-                        if (TokenTypes.isValidIdentifier(name)) {
-                            val macro = PsiTreeUtil.findFirstParent(element, true) {
-                                PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
-                            }
-                            val sites = references.getOrPut(name, ::ArrayList)
-                            for (kind in kinds) sites.add(MipsReferenceSite(kind, element.textOffset, macro?.textOffset ?: -1))
+                        val macro = PsiTreeUtil.findFirstParent(element, true) {
+                            PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
                         }
+                        val sites = references.getOrPut(element.text, ::ArrayList)
+                        for (kind in kinds) sites.add(MipsReferenceSite(kind, element.textOffset, macro?.textOffset ?: -1))
                     }
                 }
                 super.visitElement(element)

@@ -22,7 +22,7 @@ import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 /** Supplies unresolved paths to IntelliJ's shared include index, matching MARS's include prepass. */
 class MipsIncludeProvider : FileIncludeProvider() {
     override fun getId(): String = "mars"
-    override fun getVersion(): Int = 5
+    override fun getVersion(): Int = 6
     override fun acceptFile(indexedFile: IndexedFile): Boolean = indexedFile.fileType == MipsFileType
     override fun registerFileTypesUsedForIndexing(fileTypeSink: Consumer<in FileType>) = fileTypeSink.consume(MipsFileType)
 
