@@ -64,11 +64,14 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
+import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
+import java.nio.file.Path
 import javax.swing.JButton
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -322,8 +325,100 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(source, 0)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             assertNull(debug.nextPosition())
-            withContext(Dispatchers.EDT) { debug.session.resume() }
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
             assertEquals(if (invalidAddress) 1 else 0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `source steps group pseudo instructions and distinguish consecutive macro expansions`() = timeoutRunBlocking<Unit> {
+        val (entry, macros) = withContext(Dispatchers.EDT) {
+            val macro = fixture.addFileToProject("step-macros.s", ".macro load (%value)\nli \$t1, %value\n.end_macro\n").virtualFile
+            val file = fixture.addFileToProject("steps.asm", """
+                .include "step-macros.s"
+                li ${'$'}t0, 0x12345678
+                load(0x23456789)
+                load(0x3456789a)
+                nop
+            """.trimIndent()).virtualFile
+            addBreakpoint(file, 1)
+            val finish = addBreakpoint(file, 4)
+            WriteAction.run<RuntimeException> { finish.setCondition("0") }
+            file to macro
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, 1)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = toolbarAction(debug.session, "Step Instruction")
+                assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                assertTrue(event.presentation.isEnabled)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(entry, 1)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x00400004", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "pc"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(macros, 1)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.sessionResumed()
+                debug.session.debugProcess.startStepInto(null)
+            }
+            debug.assertPausedAt(macros, 1)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x0040000c", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "pc"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(macros, 1)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x23456789", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(entry, 4)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x3456789a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `source step stops on another execution of a single line loop`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-loop.s", "loop: b loop\n").virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) {
+                debug.session.setBreakpointMuted(true)
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = backstepAction(debug.session)
+                assertTrue(event.presentation.isEnabled)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) {
+                assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                debug.session.stop()
+            }
+            assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `source boundary treats misaligned and unmapped kernel positions as unknown`() {
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { context ->
+            val memory = context.memory
+            val origin = Origin(Location(Path.of("source.s"), 1), null)
+            val step = SourceStep(memory.textBaseAddress, origin)
+            assertTrue(step.reached(memory, memory.textBaseAddress + 1))
+            assertTrue(step.reached(memory, memory.kernelTextBaseAddress))
         }
     }
 
@@ -604,10 +699,12 @@ class MarsDebugPlatformTest {
         }
     }
 
-    private fun backstepAction(session: XDebugSession): Pair<AnAction, AnActionEvent> {
+    private fun backstepAction(session: XDebugSession) = toolbarAction(session, "Backstep Instruction")
+
+    private fun toolbarAction(session: XDebugSession, text: String): Pair<AnAction, AnActionEvent> {
         val toolbar = DefaultActionGroup()
         session.debugProcess.registerAdditionalActions(DefaultActionGroup(), toolbar, DefaultActionGroup())
-        val action = toolbar.getChildren(ActionManager.getInstance()).single()
+        val action = toolbar.getChildren(ActionManager.getInstance()).single { it.templatePresentation.text == text }
         val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.TOOLBAR, null)
         action.update(event)
         return action to event
@@ -899,7 +996,12 @@ class MarsDebugPlatformTest {
             pollAssertionsAsync(3.seconds, 10.milliseconds) {
                 withContext(Dispatchers.EDT) { assertTrue(console.editor!!.document.text.contains("loop.s")) }
             }
-            withContext(Dispatchers.EDT) { assertFalse(backstepAction(debug.session).second.presentation.isEnabled) }
+            withContext(Dispatchers.EDT) {
+                assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                val (action, event) = toolbarAction(debug.session, "Step Instruction")
+                assertFalse(event.presentation.isEnabled)
+                action.actionPerformed(event)
+            }
             withContext(Dispatchers.EDT) { debug.session.pause() }
             debug.assertPausedAt(source.first, 3)
             withContext(Dispatchers.EDT) {

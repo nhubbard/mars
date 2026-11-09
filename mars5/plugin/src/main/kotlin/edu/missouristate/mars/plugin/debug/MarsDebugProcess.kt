@@ -30,12 +30,12 @@ import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XExecutionStack
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
+import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsSyntaxHighlighter
@@ -51,9 +51,12 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
 private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
+private const val SOURCE_STEP_LIMIT = 256L
 
 internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : XDebugProcess(session) {
-    private data class Command(val steps: Long = 0, val target: Location? = null, val backstep: Boolean = false)
+    private data class Command(
+        val steps: Long = 0, val target: Location? = null, val backstep: Boolean = false, val sourceStep: SourceStep? = null,
+    )
 
     private val commands = Channel<Command>(Channel.CONFLATED)
     @Volatile private var simulator: SimulatorEngine? = null
@@ -100,6 +103,19 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
         topToolbar.add(object : DumbAwareAction(
+            runMessages.getMessage("debug.step.instruction"),
+            runMessages.getMessage("debug.step.instruction.description"),
+            AllIcons.Actions.TraceInto,
+        ) {
+            override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            override fun update(event: AnActionEvent) { event.presentation.isEnabled = session.isSuspended }
+            override fun actionPerformed(event: AnActionEvent) {
+                if (!session.isSuspended) return
+                session.sessionResumed()
+                commands.trySend(Command(steps = 1))
+            }
+        })
+        topToolbar.add(object : DumbAwareAction(
             runMessages.getMessage("debug.backstep"),
             runMessages.getMessage("debug.backstep.description"),
             AllIcons.Actions.Rollback,
@@ -119,7 +135,10 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     override fun stop() = handler.destroyProcess()
     override fun resume(context: XSuspendContext?) { commands.trySend(Command()) }
     override fun startPausing() { simulator?.pause() }
-    override fun startStepInto(context: XSuspendContext?) { commands.trySend(Command(steps = 1)) }
+    override fun startStepInto(context: XSuspendContext?) {
+        val sourceStep = (context as? MarsSuspendContext)?.sourceStep
+        commands.trySend(Command(steps = if (sourceStep == null) 1 else SOURCE_STEP_LIMIT, sourceStep = sourceStep))
+    }
     override fun startStepOver(context: XSuspendContext?) = rejectCommand("debug.call.step.unavailable", context)
     override fun startStepOut(context: XSuspendContext?) = rejectCommand("debug.call.step.unavailable", context)
     override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
@@ -173,7 +192,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 val targets = target?.let { map.breakpoints()[it] }.orEmpty()
                 var skip = skipFirst
                 var hits = emptyList<LineBreakpoint>()
-                var targetHit = false
+                var stepOrTargetReached = false
                 if (target != null && targets.isEmpty()) {
                     withSuspension(machine) { context ->
                         withContext(Dispatchers.EDT) {
@@ -190,8 +209,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                         false
                     } else {
                         hits = addresses[pc].orEmpty()
-                        targetHit = pc in targets
-                        hits.isNotEmpty() || targetHit
+                        stepOrTargetReached = pc in targets || command.sourceStep?.reached(machine.memory, pc) == true
+                        hits.isNotEmpty() || stepOrTargetReached
                     }
                 }
                 val reason: StopEvent.Reason = event.reason()
@@ -200,7 +219,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                         withSuspension(machine) { context ->
                             val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
                                 hits.any { handleBreakpoint(it, context, machine.memory) }
-                            val positionReached = reason != StopEvent.Reason.BREAKPOINT || targetHit
+                            val positionReached = reason != StopEvent.Reason.BREAKPOINT || stepOrTargetReached
                             if (!breakpointSuspended && positionReached) {
                                 withContext(Dispatchers.EDT) { session.positionReached(context) }
                             }
@@ -266,11 +285,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
         val pc = machine.registerFile.programCounterRegister.valueNoNotify
-        val statement = try {
-            machine.memory.getStatementNoNotify(pc)
-        } catch (_: AddressErrorException) {
-            null
-        }
+        val statement = machine.memory.sourceStatement(pc)
+        val origin = statement?.instructionOrigin
         val program = machine.program
         val symbols = program.symbolMap()
         val scope = statement?.sourceMIPSprogram ?: program
@@ -278,12 +294,13 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val watchRequests = watchMemoryRequests()
         MarsSuspendContext(
             MarsStackFrame(
-                sourcePosition(statement?.instructionOrigin), machine, session.project, localSymbols, symbols.globals(), watchRequests,
+                sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests,
             ),
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             ++suspensionNumber,
             watchRequests,
+            origin?.let { SourceStep(pc, it) },
         )
     }
 
@@ -320,6 +337,7 @@ internal class MarsSuspendContext(
     val memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,
     val watchRequests: Channel<WatchMemoryRequest>,
+    val sourceStep: SourceStep?,
 ) : XSuspendContext() {
     val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
@@ -329,4 +347,15 @@ internal class MarsSuspendContext(
         }
     }
     override fun getActiveExecutionStack(): XExecutionStack = stack
+}
+
+internal data class SourceStep(private val start: Int, private val origin: Origin) {
+    // A loop back to the same address is a new execution of the source statement.
+    fun reached(memory: MemoryState, pc: Int): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin != origin
+}
+
+private fun MemoryState.sourceStatement(pc: Int): ProgramStatement? {
+    // Data-segment execution and rewritten instructions have no assembled source position.
+    if (!MemoryState.wordAligned(pc) || !(inTextSegment(pc) || inKernelTextSegment(pc))) return null
+    return getStatementNoNotify(pc)
 }

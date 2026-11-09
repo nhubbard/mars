@@ -776,11 +776,20 @@ literal, or a label alone leaves the line without a breakpoint. Unresolved opera
 eligible while the editor is indexing or lacks the containing entry's definitions. The
 assembled source map determines the actual address at debug time.
 
-The Debug view shows one simulated CPU frame. Resume, Pause, Stop, instruction
-Step Into, and Run to Cursor are wired. The platform handles breakpoint
+The Debug view shows one simulated CPU frame. Resume, Pause, Stop, source
+Step Into, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
 Call-aware stepping reports that it is unavailable.
+
+Step Into advances until the live instruction's source origin changes or execution
+returns to the starting address. A pseudo-instruction's emitted instructions share
+an origin. A macro origin includes its invocation chain, so consecutive expansions
+of the same physical body line still produce distinct stops. The simulator checks
+that boundary alongside line breakpoints on its execution worker. A source step
+has a 256-instruction limit per simulator slice, and stepping from a position with
+no source origin executes one instruction. The Debug toolbar's Step Instruction
+action always executes one machine instruction.
 
 Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
 include and repeated macro expansions, aliased instructions and calls, instruction stepping, Run to Cursor,
