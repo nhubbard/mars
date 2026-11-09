@@ -4,6 +4,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -60,6 +61,82 @@ class CapturedAssemblySourcesPlatformTest {
         assertTrue(program.simulate(5))
         assertEquals(42, context.registerFile.getValue(8))
         assertEquals(17, context.registerFile.getValue(16))
+    }
+
+    @Test
+    fun `a directory alias back to the entry closes the cycle without scanning the entry again`() = timeoutRunBlocking<Unit> {
+        val (main, outer) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("source/main.asm", ".include \"../parts/outer.s\"\n").virtualFile
+            val part = fixture.addFileToProject("parts/outer.s", "nop\n").virtualFile
+            val link = Files.createSymbolicLink(part.toNioPath().resolveSibling("shortcut"), entry.toNioPath().parent)
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(link))
+            edit(part, "# in progress\n.include \"shortcut/main.asm\"\n")
+            entry.toNioPath() to part.toNioPath()
+        }
+        val alias = outer.resolveSibling("shortcut/main.asm")
+        val capture = captureAssemblySources(listOf(main), null)
+        assertEquals(setOf(main, outer, alias), capture.revisions.keys)
+        assertEquals(setOf(main.resolveSibling("../parts/outer.s"), alias), capture.snapshot.resolvedIncludes().keys)
+        assertEquals(capture.snapshot.includeIdentity(main), capture.snapshot.includeIdentity(alias))
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use {
+            val result = capture.assembleIn(component)
+            assertFalse(result.succeeded())
+            val error = result.errors().single()
+            assertEquals(outer, error.file())
+            assertEquals(2, error.line())
+            assertTrue(error.message().contains("Recursive include of file"))
+        }
+    }
+
+    @Test
+    fun `the first alias in assembly order supplies transitive includes before a duplicate is reported`() = timeoutRunBlocking<Unit> {
+        val main = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject(
+                "main.asm", ".include \"branch.s\"\n.include \"source/shared.s\"\n",
+            ).virtualFile
+            fixture.addFileToProject("branch.s", ".include \"shortcut/shared.s\"\n")
+            val shared = fixture.addFileToProject("source/shared.s", ".include \"leaf.s\"\n").virtualFile
+            fixture.addFileToProject("source/leaf.s", "nop\n")
+            val link = Files.createSymbolicLink(entry.toNioPath().resolveSibling("shortcut"), shared.toNioPath().parent)
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(link))
+            entry.toNioPath()
+        }
+        val capture = captureAssemblySources(listOf(main), null)
+        assertTrue(main.resolveSibling("shortcut/leaf.s") in capture.snapshot.texts())
+        assertFalse(main.resolveSibling("source/leaf.s") in capture.snapshot.texts())
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use {
+            val error = capture.assembleIn(component).errors().single()
+            assertEquals(main, error.file())
+            assertEquals(2, error.line())
+            assertTrue(error.message().contains("Recursive include of file"))
+        }
+    }
+
+    @Test
+    fun `separately selected directory aliases retain each entry's unsaved source and include set`() = timeoutRunBlocking<Unit> {
+        val (main, alias) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("source/main.asm", ".include \"saved.s\"\n").virtualFile
+            fixture.addFileToProject("source/saved.s", "addiu \$t0, \$zero, 7\n")
+            fixture.addFileToProject("source/edited.s", "addiu \$t1, \$zero, 2\n")
+            val link = Files.createSymbolicLink(entry.toNioPath().parent.resolveSibling("shortcut"), entry.toNioPath().parent)
+            val shortcut = checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(link))
+            val aliasFile = checkNotNull(shortcut.findChild("main.asm"))
+            edit(aliasFile, ".include \"edited.s\"\n")
+            entry.toNioPath() to aliasFile.toNioPath()
+        }
+        val capture = captureAssemblySources(listOf(main, alias), null)
+        assertEquals(listOf(main, alias), capture.snapshot.entries())
+        assertEquals(".include \"saved.s\"\n", capture.snapshot.texts()[main])
+        assertEquals(".include \"edited.s\"\n", capture.snapshot.texts()[alias])
+        assertEquals(capture.snapshot.includeIdentity(main), capture.snapshot.includeIdentity(alias))
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { session ->
+            val result = capture.assembleIn(component)
+            assertTrue(result.succeeded(), result.errors().toString())
+            assertEquals(listOf(0x24080007, 0x24090002), session.program.machineList.map { it.binaryStatement })
+        }
     }
 
     @Test

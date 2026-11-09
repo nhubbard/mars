@@ -5,6 +5,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.CachedValueProvider
@@ -16,6 +17,7 @@ import edu.missouristate.mars.di.MarsComponent
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Map.copyOf as copyOfMap
+import java.util.Objects.requireNonNullElse
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -24,6 +26,10 @@ internal data class CapturedAssemblySources(
     val exceptionHandler: Path?,
     val revisions: Map<Path, Long>,
 )
+
+private data class SourceDocument(val text: String, val revision: Long, val identity: Path)
+
+private data class IncludeCursor(val path: Path, val lines: Iterator<String>)
 
 /**
  * Capture one coherent document revision before handing off to the Java assembler.
@@ -40,41 +46,57 @@ internal fun collectAssemblySources(
     val handler = exceptionHandler?.toAbsolutePath()?.normalize()
     val files = VirtualFileManager.getInstance()
     val documents = FileDocumentManager.getInstance()
-    val pending = ArrayDeque(ordered + listOfNotNull(handler))
-    val visited = HashSet<Path>()
-    val texts = HashMap<Path, String>()
-    val revisions = HashMap<Path, Long>()
+    val captured = HashMap<Path, SourceDocument>()
     val resolvedIncludes = HashMap<Path, Path>()
     val tokenizer = Tokenizer()
 
-    while (pending.isNotEmpty()) {
-        ProgressManager.checkCanceled()
-        val path = pending.removeFirst()
-        if (!visited.add(path)) continue
-        val file = files.findFileByNioPath(path) ?: continue
+    fun capture(path: Path): SourceDocument? {
+        captured[path]?.let { return it }
+        val file = files.findFileByNioPath(path) ?: return null
         val document = documents.getDocument(file)
         onDependency(document ?: file)
-        if (document == null) continue
-        val text = document.text
-        texts[path] = text
-        revisions[path] = document.modificationStamp
+        if (document == null) return null
+        val parent: VirtualFile = file.parent
+        // Directory aliases share an include location. A file symlink keeps its own name and directory.
+        val identity = requireNonNullElse<VirtualFile>(parent.canonicalFile, parent).toNioPath().resolve(file.name)
+        return SourceDocument(document.text, document.modificationStamp, identity).also { captured[path] = it }
+    }
 
-        for (line in text.lineSequence()) {
+    for (root in ordered + listOfNotNull(handler)) {
+        ProgressManager.checkCanceled()
+        val seen = HashSet<Path>()
+        val pending = ArrayDeque<IncludeCursor>()
+        fun enter(path: Path) {
+            val source = capture(path) ?: return
+            if (seen.add(source.identity)) pending.addLast(IncludeCursor(path, source.text.lineSequence().iterator()))
+        }
+
+        // Match the assembler's depth-first order and independent include set for each entry.
+        enter(root)
+        while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
-            val include = tokenizer.findIncludePath(line) ?: continue
+            val (path, lines) = pending.last()
+            if (!lines.hasNext()) {
+                pending.removeLast()
+                continue
+            }
+            val include = tokenizer.findIncludePath(lines.next()) ?: continue
             try {
                 val request = path.resolveSibling(include)
                 // The VFS must see '..' before normalization because it may follow a symlink.
                 val target = files.findFileByNioPath(request) ?: continue
                 val resolved = target.toNioPath().toAbsolutePath().normalize()
                 resolvedIncludes[request] = resolved
-                pending.addLast(resolved)
+                enter(resolved)
             } catch (_: InvalidPathException) {
                 // The assembler reports the malformed path at the captured include site.
             }
         }
     }
-    return CapturedAssemblySources(AssemblySourceSnapshot(ordered, texts, resolvedIncludes), handler, copyOfMap(revisions))
+    val snapshot = AssemblySourceSnapshot(
+        ordered, captured.mapValues { it.value.text }, resolvedIncludes, captured.mapValues { it.value.identity },
+    )
+    return CapturedAssemblySources(snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }))
 }
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */
