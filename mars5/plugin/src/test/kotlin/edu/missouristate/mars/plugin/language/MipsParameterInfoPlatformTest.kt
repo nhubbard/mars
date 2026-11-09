@@ -2,14 +2,18 @@ package edu.missouristate.mars.plugin.language
 
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext
 import com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.MarsSessionService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,6 +21,9 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
+import kotlin.io.path.writeText
 
 @TestApplication
 class MipsParameterInfoPlatformTest {
@@ -105,6 +112,72 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `macro hints follow raw arguments and optional SPIM parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definition = """
+            .macro emit (%ignored, ${'$'}value)
+              addiu ${'$'}t0, ${'$'}zero, ${'$'}value
+            .end_macro
+        """.trimIndent() + "\n"
+        val first = "emit (<b>%ignored</b>, \$value)"
+        val second = "emit (%ignored, <b>\$value</b>)"
+        withContext(Dispatchers.EDT) {
+            assertEquals(first, info(definition + "emit<caret> (+, 7)"))
+            assertEquals(first, info(definition + "emit (<caret>+, 7)"))
+            assertEquals(first, info(definition + "emit (<caret> 7"))
+            assertEquals(first, info(definition + "emit ( <caret>"))
+            assertEquals(second, info(definition + "emit (+, 7<caret>)"))
+            assertEquals(second, info(definition + "emit ( <caret>7"))
+            assertEquals(second, info(definition + "emit -7<caret>"))
+            assertEquals(second, info(definition + "emit (+, <caret>bad%"))
+            assertEquals("emit (%ignored, \$value)", info(definition + ".eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
+            assertNull(info(definition + "emit (+, 7)<caret>"))
+        }
+        val entry = directory.resolve("entry.asm").also {
+            it.writeText(definition + "emit (+, 7)\nemit ( 8\nemit -9\n")
+        }
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x24080007, 0x24080008, 0x24080009), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
+    fun `macro hints follow included redefinitions aliases and edits`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            val include = fixture.addFileToProject("macros.s", ".macro emit (%stale)\n.end_macro\n")
+            val source = """
+                .include "macros.s"
+                .macro emit (%left, %right)
+                .end_macro
+                .eqv CALL emit (
+                entry: CALL <caret>1)
+            """.trimIndent()
+            fun expected(parameter: String) =
+                listOf("emit (<b>$parameter</b>)", "emit (<b>%left</b>, %right)").sorted().joinToString("\n-\n")
+            assertEquals(expected("%stale"), info(source))
+            val editor = fixture.editor
+            val file = fixture.file
+            val handler = MipsParameterInfoHandler()
+            val initial = MockCreateParameterInfoContext(editor, file)
+            val owner = handler.findElementForParameterInfo(initial)
+            val update = MockUpdateParameterInfoContext(editor, file, initial.itemsToShow)
+            assertSame(owner, handler.findElementForUpdatingParameterInfo(update))
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertNull(handler.findElementForParameterInfo(MockCreateParameterInfoContext(editor, file)))
+            }
+
+            val document = FileDocumentManager.getInstance().getDocument(include.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) {
+                document.setText(".macro emit (%fresh)\n.end_macro\n")
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+            }
+            assertNull(handler.findElementForUpdatingParameterInfo(update))
+            assertEquals(expected("%fresh"), fixture.parameterInfoAtCaret)
+            assertNull(info("em<caret>it 1\n.macro emit (%value)\n.end_macro"))
+            assertNull(info("emit <caret>1\n.macro emit (%value)\n.end_macro"))
+        }
+    }
+
+    @Test
     fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
@@ -113,7 +186,9 @@ class MipsParameterInfoPlatformTest {
             val editor = fixture.editor
             val file = fixture.file
             val handler = MipsParameterInfoHandler()
-            val update = MockUpdateParameterInfoContext(editor, file, InstructionDefaults.get().matchOperator("sll").toTypedArray())
+            val initial = MockCreateParameterInfoContext(editor, file)
+            handler.findElementForParameterInfo(initial)
+            val update = MockUpdateParameterInfoContext(editor, file, initial.itemsToShow)
             val owner = file.findElementAt(file.text.indexOf("SHIFT"))!!.parent
             assertSame(owner, handler.findElementForUpdatingParameterInfo(update))
             handler.updateParameterInfo(owner, update)

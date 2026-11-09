@@ -42,6 +42,10 @@ internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val
 
 internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
 
+internal data class MacroInvocation(
+    val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
+)
+
 private val mnemonicType = MipsTypes.psi("MNEMONIC")
 
 internal data class IndexedSymbolCandidates(
@@ -208,17 +212,31 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
         if (DumbService.isDumb(project)) return emptyMap()
         val prefix = editorPrefix(root, offset)
+        return visibleMacros(prefix) { it.startsWith(namePrefix) && prefix.equivalence(it) == null }
+            .groupBy(MipsSourceEvent.Begin::name) { definition ->
+                definition.parameters.joinToString(prefix = "(", postfix = ")") { it.value }
+            }
+    }
+
+    internal fun macroInvocation(root: MipsFile, head: PsiElement, source: String): MacroInvocation? {
+        if (DumbService.isDumb(project)) return null
+        val prefix = editorPrefix(root, head.textOffset)
+        val tokens = expandedOperation(prefix, source, allowIncompleteOperand = true)
+            ?.takeUnless(TokenList::isEmpty) ?: return null
+        val definitions = visibleMacros(prefix) { it == tokens[0].value }
+        if (definitions.isEmpty()) return null
+        val fullTokens = expandedOperation(prefix, sourceLine(head), allowIncompleteOperand = true)
+        return MacroInvocation(tokens, fullTokens, definitions.map { definition -> definition.parameters.map { it.value } })
+    }
+
+    private fun visibleMacros(prefix: MipsSourceTimeline.Prefix, acceptsName: (String) -> Boolean): Collection<MipsSourceEvent.Begin> {
         val definitions = LinkedHashMap<Pair<String, Int>, MipsSourceEvent.Begin>()
         visitMacroPrefix(prefix.events) { definition ->
             val arity = definition.arity ?: return@visitMacroPrefix
             val name = definition.name
-            if (name.startsWith(namePrefix) && prefix.equivalence(name) == null) {
-                definitions[name to arity] = definition
-            }
+            if (acceptsName(name)) definitions[name to arity] = definition
         }
-        return definitions.values.groupBy(MipsSourceEvent.Begin::name) { definition ->
-            definition.parameters.joinToString(prefix = "(", postfix = ")") { it.value }
-        }
+        return definitions.values
     }
 
     internal fun expandedInstructionAlias(
