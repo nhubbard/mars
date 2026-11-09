@@ -778,9 +778,16 @@ Evaluate Expression and Watches use the selected frame's captured registers and
 assembled symbols. Expressions accept CPU register names and numbers, `pc`, `hi`,
 `lo`, Coprocessor 0 numbers such as `cp0.$14`, floating-point registers, and `FCC`.
 Local labels use the active instruction's assembly entry, then global labels.
-The existing assembly expression parser handles numeric and character literals,
-parentheses, and unary or binary `+` and `-`. Integer arithmetic wraps to 32 bits
-and displays hexadecimal. Floating-point arithmetic displays a decimal result.
+The generated parser has an expression entry point for the debugger. It accepts
+one complete expression with numeric and character literals, parentheses, unary
+and binary `+` and `-`, and `==`, `!=`, `<`, `<=`, `>`, and `>=`. Arithmetic binds
+more tightly than relational operators, which bind more tightly than equality.
+Only the debugger lexer emits comparison tokens. The assembly editor continues
+to reject them in source operands and recover at the next line.
+
+Integer arithmetic wraps to 32 bits and displays hexadecimal. Floating-point
+arithmetic displays a decimal result. Comparisons use signed integer values or
+the decoded floating-point value, and return `0x00000001` or `0x00000000`.
 
 Scalar evaluation operates on the paused frame's snapshot. Explicit `byte(address)`,
 `half(address)`, and `word(address)` reads run on the simulator worker that owns the
@@ -794,6 +801,7 @@ The native Breakpoints dialog uses the same editor for conditions and log expres
 Both evaluate at the instruction boundary using the captured registers and the stopped
 machine's memory. Zero skips the breakpoint and its log expression. A nonzero result
 passes the condition. Invalid conditions report an error and execution continues.
+For example, `word($t3) != 7` skips the breakpoint when the word at `$t3` is seven.
 An invalid log expression reports an error and the breakpoint still follows its suspend
 policy. XDebugger handles valid log output, dependencies, and the decision to suspend.
 A platform test verifies false and true conditions, the exact logged values, both error

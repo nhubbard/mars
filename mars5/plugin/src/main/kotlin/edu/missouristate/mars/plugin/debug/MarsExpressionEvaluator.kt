@@ -4,10 +4,12 @@ import com.intellij.lang.ASTNode
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.project.Project
+import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
+import com.intellij.platform.syntax.psi.createSyntaxGeneratedParserRuntime
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.SyntaxTraverser
+import com.intellij.psi.TokenType
 import com.intellij.psi.tree.TokenSet
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
 import edu.missouristate.mars.ErrorList
@@ -19,6 +21,9 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.MipsLanguage
+import edu.missouristate.mars.plugin.language.MipsLexer
+import edu.missouristate.mars.plugin.language.MipsSyntaxDefinition
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
@@ -86,13 +91,13 @@ internal class MarsExpressionEvaluator(
 
     private fun evaluateSource(source: String): Evaluation? {
         if (source.length > 1024 || source.any { it == '\r' || it == '\n' }) return null
-        // An assembly operand uses the same expression syntax. Require the entire input to be
-        // exactly one expression, excluding directive lists, repeats and comments.
-        val file = PsiFileFactory.getInstance(project).createFileFromText("watch.asm", MipsFileType, ".word $source")
-        val operand = SyntaxTraverser.psiTraverser(file).filterTypes { it == operandType }.firstOrNull() ?: return null
-        val expression = operand.node.firstChildNode
-        if (expression.text != source || PsiTreeUtil.hasErrorElements(file)) return null
-        return evaluateNode(expression)
+        val file = PsiFileFactory.getInstance(project).createFileFromText("watch.asm", MipsFileType, "")
+        val builder = PsiSyntaxBuilderFactory.getInstance().createBuilder(file.node, MipsLexer(debuggerExpression = true), text = source)
+        val runtime = createSyntaxGeneratedParserRuntime(MipsLanguage, builder.getSyntaxTreeBuilder())
+        MipsSyntaxDefinition().parse(MipsTypes.syntax.getValue("DEBUGGER_EXPRESSION"), runtime)
+        val root = builder.getTreeBuilt()
+        if (SyntaxTraverser.astTraverser(root).filterTypes { it == TokenType.ERROR_ELEMENT }.firstOrNull() != null) return null
+        return evaluateNode(root.firstChildNode)
     }
 
     private fun evaluateNode(node: ASTNode): Evaluation? = when (node.elementType) {
@@ -111,15 +116,12 @@ internal class MarsExpressionEvaluator(
             val (operator, operand) = node.getChildren(expressionParts)
             evaluateNode(operand)?.let { if (operator.elementType == minusType) it.map(Scalar::negated) else it }
         }
-        addType -> {
+        addType, equalityType, relationType -> {
             val (left, operator, right) = node.getChildren(expressionParts)
             val leftValue = evaluateNode(left)
             val rightValue = evaluateNode(right)
             if (leftValue == null || rightValue == null) null
-            else {
-                val subtract = operator.elementType == minusType
-                combine(leftValue, rightValue) { a, b -> a + if (subtract) b.negated() else b }
-            }
+            else combine(leftValue, rightValue, binaryOperations.getValue(operator.text))
         }
         // The remaining operand form is the parser's address expression, such as word(buffer+4).
         else -> memoryExpression(node)
@@ -179,16 +181,31 @@ internal class MarsExpressionEvaluator(
     }
 
     private companion object {
-        val operandType = MipsTypes.psi("OPERAND")
         val literalType = MipsTypes.psi("LITERAL_EXPR")
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")
         val addType = MipsTypes.psi("ADD_EXPR")
+        val equalityType = MipsTypes.psi("EQUALITY_EXPR")
+        val relationType = MipsTypes.psi("RELATIONAL_EXPR")
         val minusType = MipsTypes.psi("MINUS")
         val expressionParts = TokenSet.create(
             literalType, referenceType, groupType, unaryType, addType, MipsTypes.psi("ADDRESS_EXPR"),
-            MipsTypes.psi("PLUS"), minusType,
+            equalityType, relationType, MipsTypes.psi("PLUS"), minusType, MipsTypes.psi("EQUALITY"), MipsTypes.psi("RELATION"),
         )
+        // Every signed MIPS word is exactly representable as a Double. Mixed comparisons use
+        // the decoded floating-point value, including IEEE NaN and signed-zero semantics.
+        val binaryOperations = mapOf<String, (Scalar, Scalar) -> Scalar>(
+            "+" to { a, b -> a + b },
+            "-" to { a, b -> a + b.negated() },
+            "==" to { a, b -> truth(a.number == b.number) },
+            "!=" to { a, b -> truth(a.number != b.number) },
+            "<" to { a, b -> truth(a.number < b.number) },
+            "<=" to { a, b -> truth(a.number <= b.number) },
+            ">" to { a, b -> truth(a.number > b.number) },
+            ">=" to { a, b -> truth(a.number >= b.number) },
+        )
+
+        fun truth(value: Boolean) = Word(if (value) 1 else 0)
     }
 }

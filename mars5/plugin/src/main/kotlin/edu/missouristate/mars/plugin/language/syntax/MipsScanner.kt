@@ -3,7 +3,7 @@ package edu.missouristate.mars.plugin.language.syntax
 enum class MipsTokenKind {
     SPACE, NEWLINE, COMMENT, WORD, DIRECTIVE, REGISTER, PARAMETER, NUMBER,
     STRING, CHARACTER, UNCLOSED_STRING, UNCLOSED_CHARACTER,
-    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, BAD_CHARACTER,
+    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, EQUALITY, RELATION, BAD_CHARACTER,
 }
 
 data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
@@ -19,7 +19,7 @@ object MipsScanner {
         }
     }
 
-    fun next(source: CharSequence, start: Int, end: Int = source.length): MipsToken? {
+    fun next(source: CharSequence, start: Int, end: Int = source.length, debuggerExpression: Boolean = false): MipsToken? {
         require(start >= 0 && start <= end && end <= source.length) { "Invalid scanning range" }
         if (start == end) return null
         val first = source[start]
@@ -66,6 +66,15 @@ object MipsScanner {
                 ')' -> MipsTokenKind.RIGHT_PAREN
                 '+' -> MipsTokenKind.PLUS
                 else -> MipsTokenKind.MINUS
+            }
+            debuggerExpression && first in "<>=!" -> {
+                val hasEquals = position < end && source[position] == '='
+                if (hasEquals) position++
+                when {
+                    first in "<>" -> MipsTokenKind.RELATION
+                    hasEquals -> MipsTokenKind.EQUALITY
+                    else -> MipsTokenKind.BAD_CHARACTER
+                }
             }
             first == '%' -> {
                 // MARS accepts any percent-prefixed token as a parameter name.

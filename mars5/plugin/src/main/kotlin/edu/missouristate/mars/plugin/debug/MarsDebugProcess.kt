@@ -8,7 +8,10 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -35,6 +38,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.MipsSyntaxHighlighter
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
@@ -298,8 +302,16 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
 internal object MarsDebugEditors : XDebuggerEditorsProvider() {
     override fun getFileType() = MipsFileType
-    override fun createDocument(project: Project, expression: XExpression, sourcePosition: XSourcePosition?, mode: EvaluationMode) =
-        EditorFactory.getInstance().createDocument(expression.expression)
+    override fun createDocument(
+        project: Project, expression: XExpression, sourcePosition: XSourcePosition?, mode: EvaluationMode, purpose: String?,
+    ) = EditorFactory.getInstance().createDocument(expression.expression)
+
+    override fun afterEditorCreated(editor: Editor?) {
+        if (editor !is EditorEx) return
+        editor.highlighter = EditorHighlighterFactory.getInstance().createEditorHighlighter(
+            MipsSyntaxHighlighter(debuggerExpression = true), editor.colorsScheme,
+        )
+    }
 }
 
 internal class MarsSuspendContext(

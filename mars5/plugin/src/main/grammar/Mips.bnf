@@ -32,6 +32,8 @@
     RIGHT_PAREN=")"
     PLUS="+"
     MINUS="-"
+    EQUALITY="regexp:==|!="
+    RELATION="regexp:<=|>=|<|>"
   ]
 }
 file ::= (NEWLINE | statement)*
@@ -84,7 +86,11 @@ private substitutable_operand_token ::= WORD | DOLLAR_WORD | PARAMETER
 operand_list ::= operand+
 operand ::= expr repetition?
 repetition ::= COLON expr {pin=1}
-expr ::= add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+// The debugger lexer alone emits comparison tokens. Assembly retains its operand grammar.
+debugger_expression ::= expr <<eof>> {extraRoot=true}
+expr ::= equality_expr | relational_expr | add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+equality_expr ::= expr EQUALITY expr {pin=2}
+relational_expr ::= expr RELATION expr {pin=2}
 add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS) expr
 address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}

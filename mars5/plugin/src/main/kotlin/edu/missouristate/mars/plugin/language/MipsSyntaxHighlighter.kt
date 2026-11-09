@@ -10,7 +10,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.syntax.psi.lexer.LexerAdapter
 import com.intellij.psi.tree.IElementType
 
-class MipsSyntaxHighlighter : SyntaxHighlighterBase() {
+class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : SyntaxHighlighterBase() {
     private val colors = buildMap<IElementType, TextAttributesKey> {
         for (name in listOf("DIRECTIVE", "MACRO", "END_MACRO", "EQV", "INCLUDE", "SET", "SEGMENT", "EXTERN")) {
             put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.KEYWORD)
@@ -23,10 +23,10 @@ class MipsSyntaxHighlighter : SyntaxHighlighterBase() {
         put(MipsTypes.psi("PARAMETER"), DefaultLanguageHighlighterColors.PARAMETER)
         put(MipsTypes.psi("COMMA"), DefaultLanguageHighlighterColors.COMMA)
         for (name in listOf("LEFT_PAREN", "RIGHT_PAREN")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.PARENTHESES)
-        for (name in listOf("PLUS", "MINUS")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        for (name in listOf("PLUS", "MINUS", "EQUALITY", "RELATION")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.OPERATION_SIGN)
     }
 
-    override fun getHighlightingLexer() = LexerAdapter(MipsLexer(), MipsTypes.converter)
+    override fun getHighlightingLexer() = LexerAdapter(MipsLexer(debuggerExpression), MipsTypes.converter)
     override fun getTokenHighlights(tokenType: IElementType) = pack(colors[tokenType])
 }
 

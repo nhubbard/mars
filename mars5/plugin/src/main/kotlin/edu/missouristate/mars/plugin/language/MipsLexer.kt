@@ -12,7 +12,7 @@ import edu.missouristate.mars.plugin.language.syntax.MipsToken
 import edu.missouristate.mars.plugin.language.syntax.MipsTokenKind
 import java.util.TreeSet
 
-class MipsLexer : LexerBase() {
+class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
     private var buffer: CharSequence = ""
     private var limit = 0
     private var token: MipsToken? = null
@@ -20,7 +20,7 @@ class MipsLexer : LexerBase() {
     override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
         this.buffer = buffer
         limit = endOffset
-        token = MipsScanner.next(buffer, startOffset, endOffset)
+        token = MipsScanner.next(buffer, startOffset, endOffset, debuggerExpression)
     }
 
     override fun getState() = 0
@@ -28,10 +28,13 @@ class MipsLexer : LexerBase() {
     override fun getTokenEnd() = token?.end ?: limit
     override fun getBufferSequence() = buffer
     override fun getBufferEnd() = limit
-    override fun advance() { token = MipsScanner.next(buffer, getTokenEnd(), limit) }
+    override fun advance() { token = MipsScanner.next(buffer, getTokenEnd(), limit, debuggerExpression) }
 
     override fun getTokenType(): SyntaxElementType? {
         val current = token ?: return null
+        if (debuggerExpression && (current.kind == MipsTokenKind.COMMA || current.kind == MipsTokenKind.COMMENT)) {
+            return MipsSyntaxTypes.BAD_CHARACTER
+        }
         return when (current.kind) {
             MipsTokenKind.SPACE -> SyntaxTokenTypes.WHITE_SPACE
             MipsTokenKind.DIRECTIVE -> when (Directives.matchDirective(textOf(current))) {

@@ -27,6 +27,9 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
@@ -64,6 +67,7 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import javax.swing.JButton
 import kotlin.time.Duration.Companion.milliseconds
@@ -386,13 +390,34 @@ class MarsDebugPlatformTest {
                     "(\$t1 + 0.5) - 1" to "2.5",
                     "\$f1 + 1" to "2.9375",
                     "-1.5" to "-1.5",
+                    "\$t0==-2" to "0x00000001",
+                    "\$t0==2" to "0x00000000",
+                    "\$t0 != 2" to "0x00000001",
+                    "\$t0 != -2" to "0x00000000",
+                    "\$t0<0" to "0x00000001",
+                    "\$t0< -2" to "0x00000000",
+                    "\$t0 <= -2" to "0x00000001",
+                    "\$t0 <= -3" to "0x00000000",
+                    "\$t0 > -3" to "0x00000001",
+                    "\$t0 > 0" to "0x00000000",
+                    "\$t0 >= -2" to "0x00000001",
+                    "\$t0 >= 0" to "0x00000000",
+                    "1 == 2 < 3 + 1" to "0x00000001",
+                    "(1 + (2 < 3)) == 2" to "0x00000001",
+                    "3 > 2 > 0" to "0x00000001",
+                    "\$f1 > 1" to "0x00000001",
+                    "NaN != NaN" to "0x00000001",
+                    "NaN >= 0" to "0x00000000",
+                    "-0.0 == 0.0" to "0x00000001",
+                    "'<' < '>'" to "0x00000001",
                 )
                 for ((expression, expected) in expressions) {
                     assertEquals(expected, evaluate(debug.session, second, expression), expression)
                 }
                 for (expression in listOf("", "1".repeat(1025), "1\n2", "1\r2", "1,2", "1+", "\"text\"",
-                    "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3")) {
-                    assertEquals("Enter a register, label, number, or an expression using + and -.",
+                    "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3",
+                    "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2")) {
+                    assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.",
                         evaluate(debug.session, second, expression), expression)
                 }
                 assertEquals("0xfffffffe", evaluate(debug.session, second, "\$t0"))
@@ -455,14 +480,17 @@ class MarsDebugPlatformTest {
                     "byte(buffer+1) + 1" to "0x00000034",
                     "1 - byte(buffer)" to "0xffffffbd",
                     "-byte(buffer)" to "0xffffffbc",
+                    "word(buffer) == 0x11223344" to "0x00000001",
+                    "byte(buffer) < half(buffer)" to "0x00000001",
+                    "word(buffer + (1 != 1))" to "0x11223344",
                 )
                 for ((expression, value) in expected) assertEquals(value, evaluate(debug.session, frame, expression), expression)
                 for (expression in listOf("word(buffer+1)", "half(buffer+1)", "word(1.5)", "word(0)",
-                    "-word(0)", "word(0)+1", "1+word(0)", "word(word(0))")) {
+                    "-word(0)", "word(0)+1", "1+word(0)", "word(word(0))", "word(0) != 1", "1 == word(0)")) {
                     assertEquals("The memory address is invalid, unaligned, or unavailable.",
                         evaluate(debug.session, frame, expression), expression)
                 }
-                assertEquals("Enter a register, label, number, or an expression using + and -.",
+                assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.",
                     evaluate(debug.session, frame, "word(unknown)"))
                 debug.session.stepInto()
                 frame
@@ -748,6 +776,31 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `debugger editor highlights comparison operators with the expression lexer`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = "\$t0 != 7 < 8"
+            val expression = XDebuggerUtil.getInstance().createExpression(source, null, null, EvaluationMode.EXPRESSION)
+            val document = MarsDebugEditors.createDocument(project, expression, null, EvaluationMode.EXPRESSION, "breakpoint")
+            val factory = EditorFactory.getInstance()
+            val editor = assertInstanceOf(EditorEx::class.java, factory.createEditor(document, project, MipsFileType, false))
+            try {
+                assertEquals(MipsTypes.psi("BAD_CHARACTER"), editor.highlighter.createIterator(source.indexOf('!')).tokenType)
+                assertDoesNotThrow { MarsDebugEditors.afterEditorCreated(null) }
+                MarsDebugEditors.afterEditorCreated(editor)
+                val expected = editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.OPERATION_SIGN)
+                val equality = editor.highlighter.createIterator(source.indexOf('!'))
+                val relation = editor.highlighter.createIterator(source.indexOf('<'))
+                assertEquals(MipsTypes.psi("EQUALITY"), equality.tokenType)
+                assertEquals(MipsTypes.psi("RELATION"), relation.tokenType)
+                assertEquals(expected, equality.textAttributes)
+                assertEquals(expected, relation.textAttributes)
+            } finally {
+                factory.releaseEditor(editor)
+            }
+        }
+    }
+
+    @Test
     fun `native conditions and log expressions use the machine state before the instruction`() = timeoutRunBlocking<Unit> {
         val source = """
             .data
@@ -782,7 +835,7 @@ class MarsDebugPlatformTest {
                 val trueHit = addBreakpoint(file, 9)
                 assertSame(MarsDebugEditors, breakpointType.getEditorsProvider(trueHit, project))
                 WriteAction.run<RuntimeException> {
-                    falseHit.setCondition("word(flag)")
+                    falseHit.setCondition("word(flag) != 0")
                     falseHit.setLogExpression("0x11111111")
                     badCondition.setCondition("unknown")
                     badCondition.setLogExpression("0x22222222")
@@ -792,7 +845,7 @@ class MarsDebugPlatformTest {
                     badLog.setLogExpression("word(flag+1)")
                     badLog.isLogMessage = true
                     badLog.suspendPolicy = SuspendPolicy.NONE
-                    trueHit.setCondition("word(flag) + \$t0 - 1")
+                    trueHit.setCondition("word(flag) == \$t0")
                     trueHit.setLogExpression("\$t0")
                 }
                 file
@@ -802,7 +855,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     assertEquals("0x00000001", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
                 }
-                assertEquals("Could not evaluate MIPS breakpoint condition. Enter a register, label, number, or an expression using + and -.", errors.receive())
+                assertEquals("Could not evaluate MIPS breakpoint condition. Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.", errors.receive())
                 assertEquals("Could not evaluate MIPS breakpoint log expression. The memory address is invalid, unaligned, or unavailable.", errors.receive())
                 val console = withContext(Dispatchers.EDT) {
                     assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
