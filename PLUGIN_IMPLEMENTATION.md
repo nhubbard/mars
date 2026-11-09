@@ -392,6 +392,15 @@ embedded comment markers inside data strings and preserves the complete raw
 the indexed include path with the core tokenizer. Both symbol indexes and the
 include index rebuild with the updated lexer.
 
+## Segment switch directives
+
+The native parser keeps the full operand text of `.data`, `.kdata`, `.text`,
+and `.ktext`, including punctuation in the suffix the assembler ignores.
+Only the first operand can select a new address. The reference index records
+a leading symbol as an equivalence candidate and skips symbols in the ignored
+suffix. The assembler-backed fixture checks the resulting user and kernel
+instruction addresses and stored data.
+
 ## Directive parity fixture
 
 A two-file fixture assembles and parses every directive listed by the Java core,

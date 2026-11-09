@@ -59,6 +59,9 @@ class MipsReferenceIndexPlatformTest {
             .word ${'$'}gcc
             .float NaN, Infinity
             .set noat ), :
+            .data DATA_ADDRESS trailing
+            .text ${'$'}textAddress unused
+            .kdata 0x90000020 ignored
             li ${'$'}v0, invalid%name
             .asciiz "literal"
             # comment
@@ -93,13 +96,17 @@ class MipsReferenceIndexPlatformTest {
                 sites(".emit"),
             )
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
+            for (name in listOf("DATA_ADDRESS", "\$textAddress")) {
+                assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
+            }
             for (name in listOf("Alias", "Literal", "local", "top", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
+                "trailing", "unused", "ignored",
                 "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s")) {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(5, extension.version)
+            assertEquals(6, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

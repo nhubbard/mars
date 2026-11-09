@@ -365,6 +365,45 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `segment switches use one address and accept assembler-ignored suffixes`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv USER_DATA 0x10010020
+            .DaTa USER_DATA, ), :
+            .word 11
+            .kdata 0x90000020 ) ignored
+            .word 22
+            .ktext 0x80000020 : (
+            nop
+            .text 0x00400020 )
+            nop
+        """.trimIndent() + "\n"
+        val context = project.get().service<MarsSessionService>().context
+        val path = directory.resolve("segments.asm").also { it.writeText(source) }
+        val program = context.assemble(listOf(path), null, true, false)
+        val memory = context.memory
+        assertEquals(
+            listOf(memory.textBaseAddress + 32, memory.kernelTextBaseAddress + 32),
+            program.machineList.map { it.address },
+        )
+        assertEquals(11, memory.getWordNoNotify(memory.dataBaseAddress + 32))
+        assertEquals(22, memory.getWordNoNotify(memory.kernelDataBaseAddress + 32))
+        readAction {
+            val file = assertParses(source)
+            val directives = descendants(file.node, "DIRECTIVE_STATEMENT")
+                .filter { it.firstChildNode.elementType == MipsTypes.psi("SEGMENT") }
+            assertEquals(
+                listOf(".DaTa USER_DATA, ), :", ".kdata 0x90000020 ) ignored", ".ktext 0x80000020 : (", ".text 0x00400020 )"),
+                directives.map { it.text }.toList(),
+            )
+            assertEquals(listOf("USER_DATA"), descendants(file.node, "SEGMENT_ADDRESS_SYMBOL").map { it.text }.toList())
+            assertArrayEquals(
+                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
+                MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("SEGMENT")),
+            )
+        }
+    }
+
+    @Test
     fun `every core directive parses and assembles in ordinary and comma-heavy source`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv WORD_VALUE 7
@@ -418,7 +457,7 @@ class MipsParserPlatformTest {
             assertTrue(program.assemblyDiagnostics.errorMessages.single().message.contains(".set"))
 
             readAction {
-                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET").map(MipsTypes::psi).toSet()
+                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET", "SEGMENT").map(MipsTypes::psi).toSet()
                 val parsed = listOf(entry, included).flatMap { text ->
                     SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
                 }.toSet()
