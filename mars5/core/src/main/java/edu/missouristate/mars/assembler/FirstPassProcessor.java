@@ -198,7 +198,7 @@ final class FirstPassProcessor {
   // operand on .text directive. Will generate error message for each one that occurs.
 
   void detectLabels(TokenList tokens, Macro current) {
-    if (tokenListBeginsWithLabel(tokens)) {
+    if (tokens.beginsWithLabel()) {
       current.addLabel(tokens.get(0).getValue());
     }
   }
@@ -225,7 +225,7 @@ final class FirstPassProcessor {
    * be modified.
    */
   void stripLabels(TokenList tokens, SourceLine physicalLine, Origin caller, Set<String> renamedLabels) {
-    if (!tokenListBeginsWithLabel(tokens)) {
+    if (!tokens.beginsWithLabel()) {
       return;
     }
     Token token = tokens.get(0);
@@ -243,16 +243,6 @@ final class FirstPassProcessor {
         renamedLabels.contains(token.getValue()),
         errors);
   } // parseLabel()
-
-  private boolean tokenListBeginsWithLabel(TokenList tokens) {
-    // 2-July-2010. DPS. Remove prohibition of operator names as labels
-    if (tokens.size() < 2) {
-      return false;
-    }
-    return (tokens.get(0).getType() == TokenTypes.IDENTIFIER
-            || tokens.get(0).getType() == TokenTypes.OPERATOR)
-        && tokens.get(1).getType() == TokenTypes.COLON;
-  }
 
   // //////////////////////////////////////////////////////////////////////////////////
   // This source code line is a directive, not a MIPS instruction. Let's carry it out.

@@ -129,6 +129,13 @@ public class TokenList implements Cloneable {
     return tokenList.isEmpty();
   }
 
+  /** Whether the assembler can consume one leading label and colon from this line. */
+  public boolean beginsWithLabel() {
+    return size() >= 2
+        && (get(0).getType() == TokenTypes.IDENTIFIER || get(0).getType() == TokenTypes.OPERATOR)
+        && get(1).getType() == TokenTypes.COLON;
+  }
+
   /**
    * Get a String representing the token list.
    *

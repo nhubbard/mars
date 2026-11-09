@@ -359,6 +359,13 @@ diagnostics for unmatched macro boundaries after include and equivalence expansi
 The clean sandbox launch ran all 1,257 tests, loaded the plugin, and opened the smoke project.
 The installable distribution was rebuilt after startup verification.
 
+Macro navigation also binds operation candidates that expand to `.macro` or `.end_macro` in
+the include-ordered source prefix. A call or formal use resolves to the written opening alias
+when the signature came from expansion. The alias itself still resolves to its `.eqv` definition.
+The physical PSI and indexes retain the source spelling. Expansion uses the core tokenizer and
+the same leading-label rule as assembly, including the rule that labels inside a macro body do
+not expose a following closing directive.
+
 ## Macro parameter spellings
 
 Macro signatures preserve parentheses and commas as tokens. The assembler ignores those tokens

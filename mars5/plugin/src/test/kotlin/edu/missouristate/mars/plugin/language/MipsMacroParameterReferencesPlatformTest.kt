@@ -102,6 +102,19 @@ class MipsMacroParameterReferencesPlatformTest {
         assertEquals(header.indexOf("%Value"), target()?.offset)
     }
 
+    @Test
+    fun `parameters in an aliased macro body navigate to its physical opening token`() = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv START .macro\n.eqv STOP .end_macro\n"
+        val header = "START emit (%value)\n"
+        val use = "li \$t0, %val<caret>ue\n"
+        configure("$aliases$header$use" + "STOP\n")
+        assertEquals(Target("macro-parameters.asm", "START", aliases.length), target())
+        configure("$aliases${header}STOP\n$use")
+        assertNull(target())
+        configure("$aliases${header.replace("%value", "%val<caret>ue")}STOP\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+    }
+
     private data class Target(val file: String, val text: String, val offset: Int)
 
     private suspend fun configure(source: String) {

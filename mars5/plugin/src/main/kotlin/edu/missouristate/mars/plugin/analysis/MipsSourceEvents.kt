@@ -25,7 +25,7 @@ internal sealed interface MipsSourceEvent {
     class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
         private val tokens = macroLineTokens(declaration)
-        private val direct = macroSignature(declaration, tokens, expanded = false)
+        private val direct = macroSignature(declaration, tokens, 0, expanded = false)
 
         fun bind(replacement: (String) -> String?): Begin? {
             val needsExpansion = (0 until tokens.size()).any {
@@ -39,15 +39,37 @@ internal sealed interface MipsSourceEvent {
             )
             expanded.discardTrailingComment()
             if (errors.errorsOccurred()) return null
-            expanded.remove(0) // The physical .macro directive is not part of the signature.
-            return macroSignature(declaration, expanded, expanded = true)
+            return macroSignature(declaration, expanded, 1, expanded = true)
+        }
+    }
+
+    class OperationCandidate(private val head: PsiElement) : MipsSourceEvent {
+        override val offset = head.textOffset
+        private val name = head.text
+
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): MipsSourceEvent? {
+            if (replacement(name) == null) return null
+            val errors = ErrorList()
+            val tokens = Tokenizer.tokenizeWithEquivalences(
+                sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
+            )
+            if (errors.errorsOccurred()) return null
+            tokens.discardTrailingComment()
+            // In an open macro a label is part of the body, even before a closing directive.
+            val operation = if (!inMacro && tokens.beginsWithLabel()) 2 else 0
+            if (operation >= tokens.size()) return null
+            return when (Directives.matchDirective(tokens[operation].value)) {
+                Directives.MACRO -> macroSignature(head, tokens, operation + 1, expanded = true)
+                Directives.END_MACRO -> End(offset).takeIf { tokens.size() == operation + 1 }
+                else -> null
+            }
         }
     }
 
     data class Begin(
-        val declaration: MipsDeclaration, val name: String, val parameters: List<Token>, val expanded: Boolean,
+        val header: PsiElement, val name: String, val parameters: List<Token>, val expanded: Boolean,
     ) : MipsSourceEvent {
-        override val offset = declaration.textOffset
+        override val offset = header.textOffset
         val arity: Int get() = parameters.size
     }
 
@@ -65,9 +87,10 @@ internal sealed interface MipsSourceEvent {
 }
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
+private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
 private val sourceEventTypes = setOf(
     MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
-    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"),
+    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), operationCandidate,
 )
 private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
@@ -87,11 +110,13 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                     add(MipsSourceEvent.Declaration(element))
                 }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
-                else -> if (element.node.elementType == directiveStatement) {
-                    val directive = Directives.matchDirective(element.firstChild.text)
-                    if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
-                } else if (isMacroEnd(element)) {
-                    add(MipsSourceEvent.End(element.textOffset))
+                else -> when (element.node.elementType) {
+                    operationCandidate -> add(MipsSourceEvent.OperationCandidate(element.firstChild))
+                    directiveStatement -> {
+                        val directive = Directives.matchDirective(element.firstChild.text)
+                        if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
+                    }
+                    else -> if (isMacroEnd(element)) add(MipsSourceEvent.End(element.textOffset))
                 }
             }
         }
@@ -116,12 +141,12 @@ internal fun TokenList.discardTrailingComment() {
     if (this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
-private fun macroSignature(declaration: MipsDeclaration, tokens: TokenList, expanded: Boolean): MipsSourceEvent.Begin? {
-    if (tokens[0].type != TokenTypes.IDENTIFIER) return null
-    val arguments = (1 until tokens.size()).map(tokens::get)
+private fun macroSignature(header: PsiElement, tokens: TokenList, nameIndex: Int, expanded: Boolean): MipsSourceEvent.Begin? {
+    if (nameIndex >= tokens.size() || tokens[nameIndex].type != TokenTypes.IDENTIFIER) return null
+    val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
     if (!arguments.all { Macro.tokenIsMacroParameter(it.value, true) }) return null
-    return MipsSourceEvent.Begin(declaration, tokens[0].value, arguments, expanded)
+    return MipsSourceEvent.Begin(header, tokens[nameIndex].value, arguments, expanded)
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

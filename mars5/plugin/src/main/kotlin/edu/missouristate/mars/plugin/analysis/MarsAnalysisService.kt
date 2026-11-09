@@ -227,7 +227,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return name.value.takeIf { name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR }
     }
 
-    internal fun macroTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
+    internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
         val offset = position.textOffset
         val selected = selectedPrefix(root, offset)
@@ -244,9 +244,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         tokens.discardTrailingComment()
         val name = tokens[0].value
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
-        var target: MipsDeclaration? = null
+        var target: PsiElement? = null
         val open = visitMacroPrefix(selected?.asSequence() ?: sourcePrefix(root, offset)) { definition ->
-            if (definition.arity == arity && definition.name == name) target = definition.declaration
+            if (definition.arity == arity && definition.name == name) target = definition.header
         }
         return target.takeIf { open == null }
     }
@@ -254,13 +254,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
         if (DumbService.isDumb(project)) return null
-        val macro = visitMacroPrefix(editorPrefix(root, position.textOffset)) {} ?: return null
+        // A parameter on an aliased opening line is a formal, before that line opens the scope.
+        val lineStart = CharArrayUtil.shiftBackwardUntil(root.viewProvider.contents, position.textOffset - 1, "\r\n") + 1
+        val macro = visitMacroPrefix(editorPrefix(root, lineStart)) {} ?: return null
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parameters.firstOrNull { it.value == name } ?: return emptyList()
         // Expanded token columns need not correspond to a physical token in the header.
-        if (macro.expanded) return listOf(macro.declaration)
-        return listOfNotNull(macro.declaration.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
+        if (macro.expanded) return listOf(macro.header)
+        return listOfNotNull(macro.header.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
     }
 
     private fun visitMacroPrefix(events: Sequence<MipsSourceEvent>, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
@@ -324,6 +326,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val initial = if (entryFile == activeFile) physicalPrefix.iterator() else mipsSourceEvents(entry).iterator()
         val pending = ArrayDeque(listOf(initial))
         val equivalences = PhysicalEquivalences()
+        var inMacro = false
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val events = pending.last()
@@ -331,13 +334,18 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 pending.removeLast()
                 continue
             }
-            val event = events.next()
-            if (event is MipsSourceEvent.Header) {
-                event.bind(equivalences::replacement)?.let { yield(it) }
-                continue
+            val event = when (val physical = events.next()) {
+                is MipsSourceEvent.Header -> physical.bind(equivalences::replacement) ?: continue
+                is MipsSourceEvent.OperationCandidate -> physical.bind(inMacro, equivalences::replacement) ?: continue
+                else -> physical
             }
-            if (event is MipsSourceEvent.Declaration && event.declaration.kind == SymbolKind.CONSTANT) {
-                event.declaration.name?.let { equivalences.define(it, event.declaration) }
+            when (event) {
+                is MipsSourceEvent.Begin -> inMacro = true
+                is MipsSourceEvent.End -> inMacro = false
+                is MipsSourceEvent.Declaration -> if (event.declaration.kind == SymbolKind.CONSTANT) {
+                    event.declaration.name?.let { equivalences.define(it, event.declaration) }
+                }
+                else -> Unit
             }
             yield(event)
             if (event is MipsSourceEvent.Include) {

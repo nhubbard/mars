@@ -120,6 +120,48 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    fun `aliased macro boundaries follow include order and navigate to their written opener`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
+        val header = "entry: START emit (%value)\n"
+        val body = "addiu \$t0, \$zero, %value\n"
+        val footer = "STOP # done\n"
+        val include = ".include \"aliases.s\"\n.include \"open.s\"\n"
+        val close = ".include \"close.s\"\n"
+        val call = "em<caret>it(7)\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.s", definitions)
+            fixture.addFileToProject("open.s", header + body)
+            fixture.addFileToProject("close.s", footer)
+        }
+        assertEquals(Target("open.s", header.indexOf("START"), null), target("$include$close$call"))
+        assertNull(target("$include$call$close"))
+        assertEquals(SymbolKind.CONSTANT, target("${definitions}entry: ST<caret>ART emit (%value)\n")?.kind)
+        assertEquals(SymbolKind.CONSTANT, target("$include ST<caret>OP\n")?.kind)
+
+        for ((name, text) in mapOf("aliases.s" to definitions, "open.s" to header + body, "close.s" to footer)) {
+            directory.resolve(name).writeText(text)
+        }
+        val entry = directory.resolve("entry.asm").also { it.writeText("$include$close${call.replace("<caret>", "")}") }
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
+    fun `expanded macro boundaries honor labels and reject malformed substitutions`() = timeoutRunBlocking<Unit> {
+        val call = "em<caret>it(1)\n"
+        val aliases = ".eqv START entry: .macro emit (%value)\n.eqv STOP .end_macro\n"
+        val opening = aliases + "START\n"
+        assertEquals(Target("macro-call.asm", aliases.length, null), target("${opening}STOP\n$call"))
+        for (badClose in listOf("local: STOP", "STOP extra")) {
+            assertNull(target("$opening$badClose\n$call"), badClose)
+        }
+        for (replacement in listOf("nop", "local:", ".macro", ".macro nop (%value)", ".macro emit (bare)", "LOOP")) {
+            val badOpening = ".eqv LOOP START\n.eqv START $replacement\n"
+            assertNull(target("$badOpening${aliases.substringAfter('\n')}START\nSTOP\n$call"), replacement)
+        }
+    }
+
+    @Test
     fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking<Unit> {
         val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
         assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))
@@ -160,7 +202,7 @@ class MipsMacroReferencesPlatformTest {
         }
     }
 
-    private data class Target(val file: String, val offset: Int, val kind: SymbolKind)
+    private data class Target(val file: String, val offset: Int, val kind: SymbolKind?)
 
     private suspend fun target(source: String): Target? {
         withContext(Dispatchers.EDT) { fixture.configureByText("macro-call.asm", source) }
@@ -168,8 +210,8 @@ class MipsMacroReferencesPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         return readAction {
             val declaration = GotoDeclarationAction.findTargetElement(current, fixture.editor, fixture.editor.caretModel.offset)
-                as? MipsDeclaration ?: return@readAction null
-            Target(declaration.containingFile.name, declaration.textOffset, declaration.kind)
+                ?: return@readAction null
+            Target(declaration.containingFile.name, declaration.textOffset, (declaration as? MipsDeclaration)?.kind)
         }
     }
 }
