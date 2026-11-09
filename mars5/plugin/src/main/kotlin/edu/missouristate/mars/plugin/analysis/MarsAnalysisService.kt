@@ -101,39 +101,52 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return lookup(candidate.first, candidate.second)
     }
 
-    /** Joins physical names with the last compatible assembly for this entry. */
+    /** Joins physical and equivalence-generated names with the last compatible assembly. */
     internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
-        for (scope in labelScopes(root, macroOffset(position))) {
-            for ((name, sites) in declarations(scope.file)) {
-                ProgressManager.checkCanceled()
-                if (name.startsWith(prefix) && sites.any { scope.hasLiteralLabel(name, it) }) {
-                    add(name)
+        if (!DumbService.isDumb(project)) {
+            val timeline = editorTimeline(root)
+            for (scope in labelScopes(root, macroOffset(position))) {
+                for ((name, sites) in declarations(scope.file)) {
+                    ProgressManager.checkCanceled()
+                    if (name.startsWith(prefix) && sites.any { scope.hasLiteralLabel(name, it, timeline) }) add(name)
                 }
             }
+            val macro = timeline.macroAt(root, position.textOffset)
+            for ((name, labels) in timeline.generatedLabels) {
+                ProgressManager.checkCanceled()
+                if (name.startsWith(prefix) && labels.any { it.macro == null || it.macro === macro }) add(name)
+            }
+            timeline.externalStorage.keys.filterTo(this) { it.startsWith(prefix) }
         }
-        externalStorage(root).keys.filterTo(this) { it.startsWith(prefix) }
         addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix))
     }
 
     internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<PsiElement> {
         val name = position.text
-        val activeMacro = macroOffset(position)
-        val local = ArrayList<MipsDeclaration>()
-        val outer = ArrayList<MipsDeclaration>()
-        for (scope in labelScopes(root, activeMacro)) {
-            val sites = declarations(scope.file)[name].orEmpty()
-            for (site in sites) {
-                ProgressManager.checkCanceled()
-                if (!scope.hasLiteralLabel(name, site)) continue
-                val matches = if (scope.isMacroLocal(site)) local else outer
-                matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
+        val timeline = if (DumbService.isDumb(project)) null else editorTimeline(root)
+        if (timeline != null) {
+            val local = ArrayList<PsiElement>()
+            val outer = ArrayList<PsiElement>()
+            for (scope in labelScopes(root, macroOffset(position))) {
+                for (site in declarations(scope.file)[name].orEmpty()) {
+                    ProgressManager.checkCanceled()
+                    if (!scope.hasLiteralLabel(name, site, timeline)) continue
+                    val matches = if (scope.isMacroLocal(site)) local else outer
+                    matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
+                }
             }
+            val macro = timeline.macroAt(root, position.textOffset)
+            for (label in timeline.generatedLabels[name].orEmpty()) {
+                ProgressManager.checkCanceled()
+                if (label.macro == null) outer.add(label.site)
+                else if (label.macro === macro) local.add(label.site)
+            }
+            if (local.isNotEmpty()) return local
+            if (outer.isNotEmpty()) return outer
         }
-        if (local.isNotEmpty()) return local
-        if (outer.isNotEmpty()) return outer
         val built = builtLabelTarget(root, name, allowExternal)
         if (built != null) return listOf(built)
-        return if (allowExternal) listOfNotNull(externalStorage(root)[name]) else emptyList()
+        return if (allowExternal) listOfNotNull(timeline?.externalStorage?.get(name)) else emptyList()
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
@@ -172,9 +185,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
         return names.takeIf { valid }
     }
-
-    private fun externalStorage(root: MipsFile): Map<String, PsiElement> =
-        if (DumbService.isDumb(project)) emptyMap() else editorTimeline(root).externalStorage
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
@@ -321,15 +331,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun LabelScope.isMacroLocal(site: MipsDeclarationSite) = site.macroOffset != -1 || inheritedMacro
 
-    private fun LabelScope.hasLiteralLabel(name: String, site: MipsDeclarationSite): Boolean =
+    private fun LabelScope.hasLiteralLabel(name: String, site: MipsDeclarationSite, timeline: MipsSourceTimeline): Boolean =
         site.kind == SymbolKind.LABEL && visibleInMacro(site.macroOffset, macro) &&
-            !(isMacroLocal(site) && Macro.tokenIsMacroParameter(name, true))
+            !(isMacroLocal(site) && Macro.tokenIsMacroParameter(name, true)) && !timeline.replacesLabel(file, site.offset)
 
     private fun declarations(file: MipsFile) =
         FileBasedIndex.getInstance().getFileData(MipsDeclarationIndex.NAME, file.viewProvider.virtualFile, project)
 
     private fun labelScopes(root: MipsFile, activeMacro: Int): Sequence<LabelScope> = sequence {
-        if (DumbService.isDumb(project)) return@sequence
         val pending = ArrayDeque(listOf(LabelScope(root, activeMacro, false)))
         val visited = HashSet<VirtualFile>()
         while (pending.isNotEmpty()) {

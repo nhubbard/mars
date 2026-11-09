@@ -7,10 +7,12 @@ import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiPolyVariantReference
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.nio.file.Path
@@ -123,6 +125,72 @@ class MipsLabelReferencesPlatformTest {
         val entry = directory.resolve("entry.asm").also { it.writeText(include + branch.replace("<caret>", "")) }
         val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
         assertEquals(listOf(0x15000000, 0), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
+    fun `label aliases resolve to the written source before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv DEFINE .eqv\nDEFINE PREFIX generated:\nDEFINE ORIGINAL renamed\n"
+        val body = "PREFIX nop\nORIGINAL: nop\n"
+        val include = ".include \"aliases.s\"\n.include \"body.s\"\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.s", aliases)
+            fixture.addFileToProject("body.s", body)
+        }
+        for ((spelling, written) in listOf("gene<caret>rated" to "PREFIX", "rena<caret>med" to "ORIGINAL")) {
+            configure("${include}j $spelling\ninvalid %operand\n")
+            readAction {
+                val target = GotoDeclarationAction.findTargetElement(project.get(), fixture.editor, fixture.editor.caretModel.offset)
+                assertEquals("body.s", target?.containingFile?.name)
+                assertEquals(body.indexOf(written), target?.textOffset)
+            }
+        }
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(project.get()) { assertNull(referenceAtCaret()?.resolve()) }
+        }
+        configure("j gene<caret>rated\n.include \"body.s\"\n.include \"aliases.s\"\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+
+        directory.resolve("aliases.s").writeText(aliases)
+        directory.resolve("body.s").writeText(body)
+        val entry = directory.resolve("entry.asm").also { it.writeText("${include}.globl generated, renamed\nj generated\n") }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("generated"))
+        assertEquals(context.memory.textBaseAddress + 4, context.symbolTable.getAddress("renamed"))
+    }
+
+    @Test
+    fun `generated macro labels shadow outer labels only within their own expansion scope`() = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv INNER same:\n.eqv HIDDEN hidden:\n.eqv OPEN .macro emit\n.eqv CLOSE .end_macro\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("body.s", "INNER nop\nHIDDEN nop\n") }
+        val body = "${aliases}same: nop\nOPEN\n.include \"body.s\"\n"
+        configure("${body}j sa<caret>me\nCLOSE\n")
+        readAction { assertEquals("body.s", referenceAtCaret()?.resolve()?.containingFile?.name) }
+        configure("${body}CLOSE\nj sa<caret>me\n")
+        readAction { assertEquals(body.indexOf("same: nop"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure("${body}CLOSE\nj hid<caret>den\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+    }
+
+    @Test
+    fun `invalid expansions leave the written labels available for recovery`() = timeoutRunBlocking<Unit> {
+        configure("""
+            .eqv physical expanded
+            physical: .eqv LIMIT 7
+            .eqv invalid .data
+            invalid: nop
+            .eqv cycleA cycleB
+            .eqv cycleB cycleA
+            cycleA: nop
+            first: second: nop
+            j <caret>
+        """.trimIndent())
+        readAction {
+            val file = fixture.file as MipsFile
+            val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
+            val names = file.project.service<MarsAnalysisService>().labelCompletionNames(file, position, "")
+            assertEquals(setOf("physical", "invalid", "cycleA", "first", "second"), names)
+        }
     }
 
     private suspend fun configure(source: String) {

@@ -192,6 +192,50 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `completion exposes expanded labels and hides the replaced spelling`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("expanded-labels.asm", """
+                .eqv PREFIX labelGenerated:
+                .eqv labelOld labelRenamed
+                .eqv PRIVATE labelPrivate:
+                .eqv FORMAL ${'$'}labelParameter:
+                .eqv OTHER unrelated:
+                PREFIX nop
+                OTHER nop
+                labelOld: nop
+                .macro other
+                  PRIVATE nop
+                  FORMAL nop
+                .end_macro
+                j label<caret>
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("label") }
+            assertEquals(setOf("labelGenerated", "labelRenamed"), names.toSet())
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("expanded-macro-labels.asm", """
+                .eqv OPEN .macro emit
+                .eqv CLOSE .end_macro
+                .eqv PREFIX labelLocal:
+                labelOuter: nop
+                OPEN
+                  PREFIX nop
+                  j label<caret>
+                CLOSE
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("label") }
+            assertEquals(setOf("labelLocal", "labelOuter"), names.toSet())
+        }
+    }
+
+    @Test
     fun `catalog heads do not complete in comments strings operands or declaration names`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

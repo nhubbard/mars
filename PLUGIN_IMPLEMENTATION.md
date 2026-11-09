@@ -165,9 +165,13 @@ labels introduced by a nested include inside the macro. Duplicate candidates rem
 navigation targets. References are soft while build-context binding is still in progress.
 
 The resolver prioritizes visible equivalence definitions and skips SPIM macro parameters
-when looking for a direct label. Full expansion and multi-entry build binding remain separate from this physical
-scope query. The IDE fixtures check native target lookup, case sensitivity, nested includes,
-macro shadowing, duplicate declarations, and non-label operands.
+when looking for a direct label. The include-ordered source cache also records labels supplied
+by equivalence expansion. A generated prefix opens the written operation alias. A renamed
+physical label opens its declaration and appears in completion under the expanded spelling.
+Generated macro-local labels follow the expanded macro boundaries, including across includes.
+The IDE fixtures check these bindings alongside case sensitivity, macro shadowing, duplicate
+declarations, and non-label operands. Labels supplied by macro arguments still use assembly
+results.
 
 ## Go to Declaration for equivalences
 

@@ -7,10 +7,12 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import java.util.BitSet
+import java.util.TreeMap
 
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
@@ -19,6 +21,8 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val files = HashMap<VirtualFile, SourceFileEvents>()
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
+    val generatedLabels = LinkedHashMap<String, MutableList<GeneratedLabel>>()
+    val macroBoundaries = TreeMap<Int, MipsSourceEvent.Begin?>()
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
@@ -28,10 +32,14 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     }
 
     enter(entry)
-    var inMacro = false
+    var macro: MipsSourceEvent.Begin? = null
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
+    fun addLabel(name: String, site: PsiElement) {
+        if (macro != null && Macro.tokenIsMacroParameter(name, true)) return
+        generatedLabels.getOrPut(name, ::ArrayList).add(GeneratedLabel(site, macro))
+    }
     while (pending.isNotEmpty()) {
         ProgressManager.checkCanceled()
         val cursor = pending.last()
@@ -43,16 +51,28 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         val event = when (val physical = cursor.events.next()) {
             is MipsSourceEvent.Header -> physical.bind(replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> physical.bind(replacement) ?: continue
-            is MipsSourceEvent.OperationCandidate -> physical.bind(inMacro, replacement) ?: continue
+            is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
+            is MipsSourceEvent.LabelDeclaration -> {
+                val name = physical.expandedName(replacement) ?: continue
+                cursor.locations.replacedLabels.add(physical.offset)
+                addLabel(name, physical.declaration)
+                continue
+            }
             is MipsSourceEvent.Effective -> physical
         }
         val index = events.size
         cursor.locations.sites.add(SourceEventSite(event.offset, index))
         events.add(event)
         when (event) {
-            is MipsSourceEvent.Begin -> inMacro = true
-            is MipsSourceEvent.End -> inMacro = false
-            is MipsSourceEvent.DataDirective -> if (!inMacro) {
+            is MipsSourceEvent.Begin -> {
+                macro = macro ?: event
+                macroBoundaries[events.size] = macro
+            }
+            is MipsSourceEvent.End -> {
+                macro = null
+                macroBoundaries[events.size] = null
+            }
+            is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
                     Directives.DATA, Directives.KDATA -> inData = true
                     Directives.TEXT, Directives.KTEXT -> inData = false
@@ -60,7 +80,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
             }
             is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, IndexedEquivalence(index, event))
-            is MipsSourceEvent.External -> if (!inMacro) externalStorage.putIfAbsent(event.name, event.site)
+            is MipsSourceEvent.External -> if (macro == null) externalStorage.putIfAbsent(event.name, event.site)
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path)
                 if (included is MipsFile && included.viewProvider.virtualFile !in files) {
@@ -69,10 +89,11 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
             }
         }
-        if (!inMacro && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(events.size)
+        if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(events.size)
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(events, files, equivalences, integerDataPrefixes, externalStorage), dependencies,
+        MipsSourceTimeline(events, files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries),
+        dependencies,
     )
 }
 
@@ -82,15 +103,25 @@ internal class MipsSourceTimeline(
     private val equivalences: Map<String, IndexedEquivalence>,
     private val integerDataPrefixes: BitSet,
     val externalStorage: Map<String, PsiElement>,
+    val generatedLabels: Map<String, List<GeneratedLabel>>,
+    private val macroBoundaries: TreeMap<Int, MipsSourceEvent.Begin?>,
 ) {
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
+    fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
+
+    fun macroAt(file: MipsFile, offset: Int): MipsSourceEvent.Begin? = macroBoundaries.floorEntry(prefixEnd(file, offset))?.value
+
     fun prefix(file: MipsFile, offset: Int): Prefix {
+        val end = prefixEnd(file, offset)
+        return Prefix(events.subList(0, end), equivalences, end, integerDataPrefixes[end])
+    }
+
+    private fun prefixEnd(file: MipsFile, offset: Int): Int {
         val locations = files.getValue(file.viewProvider.virtualFile)
         val match = locations.sites.binarySearchBy(offset) { it.offset }
         val insertion = if (match >= 0) match else -match - 1
-        val end = locations.sites.getOrNull(insertion)?.index ?: locations.end
-        return Prefix(events.subList(0, end), equivalences, end, integerDataPrefixes[end])
+        return locations.sites.getOrNull(insertion)?.index ?: locations.end
     }
 
     class Prefix(
@@ -108,10 +139,13 @@ internal data class SourceEventSite(val offset: Int, val index: Int)
 
 internal class SourceFileEvents {
     val sites = ArrayList<SourceEventSite>()
+    val replacedLabels = HashSet<Int>()
     var end = 0
 }
 
 internal data class IndexedEquivalence(val index: Int, val definition: MipsSourceEvent.Equivalence)
+
+internal data class GeneratedLabel(val site: PsiElement, val macro: MipsSourceEvent.Begin?)
 
 private data class SourceCursor(val locations: SourceFileEvents, val events: Iterator<MipsSourceEvent>)
 

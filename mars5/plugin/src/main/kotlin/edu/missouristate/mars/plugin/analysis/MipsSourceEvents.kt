@@ -49,19 +49,22 @@ internal sealed interface MipsSourceEvent {
     class OperationCandidate(private val head: PsiElement) : MipsSourceEvent {
         override val offset = head.textOffset
         private val name = head.text
+        private val followsLabel = head.parent.parent.node.findChildByType(labelType) != null
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
             if (replacement(name) == null) return null
             val errors = ErrorList()
             val expanded = Tokenizer.expandLine(
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
             )
             if (errors.errorsOccurred()) return null
-            expanded.definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
             val tokens = expanded.tokens()
             tokens.discardTrailingComment()
+            val startsWithLabel = tokens.beginsWithLabel()
+            if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
+            expanded.definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
             // In an open macro a label is part of the body, even before a closing directive.
-            val operation = if (!inMacro && tokens.beginsWithLabel()) 2 else 0
+            val operation = if (!inMacro && startsWithLabel) 2 else 0
             if (operation >= tokens.size()) return null
             val directive = Directives.matchDirective(tokens[operation].value)
             return when (directive) {
@@ -71,6 +74,22 @@ internal sealed interface MipsSourceEvent {
                 in dataStateDirectives -> DataDirective(offset, directive)
                 else -> null
             }
+        }
+    }
+
+    class LabelDeclaration(val declaration: MipsDeclaration) : MipsSourceEvent {
+        override val offset = declaration.textOffset
+        private val name = declaration.name
+
+        fun expandedName(replacement: (String) -> String?): String? {
+            val original = name ?: return null
+            if (replacement(original) == null) return null
+            val errors = ErrorList()
+            val tokens = Tokenizer.tokenizeWithEquivalences(
+                sourceLine(declaration, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
+            )
+            if (errors.errorsOccurred() || !tokens.beginsWithLabel()) return null
+            return tokens[0].value.takeUnless { it == original }
         }
     }
 
@@ -114,9 +133,10 @@ internal sealed interface MipsSourceEvent {
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
 private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
+private val labelType = MipsTypes.psi("LABEL")
 private val sourceEventTypes = setOf(
     MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
-    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), operationCandidate,
+    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), operationCandidate, labelType,
 )
 private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
@@ -132,13 +152,16 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
             when (element) {
                 is MipsDeclaration -> when (element.kind) {
                     SymbolKind.MACRO -> add(MipsSourceEvent.Header(element))
+                    SymbolKind.LABEL -> if (element.parent.node.findChildByType(labelType) === element.node) {
+                        add(MipsSourceEvent.LabelDeclaration(element))
+                    }
                     SymbolKind.CONSTANT -> {
                         val name = element.name ?: continue
                         val replacement = Tokenizer.readEquivalenceReplacement(sourceLine(element, fromLineStart = true), name)
                             ?: continue
                         add(MipsSourceEvent.Equivalence(element, name, replacement))
                     }
-                    else -> add(MipsSourceEvent.ExternalDeclaration(element))
+                    SymbolKind.EXTERNAL -> add(MipsSourceEvent.ExternalDeclaration(element))
                 }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
                 else -> when (element.node.elementType) {
