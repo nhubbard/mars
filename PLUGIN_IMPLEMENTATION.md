@@ -1007,6 +1007,19 @@ source position. It uses the same worker predicate and expression evaluator as
 line breakpoints. When a logpoint and a suspending breakpoint share an address,
 the debugger processes the logpoint before suspending.
 
+## Instruction Counter
+
+Open **View → Tool Windows → MARS Tools** and select a Run or Debug execution.
+The counter shows completed machine instructions and the R, I, J, and other format
+counts and percentages. I-type includes conditional branches. The selector uses
+IntelliJ execution IDs and keeps the result available while its Run or Debug tab
+remains open.
+
+Each execution starts counting automatically. Disconnect pauses counting, Connect
+resumes it, and Reset clears the selected execution's counts. Backstepping keeps
+the accumulated counts. Executing an instruction again adds another event.
+The panel refreshes only while visible and reads a consistent snapshot.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

@@ -89,6 +89,7 @@ import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import java.awt.event.ActionEvent
@@ -201,6 +202,8 @@ class MarsDebugPlatformTest {
         }
         withDebug(entry) { debug ->
             debug.assertPausedAt(include, 2)
+            val counter = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler).instructionCounter
+            assertEquals(2L, counter.snapshot().total)
             assertEquals("", debug.stdout.toString())
             withContext(Dispatchers.EDT) {
                 val stack = requireNotNull(requireNotNull(debug.session.suspendContext).activeExecutionStack)
@@ -229,6 +232,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(include, 2)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             debug.assertPausedAt(include, 3)
+            assertEquals(3L, counter.snapshot().total)
             assertEquals("42", debug.stdout.toString())
             withContext(Dispatchers.EDT) {
                 debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(entry, 2)!!, false)
@@ -236,6 +240,7 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(entry, 2)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
+            assertEquals(6L, counter.snapshot().total)
         }
     }
 

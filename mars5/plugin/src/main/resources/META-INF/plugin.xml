@@ -3,6 +3,7 @@
   <name>MARS MIPS</name>
   <vendor>MARS contributors</vendor>
   <description>MIPS assembly and simulation services backed by an independent session per project.</description>
+  <resource-bundle>messages.MarsBundle</resource-bundle>
   <depends>com.intellij.modules.platform</depends>
   <dependencies>
     <module name="intellij.platform.buildView"/>
@@ -12,6 +13,8 @@
     <module name="intellij.platform.syntax.util"/>
   </dependencies>
   <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="MARS Tools" anchor="right" factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
+                icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
     <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s"/>
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
