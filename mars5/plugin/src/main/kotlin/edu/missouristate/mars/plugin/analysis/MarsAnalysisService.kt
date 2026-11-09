@@ -5,7 +5,6 @@ import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.editor.Document
-import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -60,6 +59,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     val snapshot: PublishedAnalysis get() = coordinator.snapshot
 
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
+
+    internal fun selectedAssemblyEntry(file: MipsFile): Path? {
+        val build = lastBuild.get() ?: return null
+        return build.entry.takeIf { build.sourcePath(file) != null }
+    }
 
     internal class SymbolBuild(val entry: Path)
 
@@ -143,7 +147,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
         val location = definition.origin().location()
         var target: Document? = null
-        val valid = build.validateSources { path, document, revision ->
+        val valid = build.revisions.validateSourceDocuments { path, document, revision ->
             if (path == location.file()) target = document
             document.modificationStamp == revision
         }
@@ -162,23 +166,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val activeSource = build.sourcePath(root) ?: return emptyList()
         val names = build.matchingNames(prefix)
         if (names.isEmpty()) return emptyList()
-        val valid = build.validateSources { path, document, revision ->
+        val valid = build.revisions.validateSourceDocuments { path, document, revision ->
             document.modificationStamp == revision ||
                 path == activeSource && preservesBuiltLabelNames(build.texts.getValue(path), document, offset)
         }
         return if (valid) names else emptyList()
-    }
-
-    private fun BuiltSymbols.validateSources(accept: (Path, Document, Long) -> Boolean): Boolean {
-        val files = VirtualFileManager.getInstance()
-        val documents = FileDocumentManager.getInstance()
-        for ((path, revision) in revisions) {
-            ProgressManager.checkCanceled()
-            val source = files.findFileByNioPath(path) ?: return false
-            val document = documents.getDocument(source) ?: return false
-            if (!accept(path, document, revision)) return false
-        }
-        return true
     }
 
     private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {

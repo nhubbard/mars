@@ -7,6 +7,7 @@ import com.intellij.build.FilePosition
 import com.intellij.build.events.MessageEvent
 import com.intellij.build.progress.BuildProgress
 import com.intellij.build.progress.BuildProgressDescriptor
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -17,19 +18,16 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssemblyError
-import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
@@ -61,6 +59,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             val capture = captureAssemblySources(listOf(entry), null)
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
+            DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
             val result = capture.assembleIn(component)
             checkCanceled()
             val events = readAction {
@@ -95,15 +94,6 @@ internal class MarsBuildService(private val project: Project, private val scope:
     companion object {
         private val bundle = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
     }
-}
-
-internal suspend fun CapturedAssemblySources.assembleIn(component: MarsComponent): AssemblyResult {
-    val settings = component.simulationSettings()
-    val context = currentCoroutineContext()
-    return component.assembler().assembleSnapshot(
-        snapshot, exceptionHandler, settings.isExtendedAssemblerEnabled, settings.isWarningsAreErrors,
-        context::ensureActive,
-    )
 }
 
 /** Called under a read action so the stamp and position are checked against the same document. */

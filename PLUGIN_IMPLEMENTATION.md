@@ -225,7 +225,22 @@ and completion use successful build results. Equivalence definitions, macro call
 parameters, and the active data list use live source events up to the caret in expanded
 include order. That context is available after a failed build and drops back to the open
 file when the selected entry no longer reaches it. The Build menu retains a separate action
-to assemble the current file as an entry. Automatic background assembly remains open.
+to assemble the current file as an entry.
+
+## Background assembler diagnostics
+
+IntelliJ's external highlighting pass captures the current entry and its unsaved includes,
+then invokes the Java assembler in an isolated session. Warnings and errors appear in the
+editor for their physical source file. The pass leaves Build output and running sessions
+independent. IntelliJ schedules the pass after its ordinary syntax analysis and cancels
+obsolete editor work.
+
+For an include, diagnostics use the selected entry or infer it when there is exactly one
+containing root. An ambiguous include needs an explicit entry. Before marking source,
+the pass checks that the entry and source revisions are still current. Reverse include
+queries use the shared index directly so a newly introduced parent can invalidate an
+inferred context. Background results currently feed diagnostics. Build-backed symbol
+navigation and completion still use the explicit assembly result.
 
 ## Go to Declaration for data labels and exports
 

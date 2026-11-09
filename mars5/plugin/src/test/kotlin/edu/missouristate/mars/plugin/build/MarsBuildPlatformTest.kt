@@ -47,6 +47,7 @@ import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
@@ -253,6 +254,13 @@ class MarsBuildPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val group = containingEntriesGroup()
+        val ignored = withContext(Dispatchers.EDT) {
+            lateinit var file: VirtualFile
+            WriteCommandAction.runWriteCommandAction(project) {
+                file = payload.parent.createChildData(this, ".DS_Store")
+            }
+            file
+        }
         readAction {
             assertEquals(ActionUpdateThread.BGT, group.actionUpdateThread)
             assertTrue(group.templatePresentation.isPopupGroup)
@@ -262,6 +270,7 @@ class MarsBuildPlatformTest {
             assertTrue(group.getChildren(event(group, null, payload)).isEmpty())
             assertTrue(group.getChildren(event(group, project, null)).isEmpty())
             assertTrue(group.getChildren(event(group, project, payload.parent)).isEmpty())
+            assertTrue(group.getChildren(event(group, project, ignored)).isEmpty())
             assertTrue(group.getChildren(event(group, project, cycle)).isEmpty())
             assertTrue(group.getChildren(event(group, project, entry)).isEmpty())
             assertEquals(setOf("entry.s", "foreign.xml"), FileIncludeManager.getManager(project).getIncludingFiles(payload, true).map { it.name }.toSet())
