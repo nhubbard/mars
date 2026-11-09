@@ -43,6 +43,8 @@ internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val
 
 internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
 
+internal data class FormattingLine(val operationType: TokenTypes?, val atMargin: Boolean)
+
 internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
 )
@@ -314,19 +316,20 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
     }
 
-    internal fun formattingOperationType(root: MipsFile, head: PsiElement): TokenTypes? {
-        if (DumbService.isDumb(project)) return null
-        val prefix = editorPrefix(root, sourceLineStart(head))
+    internal fun formattingLine(root: MipsFile, head: PsiElement, timeline: MipsSourceTimeline): FormattingLine? {
+        val prefix = timeline.prefix(root, sourceLineStart(head))
         val errors = ErrorList()
         val expanded = Tokenizer.expandLine(
             sourceLine(head, fromLineStart = true), errors,
             { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
-        // Even a macro call can record an equivalence as a tokenizer side effect.
-        if (errors.errorsOccurred() || expanded.definition() != null) return null
+        if (errors.errorsOccurred()) return null
+        val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
-        if (tokens.isEmpty) return null
-        return effectiveOperationType(tokens[0], prefix, recognizeMacros = true)
+        val type = if (tokens.isEmpty) null else effectiveOperationType(tokens[0], prefix, recognizeMacros = true)
+        // Even a macro call can record an equivalence as a tokenizer side effect.
+        val spacingType = type.takeIf { expanded.definition() == null }
+        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE)
     }
 
     private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean): TokenTypes? =

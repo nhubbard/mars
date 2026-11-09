@@ -390,8 +390,9 @@ and macro indentation. For `.eqv` replacements and incomplete statements, retain
 that can change the expanded token sequence. Test formatting for idempotence and equivalent assembler output,
 including when replacements introduce an instruction, address, label separator, or macro boundary.
 
-For future formatter work, project the expanded structure of composite aliases onto the written tokens
-when an alias supplies a label separator, a segment directive, a macro boundary, or several operands.
+Use the expanded role of label and directive aliases to place their statements at the margin.
+For future formatter work, project alias-generated macro scopes and composite operand layouts onto
+the written tokens, including aliases that supply several operands or punctuation within an operand.
 Apply spacing or indentation only at physical boundaries that preserve the assembler's token sequence
 and the stored replacement text. An alias spanning several roles should retain its own editor color.
 

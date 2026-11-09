@@ -8,6 +8,7 @@ import com.intellij.formatting.Indent
 import com.intellij.formatting.Spacing
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.TokenType
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
@@ -16,26 +17,35 @@ import com.intellij.psi.impl.source.tree.TreeUtil
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.plugin.analysis.FormattingLine
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.operationOwners
 
 internal class MipsFormattingModelBuilder : FormattingModelBuilder {
     override fun createModel(formattingContext: FormattingContext): FormattingModel {
-        val file = formattingContext.containingFile
-        val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents)
+        val file = formattingContext.containingFile as MipsFile
+        val analysis = file.project.service<MarsAnalysisService>()
+        val timeline = lazy(LazyThreadSafetyMode.NONE) {
+            if (DumbService.isDumb(file.project)) null else analysis.editorTimeline(file)
+        }
+        val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents, analysis, timeline)
         return DocumentBasedFormattingModel(root, formattingContext.codeStyleSettings, file)
     }
 }
 
-private class MipsBlock(node: ASTNode, private val indent: Indent, private val source: CharSequence) :
-    AbstractBlock(node, null, null) {
-    private val rawOperation = if (node.elementType == candidate) {
-        val owner = node.psi
-        val file = owner.containingFile as MipsFile
-        file.project.service<MarsAnalysisService>().formattingOperationType(file, owner.operationHead)
-    } else null
+private class MipsBlock(
+    node: ASTNode,
+    private val indent: Indent,
+    private val source: CharSequence,
+    private val analysis: MarsAnalysisService,
+    private val timeline: Lazy<MipsSourceTimeline?>,
+    private val line: FormattingLine? = null,
+) : AbstractBlock(node, null, null) {
+    private val rawOperation = line?.operationType.takeIf { node.elementType == candidate }
 
     private fun isOpaque() = myNode.elementType in opaque ||
         myNode.elementType == candidate && rawOperation !in formatOperations
@@ -47,16 +57,27 @@ private class MipsBlock(node: ASTNode, private val indent: Indent, private val s
     override fun buildChildren(): List<Block> =
         if (isOpaque()) emptyList() else myNode.getChildren(null).asSequence()
             .filter { it.textLength > 0 && it.elementType !in trivia }
-            .map { MipsBlock(it, indentOf(it), source) }
+            .map { child ->
+                val childLine = if (child.elementType == statement) layoutOf(child) else line
+                MipsBlock(child, indentOf(child, childLine), source, analysis, timeline, childLine)
+            }
             .toList()
 
     override fun getChildIndent(): Indent = if (myNode.elementType in indentedScopes) {
         Indent.getNormalIndent()
     } else Indent.getNoneIndent()
 
-    private fun indentOf(child: ASTNode): Indent {
+    private fun layoutOf(child: ASTNode): FormattingLine? {
+        val operation = child.findChildByType(operationOwners) ?: return null
+        val context = timeline.value ?: return null
+        val head = operation.psi.operationHead
+        if (operation.elementType != candidate && head !in context.generatedLabelSites) return null
+        return analysis.formattingLine(head.containingFile as MipsFile, head, context)
+    }
+
+    private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
         if (child.elementType == statement && (myNode.elementType == macro ||
-                PsiUtilCore.getElementType(child.firstChildNode) in executableHeads)) {
+                PsiUtilCore.getElementType(child.firstChildNode) in executableHeads && childLine?.atMargin != true)) {
             return Indent.getNormalIndent()
         }
         return Indent.getNoneIndent()
@@ -105,7 +126,7 @@ private class MipsBlock(node: ASTNode, private val indent: Indent, private val s
         val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val executableHeads = TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
         val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
-        val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER)
+        val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER, TokenTypes.DIRECTIVE)
         val addressOffsets = TokenSet.create(MipsTypes.psi("NUMBER"), MipsTypes.psi("WORD"),
             MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("PARAMETER"))
         // A physical alias can represent several tokens. Apply spacing only at written boundaries.

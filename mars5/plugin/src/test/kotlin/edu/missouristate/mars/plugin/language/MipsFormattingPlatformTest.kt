@@ -67,7 +67,7 @@ class MipsFormattingPlatformTest {
             .eqv OFFSET -4
             .eqv OP   addiu  ${'$'}t0,   ${'$'}t0,  1
             .eqv DEF .eqv
-                DEF AGAIN 1,   2
+            DEF AGAIN 1,   2
             .eqv AGAIN 1,   2
             .include   "macros.s"
 
@@ -137,6 +137,46 @@ class MipsFormattingPlatformTest {
         assertTrue("discard ignored .eqv RAW 1,   2" in formatted, formatted)
         assertEquals(assemble(directory.resolve("alias-before.asm"), source),
             assemble(directory.resolve("alias-after.asm"), formatted))
+    }
+
+    @Test
+    fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv DATA .data
+            .eqv TEXT .text
+            .eqv SEP :
+            .eqv MARKER target:
+            .eqv VALUE 7
+               DATA
+            number   SEP    .word  VALUE
+                TEXT
+               MARKER   li  ${'$'}t0 ,  VALUE
+               entry    SEP   nop
+                addiu   SEP   nop
+              j   target
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("alias-margins.asm", source)
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertEquals("""
+            .eqv DATA .data
+            .eqv TEXT .text
+            .eqv SEP :
+            .eqv MARKER target:
+            .eqv VALUE 7
+            DATA
+            number SEP .word VALUE
+            TEXT
+            MARKER li ${'$'}t0, VALUE
+            entry SEP nop
+            addiu SEP nop
+                j target
+        """.trimIndent(), formatted)
+        assertEquals(assemble(directory.resolve("margins-before.asm"), source),
+            assemble(directory.resolve("margins-after.asm"), formatted))
     }
 
     @Test
