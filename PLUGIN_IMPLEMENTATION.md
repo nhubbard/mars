@@ -383,6 +383,15 @@ rebuild with the updated lexer.
 The assembler-backed fixture checks IEEE-754 data for the named values and
 numeric PSI for decimal, hexadecimal, suffixed, and signed exponent forms.
 
+## Double-quoted strings
+
+The lexer follows the assembler's immediate-backslash rule for double quotes
+and its acceptance of a final escaped quote at the end of a line. This keeps
+embedded comment markers inside data strings and preserves the complete raw
+`.include` path. Fixtures compare the resulting PSI with assembled bytes and
+the indexed include path with the core tokenizer. Both symbol indexes and the
+include index rebuild with the updated lexer.
+
 ## Directive parity fixture
 
 A two-file fixture assembles and parses every directive listed by the Java core,

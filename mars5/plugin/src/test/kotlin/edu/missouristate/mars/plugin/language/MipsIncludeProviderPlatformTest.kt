@@ -15,6 +15,7 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.indexing.FileContentImpl
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,9 +64,20 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(3, provider.version)
+        assertEquals(4, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
+    }
+
+    @Test
+    fun `include paths follow assembler quote boundaries without decoding escapes`() {
+        val path = "lib" + "\\\\" + "\"#part.s"
+        val source = ".include \"$path\""
+        assertEquals(path, Tokenizer().findIncludePath(source))
+        val file = LightVirtualFile("entry.s", MipsFileType, source)
+        val infos = MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
+        assertEquals(listOf(path), infos.map { it.path })
+        assertEquals(source.indexOf('"'), infos.single().offset)
     }
 
     @Test

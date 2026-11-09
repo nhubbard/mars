@@ -37,20 +37,27 @@ object MipsScanner {
                 while (position < end && source[position] != '\r' && source[position] != '\n') position++
                 MipsTokenKind.COMMENT
             }
-            first == '"' || first == '\'' -> {
+            first == '"' -> {
+                while (position < end && source[position] != '\r' && source[position] != '\n') {
+                    // MARS tests the immediately preceding character, even after two backslashes.
+                    val closing = source[position] == '"' && source[position - 1] != '\\'
+                    position++
+                    if (closing) break
+                }
+                // At the end of the line, the assembler also accepts a final escaped quote.
+                if (position > start + 1 && source[position - 1] == '"') MipsTokenKind.STRING else MipsTokenKind.UNCLOSED_STRING
+            }
+            first == '\'' -> {
                 var closed = false
                 while (position < end && source[position] != '\r' && source[position] != '\n') {
                     val character = source[position++]
-                    if (character == first) {
+                    if (character == '\'') {
                         closed = true
                         break
                     }
                     if (character == '\\' && position < end && source[position] != '\r' && source[position] != '\n') position++
                 }
-                when (first) {
-                    '"' -> if (closed) MipsTokenKind.STRING else MipsTokenKind.UNCLOSED_STRING
-                    else -> if (closed) MipsTokenKind.CHARACTER else MipsTokenKind.UNCLOSED_CHARACTER
-                }
+                if (closed) MipsTokenKind.CHARACTER else MipsTokenKind.UNCLOSED_CHARACTER
             }
             first in ",:()+-" -> when (first) {
                 ',' -> MipsTokenKind.COMMA

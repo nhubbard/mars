@@ -326,6 +326,22 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `double-quoted data follows assembler quote boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val first = "\"A" + "\\\\" + "\"#B\""
+        val second = "\"C" + "\\\\" + "\""
+        val source = ".data\n.asciiz $first\n.asciiz $second\n.text\nnop\n"
+        assertAssembles(directory, source, expectedInstruction = 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        val expected = "A\\\"#B\u0000C\\\u0000"
+        assertEquals(expected.map(Char::code), expected.indices.map { memory.getByte(memory.dataBaseAddress + it) })
+        readAction {
+            val strings = SyntaxTraverser.astTraverser(assertParses(source).node)
+                .filterTypes { it == MipsTypes.psi("STRING") }.map { it.text }.toList()
+            assertEquals(listOf(first, second), strings)
+        }
+    }
+
+    @Test
     fun `ignored set payloads retain assembler tokens without operand errors`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val context = project.get().service<MarsSessionService>().context
         for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".eqv OPTION .set\nOPTION ), :")) {

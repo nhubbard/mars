@@ -48,9 +48,9 @@ class MipsScannerTest {
 
     @Test
     fun `escaped quotes backslashes character escapes and octal characters stay intact`() {
-        val source = "\"a\\\"#b\\\\\" '\\n' '\\\'' '\\123'"
+        val source = "\"a\\\"#b\\\\\"\n'\\n' '\\\'' '\\123'"
         val tokens = MipsScanner.scan(source)
-        assertEquals(listOf(MipsTokenKind.STRING, MipsTokenKind.SPACE, MipsTokenKind.CHARACTER,
+        assertEquals(listOf(MipsTokenKind.STRING, MipsTokenKind.NEWLINE, MipsTokenKind.CHARACTER,
             MipsTokenKind.SPACE, MipsTokenKind.CHARACTER, MipsTokenKind.SPACE, MipsTokenKind.CHARACTER), tokens.map { it.kind })
         assertEquals(source, tokens.joinToString("") { source.substring(it.start, it.end) })
     }
@@ -90,6 +90,7 @@ class MipsScannerTest {
         assertEquals(MipsToken(MipsTokenKind.WORD, 1, 2), MipsScanner.next("abc", 1, 2))
         assertEquals(MipsTokenKind.COMMENT, MipsScanner.next("#", 0)?.kind)
         assertEquals(MipsTokenKind.UNCLOSED_STRING, MipsScanner.next("\"\\", 0)?.kind)
+        assertEquals(MipsTokenKind.UNCLOSED_STRING, MipsScanner.next("\"", 0)?.kind)
         assertEquals(MipsTokenKind.DIRECTIVE, MipsScanner.next(".", 0)?.kind)
         for ((start, end) in listOf(-1 to 2, 2 to 1, 0 to 4)) {
             assertThrows<IllegalArgumentException> { MipsScanner.next("abc", start, end) }
