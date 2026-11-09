@@ -1336,11 +1336,12 @@ continue through their existing runners.
 In a MIPS Run or Debug configuration, add **Assemble MIPS Sources** under
 **Before Launch** to put assembly at a specific point in the launch task
 order. Assembly errors appear in the Build tool window and stop the
-launch. A successful task hands its assembled session to Run or Debug,
-including its source map and captured source paths. Later tasks can
-change files on disk or in the editor without changing what that launch
-executes. Without the Before Launch task, Run and Debug assemble as they
-start.
+launch. A successful task closes its assembly session and passes a detached
+image to Run or Debug. The image preserves the initialized memory, entry
+point, machine instructions, symbols, macro source map, and captured source
+text. Run and Debug load it into a fresh session. Later tasks can change files
+on disk or in the editor without changing what that launch executes. Without
+the Before Launch task, Run and Debug capture and assemble as they start.
 
 For mixed projects that use IntelliJ's bundled JVM compiler, enable
 **Assemble project sources before IntelliJ JVM compilation** under

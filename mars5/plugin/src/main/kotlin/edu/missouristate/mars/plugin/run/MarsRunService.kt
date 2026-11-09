@@ -24,6 +24,7 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -224,8 +225,9 @@ internal class MarsProcessHandler(
             notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
             return 1
         }
-        return program.use {
-            val session = program.session
+        return MarsSessionService.createMarsComponent().context().use { session ->
+            launch.options.applyTo(session.settings)
+            session.loadAssemblyImage(program.image, execution::ensureActive)
             val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
@@ -273,7 +275,7 @@ internal class MarsProcessHandler(
                             // The execution tab can still show the final words after the session closes.
                             readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
-                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.sources)
+                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.snapshot.texts().keys + entry)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
                             else -> 1

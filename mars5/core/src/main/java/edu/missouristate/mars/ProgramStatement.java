@@ -46,6 +46,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ProgramStatement {
   private final MIPSprogram sourceMIPSprogram;
+  private final String detachedSourceFile;
   private String source, basicAssemblyStatement, machineStatement;
   private final TokenList originalTokenList;
   private final TokenList strippedTokenList;
@@ -98,6 +99,7 @@ public class ProgramStatement {
       int sourceLine,
       Origin instructionOrigin) {
     this.sourceMIPSprogram = sourceMIPSprogram;
+    this.detachedSourceFile = "";
     this.displaySettings =
         sourceMIPSprogram == null ? null : sourceMIPSprogram.assemblyContext().session().settings;
     this.source = source;
@@ -143,6 +145,7 @@ public class ProgramStatement {
       SimulationSettings displaySettings) {
     this.displaySettings = displaySettings;
     this.sourceMIPSprogram = null;
+    this.detachedSourceFile = "";
     this.instructionOrigin = null;
     this.binaryStatement = binaryStatement;
     this.textAddress = textAddress;
@@ -187,6 +190,62 @@ public class ProgramStatement {
     this.altered = false;
     this.basicStatementList =
         buildBasicStatementListFromBinaryCode(binaryStatement, instr, operands, numOperands);
+  }
+
+  /** Copies an assembled instruction without retaining any assembler or session references. */
+  public Image captureImage() {
+    return new Image(this);
+  }
+
+  public static final class Image {
+    private final String mnemonic, format, sourceFile, source, basicAssembly, machine;
+    private final int address, line, binary, numOperands;
+    private final int[] operands;
+    private final Origin origin;
+    private final List<BasicStatementList.ListElement> display;
+
+    private Image(ProgramStatement statement) {
+      mnemonic = statement.instruction.getName();
+      format = statement.instruction.getExampleFormat();
+      sourceFile = statement.getSourceFile();
+      source = statement.source;
+      basicAssembly = statement.basicAssemblyStatement;
+      machine = statement.machineStatement;
+      address = statement.textAddress;
+      line = statement.sourceLine;
+      binary = statement.binaryStatement;
+      numOperands = statement.numOperands;
+      operands = statement.operands.clone();
+      origin = statement.instructionOrigin;
+      display = List.copyOf(statement.basicStatementList.list);
+    }
+
+    public ProgramStatement load(InstructionSet instructions, SimulationSettings settings) {
+      var instruction = instructions.matchOperator(mnemonic).stream()
+          .filter(candidate -> candidate.getExampleFormat().equals(format))
+          .findFirst().orElseThrow();
+      return new ProgramStatement(this, instruction, settings);
+    }
+  }
+
+  private ProgramStatement(Image image, Instruction instruction, SimulationSettings settings) {
+    this.instruction = instruction;
+    displaySettings = settings;
+    sourceMIPSprogram = null;
+    detachedSourceFile = image.sourceFile;
+    source = image.source;
+    basicAssemblyStatement = image.basicAssembly;
+    machineStatement = image.machine;
+    textAddress = image.address;
+    sourceLine = image.line;
+    binaryStatement = image.binary;
+    numOperands = image.numOperands;
+    operands = image.operands.clone();
+    instructionOrigin = image.origin;
+    originalTokenList = strippedTokenList = null;
+    basicStatementList = new BasicStatementList();
+    basicStatementList.list.addAll(image.display);
+    altered = false;
   }
 
   private AssemblyContext assemblyContext() {
@@ -538,7 +597,7 @@ public class ProgramStatement {
    * @return The file name.
    */
   public String getSourceFile() {
-    return (sourceMIPSprogram == null) ? "" : sourceMIPSprogram.getFilename();
+    return (sourceMIPSprogram == null) ? detachedSourceFile : sourceMIPSprogram.getFilename();
   }
 
   /**

@@ -383,8 +383,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val origin = statement?.instructionOrigin
         val program = machine.program
         val symbols = program.symbolMap()
-        val scope = statement?.sourceMIPSprogram ?: program
-        val localSymbols = symbols.locals().getValue(Path.of(scope.filename).toAbsolutePath().normalize())
+        val assemblyEntry = statement?.sourceFile?.ifEmpty { program.filename } ?: program.filename
+        val localSymbols = symbols.locals().getValue(Path.of(assemblyEntry).toAbsolutePath().normalize())
         val watchRequests = watchMemoryRequests()
         val registerEdits = registerEditRequests()
         val number = ++suspensionNumber

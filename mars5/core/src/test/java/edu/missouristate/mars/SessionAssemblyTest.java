@@ -14,11 +14,13 @@ import edu.missouristate.mars.assembler.SourceLine;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.assembler.Token;
 import edu.missouristate.mars.assembler.Tokenizer;
+import edu.missouristate.mars.core.AssemblyImage;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.MemoryState;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -69,6 +71,76 @@ class SessionAssemblyTest {
     assertThat(second.memory.getWord(secondResult)).isEqualTo(100);
     assertThat(first.getProgram()).isSameAs(firstProgram);
     assertThat(second.getProgram()).isSameAs(secondProgram);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Default", "CompactDataAtZero", "CompactTextAtZero"})
+  void detachedImagesPreserveAssemblyAndLoadIndependentMachines(String layout) throws Exception {
+    var file = source("image.s", """
+        .macro increment
+          addiu $t0, $t0, 1
+        .end_macro
+        .text
+          nop
+        """ + program(42, false).replace("addiu $t0, $t0, 1", "increment"));
+    var neverCancelled = (Runnable) () -> {};
+    AssemblyImage image;
+    int main;
+    int result;
+    MIPSprogram original;
+    try (var builder = session(layout)) {
+      builder.settings.setStartAtMainEnabled(true);
+      builder.memory.setByteOrder(MemoryState.BIG_ENDIAN);
+      assertThatThrownBy(() -> builder.captureAssemblyImage(neverCancelled))
+          .isInstanceOf(IllegalStateException.class).hasMessage("No assembled program");
+      original = builder.assemble(List.of(file));
+      main = builder.registerFile.getProgramCounter();
+      result = builder.symbolTable.getAddress("result");
+      assertThat(main).isEqualTo(builder.memory.textBaseAddress + 4);
+      image = builder.captureAssemblyImage(neverCancelled);
+      builder.memory.setWord(result, 99);
+      builder.memory.getStatementNoNotify(main).setBinaryStatement(0);
+    }
+    Files.delete(file);
+
+    try (var first = session("Default"); var second = session("Default")) {
+      first.loadAssemblyImage(image, neverCancelled);
+      second.loadAssemblyImage(image, neverCancelled);
+      var installed = first.getProgram();
+      assertThat(installed.sourceMap()).isSameAs(original.sourceMap());
+      assertThat(installed.symbolMap()).isSameAs(original.symbolMap());
+      assertThat(first.memory.getConfiguration().configurationIdentifier()).isEqualTo(layout);
+      assertThat(first.memory.getByteOrder()).isEqualTo(MemoryState.BIG_ENDIAN);
+      assertThat(first.registerFile.getProgramCounter()).isEqualTo(main);
+      assertThat(first.symbolTable.getAddress("result")).isEqualTo(result);
+      assertThat(first.memory.getWord(result)).isEqualTo(42);
+      assertThat(first.memory.getStatementNoNotify(main).getBinaryStatement()).isNotZero();
+      var macroSite = installed.sourceMap().origins().values().stream()
+          .filter(origin -> origin.caller() != null).findFirst().orElseThrow();
+      assertThat(installed.instructionsAt(macroSite.location(), neverCancelled))
+          .isEqualTo(original.instructionsAt(macroSite.location(), neverCancelled));
+      var statement = installed.getMachineList().stream()
+          .filter(row -> row.getInstructionOrigin() == macroSite).findFirst().orElseThrow();
+      assertThat(new ErrorMessage(statement, "failure").getFilename()).isEqualTo(file.toString());
+
+      var output = new RecordingEnvironment();
+      installed.setSyscallEnvironment(output);
+      assertThat(installed.simulate(100)).isTrue();
+      assertThat(output.printed).containsExactly(43);
+      assertThat(first.memory.getWord(result)).isEqualTo(43);
+      assertThat(second.memory.getWord(result)).isEqualTo(42);
+      assertThat(second.registerFile.getProgramCounter()).isEqualTo(main);
+      assertThatThrownBy(() -> first.loadAssemblyImage(image, () -> {
+        if (first.getProgram() == null) {
+          throw new CancellationException();
+        }
+      })).isInstanceOf(CancellationException.class);
+      assertThat(first.getProgram()).isNull();
+      first.loadAssemblyImage(image, neverCancelled);
+      assertThat(first.memory.getWord(result)).isEqualTo(42);
+      assertThat(first.registerFile.getProgramCounter()).isEqualTo(main);
+      assertThat(first.backStepper.canBackstep()).isFalse();
+    }
   }
 
   static Stream<String> corpus() {

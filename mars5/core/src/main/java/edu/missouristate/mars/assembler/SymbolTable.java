@@ -1,8 +1,8 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
-
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.Binary;
 import java.util.*;
@@ -49,6 +49,13 @@ public class SymbolTable {
   // kernel address space so highly unlikely that any symbol will have this as
   // its associated address!
   public static final int NOT_FOUND = -1;
+
+  /** Restores the final definitions from a detached assembly image. */
+  public void loadDefinitions(Map<String, Definition> definitions) {
+    clear();
+    definitions.forEach((name, definition) -> table.add(new Symbol(
+        name, definition.address(), definition.kind(), definition.origin(), definition.macroPrivate())));
+  }
 
   /** Create a new empty symbol table for given file */
   public SymbolTable() {

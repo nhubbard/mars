@@ -58,9 +58,6 @@ import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
-import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -100,14 +97,13 @@ class MarsRunPlatformTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["run", "assembly-error", "assembly-cancelled", "later-task-fails"])
-    fun `native Before Launch assembles once and releases a program if startup is blocked`(scenario: String) = timeoutRunBlocking<Unit> {
+    fun `native Before Launch assembles once and discards the image if startup is blocked`(scenario: String) = timeoutRunBlocking<Unit> {
         val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
         val previous = manager.forceCompilationInTests
         val disposable = Disposer.newDisposable()
         val recording = Recording()
         val aborted = CompletableDeferred<Unit>()
         val events = Channel<BuildEvent>(Channel.UNLIMITED)
-        var replaced: MarsContext? = null
         try {
             val env = withContext(Dispatchers.EDT) {
                 manager.forceCompilationInTests = true
@@ -135,9 +131,7 @@ class MarsRunPlatformTest {
                             context: DataContext, configuration: RunConfiguration, environment: ExecutionEnvironment, task: BeforeRunTask<*>,
                         ): Boolean {
                             val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
-                            val session = MarsSessionService.createMarsComponent().context()
-                            replaced = session
-                            assertTrue(launch.store(MarsAssembledProgram(session, emptySet())))
+                            assertTrue(launch.hasProgram())
                             return false
                         }
                     }
@@ -180,10 +174,6 @@ class MarsRunPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val launch = requireNotNull(env.getUserData(launchAssemblyKey))
                     assertNull(launch.take())
-                    replaced?.let { session -> assertThrows<IllegalStateException> { session.claimStoppedSession().close() } }
-                    val rejected = MarsSessionService.createMarsComponent().context()
-                    assertFalse(launch.store(MarsAssembledProgram(rejected, emptySet())))
-                    assertThrows<IllegalStateException> { rejected.claimStoppedSession().close() }
                     assertFalse(recording.exit.isCompleted)
                 }
             }

@@ -21,11 +21,13 @@ import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
+import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
-import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.assembleIn
@@ -35,14 +37,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asCompletableFuture
 import org.jetbrains.concurrency.asPromise
 
 internal val buildMessages = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
 
-internal class MarsAssembledProgram(val session: MarsContext, val sources: Set<Path>) : AutoCloseable {
-    override fun close() = session.close()
-}
+internal class MarsAssembledProgram(val image: AssemblyImage, val snapshot: AssemblySourceSnapshot)
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
@@ -67,16 +69,13 @@ internal class MarsBuildService(private val project: Project, private val scope:
         sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
     ): MarsAssembledProgram? {
         val component = MarsSessionService.createMarsComponent()
-        val session = component.context()
-        var program: MarsAssembledProgram? = null
-        try {
-            var paths = emptySet<Path>()
-            if (assemble(sources, component, activateBuildView, options) { paths = it + sources.entry }) {
-                program = MarsAssembledProgram(session, paths)
+        val context = currentCoroutineContext()
+        return component.context().use { session ->
+            var program: MarsAssembledProgram? = null
+            assemble(sources, component, activateBuildView, options) { capture ->
+                program = MarsAssembledProgram(session.captureAssemblyImage(context::ensureActive), capture.snapshot)
             }
-            return program
-        } finally {
-            if (program == null) session.close()
+            program
         }
     }
 
@@ -88,7 +87,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     internal suspend fun assemble(
         sourceSet: MarsSourceSet, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
-        onSourcesCaptured: (Set<Path>) -> Unit = {},
+        onAssembled: (CapturedAssemblySources) -> Unit = {},
     ): Boolean {
         val entry = sourceSet.entry
         val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sourceSet, options)
@@ -104,7 +103,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var cancelled = false
         var succeeded = false
         try {
-            succeeded = assembleAndReport(symbolBuild, component, onSourcesCaptured) { result, revisions ->
+            succeeded = assembleAndReport(symbolBuild, component, onAssembled) { result, revisions ->
                 val events = readAction {
                     result.errors().map { diagnosticEvent(project, progress.id, it, revisions) }
                 }
@@ -134,13 +133,12 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     private suspend fun assembleAndReport(
         symbolBuild: MarsAnalysisService.SymbolBuild, component: MarsComponent,
-        onSourcesCaptured: (Set<Path>) -> Unit, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
+        onAssembled: (CapturedAssemblySources) -> Unit, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
     ): Boolean {
         val selection = symbolBuild.selection
         selection.options.applyTo(component.context().settings)
         val analysis = project.service<MarsAnalysisService>()
         val capture = captureBuildSources(selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
-        onSourcesCaptured(capture.snapshot.texts().keys)
         checkCanceled()
         analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
         DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
@@ -149,7 +147,10 @@ internal class MarsBuildService(private val project: Project, private val scope:
         checkCanceled()
         report(result, capture.revisions)
         checkCanceled()
-        if (result.succeeded()) analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
+        if (result.succeeded()) {
+            onAssembled(capture)
+            analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
+        }
         return result.succeeded()
     }
 

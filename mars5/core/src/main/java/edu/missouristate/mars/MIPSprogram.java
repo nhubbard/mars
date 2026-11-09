@@ -82,6 +82,21 @@ public class MIPSprogram implements Program {
     this.sourceSnapshot = sourceSnapshot;
   }
 
+  /** Creates the execution handle for an already assembled image. */
+  public static MIPSprogram fromImage(
+      MarsContext session, String filename, ArrayList<ProgramStatement> instructions,
+      InstructionSourceMap sourceMap, AssemblySymbolMap symbolMap) {
+    var program = new MIPSprogram(session);
+    program.filename = filename;
+    program.machineList = instructions;
+    program.sourceMap = sourceMap;
+    program.symbolMap = symbolMap;
+    program.localSymbolTable = new SymbolTable(session.symbolTable);
+    program.localSymbolTable.loadDefinitions(symbolMap.locals().getOrDefault(Path.of(filename), Map.of()));
+    program.backStepper = session.backStepper;
+    return program;
+  }
+
   public AssemblyContext assemblyContext() {
     return assemblyContext;
   }

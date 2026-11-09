@@ -127,10 +127,7 @@ public class ErrorMessage {
 
   public ErrorMessage(ProgramStatement statement, String message) {
     this.isWarning = ERROR;
-    this.filename =
-        (statement.getSourceMIPSprogram() == null)
-            ? ""
-            : statement.getSourceMIPSprogram().getFilename();
+    this.filename = statement.getSourceFile();
     this.position = 0;
     this.message = message;
     // Somewhere along the way we lose the macro history, but can

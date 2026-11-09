@@ -18,6 +18,35 @@ public final class WordMemorySegment {
     this.littleEndian = littleEndian;
   }
 
+  /** Copies only allocated blocks. The destination segment retains its own byte-order supplier. */
+  public synchronized Image capture(Runnable checkCancellation) {
+    return new Image(copyBlocks(blockTable, checkCancellation));
+  }
+
+  public synchronized void load(Image image, Runnable checkCancellation) {
+    var copy = copyBlocks(image.blocks, checkCancellation);
+    System.arraycopy(copy, 0, blockTable, 0, blockTable.length);
+  }
+
+  private static int[][] copyBlocks(int[][] source, Runnable checkCancellation) {
+    int[][] copy = new int[source.length][];
+    for (int i = 0; i < source.length; i++) {
+      if (source[i] != null) {
+        checkCancellation.run();
+        copy[i] = source[i].clone();
+      }
+    }
+    return copy;
+  }
+
+  public static final class Image {
+    private final int[][] blocks;
+
+    private Image(int[][] blocks) {
+      this.blocks = blocks;
+    }
+  }
+
   private static final boolean STORE = true;
   private static final boolean FETCH = false;
 

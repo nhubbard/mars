@@ -26,11 +26,7 @@ internal class MarsLaunchAssembly(val sources: MarsSourceSet, val options: MarsE
 
     @Synchronized
     fun store(assembled: MarsAssembledProgram): Boolean {
-        if (disposed) {
-            assembled.close()
-            return false
-        }
-        program?.close()
+        if (disposed) return false
         program = assembled
         return true
     }
@@ -44,12 +40,10 @@ internal class MarsLaunchAssembly(val sources: MarsSourceSet, val options: MarsE
         return assembled
     }
 
+    @Synchronized
     override fun dispose() {
-        val assembled = synchronized(this) {
-            disposed = true
-            removeProgram()
-        }
-        assembled?.close()
+        disposed = true
+        program = null
     }
 
     private fun removeProgram() = program.also { program = null }

@@ -230,6 +230,29 @@ public class MemoryState {
     initialize();
   }
 
+  /** Captures the sparse word storage of a stopped session. Text is stored with its instructions. */
+  public DataImage captureData(Runnable checkCancellation) {
+    return new DataImage(
+        getByteOrder(), heapAddress, dataBlockTable.capture(checkCancellation),
+        kernelDataBlockTable.capture(checkCancellation), stackBlockTable.capture(checkCancellation),
+        memoryMapBlockTable.capture(checkCancellation));
+  }
+
+  /** Restores word storage after the session has selected the image's address layout. */
+  public void loadData(DataImage image, Runnable checkCancellation) {
+    byteOrder = image.littleEndian();
+    heapAddress = image.heapAddress();
+    dataBlockTable.load(image.data(), checkCancellation);
+    kernelDataBlockTable.load(image.kernelData(), checkCancellation);
+    stackBlockTable.load(image.stack(), checkCancellation);
+    memoryMapBlockTable.load(image.mmio(), checkCancellation);
+  }
+
+  public record DataImage(
+      boolean littleEndian, int heapAddress, WordMemorySegment.Image data,
+      WordMemorySegment.Image kernelData, WordMemorySegment.Image stack,
+      WordMemorySegment.Image mmio) {}
+
   /** Returns a defensive snapshot of the configured address layout. */
   public MemoryConfiguration getConfiguration() {
     return new MemoryConfiguration(

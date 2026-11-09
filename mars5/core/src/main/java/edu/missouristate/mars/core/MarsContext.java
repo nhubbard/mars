@@ -4,11 +4,13 @@ import static edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_F
 
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
+import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.api.SimulatorState;
 import edu.missouristate.mars.assembler.SymbolTable;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
@@ -367,6 +369,53 @@ public final class MarsContext implements AutoCloseable {
             checkCancellation);
     root.assemble(files, extended, warnings, checkCancellation);
     return root;
+  }
+
+  /** Captures the image of a just-assembled program before any instruction or frontend edit. */
+  public AssemblyImage captureAssemblyImage(Runnable checkCancellation) {
+    try (var lease = claimStoppedSession()) {
+      var current = program;
+      if (current == null) {
+        throw new IllegalStateException("No assembled program");
+      }
+      var instructions = new ArrayList<ProgramStatement.Image>(current.instructionCount());
+      for (var statement : current.getMachineList()) {
+        checkCancellation.run();
+        instructions.add(statement.captureImage());
+      }
+      checkCancellation.run();
+      return new AssemblyImage(
+          current.getFilename(), memory.getConfiguration().configurationIdentifier(),
+          registerFile.getProgramCounter(), instructions, memory.captureData(checkCancellation),
+          current.sourceMap(), current.symbolMap());
+    }
+  }
+
+  /** Installs an assembly image without consulting the assembler or source files. */
+  public void loadAssemblyImage(AssemblyImage image, Runnable checkCancellation) {
+    try (var lease = claimStoppedSession()) {
+      var instructions = new ArrayList<ProgramStatement>(image.instructions.size());
+      for (var instruction : image.instructions) {
+        checkCancellation.run();
+        instructions.add(instruction.load(instructionSet, settings));
+      }
+      checkCancellation.run();
+      var loaded = MIPSprogram.fromImage(this, image.filename, instructions, image.sources, image.symbols);
+      setMemoryConfigurationStopped(image.layout);
+      beginAssembly(loaded);
+      memory.loadData(image.data, checkCancellation);
+      for (var statement : instructions) {
+        checkCancellation.run();
+        try {
+          memory.setStatement(statement.getAddress(), statement);
+        } catch (AddressErrorException invalidAddress) {
+          throw new IllegalStateException("Invalid instruction address in assembly image", invalidAddress);
+        }
+      }
+      symbolTable.loadDefinitions(image.symbols.globals());
+      registerFile.initializeProgramCounter(image.entry);
+      program = loaded;
+    }
   }
 
   /** Returns the currently assembled lead program, or null after a reset or failed assembly. */
