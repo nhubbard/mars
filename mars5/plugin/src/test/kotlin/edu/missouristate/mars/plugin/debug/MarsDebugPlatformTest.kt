@@ -1360,6 +1360,13 @@ class MarsDebugPlatformTest {
                         assertFalse(open.isEnabled)
                     }
                 }
+                // Refresh clears the table before inspecting memory. Drain that inspection before stopping.
+                val inspected = CompletableDeferred<Unit>()
+                withContext(Dispatchers.EDT) {
+                    val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                    context.inspectionRequests.send { inspected.complete(Unit) }
+                }
+                inspected.await()
                 withContext(Dispatchers.EDT) { debug.session.stop() }
                 assertEquals(130, debug.exit.await())
                 pollAssertionsAsync(3.seconds, 10.milliseconds) {
