@@ -177,8 +177,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {
         if (DumbService.isDumb(project)) return@sequence
         var inMacro = false
-        val definitions = HashMap<String, MipsDeclaration>()
-        val replacements = HashMap<String, String>()
+        val equivalences = PhysicalEquivalences()
         for (event in sourcePrefix(root, root.textLength)) {
             when (event) {
                 is MipsSourceEvent.Begin -> inMacro = true
@@ -187,20 +186,31 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     val declaration = event.declaration
                     val physicalName = declaration.name ?: continue
                     if (declaration.kind == SymbolKind.CONSTANT) {
-                        definitions.putIfAbsent(physicalName, declaration)
-                    } else if (!inMacro && (matches(physicalName) || physicalName in definitions)) {
-                        val name = externalName(declaration) { symbol ->
-                            definitions[symbol]?.let { definition ->
-                                replacements.getOrPut(symbol) {
-                                    Tokenizer.readEquivalenceReplacement(sourceLine(definition, fromLineStart = true), symbol).orEmpty()
-                                }.ifEmpty { null }
-                            }
-                        }
+                        equivalences.define(physicalName, declaration)
+                    } else if (!inMacro && (matches(physicalName) || physicalName in equivalences)) {
+                        val name = externalName(declaration, equivalences::replacement)
                         if (name != null && matches(name)) yield(name to declaration)
                     }
                 }
                 else -> Unit
             }
+        }
+    }
+
+    private class PhysicalEquivalences {
+        private val definitions = HashMap<String, MipsDeclaration>()
+        private val replacements = HashMap<String, String>()
+
+        fun define(name: String, declaration: MipsDeclaration) {
+            definitions.putIfAbsent(name, declaration)
+        }
+
+        operator fun contains(name: String) = name in definitions
+
+        fun replacement(name: String): String? = definitions[name]?.let { definition ->
+            replacements.getOrPut(name) {
+                Tokenizer.readEquivalenceReplacement(sourceLine(definition, fromLineStart = true), name).orEmpty()
+            }.ifEmpty { null }
         }
     }
 
@@ -236,7 +246,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
         var target: MipsDeclaration? = null
         val open = visitMacroPrefix(selected?.asSequence() ?: sourcePrefix(root, offset)) { definition ->
-            if (definition.arity == arity && definition.declaration.name == name) target = definition.declaration
+            if (definition.arity == arity && definition.name == name) target = definition.declaration
         }
         return target.takeIf { open == null }
     }
@@ -248,6 +258,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parameters.firstOrNull { it.value == name } ?: return emptyList()
+        // Expanded token columns need not correspond to a physical token in the header.
+        if (macro.expanded) return listOf(macro.declaration)
         return listOfNotNull(macro.declaration.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
     }
 
@@ -311,6 +323,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val physicalPrefix = mipsSourceEvents(file).asSequence().takeWhile { it.offset < offset }
         val initial = if (entryFile == activeFile) physicalPrefix.iterator() else mipsSourceEvents(entry).iterator()
         val pending = ArrayDeque(listOf(initial))
+        val equivalences = PhysicalEquivalences()
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val events = pending.last()
@@ -319,6 +332,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 continue
             }
             val event = events.next()
+            if (event is MipsSourceEvent.Header) {
+                event.bind(equivalences::replacement)?.let { yield(it) }
+                continue
+            }
+            if (event is MipsSourceEvent.Declaration && event.declaration.kind == SymbolKind.CONSTANT) {
+                event.declaration.name?.let { equivalences.define(it, event.declaration) }
+            }
             yield(event)
             if (event is MipsSourceEvent.Include) {
                 val included = resolveInclude(event.literal, event.path)

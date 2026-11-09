@@ -51,7 +51,8 @@ private macro_statement ::= !(END_MACRO !include_line) statement
 macro_signature ::= name parameter_list?
 // The assembler ignores parentheses anywhere in a macro declaration.
 parameter_list ::= (macro_parameter | LEFT_PAREN | RIGHT_PAREN)+
-macro_parameter ::= PARAMETER | DOLLAR_WORD
+// A physical identifier may expand to one or more formals or parentheses.
+macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 // Equivalence replacement is source text, not an eagerly evaluated expression.
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token

@@ -125,6 +125,26 @@ class MipsParserPlatformTest {
         }
     }
 
+    @Test
+    fun `macro signature aliases expand into a name and parameter list`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv NAME emit
+            .eqv PARAMETERS FORMALS
+            .eqv FORMALS (%unused, %value)
+            .macro NAME PARAMETERS
+              addiu ${'$'}t0, ${'$'}zero, %value
+            .end_macro
+            emit (0, 7)
+        """.trimIndent()
+        assertAssembles(directory, source)
+        readAction {
+            val file = assertParses(source)
+            val signature = descendants(file.node, "MACRO_SIGNATURE").single()
+            assertEquals("NAME PARAMETERS", signature.text)
+            assertEquals("PARAMETERS", descendants(signature, "MACRO_PARAMETER").single().text)
+        }
+    }
+
     private fun assertAssembles(directory: Path, source: String, expectedInstruction: Int = 0x24080007) {
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context

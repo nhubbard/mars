@@ -63,6 +63,24 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
+    fun `formals supplied by aliases navigate through their physical header and equivalences`() = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv NAME emit\n.eqv FORMALS (%value)\n.eqv \$SPIM \$value\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", aliases) }
+        val include = ".include \"aliases.s\"\n"
+        val header = ".macro NAME FORMALS\n"
+        configure("$include${header}li \$t0, %val<caret>ue\n.end_macro\n")
+        assertEquals(Target("macro-parameters.asm", "NAME FORMALS", include.length + header.indexOf("NAME")), target())
+        configure("$include.macro NAME FOR<caret>MALS\n.end_macro\n")
+        assertEquals(Target("aliases.s", ".eqv FORMALS (%value)", aliases.indexOf("FORMALS")), target())
+        configure("$include.macro NA<caret>ME FORMALS\n.end_macro\n")
+        assertEquals(Target("aliases.s", ".eqv NAME emit", aliases.indexOf("NAME")), target())
+        configure("$include.macro emit \$SP<caret>IM\n.end_macro\n")
+        assertEquals(Target("aliases.s", ".eqv \$SPIM \$value", aliases.indexOf("\$SPIM")), target())
+        configure("$include.macro emit \$SPIM\nli \$t0, \$val<caret>ue\n.end_macro\n")
+        assertEquals("emit \$SPIM", target()?.text)
+    }
+
+    @Test
     fun `parameter lookup observes case scope token roles and indexing`() = timeoutRunBlocking<Unit> {
         val header = ".macro emit (%Value)\n"
         for (line in listOf("li \$t0, %val<caret>ue", "li \$t0, %<caret>", ".asciiz \"%Val<caret>ue\"", "# %Val<caret>ue")) {

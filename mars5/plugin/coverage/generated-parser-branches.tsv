@@ -1,4 +1,4 @@
-# sha256	035b33e0ac5dccfd1a560094d75e69a9d2c2da7444036cdff45b1f05d37d9b41
+# sha256	7e801554a423add65a43aee6a9a235d80f4ac3577c36a72a761d853c5a516d83
 # Exact generated defensive outcomes reviewed against lookahead, pinning, optional rules and progress guards.
 # line	maximum missed branches	source	reason
 34	1	if (!runtime_.recursion_guard_(level_, "assembly_token")) return false	Generated recursion limit guard; deep-input safety belongs to platform runtime.

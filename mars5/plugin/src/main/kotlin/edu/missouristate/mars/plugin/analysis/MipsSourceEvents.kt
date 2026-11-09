@@ -22,7 +22,31 @@ import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 internal sealed interface MipsSourceEvent {
     val offset: Int
 
-    data class Begin(val declaration: MipsDeclaration, val parameters: List<Token>) : MipsSourceEvent {
+    class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
+        override val offset = declaration.textOffset
+        private val tokens = macroLineTokens(declaration)
+        private val direct = macroSignature(declaration, tokens, expanded = false)
+
+        fun bind(replacement: (String) -> String?): Begin? {
+            val needsExpansion = (0 until tokens.size()).any {
+                val token = tokens[it]
+                token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
+            }
+            if (!needsExpansion) return direct
+            val errors = ErrorList()
+            val expanded = Tokenizer.tokenizeWithEquivalences(
+                sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
+            )
+            expanded.discardTrailingComment()
+            if (errors.errorsOccurred()) return null
+            expanded.remove(0) // The physical .macro directive is not part of the signature.
+            return macroSignature(declaration, expanded, expanded = true)
+        }
+    }
+
+    data class Begin(
+        val declaration: MipsDeclaration, val name: String, val parameters: List<Token>, val expanded: Boolean,
+    ) : MipsSourceEvent {
         override val offset = declaration.textOffset
         val arity: Int get() = parameters.size
     }
@@ -58,7 +82,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
             ProgressManager.checkCanceled()
             when (element) {
                 is MipsDeclaration -> if (element.kind == SymbolKind.MACRO) {
-                    macroParameters(element)?.let { add(MipsSourceEvent.Begin(element, it)) }
+                    add(MipsSourceEvent.Header(element))
                 } else {
                     add(MipsSourceEvent.Declaration(element))
                 }
@@ -92,12 +116,12 @@ internal fun TokenList.discardTrailingComment() {
     if (this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
-private fun macroParameters(declaration: MipsDeclaration): List<Token>? {
-    val tokens = macroLineTokens(declaration)
+private fun macroSignature(declaration: MipsDeclaration, tokens: TokenList, expanded: Boolean): MipsSourceEvent.Begin? {
     if (tokens[0].type != TokenTypes.IDENTIFIER) return null
     val arguments = (1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
-    return arguments.takeIf { it.all { argument -> Macro.tokenIsMacroParameter(argument.value, true) } }
+    if (!arguments.all { Macro.tokenIsMacroParameter(it.value, true) }) return null
+    return MipsSourceEvent.Begin(declaration, tokens[0].value, arguments, expanded)
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

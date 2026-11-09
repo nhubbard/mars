@@ -24,7 +24,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val context = PsiUtilCore.getElementType(parent)
         val parameter = elementType in parameterTypes && context in parameterContexts && Macro.tokenIsMacroParameter(text, true)
         val label = identifier && context == referenceExpression && MipsInstructionOperand.at(this)?.acceptsLabel == true
-        val equivalence = identifier && elementType != mnemonic && context in equivalenceContexts
+        val equivalence = identifier && elementType != mnemonic &&
+            (context in equivalenceContexts || context in macroHeaderContexts)
         if (!label && !equivalence && !parameter) return null
         val data = if (equivalence) DataLabelOperand.at(this, context) else null
         return SymbolReference(this, label, equivalence, parameter, context == operationCandidate, data)
@@ -86,6 +87,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             referenceExpression, MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
             operationCandidate, MipsTypes.psi("INVOCATION_TOKEN"),
         )
+        val macroHeaderContexts = TokenSet.create(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER"))
         val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))
         val parameterContexts = TokenSet.orSet(
             equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),

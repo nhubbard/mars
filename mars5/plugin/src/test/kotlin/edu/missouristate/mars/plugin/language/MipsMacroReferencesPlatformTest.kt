@@ -85,6 +85,25 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    fun `macro calls use expanded headers and keep their physical targets`() = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv NAME emit\n.eqv FORMALS (%ignored,%value)\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.s", aliases)
+        }
+        val header = ".macro NAME FORMALS\n.end_macro\n"
+        val include = ".include \"aliases.s\"\n"
+        val call = "em<caret>it(0,7)\n"
+        val hit = target("$include$header$call")
+        assertEquals(SymbolKind.MACRO, hit?.kind)
+        assertEquals(include.length + header.indexOf("NAME"), hit?.offset)
+        assertNull(target("$include${header}em<caret>it(7)\n"))
+        assertNull(target("$header$include$call"))
+        assertNull(target(".eqv\n$header$call"))
+        assertNull(target(".eqv NAME emit\n.eqv FORMALS LOOP\n.eqv LOOP FORMALS\n$header$call"))
+        assertNull(target(".eqv NAME nop\n.eqv FORMALS (%a,%b)\n$header$call"))
+    }
+
+    @Test
     fun `macro boundaries follow nested include order across physical files`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/open.s", ".macro emit (%value)\nnop\n")

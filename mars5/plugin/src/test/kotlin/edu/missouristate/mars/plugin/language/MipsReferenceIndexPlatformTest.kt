@@ -49,7 +49,7 @@ class MipsReferenceIndexPlatformTest {
         val source = """
             .eqv Alias .emit
             .eqv Literal NOP
-            ,,.macro,, .emit (%arg)
+            ,,.macro,, .emit (%arg FORMALS)
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
             .end_macro
@@ -90,11 +90,12 @@ class MipsReferenceIndexPlatformTest {
                 sites("NOP"),
             )
             assertEquals(
-                listOf(source.indexOf(".emit"), source.indexOf(".emit(")).flatMap { offset ->
-                    SymbolKind.entries.map { MipsReferenceSite(it, offset, -1) }
-                },
+                SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf(".emit"), -1) } +
+                    MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(".emit ("), macro) +
+                    SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf(".emit("), -1) },
                 sites(".emit"),
             )
+            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)), sites("FORMALS"))
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
             for (name in listOf("DATA_ADDRESS", "\$textAddress")) {
                 assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
@@ -106,7 +107,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(8, extension.version)
+            assertEquals(9, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
@@ -201,7 +202,7 @@ class MipsReferenceIndexPlatformTest {
         assertEquals(listOf(expectedCall), macros.references)
         val constants = service.lookupCandidates(SymbolKey("shared", SymbolKind.CONSTANT), scope)
         assertEquals(listOf(IndexedSymbolSite(SourceId(constant.url), 5, -1)), constants.declarations)
-        assertEquals(setOf(expectedBranch, expectedCall), constants.references.toSet())
+        assertEquals(setOf(expectedBranch, expectedCall, IndexedSymbolSite(SourceId(macro.url), 7, 0)), constants.references.toSet())
 
         val narrow = GlobalSearchScope.filesScope(project, listOf(label, call))
         assertEquals(

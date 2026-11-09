@@ -184,6 +184,13 @@ expansions still require build-context binding. IDE fixtures exercise redefiniti
 case, incomplete definitions, raw call arguments, nested includes, and the indexing guard.
 An assembler-backed fixture compares the selected overload with the emitted instruction.
 
+Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
+The editor uses the Java tokenizer to expand definitions visible before the header,
+including definitions from earlier includes. Calls use the expanded name and arity
+while navigating to the written header. Header aliases link to their physical `.eqv`
+definitions. A use of an expanded formal opens the header because the expanded token
+column may have no corresponding source token.
+
 ## Go to Declaration for macro parameters
 
 The same include-ordered boundary traversal finds the active macro for `%name` and SPIM
