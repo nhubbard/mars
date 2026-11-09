@@ -5,6 +5,7 @@ import com.intellij.build.events.BuildEvent
 import com.intellij.build.events.FailureResult
 import com.intellij.build.events.FileMessageEvent
 import com.intellij.build.events.FinishBuildEvent
+import com.intellij.build.events.MessageEvent
 import com.intellij.build.events.SkippedResult
 import com.intellij.build.events.StartBuildEvent
 import com.intellij.build.events.SuccessResult
@@ -73,11 +74,13 @@ import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.analysis.captureBuildSources
 import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
+import edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.awt.Component
 import java.nio.file.Files
 import java.util.HexFormat
+import javax.swing.JCheckBox
 import javax.swing.JList
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -297,6 +300,106 @@ class MarsBuildPlatformTest {
             }
             withContext(Dispatchers.EDT) { settings.changeSources(emptyList()) }
             readAction { assertNull(analysis.selectedAssembly(main)) }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `assembler policy persists and changes native build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("policy.asm", """
+                .data
+                .byte 300
+                .text
+                li ${'$'}t0, 7
+                .macro emit (%name)
+                %name: nop
+                .end_macro
+                emit(generated)
+                j generated
+            """.trimIndent()) as MipsFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val path = file.virtualFile.toNioPath()
+        val settings = project.service<MarsAssemblySettings>()
+        val manager = ProjectTaskManager.getInstance(project)
+        val annotator = MipsAssemblyAnnotator()
+        val analysis = project.service<MarsAnalysisService>()
+        suspend fun generatedLabels() = readAction {
+            val site = requireNotNull(file.findElementAt(file.text.lastIndexOf("generated")))
+            analysis.labelCompletionNames(file, site, "generated")
+        }
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        suspend fun build() = manager.run(MarsBuildTask(MarsSourceSet(path))).await()
+        fun diagnostics() = buildList {
+            while (true) add(events.tryReceive().getOrNull() ?: break)
+        }.filterIsInstance<FileMessageEvent>()
+        try {
+            val unbuilt = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, true) }
+            readAction { assertTrue(annotator.acceptResult(file, unbuilt).isEmpty()) }
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, false) }
+            assertFalse(build().hasErrors())
+            assertEquals(setOf("generated"), generatedLabels())
+            val warning = diagnostics().single()
+            assertEquals(MessageEvent.Kind.WARNING, warning.kind)
+            assertEquals(1, warning.filePosition.startLine)
+            val before = readAction { requireNotNull(annotator.collectInformation(file)) }
+            val oldResult = annotator.doAnnotate(before)
+            assertTrue(oldResult.diagnostics.single().isWarning)
+
+            withContext(Dispatchers.EDT) {
+                val configurable = MarsAssemblyConfigurable(project)
+                try {
+                    val panel = configurable.createComponent()
+                    configurable.reset()
+                    val choices = UIUtil.findComponentsOfType(panel, JCheckBox::class.java).associateBy { it.text }
+                    val pseudo = choices.getValue("Allow pseudo-instructions")
+                    val warnings = choices.getValue("Treat assembler warnings as errors")
+                    assertTrue(pseudo.isSelected)
+                    assertFalse(warnings.isSelected)
+                    assertFalse(configurable.isModified)
+                    warnings.isSelected = true
+                    assertTrue(configurable.isModified)
+                    configurable.apply()
+                    configurable.apply()
+                    assertEquals(MarsExecutionOptions(warningsAreErrors = true), settings.executionOptions)
+                    pseudo.isSelected = false
+                    assertTrue(configurable.isModified)
+                    configurable.apply()
+                    val persisted = XmlSerializer.serialize(settings.getState())
+                    settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                    assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true), settings.executionOptions)
+                    configurable.reset()
+                    assertFalse(pseudo.isSelected)
+                    assertTrue(warnings.isSelected)
+                    pseudo.isSelected = true
+                    configurable.apply()
+                } finally {
+                    configurable.disposeUIResources()
+                }
+            }
+
+            assertTrue(generatedLabels().isEmpty())
+            // A warning alone fails the build, and the native Build window receives an error at its source.
+            assertTrue(build().hasErrors())
+            assertEquals(MessageEvent.Kind.ERROR, diagnostics().single().kind)
+            readAction { assertTrue(annotator.acceptResult(file, oldResult).isEmpty()) }
+            val strict = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
+            assertFalse(strict.diagnostics.single().isWarning)
+            assertEquals(warning.message, strict.diagnostics.single().message())
+            assertEquals(1, readAction { annotator.acceptResult(file, strict).size })
+
+            withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(false, true) }
+            readAction { assertTrue(annotator.acceptResult(file, strict).isEmpty()) }
+            val basicOnly = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
+            assertEquals(2, basicOnly.diagnostics.size)
+            assertTrue(basicOnly.diagnostics.any { it.message().contains("Extended") })
+            assertTrue(basicOnly.diagnostics.none { it.isWarning })
+            assertTrue(build().hasErrors())
+            assertEquals(listOf(MessageEvent.Kind.ERROR, MessageEvent.Kind.ERROR), diagnostics().map { it.kind })
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }

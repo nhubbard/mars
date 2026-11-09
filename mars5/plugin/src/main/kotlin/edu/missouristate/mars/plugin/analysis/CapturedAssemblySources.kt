@@ -14,6 +14,7 @@ import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ApplicationInfo
+import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
@@ -50,9 +51,11 @@ internal data class EditorAssemblyCapture(
 ) {
     fun validate(file: MipsFile, accept: (Path, Document, Long) -> Boolean): Boolean {
         if (VirtualFileManager.getInstance().structureModificationCount != structureStamp) return false
-        if (sources.exceptionHandler != file.project.service<MarsAssemblySettings>().exceptionHandler) return false
+        val settings = file.project.service<MarsAssemblySettings>()
+        if (sources.exceptionHandler != settings.exceptionHandler) return false
         val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
         if (selected != selectedAssembly) return false
+        if (options != effectiveOptions(file, selected, sources)) return false
         val entry = sources.sourceSet.entry
         if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
         return sources.revisions.validateSourceDocuments(accept)
@@ -65,15 +68,16 @@ internal fun collectEditorAssembly(file: MipsFile): EditorAssemblyCapture? {
     if (!virtualFile.isInLocalFileSystem) return null
     val source = virtualFile.toNioPath().toAbsolutePath().normalize()
     val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
-    val explicit = selected?.let { selection ->
-        collectBackgroundAssemblySources(file.project, selection.sourceSet).takeIf { source in it.revisions }
-            ?.let { it to selection.options }
-    }
-    val (sources, options) = explicit ?: (
-        collectBackgroundAssemblySources(file.project, MarsSourceSet(inferredMipsAssemblyEntry(file) ?: return null)) to MarsExecutionOptions()
-    )
-    return EditorAssemblyCapture(source, selected, sources, options, VirtualFileManager.getInstance().structureModificationCount)
+    val explicit = selected?.let { collectBackgroundAssemblySources(file.project, it.sourceSet) }
+        ?.takeIf { source in it.revisions }
+    val sources = explicit ?: collectBackgroundAssemblySources(file.project, MarsSourceSet(inferredMipsAssemblyEntry(file) ?: return null))
+    return EditorAssemblyCapture(source, selected, sources, effectiveOptions(file, selected, sources),
+        VirtualFileManager.getInstance().structureModificationCount)
 }
+
+private fun effectiveOptions(file: MipsFile, selection: AssemblySelection?, sources: CapturedAssemblySources): MarsExecutionOptions =
+    selection?.takeIf { it.sourceSet == sources.sourceSet }?.options
+        ?: file.project.service<MarsAssemblySettings>().executionOptions
 
 private data class SourceDocument(val text: String, val revision: Long, val identity: Path)
 
@@ -202,10 +206,16 @@ internal suspend fun CapturedAssemblySources.assembleIn(component: MarsComponent
 
 internal fun CapturedAssemblySources.assembleIn(component: MarsComponent, checkCancellation: Runnable): AssemblyResult {
     val settings = component.simulationSettings()
-    return component.assembler().assembleSnapshot(
+    val result = component.assembler().assembleSnapshot(
         snapshot, exceptionHandler?.takeUnless { it in snapshot.entries() },
         settings.isExtendedAssemblerEnabled, settings.isWarningsAreErrors, checkCancellation,
     )
+    if (!settings.isWarningsAreErrors) return result
+    return AssemblyResult(result.program(), result.errors().map { diagnostic ->
+        if (diagnostic.isWarning) {
+            AssemblyError(diagnostic.file(), diagnostic.line(), diagnostic.column(), diagnostic.message(), false)
+        } else diagnostic
+    })
 }
 
 /** Validates source dependencies and supplies their current documents under the same read action. */

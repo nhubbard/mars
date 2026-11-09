@@ -5,9 +5,13 @@ import edu.missouristate.mars.core.SimulationSettings
 internal data class MarsExecutionOptions(
     val delayedBranching: Boolean = false,
     val selfModifyingCode: Boolean = false,
+    val allowPseudoInstructions: Boolean = true,
+    val warningsAreErrors: Boolean = false,
 ) {
     fun applyTo(settings: SimulationSettings) {
         settings.setDelayedBranchingEnabled(delayedBranching)
         settings.setSelfModifyingCodeEnabled(selfModifyingCode)
+        settings.setExtendedAssemblerEnabled(allowPseudoInstructions)
+        settings.setWarningsAreErrors(warningsAreErrors)
     }
 }

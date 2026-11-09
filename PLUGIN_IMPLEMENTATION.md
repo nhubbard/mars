@@ -1353,6 +1353,18 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## Assembler policy
+
+In **Settings → Build, Execution, Deployment → MARS Assembly**, choose whether to allow pseudo-instructions
+and whether to treat assembler warnings as errors. The project defaults apply to manual assembly,
+optional assembly before JVM compilation, and editor diagnostics. The default project policy allows
+pseudo-instructions and reports warnings without failing the build.
+
+Run and Debug configurations can inherit or override either setting independently. Before Launch
+and process startup use the same resolved options for that launch. A run configuration can use a
+different policy without changing diagnostics in the editor. Promoted warnings appear as errors
+with the original source locations.
+
 ## New MIPS projects
 
 Choose **File → New → Project → MARS MIPS**. The wizard creates a general

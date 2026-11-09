@@ -65,7 +65,8 @@ class MarsCompilerPlatformTest {
             try {
                 val form = page.createComponent()
                 page.reset()
-                val checkbox = UIUtil.findComponentsOfType(form, JCheckBox::class.java).single()
+                val checkbox = UIUtil.findComponentsOfType(form, JCheckBox::class.java)
+                    .single { it.text == "Assemble project sources before IntelliJ JVM compilation" }
                 assertFalse(checkbox.isSelected)
                 checkbox.isSelected = true
                 page.apply()
@@ -100,6 +101,13 @@ class MarsCompilerPlatformTest {
         assertEquals(1, warning.column)
         assertNotNull(warning.navigatable)
 
+        withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, true) }
+        val strict = context(library)
+        assertFalse(execute(strict))
+        assertEquals(warning.copy(category = CompilerMessageCategory.ERROR, navigatable = null),
+            strict.messages.single().copy(navigatable = null))
+
+        withContext(Dispatchers.EDT) { settings.changeAssemblerOptions(true, false) }
         withContext(Dispatchers.EDT) { edit(entry, "nop\nla \$t0, missing_label\n") }
         val failed = context(entry)
         assertFalse(execute(failed))

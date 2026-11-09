@@ -24,10 +24,12 @@ import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectFilePath
 import com.intellij.util.xmlb.annotations.XCollection
 import java.nio.file.Path
+import javax.swing.JCheckBox
 
 @Service(Service.Level.PROJECT)
 @State(name = "MarsAssemblySettings", storages = [Storage("mars.xml")])
@@ -37,11 +39,16 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var exceptionHandler: String? = null,
         @JvmField @XCollection(style = XCollection.Style.v2) var sources: List<String> = emptyList(),
         @JvmField var assembleBeforeJvmCompile: Boolean = false,
+        @JvmField var allowPseudoInstructions: Boolean = true,
+        @JvmField var warningsAreErrors: Boolean = false,
     )
 
     val sourceChanges = SimpleModificationTracker()
     val exceptionHandler get() = projectFilePath(project, getState().exceptionHandler)
     val assembleBeforeJvmCompile get() = getState().assembleBeforeJvmCompile
+    val executionOptions get() = getState().let {
+        MarsExecutionOptions(allowPseudoInstructions = it.allowPseudoInstructions, warningsAreErrors = it.warningsAreErrors)
+    }
     val projectSources: List<Path> get() = getState().sources.mapNotNull { projectFilePath(project, it) }.distinct()
     fun projectSourceSet(): MarsSourceSet? = projectSources.takeIf { it.isNotEmpty() }
         ?.let { MarsSourceSet(it, MarsAssemblyMode.PROJECT) }
@@ -67,6 +74,12 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeJvmCompile(value: Boolean) {
         updateState { it.copy(assembleBeforeJvmCompile = value) }
+    }
+
+    fun changeAssemblerOptions(allowPseudoInstructions: Boolean, warningsAreErrors: Boolean) {
+        val current = executionOptions
+        if (current.allowPseudoInstructions == allowPseudoInstructions && current.warningsAreErrors == warningsAreErrors) return
+        change { it.copy(allowPseudoInstructions = allowPseudoInstructions, warningsAreErrors = warningsAreErrors) }
     }
 
     private fun change(transform: (Settings) -> Settings) {
@@ -118,6 +131,22 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
             checkBox(messages.getMessage("build.settings.compiler"))
                 .bindSelected({ settings.assembleBeforeJvmCompile }, settings::changeJvmCompile)
                 .comment(messages.getMessage("build.settings.compiler.help"))
+        }
+        group(messages.getMessage("build.settings.policy")) {
+            lateinit var pseudo: JCheckBox
+            lateinit var warnings: JCheckBox
+            row { pseudo = checkBox(messages.getMessage("build.settings.pseudo")).component }
+            row { warnings = checkBox(messages.getMessage("build.settings.warnings")).component }
+            onReset {
+                val options = settings.executionOptions
+                pseudo.isSelected = options.allowPseudoInstructions
+                warnings.isSelected = options.warningsAreErrors
+            }
+            onIsModified {
+                val options = settings.executionOptions
+                pseudo.isSelected != options.allowPseudoInstructions || warnings.isSelected != options.warningsAreErrors
+            }
+            onApply { settings.changeAssemblerOptions(pseudo.isSelected, warnings.isSelected) }
         }
         val chooser = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
             .withTitle(messages.getMessage("build.settings.handler.browse"))

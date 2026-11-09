@@ -270,6 +270,69 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `Run inherits project assembly policy and can override each option independently`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("policy.asm",
+                    ".data\n.byte 300\n.text\nli \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n")
+                project.getService(MarsAssemblySettings::class.java).changeAssemblerOptions(false, true)
+                source.virtualFile.path
+            }
+            suspend fun launch(pseudo: AssemblyOptionOverride, warnings: AssemblyOptionOverride): Recording {
+                val recording = Recording()
+                withContext(Dispatchers.EDT) {
+                    val config = type.createTemplateConfiguration(project)
+                    config.readExternal(Element("configuration"))
+                    config.options.sourcePath = source
+                    assertEquals(AssemblyOptionOverride.PROJECT, config.options.allowPseudoInstructions)
+                    assertEquals(AssemblyOptionOverride.PROJECT, config.options.warningsAreErrors)
+                    val editor = config.configurationEditor
+                    try {
+                        editor.resetFrom(config)
+                        val combos = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java)
+                            .filter { it.selectedItem is AssemblyOptionOverride }
+                        assertEquals(2, combos.size)
+                        assertEquals(listOf(AssemblyOptionOverride.PROJECT, AssemblyOptionOverride.PROJECT), combos.map { it.selectedItem })
+                        combos[0].selectedItem = pseudo
+                        combos[1].selectedItem = warnings
+                        editor.applyTo(config)
+                    } finally {
+                        Disposer.dispose(editor)
+                    }
+                    val xml = Element("configuration").also(config::writeExternal)
+                    val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                    assertEquals(pseudo, restored.options.allowPseudoInstructions)
+                    assertEquals(warnings, restored.options.warningsAreErrors)
+                    val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                    project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                        override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                            if (env === environment) handler.addProcessListener(recording)
+                        }
+                    })
+                    environment.runner.execute(environment)
+                }
+                recording.exit.await()
+                return recording
+            }
+
+            val inherited = launch(AssemblyOptionOverride.PROJECT, AssemblyOptionOverride.PROJECT)
+            assertEquals(1, inherited.exit.await())
+            assertEquals("", inherited.stdout.toString())
+            val strict = launch(AssemblyOptionOverride.ENABLED, AssemblyOptionOverride.PROJECT)
+            assertEquals(1, strict.exit.await())
+            assertEquals("", strict.stdout.toString())
+            val permissive = launch(AssemblyOptionOverride.ENABLED, AssemblyOptionOverride.DISABLED)
+            assertEquals(0, permissive.exit.await())
+            assertEquals("42", permissive.stdout.toString())
+            assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true),
+                project.getService(MarsAssemblySettings::class.java).executionOptions)
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
     fun `native Run uses the stored project entry and assembles unsaved sources in order`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         val recording = Recording()

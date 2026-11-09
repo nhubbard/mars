@@ -24,6 +24,7 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
@@ -88,7 +89,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
 
     fun createProcess(
         entry: Path,
-        options: MarsExecutionOptions = MarsExecutionOptions(),
+        options: MarsExecutionOptions = project.service<MarsAssemblySettings>().executionOptions,
         memoryDumps: List<MemoryExportSelection>,
         captureBitmap: Boolean = false,
         captureReferences: Boolean = false,

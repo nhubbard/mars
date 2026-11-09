@@ -100,14 +100,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             if (selection.sourceSet.mode != MarsAssemblyMode.PROJECT &&
                 (build.snapshot.sourcePath(file) != null || path == exceptionHandler ||
                     selection.sourceSet.mode == MarsAssemblyMode.DIRECTORY && virtualFile.isAssemblyDirectorySource() && path.parent == selection.entry.parent)
-            ) return selection
+            ) return selection.forEditor()
         }
         val sources = settings.projectSourceSet() ?: return null
         val lastProject = build?.takeIf { it.request.selection.sourceSet == sources }
         if (path in sources.entries || lastProject?.snapshot?.sourcePath(file) != null ||
             !DumbService.isDumb(project) && mipsAssemblyRoots(file).any { it.toNioPath() in sources.entries }
         ) {
-            return lastProject?.request?.selection ?: AssemblySelection(sources, MarsExecutionOptions())
+            return lastProject?.request?.selection?.forEditor() ?: AssemblySelection(sources, settings.executionOptions)
         }
         return null
     }
@@ -128,7 +128,16 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val snapshot: AssemblySymbols = AssemblySymbols(request.entry, options = request.selection.options),
     )
 
-    internal fun beginSymbolBuild(entry: Path, options: MarsExecutionOptions = MarsExecutionOptions()): SymbolBuild =
+    // A launch can override the assembler policy without changing editor diagnostics for the project.
+    private fun AssemblySelection.forEditor(): AssemblySelection {
+        val defaults = settings.executionOptions
+        return copy(options = options.copy(
+            allowPseudoInstructions = defaults.allowPseudoInstructions,
+            warningsAreErrors = defaults.warningsAreErrors,
+        ))
+    }
+
+    internal fun beginSymbolBuild(entry: Path, options: MarsExecutionOptions = settings.executionOptions): SymbolBuild =
         beginSymbolBuild(MarsSourceSet(entry), options)
 
     internal fun beginSymbolBuild(sourceSet: MarsSourceSet, options: MarsExecutionOptions): SymbolBuild =
@@ -151,9 +160,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun <T : Any> fromAssemblySymbols(file: MipsFile, lookup: (AssemblySymbols, Path) -> T?): T? {
         val handler = exceptionHandler
-        val selected = lastBuild.get()?.snapshot?.takeIf { it.isCurrent(handler) }?.let { snapshot ->
-            snapshot.sourcePath(file)?.let { snapshot to it }
-        }
+        val selected = lastBuild.get()?.takeIf { it.request.selection.options == it.request.selection.forEditor().options }
+            ?.snapshot?.takeIf { it.isCurrent(handler) }?.let { snapshot ->
+                snapshot.sourcePath(file)?.let { snapshot to it }
+            }
         if (selected != null && selected.first.hasCurrentDirectory()) lookup(selected.first, selected.second)?.let { return it }
         if (DumbService.isDumb(project)) return null
         val candidates = synchronized(backgroundSymbols) { backgroundSymbols.values() }
@@ -161,7 +171,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (candidates.isEmpty()) return null
         val configuration = selectedAssembly(file)
         val sources = configuration?.sourceSet ?: inferredMipsAssemblyEntry(file)?.let { MarsSourceSet(it) }
-        val options = configuration?.options ?: MarsExecutionOptions()
+        val options = configuration?.options ?: settings.executionOptions
         val candidate = candidates.firstOrNull {
             it.first.sourceSet == sources && it.first.options == options &&
                 it.first.hasCurrentDirectory() && it.first.exceptionHandler == handler

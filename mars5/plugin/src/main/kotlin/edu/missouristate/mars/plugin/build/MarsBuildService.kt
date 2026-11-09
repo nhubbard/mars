@@ -80,12 +80,14 @@ internal class MarsBuildService(private val project: Project, private val scope:
         }
     }
 
+    private val projectOptions get() = project.service<MarsAssemblySettings>().executionOptions
+
     internal suspend fun assemble(
-        entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
+        entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
     ) = assemble(MarsSourceSet(entry), component, activateBuildView, options)
 
     internal suspend fun assemble(
-        sourceSet: MarsSourceSet, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
+        sourceSet: MarsSourceSet, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
         onSourcesCaptured: (Set<Path>) -> Unit = {},
     ): Boolean {
         val entry = sourceSet.entry
@@ -126,7 +128,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         sources: MarsSourceSet, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
     ): Boolean {
         val component = MarsSessionService.createMarsComponent()
-        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, MarsExecutionOptions())
+        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, projectOptions)
         return component.context().use { assembleAndReport(symbolBuild, component, {}, report) }
     }
 

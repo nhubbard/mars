@@ -29,12 +29,15 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.selected
+import com.intellij.ui.dsl.builder.toNullableProperty
 import com.intellij.ui.layout.ComponentPredicate
 import com.intellij.ui.layout.not
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
@@ -51,9 +54,20 @@ import javax.swing.JTextField
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
 
+internal enum class AssemblyOptionOverride(private val messageKey: String, private val override: Boolean?) {
+    PROJECT("run.assembly.override.project", null),
+    ENABLED("run.assembly.override.enabled", true),
+    DISABLED("run.assembly.override.disabled", false);
+
+    val title get() = runMessages.getMessage(messageKey)
+    fun resolve(projectDefault: Boolean) = override ?: projectDefault
+}
+
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var delayedBranching: Boolean by property(false)
+    var allowPseudoInstructions by enum(AssemblyOptionOverride.PROJECT)
+    var warningsAreErrors by enum(AssemblyOptionOverride.PROJECT)
     var assembleDirectory: Boolean by property(false)
     var useProjectSources: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
@@ -115,6 +129,8 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var source = ""
         private var delayedBranching = false
         private var assembleDirectory = false
+        private var allowPseudoInstructions = AssemblyOptionOverride.PROJECT
+        private var warningsAreErrors = AssemblyOptionOverride.PROJECT
         private var useProjectSources = false
         private var selfModifyingCode = false
         private var captureBitmap = false
@@ -143,6 +159,15 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                 checkBox(runMessages.getMessage("run.assemble.directory")).bindSelected(::assembleDirectory)
                     .enabledIf(useFile)
             }
+            val overrideRenderer = textListCellRenderer<AssemblyOptionOverride>("") { it.title }
+            row(runMessages.getMessage("run.assembly.pseudo")) {
+                comboBox(AssemblyOptionOverride.entries, overrideRenderer)
+                    .bindItem(::allowPseudoInstructions.toNullableProperty())
+            }
+            row(runMessages.getMessage("run.assembly.warnings")) {
+                comboBox(AssemblyOptionOverride.entries, overrideRenderer)
+                    .bindItem(::warningsAreErrors.toNullableProperty())
+            }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
             row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
@@ -158,6 +183,8 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
             delayedBranching = configuration.options.delayedBranching
+            allowPseudoInstructions = configuration.options.allowPseudoInstructions
+            warningsAreErrors = configuration.options.warningsAreErrors
             assembleDirectory = configuration.options.assembleDirectory
             useProjectSources = configuration.options.useProjectSources
             selfModifyingCode = configuration.options.selfModifyingCode
@@ -174,6 +201,8 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             form.apply()
             configuration.options.sourcePath = source.trim()
             configuration.options.delayedBranching = delayedBranching
+            configuration.options.allowPseudoInstructions = allowPseudoInstructions
+            configuration.options.warningsAreErrors = warningsAreErrors
             configuration.options.assembleDirectory = assembleDirectory
             configuration.options.useProjectSources = useProjectSources
             configuration.options.selfModifyingCode = selfModifyingCode
@@ -195,7 +224,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val sources = resolveSourceSet { ExecutionException(it) }
         checkDeviceConflict { ExecutionException(it) }
         val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
-        val launch = MarsLaunchAssembly(sources, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode))
+        val defaults = project.service<MarsAssemblySettings>().executionOptions
+        val executionOptions = MarsExecutionOptions(
+            delayedBranching = options.delayedBranching,
+            selfModifyingCode = options.selfModifyingCode,
+            allowPseudoInstructions = options.allowPseudoInstructions.resolve(defaults.allowPseudoInstructions),
+            warningsAreErrors = options.warningsAreErrors.resolve(defaults.warningsAreErrors),
+        )
+        val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
             environment, launch, dumps, options.captureBitmap, options.captureReferences,
