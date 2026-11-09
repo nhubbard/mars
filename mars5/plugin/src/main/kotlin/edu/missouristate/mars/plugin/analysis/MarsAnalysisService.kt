@@ -21,6 +21,7 @@ import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
+import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
@@ -51,7 +52,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         for (scope in labelScopes(root, macroOffset(position))) {
             for ((name, sites) in declarations(scope.file)) {
                 ProgressManager.checkCanceled()
-                if (name.startsWith(prefix) && sites.any { it.kind == SymbolKind.LABEL && visibleInMacro(it.macroOffset, scope.macro) }) {
+                if (name.startsWith(prefix) && sites.any { scope.hasLiteralLabel(name, it) }) {
                     add(name)
                 }
             }
@@ -68,8 +69,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val sites = declarations(scope.file)[name].orEmpty()
             for (site in sites) {
                 ProgressManager.checkCanceled()
-                if (site.kind != SymbolKind.LABEL || !visibleInMacro(site.macroOffset, scope.macro)) continue
-                val matches = if (site.macroOffset != -1 || scope.inheritedMacro) local else outer
+                if (!scope.hasLiteralLabel(name, site)) continue
+                val matches = if (scope.isMacroLocal(site)) local else outer
                 matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
             }
         }
@@ -255,6 +256,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     )
 
     private data class LabelScope(val file: MipsFile, val macro: Int, val inheritedMacro: Boolean)
+
+    private fun LabelScope.isMacroLocal(site: MipsDeclarationSite) = site.macroOffset != -1 || inheritedMacro
+
+    private fun LabelScope.hasLiteralLabel(name: String, site: MipsDeclarationSite): Boolean =
+        site.kind == SymbolKind.LABEL && visibleInMacro(site.macroOffset, macro) &&
+            !(isMacroLocal(site) && Macro.tokenIsMacroParameter(name, true))
 
     private fun declarations(file: MipsFile) =
         FileBasedIndex.getInstance().getFileData(MipsDeclarationIndex.NAME, file.viewProvider.virtualFile, project)

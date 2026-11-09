@@ -145,17 +145,19 @@ class MipsCompletionPlatformTest {
     @Test
     fun `labels inside macros stay in their physical macro scope`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("macro-part.s", "injectedLabel: nop\n")
+            fixture.addFileToProject("macro-part.s", "injectedLabel: nop\n\$includedParameterLabel: nop\n")
             fixture.addFileToProject("other-part.s", "hiddenLabel: nop\n")
             fixture.configureByText("macro.asm", """
                 outerLabel: nop
+                ${'$'}gccLabel: nop
                 .macro other
                   .include "other-part.s"
                   otherLabel: nop
                 .end_macro
-                .macro emit
+                .macro emit (${'$'}parameterLabel, ${'$'}includedParameterLabel)
                   .include "macro-part.s"
                   currentLabel: nop
+                  ${'$'}parameterLabel: nop
                   j <caret>
                 .end_macro
             """.trimIndent())
@@ -163,7 +165,7 @@ class MipsCompletionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
             val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.endsWith("Label") }
-            assertEquals(setOf("outerLabel", "currentLabel", "injectedLabel"), names.toSet())
+            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel"), names.toSet())
         }
     }
 

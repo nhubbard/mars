@@ -87,7 +87,9 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             operationCandidate, MipsTypes.psi("INVOCATION_TOKEN"),
         )
         val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))
-        val parameterContexts = TokenSet.orSet(equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT")))
+        val parameterContexts = TokenSet.orSet(
+            equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
+        )
     }
 }
 

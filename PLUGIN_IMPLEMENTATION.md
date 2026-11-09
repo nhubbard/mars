@@ -197,6 +197,13 @@ include. Resolving a body edited directly in a separate included file still need
 of the containing build context. Fixtures cover both parameter spellings, duplicate names,
 address and operation uses, include boundaries, case, and indexing mode.
 
+Parameters can also supply a label name, as in `%entry: addiu $t0, $zero, 7`.
+The parser retains separate label and instruction nodes, and navigation on the label token
+finds the formal parameter for both MARS and SPIM spellings. Label completion hides parameter
+spellings inside macros, including in included bodies, and preserves literal dollar-prefixed
+labels outside them. The assembler fixture verifies that a macro-generated label can be exported.
+Resolving that generated name at its use site still requires expansion-aware binding.
+
 ## Go to Declaration for data labels and exports
 
 Native references navigate from `.globl` lists, integer data operands and their continued

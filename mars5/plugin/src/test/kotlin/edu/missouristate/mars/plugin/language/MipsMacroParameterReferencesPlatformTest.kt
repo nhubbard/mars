@@ -29,6 +29,8 @@ class MipsMacroParameterReferencesPlatformTest {
             "nested(%?<caret>name)" to "%?name",
             ".data %ba<caret>se" to "%base",
             "%ba<caret>se" to "%base",
+            "%ba<caret>se: nop" to "%base",
+            "\$va<caret>lue: nop" to "\$value",
         )
         for ((line, name) in cases) {
             configure("$header$line\n.end_macro\n")
@@ -49,6 +51,8 @@ class MipsMacroParameterReferencesPlatformTest {
         val close = ".include \"parts/close.s\"\n"
         val use = "li \$t0, %val<caret>ue\n"
         configure("$open$use$close")
+        assertEquals(Target("open.s", "%value", header.indexOf("%value")), target())
+        configure("$open%val<caret>ue: nop\n$close")
         assertEquals(Target("open.s", "%value", header.indexOf("%value")), target())
         configure("$open$close$use")
         assertNull(target())

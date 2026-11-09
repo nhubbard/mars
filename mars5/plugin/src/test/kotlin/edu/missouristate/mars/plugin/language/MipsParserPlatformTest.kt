@@ -195,6 +195,26 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `macro parameters can supply a label without swallowing its instruction`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        for (parameter in listOf("%entry", "\$entry")) {
+            val source = """
+                .macro emit ($parameter)
+                  $parameter: addiu ${'$'}t0, ${'$'}zero, 7
+                .end_macro
+                emit(generated_entry)
+                .globl generated_entry
+            """.trimIndent()
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                val macro = descendants(file.node, "MACRO_DEFINITION").single()
+                assertEquals("$parameter:", descendants(macro, "LABEL").single().text)
+                assertEquals("addiu", descendants(macro, "OPERATION").single().text)
+            }
+        }
+    }
+
+    @Test
     fun `expandable operand fragments preserve load syntax supplied by equivalences and macros`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val cases = listOf(
             ".eqv OPEN (\nlw \$t0,0 OPEN \$sp)" to "\$t0,0 OPEN \$sp)",
