@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language.psi
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementResolveResult
@@ -20,6 +21,8 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.equivalenceColor
 import edu.missouristate.mars.plugin.language.labelColor
 import edu.missouristate.mars.plugin.language.macroParameterColor
+import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.punctuationColor
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
     override fun getReference(): PsiReference? {
@@ -75,9 +78,29 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         fun highlightingColor(): TextAttributesKey? {
             val file = element.containingFile as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()
-            if (equivalence && analysis.equivalenceTarget(file, element) != null) return equivalenceColor
+            if (equivalence && analysis.equivalenceTarget(file, element) != null) {
+                val type = analysis.editorTimeline(file).equivalenceUseType(file, element)
+                return when (type) {
+                    in numericTypes -> DefaultLanguageHighlighterColors.NUMBER
+                    in registerTypes -> DefaultLanguageHighlighterColors.INSTANCE_FIELD
+                    in punctuationTypes -> punctuationColor
+                    TokenTypes.QUOTED_STRING -> DefaultLanguageHighlighterColors.STRING
+                    TokenTypes.MACRO_PARAMETER -> macroParameterColor
+                    TokenTypes.IDENTIFIER, TokenTypes.OPERATOR -> operandColor(file, analysis) ?: equivalenceColor
+                    else -> equivalenceColor
+                }
+            }
             if (parameter && analysis.macroParameterTargets(file, element) != null) return macroParameterColor
-            return labelColor.takeIf { labelUse(file, analysis) != null }
+            return operandColor(file, analysis)
+        }
+
+        private fun operandColor(file: MipsFile, analysis: MarsAnalysisService): TextAttributesKey? {
+            if (labelUse(file, analysis) != null) return labelColor
+            if (!aliasOperand) return null
+            val operation = analysis.operationSite(file, element.parent.parent.operationHead, recognizeMacros = true)
+            return macroParameterColor.takeIf {
+                operation?.type == TokenTypes.IDENTIFIER && operation.range.endOffset <= element.textOffset
+            }
         }
 
         private fun labelUse(file: MipsFile, analysis: MarsAnalysisService): LabelUse? {
@@ -115,6 +138,11 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val parameterContexts = TokenSet.orSet(
             equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
         )
+        val numericTypes = setOf(TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U,
+            TokenTypes.INTEGER_32, TokenTypes.REAL_NUMBER)
+        val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)
+        val punctuationTypes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN, TokenTypes.COLON,
+            TokenTypes.PLUS, TokenTypes.MINUS)
     }
 }
 

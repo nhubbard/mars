@@ -202,10 +202,82 @@ class MipsEditorPlatformTest {
             assertTrue(highlights.none { it.startOffset == source.indexOf("local (2)") && it.forcedTextAttributesKey == macroColor })
             assertColor("addiu ${'$'}t0", instructionMnemonicColor)
             assertColor(".eqv COUNT", equivalenceColor, "COUNT")
-            assertColor("CALL (COUNT)", equivalenceColor, "COUNT")
+            assertColor("CALL (COUNT)", DefaultLanguageHighlighterColors.NUMBER, "COUNT")
             assertColor("(${'$'}parameter)\n", macroParameterColor, "${'$'}parameter")
             assertColor("paint (${'$'}parameter)", macroParameterColor, "${'$'}parameter")
             assertColor("DATA\n.extern", DefaultLanguageHighlighterColors.KEYWORD, "DATA")
+        }
+    }
+
+    @Test
+    fun `macro arguments and aliases take the colors of their use sites`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("alias-colors.asm", """
+                .eqv NUMBER -4
+                .eqv BASE ${'$'}sp
+                .eqv OPEN (
+                .eqv CLOSE )
+                .eqv DEST loop
+                .eqv MESSAGE "hello"
+                .eqv MANY 1, 2
+                .eqv VALUE %value
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST
+                .eqv CALL emit
+                .eqv OPCODE nop
+                .macro emit (%value)
+                    li ${'$'}t0, VALUE
+                .end_macro
+                .macro apply (%op)
+                    %op
+                .end_macro
+                .data
+                text: .asciiz MESSAGE
+                numbers: .word MANY
+                .data DEST
+                .text
+                loop: nop
+                lw ${'$'}t1, NUMBER OPEN BASE CLOSE
+                j DEST
+                CALL (bare_argument)
+                CALL (DEST)
+                CALL (NUMBER)
+                apply (OPCODE)
+                CALL (FIRST)
+                unknown (bare_argument)
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val source = fixture.file.text
+            val highlights = fixture.doHighlighting()
+            fun color(context: String, token: String): TextAttributesKey? {
+                val start = source.indexOf(context) + context.indexOf(token)
+                return highlights.singleOrNull { it.startOffset == start && it.endOffset == start + token.length &&
+                    it.forcedTextAttributesKey != null }?.forcedTextAttributesKey
+            }
+            assertEquals(DefaultLanguageHighlighterColors.NUMBER, color("NUMBER OPEN", "NUMBER"))
+            assertEquals(DefaultLanguageHighlighterColors.INSTANCE_FIELD, color("BASE CLOSE", "BASE"))
+            assertEquals(punctuationColor, color("OPEN BASE", "OPEN"))
+            assertEquals(punctuationColor, color("BASE CLOSE", "CLOSE"))
+            assertEquals(labelColor, color("j DEST", "DEST"))
+            assertEquals(DefaultLanguageHighlighterColors.STRING, color(".asciiz MESSAGE", "MESSAGE"))
+            assertEquals(macroParameterColor, color("li \$t0, VALUE", "VALUE"))
+            assertEquals(equivalenceColor, color(".word MANY", "MANY"))
+            assertEquals(macroColor, color("CALL (bare_argument)", "CALL"))
+            assertEquals(macroParameterColor, color("CALL (bare_argument)", "bare_argument"))
+            assertEquals(macroParameterColor, color("CALL (DEST)", "DEST"))
+            assertEquals(equivalenceColor, color(".data DEST", "DEST"))
+            assertEquals(DefaultLanguageHighlighterColors.NUMBER, color("CALL (NUMBER)", "NUMBER"))
+            assertEquals(macroParameterColor, color("apply (OPCODE)", "OPCODE"))
+            val cycleStart = source.lastIndexOf("FIRST")
+            assertTrue(highlights.any {
+                it.startOffset == cycleStart && it.endOffset == cycleStart + "FIRST".length &&
+                    (it.forcedTextAttributesKey == equivalenceColor ||
+                        it.description?.contains("Circular .eqv expansion") == true)
+            }, highlights.filter { it.startOffset == cycleStart }.joinToString())
+            assertNull(color("unknown (bare_argument)", "bare_argument"))
         }
     }
 

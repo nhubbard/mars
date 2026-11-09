@@ -6,14 +6,18 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import java.util.BitSet
 import java.util.TreeMap
+import java.util.concurrent.ConcurrentHashMap
 
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
@@ -116,6 +120,8 @@ internal class MipsSourceTimeline(
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
 ) {
+    private val equivalenceUseTypes = ConcurrentHashMap<Pair<MipsFile, Int>, Map<Int, TokenTypes?>>()
+
     val generatedLabelSites: Set<PsiElement> by lazy {
         generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
     }
@@ -131,6 +137,23 @@ internal class MipsSourceTimeline(
     private fun openMacro(end: Int): Begin? = macroBoundaries.floorEntry(end)?.value
 
     fun prefix(file: MipsFile, offset: Int): Prefix = Prefix(prefixEnd(file, offset))
+
+    /** A physical alias has one color only when its expansion supplies one token. */
+    fun equivalenceUseType(file: MipsFile, position: PsiElement): TokenTypes? {
+        val start = sourceLineStart(position)
+        return equivalenceUseTypes.getOrPut(file to start) {
+            val prefix = prefix(file, start)
+            val errors = ErrorList()
+            val expansion = Tokenizer.tokenizeMappedLine(
+                sourceLine(position, fromLineStart = true), errors,
+                { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+            )
+            val tokens = expansion.tokens()
+            if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
+                expansion.originalOffset(it.startPos - 1)
+            }.mapValues { (_, tokens) -> tokens.singleOrNull()?.type }
+        }[position.textOffset - start]
+    }
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
         val locations = files.getValue(file.viewProvider.virtualFile)
