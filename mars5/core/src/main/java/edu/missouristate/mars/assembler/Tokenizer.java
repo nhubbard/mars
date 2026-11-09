@@ -55,7 +55,7 @@ public class Tokenizer {
   private final InstructionSet instructions;
   private ErrorList errors;
   private MIPSprogram sourceMIPSprogram;
-  private HashMap<String, String> equivalents; // DPS 11-July-2012
+  private final Map<String, String> equivalents = new HashMap<>();
   // The 8 escaped characters are: single quote, double quote, backslash, newline (linefeed),
   // tab, backspace, return, form feed.  The characters and their corresponding decimal codes:
   private static final String escapedCharacters = "'\"\\ntbrf0";
@@ -99,7 +99,7 @@ public class Tokenizer {
   public ArrayList<TokenList> tokenize(MIPSprogram p, Runnable checkCancellation)
       throws ProcessingException {
     sourceMIPSprogram = p;
-    equivalents = new HashMap<>(); // DPS 11-July-2012
+    equivalents.clear();
     ArrayList<TokenList> tokenList = new ArrayList<>();
     // ArrayList source = p.getSourceList();
     ArrayList<SourceLine> source = processIncludes(p, new HashSet<>(), checkCancellation);
@@ -513,115 +513,106 @@ public class Tokenizer {
     return result;
   }
 
-  // Process the .eqv directive, which needs to be applied prior to tokenizing of subsequent
-  // statements.
-  // This handles detecting that theLine contains a .eqv directive, in which case it needs
-  // to be added to the HashMap of equivalents.  It also handles detecting that theLine
-  // contains a symbol that was previously defined in an .eqv directive, in which case
-  // the substitution needs to be made.
-  // DPS 11-July-2012
+  // A replacement is source text. Re-tokenize it so that it can supply punctuation or a
+  // directive, including a new .eqv definition.
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
       Runnable checkCancellation) {
-    // See if it is .eqv directive.  If so, record it...
-    // Have to assure it is a well-formed statement right now (can't wait for assembler).
-
-    if (tokens.size() > 2
-        && (tokens.get(0).getType() == TokenTypes.DIRECTIVE
-            || tokens.get(2).getType() == TokenTypes.DIRECTIVE)) {
-      // There should not be a label but if there is, the directive is in token position 2 (ident,
-      // colon, directive).
-      int dirPos = (tokens.get(0).getType() == TokenTypes.DIRECTIVE) ? 0 : 2;
-      if (Directives.matchDirective(tokens.get(dirPos).getValue()) == Directives.EQV) {
-        // Get position in token list of last non-comment token
-        int tokenPosLastOperand =
-            tokens.size()
-                - ((tokens.get(tokens.size() - 1).getType() == TokenTypes.COMMENT) ? 2 : 1);
-        // There have to be at least two non-comment tokens beyond the directive
-        if (tokenPosLastOperand < dirPos + 2) {
-          errors.add(
-              new ErrorMessage(
-                  program,
-                  lineNum,
-                  tokens.get(dirPos).getStartPos(),
-                  "Too few operands for " + Directives.EQV.getName() + " directive"));
-          return tokens;
-        }
-        // Token following the directive has to be IDENTIFIER
-        if (tokens.get(dirPos + 1).getType() != TokenTypes.IDENTIFIER) {
-          errors.add(
-              new ErrorMessage(
-                  program,
-                  lineNum,
-                  tokens.get(dirPos).getStartPos(),
-                  "Malformed " + Directives.EQV.getName() + " directive"));
-          return tokens;
-        }
-        String symbol = tokens.get(dirPos + 1).getValue();
-        // Make sure the symbol is not contained in the expression.  Not likely to occur but if left
-        // undetected it will result in infinite recursion.  e.g.  .eqv ONE, (ONE)
-        for (int i = dirPos + 2; i < tokens.size(); i++) {
-          if (tokens.get(i).getValue().equals(symbol)) {
-            errors.add(
-                new ErrorMessage(
-                    program,
-                    lineNum,
-                    tokens.get(dirPos).getStartPos(),
-                    "Cannot substitute "
-                        + symbol
-                        + " for itself in "
-                        + Directives.EQV.getName()
-                        + " directive"));
-            return tokens;
-          }
-        }
-        // Expected syntax is symbol, expression.  I'm allowing the expression to comprise
-        // multiple tokens, so I want to get everything from the IDENTIFIER to either the
-        // COMMENT or to the end.
-        int startExpression = tokens.get(dirPos + 2).getStartPos();
-        int endExpression =
-            tokens.get(tokenPosLastOperand).getStartPos()
-                + tokens.get(tokenPosLastOperand).getValue().length();
-        String expression = theLine.substring(startExpression - 1, endExpression - 1);
-        // Symbol cannot be redefined - the only reason for this is to act like the Gnu .eqv
-        if (equivalents.containsKey(symbol) && !equivalents.get(symbol).equals(expression)) {
-          errors.add(
-              new ErrorMessage(
-                  program,
-                  lineNum,
-                  tokens.get(dirPos + 1).getStartPos(),
-                  "\"" + symbol + "\" is already defined"));
-          return tokens;
-        }
-        equivalents.put(symbol, expression);
+    Token token = nextEquivalenceUse(program, lineNum, theLine, tokens);
+    if (token == null) {
+      return tokens;
+    }
+    String originalLine = theLine;
+    int originalColumn = 0;
+    var path = new ArrayDeque<EquivalenceExpansion>();
+    var active = new HashSet<String>();
+    do {
+      String symbol = token.getValue();
+      int start = token.getStartPos() - 1;
+      // Substitutions are selected left to right. While expanding a replacement, the text
+      // after it stays fixed, so the suffix length tracks its end even as the line grows.
+      int remaining = theLine.length() - start;
+      while (!path.isEmpty() && remaining <= path.getLast().suffixLength()) {
+        active.remove(path.removeLast().symbol());
+      }
+      if (path.isEmpty()) {
+        originalColumn = token.getStartPos() + originalLine.length() - theLine.length();
+      }
+      if (!active.add(symbol)) {
+        var chain = new StringJoiner(" -> ");
+        path.forEach(expansion -> chain.add(expansion.symbol()));
+        errors.add(new ErrorMessage(
+            program, lineNum, originalColumn, "Circular .eqv expansion " + chain.add(symbol)));
+        tokens.setProcessedLine(originalLine);
         return tokens;
       }
+      int end = start + symbol.length();
+      path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
+      theLine = theLine.substring(0, start) + equivalents.get(symbol) + theLine.substring(end);
+      program = sourceMIPSprogram;
+      tokens = tokenizeLine(program, lineNum, theLine, false, checkCancellation);
+      token = nextEquivalenceUse(program, lineNum, theLine, tokens);
+    } while (token != null);
+    return tokens;
+  }
+
+  private record EquivalenceExpansion(String symbol, int suffixLength) {}
+
+  private Token nextEquivalenceUse(MIPSprogram program, int lineNum, String line, TokenList tokens) {
+    if (recordEquivalence(program, lineNum, line, tokens)) {
+      return null;
     }
-    // Check if a substitution from defined .eqv is to be made.  If so, make one.
-    boolean substitutionMade = false;
+    tokens.setProcessedLine(line);
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
-      if (token.getType() == TokenTypes.IDENTIFIER
-          && equivalents != null
-          && equivalents.containsKey(token.getValue())) {
-        // do the substitution
-        String sub = equivalents.get(token.getValue());
-        int startPos = token.getStartPos();
-        theLine =
-            theLine.substring(0, startPos - 1)
-                + sub
-                + theLine.substring(startPos + token.getValue().length() - 1);
-        substitutionMade =
-            true; // one substitution per call.  If there are multiple, will catch next one on the
-        // recursion
-        break;
+      if (token.getType() == TokenTypes.IDENTIFIER && equivalents.containsKey(token.getValue())) {
+        return token;
       }
     }
-    tokens.setProcessedLine(theLine); // DPS 03-Jan-2013. Related to changes of 11-July-2012.
+    return null;
+  }
 
-    return substitutionMade
-        ? tokenizeLine(sourceMIPSprogram, lineNum, theLine, true, checkCancellation)
-        : tokens;
+  private boolean recordEquivalence(MIPSprogram program, int lineNum, String line, TokenList tokens) {
+    if (tokens.size() < 3) {
+      return false;
+    }
+    // The directive can be preceded by a label and colon.
+    int directive = tokens.get(0).getType() == TokenTypes.DIRECTIVE ? 0 : 2;
+    Token directiveToken = tokens.get(directive);
+    if (directiveToken.getType() != TokenTypes.DIRECTIVE
+        || Directives.matchDirective(directiveToken.getValue()) != Directives.EQV) {
+      return false;
+    }
+    int last = tokens.size() - (tokens.get(tokens.size() - 1).getType() == TokenTypes.COMMENT ? 2 : 1);
+    if (last < directive + 2) {
+      errors.add(new ErrorMessage(
+          program, lineNum, directiveToken.getStartPos(), "Too few operands for .eqv directive"));
+      return true;
+    }
+    Token name = tokens.get(directive + 1);
+    if (name.getType() != TokenTypes.IDENTIFIER) {
+      errors.add(new ErrorMessage(
+          program, lineNum, directiveToken.getStartPos(), "Malformed .eqv directive"));
+      return true;
+    }
+    String symbol = name.getValue();
+    for (int i = directive + 2; i <= last; i++) {
+      if (tokens.get(i).getValue().equals(symbol)) {
+        errors.add(new ErrorMessage(program, lineNum, directiveToken.getStartPos(),
+            "Cannot substitute " + symbol + " for itself in .eqv directive"));
+        return true;
+      }
+    }
+    int start = tokens.get(directive + 2).getStartPos() - 1;
+    Token lastOperand = tokens.get(last);
+    int end = lastOperand.getStartPos() - 1 + lastOperand.getValue().length();
+    String expression = line.substring(start, end);
+    String previous = equivalents.putIfAbsent(symbol, expression);
+    if (previous != null && !previous.equals(expression)) {
+      errors.add(new ErrorMessage(program, lineNum, name.getStartPos(),
+          "\"" + symbol + "\" is already defined"));
+    }
+    return true;
   }
 
   /**

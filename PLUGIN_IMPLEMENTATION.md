@@ -308,6 +308,25 @@ The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256. Visual verification
 remains open.
 
+## Chained equivalence expansion
+
+The Java tokenizer expands `.eqv` replacements iteratively and re-tokenizes
+the substituted source. This preserves replacements that supply punctuation,
+mnemonics, or new directives. The expansion tracks aliases active within the
+current replacement, so repeated aliases in separate operands expand normally.
+Circular expansions report the alias chain and the original token's file, line,
+and column. An unused circular definition remains valid source syntax.
+
+Core fixtures cover a 6,000-link chain, repeated aliases inside one replacement,
+and cycles in included source after an earlier alias changes the line length.
+An IntelliJ fixture exercises the same cycle in an unsaved include through the
+Build action and checks that its diagnostic opens the original alias token.
+
+The clean IntelliJ 2026.3 launch passed 1,286 tests, including 81 plugin tests,
+and authored plugin code covered all 690 lines and 424 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

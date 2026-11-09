@@ -306,6 +306,61 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void circularEquivalenceExpansionReportsTheOriginalUseInAnInclude() {
+    var main = directory.resolve("main.s");
+    var include = directory.resolve("cyclic.s");
+    var use = "\tOPERATION $t0, FIRST";
+    var snapshot = new AssemblySourceSnapshot(
+        List.of(main),
+        Map.of(
+            main, ".include \"cyclic.s\"\nnop\n",
+            include, """
+                .eqv OPERATION li
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST + 1
+                """ + use + "\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.succeeded()).isFalse();
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(include);
+        assertThat(error.line()).isEqualTo(4);
+        assertThat(error.column()).isEqualTo(use.indexOf("FIRST") + 1);
+        assertThat(error.message()).contains("Circular .eqv expansion", "FIRST -> SECOND -> FIRST");
+      });
+    }
+  }
+
+  @Test
+  void longEquivalenceChainsAndRepeatedAliasesAssembleWithoutRecursion() throws Exception {
+    var main = directory.resolve("main.s");
+    var text = new StringBuilder();
+    for (int i = 0; i < 6_000; i++) {
+      text.append(".eqv VALUE").append(i).append(" VALUE").append(i + 1).append('\n');
+    }
+    text.append("""
+        .eqv VALUE6000 7
+        .eqv VALUE VALUE6000
+        .eqv PAIR VALUE, VALUE
+        .eqv UNUSED_A UNUSED_B
+        .eqv UNUSED_B UNUSED_A
+        .data
+        .word VALUE0, PAIR, VALUE
+        .text
+        nop
+        """);
+    var snapshot = new AssemblySourceSnapshot(List.of(main), Map.of(main, text.toString()));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      assertThat(result.succeeded()).isTrue();
+      for (int i = 0; i < 4; i++) {
+        assertThat(session.memory.getWordNoNotify(session.memory.dataBaseAddress + i * 4)).isEqualTo(7);
+      }
+    }
+  }
+
+  @Test
   void cancellationAtAnySnapshotCheckpointPropagatesAndReleasesTheSession() throws Exception {
     var main = directory.resolve("main.s");
     var definitions = directory.resolve("defs.s");

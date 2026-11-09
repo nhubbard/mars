@@ -26,6 +26,10 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -96,6 +100,47 @@ class MarsBuildPlatformTest {
             assertEquals(next.id, done.id)
             assertInstanceOf(SuccessResult::class.java, done.result)
             assertSame(existingProgram, session.program)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `circular equivalences keep valid editor syntax and link a build error to the original use`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val use = "\tOPERATION \$t0, FIRST"
+            val source = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n$use\n"
+            val (main, include) = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", ".include \"child.s\"\nnop\n").virtualFile
+                val include = fixture.addFileToProject("child.s", "nop\n").virtualFile
+                edit(include, source)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                main to include
+            }
+            readAction {
+                val psi = PsiManager.getInstance(project).findFile(include)!!
+                assertNull(PsiTreeUtil.findChildOfType(psi, PsiErrorElement::class.java))
+                assertEquals(source, psi.text)
+            }
+
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val diagnostic = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, diagnostic.parentId)
+            assertEquals(include.toNioPath(), diagnostic.filePosition.path)
+            assertEquals(3, diagnostic.filePosition.startLine)
+            assertEquals(use.indexOf("FIRST"), diagnostic.filePosition.startColumn)
+            assertTrue(diagnostic.message.contains("FIRST -> SECOND -> FIRST"))
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, diagnostic.getNavigatable(project))
+                assertEquals(include, link.file)
+                assertEquals(source.lastIndexOf("FIRST"), link.offset)
+            }
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(FailureResult::class.java, finish.result)
         } finally {
             Disposer.dispose(disposable)
         }
