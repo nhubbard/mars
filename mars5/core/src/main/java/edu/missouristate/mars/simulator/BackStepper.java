@@ -179,6 +179,11 @@ public class BackStepper {
     return backSteps.empty();
   }
 
+  /** Returns whether a stopped session can undo its most recent instruction. */
+  public boolean canBackstep() {
+    return engaged && !empty();
+  }
+
   /**
    * Determine whether the next back-step action occurred as the result of an instruction that
    * executed in the "delay slot" of a delayed branch.
@@ -203,7 +208,7 @@ public class BackStepper {
   // Use a do-while loop based on the backstep's program statement reference.
 
   public void backStep() {
-    if (!engaged || backSteps.empty()) {
+    if (!canBackstep()) {
       return;
     }
     if (activeFrame != 0) {

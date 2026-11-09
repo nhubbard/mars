@@ -26,6 +26,7 @@ import java.nio.channels.Channels
 import java.nio.channels.Pipe
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import java.util.function.IntPredicate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -80,17 +81,25 @@ internal class MarsProcessHandler(
     override fun detachIsDefault() = false
     override fun getProcessInput() = consoleInput
 
-    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent {
+    suspend fun runSlice(simulator: SimulatorEngine, steps: Long = 0, breakpoint: IntPredicate? = null): StopEvent =
+        awaitSlice(simulator) {
+            if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAsync(steps, breakpoint)
+        }
+
+    suspend fun backstepSlice(simulator: SimulatorEngine) {
+        awaitSlice(simulator, simulator::backstepAsync)
+    }
+
+    private suspend fun <T> awaitSlice(simulator: SimulatorEngine, start: () -> CompletableFuture<T>): T {
         execution.ensureActive()
-        val future = if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAsync(steps, breakpoint)
-        val completion = future.asDeferred()
+        val completion = start().asDeferred()
         try {
             return completion.await()
         } catch (cancel: CancellationException) {
             simulator.close()
             // Closing the source releases the simulator even if a syscall is blocked in read().
             IOUtil.closeSafe(thisLogger(), input.source())
-            withContext(NonCancellable) { completion.await() }
+            withContext(NonCancellable) { completion.join() }
             throw cancel
         }
     }

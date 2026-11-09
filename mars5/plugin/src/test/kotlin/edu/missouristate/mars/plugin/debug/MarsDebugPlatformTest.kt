@@ -7,12 +7,21 @@ import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.Executor
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.util.Disposer
@@ -256,6 +265,58 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `native toolbar backstep restores the preceding instruction and refreshes Variables`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("undo.s", "li \$a0, 7\nli \$v0, 1\nsyscall\nnop\n").virtualFile.also {
+                addBreakpoint(it, 0)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 0)
+            val (action, event) = withContext(Dispatchers.EDT) {
+                val result = backstepAction(debug.session)
+                val (action, event) = result
+                assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                assertFalse(event.presentation.isEnabled)
+                action.actionPerformed(event)
+                assertTrue(debug.session.isSuspended)
+                debug.session.runToPosition(XDebuggerUtil.getInstance().createPosition(source, 3)!!, false)
+                result
+            }
+            debug.assertPausedAt(source, 3)
+            assertEquals("7", debug.stdout.toString())
+            for (line in 2 downTo 0) {
+                withContext(Dispatchers.EDT) {
+                    action.update(event)
+                    assertTrue(event.presentation.isEnabled)
+                    action.actionPerformed(event)
+                }
+                debug.assertPausedAt(source, line)
+                assertEquals("7", debug.stdout.toString())
+            }
+            withContext(Dispatchers.EDT) {
+                action.update(event)
+                assertFalse(event.presentation.isEnabled)
+                val values = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
+                assertEquals("0x00000000", values["\$a0"])
+                assertEquals("0x00000000", values["\$v0"])
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+            assertEquals("77", debug.stdout.toString())
+        }
+    }
+
+    private fun backstepAction(session: XDebugSession): Pair<AnAction, AnActionEvent> {
+        val toolbar = DefaultActionGroup()
+        session.debugProcess.registerAdditionalActions(DefaultActionGroup(), toolbar, DefaultActionGroup())
+        val action = toolbar.getChildren(ActionManager.getInstance()).single()
+        val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.TOOLBAR, null)
+        action.update(event)
+        return action to event
+    }
+
+    @Test
     fun `native logpoint continues and a disabled breakpoint can be enabled again`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("loop.s", "nop\nli \$v0, 1\nsyscall\nloop: b loop\nnop\n").virtualFile
@@ -263,12 +324,20 @@ class MarsDebugPlatformTest {
             val stop = addBreakpoint(file, 3)
             WriteAction.run<RuntimeException> {
                 log.suspendPolicy = SuspendPolicy.NONE
+                log.isLogMessage = true
                 stop.isEnabled = false
             }
             file to stop
         }
         withDebug(source.first) { debug ->
             debug.output.await()
+            val console = withContext(Dispatchers.EDT) {
+                assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
+            }
+            pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) { assertTrue(console.editor!!.document.text.contains("loop.s")) }
+            }
+            withContext(Dispatchers.EDT) { assertFalse(backstepAction(debug.session).second.presentation.isEnabled) }
             withContext(Dispatchers.EDT) { debug.session.pause() }
             debug.assertPausedAt(source.first, 3)
             withContext(Dispatchers.EDT) {

@@ -1,8 +1,13 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
@@ -37,7 +42,7 @@ import kotlinx.coroutines.withContext
 private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
 
 internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : XDebugProcess(session) {
-    private data class Command(val steps: Long = 0, val target: Location? = null)
+    private data class Command(val steps: Long = 0, val target: Location? = null, val backstep: Boolean = false)
 
     private val commands = Channel<Command>(Channel.CONFLATED)
     @Volatile private var simulator: SimulatorEngine? = null
@@ -70,6 +75,24 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MarsDebugEditors
+
+    override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
+        topToolbar.add(object : DumbAwareAction(
+            runMessages.getMessage("debug.backstep"),
+            runMessages.getMessage("debug.backstep.description"),
+            AllIcons.Actions.Rollback,
+        ) {
+            override fun getActionUpdateThread() = ActionUpdateThread.BGT
+            override fun update(event: AnActionEvent) { event.presentation.isEnabled = canBackstep() }
+            override fun actionPerformed(event: AnActionEvent) {
+                if (!canBackstep()) return
+                session.sessionResumed()
+                commands.trySend(Command(backstep = true))
+            }
+        })
+    }
+
+    private fun canBackstep() = (session.suspendContext as? MarsSuspendContext)?.canBackstep == true
 
     override fun stop() = handler.destroyProcess()
     override fun resume(context: XSuspendContext?) { commands.trySend(Command()) }
@@ -119,6 +142,13 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             var command = Command()
             var skipFirst = false
             while (true) {
+                if (command.backstep) {
+                    process.backstepSlice(engine)
+                    val context = suspendContext(machine)
+                    withContext(Dispatchers.EDT) { session.positionReached(context) }
+                    command = commands.receive()
+                    continue
+                }
                 val target = command.target
                 val targets = target?.let { map.breakpoints()[it] }.orEmpty()
                 var skip = skipFirst
@@ -175,7 +205,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     private fun suspendContext(machine: MarsContext): XSuspendContext = machine.claimStoppedSession().use {
-        MarsSuspendContext(MarsStackFrame(sourcePosition(machine), machine))
+        MarsSuspendContext(MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep())
     }
 
     private fun sourcePosition(machine: MarsContext): XSourcePosition? {
@@ -203,7 +233,7 @@ private object MarsDebugEditors : XDebuggerEditorsProvider() {
         EditorFactory.getInstance().createDocument(expression.expression)
 }
 
-private class MarsSuspendContext(frame: XStackFrame) : XSuspendContext() {
+private class MarsSuspendContext(frame: XStackFrame, val canBackstep: Boolean) : XSuspendContext() {
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame
         override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {

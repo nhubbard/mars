@@ -499,6 +499,17 @@ after execution advances. It checks the program counter, multiply result,
 exception PC, floating-point condition flags, and paired floating-point
 values against the machine state at each suspension.
 
+## Instruction backstep
+
+The native Debug toolbar offers **Backstep Instruction** while the paused
+session has history. The simulator worker undoes one recorded instruction,
+and XDebugger receives a new source position and Variables frame. The
+toolbar action becomes disabled when the history runs out or execution resumes.
+
+The debugger fixture walks backward over a syscall and its setup instructions.
+It checks that the PC and registers return to their earlier values and that
+console output already produced remains visible.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
