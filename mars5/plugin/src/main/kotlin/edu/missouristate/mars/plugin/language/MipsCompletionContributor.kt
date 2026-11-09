@@ -11,16 +11,10 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.tree.TokenSet
-import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.ProcessingContext
-import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.RegisterNames
-import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
-import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.Instruction
-import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -38,21 +32,11 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
         extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
                 val position = parameters.position
-                val instruction = PsiTreeUtil.findFirstParent(position, true) {
-                    PsiUtilCore.getElementType(it) == instructionType
-                } ?: return
-                val operation = instruction.firstChild
-                val text = parameters.editor.document.immutableCharSequence
-                val before = text.subSequence(operation.textOffset, position.textOffset).toString()
-                val tokens = Tokenizer().tokenizeLine(1, before, ErrorList(), false)
-                val index = tokens.size()
-                val formats = InstructionDefaults.get().matchOperator(operation.text).filter {
-                    index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
-                }
+                val operand = MipsInstructionOperand.at(position) ?: return
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                lookup.addAllElements(registerCandidates(formats, index).map(LookupElementBuilder::create))
-                if (formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }) {
+                lookup.addAllElements(registerCandidates(operand.formats, operand.index).map(LookupElementBuilder::create))
+                if (operand.acceptsLabel) {
                     val root = parameters.originalFile as MipsFile
                     val names = root.project.service<MarsAnalysisService>().labelCompletionNames(root, position, prefix)
                     lookup.addAllElements(names.map(LookupElementBuilder::create))
@@ -69,7 +53,6 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
     }
 
     private companion object {
-        val instructionType = MipsTypes.psi("INSTRUCTION")
         val statementHead = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC")))
             .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
@@ -87,7 +70,6 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
         }
         val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
         val systemTransfers: Set<Class<out Instruction>> = setOf(InstrMfc0::class.java, InstrMtc0::class.java)
-        val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
 
         fun prefix(parameters: CompletionParameters): String {
             val position = parameters.position
@@ -103,12 +85,6 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                     addAll(registerSpellings[instruction.tokenList[index].type].orEmpty())
                 }
             }
-        }
-
-        fun matchesAddressShape(tokens: TokenList, format: TokenList): Boolean = (1 until tokens.size()).all { index ->
-            val actual = tokens[index].type
-            val expected = format[index].type
-            actual == expected || (actual !in addressPunctuation && expected !in addressPunctuation)
         }
     }
 }

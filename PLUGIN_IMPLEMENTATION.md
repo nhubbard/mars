@@ -141,6 +141,19 @@ Jupiter fixtures use IntelliJ's documentation service to resolve source and look
 render their content, and verify that comments, strings, labels and unrelated lookup items
 stay outside the catalog provider.
 
+## Go to Declaration for instruction labels
+
+Native polyvariant PSI references bind directly written label operands using the same
+instruction formats and indexed include scope as completion. The resolver rechecks the
+indexed name and offset against current PSI. Macro-local labels take precedence, including
+labels introduced by a nested include inside the macro. Duplicate candidates remain separate
+navigation targets. References are soft while build-context binding is still in progress.
+
+The resolver skips same-file equivalence substitutions already in effect and SPIM macro
+parameters. Full expansion and multi-entry build binding remain separate from this physical
+scope query. The IDE fixtures check native target lookup, case sensitivity, nested includes,
+macro shadowing, duplicate declarations, and non-label operands.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.

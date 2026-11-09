@@ -13,10 +13,12 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.FileBasedIndex
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -40,31 +42,61 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
 
     /** Reads the index only for files in the current physical include graph. */
-    internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> {
-        if (DumbService.isDumb(project)) return emptySet()
-        val index = FileBasedIndex.getInstance()
-        val pending = ArrayDeque(listOf(root))
-        val visited = HashSet<VirtualFile>()
-        return buildSet {
-            while (pending.isNotEmpty()) {
+    internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
+        for (scope in labelScopes(root, macroOffset(position))) {
+            for ((name, sites) in declarations(scope.file)) {
                 ProgressManager.checkCanceled()
-                val file = pending.removeFirst()
-                val virtualFile = file.viewProvider.virtualFile
-                if (!visited.add(virtualFile)) continue
-                val macro = if (file === root) macroOffset(position) else -1
-                for ((name, sites) in index.getFileData(MipsDeclarationIndex.NAME, virtualFile, project)) {
-                    ProgressManager.checkCanceled()
-                    if (name.startsWith(prefix) && sites.any { it.kind == SymbolKind.LABEL && visibleInMacro(it.macroOffset, macro) }) {
-                        add(name)
-                    }
+                if (name.startsWith(prefix) && sites.any { it.kind == SymbolKind.LABEL && visibleInMacro(it.macroOffset, scope.macro) }) {
+                    add(name)
                 }
-                for ((offset, path) in mipsIncludePaths(file)) {
-                    ProgressManager.checkCanceled()
-                    val literal = file.findElementAt(offset) as MipsStringLiteral
-                    if (visibleInMacro(macroOffset(literal), macro)) {
-                        val target = MipsFileReferenceSet(path, literal).resolve()
-                        if (target is MipsFile) pending.addLast(target)
-                    }
+            }
+        }
+    }
+
+    internal fun labelTargets(root: MipsFile, position: PsiElement): List<MipsDeclaration> {
+        val name = position.text
+        val activeMacro = macroOffset(position)
+        if (activeMacro != -1 && Macro.tokenIsMacroParameter(name, true)) return emptyList()
+        val local = ArrayList<MipsDeclaration>()
+        val outer = ArrayList<MipsDeclaration>()
+        for (scope in labelScopes(root, activeMacro)) {
+            val sites = declarations(scope.file)[name].orEmpty()
+            // A same-file equivalence already in effect is a substitution, not a direct label use.
+            if (scope.file === root && sites.any { it.kind == SymbolKind.CONSTANT && it.offset < position.textOffset }) {
+                return emptyList()
+            }
+            for (site in sites) {
+                ProgressManager.checkCanceled()
+                if (site.kind != SymbolKind.LABEL || !visibleInMacro(site.macroOffset, scope.macro)) continue
+                val matches = if (site.macroOffset != -1 || scope.inheritedMacro) local else outer
+                matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
+            }
+        }
+        return local.ifEmpty { outer }
+    }
+
+    private data class LabelScope(val file: MipsFile, val macro: Int, val inheritedMacro: Boolean)
+
+    private fun declarations(file: MipsFile) =
+        FileBasedIndex.getInstance().getFileData(MipsDeclarationIndex.NAME, file.viewProvider.virtualFile, project)
+
+    private fun labelScopes(root: MipsFile, activeMacro: Int): Sequence<LabelScope> = sequence {
+        if (DumbService.isDumb(project)) return@sequence
+        val pending = ArrayDeque(listOf(LabelScope(root, activeMacro, false)))
+        val visited = HashSet<VirtualFile>()
+        while (pending.isNotEmpty()) {
+            ProgressManager.checkCanceled()
+            val scope = pending.removeFirst()
+            val file = scope.file
+            if (!visited.add(file.viewProvider.virtualFile)) continue
+            yield(scope)
+            for ((offset, path) in mipsIncludePaths(file)) {
+                ProgressManager.checkCanceled()
+                val literal = file.findElementAt(offset) as MipsStringLiteral
+                val owner = macroOffset(literal)
+                if (visibleInMacro(owner, scope.macro)) {
+                    val target = MipsFileReferenceSet(path, literal).resolve()
+                    if (target is MipsFile) pending.addLast(LabelScope(target, -1, scope.inheritedMacro || owner != -1))
                 }
             }
         }
