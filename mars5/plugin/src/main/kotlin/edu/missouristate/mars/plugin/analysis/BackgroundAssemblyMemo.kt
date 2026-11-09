@@ -15,7 +15,8 @@ internal data class BackgroundAssemblyOutcome(
 /** Holds completed, detached outcomes. IntelliJ owns the external pass and its cancellation. */
 internal class BackgroundAssemblyMemo {
     private data class Revision(
-        val entries: List<Path>, val directory: Boolean, val documents: Map<Path, Long>, val structure: Long, val options: MarsExecutionOptions,
+        val entries: List<Path>, val directory: Boolean, val exceptionHandler: Path?,
+        val documents: Map<Path, Long>, val structure: Long, val options: MarsExecutionOptions,
     )
 
     private val outcomes = SLRUMap<Revision, BackgroundAssemblyOutcome>(4, 4)
@@ -23,7 +24,7 @@ internal class BackgroundAssemblyMemo {
     fun assemble(sources: CapturedAssemblySources, structureStamp: Long, options: MarsExecutionOptions): BackgroundAssemblyOutcome {
         ProgressManager.checkCanceled()
         val entries = sources.snapshot.entries()
-        val key = Revision(entries, sources.directoryStamp != null, sources.revisions, structureStamp, options)
+        val key = Revision(entries, sources.directoryStamp != null, sources.exceptionHandler, sources.revisions, structureStamp, options)
         synchronized(outcomes) { outcomes.get(key) }?.let { return it }
         val component = MarsSessionService.createMarsComponent()
         val result = component.context().use { session ->
@@ -32,7 +33,7 @@ internal class BackgroundAssemblyMemo {
         }
         val symbols = result.program()?.let {
             AssemblySymbols(entries.first(), sources.revisions, it.symbolMap(), sources.snapshot.texts(),
-                options, sources.rootsBySource, sources.directoryStamp)
+                options, sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler)
         }
         val outcome = BackgroundAssemblyOutcome(result.errors().groupBy(AssemblyError::file), symbols)
         ProgressManager.checkCanceled()

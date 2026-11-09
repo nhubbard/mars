@@ -101,7 +101,8 @@ internal suspend fun EditorAssemblyCapture.expansionAt(file: MipsFile, line: Int
     val valid = constrainedReadAction(ReadConstraint.inSmartMode(file.project)) {
         val current = collectEditorAssembly(file)
         // A filesystem refresh can replace cached documents while preserving the assembled inputs.
-        current?.let { it.options to it.sources.snapshot } == (options to sources.snapshot)
+        current?.let { Triple(it.options, it.sources.snapshot, it.sources.exceptionHandler) } ==
+            Triple(options, sources.snapshot, sources.exceptionHandler)
     }
     if (!valid) return ExpansionPreview.Unavailable.CHANGED
     if (rows == null) return ExpansionPreview.Unavailable.ASSEMBLY

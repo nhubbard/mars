@@ -87,6 +87,7 @@ import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportCapture
@@ -135,6 +136,30 @@ class MarsDebugPlatformTest {
     private val project get() = projectFixture.get()
     private val debugger get() = XDebuggerManager.getInstance(project)
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+
+    @Test
+    fun `Debug reaches a separate exception handler using unsaved editor text`() = timeoutRunBlocking<Unit> {
+        val (main, kernel) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("exception/main.asm", "break\nnop\n").virtualFile
+            val kernel = fixture.addFileToProject("exception/kernel/handler.s", ".ktext 0x80000180\nnop\n").virtualFile
+            val document = requireNotNull(FileDocumentManager.getInstance().getDocument(kernel))
+            WriteAction.run<RuntimeException> {
+                document.setText(".ktext 0x80000180\nli \$t0, 42\nli \$v0, 10\nsyscall\n")
+            }
+            project.getService(MarsAssemblySettings::class.java).changeExceptionHandler(kernel.path)
+            addBreakpoint(kernel, 2)
+            main to kernel
+        }
+        withDebug(main) { debug ->
+            debug.assertPausedAt(kernel, 2)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x0000002a", evaluate(debug.session, frame, "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
 
     @Test
     fun `directory Debug stops in a sibling source and resolves its own data symbols`() = timeoutRunBlocking<Unit> {

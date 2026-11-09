@@ -26,7 +26,9 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -46,6 +48,8 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
+import com.intellij.util.ui.UIUtil
+import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.plugin.MarsExecutionOptions
@@ -70,6 +74,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -78,6 +83,112 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking<Unit> {
+        val (main, handler) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("trap/main.asm", "la \$t0, trapEntry\nnop\n") as MipsFile
+            val handler = fixture.addFileToProject("trap/handler.asm", ".ktext 0x80000180\nnop\n") as MipsFile
+            fixture.addFileToProject("trap/parts/body.s", "trapEntry: nop\n")
+            edit(handler.virtualFile, ".ktext 0x80000180\n.globl trapEntry\n.include \"parts/body.s\"\n")
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            main to handler
+        }
+        val settings = project.service<MarsAssemblySettings>()
+        val analysis = project.service<MarsAnalysisService>()
+        val entry = main.virtualFile.toNioPath()
+        val kernel = handler.virtualFile.toNioPath()
+        val before = readAction { requireNotNull(collectEditorAssembly(main)) }
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        suspend fun finish(): FinishBuildEvent {
+            var event = events.receive()
+            while (event !is FinishBuildEvent) event = events.receive()
+            return event
+        }
+        try {
+            withContext(Dispatchers.EDT) {
+                val page = MarsAssemblyConfigurable(project)
+                try {
+                    val path = requireNotNull(UIUtil.findComponentOfType(page.createComponent(), TextFieldWithBrowseButton::class.java))
+                    page.reset()
+                    assertEquals("", path.text)
+                    path.text = "relative/handler.asm"
+                    assertThrows(ConfigurationException::class.java) { page.apply() }
+                    assertNull(settings.exceptionHandler)
+                    path.text = kernel.toString()
+                    page.apply()
+                    assertEquals(kernel, settings.exceptionHandler)
+                    settings.changeExceptionHandler(kernel.toString())
+                    val persisted = XmlSerializer.serialize(settings.getState())
+                    settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                    assertEquals(kernel, settings.exceptionHandler)
+                    page.reset()
+                    assertEquals(kernel.toString(), path.text)
+                } finally {
+                    page.disposeUIResources()
+                }
+            }
+            val directory = captureBuildSources(entry, directory = true, exceptionHandler = settings.exceptionHandler)
+            assertEquals(listOf(entry), directory.snapshot.entries())
+            assertEquals(kernel, directory.rootsBySource[entry.resolveSibling("parts/body.s")])
+            assertEquals(".ktext 0x80000180\nnop\n", Files.readString(kernel))
+            val service = project.service<MarsBuildService>()
+            service.assemble(entry, directory = true)
+            assertInstanceOf(SuccessResult::class.java, finish().result)
+            val current = readAction {
+                assertFalse(before.validate(main) { _, _, _ -> true })
+                val reference = requireNotNull(main.findElementAt(main.text.indexOf("trapEntry")))
+                assertEquals("body.s", analysis.labelTargets(main, reference, false).singleOrNull()?.containingFile?.name)
+                requireNotNull(collectEditorAssembly(main)).also {
+                    assertEquals(kernel, it.sources.exceptionHandler)
+                    assertTrue(it.validate(main) { _, document, stamp -> document.modificationStamp == stamp })
+                }
+            }
+            val result = analysis.backgroundAssembly.assemble(current.sources, current.structureStamp, current.options)
+            assertTrue(result.diagnostics.isEmpty())
+            analysis.publishBackgroundSymbols(requireNotNull(result.symbols))
+
+            val absent = entry.resolveSibling("missing-handler.asm")
+            val another = entry.resolveSibling("other-handler.asm")
+            withContext(Dispatchers.EDT) { settings.changeExceptionHandler(absent.toString()) }
+            val stale = readAction {
+                assertFalse(current.validate(main) { _, _, _ -> true })
+                val reference = requireNotNull(main.findElementAt(main.text.indexOf("trapEntry")))
+                assertTrue(analysis.labelTargets(main, reference, false).isEmpty())
+                requireNotNull(collectEditorAssembly(main))
+            }
+            val missing = analysis.backgroundAssembly.assemble(stale.sources, stale.structureStamp, stale.options)
+            assertTrue(missing.diagnostics.values.flatten().any { it.message().contains(absent.toString()) })
+            withContext(Dispatchers.EDT) { settings.changeExceptionHandler(another.toString()) }
+            val updated = readAction { requireNotNull(collectEditorAssembly(main)) }
+            assertEquals(stale.sources.revisions, updated.sources.revisions)
+            val missingAgain = analysis.backgroundAssembly.assemble(updated.sources, updated.structureStamp, updated.options)
+            assertTrue(missingAgain.diagnostics.values.flatten().any { it.message().contains(another.toString()) })
+            service.assemble(entry)
+            assertInstanceOf(FailureResult::class.java, finish().result)
+
+            withContext(Dispatchers.EDT) { settings.changeExceptionHandler(kernel.toString()) }
+            readAction { assertEquals(entry, analysis.selectedAssembly(handler)?.entry) }
+            service.assemble(kernel)
+            assertInstanceOf(SuccessResult::class.java, finish().result)
+            withContext(Dispatchers.EDT) {
+                val page = MarsAssemblyConfigurable(project)
+                try {
+                    val path = requireNotNull(UIUtil.findComponentOfType(page.createComponent(), TextFieldWithBrowseButton::class.java))
+                    page.reset()
+                    path.text = " "
+                    page.apply()
+                } finally {
+                    page.disposeUIResources()
+                }
+            }
+            assertNull(settings.exceptionHandler)
+            readAction { assertNull(collectBackgroundAssemblySources(project, kernel).exceptionHandler) }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
 
     @Test
     fun `directory assembly captures sibling documents in deterministic order and shares their analysis`() = timeoutRunBlocking<Unit> {

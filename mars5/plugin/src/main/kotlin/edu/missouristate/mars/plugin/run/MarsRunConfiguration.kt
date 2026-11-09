@@ -37,6 +37,7 @@ import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.projectFilePath
 import java.nio.file.Path
 import javax.swing.JTextField
 
@@ -87,7 +88,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 
     override fun checkConfiguration() {
         checkDeviceConflict { RuntimeConfigurationError(it) }
-        val entry = runFilePath(project, options.sourcePath) ?: throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
+        val entry = projectFilePath(project, options.sourcePath) ?: throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
         memoryDumps(entry) { RuntimeConfigurationError(it) }
     }
 
@@ -102,7 +103,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var connectKeyboardDisplay = false
         private var connectMarsBot = false
         private var connectScavengerHunt = false
-        private val dumps = RunMemoryDumpEditor(project) { runFilePath(project, sourceField.text.trim()) }
+        private val dumps = RunMemoryDumpEditor(project) { projectFilePath(project, sourceField.text.trim()) }
         private lateinit var sourceField: JTextField
         private val form = panel {
             row(runMessages.getMessage("run.source")) { sourceField = textField().bindText(::source).component }
@@ -154,7 +155,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         if (!TrustedProjects.isProjectTrusted(project)) {
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
-        val entry = runFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
+        val entry = projectFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
         checkDeviceConflict { ExecutionException(it) }
         return MarsRunState(
             environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),

@@ -1304,6 +1304,15 @@ its macro and equivalence context. Editor diagnostics reuse the selected directo
 sibling files are added or removed. Single-file and directory builds
 cache their captures separately.
 
+Set an exception handler under **Settings → Build, Execution, Deployment →
+MARS Assembly**. The setting is shared by Build, Run, Debug, and editor
+analysis. It supports IntelliJ path variables, and files under the project
+can be shared using the project directory variable. Clear the field to
+disable it. The handler assembles before the entry file, with its own
+includes and unsaved editor text. Directory mode excludes the configured
+handler from the sibling list so it assembles once. When the handler itself
+is the entry file, it assembles once as the entry.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

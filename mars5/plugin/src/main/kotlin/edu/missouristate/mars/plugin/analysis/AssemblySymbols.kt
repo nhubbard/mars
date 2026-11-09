@@ -20,6 +20,7 @@ internal class AssemblySymbols(
     val options: MarsExecutionOptions = MarsExecutionOptions(),
     private val rootsBySource: Map<Path, Path> = mapOf(entry to entry),
     val directoryStamp: Long? = null,
+    val exceptionHandler: Path? = null,
 ) {
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
     val localSymbols get() = localSymbols(entry)

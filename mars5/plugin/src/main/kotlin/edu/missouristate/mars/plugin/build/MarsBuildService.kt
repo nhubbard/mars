@@ -62,7 +62,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var cancelled = false
         var succeeded = false
         try {
-            val capture = captureBuildSources(entry, directory)
+            val capture = captureBuildSources(entry, directory, project.service<MarsAssemblySettings>().exceptionHandler)
             onSourcesCaptured(capture.snapshot.texts().keys)
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)

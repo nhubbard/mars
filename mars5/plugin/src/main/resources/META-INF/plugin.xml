@@ -19,6 +19,9 @@
     <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
   </extensions>
   <extensions defaultExtensionNs="com.intellij">
+    <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
+                         bundle="messages.MarsBundle" key="build.settings.title"
+                         instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>
     <toolWindow id="MARS Tools" anchor="right" factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
                 icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>
     <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s"/>

@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.run
 
 import com.intellij.openapi.components.BaseState
-import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.CollectionListModel
 import com.intellij.ui.ToolbarDecorator
@@ -14,19 +13,10 @@ import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.build.memoryExportMessages
+import edu.missouristate.mars.plugin.projectFilePath
 import edu.missouristate.mars.util.Binary
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import javax.swing.ListSelectionModel
-
-internal fun runFilePath(project: Project, value: String?): Path? {
-    val expanded = PathMacroManager.getInstance(project).expandPath(value) ?: return null
-    return try {
-        Path.of(expanded).normalize().takeIf { it.isAbsolute && it.fileName != null }
-    } catch (_: InvalidPathException) {
-        null
-    }
-}
 
 internal class RunMemoryDumpState : BaseState() {
     var outputPath by string()
@@ -36,7 +26,7 @@ internal class RunMemoryDumpState : BaseState() {
     var lastAddress by property(0L)
 
     fun resolve(project: Project): MemoryExportSelection? {
-        val output = runFilePath(project, outputPath) ?: return null
+        val output = projectFilePath(project, outputPath) ?: return null
         val format = DumpFormatLoader.findByCommandDescriptor(formatName) ?: return null
         val range = if (region == MemoryExportRegion.RANGE) {
             if (firstAddress !in 0..UInt.MAX_VALUE.toLong() || lastAddress !in firstAddress..UInt.MAX_VALUE.toLong() ||

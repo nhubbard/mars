@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
@@ -31,6 +32,7 @@ import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -91,10 +93,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return build.request.selection.takeIf { selection ->
             val virtualFile = file.viewProvider.virtualFile
             build.snapshot.sourcePath(file) != null ||
-                selection.directory && virtualFile.isInLocalFileSystem && virtualFile.isAssemblyDirectorySource() &&
-                virtualFile.toNioPath().parent == selection.entry.parent
+                virtualFile.isInLocalFileSystem && (
+                    virtualFile.toNioPath() == exceptionHandler ||
+                        selection.directory && virtualFile.isAssemblyDirectorySource() && virtualFile.toNioPath().parent == selection.entry.parent
+                )
         }
     }
+
+    private val exceptionHandler get() = project.service<MarsAssemblySettings>().exceptionHandler
 
     internal data class AssemblySelection(val entry: Path, val options: MarsExecutionOptions, val directory: Boolean)
 
@@ -116,7 +122,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val current = lastBuild.get()
         if (current.request === build) {
             val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts(), build.selection.options,
-                sources.rootsBySource, sources.directoryStamp)
+                sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler)
             lastBuild.compareAndSet(current, BuildSelection(build, snapshot))
         }
     }
@@ -127,7 +133,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun <T : Any> fromAssemblySymbols(file: MipsFile, lookup: (AssemblySymbols, Path) -> T?): T? {
-        val selected = lastBuild.get()?.snapshot?.let { snapshot ->
+        val handler = exceptionHandler
+        val selected = lastBuild.get()?.snapshot?.takeIf { it.exceptionHandler == handler }?.let { snapshot ->
             snapshot.sourcePath(file)?.let { snapshot to it }
         }
         if (selected != null && selected.first.hasCurrentDirectory()) lookup(selected.first, selected.second)?.let { return it }
@@ -141,7 +148,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val directory = configuration?.directory == true
         val candidate = candidates.firstOrNull {
             it.first.entry == entry && it.first.options == options &&
-                (it.first.directoryStamp != null) == directory && it.first.hasCurrentDirectory()
+                (it.first.directoryStamp != null) == directory && it.first.hasCurrentDirectory() && it.first.exceptionHandler == handler
         } ?: return null
         return lookup(candidate.first, candidate.second)
     }
@@ -535,7 +542,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
-        val build = lastBuild.get()?.snapshot ?: return null
+        val build = lastBuild.get()?.snapshot?.takeIf { it.exceptionHandler == exceptionHandler } ?: return null
         val path = build.sourcePath(file) ?: return null
         val root = build.rootFor(path)
         if (path == root) return mipsSourceTimeline(file)
