@@ -52,6 +52,7 @@ import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
+import java.util.HexFormat
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -520,6 +521,53 @@ class MarsBuildPlatformTest {
         }
         readAction { assertEquals("%entry", target(entry)?.text) }
     }
+
+    @Test
+    fun `marked Unicode files assemble with the same image and source map from disk and IntelliJ documents`() =
+        timeoutRunBlocking<Unit> {
+            val entryText = "\r\n.include \"pièce.s\"\r\n.text\r\nentrée: addiu \$t0, \$zero, LIMIT"
+            val includeText = ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\""
+            val (entry, include) = withContext(Dispatchers.EDT) {
+                val source = fixture.tempDirFixture.createFile("entrée.asm")
+                val part = fixture.tempDirFixture.createFile("pièce.s")
+                val hex = HexFormat.of()
+                WriteCommandAction.runWriteCommandAction(project) {
+                    source.setBinaryContent(hex.parseHex("efbbbf") + entryText.toByteArray(Charsets.UTF_8))
+                    part.setBinaryContent(hex.parseHex("fffe") + includeText.toByteArray(Charsets.UTF_16LE))
+                }
+                fixture.configureFromExistingVirtualFile(source)
+                source.toNioPath() to part.toNioPath()
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            readAction {
+                val file = fixture.file as MipsFile
+                assertEquals(entryText.replace("\r\n", "\n"), file.text)
+                assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isEmpty())
+                assertEquals(include, file.findReferenceAt(file.text.indexOf("pièce.s"))
+                    ?.resolve()?.containingFile?.virtualFile?.toNioPath())
+            }
+
+            val capture = captureAssemblySources(listOf(entry), null)
+            assertEquals(
+                mapOf(entry to entryText.replace("\r\n", "\n"), include to includeText.replace('\r', '\n')),
+                capture.snapshot.texts(),
+            )
+            val component = MarsSessionService.createMarsComponent()
+            MarsSessionService.createMarsComponent().context().use { disk ->
+                val expected = disk.assemble(listOf(entry))
+                component.context().use { ide ->
+                    val result = capture.assembleIn(component)
+                    assertTrue(result.succeeded(), result.errors().toString())
+                    val expectedWords = expected.machineList.map { it.binaryStatement }
+                    assertEquals(listOf(0x24080007), expectedWords)
+                    assertEquals(expectedWords, ide.program.machineList.map { it.binaryStatement })
+                    assertEquals(expected.sourceMap(), result.program().sourceMap())
+                    assertEquals(expected.symbolMap(), result.program().symbolMap())
+                    val base = ide.memory.dataBaseAddress
+                    assertEquals(listOf(0xe9, 0xff, 0), (0..2).map { ide.memory.getByte(base + it) })
+                }
+            }
+        }
 
     @Test
     fun `build reports an unfinished string on an unsaved included data continuation`() = timeoutRunBlocking<Unit> {
