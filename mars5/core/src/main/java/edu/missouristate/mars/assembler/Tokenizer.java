@@ -378,16 +378,20 @@ public class Tokenizer {
 
     /** Maps a zero-based token offset to the original character or the alias that supplied it. */
     public int originalOffset(int offset) {
-      for (int i = edits.size() - 1; i >= 0; i--) {
-        SourceEdit edit = edits.get(i);
-        if (offset >= edit.start() + edit.insertedLength()) {
-          offset += edit.removedLength() - edit.insertedLength();
-        } else if (offset >= edit.start()) {
-          offset = edit.start();
-        }
-      }
-      return offset;
+      return Tokenizer.originalOffset(edits, offset);
     }
+  }
+
+  private static int originalOffset(List<SourceEdit> edits, int offset) {
+    for (int i = edits.size() - 1; i >= 0; i--) {
+      SourceEdit edit = edits.get(i);
+      if (offset >= edit.start() + edit.insertedLength()) {
+        offset += edit.removedLength() - edit.insertedLength();
+      } else if (offset >= edit.start()) {
+        offset = edit.start();
+      }
+    }
+    return offset;
   }
 
   private record SourceEdit(int start, int removedLength, int insertedLength) {}
@@ -664,7 +668,12 @@ public class Tokenizer {
     if (use == null) {
       return tokens;
     }
+    MIPSprogram originalProgram = program;
     String originalLine = theLine;
+    TokenList originalTokens = tokens;
+    if (edits == null) {
+      edits = new ArrayList<>();
+    }
     int originalColumn = 0;
     var path = new ArrayDeque<EquivalenceExpansion>();
     var active = new HashSet<String>();
@@ -687,18 +696,17 @@ public class Tokenizer {
         errors.add(new ErrorMessage(
             program, lineNum, originalColumn, "Circular .eqv expansion " + chain.add(symbol)));
         tokens.setProcessedLine(originalLine);
-        return tokens;
+        break;
       }
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
-      if (edits != null) {
-        edits.add(new SourceEdit(start, end - start, use.replacement().length()));
-      }
+      edits.add(new SourceEdit(start, end - start, use.replacement().length()));
       theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
-      tokens = tokenizeLine(program, lineNum, theLine, false, checkCancellation);
+      tokens = scanLine(program, lineNum, theLine, checkCancellation);
       use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
     } while (use != null);
+    reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, edits, originalTokens);
     return tokens;
   }
 
@@ -800,10 +808,32 @@ public class Tokenizer {
 
   private void reportLexicalErrors(
       MIPSprogram program, int line, String source, TokenList tokens) {
+    reportLexicalErrors(program, line, source, tokens, List.of(), null);
+  }
+
+  private void reportLexicalErrors(
+      MIPSprogram program, int line, String source, TokenList tokens,
+      List<SourceEdit> edits, TokenList originalTokens) {
+    int originalIndex = 0;
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
       if (token.getType() == TokenTypes.ERROR) {
-        errors.add(new ErrorMessage(program, line, token.getStartPos(),
+        int column = originalOffset(edits, token.getStartPos() - 1) + 1;
+        if (originalTokens != null) {
+          // Mapped offsets stay in source order. Skip errors already reported on the written line.
+          while (originalIndex < originalTokens.size()
+              && originalTokens.get(originalIndex).getStartPos() < column) {
+            originalIndex++;
+          }
+          if (originalIndex < originalTokens.size()) {
+            Token original = originalTokens.get(originalIndex);
+            if (original.getStartPos() == column && original.getType() == TokenTypes.ERROR
+                && original.getValue().equals(token.getValue())) {
+              continue;
+            }
+          }
+        }
+        errors.add(new ErrorMessage(program, line, column,
             source + "\nInvalid language element: " + token.getValue()));
         if (errors.errorLimitExceeded()) {
           return;

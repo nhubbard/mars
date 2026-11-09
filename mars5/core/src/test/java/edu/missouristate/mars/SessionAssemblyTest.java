@@ -797,6 +797,49 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void equivalenceLexicalErrorsAreReportedOnceAtTheirWrittenTokensOrAliases() {
+    String source = ".byte FIRST, SECOND, OUTER, 'ab', 'ab'";
+    var replacements = Map.of(
+        "FIRST", "100", "SECOND", "2000", "OUTER", "INNER", "INNER", "'ab', 'cd'");
+    var errors = new ErrorList();
+    var mapped = Tokenizer.tokenizeMappedLine(source, errors, replacements::get, () -> {});
+
+    assertThat(mapped.tokens().getProcessedLine()).isEqualTo(".byte 100, 2000, 'ab', 'cd', 'ab', 'ab'");
+    var diagnostics = errors.getErrorMessages();
+    assertThat(diagnostics).extracting(ErrorMessage::getPosition).containsExactly(
+        source.indexOf("'ab'") + 1, source.lastIndexOf("'ab'") + 1,
+        source.indexOf("OUTER") + 1, source.indexOf("OUTER") + 1);
+    assertThat(diagnostics).extracting(ErrorMessage::getMessage).containsExactly(
+        source + "\nInvalid language element: 'ab'",
+        source + "\nInvalid language element: 'ab'",
+        source + "\nInvalid language element: 'ab'",
+        source + "\nInvalid language element: 'cd'");
+  }
+
+  @Test
+  void equivalencesPreserveWrittenLexicalErrorsWhenTheReplacementAbsorbsTheToken() {
+    String source = ".ascii QUOTE bad%name\"";
+    var errors = new ErrorList();
+    var tokens = Tokenizer.tokenizeWithEquivalences(
+        source, errors, Map.of("QUOTE", "\"prefix ")::get, () -> {});
+    assertThat(tokens.getProcessedLine()).isEqualTo(".ascii \"prefix  bad%name\"");
+    assertThat(errors.getErrorMessages()).singleElement().satisfies(error -> {
+      assertThat(error.getPosition()).isEqualTo(source.indexOf("bad%name") + 1);
+      assertThat(error.getMessage()).endsWith("Invalid language element: bad%name");
+    });
+  }
+
+  @Test
+  void aMalformedIntermediateExpansionDoesNotLeaveAStaleDiagnostic() {
+    var errors = new ErrorList();
+    var replacements = Map.of("OUTER", "QUOTE bad%name", "QUOTE", "\"prefix ");
+    var tokens = Tokenizer.tokenizeWithEquivalences(
+        ".ascii OUTER\"", errors, replacements::get, () -> {});
+    assertThat(tokens.getProcessedLine()).isEqualTo(".ascii \"prefix  bad%name\"");
+    assertThat(errors.getErrorMessages()).isEmpty();
+  }
+
+  @Test
   void circularEquivalenceExpansionReportsTheOriginalUseInAnInclude() {
     var main = directory.resolve("main.s");
     var include = directory.resolve("cyclic.s");

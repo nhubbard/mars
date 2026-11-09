@@ -799,6 +799,40 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build reports a lexical error once at its written column after equivalence expansion`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val use = "\t.byte FIRST, SECOND, 'ab'"
+            val source = ".eqv FIRST 100\n.eqv SECOND 2000\n.data\n$use\n"
+            val (main, child) = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", ".include \"child.s\"\n.text\nnop\n").virtualFile
+                val child = fixture.addFileToProject("child.s", ".data\n.byte 0\n").virtualFile
+                edit(child, source)
+                main to child
+            }
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertTrue(error.message.endsWith("Invalid language element: 'ab'"), error.message)
+            assertEquals(child.toNioPath(), error.filePosition.path)
+            assertEquals(3, error.filePosition.startLine)
+            assertEquals(use.indexOf("'ab'"), error.filePosition.startColumn)
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(child, link.file)
+                assertEquals(source.indexOf("'ab'"), link.offset)
+            }
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(FailureResult::class.java, finish.result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `circular equivalences keep valid editor syntax and link a build error to the original use`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {
