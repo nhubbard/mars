@@ -42,7 +42,7 @@ class MipsDeclarationIndexPlatformTest {
             Infinity: nop
             nan: nop
             infinity: nop
-            .MaCrO emit(%x)
+            .MaCrO emit(%x, 7)
               .end_macro stray
               local: li ${'$'}v0, %x
               .eqv inside 2
@@ -103,7 +103,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(15, extension.version)
+            assertEquals(16, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

@@ -61,6 +61,10 @@ class MipsLabelReferencesPlatformTest {
         readAction { assertEquals(fixture.file.text.lastIndexOf("target:"), referenceAtCaret()?.resolve()?.textOffset) }
         configure("target: nop\n.macro emit\ntarget: nop\n.end_macro\nb tar<caret>get\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
+        configure("target: nop\n.macro emit (%value, 7)\ntarget: nop\nb tar<caret>get\n.end_macro\n")
+        readAction { assertEquals(fixture.file.text.lastIndexOf("target:"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure("target: nop\n.macro emit (%value, 7)\ntarget: nop\n.end_macro\nb tar<caret>get\n")
+        readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
     }
 
     @Test

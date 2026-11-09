@@ -41,6 +41,15 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
+    fun `parameters before a malformed formal still resolve inside the macro`() = timeoutRunBlocking<Unit> {
+        val header = ".macro emit (%value, 7, %later)\n"
+        configure("${header}li \$t0, %val<caret>ue\n.end_macro\n")
+        assertEquals(header.indexOf("%value"), target()?.offset)
+        configure("${header}li \$t0, %la<caret>ter\n.end_macro\n")
+        assertNull(target())
+    }
+
+    @Test
     fun `included macro headers govern uses until their included closing boundary`() = timeoutRunBlocking<Unit> {
         val header = ".macro emit (%value)\n"
         withContext(Dispatchers.EDT) {

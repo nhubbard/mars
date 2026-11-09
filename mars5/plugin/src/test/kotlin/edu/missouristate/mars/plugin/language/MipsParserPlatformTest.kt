@@ -325,6 +325,25 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed macro parameters preserve the header prefix and body scope`() = timeoutRunBlocking<Unit> {
+        readAction {
+            for (tail in listOf("7)", "@)", "\"oops\" .eqv PHANTOM 7")) {
+                val source = ".macro emit (%value, $tail\nbody: li \$t0, %value\n.end_macro\nemit(7)\n"
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("macro.asm", MipsFileType, source)
+                assertEquals(source, file.node.text)
+                val macro = descendants(file.node, "MACRO_DEFINITION").single()
+                assertEquals(listOf("body:"), descendants(macro, "LABEL").map { it.text }.toList(), tail)
+                assertEquals(listOf("%value"), descendants(macro, "MACRO_PARAMETER").map { it.text }.toList())
+                assertEquals(".end_macro", macro.lastChildNode.text)
+                assertTrue(descendants(file.node, "EQUIVALENCE").none())
+                val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+                assertTrue(errors.isNotEmpty() && errors.all { it.textOffset < source.indexOf("body:") }, tail)
+                assertEquals(listOf("emit(7)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
+            }
+        }
+    }
+
+    @Test
     fun `malformed macro endings preserve body scope until a standalone terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val valid = ".macro emit\nbody: addiu \$t0, \$zero, 7\n.end_macro,, # close\nemit\n"
         assertAssembles(directory, valid)
@@ -674,7 +693,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1",
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)")) {
                 val text = broken + "\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)

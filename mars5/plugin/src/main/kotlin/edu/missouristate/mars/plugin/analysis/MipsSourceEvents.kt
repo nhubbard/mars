@@ -95,9 +95,9 @@ internal sealed interface MipsSourceEvent {
 
     data class Begin(
         val header: PsiElement, val name: String, val parameters: List<Token>, val expanded: Boolean,
+        val arity: Int?, // A malformed signature still opens a scope for its accepted parameters.
     ) : Effective {
         override val offset = header.textOffset
-        val arity: Int get() = parameters.size
     }
 
     data class End(override val offset: Int) : Effective
@@ -199,8 +199,9 @@ private fun macroSignature(header: PsiElement, tokens: TokenList, nameIndex: Int
     if (nameIndex >= tokens.size() || tokens[nameIndex].type != TokenTypes.IDENTIFIER) return null
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
-    if (!arguments.all { Macro.tokenIsMacroParameter(it.value, true) }) return null
-    return MipsSourceEvent.Begin(header, tokens[nameIndex].value, arguments, expanded)
+    val parameters = arguments.takeWhile { Macro.tokenIsMacroParameter(it.value, true) }
+    val arity = arguments.size.takeIf { it == parameters.size }
+    return MipsSourceEvent.Begin(header, tokens[nameIndex].value, parameters, expanded, arity)
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

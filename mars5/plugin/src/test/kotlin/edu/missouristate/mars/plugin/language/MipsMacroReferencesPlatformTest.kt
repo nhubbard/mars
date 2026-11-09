@@ -175,6 +175,7 @@ class MipsMacroReferencesPlatformTest {
     fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking<Unit> {
         val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
         assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))
+        assertNull(target(".macro emit (%value, 7)\n.end_macro\nem<caret>it(1)\n"))
         val nested = ".macro emit\n.macro other\n.end_macro\n"
         assertEquals(nested.indexOf("emit"), target("${nested}em<caret>it\n")?.offset)
     }

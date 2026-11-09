@@ -49,7 +49,7 @@ class MipsReferenceIndexPlatformTest {
         val source = """
             .eqv Alias .emit
             .eqv Literal NOP
-            ,,.macro,, .emit (%arg FORMALS)
+            ,,.macro,, .emit (%arg FORMALS, 7)
               .end_macro stray
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
@@ -110,7 +110,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(11, extension.version)
+            assertEquals(12, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

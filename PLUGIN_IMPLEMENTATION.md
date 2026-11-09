@@ -395,6 +395,12 @@ reports the malformed line and keeps later declarations and references in the
 macro up to its standalone terminator. Both source indexes rebuild their
 physical macro ownership on upgrade.
 
+A malformed parameter tail in a named `.macro` declaration is recovered on
+that line. The macro body remains available to the editor, and parameter
+references can navigate to valid formals before the first invalid argument.
+Label resolution continues to distinguish macro-local and outer names. The
+malformed signature cannot match a macro invocation.
+
 ## Macro parameter spellings
 
 Macro signatures preserve parentheses and commas as tokens. The assembler ignores those tokens

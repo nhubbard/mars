@@ -54,7 +54,8 @@ private macro_statement ::= !macro_end statement
 private macro_end ::= END_MACRO &line_end
 private malformed_macro_end ::= END_MACRO line_end {pin=1}
 private line_end ::= NEWLINE | <<eof>>
-macro_signature ::= name parameter_list?
+// Recover a malformed parameter tail before parsing the body on the next line.
+macro_signature ::= name parameter_list? &line_end {pin=1 recoverWhile=line_recover}
 // The assembler ignores parentheses anywhere in a macro declaration.
 parameter_list ::= (macro_parameter | LEFT_PAREN | RIGHT_PAREN)+
 // A physical identifier may expand to one or more formals or parentheses.
