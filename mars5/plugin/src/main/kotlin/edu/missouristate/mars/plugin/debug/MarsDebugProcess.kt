@@ -242,7 +242,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
         MarsSuspendContext(
             MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep(),
-            machine.memory.dataBaseAddress.toUInt().toLong(), ++suspensionNumber,
+            MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
+            ++suspensionNumber,
         )
     }
 
@@ -274,7 +275,7 @@ private object MarsDebugEditors : XDebuggerEditorsProvider() {
 internal class MarsSuspendContext(
     frame: XStackFrame,
     val canBackstep: Boolean,
-    val dataAddress: Long,
+    val memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,
 ) : XSuspendContext() {
     val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)

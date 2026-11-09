@@ -25,6 +25,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
@@ -333,11 +334,12 @@ class MarsDebugPlatformTest {
                 .text
                 addiu ${'$'}t1, ${'$'}zero, 66
                 la ${'$'}t0, payload
+                addiu ${'$'}sp, ${'$'}sp, -32
                 sb ${'$'}t1, 0(${'$'}t0)
                 nop
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 3)
-                addBreakpoint(it, 6)
+                addBreakpoint(it, 7)
             }
         }
         withDebug(source) { debug ->
@@ -360,7 +362,25 @@ class MarsDebugPlatformTest {
                     UIUtil.findComponentsOfType(panel, JButton::class.java).associateBy { it.text }
                 }
                 val labels = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JBLabel::class.java) }
+                val regions = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(panel, ComboBox::class.java)) }
                 assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
+                for ((region, address) in mapOf(
+                    MemoryRegion.PC to "0x00400000",
+                    MemoryRegion.TEXT to "0x00400000",
+                    MemoryRegion.HEAP to "0x10040000",
+                    MemoryRegion.STACK to "0x7fffeff0",
+                    MemoryRegion.KERNEL_TEXT to "0x80000000",
+                    MemoryRegion.KERNEL_DATA to "0x90000000",
+                    MemoryRegion.MMIO to "0xffff0000",
+                    MemoryRegion.DATA to "0x10010000",
+                )) {
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(regions.isEnabled)
+                        regions.selectedItem = region
+                        assertNull(regions.selectedItem)
+                    }
+                    assertMemory(table, address, "")
+                }
                 withContext(Dispatchers.EDT) { buttons.getValue("Next Page").doClick(0) }
                 assertMemory(table, "0x10010100", "00 00 00 00")
                 withContext(Dispatchers.EDT) { buttons.getValue("Previous Page").doClick(0) }
@@ -406,22 +426,28 @@ class MarsDebugPlatformTest {
                     assertTrue(labels.any { it.text == "Reading memory… Showing suspension 1." })
                     debug.session.resume()
                     assertFalse(field.isEnabled)
+                    assertFalse(regions.isEnabled)
+                    regions.selectedItem = MemoryRegion.HEAP
+                    assertNull(regions.selectedItem)
                     assertEquals("0x10010000", table.getValueAt(0, 0))
                     assertTrue(labels.any { it.text == "Last memory snapshot from suspension 1." })
                 }
-                debug.assertPausedAt(source, 6)
+                debug.assertPausedAt(source, 7)
                 assertMemory(table, "0x00400000", "42 00 09 24")
                 withContext(Dispatchers.EDT) {
                     assertTrue(labels.any { it.text == "Memory from suspension 2." })
-                    field.text = "0x10010000"
-                    field.postActionEvent()
+                    regions.selectedItem = MemoryRegion.PC
                 }
+                assertMemory(table, "0x00400010", "")
+                withContext(Dispatchers.EDT) { regions.selectedItem = MemoryRegion.STACK }
+                assertMemory(table, "0x7fffefd0", "")
+                withContext(Dispatchers.EDT) { regions.selectedItem = MemoryRegion.DATA }
                 assertMemory(table, "0x10010000", "42 00 7f ff", "B...")
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
                     action.actionPerformed(event)
                 }
-                debug.assertPausedAt(source, 5)
+                debug.assertPausedAt(source, 6)
                 assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
                 afterDisposal = {
                     assertTrue(labels.any { it.text == "Memory from suspension 3." })

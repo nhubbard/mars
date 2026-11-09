@@ -1,10 +1,12 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
@@ -12,10 +14,13 @@ import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
+import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.STACK_POINTER_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import java.awt.Font
+import java.awt.event.ItemEvent
 import java.util.HexFormat
 import javax.swing.JButton
 import javax.swing.JTable
@@ -30,6 +35,17 @@ private val hex = HexFormat.of()
 internal data class MemoryRequest(val address: Long, val show: (List<MemoryRow>) -> Unit)
 
 internal data class MemoryRow(val address: String, val bytes: String, val characters: String)
+
+internal enum class MemoryRegion(val label: String, val address: (MarsContext) -> Int) {
+    PC("debug.memory.region.pc", { it.registerFile.programCounterRegister.valueNoNotify }),
+    TEXT("debug.memory.region.text", { it.memory.textBaseAddress }),
+    DATA("debug.memory.region.data", { it.memory.dataBaseAddress }),
+    HEAP("debug.memory.region.heap", { it.memory.heapBaseAddress }),
+    STACK("debug.memory.region.stack", { it.registerFile.getValueNoNotify(STACK_POINTER_REGISTER) }),
+    KERNEL_TEXT("debug.memory.region.ktext", { it.memory.kernelTextBaseAddress }),
+    KERNEL_DATA("debug.memory.region.kdata", { it.memory.kernelDataBaseAddress }),
+    MMIO("debug.memory.region.mmio", { it.memory.memoryMapBaseAddress }),
+}
 
 internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
     val rowCount = minOf(ROWS_PER_PAGE.toLong(), (ADDRESS_SPACE - address) / BYTES_PER_ROW).toInt()
@@ -58,6 +74,10 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
     private val go = JButton(runMessages.getMessage("debug.memory.go"))
     private val previous = JButton(runMessages.getMessage("debug.memory.previous"))
     private val next = JButton(runMessages.getMessage("debug.memory.next"))
+    private val regions = ComboBox(MemoryRegion.entries.toTypedArray()).apply {
+        renderer = textListCellRenderer(runMessages.getMessage("debug.memory.region")) { runMessages.getMessage(it.label) }
+        selectedItem = null
+    }
     private val status = JBLabel()
     private val model = ListTableModel<MemoryRow>(
         column("debug.memory.address", MemoryRow::address),
@@ -84,6 +104,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
             cell(go)
             cell(previous)
             cell(next)
+            cell(regions)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
         row { cell(status) }
@@ -94,6 +115,13 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         addressField.addActionListener { navigate() }
         previous.addActionListener { move(-BYTES_PER_PAGE) }
         next.addActionListener { move(BYTES_PER_PAGE) }
+        regions.addItemListener { event ->
+            if (event.stateChange == ItemEvent.SELECTED) {
+                regions.selectedItem = null
+                val context = session.suspendContext as? MarsSuspendContext ?: return@addItemListener
+                jumpTo(context.memoryRegions.getValue(event.item as MemoryRegion))
+            }
+        }
         session.addSessionListener(object : XDebugSessionListener {
             override fun sessionPaused() = refreshOnEdt()
             override fun sessionResumed() = refreshOnEdt()
@@ -117,7 +145,11 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
             status.text = runMessages.getMessage("debug.memory.invalid")
             return
         }
-        address = parsed.toLong() / BYTES_PER_ROW * BYTES_PER_ROW
+        jumpTo(parsed.toLong())
+    }
+
+    private fun jumpTo(target: Long) {
+        address = target / BYTES_PER_ROW * BYTES_PER_ROW
         refresh()
     }
 
@@ -128,6 +160,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         val paused = context != null
         addressField.isEnabled = paused
         go.isEnabled = paused
+        regions.isEnabled = paused
         if (context == null) {
             previous.isEnabled = false
             next.isEnabled = false
@@ -136,7 +169,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
             return
         }
 
-        if (addressField.text.isEmpty()) address = context.dataAddress
+        if (addressField.text.isEmpty()) address = context.memoryRegions.getValue(MemoryRegion.DATA)
         val start = address
         addressField.text = Binary.intToHexString(start.toInt())
         previous.isEnabled = start > 0

@@ -516,7 +516,8 @@ The native Debug layout includes a Memory tab for the paused machine. Each
 page shows addresses, hexadecimal bytes, and printable characters. The
 address field accepts unsigned decimal and hexadecimal values. Pages stop
 at the end of the 32-bit address space and show unavailable words with
-dashes.
+dashes. Go to Region jumps to text, data, heap, kernel text and data,
+memory-mapped I/O, and the PC and stack pointer captured at the suspension.
 
 The debugger reads a page on its background execution coroutine through a
 queue owned by the current suspension. Resume closes that queue, disables
@@ -527,7 +528,8 @@ without issuing simulated read events.
 
 Core tests cover code, stack, data, kernel memory, and memory-mapped I/O.
 IntelliJ fixtures check navigation, address validation, endian display,
-resume, store and backstep refresh, and view disposal.
+resume, store and backstep refresh, view disposal, and the updated PC and
+stack pointer after execution advances.
 
 ## Next slices
 
