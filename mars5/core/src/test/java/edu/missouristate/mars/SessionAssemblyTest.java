@@ -17,10 +17,14 @@ import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -32,6 +36,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -196,6 +201,54 @@ class SessionAssemblyTest {
               syscall
             """);
     assertThat(assembleAndRun(session("Default"), main)).containsExactly(42);
+  }
+
+  static Stream<Arguments> unicodeSourceEncodings() {
+    return Stream.of(
+        Arguments.of("efbbbf", StandardCharsets.UTF_8),
+        Arguments.of("feff", StandardCharsets.UTF_16BE),
+        Arguments.of("fffe", StandardCharsets.UTF_16LE),
+        Arguments.of("0000feff", Charset.forName("UTF-32BE")),
+        Arguments.of("fffe0000", Charset.forName("UTF-32LE")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("unicodeSourceEncodings")
+  void readsUnicodeMarkedSourceAndIncludesWithoutShiftingLocations(String marker, Charset charset)
+      throws Exception {
+    var entry = directory.resolve("entrée.asm");
+    var include = directory.resolve("pièce.s");
+    Files.write(entry, encodedSource(marker, charset,
+        "\r\n.include \"pièce.s\"\r\n.text\r\nentrée: addiu $t0, $zero, LIMIT"));
+    Files.write(include, encodedSource(marker, charset,
+        ".eqv LIMIT 7\r.data\rtexte: .asciiz \"é\uFEFF\""));
+
+    try (var machine = TestSessions.create()) {
+      var program = machine.assemble(List.of(entry));
+      var instruction = program.getMachineList().getFirst();
+      assertThat(instruction.getBinaryStatement()).isEqualTo(0x24080007);
+      assertThat(program.sourceMap().origins().get(instruction.getAddress()).location())
+          .isEqualTo(new Location(entry, 4));
+      int data = machine.memory.dataBaseAddress;
+      assertThat(machine.memory.getByte(data)).isEqualTo(0xe9);
+      assertThat(machine.memory.getByte(data + 1)).isEqualTo(0xff);
+      assertThat(machine.memory.getByte(data + 2)).isZero();
+      assertThat(program.getLocalSymbolTable().getAddressLocalOrGlobal("entrée"))
+          .isEqualTo(instruction.getAddress());
+
+      var empty = directory.resolve("empty.s");
+      Files.write(empty, HexFormat.of().parseHex(marker));
+      var source = new MIPSprogram(machine);
+      source.readSource(empty.toString());
+      assertThat(source.getSourceList()).isEmpty();
+    }
+  }
+
+  private static byte[] encodedSource(String marker, Charset charset, String text) {
+    var bytes = new ByteArrayOutputStream();
+    bytes.writeBytes(HexFormat.of().parseHex(marker));
+    bytes.writeBytes(text.getBytes(charset));
+    return bytes.toByteArray();
   }
 
   @Test

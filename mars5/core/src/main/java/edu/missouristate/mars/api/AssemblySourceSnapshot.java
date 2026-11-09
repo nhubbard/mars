@@ -8,8 +8,9 @@ import java.util.Objects;
 
 /**
  * Ordered entry files and captured text for one assembly. Texts include any separately selected
- * exception handler and files reached by {@code .include}. Paths are absolute and normalized
- * lexically, so captured files need not exist on disk.
+ * exception handler and files reached by {@code .include}. Each text is already decoded, with any
+ * encoding marker removed. Paths are absolute and normalized lexically, so captured files need not
+ * exist on disk.
  */
 public record AssemblySourceSnapshot(List<Path> entries, Map<Path, String> texts) {
 
