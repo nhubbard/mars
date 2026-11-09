@@ -164,6 +164,33 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
+    fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv SEP :\n"
+        val body = "entry, SEP, addiu \$t0, \$zero, 7\n"
+        val includes = ".include \"definitions.s\"\n.include \"body.s\"\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("definitions.s", definitions)
+            fixture.addFileToProject("body.s", body)
+        }
+        configure(includes + "j ent<caret>ry\n")
+        readAction {
+            val target = referenceAtCaret()?.resolve()
+            assertEquals("body.s", target?.containingFile?.name)
+            assertEquals("entry", target?.text)
+        }
+        configure(".include \"body.s\"\n.include \"definitions.s\"\nj ent<caret>ry\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+
+        directory.resolve("definitions.s").writeText(definitions)
+        directory.resolve("body.s").writeText(body)
+        val entry = directory.resolve("entry.asm").also { it.writeText(includes + ".globl entry\nj entry\n") }
+        val context = project.get().service<MarsSessionService>().context
+        val program = context.assemble(listOf(entry), null, true, false)
+        assertEquals(0x24080007, program.machineList.first().binaryStatement)
+        assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("entry"))
+    }
+
+    @Test
     fun `generated macro labels shadow outer labels only within their own expansion scope`() = timeoutRunBlocking<Unit> {
         val aliases = ".eqv INNER same:\n.eqv HIDDEN hidden:\n.eqv OPEN .macro emit\n.eqv CLOSE .end_macro\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("body.s", "INNER nop\nHIDDEN nop\n") }

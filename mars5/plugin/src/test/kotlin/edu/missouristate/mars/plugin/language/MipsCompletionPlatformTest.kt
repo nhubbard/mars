@@ -79,6 +79,7 @@ class MipsCompletionPlatformTest {
             assertEquals(integer, registers("div \$t0 \$t1 <caret>"))
             assertEquals(integer, registers("mtc0 <caret>, \$12"))
             assertEquals(integer, registers(".eqv LOAD lw \$t0\nLOAD 4(<caret>)"))
+            assertEquals(integer, registers(".eqv SEP :\nentry SEP lw \$t0, 4(<caret>)"))
 
             val floating = (0..31).map { "\$f$it" }.toSet()
             assertEquals(floating, registers("add.s \$f0, <caret>"))
@@ -201,7 +202,9 @@ class MipsCompletionPlatformTest {
                 .eqv PRIVATE labelPrivate:
                 .eqv FORMAL ${'$'}labelParameter:
                 .eqv OTHER unrelated:
+                .eqv SEP :
                 PREFIX nop
+                labelSeparated SEP nop
                 OTHER nop
                 labelOld: nop
                 .macro other
@@ -214,7 +217,7 @@ class MipsCompletionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("label") }
-            assertEquals(setOf("labelGenerated", "labelRenamed"), names.toSet())
+            assertEquals(setOf("labelGenerated", "labelRenamed", "labelSeparated"), names.toSet())
         }
         withContext(Dispatchers.EDT) {
             fixture.configureByText("expanded-macro-labels.asm", """

@@ -94,14 +94,13 @@ class MipsEditorPlatformTest {
                 .eqv LABEL row:
                 .eqv OTHER there:
                 .eqv BOTH next: addiu
-                .eqv NAME split
                 .eqv COLON :
                 entry: BRANCH target
                 DATA_SEG
                 FIRST
                 LABEL
                 OTHER addiu ${'$'}t0, ${'$'}zero, 7
-                NAME COLON BRANCH target
+                split COLON BRANCH target
                 BOTH ${'$'}t0, ${'$'}t0, 1
                 BRANCH: nop
                 target: nop

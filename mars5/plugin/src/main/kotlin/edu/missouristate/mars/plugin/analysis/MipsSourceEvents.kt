@@ -48,11 +48,10 @@ internal sealed interface MipsSourceEvent {
 
     class OperationCandidate(private val head: PsiElement) : MipsSourceEvent {
         override val offset = head.textOffset
-        private val name = head.text
         private val followsLabel = head.parent.parent.node.findChildByType(labelType) != null
 
         fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
-            if (replacement(name) == null) return null
+            if (!hasLeadingEquivalence(head, replacement)) return null
             val errors = ErrorList()
             val expanded = Tokenizer.expandLine(
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
@@ -133,6 +132,7 @@ internal sealed interface MipsSourceEvent {
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
 private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
+private val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
 private val labelType = MipsTypes.psi("LABEL")
 private val sourceEventTypes = setOf(
     MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
@@ -189,6 +189,13 @@ internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): St
     val start = if (fromLineStart) CharArrayUtil.shiftBackwardUntil(text, offset - 1, "\r\n") + 1 else offset
     val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
     return text.subSequence(start, end).toString()
+}
+
+/** A candidate can acquire an operation or label from either of its first two written tokens. */
+internal fun hasLeadingEquivalence(head: PsiElement, replacement: (String) -> String?): Boolean {
+    if (replacement(head.text) != null) return true
+    val following = head.parent.node.findChildByType(invocationToken) ?: return false
+    return replacement(following.text) != null
 }
 
 internal fun TokenList.discardTrailingComment() {

@@ -70,6 +70,7 @@ class MipsParameterInfoPlatformTest {
                 DEFINE LOAD lw ${'$'}t0
                 DEFINE OFFSET -4(
                 DEFINE PREFIX row:
+                DEFINE SEP :
                 DEFINE DIVIDE div ${'$'}t0,${'$'}t1
             """.trimIndent() + "\n")
             val include = ".include \"aliases.s\"\n"
@@ -79,6 +80,7 @@ class MipsParameterInfoPlatformTest {
             assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}SHIFT \$t1, <caret>"))
             assertEquals(info("lw \$t0, -4(<caret>"), info("${include}LOAD OFFSET<caret>"))
             assertEquals(info("sll \$t0, <caret>"), info("${include}PREFIX sll \$t0, <caret>"))
+            assertEquals(info("sll \$t0, <caret>"), info("${include}split SEP sll \$t0, <caret>"))
             assertEquals(info("div \$t0,\$t1 <caret>"), info("${include}DIVIDE <caret>"))
         }
     }

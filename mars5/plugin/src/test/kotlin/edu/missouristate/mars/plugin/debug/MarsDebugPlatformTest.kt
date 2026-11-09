@@ -339,10 +339,15 @@ class MarsDebugPlatformTest {
                 FIRST 1
                 AREA
                 unknown 1
+                .eqv SEP :
+                empty SEP
+                executable SEP nop
             """.trimIndent()).virtualFile
             assertTrue(breakpointType.canPutAt(file, 3, project))
             assertFalse(breakpointType.canPutAt(file, 4, project))
             assertTrue(breakpointType.canPutAt(file, 5, project))
+            assertFalse(breakpointType.canPutAt(file, 7, project))
+            assertTrue(breakpointType.canPutAt(file, 8, project))
             DumbModeTestUtils.runInDumbModeSynchronously(project) {
                 assertTrue(breakpointType.canPutAt(file, 4, project))
             }

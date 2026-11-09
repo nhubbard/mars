@@ -212,7 +212,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     ): TokenList? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
-        if (prefix.equivalence(head.text) == null) return null
+        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return null
         return expandedOperation(prefix, source, allowIncompleteOperand)?.takeUnless(TokenList::isEmpty)
     }
 
@@ -220,7 +220,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun expandedOperationSite(root: MipsFile, head: PsiElement): ExpandedOperationSite? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
-        if (prefix.equivalence(head.text) == null) return null
+        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return null
         val source = sourceLine(head)
         val expansion = Tokenizer.tokenizeMappedLine(
             source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
@@ -237,7 +237,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun canSetOperationBreakpoint(root: MipsFile, head: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return true
         val prefix = editorPrefix(root, head.textOffset)
-        if (prefix.equivalence(head.text) == null) return true
+        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return true
         val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return true
         if (tokens.isEmpty) return false
         return tokens[0].type == TokenTypes.OPERATOR || tokens[0].type == TokenTypes.IDENTIFIER
