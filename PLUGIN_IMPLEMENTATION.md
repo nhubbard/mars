@@ -409,8 +409,7 @@ The process handler preserves simulated exit values, routes stdout and stderr
 to their matching console streams, and requests a stop before releasing the
 session on cancellation or detach. Relative file syscalls resolve from the
 entry file's directory. The output decoder retains UTF-8 sequences split across
-descriptor writes. Standard input reaches EOF in this slice. Interactive input,
-additional run options, and debugger integration remain open.
+descriptor writes.
 
 The IDE fixtures exercise native Run with an unsaved include and a nonzero exit
 value, the configuration editor and persistence, runtime and assembly failures,
@@ -420,6 +419,23 @@ The clean IntelliJ 2026.3 launch passed 1,300 tests, including 92 plugin tests,
 and authored plugin code covered all 815 lines and 480 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
+
+## Interactive Run console
+
+The process handler now exposes standard input through IntelliJ's `ProcessHandler`
+contract. As in IntelliJ's external-task runner, the console writes to a JDK
+pipe on its input worker. MARS reads that pipe through its session's existing
+line and descriptor syscalls. Stop closes the read end after requesting a stop,
+which releases a simulator waiting on input. Process termination closes both
+ends of the pipe.
+
+A Jupiter fixture types into the native console and checks both integer input
+and raw descriptor input in one program. Another waits for the simulator to
+enter a blocking read, then verifies that Stop completes without a runtime
+diagnostic. Native console input follows the IDE's global encoding while the
+Java core still decodes line input in the JVM's default encoding. Matching
+those settings when they differ remains open, along with additional run options
+and debugger integration.
 
 ## Next slices
 

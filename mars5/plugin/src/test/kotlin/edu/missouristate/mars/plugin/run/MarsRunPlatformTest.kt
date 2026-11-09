@@ -5,6 +5,8 @@ import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
+import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.RunConfigurationProducer
 import com.intellij.execution.configurations.ConfigurationTypeUtil
@@ -33,10 +35,14 @@ import com.intellij.psi.PsiManager
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.util.ui.UIUtil
+import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
 import javax.swing.JTextField
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -217,12 +223,73 @@ class MarsRunPlatformTest {
             val (handler, recording) = run("li \$a0, 7\nli \$v0, 1\nsyscall\nloop: b loop\nnop\n")
             recording.output.await()
             assertFalse(handler.detachIsDefault())
-            assertNull(handler.processInput)
             withContext(Dispatchers.EDT) {
                 if (detach) handler.detachProcess() else handler.destroyProcess()
             }
             assertEquals(130, recording.exit.await())
             assertEquals("7", recording.stdout.toString())
+        }
+    }
+
+    @Test
+    fun `typed console input reaches the line and raw descriptor syscalls`() = timeoutRunBlocking<Unit> {
+        val (handler, recording) = run("""
+            .data
+            buffer: .space 4
+            .text
+            li ${'$'}v0, 5
+            syscall
+            move ${'$'}a0, ${'$'}v0
+            li ${'$'}v0, 1
+            syscall
+            li ${'$'}a0, 0
+            la ${'$'}a1, buffer
+            li ${'$'}a2, 4
+            li ${'$'}v0, 14
+            syscall
+            move ${'$'}a2, ${'$'}v0
+            li ${'$'}a0, 1
+            li ${'$'}v0, 15
+            syscall
+            li ${'$'}v0, 10
+            syscall
+        """.trimIndent())
+        val console = withContext(Dispatchers.EDT) {
+            val view = assertInstanceOf(ConsoleViewImpl::class.java, TextConsoleBuilderFactory.getInstance().createBuilder(project).console)
+            view.attachToProcess(handler)
+            view.component
+            view
+        }
+        try {
+            withContext(Dispatchers.EDT) { console.type(console.editor!!, "42\nraw\n") }
+            assertEquals(0, recording.exit.await())
+            assertEquals("42raw\n", recording.stdout.toString())
+            assertEquals("", recording.stderr.toString())
+        } finally {
+            withContext(Dispatchers.EDT) {
+                handler.destroyProcess()
+                Disposer.dispose(console)
+            }
+        }
+    }
+
+    @Test
+    fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking<Unit> {
+        val (handler, recording) = run("li \$v0, 5\nsyscall\n")
+        try {
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                // The prompt alone would race the next instruction. Wait until the simulator enters the read.
+                assertTrue(Thread.getAllStackTraces().any { (thread, trace) ->
+                    thread.name == "mars-simulator" && trace.any {
+                        it.className == SessionSyscallEnvironment::class.java.name && it.methodName == "readLine"
+                    }
+                }, "simulator is waiting for console input")
+            }
+            withContext(Dispatchers.EDT) { handler.destroyProcess() }
+            assertEquals(130, recording.exit.await())
+            assertEquals("", recording.stderr.toString())
+        } finally {
+            withContext(Dispatchers.EDT) { handler.destroyProcess() }
         }
     }
 

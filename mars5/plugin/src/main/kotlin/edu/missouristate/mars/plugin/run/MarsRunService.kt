@@ -3,7 +3,9 @@ package edu.missouristate.mars.plugin.run
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
+import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SimulatorListener
@@ -11,11 +13,13 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
 import java.io.PrintStream
 import java.nio.ByteBuffer
 import java.nio.CharBuffer
+import java.nio.channels.Channels
+import java.nio.channels.Pipe
 import java.nio.charset.CodingErrorAction.REPLACE
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
@@ -30,10 +34,14 @@ import kotlinx.coroutines.withContext
 
 @Service(Service.Level.PROJECT)
 internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) {
-    fun createProcess(entry: Path) = MarsProcessHandler(project, scope, entry)
+    fun createProcess(entry: Path) = MarsProcessHandler(project, scope, entry, Pipe.open())
 }
 
-internal class MarsProcessHandler(private val project: Project, scope: CoroutineScope, private val entry: Path) : ProcessHandler() {
+internal class MarsProcessHandler(
+    private val project: Project, scope: CoroutineScope, private val entry: Path, private val input: Pipe,
+) : ProcessHandler() {
+    // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
+    private val consoleInput = Channels.newOutputStream(input.sink())
     private var status = 1
     private val execution = scope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
         status = runProgram()
@@ -41,7 +49,11 @@ internal class MarsProcessHandler(private val project: Project, scope: Coroutine
 
     init {
         execution.invokeOnCompletion { cause ->
-            notifyProcessTerminated(if (cause is CancellationException) 130 else status)
+            try {
+                IOUtil.closeSafe(thisLogger(), input.source(), input.sink())
+            } finally {
+                notifyProcessTerminated(if (cause is CancellationException) 130 else status)
+            }
         }
     }
 
@@ -53,7 +65,7 @@ internal class MarsProcessHandler(private val project: Project, scope: Coroutine
     override fun destroyProcessImpl() { execution.cancel() }
     override fun detachProcessImpl() = destroyProcessImpl()
     override fun detachIsDefault() = false
-    override fun getProcessInput() = null
+    override fun getProcessInput() = consoleInput
 
     private suspend fun runProgram(): Int {
         val component = MarsSessionService.createMarsComponent()
@@ -66,14 +78,17 @@ internal class MarsProcessHandler(private val project: Project, scope: Coroutine
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
-                    SessionSyscallEnvironment(session.memory, InputStream.nullInputStream(), output, error, entry.parent).use { io ->
+                    val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
+                    SessionSyscallEnvironment(session.memory, stdin, output, error, entry.parent).use { io ->
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
                         simulator.addListener(object : SimulatorListener {
                             override fun onStep(event: StepEvent) = Unit
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
-                                notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message()) + "\n", ProcessOutputTypes.STDERR)
+                                if (execution.isActive) {
+                                    notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message()) + "\n", ProcessOutputTypes.STDERR)
+                                }
                             }
                         })
                         execution.ensureActive()
@@ -82,6 +97,8 @@ internal class MarsProcessHandler(private val project: Project, scope: Coroutine
                             completion.await()
                         } catch (cancel: CancellationException) {
                             simulator.close()
+                            // Closing the source releases the simulator even if a syscall is blocked in read().
+                            IOUtil.closeSafe(thisLogger(), input.source())
                             withContext(NonCancellable) { completion.await() }
                             throw cancel
                         }
