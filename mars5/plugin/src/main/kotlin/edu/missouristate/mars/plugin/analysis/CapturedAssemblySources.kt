@@ -21,6 +21,8 @@ import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService.AssemblySelection
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsAssemblyMode
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import java.nio.file.InvalidPathException
@@ -36,6 +38,7 @@ internal data class CapturedAssemblySources(
     val revisions: Map<Path, Long>,
     val rootsBySource: Map<Path, Path>,
     val directoryStamp: Long? = null,
+    val sourceSet: MarsSourceSet = MarsSourceSet(snapshot.entries(), MarsAssemblyMode.SINGLE),
 )
 
 internal data class EditorAssemblyCapture(
@@ -50,7 +53,7 @@ internal data class EditorAssemblyCapture(
         if (sources.exceptionHandler != file.project.service<MarsAssemblySettings>().exceptionHandler) return false
         val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
         if (selected != selectedAssembly) return false
-        val entry = sources.snapshot.entries().first()
+        val entry = sources.sourceSet.entry
         if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
         return sources.revisions.validateSourceDocuments(accept)
     }
@@ -63,11 +66,11 @@ internal fun collectEditorAssembly(file: MipsFile): EditorAssemblyCapture? {
     val source = virtualFile.toNioPath().toAbsolutePath().normalize()
     val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
     val explicit = selected?.let { selection ->
-        collectBackgroundAssemblySources(file.project, selection.entry, selection.directory).takeIf { source in it.revisions }
+        collectBackgroundAssemblySources(file.project, selection.sourceSet).takeIf { source in it.revisions }
             ?.let { it to selection.options }
     }
     val (sources, options) = explicit ?: (
-        collectBackgroundAssemblySources(file.project, inferredMipsAssemblyEntry(file) ?: return null) to MarsExecutionOptions()
+        collectBackgroundAssemblySources(file.project, MarsSourceSet(inferredMipsAssemblyEntry(file) ?: return null)) to MarsExecutionOptions()
     )
     return EditorAssemblyCapture(source, selected, sources, options, VirtualFileManager.getInstance().structureModificationCount)
 }
@@ -83,16 +86,19 @@ private data class IncludeCursor(val path: Path, val lines: Iterator<String>)
 internal suspend fun captureAssemblySources(entries: List<Path>, exceptionHandler: Path?): CapturedAssemblySources =
     readAction { collectAssemblySources(entries, exceptionHandler) }
 
-internal suspend fun captureBuildSources(entry: Path, directory: Boolean, exceptionHandler: Path? = null): CapturedAssemblySources =
-    readAction { collectBuildSources(entry, directory, exceptionHandler) }
+internal suspend fun captureBuildSources(sourceSet: MarsSourceSet, exceptionHandler: Path? = null): CapturedAssemblySources =
+    readAction { collectBuildSources(sourceSet, exceptionHandler) }
 
 private fun collectBuildSources(
-    entry: Path, directory: Boolean, exceptionHandler: Path?, onDependency: (Any) -> Unit = {},
+    sourceSet: MarsSourceSet, exceptionHandler: Path?, onDependency: (Any) -> Unit = {},
 ): CapturedAssemblySources {
-    if (!directory) return collectAssemblySources(listOf(entry), exceptionHandler, onDependency)
-    val root = entry.toAbsolutePath().normalize()
+    val root = sourceSet.entry
     val separateRoots = setOfNotNull(root, exceptionHandler)
     val vfs = VirtualFileManager.getInstance()
+    if (sourceSet.mode != MarsAssemblyMode.DIRECTORY) {
+        val ordered = listOf(root) + sourceSet.entries.drop(1).filterNot { it in separateRoots }
+        return collectAssemblySources(ordered, exceptionHandler, onDependency).copy(sourceSet = sourceSet)
+    }
     val siblings = vfs.findFileByNioPath(root.parent)?.children.orEmpty().asSequence()
         .filter { it.isAssemblyDirectorySource() }
         .map { it.toNioPath().toAbsolutePath().normalize() }
@@ -100,7 +106,7 @@ private fun collectBuildSources(
         .sortedBy { it.fileName.toString() }
         .toList()
     return collectAssemblySources(listOf(root) + siblings, exceptionHandler, onDependency)
-        .copy(directoryStamp = vfs.structureModificationCount)
+        .copy(directoryStamp = vfs.structureModificationCount, sourceSet = sourceSet)
 }
 
 internal fun VirtualFile.isAssemblyDirectorySource(): Boolean =
@@ -169,18 +175,22 @@ internal fun collectAssemblySources(
 }
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */
-private val singleCaptureKey = Key.create<CachedValue<CapturedAssemblySources>>("mars.single.assembly.sources")
-private val directoryCaptureKey = Key.create<CachedValue<CapturedAssemblySources>>("mars.directory.assembly.sources")
+private val captureKeys = MarsAssemblyMode.entries.associateWith { mode ->
+    Key.create<CachedValue<CapturedAssemblySources>>("mars.assembly.sources.${mode.name}")
+}
 
-internal fun collectBackgroundAssemblySources(project: Project, entry: Path, directory: Boolean = false): CapturedAssemblySources {
+internal fun collectBackgroundAssemblySources(project: Project, sourceSet: MarsSourceSet): CapturedAssemblySources {
     val settings = project.service<MarsAssemblySettings>()
-    val file = VirtualFileManager.getInstance().findFileByNioPath(entry)
+    val file = VirtualFileManager.getInstance().findFileByNioPath(sourceSet.entry)
     val psi = file?.let(PsiManager.getInstance(project)::findFile)
-        ?: return collectBuildSources(entry, directory, settings.exceptionHandler)
-    val key = if (directory) directoryCaptureKey else singleCaptureKey
+        ?: return collectBuildSources(sourceSet, settings.exceptionHandler)
+    val key = captureKeys.getValue(sourceSet.mode)
     return CachedValuesManager.getCachedValue(psi, key) {
         val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, settings.sourceChanges)
-        val captured = collectBuildSources(psi.virtualFile.toNioPath(), directory, settings.exceptionHandler) { dependencies.add(it) }
+        val currentSources = if (sourceSet.mode == MarsAssemblyMode.PROJECT) {
+            MarsSourceSet(settings.projectSources, MarsAssemblyMode.PROJECT)
+        } else sourceSet
+        val captured = collectBuildSources(currentSources, settings.exceptionHandler) { dependencies.add(it) }
         CachedValueProvider.Result.create(captured, dependencies)
     }
 }

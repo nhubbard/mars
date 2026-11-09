@@ -33,6 +33,8 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsAssemblyMode
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -89,20 +91,33 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
 
     internal fun selectedAssembly(file: MipsFile): AssemblySelection? {
-        val build = lastBuild.get() ?: return null
-        return build.request.selection.takeIf { selection ->
-            val virtualFile = file.viewProvider.virtualFile
-            build.snapshot.sourcePath(file) != null ||
-                virtualFile.isInLocalFileSystem && (
-                    virtualFile.toNioPath() == exceptionHandler ||
-                        selection.directory && virtualFile.isAssemblyDirectorySource() && virtualFile.toNioPath().parent == selection.entry.parent
-                )
+        val virtualFile = file.viewProvider.virtualFile
+        if (!virtualFile.isInLocalFileSystem) return null
+        val path = virtualFile.toNioPath()
+        val build = lastBuild.get()
+        if (build != null) {
+            val selection = build.request.selection
+            if (selection.sourceSet.mode != MarsAssemblyMode.PROJECT &&
+                (build.snapshot.sourcePath(file) != null || path == exceptionHandler ||
+                    selection.sourceSet.mode == MarsAssemblyMode.DIRECTORY && virtualFile.isAssemblyDirectorySource() && path.parent == selection.entry.parent)
+            ) return selection
         }
+        val sources = settings.projectSourceSet() ?: return null
+        val lastProject = build?.takeIf { it.request.selection.sourceSet == sources }
+        if (path in sources.entries || lastProject?.snapshot?.sourcePath(file) != null ||
+            !DumbService.isDumb(project) && mipsAssemblyRoots(file).any { it.toNioPath() in sources.entries }
+        ) {
+            return lastProject?.request?.selection ?: AssemblySelection(sources, MarsExecutionOptions())
+        }
+        return null
     }
 
-    private val exceptionHandler get() = project.service<MarsAssemblySettings>().exceptionHandler
+    private val settings get() = project.service<MarsAssemblySettings>()
+    private val exceptionHandler get() = settings.exceptionHandler
 
-    internal data class AssemblySelection(val entry: Path, val options: MarsExecutionOptions, val directory: Boolean)
+    internal data class AssemblySelection(val sourceSet: MarsSourceSet, val options: MarsExecutionOptions) {
+        val entry get() = sourceSet.entry
+    }
 
     internal class SymbolBuild(val selection: AssemblySelection) {
         val entry: Path get() = selection.entry
@@ -113,16 +128,18 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val snapshot: AssemblySymbols = AssemblySymbols(request.entry, options = request.selection.options),
     )
 
-    internal fun beginSymbolBuild(
-        entry: Path, options: MarsExecutionOptions = MarsExecutionOptions(), directory: Boolean = false,
-    ): SymbolBuild = SymbolBuild(AssemblySelection(entry.toAbsolutePath().normalize(), options, directory))
+    internal fun beginSymbolBuild(entry: Path, options: MarsExecutionOptions = MarsExecutionOptions()): SymbolBuild =
+        beginSymbolBuild(MarsSourceSet(entry), options)
+
+    internal fun beginSymbolBuild(sourceSet: MarsSourceSet, options: MarsExecutionOptions): SymbolBuild =
+        SymbolBuild(AssemblySelection(sourceSet, options))
         .also { lastBuild.set(BuildSelection(it)) }
 
     internal fun publishBuiltSymbols(build: SymbolBuild, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
         val current = lastBuild.get()
         if (current.request === build) {
             val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts(), build.selection.options,
-                sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler)
+                sources.rootsBySource, sources.directoryStamp, sources.exceptionHandler, sources.sourceSet)
             lastBuild.compareAndSet(current, BuildSelection(build, snapshot))
         }
     }
@@ -134,7 +151,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun <T : Any> fromAssemblySymbols(file: MipsFile, lookup: (AssemblySymbols, Path) -> T?): T? {
         val handler = exceptionHandler
-        val selected = lastBuild.get()?.snapshot?.takeIf { it.exceptionHandler == handler }?.let { snapshot ->
+        val selected = lastBuild.get()?.snapshot?.takeIf { it.isCurrent(handler) }?.let { snapshot ->
             snapshot.sourcePath(file)?.let { snapshot to it }
         }
         if (selected != null && selected.first.hasCurrentDirectory()) lookup(selected.first, selected.second)?.let { return it }
@@ -143,12 +160,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             .mapNotNull { snapshot -> snapshot.sourcePath(file)?.let { snapshot to it } }
         if (candidates.isEmpty()) return null
         val configuration = selectedAssembly(file)
-        val entry = configuration?.entry ?: inferredMipsAssemblyEntry(file)
+        val sources = configuration?.sourceSet ?: inferredMipsAssemblyEntry(file)?.let { MarsSourceSet(it) }
         val options = configuration?.options ?: MarsExecutionOptions()
-        val directory = configuration?.directory == true
         val candidate = candidates.firstOrNull {
-            it.first.entry == entry && it.first.options == options &&
-                (it.first.directoryStamp != null) == directory && it.first.hasCurrentDirectory() && it.first.exceptionHandler == handler
+            it.first.sourceSet == sources && it.first.options == options &&
+                it.first.hasCurrentDirectory() && it.first.exceptionHandler == handler
         } ?: return null
         return lookup(candidate.first, candidate.second)
     }
@@ -542,14 +558,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
-        val build = lastBuild.get()?.snapshot?.takeIf { it.exceptionHandler == exceptionHandler } ?: return null
-        val path = build.sourcePath(file) ?: return null
-        val root = build.rootFor(path)
+        val projectSources = selectedAssembly(file)?.sourceSet?.takeIf { it.mode == MarsAssemblyMode.PROJECT }
+        val path: Path
+        val root = if (projectSources != null) {
+            path = file.viewProvider.virtualFile.toNioPath()
+            if (path in projectSources.entries) path
+            else collectBackgroundAssemblySources(project, projectSources).rootsBySource[path] ?: return null
+        } else {
+            val build = lastBuild.get()?.snapshot?.takeIf { it.isCurrent(exceptionHandler) } ?: return null
+            path = build.sourcePath(file) ?: return null
+            build.rootFor(path)
+        }
         if (path == root) return mipsSourceTimeline(file)
         val entry = VirtualFileManager.getInstance().findFileByNioPath(root) ?: return null
         val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
         return mipsSourceTimeline(entryPsi)
     }
+
+    private fun AssemblySymbols.isCurrent(handler: Path?): Boolean =
+        exceptionHandler == handler && (sourceSet.mode != MarsAssemblyMode.PROJECT || sourceSet == settings.projectSourceSet())
 
     /** Finds the first effective .eqv before the reference in the selected entry. */
     internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? {

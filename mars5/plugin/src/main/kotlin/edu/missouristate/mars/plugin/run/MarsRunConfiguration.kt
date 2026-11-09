@@ -21,6 +21,7 @@ import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.components.PathMacroManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
@@ -31,14 +32,21 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.selected
+import com.intellij.ui.layout.ComponentPredicate
+import com.intellij.ui.layout.not
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.build.MarsAssemblyMode
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectFilePath
 import java.nio.file.Path
+import javax.swing.JCheckBox
 import javax.swing.JTextField
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
@@ -47,6 +55,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var delayedBranching: Boolean by property(false)
     var assembleDirectory: Boolean by property(false)
+    var useProjectSources: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
     var captureBitmap: Boolean by property(false)
     var captureReferences: Boolean by property(false)
@@ -88,14 +97,25 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 
     override fun checkConfiguration() {
         checkDeviceConflict { RuntimeConfigurationError(it) }
-        val entry = projectFilePath(project, options.sourcePath) ?: throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
-        memoryDumps(entry) { RuntimeConfigurationError(it) }
+        val sources = resolveSourceSet { RuntimeConfigurationError(it) }
+        memoryDumps(sources.entry) { RuntimeConfigurationError(it) }
+    }
+
+    private fun resolveSourceSet(invalid: (String) -> Exception): MarsSourceSet {
+        if (options.useProjectSources) {
+            return project.service<MarsAssemblySettings>().projectSourceSet()
+                ?: throw invalid(runMessages.getMessage("run.assemble.project.empty"))
+        }
+        val entry = projectFilePath(project, options.sourcePath) ?: throw invalid(runMessages.getMessage("run.source.invalid"))
+        val mode = if (options.assembleDirectory) MarsAssemblyMode.DIRECTORY else MarsAssemblyMode.SINGLE
+        return MarsSourceSet(entry, mode)
     }
 
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var delayedBranching = false
         private var assembleDirectory = false
+        private var useProjectSources = false
         private var selfModifyingCode = false
         private var captureBitmap = false
         private var captureReferences = false
@@ -103,11 +123,26 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var connectKeyboardDisplay = false
         private var connectMarsBot = false
         private var connectScavengerHunt = false
-        private val dumps = RunMemoryDumpEditor(project) { projectFilePath(project, sourceField.text.trim()) }
+        private val dumps = RunMemoryDumpEditor(project) {
+            if (projectMode.isSelected) project.service<MarsAssemblySettings>().projectSourceSet()?.entry
+            else projectFilePath(project, sourceField.text.trim())
+        }
+        private lateinit var projectMode: JCheckBox
         private lateinit var sourceField: JTextField
         private val form = panel {
-            row(runMessages.getMessage("run.source")) { sourceField = textField().bindText(::source).component }
-            row { checkBox(runMessages.getMessage("run.assemble.directory")).bindSelected(::assembleDirectory) }
+            lateinit var useFile: ComponentPredicate
+            row {
+                val choice = checkBox(runMessages.getMessage("run.assemble.project")).bindSelected(::useProjectSources)
+                projectMode = choice.component
+                useFile = choice.selected.not()
+            }
+            row(runMessages.getMessage("run.source")) {
+                sourceField = textField().bindText(::source).enabledIf(useFile).component
+            }
+            row {
+                checkBox(runMessages.getMessage("run.assemble.directory")).bindSelected(::assembleDirectory)
+                    .enabledIf(useFile)
+            }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
             row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
@@ -124,6 +159,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             source = configuration.options.sourcePath.orEmpty()
             delayedBranching = configuration.options.delayedBranching
             assembleDirectory = configuration.options.assembleDirectory
+            useProjectSources = configuration.options.useProjectSources
             selfModifyingCode = configuration.options.selfModifyingCode
             captureBitmap = configuration.options.captureBitmap
             captureReferences = configuration.options.captureReferences
@@ -139,6 +175,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.sourcePath = source.trim()
             configuration.options.delayedBranching = delayedBranching
             configuration.options.assembleDirectory = assembleDirectory
+            configuration.options.useProjectSources = useProjectSources
             configuration.options.selfModifyingCode = selfModifyingCode
             configuration.options.captureBitmap = captureBitmap
             configuration.options.captureReferences = captureReferences
@@ -155,19 +192,18 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         if (!TrustedProjects.isProjectTrusted(project)) {
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
-        val entry = projectFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
+        val sources = resolveSourceSet { ExecutionException(it) }
         checkDeviceConflict { ExecutionException(it) }
         return MarsRunState(
-            environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
-            memoryDumps(entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
+            environment, sources, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
+            memoryDumps(sources.entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
-            options.assembleDirectory,
         )
     }
 }
 
 internal class MarsRunState(
-    private val environment: ExecutionEnvironment, val entry: Path, private val options: MarsExecutionOptions,
+    private val environment: ExecutionEnvironment, private val sources: MarsSourceSet, private val options: MarsExecutionOptions,
     private val memoryDumps: List<MemoryExportSelection>,
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
@@ -175,16 +211,17 @@ internal class MarsRunState(
     private val connectKeyboardDisplay: Boolean,
     private val connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
-    private val assembleDirectory: Boolean,
 ) :
     CommandLineState(environment) {
+    val entry: Path get() = sources.entry
+
     override fun startProcess() =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, sources)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory, execute)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, sources, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }
@@ -202,6 +239,7 @@ internal class MarsRunConfigurationProducer : LazyRunConfigurationProducer<MarsR
     }
 
     override fun isConfigurationFromContext(configuration: MarsRunConfiguration, context: ConfigurationContext): Boolean {
+        if (configuration.options.useProjectSources) return false
         val file = entryFile(context.psiLocation) ?: return false
         return PathMacroManager.getInstance(configuration.project).expandPath(configuration.options.sourcePath) == file.path
     }

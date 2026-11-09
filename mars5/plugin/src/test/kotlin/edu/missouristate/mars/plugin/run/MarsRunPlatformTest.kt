@@ -43,6 +43,7 @@ import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
@@ -114,6 +115,81 @@ class MarsRunPlatformTest {
             assertEquals("42", recording.stdout.toString())
             assertEquals("", recording.stderr.toString())
             assertEquals(".eqv VALUE 1\n", Files.readString(include))
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `native Run uses the stored project entry and assembles unsaved sources in order`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        try {
+            val library = withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("app/main.asm", """
+                    .data
+                    anchor: .word 0
+                    .text
+                    la ${'$'}t0, anchor
+                    lw ${'$'}a0, 4(${'$'}t0)
+                    li ${'$'}v0, 1
+                    syscall
+                    li ${'$'}v0, 10
+                    syscall
+                """.trimIndent())
+                val early = fixture.addFileToProject("lib-a/alpha.s", ".data\n.word 3\n").virtualFile
+                val library = fixture.addFileToProject("lib-z/zulu.s", ".data\n.word 1\n").virtualFile
+                val document = FileDocumentManager.getInstance().getDocument(library)!!
+                WriteCommandAction.runWriteCommandAction(project) { document.setText(".data\n.word 42\n") }
+                val config = type.createTemplateConfiguration(project)
+                val editor = config.configurationEditor
+                try {
+                    editor.resetFrom(config)
+                    val form = editor.component
+                    val option = UIUtil.findComponentsOfType(form, JCheckBox::class.java)
+                        .single { it.text == "Use project assembly sources" }
+                    val field = requireNotNull(UIUtil.findComponentOfType(form, JTextField::class.java))
+                    assertTrue(field.isEnabled)
+                    option.isSelected = true
+                    assertFalse(field.isEnabled)
+                    val add = requireNotNull(ToolbarDecorator.findAddButton(form))
+                    interceptMemoryExportDialog { it.doCancelAction() }
+                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    editor.applyTo(config)
+                    assertTrue(config.options.useProjectSources)
+                    assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                    val empty = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    assertThrows<ExecutionException> { config.getState(executor, empty) }
+                    project.getService(MarsAssemblySettings::class.java)
+                        .changeSources(listOf(source.virtualFile.path, library.path, early.path))
+                    interceptMemoryExportDialog { it.doCancelAction() }
+                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                config.options.assembleDirectory = true
+                val xml = Element("configuration")
+                config.writeExternal(xml)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertTrue(restored.options.useProjectSources)
+                assertTrue(restored.options.assembleDirectory)
+                restored.checkConfiguration()
+                val context = ConfigurationContext.createEmptyContextForLocation(PsiLocation.fromPsiElement(source))
+                val producer = RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+                assertFalse(producer.isConfigurationFromContext(restored, context))
+                val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                val runner = assertInstanceOf(MarsRunRunner::class.java, environment.runner)
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) handler.addProcessListener(recording)
+                    }
+                })
+                runner.execute(environment)
+                library.toNioPath()
+            }
+            assertEquals(0, recording.exit.await())
+            assertEquals("42", recording.stdout.toString())
+            assertEquals(".data\n.word 1\n", Files.readString(library))
         } finally {
             Disposer.dispose(disposable)
         }

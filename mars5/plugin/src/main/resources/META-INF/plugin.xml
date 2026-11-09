@@ -74,6 +74,9 @@
     <action id="Mars.AssembleDirectory" class="edu.missouristate.mars.plugin.build.MarsAssembleDirectoryAction">
       <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleCurrentFile"/>
     </action>
+    <action id="Mars.AssembleProject" class="edu.missouristate.mars.plugin.build.MarsAssembleProjectAction">
+      <add-to-group group-id="BuildMenu" anchor="after" relative-to-action="Mars.AssembleDirectory"/>
+    </action>
     <group id="Mars.AssembleContainingEntry" class="edu.missouristate.mars.plugin.build.MarsContainingEntriesGroup" popup="true">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </group>

@@ -21,11 +21,16 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.fileChooser.PathChooserDialog
+import com.intellij.openapi.fileChooser.impl.FileChooserFactoryImpl
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
@@ -48,6 +53,8 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
+import com.intellij.testFramework.TestActionEvent
+import com.intellij.ui.ToolbarDecorator
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.AssemblyError
@@ -62,8 +69,10 @@ import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import java.awt.Component
 import java.nio.file.Files
 import java.util.HexFormat
+import javax.swing.JList
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -83,6 +92,143 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking<Unit> {
+        val (main, alpha, zulu) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("app/main.asm", "la \$t0, fromAlpha\nla \$t1, fromZulu\n") as MipsFile
+            val alpha = fixture.addFileToProject("lib-a/alpha.s", ".eqv NUMBER 7\n.include \"shared.s\"\n.globl fromAlpha\nfromAlpha: nop\n") as MipsFile
+            val zulu = fixture.addFileToProject("lib-z/zulu.s", ".eqv NUMBER 9\n.include \"../lib-a/shared.s\"\n.globl fromZulu\nfromZulu: nop\n") as MipsFile
+            fixture.addFileToProject("lib-a/shared.s", "li \$t4, NUMBER\n")
+            Triple(main, alpha, zulu)
+        }
+        val paths = listOf(main, alpha, zulu).map { it.virtualFile.toNioPath() }
+        val settings = project.service<MarsAssemblySettings>()
+        val analysis = project.service<MarsAnalysisService>()
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        val action = ActionManager.getInstance().getAction("Mars.AssembleProject")
+        fun event(data: DataContext) = AnActionEvent.createEvent(action, data, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
+        val context = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
+        try {
+            val unrelated = withContext(Dispatchers.EDT) {
+                assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                val empty = event(context)
+                action.update(empty)
+                assertFalse(empty.presentation.isEnabled)
+                action.actionPerformed(empty)
+                val noProject = event(DataContext.EMPTY_CONTEXT)
+                action.update(noProject)
+                assertFalse(noProject.presentation.isEnabled)
+                action.actionPerformed(noProject)
+
+                val notes = fixture.addFileToProject("notes.txt", "ordinary text").virtualFile
+                ApplicationManager.getApplication().replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
+                    override fun createPathChooser(descriptor: FileChooserDescriptor, project: Project?, parent: Component?) =
+                        PathChooserDialog { _, callback ->
+                            assertTrue(descriptor.isChooseMultiple)
+                            callback.consume(listOf(main.virtualFile, zulu.virtualFile, alpha.virtualFile, alpha.virtualFile,
+                                notes, main.virtualFile.parent, LightVirtualFile("light.s", MipsFileType, "nop")))
+                        }
+                }, lifetime)
+                val page = MarsAssemblyConfigurable(project)
+                try {
+                    val form = page.createComponent()
+                    val list = requireNotNull(UIUtil.findComponentOfType(form, JList::class.java))
+                    val add = requireNotNull(ToolbarDecorator.findAddButton(form))
+                    val up = requireNotNull(ToolbarDecorator.findUpButton(form))
+                    page.reset()
+                    assertFalse(page.isModified)
+                    add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    assertEquals(3, list.model.size)
+                    assertTrue(page.isModified)
+                    up.actionPerformed(TestActionEvent.createTestEvent(up))
+                    page.apply()
+                    assertEquals(paths, settings.projectSources)
+                    settings.changeSources(paths.map { it.toString() })
+                    val persisted = XmlSerializer.serialize(settings.getState())
+                    settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                    assertEquals(paths, settings.projectSources)
+                    page.reset()
+                    assertFalse(page.isModified)
+                } finally {
+                    page.disposeUIResources()
+                }
+                val unrelated = fixture.addFileToProject("other/unrelated.s", "nop\n") as MipsFile
+                DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                    assertNull(analysis.selectedAssembly(unrelated))
+                }
+                unrelated
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            val (first, include) = readAction {
+                assertNull(analysis.selectedAssembly(unrelated))
+                val capture = requireNotNull(collectEditorAssembly(alpha))
+                assertEquals(paths, capture.sources.snapshot.entries())
+                val shared = requireNotNull(VirtualFileManager.getInstance().findFileByNioPath(paths[1].resolveSibling("shared.s")))
+                val include = PsiManager.getInstance(project).findFile(shared) as MipsFile
+                assertEquals(MarsAssemblyMode.PROJECT, analysis.selectedAssembly(include)?.sourceSet?.mode)
+                val number = requireNotNull(include.findElementAt(include.text.indexOf("NUMBER")))
+                assertEquals(alpha.virtualFile, analysis.equivalenceTarget(include, number)?.containingFile?.virtualFile)
+                capture to include
+            }
+            withContext(Dispatchers.EDT) {
+                val build = event(context)
+                action.update(build)
+                assertTrue(build.presentation.isEnabled)
+                action.actionPerformed(build)
+            }
+            var buildEvent = events.receive()
+            while (buildEvent !is FinishBuildEvent) buildEvent = events.receive()
+            assertInstanceOf(SuccessResult::class.java, buildEvent.result)
+            readAction {
+                val shared = requireNotNull(VirtualFileManager.getInstance().findFileByNioPath(paths[1].resolveSibling("shared.s")))
+                val psi = PsiManager.getInstance(project).findFile(shared) as MipsFile
+                assertEquals(MarsAssemblyMode.PROJECT, analysis.selectedAssembly(psi)?.sourceSet?.mode)
+                assertEquals(MarsAssemblyMode.PROJECT, analysis.selectedAssembly(alpha)?.sourceSet?.mode)
+                val reference = requireNotNull(main.findElementAt(main.text.indexOf("fromAlpha")))
+                assertEquals(alpha.virtualFile, analysis.labelTargets(main, reference, false).single().containingFile.virtualFile)
+            }
+            val previous = analysis.backgroundAssembly.assemble(first.sources, first.structureStamp, first.options)
+            val previousSymbols = requireNotNull(previous.symbols)
+            analysis.publishBackgroundSymbols(previousSymbols)
+            assertTrue(previousSymbols.symbols.globals().getValue("fromAlpha").address() <
+                previousSymbols.symbols.globals().getValue("fromZulu").address())
+            val reordered = listOf(paths[0], paths[2], paths[1])
+            withContext(Dispatchers.EDT) { settings.changeSources(reordered.map { it.toString() }) }
+            val refreshed = readAction {
+                assertFalse(first.validate(alpha) { _, _, _ -> true })
+                val reference = requireNotNull(main.findElementAt(main.text.indexOf("fromAlpha")))
+                assertTrue(analysis.labelTargets(main, reference, false).isEmpty())
+                val number = requireNotNull(include.findElementAt(include.text.indexOf("NUMBER")))
+                assertEquals(zulu.virtualFile, analysis.equivalenceTarget(include, number)?.containingFile?.virtualFile)
+                requireNotNull(collectEditorAssembly(main)).also {
+                    assertEquals(reordered, it.sources.snapshot.entries())
+                    assertTrue(it.validate(main) { _, document, stamp -> document.modificationStamp == stamp })
+                }
+            }
+            val result = analysis.backgroundAssembly.assemble(refreshed.sources, refreshed.structureStamp, refreshed.options)
+            val symbols = requireNotNull(result.symbols)
+            assertTrue(symbols.symbols.globals().getValue("fromZulu").address() <
+                symbols.symbols.globals().getValue("fromAlpha").address())
+            project.service<MarsBuildService>().assemble(requireNotNull(settings.projectSourceSet()))
+            withContext(Dispatchers.EDT) {
+                edit(alpha.virtualFile, ".globl fromAlpha\nfromAlpha: nop\n")
+                edit(zulu.virtualFile, ".globl fromZulu\nfromZulu: nop\n")
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            readAction {
+                assertEquals(MarsAssemblyMode.PROJECT, analysis.selectedAssembly(include)?.sourceSet?.mode)
+                val number = requireNotNull(include.findElementAt(include.text.indexOf("NUMBER")))
+                assertNull(analysis.equivalenceTarget(include, number))
+            }
+            withContext(Dispatchers.EDT) { settings.changeSources(emptyList()) }
+            readAction { assertNull(analysis.selectedAssembly(main)) }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
 
     @Test
     fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking<Unit> {
@@ -129,12 +275,14 @@ class MarsBuildPlatformTest {
                     page.disposeUIResources()
                 }
             }
-            val directory = captureBuildSources(entry, directory = true, exceptionHandler = settings.exceptionHandler)
+            val directory = captureBuildSources(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY), exceptionHandler = settings.exceptionHandler)
             assertEquals(listOf(entry), directory.snapshot.entries())
+            val projectSources = MarsSourceSet(listOf(entry, kernel), MarsAssemblyMode.PROJECT)
+            assertEquals(listOf(entry), captureBuildSources(projectSources, kernel).snapshot.entries())
             assertEquals(kernel, directory.rootsBySource[entry.resolveSibling("parts/body.s")])
             assertEquals(".ktext 0x80000180\nnop\n", Files.readString(kernel))
             val service = project.service<MarsBuildService>()
-            service.assemble(entry, directory = true)
+            service.assemble(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY))
             assertInstanceOf(SuccessResult::class.java, finish().result)
             val current = readAction {
                 assertFalse(before.validate(main) { _, _, _ -> true })
@@ -184,7 +332,7 @@ class MarsBuildPlatformTest {
                 }
             }
             assertNull(settings.exceptionHandler)
-            readAction { assertNull(collectBackgroundAssemblySources(project, kernel).exceptionHandler) }
+            readAction { assertNull(collectBackgroundAssemblySources(project, MarsSourceSet(kernel)).exceptionHandler) }
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
@@ -208,9 +356,9 @@ class MarsBuildPlatformTest {
         val entry = main.virtualFile.toNioPath()
         val helperPath = helper.virtualFile.toNioPath()
         val roots = listOf(entry, helperPath, last.virtualFile.toNioPath())
-        val capture = captureBuildSources(entry, directory = true)
+        val capture = captureBuildSources(MarsSourceSet(entry, MarsAssemblyMode.DIRECTORY))
         val absent = entry.resolveSibling("missing/main.asm")
-        assertEquals(listOf(absent), captureBuildSources(absent, directory = true).snapshot.entries())
+        assertEquals(listOf(absent), captureBuildSources(MarsSourceSet(absent, MarsAssemblyMode.DIRECTORY)).snapshot.entries())
         assertEquals(roots, capture.snapshot.entries())
         assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/defs.s")])
         assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/value.inc")])
@@ -250,14 +398,14 @@ class MarsBuildPlatformTest {
                 val sharedPsi = PsiManager.getInstance(project).findFile(shared) as MipsFile
                 val number = requireNotNull(sharedPsi.findElementAt(sharedPsi.text.indexOf("NUMBER")))
                 assertEquals(helper.virtualFile, analysis.equivalenceTarget(sharedPsi, number)?.containingFile?.virtualFile)
-                val single = collectBackgroundAssemblySources(project, entry)
+                val single = collectBackgroundAssemblySources(project, MarsSourceSet(entry))
                 assertEquals(listOf(entry), single.snapshot.entries())
                 val fromMain = requireNotNull(collectEditorAssembly(main))
                 val fromHelper = requireNotNull(collectEditorAssembly(helper))
                 assertSame(fromMain.sources, fromHelper.sources)
                 assertEquals(roots, fromHelper.sources.snapshot.entries())
                 assertTrue(fromMain.validate(main) { _, document, stamp -> document.modificationStamp == stamp })
-                assertTrue(analysis.selectedAssembly(last)!!.directory)
+                assertEquals(MarsAssemblyMode.DIRECTORY, analysis.selectedAssembly(last)?.sourceSet?.mode)
                 Triple(fromMain, fromHelper, single)
             }
             val singleOutcome = analysis.backgroundAssembly.assemble(single, fromMain.structureStamp, MarsExecutionOptions())
@@ -281,7 +429,7 @@ class MarsBuildPlatformTest {
                 analysis.publishBackgroundSymbols(requireNotNull(singleOutcome.symbols))
                 val entryLabel = requireNotNull(main.findElementAt(main.text.lastIndexOf("entry")))
                 assertTrue(analysis.labelCompletionNames(main, entryLabel, "helper").isEmpty())
-                assertTrue(analysis.selectedAssembly(created)!!.directory)
+                assertEquals(MarsAssemblyMode.DIRECTORY, analysis.selectedAssembly(created)?.sourceSet?.mode)
                 assertEquals(listOf(entry, helperPath, created.virtualFile.toNioPath(), last.virtualFile.toNioPath()),
                     collectEditorAssembly(created)!!.sources.snapshot.entries())
             }

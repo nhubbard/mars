@@ -34,22 +34,29 @@ import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
-    fun assembleCurrentFile(entry: Path, directory: Boolean = false) = scope.launch(Dispatchers.Default) {
-        withBackgroundProgress(project, bundle.getMessage("build.progress")) { assemble(entry, directory) }
+    fun assembleInBackground(sourceSet: MarsSourceSet) = scope.launch(Dispatchers.Default) {
+        withBackgroundProgress(project, bundle.getMessage("build.progress")) { assemble(sourceSet) }
     }
 
-    internal suspend fun assemble(entry: Path, directory: Boolean = false) {
+    internal suspend fun assemble(entry: Path) = assemble(MarsSourceSet(entry))
+
+    internal suspend fun assemble(sourceSet: MarsSourceSet) {
         val component = MarsSessionService.createMarsComponent()
-        component.context().use { assemble(entry, component, activateBuildView = true, directory = directory) }
+        component.context().use { assemble(sourceSet, component, activateBuildView = true) }
     }
 
     internal suspend fun assemble(
         entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
-        directory: Boolean = false, onSourcesCaptured: (Set<Path>) -> Unit = {},
+    ) = assemble(MarsSourceSet(entry), component, activateBuildView, options)
+
+    internal suspend fun assemble(
+        sourceSet: MarsSourceSet, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
+        onSourcesCaptured: (Set<Path>) -> Unit = {},
     ): Boolean {
+        val entry = sourceSet.entry
         options.applyTo(component.context().settings)
         val analysis = project.service<MarsAnalysisService>()
-        val symbolBuild = analysis.beginSymbolBuild(entry, options, directory)
+        val symbolBuild = analysis.beginSymbolBuild(sourceSet, options)
         val descriptor = DefaultBuildDescriptor(
             Any(), bundle.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
@@ -62,7 +69,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var cancelled = false
         var succeeded = false
         try {
-            val capture = captureBuildSources(entry, directory, project.service<MarsAssemblySettings>().exceptionHandler)
+            val capture = captureBuildSources(sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
             onSourcesCaptured(capture.snapshot.texts().keys)
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)

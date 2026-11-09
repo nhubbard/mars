@@ -161,8 +161,9 @@ class MarsDebugPlatformTest {
         }
     }
 
-    @Test
-    fun `directory Debug stops in a sibling source and resolves its own data symbols`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `Debug stops in another assembly source and resolves its own data symbols`(orderedProject: Boolean) = timeoutRunBlocking<Unit> {
         val (main, sibling) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("directory/main.asm", """
                 jal sibling
@@ -170,7 +171,8 @@ class MarsDebugPlatformTest {
                 li ${'$'}v0, 10
                 syscall
             """.trimIndent()).virtualFile
-            val sibling = fixture.addFileToProject("directory/library.s", """
+            val libraryPath = if (orderedProject) "library/library.s" else "directory/library.s"
+            val sibling = fixture.addFileToProject(libraryPath, """
                 .data
                 siblingValue: .word 23
                 .text
@@ -179,10 +181,13 @@ class MarsDebugPlatformTest {
                 jr ${'$'}ra
                 nop
             """.trimIndent()).virtualFile
+            if (orderedProject) {
+                project.getService(MarsAssemblySettings::class.java).changeSources(listOf(main.path, sibling.path))
+            }
             addBreakpoint(sibling, 4)
             main to sibling
         }
-        withDebug(main, { assembleDirectory = true }) { debug ->
+        withDebug(main, { assembleDirectory = !orderedProject; useProjectSources = orderedProject }) { debug ->
             debug.assertPausedAt(sibling, 4)
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)

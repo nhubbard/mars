@@ -6,6 +6,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
 import java.nio.file.Path
 import java.util.TreeSet
@@ -21,6 +22,7 @@ internal class AssemblySymbols(
     private val rootsBySource: Map<Path, Path> = mapOf(entry to entry),
     val directoryStamp: Long? = null,
     val exceptionHandler: Path? = null,
+    val sourceSet: MarsSourceSet = MarsSourceSet(entry),
 ) {
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
     val localSymbols get() = localSymbols(entry)

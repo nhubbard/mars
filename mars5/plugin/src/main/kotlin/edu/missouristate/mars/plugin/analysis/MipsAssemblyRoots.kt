@@ -43,6 +43,8 @@ internal fun closesRootlessMipsIncludeCycle(file: MipsFile, literal: MipsStringL
 internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<VirtualFile> =
     assemblyAncestors(project, selected).roots
 
+internal fun mipsAssemblyRoots(file: MipsFile): List<VirtualFile> = assemblyAncestors(file).roots
+
 private fun assemblyAncestors(project: Project, selected: VirtualFile): AssemblyAncestors {
     val manager = FileIncludeManager.getManager(project)
     val psi = PsiManager.getInstance(project)

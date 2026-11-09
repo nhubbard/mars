@@ -21,6 +21,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
@@ -71,19 +72,19 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectKeyboardDisplay: Boolean = false,
         connectMarsBot: Boolean = false,
         connectScavengerHunt: Boolean = false,
-        assembleDirectory: Boolean = false,
+        sourceSet: MarsSourceSet = MarsSourceSet(entry),
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory, execute,
+            project, scope, sourceSet, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
 }
 
 internal class MarsProcessHandler(
-    private val project: Project, scope: CoroutineScope, private val entry: Path, private val input: Pipe,
+    private val project: Project, scope: CoroutineScope, private val sourceSet: MarsSourceSet, private val input: Pipe,
     private val options: MarsExecutionOptions,
     private val memoryDumps: List<MemoryExportSelection>,
     captureBitmap: Boolean,
@@ -92,9 +93,9 @@ internal class MarsProcessHandler(
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
-    private val assembleDirectory: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
+    private val entry = sourceSet.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
 
     override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
@@ -198,7 +199,7 @@ internal class MarsProcessHandler(
         return component.context().use { session ->
             var sources = emptySet<Path>()
             val assembled = project.service<MarsBuildService>().assemble(
-                entry, component, activateBuildView = false, options, directory = assembleDirectory,
+                sourceSet, component, activateBuildView = false, options,
             ) {
                 sources = it + entry
             }

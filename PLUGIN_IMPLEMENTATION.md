@@ -1313,6 +1313,19 @@ includes and unsaved editor text. Directory mode excludes the configured
 handler from the sibling list so it assembles once. When the handler itself
 is the entry file, it assembles once as the entry.
 
+## Ordered project sources
+
+Use **Settings → Build, Execution, Deployment → MARS Assembly → Project
+sources** to choose and reorder source files from across the project. The
+first file is the entry. Choose **Build → Assemble MIPS Project** or enable
+**Use project assembly sources** in a MIPS Run configuration. The list
+supplies the entry and assembly order for Run and Debug, so the individual
+file and directory options are inactive in that mode. The source list is
+shared in the project settings and uses IntelliJ path variables for
+portability. IntelliJ refreshes editor diagnostics and symbol resolution
+when the list changes. Project builds use unsaved source text and the
+project's exception handler.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
