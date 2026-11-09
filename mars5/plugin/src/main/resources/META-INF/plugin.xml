@@ -12,6 +12,12 @@
     <module name="intellij.platform.syntax.psi"/>
     <module name="intellij.platform.syntax.util"/>
   </dependencies>
+  <extensionPoints>
+    <extensionPoint name="toolProvider" interface="edu.missouristate.mars.plugin.tools.MarsToolProvider" dynamic="true"/>
+  </extensionPoints>
+  <extensions defaultExtensionNs="edu.missouristate.mars">
+    <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
+  </extensions>
   <extensions defaultExtensionNs="com.intellij">
     <toolWindow id="MARS Tools" anchor="right" factoryClass="edu.missouristate.mars.plugin.tools.MarsToolsWindowFactory"
                 icon="AllIcons.Toolwindows.ToolWindowServices" doNotActivateOnStart="true"/>

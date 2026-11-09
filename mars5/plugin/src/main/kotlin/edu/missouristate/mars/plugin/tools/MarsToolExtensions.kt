@@ -1,0 +1,93 @@
+package edu.missouristate.mars.plugin.tools
+
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.diagnostic.thisLogger
+import com.intellij.openapi.extensions.ExtensionPointAdapter
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.content.Content
+import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.content.ContentManager
+import com.intellij.ui.content.ContentManagerEvent
+import com.intellij.ui.content.ContentManagerListener
+import java.util.IdentityHashMap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
+internal class MarsToolExtensions(private val project: Project, private val manager: ContentManager, parent: Disposable) {
+    private data class Tab(val content: Content, val lifetime: Disposable, var initialized: Boolean = false)
+
+    private val firstExtensionIndex = manager.contentCount
+    private val tabs = IdentityHashMap<MarsToolProvider, Tab>()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
+
+    init {
+        val selection = object : ContentManagerListener {
+            override fun selectionChanged(event: ContentManagerEvent) = loadSelected()
+        }
+        manager.addContentManagerListener(selection)
+        Disposer.register(parent) {
+            scope.cancel()
+            manager.removeContentManagerListener(selection)
+            tabs.clear()
+        }
+        MarsToolProvider.EP.addExtensionPointListener(scope, object : ExtensionPointAdapter<MarsToolProvider>() {
+            override fun extensionListChanged() = scheduleRefresh()
+        })
+        refresh()
+    }
+
+    private fun scheduleRefresh() {
+        if (ApplicationManager.getApplication().isDispatchThread) refresh()
+        else scope.launch { refresh() }
+    }
+
+    private fun refresh() {
+        val ids = mutableSetOf<String>()
+        val providers = MarsToolProvider.EP.extensionList.filter { provider ->
+            val id = provider.id
+            val unique = id.isNotBlank() && ids.add(id)
+            if (!unique) thisLogger().warn("Ignoring an empty or duplicate MARS tool ID: $id")
+            unique
+        }
+        val removed = tabs.keys.filter { existing -> providers.none { it === existing } }
+            .map { tabs.remove(it)!!.content }
+        removed.forEach { manager.removeContent(it, true) }
+        providers.forEachIndexed { index, provider ->
+            if (provider !in tabs) {
+                val content = ContentFactory.getInstance().createContent(JBLabel(), provider.title, false)
+                val lifetime = Disposer.newDisposable()
+                content.setDisposer(lifetime)
+                tabs[provider] = Tab(content, lifetime)
+                manager.addContent(content, minOf(firstExtensionIndex + index, manager.contentCount))
+            }
+        }
+        loadSelected()
+    }
+
+    private fun loadSelected() {
+        val selected = manager.selectedContent
+        val (provider, tab) = tabs.entries.firstOrNull { it.value.content === selected } ?: return
+        if (tab.initialized) return
+        tab.initialized = true
+        val lifetime = Disposer.newDisposable(tab.lifetime)
+        try {
+            tab.content.component = provider.createContent(MarsToolContext(project, lifetime))
+        } catch (error: CancellationException) {
+            Disposer.dispose(lifetime)
+            tab.initialized = false
+            throw error
+        } catch (error: Exception) {
+            Disposer.dispose(lifetime)
+            thisLogger().warn("Could not open MARS tool ${provider.id}", error)
+            tab.content.component = JBLabel(toolsMessages.getMessage("tools.provider.failed", provider.title))
+        }
+    }
+}

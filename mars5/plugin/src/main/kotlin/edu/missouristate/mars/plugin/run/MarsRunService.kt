@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.run
 
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
@@ -9,6 +10,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.encoding.EncodingManager
+import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SessionSyscallEnvironment
@@ -30,6 +32,8 @@ import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
 import edu.missouristate.mars.plugin.tools.MarsBotDevice
+import edu.missouristate.mars.plugin.tools.MarsToolExecution
+import edu.missouristate.mars.plugin.tools.MarsToolInstructionListener
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -88,7 +92,13 @@ internal class MarsProcessHandler(
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
-) : ProcessHandler() {
+) : ProcessHandler(), MarsToolExecution {
+    private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
+
+    override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
+        toolInstructions.addListener(listener, lifetime)
+    }
+
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
     val branchHistory = BranchHistoryTable()
@@ -211,6 +221,7 @@ internal class MarsProcessHandler(
                                 digitalLab.instructionCompleted(session)
                                 keyboardDisplay.instructionCompleted(session)
                                 marsBot.instructionCompleted()
+                                if (toolInstructions.hasListeners()) toolInstructions.multicaster.instructionCompleted(event)
                             }
                             override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
                             override fun onStop(event: StopEvent) = Unit

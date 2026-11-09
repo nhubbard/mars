@@ -1259,7 +1259,33 @@ verifies that rewind restores the sorted task and request word.
 
 Screen Magnifier is outside the IntelliJ plugin scope by user decision.
 The capture and annotation prototype was removed from the plugin.
-The M6 educational-tool target is 13 tools, with Intro to Tools next.
+The M6 educational-tool target is 13 tools.
+
+## Introduction to Tools
+
+Open **View → Tool Windows → MARS Tools → Introduction to Tools** for a
+working Kotlin provider example. Select a Run or Debug execution before
+running or stepping the program. The displayed count measures instructions
+observed since selection, including instructions executed again after
+backstep. Each selection owns a separate listener and counter.
+
+External plugins can depend on `edu.missouristate.mars` and contribute an
+implementation of `MarsToolProvider` through the native extension point.
+Use a unique provider ID and a localized title. The tool window adds tabs
+in extension order, builds each provider's content on first selection,
+and disposes the content and its listeners when the provider unloads.
+
+```xml
+<depends>edu.missouristate.mars</depends>
+<extensions defaultExtensionNs="edu.missouristate.mars">
+  <toolProvider id="example.mips.instructionMonitor" implementation="example.mips.InstructionMonitorProvider"/>
+</extensions>
+```
+
+The checked-in [IntroToToolsProvider](mars5/plugin/src/main/kotlin/edu/missouristate/mars/plugin/tools/IntroToToolsProvider.kt)
+shows how to create the native execution selector, bind a listener to the
+selected execution, and update Swing from its own UI coroutine. Instruction
+callbacks run on the simulator worker and should return promptly.
 
 ## Next slices
 
