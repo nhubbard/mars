@@ -29,6 +29,8 @@ class MipsMacroInspectionPlatformTest {
             val inspection = MipsMacroParameterInspection()
             assertTrue(inspection.runForWholeFile(), "Header edits must refresh diagnostics throughout the macro")
             fixture.enableInspections(inspection)
+            fixture.configureByText("plain.asm", "nop")
+            assertTrue(warnings().isEmpty())
             val source = """
                 .text
                 .macro example (%used, %used, ${'$'}ok, ${'$'}ok)
@@ -102,7 +104,7 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `included body uses the enclosing macro from the selected assembly entry`() = timeoutRunBlocking<Unit> {
+    fun `included body uses the enclosing macro from the inferred and selected assembly entry`() = timeoutRunBlocking<Unit> {
         val project = projectFixture.get()
         val (entry, body) = withContext(Dispatchers.EDT) {
             fixture.enableInspections(MipsMacroParameterInspection::class.java)
@@ -116,10 +118,14 @@ class MipsMacroInspectionPlatformTest {
                 nop
             """.trimIndent())
             fixture.configureFromExistingVirtualFile(body.virtualFile)
-            assertTrue(warnings().isEmpty())
             entry.virtualFile to body.virtualFile
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        fun expectedWarnings(): List<Warning> {
+            val text = fixture.file.text
+            return listOf(Warning(text.indexOf("%absent"), "%absent", unknown("scoped", "%absent")))
+        }
+        withContext(Dispatchers.EDT) { assertEquals(expectedWarnings(), warnings()) }
         val component = MarsSessionService.createMarsComponent()
         component.context().use {
             assertTrue(project.service<MarsBuildService>().assemble(entry.toNioPath(), component, activateBuildView = false))
@@ -128,8 +134,7 @@ class MipsMacroInspectionPlatformTest {
             fixture.configureFromExistingVirtualFile(entry)
             assertTrue(warnings().isEmpty())
             fixture.configureFromExistingVirtualFile(body)
-            val text = fixture.file.text
-            assertEquals(listOf(Warning(text.indexOf("%absent"), "%absent", unknown("scoped", "%absent"))), warnings())
+            assertEquals(expectedWarnings(), warnings())
         }
     }
 

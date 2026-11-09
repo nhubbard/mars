@@ -13,7 +13,6 @@ import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
-import edu.missouristate.mars.plugin.language.references.dotSegments
 import java.nio.file.Path
 
 private data class AssemblyAncestors(val roots: List<VirtualFile>, val withoutRoot: Set<VirtualFile>)
@@ -26,8 +25,11 @@ private fun assemblyAncestors(file: MipsFile): AssemblyAncestors =
         )
     }
 
+internal fun inferredMipsAssemblyRoot(file: MipsFile): VirtualFile? =
+    assemblyAncestors(file).roots.singleOrNull()
+
 internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
-    assemblyAncestors(file).roots.singleOrNull()?.let { it.toNioPath().toAbsolutePath().normalize() }
+    inferredMipsAssemblyRoot(file)?.let { it.toNioPath().toAbsolutePath().normalize() }
 
 /** In a graph without an entry, an outgoing edge to an ancestor closes a cycle. */
 internal fun closesRootlessMipsIncludeCycle(file: MipsFile, literal: MipsStringLiteral, path: String): Boolean {
@@ -57,13 +59,11 @@ private fun assemblyAncestors(project: Project, selected: VirtualFile): Assembly
             manager.processIncludingFiles(context) { include ->
                 val candidate = include.first
                 val info = include.second
-                if (candidate.fileType == MipsFileType) {
-                    // IntelliJ retries unresolved provider results with its generic path rules.
-                    // Recheck dot segments before admitting such an edge to MARS's graph.
-                    if (info.path.split('/').none { it in dotSegments } ||
-                        resolveIndexedMipsInclude(info, psi.findFile(candidate)!!)?.virtualFile == file
-                    ) add(candidate)
-                }
+                // The platform retries an unresolved provider result with generic path rules.
+                // Accept only edges that the forward MARS include traversal can follow.
+                if (candidate.fileType == MipsFileType &&
+                    resolveIndexedMipsInclude(info, psi.findFile(candidate)!!)?.virtualFile == file
+                ) add(candidate)
                 true
             }
         }

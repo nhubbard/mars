@@ -281,6 +281,27 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `inherited circular equivalences highlight their physical use before a build`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv OPERATION li\n.eqv FIRST SECOND\n.eqv SECOND FIRST + 1\n"
+        val source = "\tOPERATION \$t0, FIRST # original operand\n"
+        val parent = withContext(Dispatchers.EDT) {
+            val parent = fixture.addFileToProject("entry.asm", "${definitions}.include \"part.s\"\n")
+            val part = fixture.addFileToProject("part.s", source)
+            fixture.configureFromExistingVirtualFile(part.virtualFile)
+            parent.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            assertEquals("Circular .eqv expansion FIRST -> SECOND -> FIRST", error.description)
+            assertEquals(source.indexOf("FIRST"), error.startOffset)
+            assertEquals("FIRST", source.substring(error.startOffset, error.endOffset))
+            edit(parent, "${definitions.replace("SECOND FIRST + 1", "SECOND 7")}.include \"part.s\"\n")
+            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+        }
+    }
+
+    @Test
     fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking<Unit> {
         val (main, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile

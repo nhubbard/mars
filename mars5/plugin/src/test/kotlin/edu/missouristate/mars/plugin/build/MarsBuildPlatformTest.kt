@@ -150,23 +150,23 @@ class MarsBuildPlatformTest {
             PsiDocumentManager.getInstance(project).commitAllDocuments()
         }
         readAction {
-            assertNull(target("COUNT"))
-            assertNull(target("%value"))
-            assertNull(target("helper"))
-            assertNull(target("reservation"))
-            assertNull(target("publicAfter"))
+            assertEquals("first-values.s", target("COUNT")?.containingFile?.name)
+            assertEquals(first, target("%value")?.containingFile?.virtualFile)
+            assertEquals(first, target("helper")?.containingFile?.virtualFile)
+            assertEquals(first, target("reservation")?.containingFile?.virtualFile)
+            assertEquals(first, target("publicAfter")?.containingFile?.virtualFile)
         }
         val plain = withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
             fixture.addFileToProject("entry.txt", entry("second-values.s")).virtualFile
         }
-        readAction { assertNull(target("COUNT")) }
+        readAction { assertEquals("first-values.s", target("COUNT")?.containingFile?.name) }
         assertFalse(assemble(plain))
-        readAction { assertNull(target("COUNT")) }
+        readAction { assertEquals("first-values.s", target("COUNT")?.containingFile?.name) }
     }
 
     @Test
-    fun `an included data continuation inherits the selected entry segment and list`() = timeoutRunBlocking<Unit> {
+    fun `an included data continuation inherits the inferred and selected entry segment and list`() = timeoutRunBlocking<Unit> {
         val (entry, data) = withContext(Dispatchers.EDT) {
             val data = fixture.addFileToProject("values.s", "value\n").virtualFile
             val entry = fixture.addFileToProject("entry.s", """
@@ -183,7 +183,7 @@ class MarsBuildPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         fun target() = fixture.file.findReferenceAt(1)?.resolve()
-        readAction { assertNull(target()) }
+        readAction { assertEquals(entry, target()?.containingFile?.virtualFile) }
         project.service<MarsBuildService>().assemble(entry.toNioPath())
         readAction {
             assertEquals(data, fixture.file.virtualFile)

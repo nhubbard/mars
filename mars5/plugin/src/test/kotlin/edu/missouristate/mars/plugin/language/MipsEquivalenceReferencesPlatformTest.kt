@@ -6,6 +6,7 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -16,12 +17,14 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -124,6 +127,57 @@ class MipsEquivalenceReferencesPlatformTest {
                 PsiDocumentManager.getInstance(current).commitAllDocuments()
             }
         }
+        assertNull(targetAtCaret())
+    }
+
+    @Test
+    fun `included sources follow a unique entry before assembly and respect explicit entry selection`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = "li \$t0, VALUE\n"
+        val include = ".include \"part.s\"\n"
+        val firstSource = ".eqv VALUE 7\n$include"
+        val secondSource = ".eqv VALUE 8\n$include"
+        val (first, second, part) = withContext(Dispatchers.EDT) {
+            val first = fixture.addFileToProject("first.asm", firstSource).virtualFile
+            val second = fixture.addFileToProject("second.asm", ".eqv VALUE 8\n").virtualFile
+            val part = fixture.addFileToProject("part.s", source).virtualFile
+            fixture.configureFromExistingVirtualFile(part)
+            fixture.editor.caretModel.moveToOffset(source.indexOf("VALUE"))
+            Triple(first, second, part)
+        }
+        suspend fun edit(file: VirtualFile, text: String) {
+            withContext(Dispatchers.EDT) {
+                val document = FileDocumentManager.getInstance().getDocument(file)!!
+                WriteCommandAction.runWriteCommandAction(current) {
+                    document.setText(text)
+                    PsiDocumentManager.getInstance(current).commitAllDocuments()
+                }
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        assertEquals(first.name, targetAtCaret()?.file)
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                val file = fixture.file as MipsFile
+                val timeline = current.service<MarsAnalysisService>().editorTimeline(file)
+                assertFalse(timeline.sourceFiles().any { it.virtualFile == first })
+            }
+        }
+        edit(first, "$include.eqv VALUE 7\n")
+        assertNull(targetAtCaret())
+        edit(first, firstSource)
+        assertEquals(first.name, targetAtCaret()?.file)
+
+        edit(second, secondSource)
+        assertNull(targetAtCaret())
+        val build = current.service<MarsBuildService>()
+        build.assemble(second.toNioPath())
+        assertEquals(second.name, targetAtCaret()?.file)
+
+        edit(second, ".eqv VALUE 8\n")
+        assertEquals(first.name, targetAtCaret()?.file)
+        build.assemble(part.toNioPath())
         assertNull(targetAtCaret())
     }
 

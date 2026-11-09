@@ -416,13 +416,23 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =
         editorTimeline(file).prefix(file, offset)
 
-    internal fun editorTimeline(file: MipsFile): MipsSourceTimeline =
-        selectedTimeline(file)?.takeIf { it.includes(file) } ?: mipsSourceTimeline(file)
+    internal fun editorTimeline(file: MipsFile): MipsSourceTimeline {
+        selectedTimeline(file)?.takeIf { it.includes(file) }?.let { return it }
+        val source = file.viewProvider.virtualFile
+        if (source.isInLocalFileSystem && !DumbService.isDumb(project)) {
+            val root = inferredMipsAssemblyRoot(file)
+            if (root != null && root != source) {
+                val entry = PsiManager.getInstance(project).findFile(root) as MipsFile
+                return mipsSourceTimeline(entry)
+            }
+        }
+        return mipsSourceTimeline(file)
+    }
 
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
         val build = lastBuild.get()?.snapshot ?: return null
         val path = build.sourcePath(file) ?: return null
-        if (path == build.entry) return null
+        if (path == build.entry) return mipsSourceTimeline(file)
         val entry = VirtualFileManager.getInstance().findFileByNioPath(build.entry) ?: return null
         val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
         return mipsSourceTimeline(entryPsi)
