@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -48,7 +48,7 @@ include_line ::= before_include_target* include_target assembly_token*
 private before_include_target ::= !include_target assembly_token
 private include_target ::= INCLUDE STRING
 private body ::= macro_definition | non_macro_body
-private non_macro_body ::= macro_end | malformed_macro_end | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation
+private non_macro_body ::= macro_end | malformed_macro_end | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
 private line_recover ::= !NEWLINE
 // A macro argument can supply the name of a label at expansion time.
 label ::= (name | PARAMETER) COLON

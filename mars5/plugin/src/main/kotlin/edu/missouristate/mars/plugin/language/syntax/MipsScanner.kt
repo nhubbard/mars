@@ -108,16 +108,28 @@ object MipsScanner {
             }
             first.isLetterOrDigit() || first in "_.$" -> {
                 val numeric = first.isDigit() || (first == '.' && position < end && source[position].isDigit())
-                val hex = first == '0' && position < end && source[position] in "xX"
+                val exponentMarkers = when {
+                    !debuggerExpression -> "eE"
+                    !numeric -> ""
+                    first == '0' && position < end && source[position] in "xX" -> "pP"
+                    else -> "eE"
+                }
+                var signedExponent = false
                 while (position < end) {
                     val character = source[position]
                     if (character.isLetterOrDigit() || character in "_.$%") {
                         position++
-                    } else if (numeric && !hex && character in "+-" && continuesSignedExponent(source, position, end)) {
+                    } else if (character in "+-" && continuesSignedExponent(source, position, end, exponentMarkers)) {
+                        signedExponent = true
                         position++
                     } else break
                 }
                 when {
+                    // The assembler absorbs a sign after E even in a nonnumeric candidate.
+                    signedExponent && !debuggerExpression -> {
+                        val value = source.subSequence(start, position).toString().toDoubleOrNull()
+                        if (value == null) MipsTokenKind.BAD_CHARACTER else MipsTokenKind.NUMBER
+                    }
                     // A leading dot also starts identifiers. Only a complete decimal takes priority.
                     first == '.' -> if (numeric && source.subSequence(start, position).toString().toDoubleOrNull() != null) {
                         MipsTokenKind.NUMBER
@@ -134,6 +146,6 @@ object MipsScanner {
         return MipsToken(kind, start, position)
     }
 
-    private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int): Boolean =
-        source[position - 1] in "eE" && position + 1 < end && source[position + 1].isDigit()
+    private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int, markers: String = "eE"): Boolean =
+        source[position - 1] in markers && position + 1 < end && source[position + 1].isDigit()
 }

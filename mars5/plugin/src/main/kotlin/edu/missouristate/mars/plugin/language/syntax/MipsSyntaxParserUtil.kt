@@ -12,6 +12,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.LEFT_PAREN
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MINUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MNEMONIC
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NEWLINE
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NUMBER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PARAMETER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PLUS
@@ -69,6 +70,19 @@ internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, leve
     val marker = builder.mark()
     builder.advanceLexer()
     marker.error(syntaxMessages.getMessage("syntax.character.unclosed"))
+    return true
+}
+
+/** Discard a malformed statement head through the physical end of its line. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverStatement(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.eof() || builder.tokenType == NEWLINE) return false
+    val marker = builder.mark()
+    do {
+        builder.advanceLexer()
+    } while (!builder.eof() && builder.tokenType != NEWLINE)
+    marker.error(syntaxMessages.getMessage("syntax.statement.unexpected"))
     return true
 }
 

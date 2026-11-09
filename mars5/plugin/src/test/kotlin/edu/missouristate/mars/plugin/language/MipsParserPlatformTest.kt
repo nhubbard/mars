@@ -609,11 +609,11 @@ class MipsParserPlatformTest {
 
     @Test
     fun `named floating point values use numeric PSI and preserve assembler output`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = ".data\n.double NaN, Infinity, -1.2e-5, 0x1.8p2, .5f\n.float NaN\n.text\nnop\n"
+        val source = ".data\n.double NaN, Infinity, -1.2e-5, 0x1.8p2, 0X1.EP2, .5f\n.float NaN\n.text\nnop\n"
         assertAssembles(directory, source, 0)
         val memory = project.get().service<MarsSessionService>().context.memory
         val base = memory.dataBaseAddress
-        val doubles = listOf(Double.NaN, Double.POSITIVE_INFINITY, -1.2e-5, 6.0, 0.5)
+        val doubles = listOf(Double.NaN, Double.POSITIVE_INFINITY, -1.2e-5, 6.0, 7.5, 0.5)
         for ((i, value) in doubles.withIndex()) {
             val bits = value.toBits()
             assertEquals(bits.toInt(), memory.getWordNoNotify(base + i * 8))
@@ -622,11 +622,39 @@ class MipsParserPlatformTest {
         assertEquals(Float.NaN.toBits(), memory.getWordNoNotify(base + doubles.size * 8))
         readAction {
             val file = assertParses(source)
-            assertEquals(listOf("NaN", "Infinity", "1.2e-5", "0x1.8p2", ".5f", "NaN"),
+            assertEquals(listOf("NaN", "Infinity", "1.2e-5", "0x1.8p2", "0X1.EP2", ".5f", "NaN"),
                 descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
             assertTrue(descendants(file.node, "REFERENCE_EXPR").none())
             val labels = assertParses("nan: nop\ninfinity: nop\nInfinityCount: nop\n")
             assertEquals(listOf("nan:", "infinity:", "InfinityCount:"), descendants(labels.node, "LABEL").map { it.text }.toList())
+        }
+    }
+
+    @Test
+    fun `invalid signed exponent candidates keep their full span and recover the following line`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = ".data\n.word 0x1e-5, 7\n.text\nname-2: nop\nnext: nop\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("exponent.asm", MipsFileType, source)
+            assertEquals(source, file.text)
+            assertEquals(listOf("0x1e-5", "name-2"), descendants(file.node, "BAD_CHARACTER").map { it.text }.toList())
+            assertEquals("next:", descendants(file.node, "LABEL").single().text)
+            assertEquals("nop", descendants(file.node, "INSTRUCTION").last().text)
+        }
+    }
+
+    @Test
+    fun `invalid statement heads preserve macro scope and later labels`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = ": 9 (\n.macro emit\n) 6 (\ninside: nop\n.end_macro\noutside: nop\n:"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("recover.asm", MipsFileType, source)
+            assertEquals(source, file.text)
+            val macro = descendants(file.node, "MACRO_DEFINITION").single()
+            assertEquals("inside:", descendants(macro, "LABEL").single().text)
+            assertEquals(listOf("inside:", "outside:"), descendants(file.node, "LABEL").map { it.text }.toList())
+            val allErrors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            val errors = allErrors.filter { it.errorDescription == "Expected a MIPS statement" }
+            assertEquals(listOf(": 9 (", ") 6 (", ":"), errors.map { it.text },
+                allErrors.joinToString { "${it.errorDescription} at ${it.textRange}: ${it.text}" })
         }
     }
 

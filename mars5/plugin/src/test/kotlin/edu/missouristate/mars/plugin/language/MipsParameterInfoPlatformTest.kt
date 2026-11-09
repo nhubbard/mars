@@ -54,7 +54,7 @@ class MipsParameterInfoPlatformTest {
     @Test
     fun `parameter info stays off comments and noninstruction text`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            for (source in listOf("   <caret>", "@<caret>", "a<caret>dd \$t0", "entry: <caret>", ".word <caret>1",
+            for (source in listOf("   <caret>", "\u000c<caret>", "@<caret>", "a<caret>dd \$t0", "entry: <caret>", ".word <caret>1",
                 "custom \$t0 <caret>", "add \$t0, \$t1 # <caret>comment")) {
                 assertNull(info(source), source)
             }

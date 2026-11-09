@@ -1,5 +1,8 @@
 package edu.missouristate.mars.plugin.language.syntax
 
+import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Tokenizer
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -90,7 +93,7 @@ class MipsScannerTest {
     }
 
     @Test
-    fun `broken strings never consume the next line and exponent signs do not eat address offsets`() {
+    fun `broken strings never consume the next line and incomplete exponents remain editable`() {
         for (newline in listOf("\n", "\r", "\r\n")) {
             for (quote in listOf("\"", "'")) {
                 for (suffix in listOf("", "\\")) {
@@ -102,10 +105,45 @@ class MipsScannerTest {
             assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan("#x" + newline)[1].kind)
             assertEquals(MipsTokenKind.NEWLINE, MipsScanner.scan(" " + newline)[1].kind)
         }
-        for (source in listOf("1-2", "label+4", "0x1e-5", "0X1E+5", "1e-x", "name-2")) {
-            assertEquals(3, MipsScanner.scan(source).size, source)
+        for (source in listOf("1-2", "label+4", "1e-x", "name+ 2")) {
+            assertEquals(3, MipsScanner.scan(source).count { it.kind != MipsTokenKind.SPACE }, source)
         }
         assertEquals(listOf(MipsTokenKind.NUMBER, MipsTokenKind.PLUS), kinds("1e+"))
+    }
+
+    @Test
+    fun `source exponent boundaries and errors agree with the MARS tokenizer`() {
+        val tokenizer = Tokenizer()
+        for (source in listOf(
+            ".double .5e-2, 1.0E+5, 0X1.EP2",
+            ".word 0x1e-5, 0X1E+5",
+            "name-2: nop",
+            "bge-7",
+            "1.2fake-4",
+            ".eqv TOKEN %value-7",
+        )) {
+            val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
+            val tokens = MipsScanner.scan(source).filter { it.kind !in setOf(MipsTokenKind.SPACE, MipsTokenKind.COMMA) }
+            assertEquals((0 until assembly.size()).map { assembly[it].startPos - 1 to assembly[it].endPos - 1 },
+                tokens.map { it.start to it.end }, source)
+            assertEquals((0 until assembly.size()).filter { assembly[it].type == TokenTypes.ERROR },
+                tokens.indices.filter { tokens[it].kind == MipsTokenKind.BAD_CHARACTER }, source)
+            for (token in tokens) assertEquals(token, MipsScanner.next(source, token.start))
+        }
+    }
+
+    @Test
+    fun `debugger exponent signs stay distinct from arithmetic operators`() {
+        for (source in listOf("0x1e-5", "0X1E+5", "name-2")) {
+            val first = requireNotNull(MipsScanner.next(source, 0, debuggerExpression = true))
+            val sign = requireNotNull(MipsScanner.next(source, first.end, debuggerExpression = true))
+            assertEquals(source.length - 2, first.end, source)
+            assertEquals(source.length - 1, sign.end, source)
+        }
+        for (source in listOf("0x1.8p-2", "0X1.8P+2", "1e-2", ".5E+2", "0", "0e-2")) {
+            assertEquals(MipsToken(MipsTokenKind.NUMBER, 0, source.length),
+                MipsScanner.next(source, 0, debuggerExpression = true), source)
+        }
     }
 
     @Test

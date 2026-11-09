@@ -103,10 +103,17 @@ internal class MarsExpressionEvaluator(
 
     private fun evaluateNode(node: ASTNode): Evaluation? = when (node.elementType) {
         literalType -> {
-            val token = Tokenizer().tokenizeLine(1, node.text, ErrorList(), false)[0]
+            val (type, value) = if (node.firstChildNode.elementType == characterType) {
+                val token = Tokenizer().tokenizeLine(1, node.text, ErrorList(), false)[0]
+                token.type to token.value
+            } else {
+                // The expression lexer already determined the numeric boundary, including hexadecimal exponents.
+                val text = node.text
+                TokenTypes.matchTokenType(text) to text
+            }
             when {
-                TokenTypes.isIntegerTokenType(token.type) -> Immediate(Word(Binary.stringToInt(token.value)))
-                TokenTypes.isFloatingTokenType(token.type) -> Immediate(Real(token.value.toDouble()))
+                TokenTypes.isIntegerTokenType(type) -> Immediate(Word(Binary.stringToInt(value)))
+                TokenTypes.isFloatingTokenType(type) -> Immediate(Real(value.toDouble()))
                 else -> null
             }
         }
@@ -195,6 +202,7 @@ internal class MarsExpressionEvaluator(
 
     private companion object {
         val literalType = MipsTypes.psi("LITERAL_EXPR")
+        val characterType = MipsTypes.psi("CHARACTER")
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")
