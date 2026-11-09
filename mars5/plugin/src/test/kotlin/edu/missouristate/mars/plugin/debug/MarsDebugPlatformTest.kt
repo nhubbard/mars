@@ -439,10 +439,16 @@ class MarsDebugPlatformTest {
         }
         withDebug(file, { delayedBranching = true }) { debug ->
             debug.assertPausedAt(file, 0)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            assertTrue(process.branchHistory.snapshot().recent.isEmpty())
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             debug.assertPausedAt(file, 1)
+            val branch = process.branchHistory.snapshot().recent.single()
+            assertTrue(branch.taken)
+            assertEquals(branch.pc + 12, branch.target)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             debug.assertPausedAt(file, 3)
+            assertEquals(listOf(branch), process.branchHistory.snapshot().recent)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x00000007", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
                 debug.session.resume()

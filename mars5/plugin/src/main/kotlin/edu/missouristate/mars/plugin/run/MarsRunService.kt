@@ -22,6 +22,7 @@ import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
+import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -65,6 +66,7 @@ internal class MarsProcessHandler(
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
+    val branchHistory = BranchHistoryTable()
 
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -145,6 +147,7 @@ internal class MarsProcessHandler(
                                 val instruction = session.instructionSet.findByBinaryCode(word)
                                 instructionCounter.record(instruction)
                                 instructionStatistics.record(word, instruction)
+                                branchHistory.record(event)
                             }
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
