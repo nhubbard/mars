@@ -8,6 +8,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.util.elementType
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
+import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.breakpoints.XLineBreakpointType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
@@ -22,6 +23,8 @@ internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointPropertie
     private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
 
     override fun createBreakpointProperties(file: VirtualFile, line: Int): XBreakpointProperties<*>? = null
+
+    override fun getEditorsProvider(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, project: Project) = MarsDebugEditors
 
     override fun canBeHitInOtherPlaces() = true
 

@@ -752,7 +752,8 @@ assembled source map determines the actual address at debug time.
 The Debug view shows one simulated CPU frame. Resume, Pause, Stop, instruction
 Step Into, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
-expressions and call-aware stepping report that they are unavailable.
+conditions and log expressions share the evaluator described below.
+Call-aware stepping reports that it is unavailable.
 
 Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
 include and repeated macro expansions, aliased instructions and calls, instruction stepping, Run to Cursor,
@@ -787,8 +788,16 @@ current pause. Addresses can use registers, labels, arithmetic, and nested reads
 Byte and halfword values are zero-extended and follow the machine's byte order.
 The inspector reads code and mapped data without emitting simulated access events.
 Resume and backstep close the old pause's request queue. A retained frame keeps its
-scalar values and reports its memory as unavailable. Breakpoint conditions are
-separate debugger work.
+scalar values and reports its memory as unavailable.
+
+The native Breakpoints dialog uses the same editor for conditions and log expressions.
+Both evaluate at the instruction boundary using the captured registers and the stopped
+machine's memory. Zero skips the breakpoint and its log expression. A nonzero result
+passes the condition. Invalid conditions report an error and execution continues.
+An invalid log expression reports an error and the breakpoint still follows its suspend
+policy. XDebugger handles valid log output, dependencies, and the decision to suspend.
+A platform test verifies false and true conditions, the exact logged values, both error
+paths, and continuation through non-suspending logpoints.
 
 ## Instruction backstep
 

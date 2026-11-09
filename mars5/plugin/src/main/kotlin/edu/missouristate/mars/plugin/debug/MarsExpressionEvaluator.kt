@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFileFactory
@@ -72,6 +73,15 @@ internal class MarsExpressionEvaluator(
                 if (watchRequests.trySend(request).isFailure) request.unavailable()
             }
         }
+    }
+
+    // The debugger calls this while the stopped machine is still owned by its execution coroutine.
+    suspend fun evaluateAtBreakpoint(expression: String, memory: MemoryState): Result<Scalar> {
+        val evaluation = readAction { evaluateSource(expression.trim()) }
+            ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.evaluate.invalid")))
+        val value = evaluation.resolve(memory)
+            ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.evaluate.memory.invalid")))
+        return Result.success(value)
     }
 
     private fun evaluateSource(source: String): Evaluation? {
@@ -148,7 +158,7 @@ internal class MarsExpressionEvaluator(
             operation(a, b)
         }
 
-    private sealed interface Scalar {
+    sealed interface Scalar {
         val number: Double
         fun negated(): Scalar
         fun display(): String

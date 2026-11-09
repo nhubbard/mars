@@ -25,7 +25,6 @@ import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XExecutionStack
-import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.api.InstructionSourceMap
@@ -136,14 +135,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         for (breakpoint in registered) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
             val points = file?.location(breakpoint.line)?.let { map.breakpoints()[it] }.orEmpty()
-            when {
-                points.isEmpty() -> session.setBreakpointInvalid(breakpoint, runMessages.getMessage("debug.breakpoint.no.code"))
-                breakpoint.conditionExpression != null || breakpoint.logExpressionObject != null ->
-                    session.setBreakpointInvalid(breakpoint, runMessages.getMessage("debug.breakpoint.expression.unavailable"))
-                else -> {
-                    points.forEach { next.getOrPut(it) { mutableListOf() }.add(breakpoint) }
-                    session.setBreakpointVerified(breakpoint)
-                }
+            if (points.isEmpty()) {
+                session.setBreakpointInvalid(breakpoint, runMessages.getMessage("debug.breakpoint.no.code"))
+            } else {
+                points.forEach { next.getOrPut(it) { mutableListOf() }.add(breakpoint) }
+                session.setBreakpointVerified(breakpoint)
             }
         }
         addresses = next
@@ -198,22 +194,13 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
                         withSuspension(machine) { context ->
-                            val suspended = withContext(Dispatchers.EDT) {
-                                when (reason) {
-                                    StopEvent.Reason.BREAKPOINT -> {
-                                        if (hits.any { session.breakpointReached(it, null, context) }) true
-                                        else if (targetHit) {
-                                            session.positionReached(context)
-                                            true
-                                        } else false
-                                    }
-                                    else -> {
-                                        session.positionReached(context)
-                                        true
-                                    }
-                                }
+                            val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
+                                hits.any { handleBreakpoint(it, context, machine.memory) }
+                            val positionReached = reason != StopEvent.Reason.BREAKPOINT || targetHit
+                            if (!breakpointSuspended && positionReached) {
+                                withContext(Dispatchers.EDT) { session.positionReached(context) }
                             }
-                            if (suspended) command = awaitCommand(context, machine.memory)
+                            if (breakpointSuspended || positionReached) command = awaitCommand(context, machine.memory)
                         }
                         skipFirst = true
                     }
@@ -223,6 +210,25 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         } finally {
             simulator = null
             commands.cancel()
+        }
+    }
+
+    private suspend fun handleBreakpoint(breakpoint: LineBreakpoint, context: MarsSuspendContext, memory: MemoryState): Boolean {
+        val evaluator = context.frame.evaluator
+        breakpoint.conditionExpression?.let { expression ->
+            val condition = evaluator.evaluateAtBreakpoint(expression.expression, memory).getOrElse { error ->
+                withContext(Dispatchers.EDT) {
+                    session.reportError(runMessages.getMessage("debug.breakpoint.condition.error", error.message))
+                }
+                return false
+            }
+            if (condition.number == 0.0) return false
+        }
+
+        val logged = breakpoint.logExpressionObject?.let { evaluator.evaluateAtBreakpoint(it.expression, memory) }
+        return withContext(Dispatchers.EDT) {
+            logged?.exceptionOrNull()?.let { session.reportError(runMessages.getMessage("debug.breakpoint.log.error", it.message)) }
+            session.breakpointReached(breakpoint, logged?.getOrNull()?.display(), context)
         }
     }
 
@@ -290,14 +296,14 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 }
 
-private object MarsDebugEditors : XDebuggerEditorsProvider() {
+internal object MarsDebugEditors : XDebuggerEditorsProvider() {
     override fun getFileType() = MipsFileType
     override fun createDocument(project: Project, expression: XExpression, sourcePosition: XSourcePosition?, mode: EvaluationMode) =
         EditorFactory.getInstance().createDocument(expression.expression)
 }
 
 internal class MarsSuspendContext(
-    frame: XStackFrame,
+    val frame: MarsStackFrame,
     val canBackstep: Boolean,
     val memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,

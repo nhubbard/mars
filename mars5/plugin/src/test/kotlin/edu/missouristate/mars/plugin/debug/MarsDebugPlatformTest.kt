@@ -15,6 +15,8 @@ import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunnerLayoutUi
+import com.intellij.notification.Notification
+import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -144,7 +146,7 @@ class MarsDebugPlatformTest {
             XDebuggerUtil.getInstance().toggleLineBreakpoint(project, breakpointType, body, 2)
             addBreakpoint(main, 0)
             addBreakpoint(main, 1).also { point ->
-                WriteAction.run<RuntimeException> { point.setCondition("1") }
+                WriteAction.run<RuntimeException> { point.setCondition("0") }
             }
             addBreakpoint(main, 2).also { point ->
                 WriteAction.run<RuntimeException> { point.setLogExpression("1") }
@@ -742,6 +744,84 @@ class MarsDebugPlatformTest {
                 assertTrue((table.getValueAt(0, 1) as String).startsWith(bytes))
                 assertTrue((table.getValueAt(0, 2) as String).startsWith(ascii))
             }
+        }
+    }
+
+    @Test
+    fun `native conditions and log expressions use the machine state before the instruction`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .data
+            flag: .word 0
+            .text
+            li ${'$'}t0, 1
+            false_hit: nop
+            bad_condition: nop
+            sw ${'$'}t0, flag
+            log_value: nop
+            bad_log: nop
+            true_hit: addiu ${'$'}t0, ${'$'}t0, 1
+            li ${'$'}v0, 10
+            syscall
+        """.trimIndent()
+        val disposable = Disposer.newDisposable()
+        val errors = Channel<String>(Channel.UNLIMITED)
+        try {
+            val file = withContext(Dispatchers.EDT) {
+                project.messageBus.connect(disposable).subscribe(Notifications.TOPIC, object : Notifications {
+                    override fun notify(notification: Notification) {
+                        if (notification.content.startsWith("Could not evaluate MIPS breakpoint")) {
+                            errors.trySend(notification.content)
+                        }
+                    }
+                })
+                val file = fixture.addFileToProject("conditions.asm", source).virtualFile
+                val falseHit = addBreakpoint(file, 4)
+                val badCondition = addBreakpoint(file, 5)
+                val logValue = addBreakpoint(file, 7)
+                val badLog = addBreakpoint(file, 8)
+                val trueHit = addBreakpoint(file, 9)
+                assertSame(MarsDebugEditors, breakpointType.getEditorsProvider(trueHit, project))
+                WriteAction.run<RuntimeException> {
+                    falseHit.setCondition("word(flag)")
+                    falseHit.setLogExpression("0x11111111")
+                    badCondition.setCondition("unknown")
+                    badCondition.setLogExpression("0x22222222")
+                    logValue.setCondition("word(flag)")
+                    logValue.setLogExpression("word(flag) + \$t0 + 0x1234")
+                    logValue.suspendPolicy = SuspendPolicy.NONE
+                    badLog.setLogExpression("word(flag+1)")
+                    badLog.isLogMessage = true
+                    badLog.suspendPolicy = SuspendPolicy.NONE
+                    trueHit.setCondition("word(flag) + \$t0 - 1")
+                    trueHit.setLogExpression("\$t0")
+                }
+                file
+            }
+            withDebug(file) { debug ->
+                debug.assertPausedAt(file, 9)
+                withContext(Dispatchers.EDT) {
+                    assertEquals("0x00000001", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                }
+                assertEquals("Could not evaluate MIPS breakpoint condition. Enter a register, label, number, or an expression using + and -.", errors.receive())
+                assertEquals("Could not evaluate MIPS breakpoint log expression. The memory address is invalid, unaligned, or unavailable.", errors.receive())
+                val console = withContext(Dispatchers.EDT) {
+                    assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val text = console.editor!!.document.text
+                        assertTrue(text.contains("0x00001236"), text)
+                        assertTrue(text.contains("0x00000001"), text)
+                        assertTrue(text.contains("conditions.asm"), text)
+                        assertFalse(text.contains("0x11111111"), text)
+                        assertFalse(text.contains("0x22222222"), text)
+                    }
+                }
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+            }
+        } finally {
+            Disposer.dispose(disposable)
         }
     }
 
