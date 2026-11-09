@@ -20,6 +20,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
 import edu.missouristate.mars.api.AssemblyError
+import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.MarsComponent
@@ -88,9 +89,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         onSourcesCaptured: (Set<Path>) -> Unit = {},
     ): Boolean {
         val entry = sourceSet.entry
-        options.applyTo(component.context().settings)
-        val analysis = project.service<MarsAnalysisService>()
-        val symbolBuild = analysis.beginSymbolBuild(sourceSet, options)
+        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sourceSet, options)
         val descriptor = DefaultBuildDescriptor(
             Any(), buildMessages.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
@@ -103,26 +102,17 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var cancelled = false
         var succeeded = false
         try {
-            val capture = captureBuildSources(sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
-            onSourcesCaptured(capture.snapshot.texts().keys)
-            checkCanceled()
-            analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
-            DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
-            project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
-            val result = capture.assembleIn(component)
-            checkCanceled()
-            val events = readAction {
-                result.errors().map { diagnosticEvent(project, progress.id, it, capture.revisions) }
-            }
-            checkCanceled()
-            val view = project.getService(BuildViewManager::class.java)
-            for (event in events) {
+            succeeded = assembleAndReport(symbolBuild, component, onSourcesCaptured) { result, revisions ->
+                val events = readAction {
+                    result.errors().map { diagnosticEvent(project, progress.id, it, revisions) }
+                }
                 checkCanceled()
-                view.onEvent(progress.id, event)
+                val view = project.getService(BuildViewManager::class.java)
+                for (event in events) {
+                    checkCanceled()
+                    view.onEvent(progress.id, event)
+                }
             }
-            checkCanceled()
-            succeeded = result.succeeded()
-            if (succeeded) analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
             return succeeded
         } catch (cancel: CancellationException) {
             cancelled = true
@@ -130,6 +120,35 @@ internal class MarsBuildService(private val project: Project, private val scope:
         } finally {
             finish(progress, cancelled, succeeded)
         }
+    }
+
+    internal suspend fun assembleForCompiler(
+        sources: MarsSourceSet, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
+    ): Boolean {
+        val component = MarsSessionService.createMarsComponent()
+        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, MarsExecutionOptions())
+        return component.context().use { assembleAndReport(symbolBuild, component, {}, report) }
+    }
+
+    private suspend fun assembleAndReport(
+        symbolBuild: MarsAnalysisService.SymbolBuild, component: MarsComponent,
+        onSourcesCaptured: (Set<Path>) -> Unit, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
+    ): Boolean {
+        val selection = symbolBuild.selection
+        selection.options.applyTo(component.context().settings)
+        val analysis = project.service<MarsAnalysisService>()
+        val capture = captureBuildSources(selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
+        onSourcesCaptured(capture.snapshot.texts().keys)
+        checkCanceled()
+        analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
+        DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
+        project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
+        val result = capture.assembleIn(component)
+        checkCanceled()
+        report(result, capture.revisions)
+        checkCanceled()
+        if (result.succeeded()) analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
+        return result.succeeded()
     }
 
     private fun finish(progress: BuildProgress<BuildProgressDescriptor>, cancelled: Boolean, succeeded: Boolean) {

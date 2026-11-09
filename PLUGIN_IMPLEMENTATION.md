@@ -1342,6 +1342,17 @@ change files on disk or in the editor without changing what that launch
 executes. Without the Before Launch task, Run and Debug assemble as they
 start.
 
+For mixed projects that use IntelliJ's bundled JVM compiler, enable
+**Assemble project sources before IntelliJ JVM compilation** under
+**Settings → Build, Execution, Deployment → MARS Assembly**. A compile
+scope that contains a listed MIPS source assembles the entire ordered
+unit and its dependencies once. MIPS diagnostics appear alongside JVM
+compiler messages, and an assembly error stops that compilation.
+The setting is off by default. The bridge loads with IntelliJ's Java
+plugin and leaves delegated Gradle and Maven builds to their own tasks.
+MIPS Run and Debug keep their own assembly step even when their launch
+configuration also requests a JVM build.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

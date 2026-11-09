@@ -5,6 +5,7 @@
   <description>MIPS assembly and simulation services backed by an independent session per project.</description>
   <resource-bundle>messages.MarsBundle</resource-bundle>
   <depends>com.intellij.modules.platform</depends>
+  <depends optional="true" config-file="mars-java.xml">com.intellij.java</depends>
   <dependencies>
     <module name="intellij.platform.buildView"/>
     <module name="intellij.platform.debugger"/>
