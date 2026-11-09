@@ -286,17 +286,19 @@ changes. Directives inside unexpanded macro bodies leave that state alone.
 
 The Java tokenizer classifies ambiguous operands after substitution, including when an
 alias introduces a leading label. A matching macro call takes precedence over a bare list.
+An alias that expands to `.globl` links its operands to local labels.
 The assembler-backed fixture verifies the words written for both inline and continued
 operands. Segment and list changes caused by executing a macro require expansion context.
 
 ## External storage declarations
 
 The generated parser preserves the complete `.extern` payload and exposes addressable names
-as native declarations. References prefer a local label, then the first valid external
-reservation in include order. `.globl` continues to bind only local definitions. Navigation
-and operand completion use the Java tokenizer to check the expanded name and nonnegative
-size, including `.eqv` aliases visible at the reservation. The per-file declaration
-and reference indexes rebuild for the external symbol kind.
+as native declarations. The source cache binds the first valid reservation for each name in
+include order. Navigation and completion share that cache, including when an included editor
+uses the selected entry. The Java tokenizer checks the expanded name and nonnegative size
+for both literal and generated `.extern` directives. Navigation opens the written name of a
+literal reservation or the operation alias that generated one. The per-file declaration and
+reference indexes store physical sites.
 
 The query follows the current entry and physical includes. Storage created only during macro
 expansion and visibility across separate assembly entries still need build-context binding.

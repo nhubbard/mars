@@ -78,11 +78,13 @@ class MarsBuildPlatformTest {
             li ${'$'}t1, COUNT
             .end_macro
             helper ARGS
+            la ${'$'}t4, reservation
             li ${'$'}t2, LATE
         """.trimIndent()
         fun entry(values: String) = """
             .eqv UNUSED 1
-            .extern reservation 4
+            .eqv RESERVE .extern
+            RESERVE reservation 4
             .include "$values"
             .macro helper (%number)
               li ${'$'}t3, %number
@@ -115,6 +117,7 @@ class MarsBuildPlatformTest {
         readAction {
             assertNull(target("COUNT"))
             assertNull(target("%value"))
+            assertNull(target("reservation"))
         }
         for ((entry, values) in listOf(first to "first-values.s", second to "second-values.s")) {
             assertFalse(assemble(entry))
@@ -125,6 +128,8 @@ class MarsBuildPlatformTest {
                 assertEquals(entry, target("helper")?.containingFile?.virtualFile)
                 assertEquals("helper (%number)", target("helper")?.text)
                 assertEquals(entry, target("ARGS")?.containingFile?.virtualFile)
+                assertEquals(entry, target("reservation")?.containingFile?.virtualFile)
+                assertEquals("RESERVE", target("reservation")?.text)
                 assertNull(target("LATE"))
             }
         }
@@ -141,6 +146,7 @@ class MarsBuildPlatformTest {
             assertNull(target("COUNT"))
             assertNull(target("%value"))
             assertNull(target("helper"))
+            assertNull(target("reservation"))
         }
         val plain = withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }

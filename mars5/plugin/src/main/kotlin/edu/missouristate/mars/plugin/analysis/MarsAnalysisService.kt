@@ -35,7 +35,6 @@ import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
-import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -112,7 +111,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
             }
         }
-        for ((name, _) in externalSymbols(root) { it.startsWith(prefix) }) add(name)
+        externalStorage(root).keys.filterTo(this) { it.startsWith(prefix) }
         addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix))
     }
 
@@ -134,7 +133,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (outer.isNotEmpty()) return outer
         val built = builtLabelTarget(root, name, allowExternal)
         if (built != null) return listOf(built)
-        return if (allowExternal) listOfNotNull(externalSymbols(root) { it == name }.firstOrNull()?.second) else emptyList()
+        return if (allowExternal) listOfNotNull(externalStorage(root)[name]) else emptyList()
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
@@ -174,41 +173,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return names.takeIf { valid }
     }
 
-    private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {
-        if (DumbService.isDumb(project)) return@sequence
-        var inMacro = false
-        val equivalences = HashMap<String, String>()
-        for (event in mipsSourceTimeline(root).entryPrefix(root, root.textLength).events) {
-            ProgressManager.checkCanceled()
-            when (event) {
-                is MipsSourceEvent.Begin -> inMacro = true
-                is MipsSourceEvent.End -> inMacro = false
-                is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, event.replacement)
-                is MipsSourceEvent.External -> {
-                    val declaration = event.declaration
-                    val physicalName = declaration.firstChild.text
-                    if (!inMacro && (matches(physicalName) || physicalName in equivalences)) {
-                        val name = externalName(declaration, equivalences::get)
-                        if (name != null && matches(name)) yield(name to declaration)
-                    }
-                }
-                else -> Unit
-            }
-        }
-    }
-
-    private fun externalName(declaration: MipsDeclaration, replacement: (String) -> String?): String? {
-        val errors = ErrorList()
-        val tokens = Tokenizer.tokenizeWithEquivalences(
-            sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
-        )
-        tokens.discardTrailingComment()
-        if (errors.errorsOccurred() || tokens.size() != 3) return null
-        val size = tokens[2]
-        if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
-        val name = tokens[1]
-        return name.value.takeIf { name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR }
-    }
+    private fun externalStorage(root: MipsFile): Map<String, PsiElement> =
+        if (DumbService.isDumb(project)) emptyMap() else editorTimeline(root).externalStorage
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
@@ -322,16 +288,26 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return integerOperands && (macroHead || matchingMacro(prefix, tokens) == null)
     }
 
-    private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =
-        selectedPrefix(file, offset) ?: mipsSourceTimeline(file).entryPrefix(file, offset)
+    internal fun isAliasedExportOperand(root: MipsFile, head: PsiElement, operand: PsiElement): Boolean {
+        val source = root.viewProvider.contents.subSequence(head.textOffset, operand.textOffset).toString()
+        val tokens = expandedOperationAlias(root, head, source) ?: return false
+        return Directives.matchDirective(tokens[0].value) == Directives.GLOBL &&
+            (1 until tokens.size()).all { tokens[it].type == TokenTypes.IDENTIFIER }
+    }
 
-    private fun selectedPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix? {
+    private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =
+        editorTimeline(file).prefix(file, offset)
+
+    private fun editorTimeline(file: MipsFile): MipsSourceTimeline =
+        selectedTimeline(file)?.takeIf { it.includes(file) } ?: mipsSourceTimeline(file)
+
+    private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
         val build = lastBuild.get()?.snapshot ?: return null
         val path = build.sourcePath(file) ?: return null
         if (path == build.entry) return null
         val entry = VirtualFileManager.getInstance().findFileByNioPath(build.entry) ?: return null
         val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
-        return mipsSourceTimeline(entryPsi).includedPrefix(file, offset)
+        return mipsSourceTimeline(entryPsi)
     }
 
     /** Finds the first effective .eqv before the reference in the selected entry. */

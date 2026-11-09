@@ -95,6 +95,81 @@ class MipsExternalReferencesPlatformTest {
         }
     }
 
+    @Test
+    fun `aliased external storage and exports match the assembler symbol table`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val aliases = """
+            .eqv DEFINE .eqv
+            DEFINE RESERVE .extern
+            DEFINE BUNDLED .extern bundled 4
+            DEFINE SIZE 4
+            DEFINE PUBLISH .globl
+            DEFINE PREFIX row:
+        """.trimIndent() + "\n"
+        val storage = "PREFIX RESERVE shared SIZE\nBUNDLED\n"
+        val source = """
+            .include "aliases.s"
+            .include "storage.s"
+            .extern shared 12
+            .data
+            .word shared, bundled
+            .text
+            PUBLISH target, other
+            target: nop
+            other: nop
+        """.trimIndent() + "\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.s", aliases)
+            fixture.addFileToProject("storage.s", storage)
+        }
+        assertEquals(Target("storage.s", 0), target(source.replace(".word shared", ".word sha<caret>red")))
+        assertEquals(Target("storage.s", storage.indexOf("BUNDLED")), target(source.replace(", bundled", ", bun<caret>dled")))
+        assertEquals(source.indexOf("target:"), target(source.replace("PUBLISH target", "PUBLISH tar<caret>get"))?.offset)
+        assertEquals(source.indexOf("other:"), target(source.replace(", other", ", oth<caret>er"))?.offset)
+        assertNull(target(source.replace("PUBLISH target", "PUBLISH sha<caret>red")))
+        assertNull(target(source.replace("PUBLISH target", "PUBLISH (other), tar<caret>get")))
+        val reordered = source.replace(
+            ".include \"storage.s\"\n.extern shared 12", ".extern shared 12\n.include \"storage.s\"",
+        )
+        assertEquals(reordered.indexOf(".extern shared") + 8,
+            target(reordered.replace(".word shared", ".word sha<caret>red"))?.offset)
+
+        directory.resolve("aliases.s").writeText(aliases)
+        directory.resolve("storage.s").writeText(storage)
+        val entry = directory.resolve("entry.asm").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        val memory = context.memory
+        assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("shared"))
+        assertEquals(memory.externBaseAddress + 4, context.symbolTable.getAddress("bundled"))
+        assertEquals(memory.externBaseAddress, memory.getWordNoNotify(memory.dataBaseAddress))
+        assertEquals(memory.externBaseAddress + 4, memory.getWordNoNotify(memory.dataBaseAddress + 4))
+        assertEquals(memory.textBaseAddress, context.symbolTable.getAddress("target"))
+        assertEquals(memory.textBaseAddress + 4, context.symbolTable.getAddress("other"))
+    }
+
+    @Test
+    fun `completion includes only valid external aliases outside macro bodies`() = timeoutRunBlocking<Unit> {
+        configure("""
+            .eqv RESERVE .extern
+            .eqv FIRST SECOND
+            .eqv SECOND FIRST
+            RESERVE sharedGood 4
+            RESERVE sharedOther 0
+            RESERVE sharedMissing
+            RESERVE sharedNegative -4
+            RESERVE sharedCyclic FIRST
+            RESERVE ${'$'}t0 4
+            .macro hidden
+              RESERVE sharedHidden 4
+            .end_macro
+            la ${'$'}t0, shared<caret>
+        """.trimIndent())
+        withContext(Dispatchers.EDT) {
+            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("shared") }
+            assertEquals(setOf("sharedGood", "sharedOther"), names.toSet())
+        }
+    }
+
     private data class Target(val file: String, val offset: Int)
 
     private suspend fun target(source: String): Target? {
@@ -102,8 +177,10 @@ class MipsExternalReferencesPlatformTest {
         return readAction {
             assertTrue(PsiTreeUtil.collectElementsOfType(fixture.file, PsiErrorElement::class.java).isEmpty(), source)
             val declaration = GotoDeclarationAction.findTargetElement(project.get(), fixture.editor, fixture.editor.caretModel.offset)
-                as? MipsDeclaration ?: return@readAction null
-            if (declaration.kind == SymbolKind.EXTERNAL) assertSame(AllIcons.Nodes.Field, declaration.presentation.getIcon(false))
+                ?: return@readAction null
+            if (declaration is MipsDeclaration && declaration.kind == SymbolKind.EXTERNAL) {
+                assertSame(AllIcons.Nodes.Field, declaration.presentation.getIcon(false))
+            }
             Target(declaration.containingFile.name, declaration.textOffset)
         }
     }

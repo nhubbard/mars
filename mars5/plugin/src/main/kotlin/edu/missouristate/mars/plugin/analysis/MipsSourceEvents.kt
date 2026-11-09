@@ -18,9 +18,12 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
+import edu.missouristate.mars.util.Binary
 
 internal sealed interface MipsSourceEvent {
     val offset: Int
+
+    sealed interface Effective : MipsSourceEvent
 
     class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
@@ -47,7 +50,7 @@ internal sealed interface MipsSourceEvent {
         override val offset = head.textOffset
         private val name = head.text
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): MipsSourceEvent? {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
             if (replacement(name) == null) return null
             val errors = ErrorList()
             val expanded = Tokenizer.expandLine(
@@ -64,6 +67,7 @@ internal sealed interface MipsSourceEvent {
             return when (directive) {
                 Directives.MACRO -> macroSignature(head, tokens, operation + 1, expanded = true)
                 Directives.END_MACRO -> End(offset).takeIf { tokens.size() == operation + 1 }
+                Directives.EXTERN -> externalReservation(head, tokens, operation)
                 in dataStateDirectives -> DataDirective(offset, directive)
                 else -> null
             }
@@ -72,25 +76,39 @@ internal sealed interface MipsSourceEvent {
 
     data class Begin(
         val header: PsiElement, val name: String, val parameters: List<Token>, val expanded: Boolean,
-    ) : MipsSourceEvent {
+    ) : Effective {
         override val offset = header.textOffset
         val arity: Int get() = parameters.size
     }
 
-    data class End(override val offset: Int) : MipsSourceEvent
+    data class End(override val offset: Int) : Effective
 
-    data class Include(val literal: MipsStringLiteral, val path: String) : MipsSourceEvent {
+    data class Include(val literal: MipsStringLiteral, val path: String) : Effective {
         override val offset = literal.textOffset
     }
 
-    data class DataDirective(override val offset: Int, val directive: Directives) : MipsSourceEvent
+    data class DataDirective(override val offset: Int, val directive: Directives) : Effective
 
-    data class Equivalence(val site: PsiElement, val name: String, val replacement: String) : MipsSourceEvent {
+    data class Equivalence(val site: PsiElement, val name: String, val replacement: String) : Effective {
         override val offset = site.textOffset
     }
 
-    data class External(val declaration: MipsDeclaration) : MipsSourceEvent {
+    class ExternalDeclaration(private val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
+
+        fun bind(replacement: (String) -> String?): External? {
+            val errors = ErrorList()
+            val tokens = Tokenizer.tokenizeWithEquivalences(
+                sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
+            )
+            if (errors.errorsOccurred()) return null
+            tokens.discardTrailingComment()
+            return externalReservation(declaration, tokens, 0)
+        }
+    }
+
+    data class External(val site: PsiElement, val name: String) : Effective {
+        override val offset = site.textOffset
     }
 }
 
@@ -120,7 +138,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                             ?: continue
                         add(MipsSourceEvent.Equivalence(element, name, replacement))
                     }
-                    else -> add(MipsSourceEvent.External(element))
+                    else -> add(MipsSourceEvent.ExternalDeclaration(element))
                 }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
                 else -> when (element.node.elementType) {
@@ -163,3 +181,12 @@ private fun macroSignature(header: PsiElement, tokens: TokenList, nameIndex: Int
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1
+
+private fun externalReservation(site: PsiElement, tokens: TokenList, operation: Int): MipsSourceEvent.External? {
+    if (tokens.size() != operation + 3) return null
+    val size = tokens[operation + 2]
+    if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
+    val name = tokens[operation + 1]
+    if (name.type != TokenTypes.IDENTIFIER && name.type != TokenTypes.OPERATOR) return null
+    return MipsSourceEvent.External(site, name.value)
+}

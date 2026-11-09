@@ -59,11 +59,12 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 val target = analysis.macroTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
             }
-            val resolvesLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true ||
-                data == DataLabelOperand.EXPORT ||
-                data != null && resolvesDataLabel(file, analysis)
+            val instructionLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true
+            val exportsLabel = data == DataLabelOperand.EXPORT || aliasOperand && equivalence && !instructionLabel &&
+                analysis.isAliasedExportOperand(file, element.parent.parent.firstChild, element)
+            val resolvesLabel = instructionLabel || exportsLabel || data != null && resolvesDataLabel(file, analysis)
             return if (resolvesLabel) {
-                analysis.labelTargets(file, element, allowExternal = data != DataLabelOperand.EXPORT)
+                analysis.labelTargets(file, element, allowExternal = !exportsLabel)
                     .map(::PsiElementResolveResult).toTypedArray()
             } else emptyArray()
         }

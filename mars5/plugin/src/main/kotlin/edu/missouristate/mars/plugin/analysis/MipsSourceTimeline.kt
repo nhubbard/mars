@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.analysis
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.assembler.Directives
@@ -14,9 +15,10 @@ import java.util.BitSet
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
     val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
-    val events = ArrayList<MipsSourceEvent>()
+    val events = ArrayList<MipsSourceEvent.Effective>()
     val files = HashMap<VirtualFile, SourceFileEvents>()
     val equivalences = HashMap<String, IndexedEquivalence>()
+    val externalStorage = LinkedHashMap<String, PsiElement>()
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
@@ -40,8 +42,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         }
         val event = when (val physical = cursor.events.next()) {
             is MipsSourceEvent.Header -> physical.bind(replacement) ?: continue
+            is MipsSourceEvent.ExternalDeclaration -> physical.bind(replacement) ?: continue
             is MipsSourceEvent.OperationCandidate -> physical.bind(inMacro, replacement) ?: continue
-            else -> physical
+            is MipsSourceEvent.Effective -> physical
         }
         val index = events.size
         cursor.locations.sites.add(SourceEventSite(event.offset, index))
@@ -57,6 +60,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
             }
             is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, IndexedEquivalence(index, event))
+            is MipsSourceEvent.External -> if (!inMacro) externalStorage.putIfAbsent(event.name, event.site)
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path)
                 if (included is MipsFile && included.viewProvider.virtualFile !in files) {
@@ -64,25 +68,25 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                     enter(included)
                 }
             }
-            else -> Unit
         }
         if (!inMacro && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(events.size)
     }
-    CachedValueProvider.Result.create(MipsSourceTimeline(events, files, equivalences, integerDataPrefixes), dependencies)
+    CachedValueProvider.Result.create(
+        MipsSourceTimeline(events, files, equivalences, integerDataPrefixes, externalStorage), dependencies,
+    )
 }
 
 internal class MipsSourceTimeline(
-    private val events: List<MipsSourceEvent>,
+    private val events: List<MipsSourceEvent.Effective>,
     private val files: Map<VirtualFile, SourceFileEvents>,
     private val equivalences: Map<String, IndexedEquivalence>,
     private val integerDataPrefixes: BitSet,
+    val externalStorage: Map<String, PsiElement>,
 ) {
-    fun entryPrefix(file: MipsFile, offset: Int): Prefix = prefix(files.getValue(file.viewProvider.virtualFile), offset)
+    fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
-    fun includedPrefix(file: MipsFile, offset: Int): Prefix? =
-        files[file.viewProvider.virtualFile]?.let { prefix(it, offset) }
-
-    private fun prefix(locations: SourceFileEvents, offset: Int): Prefix {
+    fun prefix(file: MipsFile, offset: Int): Prefix {
+        val locations = files.getValue(file.viewProvider.virtualFile)
         val match = locations.sites.binarySearchBy(offset) { it.offset }
         val insertion = if (match >= 0) match else -match - 1
         val end = locations.sites.getOrNull(insertion)?.index ?: locations.end
@@ -90,7 +94,7 @@ internal class MipsSourceTimeline(
     }
 
     class Prefix(
-        val events: List<MipsSourceEvent>,
+        val events: List<MipsSourceEvent.Effective>,
         private val equivalences: Map<String, IndexedEquivalence>,
         private val end: Int,
         val hasIntegerDataList: Boolean,
