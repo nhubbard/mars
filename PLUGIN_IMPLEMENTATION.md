@@ -1210,7 +1210,7 @@ completed instructions while moving. The model preserves fractional
 positions and publishes integer coordinates. Backstep restores the clock,
 position, port values, and pen trail from the instruction's checkpoint.
 
-## Scavenger Hunt game model
+## Scavenger Hunt game and MMIO device
 
 The game model keeps 22 players, seven common locations, and a 20-word
 sorting task for each player. It reproduces the original seed-42 sequence
@@ -1226,12 +1226,24 @@ The legacy task check accepts signed words in nondecreasing order. Progress
 is recorded when a player reaches a location, and the finish score measures
 executed instructions since initialization.
 
-The model is ready for the MMIO device. That slice will publish the
-initial and updated player words, tie device updates to instruction history,
-and test the administrator and player programs through the simulator. The
-full device uses the original `0xffff8000` player region and `0xffffe000`
-administration region. Those 22 player slots cannot fit into compact MMIO,
-and the default player region overlaps MarsBot's ports.
+The device listens for aligned CPU word stores. Administration words start
+at `0xffffe000` and player regions start at `0xffff8000`, with a stride of
+`0x400` bytes. Starting a round publishes the initial positions, energy,
+locations, tasks, and handshakes. Accepted move and task requests clear
+their ready words, while rejected requests leave them set. The player ID
+word reports the authenticated identity. Foreign player writes produce a
+diagnostic and leave the game's state intact. As in Venus, ordinary stores
+to the backing memory remain visible to the program.
+
+The simulator applies responses before the next instruction. The CPU
+restores the words it wrote, and the device's instruction checkpoint
+restores the rest of the response, the game state, and its diagnostic.
+An assembly fixture sorts a real task through loads and stores and
+verifies that rewind restores the sorted task and request word.
+
+The 22 original player regions require the default memory map and
+overlap MarsBot's ports. The Run and Debug options and scoreboard panel
+are the next slice. They will reject simultaneous attachment.
 
 ## Next slices
 
