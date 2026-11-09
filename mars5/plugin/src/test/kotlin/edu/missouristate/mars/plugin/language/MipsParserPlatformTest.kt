@@ -18,6 +18,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.assembler.Directives
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
 import java.nio.file.Path
@@ -459,15 +460,111 @@ class MipsParserPlatformTest {
     }
 
     @Test
-    fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
-        val instructions = InstructionSet().also { it.populate() }
-        assertTrue(instructions.instructionList.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
-        readAction {
-            for (instruction in instructions.instructionList) {
-                val source = instruction.exampleFormat
-                val statement = assertParses(source + "\n").node.findChildByType(MipsTypes.psi("STATEMENT"))
-                assertNotNull(statement?.findChildByType(MipsTypes.psi("INSTRUCTION")), source)
+    fun `all instruction formats agree with the assembler across separators and aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val instructions = InstructionSet().also { it.populate() }.instructionList
+        assertTrue(instructions.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
+        val tokens = instructions.map { instruction ->
+            val list = instruction.tokenList
+            List(list.size()) { index -> list[index] }
+        }
+        val labels = tokens.flatMap { row -> row.filter { it.type == TokenTypes.IDENTIFIER }.map { it.value } }.toSortedSet()
+        val header = listOf(".text") + labels.map { "$it:" }
+        val examples = instructions.map { it.exampleFormat }
+        val commaHeavy = tokens.map { row ->
+            val fields = listOf(row.first().value.uppercase()) + row.drop(1).map { it.value }
+            fields.joinToString(",\t,,", prefix = "\t,,", postfix = ",, # assembler ignores repeated separators")
+        }
+        val aliasDefinitions = tokens.mapIndexed { index, row -> ".eqv OP_$index ${row.first().value}" }
+        val aliasCalls = tokens.mapIndexed { index, row ->
+            row.drop(1).joinToString(",\t,,", prefix = "OP_$index,\t,,") { it.value }
+        }
+        val macroDefinitions = tokens.map { it.size }.toSortedSet().flatMap { arity ->
+            val parameters = (1..arity).map { "%arg$it" }
+            listOf(".macro emit_$arity (${parameters.joinToString(",")})", parameters.joinToString(" "), ".end_macro")
+        }
+        val macroCalls = tokens.map { row ->
+            row.joinToString(",", prefix = "emit_${row.size}(", postfix = ")") { it.value }
+        }
+        val context = project.get().service<MarsSessionService>().context
+        fun assemble(name: String, prefix: List<String>, lines: List<String>): List<Pair<Int, Int>> {
+            val source = (prefix + lines).joinToString("\n", postfix = "\n")
+            val entry = directory.resolve("$name.asm").also { it.writeText(source) }
+            val program = context.assemble(listOf(entry), null, true, false)
+            val origins = program.sourceMap().origins()
+            val words = program.machineList.map { statement ->
+                val origin = origins.getValue(statement.address)
+                val invocation = (origin.caller() ?: origin).location().line() - prefix.size
+                statement.binaryStatement to invocation
             }
+            assertEquals((1..lines.size).toSet(), words.map { it.second }.toSet(), name)
+            return words
+        }
+        for (delayed in listOf(false, true)) {
+            context.settings.setDelayedBranchingEnabled(delayed)
+            val canonicalWords = assemble("canonical", header, examples)
+            assertEquals(canonicalWords, assemble("comma-heavy", header, commaHeavy), "Separators with delay slots $delayed")
+            assertEquals(canonicalWords, assemble("aliased", aliasDefinitions + header, aliasCalls), "Aliases with delay slots $delayed")
+            assertEquals(canonicalWords, assemble("macros", macroDefinitions + header, macroCalls), "Macros with delay slots $delayed")
+        }
+
+        readAction {
+            fun checkOperations(prefix: List<String>, lines: List<String>, kind: String, expected: List<String>) {
+                val file = assertParses((prefix + lines).joinToString("\n", postfix = "\n"))
+                val start = prefix.sumOf { it.length + 1 }
+                val operations = descendants(file.node, kind).toList()
+                    .filter { it.startOffset >= start }
+                    .map { it.firstChildNode.text }
+                assertEquals(
+                    expected.map(String::lowercase),
+                    operations.map(String::lowercase),
+                    kind,
+                )
+            }
+            val names = instructions.map { it.name }
+            checkOperations(header, examples, "INSTRUCTION", names)
+            checkOperations(header, commaHeavy, "INSTRUCTION", names)
+            checkOperations(aliasDefinitions + header, aliasCalls, "OPERATION_CANDIDATE", instructions.indices.map { "OP_$it" })
+            checkOperations(macroDefinitions + header, macroCalls, "OPERATION_CANDIDATE", tokens.map { "emit_${it.size}" })
+        }
+    }
+
+    @Test
+    fun `address operands follow the assembler with or without commas`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val header = ".eqv BASE \$sp\n.data\ntarget: .word 0\n.text\n"
+        val canonical = """
+            lw ${'$'}t0,(${'$'}sp)
+            lwc1 ${'$'}f0,(${'$'}sp)
+            lw ${'$'}t0,4(${'$'}sp)
+            lw ${'$'}t0,target(${'$'}sp)
+            lw ${'$'}t0,'D'(${'$'}sp)
+            lw ${'$'}t0,8(${'$'}sp)
+        """.trimIndent()
+        val alternate = """
+            lw ${'$'}t0(${'$'}sp)
+            lwc1 ${'$'}f0(${'$'}sp)
+            lw ${'$'}t0,4,,(${'$'}sp)
+            lw ${'$'}t0,target,(${'$'}sp)
+            lw ${'$'}t0,'D',(${'$'}sp)
+            lw ${'$'}t0,8,,(,BASE,)
+        """.trimIndent()
+        val context = project.get().service<MarsSessionService>().context
+        fun assemble(text: String): List<Int> {
+            val entry = directory.resolve("addresses.asm").also { it.writeText(header + text + "\n") }
+            return context.assemble(listOf(entry), null, true, false).machineList.map { it.binaryStatement }
+        }
+        assertEquals(assemble(canonical), assemble(alternate))
+        readAction {
+            val root = assertParses(header + alternate + "\n").node
+            val instructions = descendants(root, "INSTRUCTION").toList()
+            assertEquals(
+                listOf(
+                    listOf("\$t0", "(\$sp)"), listOf("\$f0", "(\$sp)"), listOf("\$t0", "4,,(\$sp)"),
+                    listOf("\$t0", "target,(\$sp)"), listOf("\$t0", "'D',(\$sp)"), listOf("\$t0", "8,,(,BASE,)"),
+                ),
+                instructions.map { descendants(it, "OPERAND").map { operand -> operand.text }.toList() },
+            )
+            assertEquals(listOf("4,,(\$sp)", "target,(\$sp)", "'D',(\$sp)", "8,,(,BASE,)"),
+                descendants(root, "ADDRESS_EXPR").map { it.text }.toList())
         }
     }
 

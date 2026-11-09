@@ -29,9 +29,15 @@ not assert that its registers, argument types, symbols or segment usage are sema
 Real PSI tests cover every canonical basic/pseudo-instruction example, every program in the core
 assembly corpus, directive/macro variants, malformed lines, truncated input, native syntax entry
 points, file associations, lexer restoration and highlighting.
+The instruction catalog fixture assembles all forms as written, with repeated separators, through
+mnemonic aliases, and through parameterized macros. It compares emitted words and source origins
+with delay slots enabled and disabled, and checks the corresponding operation nodes in IntelliJ.
 Names beginning with a dot and digit, such as `.1_count`, retain their identifier role unless
 the full token is a decimal literal. An assembler-backed fixture verifies these names in label
 declarations and references, macro definitions and invocations, and equivalence definitions.
+Zero-offset loads retain separate register and base operands when the comma is omitted.
+Numeric, character, and label offsets still group with their base register when commas appear
+before the opening parenthesis.
 
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.

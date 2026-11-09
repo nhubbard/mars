@@ -5,27 +5,42 @@ import com.intellij.platform.syntax.element.SyntaxTokenTypes.WHITE_SPACE
 import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
 import com.intellij.platform.syntax.util.runtime.ParserUserState
 import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.LEFT_PAREN
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MINUS
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MNEMONIC
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NUMBER
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PARAMETER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PLUS
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.REGISTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.WORD
 
 internal object DebuggerExpressionParsing : ParserUserState
 
 private val signs = setOf(PLUS, MINUS)
 private val identifiers = setOf(WORD, DOLLAR_WORD)
+private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WORD, PARAMETER)
+private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 
-/** Honor explicit separators and the assembler's implicit boundary before a signed literal. */
+/** Apply the assembler's boundaries for address and signed operands. */
 @Suppress("UNUSED_PARAMETER")
 internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     if (builder.eof()) return false
+    if (runtime.parserUserState === DebuggerExpressionParsing) return true
     val previous = builder.previousToken(spacing)
+    if (builder.tokenType == LEFT_PAREN) {
+        // The assembler discards commas in an offset(base) operand. A register before
+        // the opening parenthesis is a separate operand even without a comma.
+        if (previous != COMMA) return previous != REGISTER
+        return builder.lookAhead(1) in addressBases && builder.previousToken(separators) in addressOffsets
+    }
     if (previous == COMMA) return false
-    if (runtime.parserUserState === DebuggerExpressionParsing || builder.tokenType !in signs) return true
+    if (builder.tokenType !in signs) return true
 
     return !builder.signAttachesToNumber(previous)
 }
