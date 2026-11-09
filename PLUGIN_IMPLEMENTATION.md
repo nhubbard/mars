@@ -267,9 +267,23 @@ and nested includes, including text that differs from the existing disk file.
 They also verify missing captures, mixed line endings, nested diagnostics, and
 the existing disk entry point.
 
+IntelliJ captures the transitive source set in a cancellable read action through
+`VirtualFileManager` and `FileDocumentManager`. It uses the Java assembler's
+include prepass on the captured text, including dependencies with other file
+extensions. It records each document's revision with the text. Unavailable
+dependencies are left to the assembler to diagnose at the include location.
+The IDE fixtures verify uncommitted and unsaved text, edits after capture,
+literal paths with spaces and non-ASCII characters, cycles, and assembly and
+execution of the earlier capture.
+
+The clean IntelliJ 2026.3 launch passed 1,277 tests, including 75 plugin tests,
+and authored plugin code covered all 620 lines and 378 branch outcomes.
+The startup log confirmed that MARS MIPS loaded and opened the smoke project.
+All six JARs in the distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
-completion, build-context reference binding, documentation, and detached source
-analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
+completion, build-context reference binding, documentation, and native build
+actions and diagnostic reporting. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

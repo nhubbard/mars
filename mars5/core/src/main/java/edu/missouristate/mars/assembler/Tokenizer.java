@@ -138,53 +138,68 @@ public class Tokenizer {
     ArrayList<SourceLine> result = new ArrayList<>(source.size());
     for (int i = 0; i < source.size(); i++) {
       String line = source.get(i);
-      TokenList tl = tokenizeLine(program, i + 1, line, false);
-      boolean hasInclude = false;
-      for (int ii = 0; ii < tl.size(); ii++) {
-        if (tl.get(ii).getValue().equalsIgnoreCase(Directives.INCLUDE.getName())
-            && (tl.size() > ii + 1)
-            && tl.get(ii + 1).getType() == TokenTypes.QUOTED_STRING) {
-          String filename = tl.get(ii + 1).getValue();
-          filename = filename.substring(1, filename.length() - 1); // get rid of quotes
-          // Handle either absolute or relative pathname for .include file
-          if (!new File(filename).isAbsolute()) {
-            filename = new File(program.getFilename()).getParent() + File.separator + filename;
-          }
-          MIPSprogram incl = program.createRelatedProgram();
-          try {
-            incl.readSource(filename);
-          } catch (ProcessingException p) {
-            Token t = tl.get(ii + 1);
-            errors.add(
-                new ErrorMessage(
-                    program,
-                    t.getSourceLine(),
-                    t.getStartPos(),
-                    "Error reading include file " + filename));
-            throw new ProcessingException(errors);
-          }
-          String includedPath = incl.getFilename();
-          if (!includedPaths.add(includedPath)) {
-            Token t = tl.get(ii + 1);
-            errors.add(
-                new ErrorMessage(
-                    program,
-                    t.getSourceLine(),
-                    t.getStartPos(),
-                    "Recursive include of file " + includedPath));
-            throw new ProcessingException(errors);
-          }
-          ArrayList<SourceLine> allLines = processIncludes(incl, includedPaths);
-          result.addAll(allLines);
-          hasInclude = true;
-          break;
-        }
+      Token include = firstIncludePath(tokenizeLine(program, i + 1, line, false));
+      if (include == null) {
+        result.add(new SourceLine(line, program, i + 1));
+        continue;
       }
-      if (!hasInclude) {
-        result.add(new SourceLine(line, program, i + 1)); // line);
+      String filename = unquote(include);
+      // Handle either absolute or relative pathname for .include file.
+      if (!new File(filename).isAbsolute()) {
+        filename = new File(program.getFilename()).getParent() + File.separator + filename;
       }
+      MIPSprogram incl = program.createRelatedProgram();
+      try {
+        incl.readSource(filename);
+      } catch (ProcessingException p) {
+        errors.add(
+            new ErrorMessage(
+                program,
+                include.getSourceLine(),
+                include.getStartPos(),
+                "Error reading include file " + filename));
+        throw new ProcessingException(errors);
+      }
+      String includedPath = incl.getFilename();
+      if (!includedPaths.add(includedPath)) {
+        errors.add(
+            new ErrorMessage(
+                program,
+                include.getSourceLine(),
+                include.getStartPos(),
+                "Recursive include of file " + includedPath));
+        throw new ProcessingException(errors);
+      }
+      result.addAll(processIncludes(incl, includedPaths));
     }
     return result;
+  }
+
+  /**
+   * Returns the first include path in one physical line, before any equivalence expansion, or
+   * null when the include prepass would leave the line in place. The path's spelling is literal.
+   */
+  public String findIncludePath(String sourceLine) {
+    if (sourceLine.indexOf('.') < 0) {
+      return null;
+    }
+    Token include = firstIncludePath(tokenizeLine(1, sourceLine, new ErrorList(), false));
+    return include == null ? null : unquote(include);
+  }
+
+  private static Token firstIncludePath(TokenList tokens) {
+    for (int i = 1; i < tokens.size(); i++) {
+      if (tokens.get(i - 1).getValue().equalsIgnoreCase(Directives.INCLUDE.getName())
+          && tokens.get(i).getType() == TokenTypes.QUOTED_STRING) {
+        return tokens.get(i);
+      }
+    }
+    return null;
+  }
+
+  private static String unquote(Token path) {
+    String value = path.getValue();
+    return value.substring(1, value.length() - 1);
   }
 
   /**
