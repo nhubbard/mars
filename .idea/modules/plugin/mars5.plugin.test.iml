@@ -38,6 +38,9 @@
   <component name="NewModuleRootManager">
     <output-test url="file://$MODULE_DIR$/../../../mars5/plugin/build/classes/kotlin/test" />
     <exclude-output />
+    <content url="file://$MODULE_DIR$/../../../examples">
+      <sourceFolder url="file://$MODULE_DIR$/../../../examples" type="java-test-resource" />
+    </content>
     <content url="file://$MODULE_DIR$/../../../mars5/core/src/test/resources">
       <sourceFolder url="file://$MODULE_DIR$/../../../mars5/core/src/test/resources" type="java-test-resource" />
     </content>

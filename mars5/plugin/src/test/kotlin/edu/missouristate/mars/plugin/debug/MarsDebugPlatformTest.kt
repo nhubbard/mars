@@ -31,6 +31,8 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -77,6 +79,48 @@ class MarsDebugPlatformTest {
     private val project get() = projectFixture.get()
     private val debugger get() = XDebuggerManager.getInstance(project)
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+
+    @Test
+    fun `the interactive sort example parses and runs in the native debugger`() = timeoutRunBlocking<Unit> {
+        val (entry, macros) = withContext(Dispatchers.EDT) {
+            fun source(name: String) = fixture.addFileToProject(name,
+                requireNotNull(javaClass.getResourceAsStream("/debug-sort/$name")).bufferedReader().use { it.readText() },
+            ).also {
+                assertTrue(PsiTreeUtil.findChildrenOfType(it, PsiErrorElement::class.java).isEmpty(), name)
+            }
+            val macros = source("console.s")
+            val main = source("sort-and-search.asm")
+            val line = main.text.lineSequence().indexOfFirst { it.startsWith("report_ready:") }
+            assertTrue(breakpointType.canPutAt(main.virtualFile, line, project))
+            addBreakpoint(main.virtualFile, line)
+            main.virtualFile to macros.virtualFile
+        }
+        withDebug(entry) { debug ->
+            val console = withContext(Dispatchers.EDT) {
+                assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
+            }
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertTrue(console.editor!!.document.text.contains("Search for an integer: "))
+                }
+            }
+            withContext(Dispatchers.EDT) { console.type(console.editor!!, "7\n") }
+            // The breakpoint is on a macro call. The execution frame points to its body.
+            debug.assertPausedAt(macros, 1)
+            withContext(Dispatchers.EDT) {
+                val registers = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
+                assertEquals("10.1 (0x4121999a)", registers["\$f12"])
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+            assertEquals(
+                "Before: 19 -4 7 0 23 7 -8 12 42 3\n" +
+                    "After:  -8 -4 0 3 7 7 12 19 23 42\n" +
+                    "Search for an integer: First index: 4\nSum: 101\nAverage: 10.1\n",
+                debug.stdout.toString(),
+            )
+        }
+    }
 
     @Test
     fun `native debugger stops in an include before its syscall and steps and runs to the cursor`() = timeoutRunBlocking<Unit> {

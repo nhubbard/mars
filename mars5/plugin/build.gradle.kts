@@ -134,6 +134,7 @@ tasks.named("compileKotlin") { dependsOn(generateMipsParser) }
 
 sourceSets.named("test") {
   resources.srcDir(project(":core").file("src/test/resources"))
+  resources.srcDir(rootProject.file("../examples"))
 }
 
 // Keep generated code in the raw report. Only the exact reviewed defensive outcomes are exempt.
