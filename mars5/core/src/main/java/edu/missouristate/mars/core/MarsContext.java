@@ -21,6 +21,7 @@ import edu.missouristate.mars.simulator.SimulatorEngine;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.inject.Inject;
@@ -230,21 +231,29 @@ public final class MarsContext implements AutoCloseable {
   public MIPSprogram assemble(List<Path> sources, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
     try (var lease = claimStoppedSession()) {
-      return assembleStopped(sources, handler, extended, warnings, null);
+      return assembleStopped(sources, handler, extended, warnings, null, () -> {});
     }
   }
 
   public MIPSprogram assembleSnapshot(
       AssemblySourceSnapshot snapshot, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
+    return assembleSnapshot(snapshot, handler, extended, warnings, () -> {});
+  }
+
+  public MIPSprogram assembleSnapshot(
+      AssemblySourceSnapshot snapshot, Path handler, boolean extended, boolean warnings,
+      Runnable checkCancellation)
+      throws ProcessingException {
+    Objects.requireNonNull(checkCancellation);
     try (var lease = claimStoppedSession()) {
-      return assembleStopped(snapshot.entries(), handler, extended, warnings, snapshot);
+      return assembleStopped(snapshot.entries(), handler, extended, warnings, snapshot, checkCancellation);
     }
   }
 
   private MIPSprogram assembleStopped(
       List<Path> sources, Path handler, boolean extended, boolean warnings,
-      AssemblySourceSnapshot snapshot)
+      AssemblySourceSnapshot snapshot, Runnable checkCancellation)
       throws ProcessingException {
     if (sources == null || sources.isEmpty()) {
       throw new IllegalArgumentException("At least one source file is required");
@@ -252,14 +261,16 @@ public final class MarsContext implements AutoCloseable {
     var root = new MIPSprogram(this, snapshot);
     var filenames = new ArrayList<String>();
     for (Path source : sources) {
+      checkCancellation.run();
       filenames.add(source.toAbsolutePath().normalize().toString());
     }
     var files =
         root.prepareFilesForAssembly(
             filenames,
             filenames.getFirst(),
-            handler == null ? null : handler.toAbsolutePath().toString());
-    root.assemble(files, extended, warnings);
+            handler == null ? null : handler.toAbsolutePath().toString(),
+            checkCancellation);
+    root.assemble(files, extended, warnings, checkCancellation);
     return root;
   }
 

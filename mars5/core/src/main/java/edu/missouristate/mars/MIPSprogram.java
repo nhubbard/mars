@@ -13,6 +13,7 @@ import edu.missouristate.mars.simulator.*;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -242,6 +243,10 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if there is any problem reading the file.
    */
   public void readSource(String file) throws ProcessingException {
+    readSource(file, () -> {});
+  }
+
+  public void readSource(String file, Runnable checkCancellation) throws ProcessingException {
     this.filename = file;
     this.sourceList = new ArrayList<>();
     this.sourceLineList = null;
@@ -250,9 +255,12 @@ public class MIPSprogram implements Program {
     try (BufferedReader inputFile = new BufferedReader(openSource(file))) {
       line = inputFile.readLine();
       while (line != null) {
+        checkCancellation.run();
         sourceList.add(line);
         line = inputFile.readLine();
       }
+    } catch (CancellationException cancelled) {
+      throw cancelled;
     } catch (Exception e) {
       errors = newErrorList();
       errors.add(new ErrorMessage(sourceSnapshot == null ? null : this, 0, 0, e.toString()));
@@ -279,8 +287,12 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while tokenizing.
    */
   public void tokenize() throws ProcessingException {
+    tokenize(() -> {});
+  }
+
+  private void tokenize(Runnable checkCancellation) throws ProcessingException {
     this.tokenizer = assemblyContext.tokenizer(this);
-    this.tokenList = tokenizer.tokenize(this);
+    this.tokenList = tokenizer.tokenize(this, checkCancellation);
     this.localSymbolTable = new SymbolTable(assemblyContext.symbols()); // prepare for assembly
   }
 
@@ -302,6 +314,13 @@ public class MIPSprogram implements Program {
   public ArrayList<MIPSprogram> prepareFilesForAssembly(
       ArrayList<String> filenames, String leadFilename, String exceptionHandler)
       throws ProcessingException {
+    return prepareFilesForAssembly(filenames, leadFilename, exceptionHandler, () -> {});
+  }
+
+  public ArrayList<MIPSprogram> prepareFilesForAssembly(
+      ArrayList<String> filenames, String leadFilename, String exceptionHandler,
+      Runnable checkCancellation)
+      throws ProcessingException {
     ArrayList<MIPSprogram> MIPSprogramsToAssemble = new ArrayList<>();
     int leadFilePosition = 0;
     if (exceptionHandler != null && !exceptionHandler.isEmpty()) {
@@ -309,9 +328,10 @@ public class MIPSprogram implements Program {
       leadFilePosition = 1;
     }
     for (String filename : filenames) {
+      checkCancellation.run();
       MIPSprogram preparee = (filename.equals(leadFilename)) ? this : createRelatedProgram();
-      preparee.readSource(filename);
-      preparee.tokenize();
+      preparee.readSource(filename, checkCancellation);
+      preparee.tokenize(checkCancellation);
       // I want "this" MIPSprogram to be the first in the list...except for exception handler
       if (preparee == this && !MIPSprogramsToAssemble.isEmpty()) {
         MIPSprogramsToAssemble.add(leadFilePosition, preparee);
@@ -358,18 +378,29 @@ public class MIPSprogram implements Program {
       boolean extendedAssemblerEnabled,
       boolean warningsAreErrors)
       throws ProcessingException {
+    return assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, () -> {});
+  }
+
+  public ErrorList assemble(
+      ArrayList<MIPSprogram> MIPSprogramsToAssemble,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors,
+      Runnable checkCancellation)
+      throws ProcessingException {
     try (var lease =
         assemblyContext.session() == null
             ? null
             : assemblyContext.session().claimStoppedSession()) {
-      return assembleStopped(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
+      return assembleStopped(
+          MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors, checkCancellation);
     }
   }
 
   private ErrorList assembleStopped(
       ArrayList<MIPSprogram> MIPSprogramsToAssemble,
       boolean extendedAssemblerEnabled,
-      boolean warningsAreErrors)
+      boolean warningsAreErrors,
+      Runnable checkCancellation)
       throws ProcessingException {
     if (assemblyContext.session() != null
         && (MIPSprogramsToAssemble == null || MIPSprogramsToAssemble.isEmpty())) {
@@ -386,7 +417,9 @@ public class MIPSprogram implements Program {
     this.backStepper = null;
     Assembler asm = new Assembler(assemblyContext);
     this.machineList =
-        asm.assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors);
+        asm.assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors,
+            checkCancellation);
+    checkCancellation.run();
     this.backStepper = assemblyContext.session().backStepper;
     sessionExecution = null;
     assemblyContext.finishAssembly(this);

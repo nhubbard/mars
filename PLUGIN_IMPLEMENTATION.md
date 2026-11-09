@@ -296,7 +296,10 @@ Jupiter IDE fixtures invoke the registered action with an unsaved include,
 verify an exact Unicode and tab-aware diagnostic offset, and check success,
 failure, cancellation, and isolation from the current simulation program.
 Cancellation is observed at capture and publication boundaries. The Java assembly
-passes still need cooperative checks for prompt cancellation during assembly.
+API also accepts a cooperative cancellation check through source loading,
+include and equivalence processing, macro expansion, and both assembly passes.
+Core tests cancel at each checkpoint visited by a representative build and
+verify that an interrupted assembly publishes no program and releases its session.
 
 The clean IntelliJ 2026.3 launch passed 1,281 tests, including 79 plugin tests,
 and authored plugin code covered all 689 lines and 424 branch outcomes.

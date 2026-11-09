@@ -47,11 +47,13 @@ public final class SessionAssembler implements MarsAssembler {
       AssemblySourceSnapshot snapshot,
       Path exceptionHandler,
       boolean extendedAssemblerEnabled,
-      boolean warningsAreErrors) {
+      boolean warningsAreErrors,
+      Runnable checkCancellation) {
     try {
       var program =
           session.assembleSnapshot(
-              snapshot, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors);
+              snapshot, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors,
+              checkCancellation);
       return new AssemblyResult(program, diagnostics(program.getAssemblyDiagnostics()));
     } catch (ProcessingException error) {
       return new AssemblyResult(null, diagnostics(error.errors()));

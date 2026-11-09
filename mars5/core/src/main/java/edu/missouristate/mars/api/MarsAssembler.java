@@ -2,6 +2,7 @@ package edu.missouristate.mars.api;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 /**
  * Contract for assembling one or more MIPS source files into an executable program. Implementations
@@ -34,7 +35,24 @@ public interface MarsAssembler {
    * Assembles captured text for the ordered entries, optional exception handler, and all
    * includes. An uncaptured source produces an assembly diagnostic.
    */
+  default AssemblyResult assembleSnapshot(
+      AssemblySourceSnapshot snapshot,
+      Path exceptionHandler,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors) {
+    return assembleSnapshot(
+        snapshot, exceptionHandler, extendedAssemblerEnabled, warningsAreErrors, () -> {});
+  }
+
+  /**
+   * Assembles captured sources with cooperative cancellation. The check runs on the calling
+   * thread and may throw {@link CancellationException} to abort. Use a
+   * separate session if a previously assembled program must remain available after cancellation.
+   */
   AssemblyResult assembleSnapshot(
-      AssemblySourceSnapshot snapshot, Path exceptionHandler, boolean extendedAssemblerEnabled,
-      boolean warningsAreErrors);
+      AssemblySourceSnapshot snapshot,
+      Path exceptionHandler,
+      boolean extendedAssemblerEnabled,
+      boolean warningsAreErrors,
+      Runnable checkCancellation);
 }

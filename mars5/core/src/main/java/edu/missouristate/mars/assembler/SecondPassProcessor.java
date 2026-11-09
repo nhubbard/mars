@@ -10,9 +10,11 @@ import java.util.ArrayList;
 /** Resolves operands, expands pseudos, emits machine words and verifies text-address uniqueness. */
 final class SecondPassProcessor {
   private final AssemblyContext context;
+  private final Runnable checkCancellation;
 
-  SecondPassProcessor(AssemblyContext context) {
+  SecondPassProcessor(AssemblyContext context, Runnable checkCancellation) {
     this.context = context;
+    this.checkCancellation = checkCancellation;
   }
 
   ArrayList<ProgramStatement> process(
@@ -25,6 +27,7 @@ final class SecondPassProcessor {
         break;
       }
       for (var statement : program.getParsedList()) {
+        checkCancellation.run();
         statement.buildBasicStatementFromBasicInstruction(errors);
         if (errors.errorsOccurred()) {
           throw new ProcessingException(errors);
@@ -37,6 +40,7 @@ final class SecondPassProcessor {
       }
     }
     for (var statement : machine) {
+      checkCancellation.run();
       if (errors.errorLimitExceeded()) {
         break;
       }
@@ -53,8 +57,10 @@ final class SecondPassProcessor {
                 "Invalid address for text segment: " + error.getAddress()));
       }
     }
-    machine.sort(
-        (first, second) -> Integer.compareUnsigned(first.getAddress(), second.getAddress()));
+    machine.sort((first, second) -> {
+      checkCancellation.run();
+      return Integer.compareUnsigned(first.getAddress(), second.getAddress());
+    });
     catchDuplicateAddresses(machine, errors);
     if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
@@ -64,6 +70,7 @@ final class SecondPassProcessor {
 
   private void catchDuplicateAddresses(ArrayList<ProgramStatement> instructions, ErrorList errors) {
     for (int i = 0; i < instructions.size() - 1; i++) {
+      checkCancellation.run();
       ProgramStatement ps1 = instructions.get(i);
       ProgramStatement ps2 = instructions.get(i + 1);
       if (ps1.getAddress() == ps2.getAddress()) {

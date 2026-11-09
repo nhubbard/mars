@@ -18,8 +18,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -300,6 +303,70 @@ class SessionAssemblyTest {
     assertThatThrownBy(() -> new AssemblySourceSnapshot(List.of(), Map.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("At least one source file");
+  }
+
+  @Test
+  void cancellationAtAnySnapshotCheckpointPropagatesAndReleasesTheSession() throws Exception {
+    var main = directory.resolve("main.s");
+    var definitions = directory.resolve("defs.s");
+    var snapshot = new AssemblySourceSnapshot(
+        List.of(main),
+        Map.of(
+            definitions, """
+                .eqv VALUE 7
+                .macro emit (%register)
+                  li %register, VALUE
+                .end_macro
+                """,
+            main, """
+                .include "defs.s"
+                .data
+                .word VALUE:3
+                .word tail
+                tail: .asciiz "%s"
+                .text
+                .globl main
+                main:
+                  emit ($a0)
+                  li $t0, 0x12345678
+                  nop
+                """.formatted("a".repeat(600))));
+    var checkpoints = new AtomicInteger();
+    try (var baseline = session("Default")) {
+      assertThat(new SessionAssembler(baseline)
+          .assembleSnapshot(snapshot, null, true, false, checkpoints::incrementAndGet)
+          .succeeded()).isTrue();
+    }
+
+    try (var session = session("Default");
+        var executor = Executors.newSingleThreadExecutor()) {
+      var assembler = new SessionAssembler(session);
+      boolean cancelledDuringDataWrites = false;
+      boolean cancelledDuringTextWrites = false;
+      for (int checkpoint = 1; checkpoint <= checkpoints.get(); checkpoint++) {
+        var remaining = new AtomicInteger(checkpoint);
+        var cancellation = new CancellationException("stop assembly");
+        assertThatThrownBy(() -> assembler.assembleSnapshot(snapshot, null, true, false, () -> {
+          if (remaining.decrementAndGet() == 0) {
+            throw cancellation;
+          }
+        })).isSameAs(cancellation);
+        assertThat(session.getProgram()).isNull();
+        int data = session.memory.dataBaseAddress;
+        int text = session.memory.textBaseAddress;
+        cancelledDuringDataWrites |=
+            session.memory.getWordNoNotify(data) == 7 && session.memory.getWordNoNotify(data + 8) == 0;
+        cancelledDuringTextWrites |=
+            session.memory.getStatementNoNotify(text) != null
+                && session.memory.getStatementNoNotify(text + 4) == null;
+      }
+      assertThat(cancelledDuringDataWrites).isTrue();
+      assertThat(cancelledDuringTextWrites).isTrue();
+      var rebuilt = executor.submit(() -> assembler.assembleSnapshot(snapshot, null, true, false))
+          .get(10, TimeUnit.SECONDS);
+      assertThat(rebuilt.succeeded()).isTrue();
+      assertThat(rebuilt.program()).isSameAs(session.getProgram());
+    }
   }
 
   @Test

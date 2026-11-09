@@ -42,9 +42,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** First assembly pass, owning per-file directive and symbol-processing state. */
 final class FirstPassProcessor {
   final AssemblyContext context;
+  final Runnable checkCancellation;
 
-  FirstPassProcessor(AssemblyContext context) {
+  FirstPassProcessor(AssemblyContext context, Runnable checkCancellation) {
     this.context = context;
+    this.checkCancellation = checkCancellation;
   }
 
   private final Parser parser = new Parser(this);
@@ -80,6 +82,7 @@ final class FirstPassProcessor {
             "All source files must belong to the assembler's session");
       }
     }
+    checkCancellation.run();
     context.beginAssembly(tokenizedProgramFiles.getFirst());
     textAddress =
         new UserKernelAddressSpace(
@@ -102,6 +105,7 @@ final class FirstPassProcessor {
     // THERE IS ONE GLOBAL SYMBOL TABLE (for identifiers declared .globl) PLUS
     // ONE LOCAL SYMBOL TABLE FOR EACH SOURCE FILE.
     for (MIPSprogram programFile : tokenizedProgramFiles) {
+      checkCancellation.run();
       if (errors.errorLimitExceeded()) {
         break;
       }
@@ -132,6 +136,7 @@ final class FirstPassProcessor {
       // INITIALIZES DATA SEGMENT
       ArrayList<ProgramStatement> statements;
       for (int i = 0; i < tokenList.size(); i++) {
+        checkCancellation.run();
         if (errors.errorLimitExceeded()) {
           break;
         }
@@ -512,6 +517,7 @@ final class FirstPassProcessor {
   // symbol table at the end of the first assembly pass.
   private void transferGlobals() {
     for (int i = 0; i < globalDeclarationList.size(); i++) {
+      checkCancellation.run();
       Token label = globalDeclarationList.get(i);
       Symbol symtabEntry =
           fileCurrentlyBeingAssembled.getLocalSymbolTable().getSymbol(label.getValue());
@@ -655,6 +661,7 @@ final class FirstPassProcessor {
           this.dataAddress.set(this.alignToBoundary(this.dataAddress.get(), lengthInBytes));
         }
         for (int i = 0; i < repetitions; i++) {
+          checkCancellation.run();
           if (Directives.isIntegerDirective(directive)) {
             storeInteger(valueToken, directive, errors);
           } else {
@@ -687,6 +694,7 @@ final class FirstPassProcessor {
 
     // if not in ".word w : n" format, must just be list of one or more values.
     for (int i = tokenStart; i < tokens.size(); i++) {
+      checkCancellation.run();
       token = tokens.get(i);
       if (Directives.isIntegerDirective(directive)) {
         storeInteger(token, directive, errors);
@@ -853,6 +861,7 @@ final class FirstPassProcessor {
       tokenStart = 1;
     }
     for (int i = tokenStart; i < tokens.size(); i++) {
+      checkCancellation.run();
       token = tokens.get(i);
       if (token.getType() != TokenTypes.QUOTED_STRING) {
         errors.add(
@@ -1116,6 +1125,7 @@ final class FirstPassProcessor {
       int labelAddress;
       DataSegmentForwardReference entry;
       for (int i = 0; i < forwardReferenceList.size(); i++) {
+        checkCancellation.run();
         entry = forwardReferenceList.get(i);
         labelAddress = localSymtab.getAddressLocalOrGlobal(entry.token.getValue());
         if (labelAddress != SymbolTable.NOT_FOUND) {
@@ -1137,6 +1147,7 @@ final class FirstPassProcessor {
     private void generateErrorMessages(ErrorList errors) {
       DataSegmentForwardReference entry;
       for (DataSegmentForwardReference dataSegmentForwardReference : forwardReferenceList) {
+        checkCancellation.run();
         entry = dataSegmentForwardReference;
         errors.add(
             new ErrorMessage(

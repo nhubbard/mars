@@ -121,12 +121,12 @@ final class Parser {
         //                      ret.addAll(statements);
         //                }
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
-
+          pass.checkCancellation.run();
           String substituted = macro.getSubstitutedLine(i, tokens, counter, pass.errors);
           TokenList tokenList2 =
               pass.fileCurrentlyBeingAssembled
                   .getTokenizer()
-                  .tokenizeLine(i, substituted, pass.errors);
+                  .tokenizeLine(i, substituted, pass.errors, true, pass.checkCancellation);
 
           // If token list getProcessedLine() is not empty, then .eqv was performed and it contains
           // the modified source.

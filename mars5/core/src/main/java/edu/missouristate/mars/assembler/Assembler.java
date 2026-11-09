@@ -39,15 +39,21 @@ public final class Assembler {
   public ArrayList<ProgramStatement> assemble(
       ArrayList<MIPSprogram> programs, boolean extended, boolean warnings)
       throws ProcessingException {
+    return assemble(programs, extended, warnings, () -> {});
+  }
+
+  public ArrayList<ProgramStatement> assemble(
+      ArrayList<MIPSprogram> programs, boolean extended, boolean warnings, Runnable checkCancellation)
+      throws ProcessingException {
     try (var lease = context.session().claimStoppedSession()) {
-      var first = new FirstPassProcessor(context);
+      var first = new FirstPassProcessor(context, checkCancellation);
       try {
         errors = first.process(programs, extended, warnings);
       } catch (ProcessingException failure) {
         errors = failure.errors();
         throw failure;
       }
-      return new SecondPassProcessor(context).process(programs, errors, warnings);
+      return new SecondPassProcessor(context, checkCancellation).process(programs, errors, warnings);
     }
   }
 }

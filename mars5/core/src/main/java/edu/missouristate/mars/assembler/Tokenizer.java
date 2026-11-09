@@ -93,17 +93,22 @@ public class Tokenizer {
    *     represents a tokenized source statement from the MIPS program.
    */
   public ArrayList<TokenList> tokenize(MIPSprogram p) throws ProcessingException {
+    return tokenize(p, () -> {});
+  }
+
+  public ArrayList<TokenList> tokenize(MIPSprogram p, Runnable checkCancellation)
+      throws ProcessingException {
     sourceMIPSprogram = p;
     equivalents = new HashMap<>(); // DPS 11-July-2012
     ArrayList<TokenList> tokenList = new ArrayList<>();
     // ArrayList source = p.getSourceList();
-    ArrayList<SourceLine> source = processIncludes(p, new HashSet<>()); // DPS 9-Jan-2013
+    ArrayList<SourceLine> source = processIncludes(p, new HashSet<>(), checkCancellation);
     p.setSourceLineList(source);
     TokenList currentLineTokens;
     String sourceLine;
     for (int i = 0; i < source.size(); i++) {
       sourceLine = source.get(i).getSource();
-      currentLineTokens = this.tokenizeLine(i + 1, sourceLine);
+      currentLineTokens = tokenizeLine(p, i + 1, sourceLine, true, checkCancellation);
       tokenList.add(currentLineTokens);
       // DPS 03-Jan-2013. Related to 11-July-2012. If source code substitution was made
       // based on .eqv directive during tokenizing, the processed line, a String, is
@@ -132,13 +137,15 @@ public class Tokenizer {
   // files that themselves have .include.  Plus it will detect and report recursive
   // includes both direct and indirect.
   // DPS 11-Jan-2013
-  private ArrayList<SourceLine> processIncludes(MIPSprogram program, Set<String> includedPaths)
+  private ArrayList<SourceLine> processIncludes(
+      MIPSprogram program, Set<String> includedPaths, Runnable checkCancellation)
       throws ProcessingException {
     ArrayList<String> source = program.getSourceList();
     ArrayList<SourceLine> result = new ArrayList<>(source.size());
     for (int i = 0; i < source.size(); i++) {
       String line = source.get(i);
-      Token include = firstIncludePath(tokenizeLine(program, i + 1, line, false));
+      Token include =
+          firstIncludePath(tokenizeLine(program, i + 1, line, false, checkCancellation));
       if (include == null) {
         result.add(new SourceLine(line, program, i + 1));
         continue;
@@ -150,7 +157,7 @@ public class Tokenizer {
       }
       MIPSprogram incl = program.createRelatedProgram();
       try {
-        incl.readSource(filename);
+        incl.readSource(filename, checkCancellation);
       } catch (ProcessingException p) {
         errors.add(
             new ErrorMessage(
@@ -170,7 +177,7 @@ public class Tokenizer {
                 "Recursive include of file " + includedPath));
         throw new ProcessingException(errors);
       }
-      result.addAll(processIncludes(incl, includedPaths));
+      result.addAll(processIncludes(incl, includedPaths, checkCancellation));
     }
     return result;
   }
@@ -262,11 +269,7 @@ public class Tokenizer {
    * @return the generated token list for that line
    */
   public TokenList tokenizeLine(int lineNum, String theLine, ErrorList callerErrorList) {
-    ErrorList saveList = this.errors;
-    this.errors = callerErrorList;
-    TokenList tokens = this.tokenizeLine(lineNum, theLine);
-    this.errors = saveList;
-    return tokens;
+    return tokenizeLine(lineNum, theLine, callerErrorList, true);
   }
 
   /**
@@ -282,11 +285,19 @@ public class Tokenizer {
    */
   public TokenList tokenizeLine(
       int lineNum, String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes) {
+    return tokenizeLine(lineNum, theLine, callerErrorList, doEqvSubstitutes, () -> {});
+  }
+
+  TokenList tokenizeLine(
+      int lineNum, String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes,
+      Runnable checkCancellation) {
     ErrorList saveList = this.errors;
     this.errors = callerErrorList;
-    TokenList tokens = this.tokenizeLine(sourceMIPSprogram, lineNum, theLine, doEqvSubstitutes);
-    this.errors = saveList;
-    return tokens;
+    try {
+      return tokenizeLine(sourceMIPSprogram, lineNum, theLine, doEqvSubstitutes, checkCancellation);
+    } finally {
+      this.errors = saveList;
+    }
   }
 
   /**
@@ -302,6 +313,13 @@ public class Tokenizer {
    */
   public TokenList tokenizeLine(
       MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes) {
+    return tokenizeLine(program, lineNum, theLine, doEqvSubstitutes, () -> {});
+  }
+
+  private TokenList tokenizeLine(
+      MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes,
+      Runnable checkCancellation) {
+    checkCancellation.run();
     TokenList result = new TokenList();
     if (theLine.isEmpty()) {
       return result;
@@ -314,11 +332,16 @@ public class Tokenizer {
     int tokenPos = 0;
     int tokenStartPos = 1;
     boolean insideQuotedString = false;
+    int nextCancellationCheck = 256;
     if (sourceMIPSprogram != null && sourceMIPSprogram.assemblyContext().debug()) {
       System.out.println("source line --->" + theLine + "<---");
     }
     // Each iteration of this loop processes one character in the source line.
     while (linePos < line.length) {
+      if (linePos >= nextCancellationCheck) {
+        checkCancellation.run();
+        nextCancellationCheck = linePos + 256;
+      }
       c = line[linePos];
       if (insideQuotedString) { // everything goes into token
         token[tokenPos++] = c;
@@ -485,7 +508,7 @@ public class Tokenizer {
       this.processCandidateToken(token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
     }
     if (doEqvSubstitutes) {
-      result = processEqv(program, lineNum, theLine, result); // DPS 11-July-2012
+      result = processEqv(program, lineNum, theLine, result, checkCancellation);
     }
     return result;
   }
@@ -497,7 +520,9 @@ public class Tokenizer {
   // contains a symbol that was previously defined in an .eqv directive, in which case
   // the substitution needs to be made.
   // DPS 11-July-2012
-  private TokenList processEqv(MIPSprogram program, int lineNum, String theLine, TokenList tokens) {
+  private TokenList processEqv(
+      MIPSprogram program, int lineNum, String theLine, TokenList tokens,
+      Runnable checkCancellation) {
     // See if it is .eqv directive.  If so, record it...
     // Have to assure it is a well-formed statement right now (can't wait for assembler).
 
@@ -594,7 +619,9 @@ public class Tokenizer {
     }
     tokens.setProcessedLine(theLine); // DPS 03-Jan-2013. Related to changes of 11-July-2012.
 
-    return (substitutionMade) ? tokenizeLine(lineNum, theLine) : tokens;
+    return substitutionMade
+        ? tokenizeLine(sourceMIPSprogram, lineNum, theLine, true, checkCancellation)
+        : tokens;
   }
 
   /**
