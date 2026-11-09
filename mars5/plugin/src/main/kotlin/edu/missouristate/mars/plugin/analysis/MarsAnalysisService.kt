@@ -14,6 +14,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.elementType
 import com.intellij.util.containers.SLRUMap
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.text.CharArrayUtil
@@ -22,12 +23,12 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
-import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
@@ -39,7 +40,9 @@ import kotlinx.coroutines.Deferred
 
 internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val macroOffset: Int)
 
-internal data class ExpandedOperationSite(val token: Token, val range: TextRange)
+internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
+
+private val mnemonicType = MipsTypes.psi("MNEMONIC")
 
 internal data class IndexedSymbolCandidates(
     val declarations: List<IndexedSymbolSite>,
@@ -207,20 +210,37 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     ): TokenList? = expandedOperationAlias(root, head, source, allowIncompleteOperand)
         ?.takeIf { it[0].type == TokenTypes.OPERATOR }
 
+    internal fun editorInstructionTokens(
+        root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
+    ): TokenList? {
+        if (head.elementType != mnemonicType || isGeneratedMnemonicLabel(root, head)) {
+            return expandedInstructionAlias(root, head, source, allowIncompleteOperand)
+        }
+        return Tokenizer().tokenizeLine(1, source, ErrorList(), false).also { it.processedLine = source }
+    }
+
+    private fun isGeneratedMnemonicLabel(root: MipsFile, head: PsiElement): Boolean {
+        if (DumbService.isDumb(project) || followingEquivalenceName(head) == null) return false
+        val original = root.findElementAt(head.textOffset)
+        return editorTimeline(root).generatedLabels[head.text].orEmpty().any { it.site == original }
+    }
+
     internal fun expandedOperationAlias(
         root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? {
-        if (DumbService.isDumb(project)) return null
-        val prefix = editorPrefix(root, head.textOffset)
-        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return null
+        val prefix = leadingEquivalencePrefix(root, head) ?: return null
         return expandedOperation(prefix, source, allowIncompleteOperand)?.takeUnless(TokenList::isEmpty)
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
-    internal fun expandedOperationSite(root: MipsFile, head: PsiElement): ExpandedOperationSite? {
-        if (DumbService.isDumb(project)) return null
-        val prefix = editorPrefix(root, head.textOffset)
-        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return null
+    internal fun operationSite(root: MipsFile, head: PsiElement): OperationSite? {
+        val prefix = leadingEquivalencePrefix(root, head)
+        if (prefix != null) return expandedOperationSite(root, head, prefix)
+        if (head.elementType != mnemonicType) return null
+        return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
+    }
+
+    private fun expandedOperationSite(root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix): OperationSite? {
         val source = sourceLine(head)
         val expansion = Tokenizer.tokenizeMappedLine(
             source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
@@ -230,17 +250,24 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val operation = tokens[0]
         if (operation.type != TokenTypes.OPERATOR && operation.type != TokenTypes.DIRECTIVE) return null
         val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
-        return ExpandedOperationSite(operation, root.findElementAt(offset)!!.textRange)
+        return OperationSite(operation.value, operation.type, root.findElementAt(offset)!!.textRange)
     }
 
     /** Unresolved operations may still become executable in a containing entry or macro expansion. */
     internal fun canSetOperationBreakpoint(root: MipsFile, head: PsiElement): Boolean {
-        if (DumbService.isDumb(project)) return true
-        val prefix = editorPrefix(root, head.textOffset)
-        if (!hasLeadingEquivalence(head) { prefix.equivalence(it)?.replacement }) return true
+        val prefix = leadingEquivalencePrefix(root, head) ?: return true
         val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return true
         if (tokens.isEmpty) return false
         return tokens[0].type == TokenTypes.OPERATOR || tokens[0].type == TokenTypes.IDENTIFIER
+    }
+
+    private fun leadingEquivalencePrefix(root: MipsFile, head: PsiElement): MipsSourceTimeline.Prefix? {
+        if (DumbService.isDumb(project)) return null
+        val following = followingEquivalenceName(head)
+        if (following == null && head.elementType == mnemonicType) return null
+        val prefix = editorPrefix(root, head.textOffset)
+        if (prefix.equivalence(head.text) != null) return prefix
+        return prefix.takeIf { following != null && it.equivalence(following) != null }
     }
 
     private fun expandedOperation(

@@ -17,23 +17,10 @@ internal val instructionMnemonicColor =
 
 internal class MipsInstructionHighlighter : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-        val mnemonic = when (element.elementType) {
-            operationType -> element.textRange
-            candidateType -> {
-                val head = element.firstChild
-                val file = element.containingFile as MipsFile
-                val analysis = file.project.service<MarsAnalysisService>()
-                val site = analysis.expandedOperationSite(file, head) ?: return
-                if (site.token.type != TokenTypes.OPERATOR) return
-                site.range
-            }
-            else -> return
-        }
-        holder.newSilentAnnotation(HighlightSeverity.INFORMATION).range(mnemonic).textAttributes(instructionMnemonicColor).create()
-    }
-
-    private companion object {
-        val operationType = MipsTypes.psi("OPERATION")
-        val candidateType = MipsTypes.psi("OPERATION_CANDIDATE")
+        if (element.elementType !in operationOwners) return
+        val file = element.containingFile as MipsFile
+        val site = file.project.service<MarsAnalysisService>().operationSite(file, element.operationHead) ?: return
+        if (site.type != TokenTypes.OPERATOR) return
+        holder.newSilentAnnotation(HighlightSeverity.INFORMATION).range(site.range).textAttributes(instructionMnemonicColor).create()
     }
 }

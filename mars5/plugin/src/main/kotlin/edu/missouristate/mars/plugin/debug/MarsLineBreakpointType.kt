@@ -13,15 +13,13 @@ import com.intellij.xdebugger.breakpoints.XLineBreakpointType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
-import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.operationOwners
 import edu.missouristate.mars.plugin.run.runMessages
 
 internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointProperties<*>>(
     "MarsMipsLine", runMessages.getMessage("debug.breakpoint.type"),
 ) {
-    private val instruction = MipsTypes.psi("INSTRUCTION")
-    private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
-
     override fun createBreakpointProperties(file: VirtualFile, line: Int): XBreakpointProperties<*>? = null
 
     override fun getEditorsProvider(breakpoint: XLineBreakpoint<XBreakpointProperties<*>>, project: Project) = MarsDebugEditors
@@ -34,12 +32,8 @@ internal class MarsLineBreakpointType : XLineBreakpointType<XBreakpointPropertie
         var candidate = false
         XDebuggerUtil.getInstance().iterateLine(project, document, line) { leaf ->
             candidate = generateSequence(leaf) { it.parent }.any {
-                when (it.elementType) {
-                    instruction -> true
-                    operationCandidate -> it.firstChild === leaf &&
-                        project.service<MarsAnalysisService>().canSetOperationBreakpoint(leaf.containingFile as MipsFile, leaf)
-                    else -> false
-                }
+                it.elementType in operationOwners && it.operationHead === leaf &&
+                    project.service<MarsAnalysisService>().canSetOperationBreakpoint(leaf.containingFile as MipsFile, leaf)
             }
             !candidate
         }

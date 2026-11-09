@@ -81,6 +81,8 @@ class MipsParameterInfoPlatformTest {
             assertEquals(info("lw \$t0, -4(<caret>"), info("${include}LOAD OFFSET<caret>"))
             assertEquals(info("sll \$t0, <caret>"), info("${include}PREFIX sll \$t0, <caret>"))
             assertEquals(info("sll \$t0, <caret>"), info("${include}split SEP sll \$t0, <caret>"))
+            assertEquals(info("sll \$t0, <caret>"), info("${include}addiu SEP sll \$t0, <caret>"))
+            assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}addiu SEP sll \$t0, bad%<caret>"))
             assertEquals(info("div \$t0,\$t1 <caret>"), info("${include}DIVIDE <caret>"))
         }
     }
@@ -93,6 +95,7 @@ class MipsParameterInfoPlatformTest {
                 ".eqv FIRST SECOND\n.eqv SECOND FIRST\nFIRST <caret>",
                 ".eqv SHIFT sll \$t0\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nSHIFT FIRST <caret>",
                 ".eqv PREFIX row:\nPREFIX <caret>",
+                ".eqv SEP :\naddiu SEP <caret>",
                 "SHIFT <caret>\n.eqv SHIFT sll",
                 ".eqv SHIFT sll\nSH<caret>IFT \$t0",
             )) {

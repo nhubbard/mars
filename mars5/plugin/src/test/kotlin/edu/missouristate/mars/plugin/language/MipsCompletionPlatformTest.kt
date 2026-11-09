@@ -85,6 +85,7 @@ class MipsCompletionPlatformTest {
             assertEquals(floating, registers("add.s \$f0, <caret>"))
             assertEquals(floating, registers("mtc1 \$t0, <caret>"))
             assertEquals(floating, registers(".eqv TRANSFER mtc1 \$t0\nTRANSFER <caret>"))
+            assertEquals(floating, registers(".eqv SEP :\naddiu SEP mtc1 \$t0, <caret>"))
 
             val system = setOf("\$8", "\$12", "\$13", "\$14")
             assertEquals(system, registers("mfc0 \$t0, <caret>"))

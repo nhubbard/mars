@@ -102,6 +102,8 @@ class MipsEditorPlatformTest {
                 OTHER addiu ${'$'}t0, ${'$'}zero, 7
                 split COLON BRANCH target
                 BOTH ${'$'}t0, ${'$'}t0, 1
+                addiu COLON syscall
+                j COLON
                 BRANCH: nop
                 target: nop
                 LATE target
@@ -116,6 +118,7 @@ class MipsEditorPlatformTest {
             val expected = listOf(
                 "BRANCH target" to "BRANCH", "addiu \$t0, \$zero, 7" to "addiu",
                 "BRANCH target\nBOTH" to "BRANCH", "BOTH \$t0, \$t0, 1" to "BOTH",
+                "syscall\nj COLON" to "syscall",
                 "nop\ntarget" to "nop", "nop\nLATE" to "nop",
             ).map { (context, mnemonic) ->
                 val start = source.indexOf(context)
@@ -126,7 +129,10 @@ class MipsEditorPlatformTest {
             val analysis = current.service<MarsAnalysisService>()
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertNull(analysis.expandedInstructionAlias(file, head, head.text))
-                assertNull(analysis.expandedOperationSite(file, head))
+                assertNull(analysis.operationSite(file, head))
+                val literal = file.findElementAt(source.indexOf("addiu COLON"))!!
+                assertEquals(literal.textRange, analysis.operationSite(file, literal)?.range)
+                assertEquals("addiu", analysis.editorInstructionTokens(file, literal, literal.text)?.get(0)?.value)
             }
         }
     }

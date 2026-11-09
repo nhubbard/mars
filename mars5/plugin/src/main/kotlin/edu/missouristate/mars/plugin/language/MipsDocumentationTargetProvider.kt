@@ -29,17 +29,13 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         val token = file.findElementAt(adjusted) ?: return emptyList()
         val owner = token.parent
         val ownerType = PsiUtilCore.getElementType(owner)
-        val candidate = when (ownerType) {
-            operationCandidate -> owner
-            invocationToken -> owner.parent
-            else -> null
-        }
+        val candidate = operationOwner(token)
         if (candidate != null) {
             val analysis = file.project.service<MarsAnalysisService>()
-            val site = analysis.expandedOperationSite(file, candidate.firstChild) ?: return emptyList()
+            val site = analysis.operationSite(file, candidate.operationHead) ?: return emptyList()
             if (site.range.startOffset != token.textOffset) return emptyList()
             // Includes are expanded before equivalences, so a generated .include cannot open a file.
-            val operation = site.token.value
+            val operation = site.name
             if (Directives.INCLUDE.name.equals(operation, ignoreCase = true)) return emptyList()
             return listOf(MipsDocumentationCatalog[operation])
         }
@@ -56,13 +52,11 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
 
     private companion object {
         val includeType = MipsTypes.psi("INCLUDE")
-        val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
-        val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
         val macroEndType = MipsTypes.psi("END_MACRO")
         val includeOwners = TokenSet.create(MipsTypes.psi("INCLUDE_LINE"), MipsTypes.psi("DIRECTIVE_STATEMENT"))
         val macroEndOwners = TokenSet.create(MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("STATEMENT"))
         val headOwners = TokenSet.create(
-            MipsTypes.psi("OPERATION"), MipsTypes.psi("DIRECTIVE_STATEMENT"),
+            MipsTypes.psi("DIRECTIVE_STATEMENT"),
             MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("MACRO_HEADER"),
         )
     }

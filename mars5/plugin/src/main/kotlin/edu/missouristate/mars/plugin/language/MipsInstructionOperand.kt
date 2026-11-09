@@ -4,38 +4,34 @@ import com.intellij.openapi.components.service
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.PsiUtilCore
-import edu.missouristate.mars.ErrorList
+import com.intellij.psi.util.elementType
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
-import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+
+private val instructionType = MipsTypes.psi("INSTRUCTION")
+internal val operationOwners = TokenSet.create(instructionType, MipsTypes.psi("OPERATION_CANDIDATE"))
+internal val PsiElement.operationHead: PsiElement
+    get() = if (elementType == instructionType) firstChild.firstChild else firstChild
+
+internal fun operationOwner(position: PsiElement): PsiElement? =
+    PsiTreeUtil.findFirstParent(position, true) { it.elementType in operationOwners }
 
 internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }
 
     companion object {
-        private val instructionType = MipsTypes.psi("INSTRUCTION")
-        private val operationTypes = TokenSet.create(instructionType, MipsTypes.psi("OPERATION_CANDIDATE"))
         private val addressPunctuation = setOf(TokenTypes.LEFT_PAREN, TokenTypes.RIGHT_PAREN)
 
         fun at(position: PsiElement, sourceFile: MipsFile): MipsInstructionOperand? {
-            val instruction = PsiTreeUtil.findFirstParent(position, true) {
-                PsiUtilCore.getElementType(it) in operationTypes
-            } ?: return null
+            val instruction = operationOwner(position) ?: return null
             val prefix = instruction.node.chars.subSequence(0, position.textOffset - instruction.textOffset).toString()
-            val head = instruction.firstChild
-            val (mnemonic, tokens) = if (instruction.node.elementType == instructionType) {
-                head.text to Tokenizer().tokenizeLine(1, prefix, ErrorList(), false)
-            } else {
-                val expanded = sourceFile.project.service<MarsAnalysisService>()
-                    .expandedInstructionAlias(sourceFile, head, prefix) ?: return null
-                expanded[0].value to expanded
-            }
+            val tokens = sourceFile.project.service<MarsAnalysisService>()
+                .editorInstructionTokens(sourceFile, instruction.operationHead, prefix) ?: return null
             val index = tokens.size()
-            val formats = InstructionDefaults.get().matchOperator(mnemonic).filter {
+            val formats = InstructionDefaults.get().matchOperator(tokens[0].value).filter {
                 index < it.tokenList.size() && matchesAddressShape(tokens, it.tokenList)
             }
             return MipsInstructionOperand(index, formats)

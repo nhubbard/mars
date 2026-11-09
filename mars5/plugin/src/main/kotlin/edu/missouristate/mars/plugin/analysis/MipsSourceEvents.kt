@@ -5,6 +5,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.elementType
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
@@ -15,6 +16,8 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.operationOwners
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
@@ -46,9 +49,10 @@ internal sealed interface MipsSourceEvent {
         }
     }
 
-    class OperationCandidate(private val head: PsiElement) : MipsSourceEvent {
+    class OperationCandidate(owner: PsiElement) : MipsSourceEvent {
+        private val head = owner.operationHead
         override val offset = head.textOffset
-        private val followsLabel = head.parent.parent.node.findChildByType(labelType) != null
+        private val followsLabel = owner.parent.node.findChildByType(labelType) != null
 
         fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
             if (!hasLeadingEquivalence(head, replacement)) return null
@@ -56,11 +60,11 @@ internal sealed interface MipsSourceEvent {
             val expanded = Tokenizer.expandLine(
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
             )
-            if (errors.errorsOccurred()) return null
             val tokens = expanded.tokens()
-            tokens.discardTrailingComment()
             val startsWithLabel = tokens.beginsWithLabel()
             if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
+            if (errors.errorsOccurred()) return null
+            tokens.discardTrailingComment()
             expanded.definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
             // In an open macro a label is part of the body, even before a closing directive.
             val operation = if (!inMacro && startsWithLabel) 2 else 0
@@ -131,12 +135,11 @@ internal sealed interface MipsSourceEvent {
 }
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
-private val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
-private val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
 private val labelType = MipsTypes.psi("LABEL")
+private val wordTypes = setOf(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
 private val sourceEventTypes = setOf(
     MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
-    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), operationCandidate, labelType,
+    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"), labelType,
 )
 private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
@@ -147,7 +150,7 @@ private val dataStateDirectives = setOf(
 internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedValuesManager.getCachedValue(file) {
     val paths = mipsIncludePaths(file)
     val events = buildList {
-        for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes }) {
+        for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes || it in operationOwners }) {
             ProgressManager.checkCanceled()
             when (element) {
                 is MipsDeclaration -> when (element.kind) {
@@ -165,7 +168,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                 }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
                 else -> when (element.node.elementType) {
-                    operationCandidate -> add(MipsSourceEvent.OperationCandidate(element.firstChild))
+                    in operationOwners -> add(MipsSourceEvent.OperationCandidate(element))
                     directiveStatement -> {
                         val directive = Directives.matchDirective(element.firstChild.text)
                         if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
@@ -194,8 +197,14 @@ internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): St
 /** A candidate can acquire an operation or label from either of its first two written tokens. */
 internal fun hasLeadingEquivalence(head: PsiElement, replacement: (String) -> String?): Boolean {
     if (replacement(head.text) != null) return true
-    val following = head.parent.node.findChildByType(invocationToken) ?: return false
-    return replacement(following.text) != null
+    return followingEquivalenceName(head)?.let(replacement) != null
+}
+
+internal fun followingEquivalenceName(head: PsiElement): String? {
+    val file = head.containingFile
+    val offset = CharArrayUtil.shiftForward(file.viewProvider.contents, head.textRange.endOffset, " \t,")
+    val following = file.findElementAt(offset) ?: return null
+    return following.text.takeIf { following.elementType in wordTypes }
 }
 
 internal fun TokenList.discardTrailingComment() {

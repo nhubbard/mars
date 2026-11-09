@@ -111,6 +111,8 @@ class MipsDocumentationPlatformTest {
         assertEquals(nop, documentation(definitions + "LABEL n<caret>op"))
         assertEquals(nop, documentation(definitions + "LABEL O<caret>P"))
         assertEquals(nop, documentation(".eqv SEP :\nentry, SEP, n<caret>op"))
+        assertEquals(nop, documentation(".eqv SEP :\naddiu, SEP, n<caret>op"))
+        assertNull(documentation(".eqv SEP :\nad<caret>diu, SEP, nop"))
         assertEquals(nop, documentation(definitions + "BO<caret>TH"))
         assertNull(documentation(definitions + "LA<caret>BEL nop"))
         assertNull(documentation(definitions + "LABEL nop O<caret>P"))

@@ -166,7 +166,7 @@ class MipsLabelReferencesPlatformTest {
     @Test
     fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val definitions = ".eqv SEP :\n"
-        val body = "entry, SEP, addiu \$t0, \$zero, 7\n"
+        val body = "entry, SEP, addiu \$t0, \$zero, 7\naddiu SEP nop\n"
         val includes = ".include \"definitions.s\"\n.include \"body.s\"\n"
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.s", definitions)
@@ -180,6 +180,12 @@ class MipsLabelReferencesPlatformTest {
         }
         configure(".include \"body.s\"\n.include \"definitions.s\"\nj ent<caret>ry\n")
         readAction { assertNull(referenceAtCaret()?.resolve()) }
+        configure(includes + "j add<caret>iu\n")
+        readAction {
+            val target = referenceAtCaret()?.resolve()
+            assertEquals("body.s", target?.containingFile?.name)
+            assertEquals(body.indexOf("addiu SEP"), target?.textOffset)
+        }
 
         directory.resolve("definitions.s").writeText(definitions)
         directory.resolve("body.s").writeText(body)

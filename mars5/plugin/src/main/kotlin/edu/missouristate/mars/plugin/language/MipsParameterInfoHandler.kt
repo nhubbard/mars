@@ -8,14 +8,11 @@ import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
-import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.text.CharArrayUtil
-import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
-import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -56,12 +53,9 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instr
     private fun parameterTokens(owner: PsiElement, context: ParameterInfoContext): TokenList? {
         val text = context.editor.document.immutableCharSequence
         val prefix = text.subSequence(owner.textOffset, context.offset).toString()
-        if (owner.node.elementType == instructionType) {
-            return Tokenizer().tokenizeLine(1, prefix, ErrorList(), false).also { it.processedLine = prefix }
-        }
         val file = context.file as MipsFile
         return file.project.service<MarsAnalysisService>()
-            .expandedInstructionAlias(file, owner.firstChild, prefix, allowIncompleteOperand = true)
+            .editorInstructionTokens(file, owner.operationHead, prefix, allowIncompleteOperand = true)
     }
 
     override fun updateUI(instruction: Instruction, context: ParameterInfoUIContext) {
@@ -83,14 +77,12 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instr
         val statement = PsiTreeUtil.findFirstParent(context.file.findElementAt(first), true) {
             PsiUtilCore.getElementType(it) == statementType
         } ?: return null
-        val owner = statement.node.findChildByType(operationTypes)?.psi ?: return null
+        val owner = statement.node.findChildByType(operationOwners)?.psi ?: return null
         return owner.takeIf { offset >= it.firstChild.textRange.endOffset }
     }
 
     private companion object {
         val statementType = MipsTypes.psi("STATEMENT")
-        val instructionType = MipsTypes.psi("INSTRUCTION")
-        val operationTypes = TokenSet.create(instructionType, MipsTypes.psi("OPERATION_CANDIDATE"))
         val commentType = MipsTypes.psi("COMMENT")
         val operandPrefixes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
     }
