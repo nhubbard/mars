@@ -8,14 +8,11 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
-import com.intellij.psi.util.PsiTreeUtil
-import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.containers.SLRUMap
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.text.CharArrayUtil
@@ -28,13 +25,10 @@ import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
-import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
-import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
-import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -105,13 +99,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
         if (!DumbService.isDumb(project)) {
             val timeline = editorTimeline(root)
-            for (scope in labelScopes(root, macroOffset(position))) {
-                for ((name, sites) in declarations(scope.file)) {
+            val macro = timeline.macroAt(root, position.textOffset)
+            for (file in timeline.sourceFiles()) {
+                for ((name, sites) in declarations(file)) {
                     ProgressManager.checkCanceled()
-                    if (name.startsWith(prefix) && sites.any { scope.hasLiteralLabel(name, it, timeline) }) add(name)
+                    if (name.startsWith(prefix) && sites.any {
+                        it.isLiteralLabel(file, timeline) && visibleLabel(name, timeline.macroAt(file, it.offset), macro)
+                    }) add(name)
                 }
             }
-            val macro = timeline.macroAt(root, position.textOffset)
             for ((name, labels) in timeline.generatedLabels) {
                 ProgressManager.checkCanceled()
                 if (name.startsWith(prefix) && labels.any { it.macro == null || it.macro === macro }) add(name)
@@ -127,15 +123,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (timeline != null) {
             val local = ArrayList<PsiElement>()
             val outer = ArrayList<PsiElement>()
-            for (scope in labelScopes(root, macroOffset(position))) {
-                for (site in declarations(scope.file)[name].orEmpty()) {
+            val macro = timeline.macroAt(root, position.textOffset)
+            for (file in timeline.sourceFiles()) {
+                for (site in declarations(file)[name].orEmpty()) {
                     ProgressManager.checkCanceled()
-                    if (!scope.hasLiteralLabel(name, site, timeline)) continue
-                    val matches = if (scope.isMacroLocal(site)) local else outer
-                    matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
+                    if (!site.isLiteralLabel(file, timeline)) continue
+                    val owner = timeline.macroAt(file, site.offset)
+                    if (!visibleLabel(name, owner, macro)) continue
+                    val matches = if (owner == null) outer else local
+                    matches.addAll(listOfNotNull(MipsDeclaration.findAt(file, site.offset, name)))
                 }
             }
-            val macro = timeline.macroAt(root, position.textOffset)
             for (label in timeline.generatedLabels[name].orEmpty()) {
                 ProgressManager.checkCanceled()
                 if (label.macro == null) outer.add(label.site)
@@ -327,43 +325,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return editorPrefix(root, lineStart).equivalence(position.text)?.site
     }
 
-    private data class LabelScope(val file: MipsFile, val macro: Int, val inheritedMacro: Boolean)
+    private fun MipsDeclarationSite.isLiteralLabel(file: MipsFile, timeline: MipsSourceTimeline): Boolean =
+        kind == SymbolKind.LABEL && !timeline.replacesLabel(file, offset)
 
-    private fun LabelScope.isMacroLocal(site: MipsDeclarationSite) = site.macroOffset != -1 || inheritedMacro
-
-    private fun LabelScope.hasLiteralLabel(name: String, site: MipsDeclarationSite, timeline: MipsSourceTimeline): Boolean =
-        site.kind == SymbolKind.LABEL && visibleInMacro(site.macroOffset, macro) &&
-            !(isMacroLocal(site) && Macro.tokenIsMacroParameter(name, true)) && !timeline.replacesLabel(file, site.offset)
+    private fun visibleLabel(name: String, owner: MipsSourceEvent.Begin?, active: MipsSourceEvent.Begin?): Boolean =
+        owner == null || owner === active && !Macro.tokenIsMacroParameter(name, true)
 
     private fun declarations(file: MipsFile) =
         FileBasedIndex.getInstance().getFileData(MipsDeclarationIndex.NAME, file.viewProvider.virtualFile, project)
-
-    private fun labelScopes(root: MipsFile, activeMacro: Int): Sequence<LabelScope> = sequence {
-        val pending = ArrayDeque(listOf(LabelScope(root, activeMacro, false)))
-        val visited = HashSet<VirtualFile>()
-        while (pending.isNotEmpty()) {
-            ProgressManager.checkCanceled()
-            val scope = pending.removeFirst()
-            val file = scope.file
-            if (!visited.add(file.viewProvider.virtualFile)) continue
-            yield(scope)
-            for ((offset, path) in mipsIncludePaths(file)) {
-                ProgressManager.checkCanceled()
-                val literal = file.findElementAt(offset) as MipsStringLiteral
-                val owner = macroOffset(literal)
-                if (visibleInMacro(owner, scope.macro)) {
-                    val target = resolveMipsInclude(literal, path)
-                    if (target is MipsFile) pending.addLast(LabelScope(target, -1, scope.inheritedMacro || owner != -1))
-                }
-            }
-        }
-    }
-
-    private fun visibleInMacro(owner: Int, active: Int): Boolean = owner == -1 || owner == active
-
-    private fun macroOffset(element: PsiElement): Int = PsiTreeUtil.findFirstParent(element, true) {
-        PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
-    }?.textOffset ?: -1
 
     /** Waits for usable native indices and returns detached candidates for one scoped symbol key. */
     internal suspend fun lookupCandidates(key: SymbolKey, scope: GlobalSearchScope): IndexedSymbolCandidates {

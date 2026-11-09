@@ -18,7 +18,7 @@ import java.util.TreeMap
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
     val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
     val events = ArrayList<MipsSourceEvent.Effective>()
-    val files = HashMap<VirtualFile, SourceFileEvents>()
+    val files = LinkedHashMap<VirtualFile, SourceFileEvents>()
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
     val generatedLabels = LinkedHashMap<String, MutableList<GeneratedLabel>>()
@@ -26,7 +26,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
-        val locations = SourceFileEvents()
+        val locations = SourceFileEvents(file)
         files[file.viewProvider.virtualFile] = locations
         pending.addLast(SourceCursor(locations, mipsSourceEvents(file).iterator()))
     }
@@ -108,6 +108,8 @@ internal class MipsSourceTimeline(
 ) {
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
+    fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().map(SourceFileEvents::file)
+
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
     fun macroAt(file: MipsFile, offset: Int): MipsSourceEvent.Begin? = macroBoundaries.floorEntry(prefixEnd(file, offset))?.value
@@ -137,7 +139,7 @@ internal class MipsSourceTimeline(
 
 internal data class SourceEventSite(val offset: Int, val index: Int)
 
-internal class SourceFileEvents {
+internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
     val replacedLabels = HashSet<Int>()
     var end = 0

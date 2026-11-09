@@ -162,9 +162,11 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals(second, target()?.first)
         val leading = "# moved\n"
         withContext(Dispatchers.EDT) { edit(second, leading + selectedSource) }
-        assertNull(target())
+        assertEquals(second to leading.length, target())
         withContext(Dispatchers.EDT) { fixture.doHighlighting() }
         assertEquals(second to leading.length, target())
+        withContext(Dispatchers.EDT) { edit(second, selectedSource.replace("target:", "other:")) }
+        assertNull(target())
     }
 
     @Test

@@ -222,8 +222,12 @@ class MipsCompletionPlatformTest {
                 .eqv CLOSE .end_macro
                 .eqv PREFIX labelLocal:
                 labelOuter: nop
+                .macro prior
+                  labelHidden: nop
+                CLOSE
                 OPEN
                   PREFIX nop
+                  labelWritten: nop
                   j label<caret>
                 CLOSE
             """.trimIndent())
@@ -231,7 +235,7 @@ class MipsCompletionPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
             val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith("label") }
-            assertEquals(setOf("labelLocal", "labelOuter"), names.toSet())
+            assertEquals(setOf("labelLocal", "labelOuter", "labelWritten"), names.toSet())
         }
     }
 

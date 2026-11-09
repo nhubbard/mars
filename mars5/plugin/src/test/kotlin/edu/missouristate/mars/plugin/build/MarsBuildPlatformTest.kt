@@ -79,6 +79,7 @@ class MarsBuildPlatformTest {
             .end_macro
             helper ARGS
             la ${'$'}t4, reservation
+            j publicAfter
             li ${'$'}t2, LATE
         """.trimIndent()
         fun entry(values: String) = """
@@ -95,6 +96,7 @@ class MarsBuildPlatformTest {
               .include "parts/wrapper.s"
             body (42)
             .eqv LATE 99
+            publicAfter: nop
         """.trimIndent()
         val (first, second) = withContext(Dispatchers.EDT) {
             val shared = fixture.addFileToProject("parts/shared.s", source).virtualFile
@@ -118,6 +120,7 @@ class MarsBuildPlatformTest {
             assertNull(target("COUNT"))
             assertNull(target("%value"))
             assertNull(target("reservation"))
+            assertNull(target("publicAfter"))
         }
         for ((entry, values) in listOf(first to "first-values.s", second to "second-values.s")) {
             assertFalse(assemble(entry))
@@ -130,6 +133,8 @@ class MarsBuildPlatformTest {
                 assertEquals(entry, target("ARGS")?.containingFile?.virtualFile)
                 assertEquals(entry, target("reservation")?.containingFile?.virtualFile)
                 assertEquals("RESERVE", target("reservation")?.text)
+                assertEquals(entry, target("publicAfter")?.containingFile?.virtualFile)
+                assertEquals("publicAfter:", target("publicAfter")?.text)
                 assertNull(target("LATE"))
             }
         }
@@ -147,6 +152,7 @@ class MarsBuildPlatformTest {
             assertNull(target("%value"))
             assertNull(target("helper"))
             assertNull(target("reservation"))
+            assertNull(target("publicAfter"))
         }
         val plain = withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
@@ -180,7 +186,7 @@ class MarsBuildPlatformTest {
         readAction {
             assertEquals(data, fixture.file.virtualFile)
             assertEquals(entry, target()?.containingFile?.virtualFile)
-            assertEquals("value", target()?.text)
+            assertEquals("value:", target()?.text)
         }
     }
 
@@ -251,7 +257,11 @@ class MarsBuildPlatformTest {
                 edit(second, "# changed entry\n" + Files.readString(second.toNioPath()))
                 PsiDocumentManager.getInstance(project).commitAllDocuments()
             }
-            readAction { assertNull(target()) }
+            readAction {
+                val declaration = target()
+                assertEquals(second, declaration?.containingFile?.virtualFile)
+                assertEquals("# changed entry\nselectedBeta: nop\n".length, declaration?.textOffset)
+            }
         } finally {
             Disposer.dispose(disposable)
         }

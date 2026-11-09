@@ -168,7 +168,9 @@ The resolver prioritizes visible equivalence definitions and skips SPIM macro pa
 when looking for a direct label. The include-ordered source cache also records labels supplied
 by equivalence expansion. A generated prefix opens the written operation alias. A renamed
 physical label opens its declaration and appears in completion under the expanded spelling.
-Generated macro-local labels follow the expanded macro boundaries, including across includes.
+Written and generated labels both follow the expanded macro boundaries, including across
+includes. An included editor can look up forward labels in its selected entry using live
+source, including after a failed build.
 The IDE fixtures check these bindings alongside case sensitivity, macro shadowing, duplicate
 declarations, and non-label operands. Labels supplied by macro arguments still use assembly
 results.

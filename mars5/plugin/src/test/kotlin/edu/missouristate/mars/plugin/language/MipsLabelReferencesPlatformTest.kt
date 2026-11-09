@@ -173,6 +173,29 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
+    fun `written labels follow expanded macro boundaries across included files`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = "same: nop\nhidden: nop\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("macro-body.s", definitions) }
+        val prefix = ".eqv OPEN .macro emit\n.eqv CLOSE .end_macro\nsame: nop\n"
+        val body = ".include \"macro-body.s\"\n"
+        configure("${prefix}OPEN\n${body}j sa<caret>me\nCLOSE\n")
+        readAction { assertEquals("macro-body.s", referenceAtCaret()?.resolve()?.containingFile?.name) }
+        configure("${prefix}OPEN\n${body}CLOSE\nj sa<caret>me\n")
+        readAction { assertEquals(prefix.indexOf("same: nop"), referenceAtCaret()?.resolve()?.textOffset) }
+        configure("${prefix}OPEN\n${body}CLOSE\nj hid<caret>den\n")
+        readAction { assertNull(referenceAtCaret()?.resolve()) }
+
+        val entry = "${prefix}.macro emit\n${body}CLOSE\n.globl public\npublic: nop\nj pub<caret>lic\n"
+        configure(entry)
+        readAction { assertEquals(entry.indexOf("public:"), referenceAtCaret()?.resolve()?.textOffset) }
+        directory.resolve("macro-body.s").writeText(definitions)
+        val file = directory.resolve("entry.asm").also { it.writeText(entry.replace("<caret>", "")) }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(file), null, true, false)
+        assertEquals(context.memory.textBaseAddress + 4, context.symbolTable.getAddress("public"))
+    }
+
+    @Test
     fun `invalid expansions leave the written labels available for recovery`() = timeoutRunBlocking<Unit> {
         configure("""
             .eqv physical expanded
