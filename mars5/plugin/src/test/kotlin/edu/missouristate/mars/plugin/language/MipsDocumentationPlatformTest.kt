@@ -80,6 +80,45 @@ class MipsDocumentationPlatformTest {
         assertEquals(direct, computeDocumentationBlocking(pointer)?.html)
     }
 
+    @Test
+    fun `operation aliases show the core documentation and keep declaration navigation`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv DEFINE .eqv\nDEFINE OP DIV \$t0,\$t1\nDEFINE STORE .WoRd\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", definitions) }
+        val include = ".include \"aliases.s\"\n"
+        val instruction = documentation("di<caret>v \$t0, \$t1").orEmpty()
+        assertTrue("div" in instruction)
+        assertEquals(instruction, documentation("${include}entry: O<caret>P"))
+        readAction {
+            val declaration = fixture.file.findReferenceAt(fixture.editor.caretModel.offset)?.resolve()
+            assertEquals("aliases.s", declaration?.containingFile?.name)
+            assertEquals("DEFINE", declaration?.text)
+            assertEquals(definitions.indexOf("DEFINE OP"), declaration?.textOffset)
+        }
+
+        val directive = documentation(".wo<caret>rd 7").orEmpty()
+        assertTrue(".word" in directive)
+        assertEquals(directive, documentation("${include}STO<caret>RE 7"))
+        val nop = documentation("n<caret>op")
+        assertEquals(nop, documentation(".eqv OP nop\n${include}O<caret>P"))
+        assertNull(documentation("O<caret>P\n$include"))
+    }
+
+    @Test
+    fun `alias documentation is limited to operation heads with a catalog operation`() = timeoutRunBlocking<Unit> {
+        val sources = listOf(
+            ".eqv OP nop\nO<caret>P: nop",
+            ".eqv OP nop\nbeq \$t0, \$t1, O<caret>P",
+            ".eqv OP nop\ncustom O<caret>P",
+            ".eqv OP nop\nOP  <caret> 7",
+            ".eqv OP custom\nO<caret>P",
+            ".eqv OP 7\nO<caret>P",
+            ".eqv OP row:\nO<caret>P",
+            ".eqv OP NEXT\n.eqv NEXT OP\nO<caret>P",
+            ".eqv OP .InClUdE\nO<caret>P \"aliases.s\"",
+        )
+        for (source in sources) assertNull(documentation(source), source)
+    }
+
     private suspend fun documentation(source: String, filename: String = "doc.asm"): String? {
         withContext(Dispatchers.EDT) { fixture.configureByText(filename, source) }
         val current = project.get()

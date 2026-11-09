@@ -219,11 +219,16 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun expandedInstructionAlias(
         root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
+    ): TokenList? = expandedOperationAlias(root, head, source, allowIncompleteOperand)
+        ?.takeIf { it[0].type == TokenTypes.OPERATOR }
+
+    internal fun expandedOperationAlias(
+        root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
         if (prefix.equivalence(head.text) == null) return null
-        return expandedOperation(prefix, source, allowIncompleteOperand)?.takeIf { it[0].type == TokenTypes.OPERATOR }
+        return expandedOperation(prefix, source, allowIncompleteOperand)
     }
 
     private fun expandedOperation(

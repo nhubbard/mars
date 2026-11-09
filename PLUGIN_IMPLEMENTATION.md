@@ -147,6 +147,11 @@ uses the same immutable catalog entries for completion documentation. Only looku
 are created per invocation. The documentation pointers retain no file or editor state, and
 the presentation uses the platform's documentation markup with escaped catalog text.
 
+An operation-head alias uses the catalog entry for its effective instruction or directive in
+include order. Go to Declaration on that token opens the written equivalence definition.
+The include prepass requires a physical `.include`, so that entry is available on the physical
+directive.
+
 Jupiter fixtures use IntelliJ's documentation service to resolve source and lookup targets,
 render their content, and verify that comments, strings, labels and unrelated lookup items
 stay outside the catalog provider.
