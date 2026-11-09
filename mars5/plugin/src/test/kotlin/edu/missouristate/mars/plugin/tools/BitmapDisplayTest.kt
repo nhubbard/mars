@@ -2,8 +2,8 @@ package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.tools.BitmapDisplay.Base
-import edu.missouristate.mars.plugin.tools.BitmapDisplay.Options
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Options
 import java.util.function.Consumer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -16,7 +16,7 @@ class BitmapDisplayTest {
     fun `tracks complete RGB words through partial writes and reconnect`() {
         MarsSessionService.createMarsComponent().context().use { session ->
             val memory = session.memory
-            val display = BitmapDisplay()
+            val display = MemoryGridDisplay()
             val base = memory.dataBaseAddress
             display.configure(Options(64, 64, 32, 32))
             memory.setWord(base, 0x00abcdef)
@@ -66,7 +66,7 @@ class BitmapDisplayTest {
         assertThrows(IllegalArgumentException::class.java) { Options(unitHeight = 3) }
         MarsSessionService.createMarsComponent().context().use { session ->
             val memory = session.memory
-            val display = BitmapDisplay(captureAtLaunch = true)
+            val display = MemoryGridDisplay(captureAtLaunch = true)
             val watcher = Consumer<MemoryAccessNotice> { display.configure(Options(1024, 64, base = Base.MMIO)) }
             memory.addObserver(watcher, memory.dataBaseAddress)
             display.observe(memory).use {

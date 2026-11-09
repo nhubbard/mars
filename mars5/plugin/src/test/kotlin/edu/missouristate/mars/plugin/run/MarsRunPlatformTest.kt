@@ -177,6 +177,7 @@ class MarsRunPlatformTest {
             config.options.delayedBranching = true
             config.options.selfModifyingCode = true
             config.options.captureBitmap = true
+            config.options.captureReferences = true
             config.checkConfiguration()
             val state = Element("configuration")
             config.writeExternal(state)
@@ -186,11 +187,13 @@ class MarsRunPlatformTest {
             assertTrue(restored.options.delayedBranching)
             assertTrue(restored.options.selfModifyingCode)
             assertTrue(restored.options.captureBitmap)
+            assertTrue(restored.options.captureReferences)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
             assertFalse(previousConfiguration.options.selfModifyingCode)
             assertFalse(previousConfiguration.options.captureBitmap)
+            assertFalse(previousConfiguration.options.captureReferences)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
@@ -199,23 +202,28 @@ class MarsRunPlatformTest {
                 val delay = flags.getValue("Enable delayed branching")
                 val modify = flags.getValue("Allow self-modifying code")
                 val capture = flags.getValue("Capture Bitmap Display from launch")
+                val references = flags.getValue("Capture memory references from launch")
                 assertFalse(delay.isSelected)
                 assertFalse(modify.isSelected)
                 assertFalse(capture.isSelected)
+                assertFalse(references.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
                 assertTrue(modify.isSelected)
                 assertTrue(capture.isSelected)
+                assertTrue(references.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
                 modify.isSelected = false
                 capture.isSelected = false
+                references.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
                 assertFalse(restored.options.selfModifyingCode)
                 assertFalse(restored.options.captureBitmap)
+                assertFalse(restored.options.captureReferences)
             } finally {
                 Disposer.dispose(editor)
             }

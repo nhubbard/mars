@@ -22,7 +22,7 @@ import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
-import edu.missouristate.mars.plugin.tools.BitmapDisplay
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
@@ -56,8 +56,9 @@ internal class MarsRunService(private val project: Project, private val scope: C
         options: MarsExecutionOptions = MarsExecutionOptions(),
         memoryDumps: List<MemoryExportSelection>,
         captureBitmap: Boolean = false,
+        captureReferences: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
-    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, execute)
+    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences, execute)
 }
 
 internal class MarsProcessHandler(
@@ -65,12 +66,14 @@ internal class MarsProcessHandler(
     private val options: MarsExecutionOptions,
     private val memoryDumps: List<MemoryExportSelection>,
     captureBitmap: Boolean,
+    captureReferences: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
     val branchHistory = BranchHistoryTable()
-    val bitmapDisplay = BitmapDisplay(captureBitmap)
+    val bitmapDisplay = MemoryGridDisplay(captureBitmap)
+    val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
 
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -160,7 +163,9 @@ internal class MarsProcessHandler(
                                 }
                             }
                         })
-                        val stop = bitmapDisplay.observe(session.memory).use { execute(session) }
+                        val stop = bitmapDisplay.observe(session.memory).use {
+                            memoryReferences.observe(session.memory).use { execute(session) }
+                        }
                         if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, sources)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()

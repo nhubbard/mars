@@ -16,6 +16,7 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -43,8 +44,10 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab("statistics.name", statistics.component, statistics)
         val branchHistory = BranchHistoryView(project)
         addTab("branchHistory.name", branchHistory.component, branchHistory)
-        val bitmap = BitmapDisplayView(project)
-        addTab("bitmap.name", bitmap.component, bitmap)
+        val bitmap = MemoryGridView(project, Mode.BITMAP, MarsProcessHandler::bitmapDisplay)
+        addTab(Mode.BITMAP.nameKey, bitmap.component, bitmap)
+        val references = MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
+        addTab(Mode.REFERENCES.nameKey, references.component, references)
     }
 }
 

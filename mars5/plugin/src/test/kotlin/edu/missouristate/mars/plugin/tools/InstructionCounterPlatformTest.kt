@@ -14,24 +14,29 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.ui.ComponentUtil
+import com.intellij.ui.ColorPanel
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.table.JBTable
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
-import edu.missouristate.mars.plugin.tools.BitmapDisplay.Base
+import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import java.awt.image.BufferedImage
+import java.awt.Color
+import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JProgressBar
+import javax.swing.JSpinner
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
@@ -54,10 +59,11 @@ class InstructionCounterPlatformTest {
         val debug = DefaultDebugExecutor.getDebugExecutorInstance()
         val container = JPanel()
         val window = withContext(Dispatchers.EDT) { manager.registerToolWindow(RegisterToolWindowTask("MARS Tools")) }
-        val (panel, statistics, branches, bitmap) = withContext(Dispatchers.EDT) {
+        val (panel, statistics, branches, bitmap, references) = withContext(Dispatchers.EDT) {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
             val contents = window.contentManager.contents
-            assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display"),
+            assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
+                "Memory Reference Visualization"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -77,6 +83,9 @@ class InstructionCounterPlatformTest {
         val bitmapSelector = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(bitmap, JComboBox::class.java).single { it.itemCount == 0 }
         }
+        val referenceSelector = withContext(Dispatchers.EDT) {
+            UIUtil.findComponentsOfType(references, JComboBox::class.java).single { it.itemCount == 0 }
+        }
         fun button(text: String, component: JComponent = panel) =
             UIUtil.findComponentsOfType(component, JButton::class.java).single { it.text == text }
         fun labels() = UIUtil.findComponentsOfType(panel, JBLabel::class.java).map { it.text }
@@ -92,6 +101,7 @@ class InstructionCounterPlatformTest {
                     assertEquals(entries, statsSelector.itemCount)
                     assertEquals(entries, branchSelector.itemCount)
                     assertEquals(entries, bitmapSelector.itemCount)
+                    assertEquals(entries, referenceSelector.itemCount)
                     assertTrue(count in labels(), labels().toString())
                 }
             }
@@ -107,10 +117,10 @@ class InstructionCounterPlatformTest {
                 executionWindow.contentManager.addContent(content)
             }
 
-        suspend fun launch(executor: Executor, number: Long, source: String, captureBitmap: Boolean = false) = withContext(Dispatchers.EDT) {
+        suspend fun launch(executor: Executor, number: Long, source: String, captureGrids: Boolean = false) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("counter-$number.asm", source).virtualFile
             val process = project.getService(MarsRunService::class.java).createProcess(
-                file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureBitmap,
+                file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureGrids, captureReferences = captureGrids,
             )
             val descriptor = RunContentDescriptor(null, process, JPanel(), "Counter sample").apply {
                 executionId = number
@@ -122,8 +132,14 @@ class InstructionCounterPlatformTest {
         }
 
         try {
-            fun renderBitmap(): BufferedImage {
-                val canvas = UIUtil.findComponentsOfType(bitmap, BitmapCanvas::class.java).single()
+            fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
+            fun tooltip(panel: JComponent, x: Int, y: Int): String? {
+                val grid = canvas(panel)
+                grid.setSize(512, 512)
+                return grid.getToolTipText(MouseEvent(grid, MouseEvent.MOUSE_MOVED, 0, 0, x, y, 0, false))
+            }
+            fun renderBitmap(panel: JComponent = bitmap): BufferedImage {
+                val canvas = canvas(panel)
                 canvas.setSize(512, 512)
                 return BufferedImage(512, 512, BufferedImage.TYPE_INT_RGB).also { image ->
                     val graphics = image.createGraphics()
@@ -148,6 +164,7 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
                 assertEquals("Static data", baseLabel())
+                assertEquals(null, tooltip(references, 10, 10))
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
                     isActivateToolWindowWhenAdded = false
                 }
@@ -196,7 +213,7 @@ class InstructionCounterPlatformTest {
 
             val bitmapRun = launch(
                 run, 4, "lui \$t0, 0x1001\nlui \$t1, 0xff\nsw \$t1, 0(\$t0)\nli \$t1, 0xff\nsw \$t1, 4(\$t0)\n",
-                captureBitmap = true,
+                captureGrids = true,
             )
             waitFor(1, "5 (100%)")
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
@@ -206,9 +223,29 @@ class InstructionCounterPlatformTest {
                     assertEquals(0xff000000.toInt(), image.getRGB(0, 127))
                     assertEquals(0xffff0000.toInt(), image.getRGB(0, 128))
                     assertEquals(0xff0000ff.toInt(), image.getRGB(1, 128))
+                    assertEquals("0x10010000 · 1 accesses", tooltip(references, 10, 10))
+                    assertEquals(0xff0000ff.toInt(), renderBitmap(references).getRGB(10, 10))
                 }
             }
             withContext(Dispatchers.EDT) {
+                assertEquals(null, tooltip(bitmap, 10, 128))
+                assertEquals(null, tooltip(references, -1, 10))
+                UIUtil.findComponentsOfType(references, JSpinner::class.java).single().value = 1
+                UIUtil.findComponentsOfType(references, ColorPanel::class.java).single().selectedColor = Color.MAGENTA
+                references.setSize(JBUI.scale(420), JBUI.scale(600))
+                references.doLayout()
+                val setColor = button("Set Color", references)
+                assertTrue(setColor.width > 0 && setColor.x + setColor.width <= references.width)
+                setColor.doClick()
+                assertEquals(Color.MAGENTA.rgb, renderBitmap(references).getRGB(10, 10))
+                val boundaries = UIUtil.findComponentsOfType(references, JBCheckBox::class.java).single()
+                boundaries.doClick()
+                val withGrid = renderBitmap(references)
+                assertTrue(withGrid.getRGB(0, 10) != withGrid.getRGB(10, 10))
+                boundaries.doClick()
+                UIUtil.findComponentsOfType(references, JComboBox::class.java).single { it.itemCount == 12 }.selectedItem = 2
+                button("Apply and Clear", references).doClick()
+                assertEquals("0x10010008 · 0 accesses", tooltip(references, 33, 10))
                 baseChoice().selectedItem = Base.HEAP
                 button("Disconnect", bitmap).doClick()
                 button("Apply and Clear", bitmap).doClick()
@@ -261,6 +298,7 @@ class InstructionCounterPlatformTest {
                         container.remove(statistics)
                         container.remove(branches)
                         container.remove(bitmap)
+                        container.remove(references)
                     }
                 }
             }
