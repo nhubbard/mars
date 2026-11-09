@@ -1,11 +1,16 @@
 package edu.missouristate.mars;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.missouristate.mars.mips.dump.DumpFormatLoader;
+import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot;
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -51,5 +56,43 @@ class MemoryDumpTest {
       assertThat(lines.getLast()).startsWith("0x00400000  0x24080007  ")
           .endsWith("main: addiu $t0, $zero, 7");
     }
+  }
+
+  @Test
+  void snapshotRetainsSourceAndMappedIoWithoutHoldingTheStoppedMachine() throws Exception {
+    var source = directory.resolve("program.s");
+    Files.writeString(source, ".text\nmain: addiu $t0, $zero, 7\n");
+    var listingFormat = DumpFormatLoader.findByCommandDescriptor("SegmentWindow");
+    var hexFormat = DumpFormatLoader.findByCommandDescriptor("HexText");
+    MemoryDumpSnapshot listing;
+    MemoryDumpSnapshot mmio;
+    try (var session = TestSessions.create()) {
+      session.assemble(List.of(source));
+      int text = session.memory.textBaseAddress;
+      int mapped = session.memory.memoryMapBaseAddress;
+      session.memory.setWord(mapped, 0x12345678);
+      var notices = new ArrayList<MemoryAccessNotice>();
+      session.memory.addObserver(notices::add, text, text);
+      session.memory.addObserver(notices::add, mapped, mapped);
+      try (var lease = session.claimStoppedSession()) {
+        listing = listingFormat.capture(session, text, text, () -> {});
+        mmio = hexFormat.capture(session, mapped, mapped, () -> {});
+        assertThatThrownBy(() -> hexFormat.capture(session, mapped, mapped, () -> {
+          throw new CancellationException();
+        })).isInstanceOf(CancellationException.class);
+      }
+      assertThat(notices).isEmpty();
+      var statement = session.memory.getStatementNoNotify(text);
+      statement.setBinaryStatement(0);
+      statement.setSource("changed");
+      session.memory.setWord(mapped, 0);
+    }
+    var listingFile = directory.resolve("listing");
+    listingFormat.write(listingFile.toFile(), listing);
+    assertThat(Files.readAllLines(listingFile).getLast())
+        .startsWith("0x00400000  0x24080007  ").endsWith("main: addiu $t0, $zero, 7");
+    var mmioFile = directory.resolve("mmio");
+    hexFormat.write(mmioFile.toFile(), mmio);
+    assertThat(Files.readAllLines(mmioFile)).containsExactly("12345678");
   }
 }

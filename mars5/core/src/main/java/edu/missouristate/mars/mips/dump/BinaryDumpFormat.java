@@ -1,7 +1,5 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.core.MarsContext;
-import edu.missouristate.mars.mips.hardware.*;
 import java.io.*;
 
 /*
@@ -51,24 +49,14 @@ public class BinaryDumpFormat extends AbstractDumpFormat {
    * write() method. Adapted by Pete Sanderson from code written by Greg Gibeling.
    *
    * @param file File in which to store MIPS memory contents.
-   * @param firstAddress first (lowest) memory address to dump. In bytes but must be on word
-   *     boundary.
-   * @param lastAddress last (highest) memory address to dump. In bytes but must be on word
-   *     boundary. Will dump the word that starts at this address.
-   * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
+   * @param snapshot the memory to export.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
-      throws AddressErrorException, IOException {
+  @Override
+  public void write(File file, MemoryDumpSnapshot snapshot) throws IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
-      for (int address = firstAddress;
-          address <= lastAddress;
-          address += MemoryState.WORD_LENGTH_BYTES) {
-        Integer temp = session.memory.getRawWordOrNull(address);
-        if (temp == null) {
-          break;
-        }
-        int word = temp;
+      for (int index = 0; index < snapshot.size(); index++) {
+        int word = snapshot.word(index);
         for (int i = 0; i < 4; i++) {
           out.write((word >>> (i << 3)) & 0xFF);
         }

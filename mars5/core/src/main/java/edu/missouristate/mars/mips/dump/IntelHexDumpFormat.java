@@ -1,7 +1,6 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.core.MarsContext;
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.MemoryState;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -28,25 +27,16 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
    * Extended linear address records carry the high bits when the offset reaches 64 KiB.
    *
    * @param file File in which to store MIPS memory contents.
-   * @param firstAddress first (lowest) memory address to dump. In bytes but must be on word
-   *     boundary.
-   * @param lastAddress last (highest) memory address to dump. In bytes but must be on word
-   *     boundary. Will dump the word that starts at this address.
-   * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
+   * @param snapshot the memory to export.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
-      throws AddressErrorException, IOException {
+  @Override
+  public void write(File file, MemoryDumpSnapshot snapshot) throws IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
       int upperAddress = 0;
-      for (int address = firstAddress;
-          address <= lastAddress;
-          address += MemoryState.WORD_LENGTH_BYTES) {
-        Integer word = session.memory.getRawWordOrNull(address);
-        if (word == null) {
-          break;
-        }
-        int offset = address - firstAddress;
+      for (int index = 0; index < snapshot.size(); index++) {
+        int word = snapshot.word(index);
+        int offset = index * MemoryState.WORD_LENGTH_BYTES;
         int upper = offset >>> 16;
         if (upper != upperAddress) {
           int checksum = 2 + 4 + (upper >>> 8) + (upper & 0xFF);

@@ -1,8 +1,5 @@
 package edu.missouristate.mars.mips.dump;
 
-import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.core.MarsContext;
-import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.util.Binary;
 import java.io.*;
 
@@ -65,44 +62,37 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
    * Written using PrintStream's println() method.
    *
    * @param file File in which to store MIPS memory contents.
-   * @param firstAddress first (lowest) memory address to dump. In bytes but must be on word
-   *     boundary.
-   * @param lastAddress last (highest) memory address to dump. In bytes but must be on word
-   *     boundary. Will dump the word that starts at this address.
-   * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
+   * @param snapshot the memory to export.
    * @throws IOException if error occurs during file output.
    */
-  public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
-      throws AddressErrorException, IOException {
+  @Override
+  public void write(File file, MemoryDumpSnapshot snapshot) throws IOException {
 
-    boolean hexAddresses = session.settings.displayAddressesInHex();
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
-      if (session.memory.inDataSegment(firstAddress)) {
-        dumpData(firstAddress, lastAddress, session, hexAddresses, out);
-      } else if (session.memory.inTextSegment(firstAddress)) {
-        dumpText(firstAddress, lastAddress, session, hexAddresses, out);
+      switch (snapshot.segment()) {
+        case DATA -> dumpData(snapshot, out);
+        case TEXT -> dumpText(snapshot, out);
+        case OTHER -> { }
       }
       checkOutput(out);
     }
   }
 
-  private static void dumpData(
-      int firstAddress, int lastAddress, MarsContext session, boolean hexAddresses, PrintStream out)
-      throws AddressErrorException {
-    boolean hexValues = session.settings.displayValuesInHex();
+  @Override
+  public boolean includesSourceListing() {
+    return true;
+  }
+
+  private static void dumpData(MemoryDumpSnapshot snapshot, PrintStream out) {
     int wordsInRow = 0;
     StringBuilder row = new StringBuilder();
-    for (int address = firstAddress;
-        address <= lastAddress;
-        address += MemoryState.WORD_LENGTH_BYTES) {
-      Integer word = session.memory.getRawWordOrNull(address);
-      if (word == null) {
-        break;
-      }
+    for (int index = 0; index < snapshot.size(); index++) {
+      int word = snapshot.word(index);
       if (wordsInRow == 0) {
-        row.append(formatAddress(address, hexAddresses)).append("    ");
+        row.append(formatAddress(snapshot.address(index), snapshot.hexAddresses())).append("    ");
       }
-      row.append(hexValues ? Binary.intToHexString(word) : ("           " + word).substring(word.toString().length()))
+      String value = Integer.toString(word);
+      row.append(snapshot.hexValues() ? Binary.intToHexString(word) : ("           " + value).substring(value.length()))
           .append(' ');
       if (++wordsInRow == 8) {
         out.println(row);
@@ -115,25 +105,17 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
     }
   }
 
-  private static void dumpText(
-      int firstAddress, int lastAddress, MarsContext session, boolean hexAddresses, PrintStream out)
-      throws AddressErrorException {
+  private static void dumpText(MemoryDumpSnapshot snapshot, PrintStream out) {
     out.println(" Address    Code        Basic                     Source");
     out.println();
-    for (int address = firstAddress;
-        address <= lastAddress;
-        address += MemoryState.WORD_LENGTH_BYTES) {
-      ProgramStatement statement = session.memory.getStatementNoNotify(address);
-      if (statement == null) {
-        break;
-      }
-      String source = statement.getSource();
+    for (int index = 0; index < snapshot.size(); index++) {
+      var line = snapshot.sourceLine(index);
       out.println(
-          formatAddress(address, hexAddresses) + "  "
-              + Binary.intToHexString(statement.getBinaryStatement()) + "  "
-              + (statement.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22)
-              + ((source.isEmpty() ? "" : statement.getSourceLine()) + "     ").substring(0, 5)
-              + source);
+          formatAddress(snapshot.address(index), snapshot.hexAddresses()) + "  "
+              + Binary.intToHexString(snapshot.word(index)) + "  "
+              + (line.instruction() + "                      ").substring(0, 22)
+              + ((line.source().isEmpty() ? "" : line.line()) + "     ").substring(0, 5)
+              + line.source());
     }
   }
 

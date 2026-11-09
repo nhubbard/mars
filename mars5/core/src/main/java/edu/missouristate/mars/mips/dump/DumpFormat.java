@@ -1,8 +1,9 @@
 package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.core.MarsContext;
-import edu.missouristate.mars.mips.hardware.*;
-import java.io.*;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
+import java.io.File;
+import java.io.IOException;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -83,6 +84,22 @@ public interface DumpFormat {
    * @throws AddressErrorException if firstAddress is invalid or not on a word boundary.
    * @throws IOException if error occurs during file output.
    */
-  void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
-      throws AddressErrorException, IOException;
+  default void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
+      throws AddressErrorException, IOException {
+    write(file, capture(session, firstAddress, lastAddress, () -> {}));
+  }
+
+  /** Capture an inclusive range while the caller owns stopped execution. */
+  default MemoryDumpSnapshot capture(
+      MarsContext session, int firstAddress, int lastAddress, Runnable checkCancellation)
+      throws AddressErrorException {
+    return MemoryDumpSnapshot.capture(session, firstAddress, lastAddress, includesSourceListing(), checkCancellation);
+  }
+
+  default boolean includesSourceListing() {
+    return false;
+  }
+
+  /** Write a previously captured snapshot without accessing the machine. */
+  void write(File file, MemoryDumpSnapshot snapshot) throws IOException;
 }

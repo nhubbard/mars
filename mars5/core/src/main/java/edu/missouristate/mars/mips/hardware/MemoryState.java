@@ -758,13 +758,14 @@ public class MemoryState {
       value = fetchWordOrNullFromTable(stackBlockTable, relative);
     } else if (inTextSegment(address) || inKernelTextSegment(address)) {
       try {
-        value =
-            (getStatementNoNotify(address) == null)
-                ? null
-                : getStatementNoNotify(address).getBinaryStatement();
+        var statement = getStatementNoNotify(address);
+        value = statement == null ? null : statement.getBinaryStatement();
       } catch (AddressErrorException aee) {
         value = null;
       }
+    } else if (address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
+      relative = (address - memoryMapBaseAddress) >> 2;
+      value = fetchWordOrNullFromTable(memoryMapBlockTable, relative);
     } else if (inKernelDataSegment(address)) {
       // in kernel data segment
       relative = (address - kernelDataBaseAddress) >> 2; // convert byte address to words
