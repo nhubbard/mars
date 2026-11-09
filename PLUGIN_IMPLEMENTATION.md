@@ -1140,6 +1140,23 @@ the last value after execution. Editing and reset are available during a
 debugger pause through the same serialized register edits as the Variables
 view. A changed register establishes a new backstep baseline.
 
+## Digital Lab Sim
+
+Open **View → Tool Windows → MARS Tools → Digital Lab Sim** and select a Run
+or Debug execution. Connect while the program is running or enable **Connect
+Digital Lab Sim from launch** in its run configuration. That setting keeps the
+device active even when the tool window is closed. The final display remains
+visible while the execution tab is open.
+
+The two seven-segment displays use the bytes at MMIO base + `0x10` and `0x11`.
+The keypad scans the row written at `0x12` and places its row and column code at
+`0x14`. Click to latch a key and click again to release it. The counter at
+`0x13` schedules an interrupt every 30 completed instructions while enabled.
+Keypad and counter interrupts retain their original Cause bits and respect
+Coprocessor 0's exception level. Keypad writes happen at instruction boundaries,
+including when resuming or stepping from a debugger pause. Reset clears the
+displays, key, and timer. Backstep preserves the device state and external input.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

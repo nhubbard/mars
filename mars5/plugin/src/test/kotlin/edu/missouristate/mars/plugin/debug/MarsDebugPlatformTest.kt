@@ -1007,6 +1007,43 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `Digital Lab keypad input reaches the machine between debug steps`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("digital-lab-debug.asm", """
+                lui ${'$'}t0, 0xffff
+                li ${'$'}t1, 2
+                sb ${'$'}t1, 0x12(${'$'}t0)
+                lbu ${'$'}t2, 0x14(${'$'}t0)
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
+        }
+        withDebug(source, { connectDigitalLab = true }) { debug ->
+            debug.assertPausedAt(source, 2)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            assertTrue(process.digitalLab.snapshot().connected)
+            withContext(Dispatchers.EDT) {
+                process.digitalLab.toggleKey(6)
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "byte(0xffff0014)"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 3)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000042", evaluate(debug.session, frame, "byte(0xffff0014)"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 4)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000042", evaluate(debug.session, frame, "\$t2"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `memory watches read the current suspension across a store and backstep`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("watch-memory.asm", """

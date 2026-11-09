@@ -25,6 +25,7 @@ import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.DataCacheSimulator
+import edu.missouristate.mars.plugin.tools.DigitalLabDevice
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
@@ -59,8 +60,11 @@ internal class MarsRunService(private val project: Project, private val scope: C
         memoryDumps: List<MemoryExportSelection>,
         captureBitmap: Boolean = false,
         captureReferences: Boolean = false,
+        connectDigitalLab: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
-    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences, execute)
+    ) = MarsProcessHandler(
+        project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences, connectDigitalLab, execute,
+    )
 }
 
 internal class MarsProcessHandler(
@@ -69,12 +73,14 @@ internal class MarsProcessHandler(
     private val memoryDumps: List<MemoryExportSelection>,
     captureBitmap: Boolean,
     captureReferences: Boolean,
+    connectDigitalLab: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
     val branchHistory = BranchHistoryTable()
     val dataCache = DataCacheSimulator()
+    val digitalLab = DigitalLabDevice(connectDigitalLab)
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
@@ -163,6 +169,7 @@ internal class MarsProcessHandler(
                                 instructionStatistics.record(word, instruction)
                                 branchHistory.record(event)
                                 xray.record(event)
+                                digitalLab.instructionCompleted(session)
                             }
                             override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
                             override fun onStop(event: StopEvent) = Unit
@@ -177,7 +184,9 @@ internal class MarsProcessHandler(
                         val stop = try {
                             bitmapDisplay.observe(session.memory).use {
                                 memoryReferences.observe(session.memory).use {
-                                    dataCache.observe(session.memory).use { execute(session) }
+                                    dataCache.observe(session.memory).use {
+                                        digitalLab.observe(session.memory).use { execute(session) }
+                                    }
                                 }
                             }
                         } finally {

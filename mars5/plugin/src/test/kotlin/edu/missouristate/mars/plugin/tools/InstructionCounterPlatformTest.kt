@@ -48,6 +48,8 @@ import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JProgressBar
 import javax.swing.JSpinner
+import javax.swing.JToggleButton
+import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +76,8 @@ class InstructionCounterPlatformTest {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
             val contents = window.contentManager.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
-                "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation"),
+                "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation",
+                "Digital Lab Sim"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -90,6 +93,7 @@ class InstructionCounterPlatformTest {
         val xray = panels[5]
         val cache = panels[6]
         val floating = panels[7]
+        val lab = panels[8]
         val (floatSelector, floatRegister) = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(floating, JComboBox::class.java).sortedBy { it.itemCount }
         }
@@ -525,6 +529,68 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(floatRun.manager).removeContent(floatRun, true))
             }
             waitFor(0, "0 (0%)")
+            val labRun = launch(run, 6, """
+                li ${'$'}v0, 12
+                syscall
+                lui ${'$'}t0, 0xffff
+                li ${'$'}t1, 0x3f
+                sb ${'$'}t1, 0x10(${'$'}t0)
+                li ${'$'}t1, 0x06
+                sb ${'$'}t1, 0x11(${'$'}t0)
+                li ${'$'}t1, 1
+                sb ${'$'}t1, 0x13(${'$'}t0)
+                li ${'$'}v0, 12
+                syscall
+            """.trimIndent())
+            val labProcess = labRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
+            fun labPanels() = UIUtil.findComponentsOfType(lab, JPanel::class.java)
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) { assertTrue(button("Connect", lab).isEnabled) }
+            }
+            withContext(Dispatchers.EDT) {
+                assertTrue(UIUtil.findComponentsOfType(lab, JToggleButton::class.java).none { it.isEnabled })
+                button("Connect", lab).doClick()
+            }
+            labProcess.processInput.write("x\n".toByteArray())
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertTrue(labPanels().any { it.toolTipText == "Right display (0x3f)" })
+                    assertTrue(labPanels().any { it.toolTipText == "Left display (0x06)" })
+                    assertTrue(UIUtil.findComponentsOfType(lab, JBLabel::class.java)
+                        .any { it.text == "28 instructions until next interrupt" })
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                val right = labPanels().single { it.toolTipText == "Right display (0x3f)" }
+                right.size = right.preferredSize
+                val image = BufferedImage(right.width, right.height, BufferedImage.TYPE_INT_RGB)
+                val graphics = image.createGraphics()
+                try { right.paint(graphics) } finally { graphics.dispose() }
+                assertTrue(image.getRGB(JBUI.scale(20), JBUI.scale(7)) != image.getRGB(JBUI.scale(20), JBUI.scale(33)))
+                val key = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "A" }
+                lab.setSize(JBUI.scale(365), JBUI.scale(520))
+                lab.doLayout()
+                key.parent.doLayout()
+                val lastKey = UIUtil.findComponentsOfType(lab, JToggleButton::class.java).single { it.text == "F" }
+                val bounds = SwingUtilities.convertRectangle(lastKey.parent, lastKey.bounds, lab)
+                assertTrue(bounds.width > 0 && bounds.x + bounds.width <= lab.width)
+                key.doClick()
+                assertEquals(10, labProcess.digitalLab.snapshot().key)
+                assertTrue(key.isSelected)
+                button("Reset", lab).doClick()
+                assertFalse(key.isSelected)
+                assertEquals("Right display (0x00)", right.toolTipText)
+                button("Disconnect", lab).doClick()
+                assertFalse(key.isEnabled)
+                button("Connect", lab).doClick()
+                assertTrue(labProcess.digitalLab.snapshot().connected)
+                val content = window.contentManager.contents.single { it.component === lab }
+                assertTrue(window.contentManager.removeContent(content, true))
+                assertFalse(labProcess.digitalLab.snapshot().connected)
+                labProcess.destroyProcess()
+                assertTrue(checkNotNull(labRun.manager).removeContent(labRun, true))
+            }
+            waitFor(0, "0 (0%)")
         } finally {
             withContext(Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
@@ -538,6 +604,7 @@ class InstructionCounterPlatformTest {
                         container.remove(xray)
                         container.remove(cache)
                         container.remove(floating)
+                        container.remove(lab)
                     }
                 }
             }
