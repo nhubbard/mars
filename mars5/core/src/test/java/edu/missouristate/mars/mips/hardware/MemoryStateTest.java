@@ -93,6 +93,31 @@ class MemoryStateTest {
   }
 
   @Test
+  void disassemblyInspectsOnlyExecutableMemoryWithoutNotifyingDevices() throws Exception {
+    var settings = new SimulationSettings();
+    var state = memory("Default", settings);
+    int code = 0x2408002a;
+    state.setStatement(
+        state.kernelTextBaseAddress,
+        new ProgramStatement(code, state.kernelTextBaseAddress, instructions));
+    state.setWord(state.dataBaseAddress, code);
+    var notices = new ArrayList<MemoryAccessNotice>();
+    state.addObserver(notices::add);
+    assertThat(state.inspectInstruction(state.kernelTextBaseAddress).getBinaryStatement())
+        .isEqualTo(code);
+    assertThat(state.inspectInstruction(state.textBaseAddress)).isNull();
+    assertThat(state.inspectInstruction(state.dataBaseAddress)).isNull();
+    settings.setSelfModifyingCodeEnabled(true);
+    var decoded = state.inspectInstruction(state.dataBaseAddress);
+    assertThat(decoded.getBinaryStatement()).isEqualTo(code);
+    assertThat(decoded.getInstructionOrigin()).isNull();
+    assertThat(decoded.getPrintableBasicAssemblyStatement()).contains("addiu");
+    assertThat(state.inspectInstruction(state.dataBaseAddress + 1)).isNull();
+    assertThat(state.inspectInstruction(0)).isNull();
+    assertThat(notices).isEmpty();
+  }
+
+  @Test
   void layoutsAndConfigurationSnapshotsDoNotAffectOtherInstances() throws Exception {
     var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
     var first =

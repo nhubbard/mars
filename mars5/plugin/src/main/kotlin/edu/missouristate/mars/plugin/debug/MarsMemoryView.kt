@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -24,6 +25,8 @@ import java.awt.event.ItemEvent
 import java.util.HexFormat
 import javax.swing.JButton
 import javax.swing.JTable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val BYTES_PER_ROW = 16
 private const val ROWS_PER_PAGE = 16
@@ -31,8 +34,6 @@ private const val BYTES_PER_PAGE = BYTES_PER_ROW * ROWS_PER_PAGE
 private const val ADDRESS_SPACE = 0x1_0000_0000L
 private const val LAST_ROW = ADDRESS_SPACE - BYTES_PER_ROW
 private val hex = HexFormat.of()
-
-internal data class MemoryRequest(val address: Long, val show: (List<MemoryRow>) -> Unit)
 
 internal data class MemoryRow(val address: String, val bytes: String, val characters: String)
 
@@ -176,13 +177,16 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         next.isEnabled = start < LAST_ROW
         status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.loading.last", it) }
             ?: runMessages.getMessage("debug.memory.loading")
-        context.memoryRequests.trySend(MemoryRequest(start) { rows ->
-            if (request == revision) {
-                model.items = rows
-                displayedSuspension = context.number
-                status.text = runMessages.getMessage("debug.memory.current", context.number)
+        context.inspectionRequests.trySend { memory ->
+            val rows = memoryPage(memory, start)
+            withContext(Dispatchers.EDT) {
+                if (request == revision) {
+                    model.items = rows
+                    displayedSuspension = context.number
+                    status.text = runMessages.getMessage("debug.memory.current", context.number)
+                }
             }
-        })
+        }
     }
 
     override fun dispose() {

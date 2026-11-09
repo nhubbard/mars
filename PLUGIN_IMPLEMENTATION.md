@@ -913,6 +913,22 @@ IntelliJ fixtures check navigation, address validation, endian display,
 resume, store and backstep refresh, view disposal, and the updated PC and
 stack pointer after execution advances.
 
+## Disassembly
+
+The **Disassembly** tab follows the current program counter. It shows a bounded
+window of live addresses, encoded words, decoded basic instructions, and source
+locations when available. **Open Source** navigates to the selected instruction's
+physical line. Rewritten instructions and executable data are decoded using the
+owning simulator's instruction set, without borrowing source locations from the
+assembled image. An unmapped row has no word and a misaligned PC shows its address
+without selecting an instruction.
+
+The tab uses the same pause-owned inspection queue as Memory. Resume clears the
+listing, and a newer pause or disposal invalidates results already in flight.
+The core read issues no simulated memory events. Fixtures cover navigation,
+source disappearance, code writes and backstep, executable data, invalid words,
+and the bounds of the 32-bit address space.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

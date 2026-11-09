@@ -30,6 +30,8 @@ import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
@@ -1091,6 +1093,151 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { afterDisposal() }
             withContext(Dispatchers.EDT) { debug.session.stop() }
             assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `native Disassembly shows live code follows PC and navigates to source`() = timeoutRunBlocking<Unit> {
+        val (source, fragment) = withContext(Dispatchers.EDT) {
+            val fragment = fixture.addFileToProject("disassembly-body.s", "li \$t1, 0x240b0043\n").virtualFile
+            val entry = fixture.addFileToProject("disassembly.s", """
+                .data
+                payload: .word 0x240a002a, 0x01400008, 0xffffffff
+                .text
+                la ${'$'}t0, payload
+                .include "disassembly-body.s"
+                sw ${'$'}t1, patch
+                patch: nop
+                jr ${'$'}t0
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 5) }
+            entry to fragment
+        }
+        withDebug(source, { selfModifyingCode = true }) { debug ->
+            debug.assertPausedAt(source, 5)
+            val disposable = Disposer.newDisposable()
+            try {
+                val discarded = withContext(Dispatchers.EDT) {
+                    MarsDisassemblyView(debug.session).also(Disposer::dispose)
+                }
+                val (table, open, status) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsDisassemblyTest", "Debug", "MIPS", disposable)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val content = requireNotNull(layout.findContent("MarsMipsDisassembly"))
+                    assertEquals("Disassembly", content.displayName)
+                    assertFalse(content.isCloseable)
+                    val panel = content.component
+                    Triple(
+                        requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)),
+                        requireNotNull(UIUtil.findComponentOfType(panel, JButton::class.java)),
+                        requireNotNull(UIUtil.findComponentOfType(panel, JBLabel::class.java)),
+                    )
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val pc = table.selectedRow
+                        assertTrue(pc >= 0)
+                        assertEquals("▶", table.getValueAt(pc, 0))
+                        assertEquals("disassembly.s:6", table.getValueAt(pc, 4))
+                        val patch = (pc until table.rowCount).first { table.getValueAt(it, 4) == "disassembly.s:7" }
+                        assertEquals("0x00000000", table.getValueAt(patch, 2))
+                        assertEquals("nop", table.getValueAt(patch, 3))
+                        table.setRowSelectionInterval(patch, patch)
+                        assertTrue(open.isEnabled)
+                        open.doClick(0)
+                    }
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                        assertEquals(source, FileDocumentManager.getInstance().getFile(editor.document))
+                        assertEquals(6, editor.caretModel.logicalPosition.line)
+                        assertEquals(0, discarded.focus.rowCount)
+                    }
+                }
+                withContext(Dispatchers.EDT) {
+                    val includeRow = (0 until table.rowCount).first { table.getValueAt(it, 4) == "disassembly-body.s:1" }
+                    WriteAction.run<RuntimeException> { fragment.delete(this) }
+                    table.setRowSelectionInterval(includeRow, includeRow)
+                    assertFalse(open.isEnabled)
+                    debug.session.stepInto()
+                }
+                assertNull(debug.nextPosition())
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val pc = table.selectedRow
+                        assertTrue(pc >= 0)
+                        assertEquals("▶", table.getValueAt(pc, 0))
+                        assertEquals("0x240b0043", table.getValueAt(pc, 2))
+                        assertTrue((table.getValueAt(pc, 3) as String).startsWith("addiu "))
+                        assertEquals("", table.getValueAt(pc, 4))
+                        assertFalse(open.isEnabled)
+                    }
+                }
+                withContext(Dispatchers.EDT) {
+                    val (action, event) = backstepAction(debug.session)
+                    action.actionPerformed(event)
+                }
+                debug.assertPausedAt(source, 5)
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val pc = table.selectedRow
+                        assertTrue(pc >= 0)
+                        assertEquals("disassembly.s:6", table.getValueAt(pc, 4))
+                        assertEquals("0x00000000", table.getValueAt(pc + 1, 2))
+                    }
+                }
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                assertNull(debug.nextPosition())
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(source, 7)
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                assertNull(debug.nextPosition())
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val pc = table.selectedRow
+                        assertTrue(pc >= 0)
+                        assertEquals("0x10010000", table.getValueAt(pc, 1))
+                        assertEquals("0x240a002a", table.getValueAt(pc, 2))
+                        assertTrue((table.getValueAt(pc, 3) as String).startsWith("addiu "))
+                        assertEquals("", table.getValueAt(pc, 4))
+                        assertEquals("<INVALID>", table.getValueAt(pc + 2, 3))
+                    }
+                }
+                repeat(2) {
+                    withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                    assertNull(debug.nextPosition())
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals("Program counter 0x0000002a", status.text)
+                        assertEquals(0, table.rowCount)
+                        assertFalse(open.isEnabled)
+                    }
+                }
+                withContext(Dispatchers.EDT) { debug.session.stop() }
+                assertEquals(130, debug.exit.await())
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals("Pause the program to inspect instructions.", status.text)
+                        assertEquals(0, table.rowCount)
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+            }
+        }
+    }
+
+    @Test
+    fun `disassembly window stays within the unsigned address space`() {
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            val first = disassemblyWindow(machine.memory, 0)
+            assertEquals("0x00000000", first.first().address)
+            assertEquals(listOf(first.first()), first.filter(DisassemblyRow::current))
+            val last = disassemblyWindow(machine.memory, 0xffff_fffcL)
+            assertEquals("0xfffffffc", last.last().address)
+            assertEquals(listOf(last.last()), last.filter(DisassemblyRow::current))
+            assertTrue(disassemblyWindow(machine.memory, 0xffff_ffffL).isEmpty())
         }
     }
 

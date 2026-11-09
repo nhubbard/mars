@@ -858,6 +858,21 @@ public class MemoryState {
     return null;
   }
 
+  /** Inspects executable memory using the live code and the owning session's decoder. */
+  public ProgramStatement inspectInstruction(int address) throws AddressErrorException {
+    if (!wordAligned(address)) {
+      return null;
+    }
+    if (inTextSegment(address) || inKernelTextSegment(address)) {
+      return getStatementNoNotify(address);
+    }
+    if (!settings.isSelfModifyingCodeEnabled()) {
+      return null;
+    }
+    Integer word = inspectWord(address);
+    return word == null ? null : decoder.apply(word, address);
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////
   /**
    * Starting at the given word address, read a 2 byte word into lower 16 bits of int.

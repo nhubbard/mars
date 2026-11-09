@@ -113,6 +113,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             content.isCloseable = false
             content.setDisposer(view)
             ui.addContent(content, 0, PlaceInGrid.right, true)
+            val disassembly = MarsDisassemblyView(session)
+            val listing = ui.createContent("MarsMipsDisassembly", disassembly.component, runMessages.getMessage("debug.disassembly"), null, disassembly.focus)
+            listing.isCloseable = false
+            listing.setDisposer(disassembly)
+            ui.addContent(listing, 0, PlaceInGrid.right, true)
         }
     }
 
@@ -288,9 +293,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         while (true) {
             val command = select<Command?> {
                 commands.onReceive { it }
-                context.memoryRequests.onReceive { request ->
-                    val rows = memoryPage(memory, request.address)
-                    withContext(Dispatchers.EDT) { request.show(rows) }
+                context.inspectionRequests.onReceive { inspect ->
+                    inspect(memory)
                     null
                 }
                 context.watchRequests.onReceive { request ->
@@ -307,7 +311,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         try {
             action(context)
         } finally {
-            context.memoryRequests.cancel()
+            context.inspectionRequests.cancel()
             context.watchRequests.cancel()
         }
     }
@@ -368,7 +372,7 @@ internal class MarsSuspendContext(
     val watchRequests: Channel<WatchMemoryRequest>,
     val sourceStep: SourceStep?,
 ) : XSuspendContext() {
-    val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val inspectionRequests = Channel<suspend (MemoryState) -> Unit>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame
         override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
