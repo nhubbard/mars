@@ -1353,6 +1353,18 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## New MIPS projects
+
+Choose **File → New → Project → MARS MIPS**. The wizard creates a general
+IntelliJ module with `src` as its source root. The default starter is
+`src/main.asm`. Select **Add a separate console library** to create
+`src/console.s` and a starter that calls it. The wizard opens the entry
+file, configures the source order, and selects a shared **Run MIPS
+Program** configuration that can also be used with Debug. The project
+uses IntelliJ's general module support and requires no JDK or external
+build tool. Use IntelliJ's **Open** action to work in an existing source
+directory.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

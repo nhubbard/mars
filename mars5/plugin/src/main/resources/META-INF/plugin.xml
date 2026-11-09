@@ -20,6 +20,7 @@
     <toolProvider id="edu.missouristate.mars.introToTools" implementation="edu.missouristate.mars.plugin.tools.IntroToToolsProvider"/>
   </extensions>
   <extensions defaultExtensionNs="com.intellij">
+    <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
     <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
     <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
     <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
