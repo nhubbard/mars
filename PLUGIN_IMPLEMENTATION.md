@@ -842,6 +842,19 @@ after execution advances. It checks the program counter, multiply result,
 exception PC, floating-point condition flags, and paired floating-point
 values against the machine state at each suspension.
 
+### Editing CPU registers
+
+**Set Value** is available on the writable general-purpose registers and on
+`hi` and `lo` in the Integer registers group. The editor accepts any debugger
+expression that produces a 32-bit integer, including a memory read. The worker
+evaluates the expression at the current pause, writes the register under the
+core's stopped-session lease, and refreshes the frame's registers, watches, and
+stack-pointer address.
+
+A changed value starts a new backstep baseline. Invalid expressions and assignments
+of the existing value preserve history. Each pause owns its edit queue, so a
+modifier retained across resume or step cannot change a later suspension.
+
 ## Read-only debugger expressions
 
 Evaluate Expression and Watches use the selected frame's captured registers and

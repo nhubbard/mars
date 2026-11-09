@@ -61,6 +61,8 @@ import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XValue
+import com.intellij.xdebugger.frame.XValueModifier
+import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import com.intellij.xdebugger.impl.actions.XDebuggerActions
 import com.intellij.xdebugger.impl.ui.tree.XDebuggerTree
 import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
@@ -877,7 +879,14 @@ class MarsDebugPlatformTest {
         assertTrue(unavailable)
     }
 
-    private suspend fun registerValues(session: XDebugSession, frame: XStackFrame): Map<String, String> {
+    private suspend fun registerValues(session: XDebugSession, frame: XStackFrame): Map<String, String> =
+        inspectRegisterNodes(session, frame) { values ->
+            values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
+        }
+
+    private suspend fun <T> inspectRegisterNodes(
+        session: XDebugSession, frame: XStackFrame, inspect: suspend (List<XValueNodeImpl>) -> T,
+    ): T {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
         )
@@ -893,7 +902,7 @@ class MarsDebugPlatformTest {
             val nodes = children(cpu, 35) + children(cp0, 4) + floating.dropLast(1) + children(pairs, 16)
             val values = nodes.map { assertInstanceOf(XValueNodeImpl::class.java, it) }
             pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
-            return values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
+            return inspect(values)
         } finally {
             Disposer.dispose(tree)
         }
@@ -903,6 +912,96 @@ class MarsDebugPlatformTest {
         node.childCount
         pollAssertionsAsync(3.seconds, 10.milliseconds) { assertEquals(expected, node.loadedChildren.size) }
         return node.loadedChildren
+    }
+
+    @Test
+    fun `native Variables edits refresh the pause and reject stale register modifiers`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("edit-register.s", """
+                .data
+                patch: .word 41
+                .text
+                li ${'$'}t0, 7
+                addiu ${'$'}t1, ${'$'}t0, 1
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 4) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 4)
+            val modifier = withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
+                    nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
+                }
+                assertNull(edits.getValue("\$zero"))
+                assertNull(edits.getValue("pc"))
+                val t0 = requireNotNull(edits.getValue("\$t0"))
+                assertEquals("0x00000007", t0.initialValueEditorText)
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                assertNull(editValue(t0, "7"))
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                assertEquals("Enter an expression that evaluates to a 32-bit integer.", editValue(t0, "1.5"))
+                assertEquals(
+                    "Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
+                    editValue(t0, "unknown"),
+                )
+                assertEquals("The memory address is invalid, unaligned, or unavailable.", editValue(t0, "word(0)"))
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                assertNull(editValue(t0, "word(patch) + 1"))
+                assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                assertSame(frame, debug.session.currentStackFrame)
+                assertEquals("0x0000002a", evaluate(debug.session, frame, "\$t0"))
+                assertNull(editValue(requireNotNull(edits.getValue("hi")), "-1"))
+                assertNull(editValue(requireNotNull(edits.getValue("lo")), "0x80000000"))
+                assertNull(editValue(requireNotNull(edits.getValue("\$sp")), "\$sp - 16"))
+                val values = registerValues(debug.session, frame)
+                assertEquals("0x0000002a", values["\$t0"])
+                assertEquals("0xffffffff", values["hi"])
+                assertEquals("0x80000000", values["lo"])
+                val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                assertEquals(values["\$sp"], "0x" + context.memoryRegions.getValue(MemoryRegion.STACK).toString(16))
+                debug.session.stepInto()
+                assertEquals("This debugger frame no longer accepts register edits.", editValue(t0, "99"))
+                t0
+            }
+            debug.assertPausedAt(source, 5)
+            withContext(Dispatchers.EDT) {
+                assertEquals("This debugger frame no longer accepts register edits.", editValue(modifier, "99"))
+                assertEquals("0x0000002b", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val requests = registerEditRequests()
+            val modifier = RegisterModifier(8, 0, requests) { true }
+            val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
+            val errors = mutableListOf<String>()
+            repeat(17) {
+                modifier.setValue(expression, object : XModificationCallback {
+                    override fun valueModified() { fail<Unit>("An unprocessed edit was accepted") }
+                    override fun errorOccurred(errorMessage: String) { errors.add(errorMessage) }
+                })
+            }
+            assertEquals(listOf("This debugger frame no longer accepts register edits."), errors)
+            requests.cancel()
+            assertEquals(List(17) { "This debugger frame no longer accepts register edits." }, errors)
+        }
+    }
+
+    private suspend fun editValue(modifier: XValueModifier, expression: String): String? {
+        val input = XDebuggerUtil.getInstance().createExpression(expression, null, null, EvaluationMode.EXPRESSION)
+        val result = CompletableDeferred<String?>()
+        modifier.setValue(input, object : XModificationCallback {
+            override fun valueModified() { result.complete(null) }
+            override fun errorOccurred(errorMessage: String) { result.complete(errorMessage) }
+        })
+        return result.await()
     }
 
     @Test

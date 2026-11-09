@@ -142,6 +142,24 @@ public final class MarsContext implements AutoCloseable {
     return lease;
   }
 
+  /** Changes a writable CPU register and establishes a new reverse-execution baseline. */
+  public boolean editIntegerRegister(int number, int bits) {
+    if (number < 1
+        || (number > 31
+            && number != IntegerRegisterFile.HI_REGISTER
+            && number != IntegerRegisterFile.LO_REGISTER)) {
+      throw new IllegalArgumentException("Register is not editable: " + number);
+    }
+    try (var lease = claimStoppedSession()) {
+      if (registerFile.getValueNoNotify(number) == bits) {
+        return false;
+      }
+      backStepper.clear();
+      registerFile.updateRegister(number, bits);
+      return true;
+    }
+  }
+
   /** Lifecycle cleanup waits for an instruction boundary before closing default resources. */
   public void releaseDefaultResources() {
     executionLock.lock();

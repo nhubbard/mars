@@ -53,6 +53,7 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
@@ -223,7 +224,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                     process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
                     withSuspension(machine) { context ->
                         withContext(Dispatchers.EDT) { session.positionReached(context) }
-                        command = awaitCommand(context, machine.memory)
+                        command = awaitCommand(context, machine)
                     }
                     continue
                 }
@@ -238,7 +239,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                             session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
                             session.positionReached(context)
                         }
-                        command = awaitCommand(context, machine.memory)
+                        command = awaitCommand(context, machine)
                     }
                     continue
                 }
@@ -271,7 +272,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                             if (!breakpointSuspended && positionReached) {
                                 withContext(Dispatchers.EDT) { session.positionReached(context) }
                             }
-                            if (breakpointSuspended || positionReached) command = awaitCommand(context, machine.memory)
+                            if (breakpointSuspended || positionReached) command = awaitCommand(context, machine)
                         }
                         skipFirst = true
                     }
@@ -287,7 +288,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private suspend fun handleBreakpoint(breakpoint: XBreakpoint<*>, context: MarsSuspendContext, memory: MemoryState): Boolean {
         val evaluator = context.frame.evaluator
         breakpoint.conditionExpression?.let { expression ->
-            val condition = evaluator.evaluateAtBreakpoint(expression.expression, memory).getOrElse { error ->
+            val condition = evaluator.evaluateStopped(expression.expression, memory).getOrElse { error ->
                 withContext(Dispatchers.EDT) {
                     session.reportError(runMessages.getMessage("debug.breakpoint.condition.error", error.message))
                 }
@@ -296,28 +297,51 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             if (condition.number == 0.0) return false
         }
 
-        val logged = breakpoint.logExpressionObject?.let { evaluator.evaluateAtBreakpoint(it.expression, memory) }
+        val logged = breakpoint.logExpressionObject?.let { evaluator.evaluateStopped(it.expression, memory) }
         return withContext(Dispatchers.EDT) {
             logged?.exceptionOrNull()?.let { session.reportError(runMessages.getMessage("debug.breakpoint.log.error", it.message)) }
             session.breakpointReached(breakpoint, logged?.getOrNull()?.display(), context)
         }
     }
 
-    private suspend fun awaitCommand(context: MarsSuspendContext, memory: MemoryState): Command {
+    private suspend fun awaitCommand(context: MarsSuspendContext, machine: MarsContext): Command {
         while (true) {
             val command = select<Command?> {
                 commands.onReceive { it }
                 context.inspectionRequests.onReceive { inspect ->
-                    inspect(memory)
+                    inspect(machine.memory)
                     null
                 }
                 context.watchRequests.onReceive { request ->
-                    request.inspect(memory)
+                    request.inspect(machine.memory)
+                    null
+                }
+                context.registerEdits.onReceive { request ->
+                    // A selected edit completes before the worker can start another command.
+                    withContext(NonCancellable) { editRegister(machine, context, request) }
                     null
                 }
             }
             if (command != null) return command
         }
+    }
+
+    private suspend fun editRegister(machine: MarsContext, context: MarsSuspendContext, request: RegisterEditRequest) {
+        val result = context.frame.evaluator.evaluateStopped(request.expression, machine.memory).getOrElse { error ->
+            withContext(Dispatchers.EDT) { request.callback.errorOccurred(error.message!!) }
+            return
+        }
+        val bits = result.wordBits
+        if (bits == null) {
+            withContext(Dispatchers.EDT) {
+                request.callback.errorOccurred(runMessages.getMessage("debug.register.edit.word"))
+            }
+            return
+        }
+        if (machine.editIntegerRegister(request.register, bits)) {
+            machine.claimStoppedSession().use { context.refresh(machine) }
+        }
+        withContext(Dispatchers.EDT) { request.callback.valueModified() }
     }
 
     private suspend fun withSuspension(machine: MarsContext, action: suspend (MarsSuspendContext) -> Unit) {
@@ -327,6 +351,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         } finally {
             context.inspectionRequests.cancel()
             context.watchRequests.cancel()
+            context.registerEdits.cancel()
         }
     }
 
@@ -339,14 +364,20 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val scope = statement?.sourceMIPSprogram ?: program
         val localSymbols = symbols.locals().getValue(Path.of(scope.filename).toAbsolutePath().normalize())
         val watchRequests = watchMemoryRequests()
+        val registerEdits = registerEditRequests()
+        val number = ++suspensionNumber
         MarsSuspendContext(
             MarsStackFrame(
-                sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests,
-            ),
+                sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, registerEdits,
+            ) {
+                val current = session.suspendContext
+                current is MarsSuspendContext && current.registerEdits === registerEdits
+            },
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
-            ++suspensionNumber,
+            number,
             watchRequests,
+            registerEdits,
             origin?.let { SourceStep(pc, it) },
         )
     }
@@ -380,12 +411,24 @@ internal object MarsDebugEditors : XDebuggerEditorsProvider() {
 
 internal class MarsSuspendContext(
     val frame: MarsStackFrame,
-    val canBackstep: Boolean,
-    val memoryRegions: Map<MemoryRegion, Long>,
+    canBackstep: Boolean,
+    memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,
     val watchRequests: Channel<WatchMemoryRequest>,
+    val registerEdits: Channel<RegisterEditRequest>,
     val sourceStep: SourceStep?,
 ) : XSuspendContext() {
+    @Volatile var canBackstep = canBackstep
+        private set
+    @Volatile var memoryRegions = memoryRegions
+        private set
+
+    fun refresh(machine: MarsContext) {
+        frame.refresh(machine)
+        canBackstep = machine.backStepper.canBackstep()
+        memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
+    }
+
     val inspectionRequests = Channel<suspend (MemoryState) -> Unit>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame

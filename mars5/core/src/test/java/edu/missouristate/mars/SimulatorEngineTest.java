@@ -49,6 +49,27 @@ class SimulatorEngineTest {
   }
 
   @Test
+  void stoppedRegisterEditStartsNewHistoryOnlyWhenTheValueChanges() throws Exception {
+    try (var session = load(".text\naddiu $t0,$zero,7\nnop\n")) {
+      var engine = session.simulator();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.editIntegerRegister(8, 7)).isFalse();
+      assertThat(session.backStepper.canBackstep()).isTrue();
+      assertThatThrownBy(() -> session.editIntegerRegister(0, 1))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> session.editIntegerRegister(32, 1))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThat(session.backStepper.canBackstep()).isTrue();
+      assertThat(session.editIntegerRegister(8, 42)).isTrue();
+      assertThat(session.registerFile.getValueNoNotify(8)).isEqualTo(42);
+      assertThat(session.backStepper.canBackstep()).isFalse();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(session.registerFile.getValueNoNotify(8)).isEqualTo(42);
+    }
+  }
+
+  @Test
   void reverseSourceStepUndoesOneLoopIterationAndKeepsTheOtherHistory() throws Exception {
     try (var session = load(".text\nloop: b loop\n")) {
       var engine = session.simulator();
@@ -195,6 +216,8 @@ class SimulatorEngineTest {
       try {
         assertThatThrownBy(engine::step).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(engine::backstep).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editIntegerRegister(8, 42))
+            .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.setMemoryConfiguration("Default"))
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.assemble(List.of(directory.resolve("none"))))

@@ -66,12 +66,12 @@ internal class MarsExpressionEvaluator(
         val result = runReadActionBlocking { evaluateSource(source) }
         when (result) {
             null -> callback.invalidExpression(runMessages.getMessage("debug.evaluate.invalid"))
-            is Immediate -> callback.evaluated(RegisterValue(source, result.value::display))
+            is Immediate -> callback.evaluated(RegisterValue(source, format = result.value::display))
             is ReadMemory -> {
                 val request = WatchMemoryRequest(
                     inspect = { memory ->
                         result.inspect(memory).fold(
-                            { value -> callback.evaluated(RegisterValue(source, value::display)) },
+                            { value -> callback.evaluated(RegisterValue(source, format = value::display)) },
                             { error -> callback.errorOccurred(error.message!!) },
                         )
                     },
@@ -83,7 +83,7 @@ internal class MarsExpressionEvaluator(
     }
 
     // The debugger calls this while the stopped machine is still owned by its execution coroutine.
-    suspend fun evaluateAtBreakpoint(expression: String, memory: MemoryState): Result<Scalar> {
+    suspend fun evaluateStopped(expression: String, memory: MemoryState): Result<Scalar> {
         val evaluation = readAction { evaluateSource(expression.trim()) }
             ?: return invalidExpression()
         return evaluation.resolve(memory)
@@ -172,6 +172,7 @@ internal class MarsExpressionEvaluator(
 
     sealed interface Scalar {
         val number: Double
+        val wordBits: Int? get() = (this as? Word)?.bits
         fun negated(): Scalar
         fun display(): String
 

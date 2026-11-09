@@ -7,6 +7,7 @@ import com.intellij.xdebugger.frame.XNamedValue
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XValueChildrenList
 import com.intellij.xdebugger.frame.XValueGroup
+import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueNode
 import com.intellij.xdebugger.frame.XValuePlace
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
@@ -22,19 +23,34 @@ import kotlinx.coroutines.channels.SendChannel
 internal class MarsStackFrame(
     private val position: XSourcePosition?,
     machine: MarsContext,
-    project: Project,
-    localSymbols: Map<String, Definition>,
-    globalSymbols: Map<String, Definition>,
-    watchRequests: SendChannel<WatchMemoryRequest>,
+    private val project: Project,
+    private val localSymbols: Map<String, Definition>,
+    private val globalSymbols: Map<String, Definition>,
+    private val watchRequests: SendChannel<WatchMemoryRequest>,
+    private val registerEdits: SendChannel<RegisterEditRequest>,
+    private val isCurrent: () -> Boolean,
 ) : XStackFrame() {
-    private val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, watchRequests)
-    private val registerGroups = XValueChildrenList().apply {
+    private data class Snapshot(val evaluator: MarsExpressionEvaluator, val groups: XValueChildrenList)
+    @Volatile private var snapshot = capture(machine)
+
+    fun refresh(machine: MarsContext) {
+        snapshot = capture(machine)
+    }
+
+    private fun capture(machine: MarsContext): Snapshot {
+        val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, watchRequests)
+        return Snapshot(evaluator, registerGroups(machine))
+    }
+
+    private fun registerGroups(machine: MarsContext) = XValueChildrenList().apply {
         val cpu = machine.registerFile
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
             add(hexRegister(cpu.programCounterRegister))
-            cpu.registers.forEach { add(hexRegister(it)) }
-            add(hexValue("hi", cpu.getValueNoNotify(HI_REGISTER)))
-            add(hexValue("lo", cpu.getValueNoNotify(LO_REGISTER)))
+            cpu.registers.forEach {
+                add(if (it.number == 0) hexRegister(it) else editableWord(it.name, it.valueNoNotify, it.number))
+            }
+            add(editableWord("hi", cpu.getValueNoNotify(HI_REGISTER), HI_REGISTER))
+            add(editableWord("lo", cpu.getValueNoNotify(LO_REGISTER), LO_REGISTER))
         }, initiallyExpanded = true))
         addTopGroup(RegisterGroup("debug.registers.cp0", XValueChildrenList().apply {
             machine.coprocessor0.registers.forEach { add(hexRegister(it)) }
@@ -58,10 +74,13 @@ internal class MarsStackFrame(
         }))
     }
 
+    private fun editableWord(name: String, bits: Int, number: Int) =
+        RegisterValue(name, RegisterModifier(number, bits, registerEdits, isCurrent)) { Binary.intToHexString(bits) }
+
     override fun getSourcePosition() = position
-    override fun getEvaluator() = evaluator
+    override fun getEvaluator() = snapshot.evaluator
     override fun getEqualityObject(): Any = MarsStackFrame::class.java
-    override fun computeChildren(node: XCompositeNode) = node.addChildren(registerGroups, true)
+    override fun computeChildren(node: XCompositeNode) = node.addChildren(snapshot.groups, true)
 }
 
 private fun hexRegister(register: Register) = hexValue(register.name, register.valueNoNotify)
@@ -77,7 +96,13 @@ private class RegisterGroup(key: String, private val values: XValueChildrenList,
     }
 }
 
-internal class RegisterValue(name: String, private val format: () -> String) : XNamedValue(name) {
+internal class RegisterValue(
+    name: String,
+    private val modifier: XValueModifier? = null,
+    private val format: () -> String,
+) : XNamedValue(name) {
+    override fun getModifier() = modifier
+
     override fun computePresentation(node: XValueNode, place: XValuePlace) =
         node.setPresentation(null, null, format(), false)
 }
