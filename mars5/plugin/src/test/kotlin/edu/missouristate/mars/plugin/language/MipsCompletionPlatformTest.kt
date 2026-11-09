@@ -15,12 +15,16 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
+import kotlin.io.path.writeText
 
 @TestApplication
 class MipsCompletionPlatformTest {
@@ -57,6 +61,91 @@ class MipsCompletionPlatformTest {
             fixture.lookup.setCurrentItem(directive)
             fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
             assertEquals(".macro emit\n  .asciiz\n.end_macro\n", fixture.file.text)
+        }
+    }
+
+    @Test
+    fun `macro completion displays the visible overloads and inserts the call name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val include = """
+            .macro emit (%obsolete)
+              addiu ${'$'}t0, ${'$'}zero, 1
+            .end_macro
+            .macro emitPair
+              nop
+            .end_macro
+        """.trimIndent()
+        val source = """
+            .include "macros.s"
+            .eqv OPEN .macro
+            .eqv CLOSE .end_macro
+            OPEN emit (%value)
+              addiu ${'$'}t0, ${'$'}zero, %value
+            CLOSE
+            .macro emit (%left, ${'$'}right)
+              nop
+            .end_macro
+            entry: em<caret>itTail (7)
+            .macro emitLater
+              nop
+            .end_macro
+        """.trimIndent()
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("macros.s", include)
+            fixture.configureByText("macro-completion.asm", source)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val completed = withContext(Dispatchers.EDT) {
+            val choices = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("emit") }
+            assertEquals(setOf("emit", "emitPair"), choices.map { it.lookupString }.toSet())
+            val item = choices.single { it.lookupString == "emit" }
+            val presentation = LookupElementPresentation().also(item::renderElement)
+            assertEquals(" (%value) / (%left, \$right)", presentation.tailText)
+            fixture.lookup.setCurrentItem(item)
+            fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+            fixture.file.text.also { assertEquals(source.replace("em<caret>itTail", "emit"), it) }
+        }
+
+        directory.resolve("macros.s").writeText(include)
+        val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
+        val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+        assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
+    fun `macro suggestions honor case active aliases and incomplete definitions`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val file = fixture.configureByText("macro-scope.asm", """
+                .macro emit
+                .end_macro
+                .macro EmitCase
+                .end_macro
+                .macro emitShadowed
+                .end_macro
+                .eqv emitShadowed nop
+                .macro emitInvalid 7
+                .end_macro
+                .macro ${'$'}emitDollar
+                .end_macro
+                .macro emitOpen
+                  <caret>
+            """.trimIndent()) as MipsFile
+            val analysis = current.service<MarsAnalysisService>()
+            val offset = fixture.editor.caretModel.offset
+            assertEquals(mapOf("emit" to listOf("()")), analysis.macroCompletionSignatures(file, offset, "em"))
+            assertEquals(setOf("EmitCase"), analysis.macroCompletionSignatures(file, offset, "Em").keys)
+            assertEquals(setOf("\$emitDollar"), analysis.macroCompletionSignatures(file, offset, "\$em").keys)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertTrue(analysis.macroCompletionSignatures(file, offset, "").isEmpty())
+            }
+            val dollarCall = ".macro \$emitDollar\n.end_macro\n.macro \$emitOther\n.end_macro\n\$em<caret>\n"
+            fixture.configureByText("macro-dollar.asm", dollarCall)
+            val dollarMacro = fixture.completeBasic().orEmpty().single { it.lookupString == "\$emitDollar" }
+            fixture.lookup.setCurrentItem(dollarMacro)
+            fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR)
+            assertEquals(dollarCall.replace("\$em<caret>", "\$emitDollar"), fixture.file.text)
         }
     }
 

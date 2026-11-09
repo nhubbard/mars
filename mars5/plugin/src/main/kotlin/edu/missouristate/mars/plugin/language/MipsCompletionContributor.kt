@@ -23,10 +23,18 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
     init {
         extend(CompletionType.BASIC, statementHead, object : CompletionProvider<CompletionParameters>() {
             override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+                val position = parameters.position
+                val file = parameters.originalFile as MipsFile
+                val prefix = prefix(parameters)
+                val lookup = result.withPrefixMatcher(prefix)
                 val items = MipsDocumentationCatalog.entries.map { entry ->
                     LookupElementBuilder.create(entry, entry.name).withTailText(entry.completionTail, true)
                 }
-                result.withPrefixMatcher(prefix(parameters)).caseInsensitive().addAllElements(items)
+                lookup.caseInsensitive().addAllElements(items)
+                val macros = file.project.service<MarsAnalysisService>().macroCompletionSignatures(file, position.textOffset, prefix)
+                for ((name, signatures) in macros) {
+                    lookup.addElement(LookupElementBuilder.create(name).withTailText(signatures.joinToString(" / ", prefix = " "), true))
+                }
             }
         })
         extend(CompletionType.BASIC, operandPosition, object : CompletionProvider<CompletionParameters>() {
@@ -54,7 +62,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
 
     private companion object {
         val statementHead = psiElement()
-            .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC")))
+            .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
             .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
         val operandPosition = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))

@@ -205,6 +205,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return matchingMacro(prefix, tokens)
     }
 
+    internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
+        if (DumbService.isDumb(project)) return emptyMap()
+        val prefix = editorPrefix(root, offset)
+        val definitions = LinkedHashMap<Pair<String, Int>, MipsSourceEvent.Begin>()
+        visitMacroPrefix(prefix.events) { definition ->
+            val arity = definition.arity ?: return@visitMacroPrefix
+            val name = definition.name
+            if (name.startsWith(namePrefix) && prefix.equivalence(name) == null) {
+                definitions[name to arity] = definition
+            }
+        }
+        return definitions.values.groupBy(MipsSourceEvent.Begin::name) { definition ->
+            definition.parameters.joinToString(prefix = "(", postfix = ")") { it.value }
+        }
+    }
+
     internal fun expandedInstructionAlias(
         root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? = expandedOperationAlias(root, head, source, allowIncompleteOperand)
