@@ -838,6 +838,26 @@ public class MemoryState {
     return get(address, WORD_LENGTH_BYTES, false);
   }
 
+  /**
+   * Inspects an aligned word without triggering memory access listeners or requiring
+   * self-modifying code. Returns null for an unmapped address or an empty instruction slot.
+   */
+  public Integer inspectWord(int address) throws AddressErrorException {
+    if (!wordAligned(address)) {
+      return null;
+    }
+    if (inTextSegment(address) || inKernelTextSegment(address)) {
+      var statement = getStatementNoNotify(address);
+      return statement == null ? null : statement.getBinaryStatement();
+    }
+    if (inDataSegment(address) || inKernelDataSegment(address)
+        || address > stackLimitAddress && address <= stackBaseAddress
+        || address >= memoryMapBaseAddress && address < memoryMapLimitAddress) {
+      return getWordNoNotify(address);
+    }
+    return null;
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////
   /**
    * Starting at the given word address, read a 2 byte word into lower 16 bits of int.

@@ -68,6 +68,31 @@ class MemoryStateTest {
   }
 
   @Test
+  void inspectionReadsCodeAndMappedWordsWithoutNotifyingDevices() throws Exception {
+    var state = memory("Default", new SimulationSettings());
+    int[] data = {state.dataBaseAddress, state.stackBaseAddress, state.kernelDataBaseAddress,
+        state.memoryMapBaseAddress};
+    for (int address : data) {
+      state.setWord(address, 0x12345678);
+    }
+    for (int address : new int[] {state.textBaseAddress, state.kernelTextBaseAddress}) {
+      state.setStatement(address, new ProgramStatement(0x2408002a, address, instructions));
+    }
+    var notices = new ArrayList<MemoryAccessNotice>();
+    state.addObserver(notices::add);
+    for (int address : data) {
+      assertThat(state.inspectWord(address)).isEqualTo(0x12345678);
+    }
+    assertThat(state.inspectWord(state.textBaseAddress)).isEqualTo(0x2408002a);
+    assertThat(state.inspectWord(state.kernelTextBaseAddress)).isEqualTo(0x2408002a);
+    assertThat(state.inspectWord(state.textBaseAddress + 4)).isNull();
+    assertThat(state.inspectWord(state.dataBaseAddress + 1)).isNull();
+    assertThat(state.inspectWord(state.dataBaseAddress + 4)).isZero();
+    assertThat(state.inspectWord(0)).isNull();
+    assertThat(notices).isEmpty();
+  }
+
+  @Test
   void layoutsAndConfigurationSnapshotsDoNotAffectOtherInstances() throws Exception {
     var configuration = MemoryConfigurations.createConfiguration("CompactDataAtZero");
     var first =

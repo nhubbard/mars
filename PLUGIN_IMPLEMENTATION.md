@@ -510,6 +510,24 @@ The debugger fixture walks backward over a syscall and its setup instructions.
 It checks that the PC and registers return to their earlier values and that
 console output already produced remains visible.
 
+## Memory inspection
+
+The native Debug layout includes a Memory tab for the paused machine. Each
+page shows addresses, hexadecimal bytes, and printable characters. The
+address field accepts unsigned decimal and hexadecimal values. Pages stop
+at the end of the 32-bit address space and show unavailable words with
+dashes.
+
+The debugger reads a page on its background execution coroutine through a
+queue owned by the current suspension. Resume closes that queue and clears
+the view. A new suspension refreshes the selected address, including after
+instruction backstep. The core exposes code and mapped data for inspection
+without issuing simulated read events.
+
+Core tests cover code, stack, data, kernel memory, and memory-mapped I/O.
+IntelliJ fixtures check navigation, address validation, endian display,
+resume, store and backstep refresh, and view disposal.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

@@ -14,6 +14,7 @@ import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
+import com.intellij.execution.ui.RunnerLayoutUi
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -33,6 +34,10 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBTextField
+import com.intellij.ui.table.JBTable
+import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
@@ -48,8 +53,11 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
+import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsRunType
+import javax.swing.JButton
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
@@ -314,6 +322,130 @@ class MarsDebugPlatformTest {
         val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.TOOLBAR, null)
         action.update(event)
         return action to event
+    }
+
+    @Test
+    fun `Debug Memory reads the active suspension and refreshes after a store and backstep`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("memory.s", """
+                .data
+                payload: .byte 65, 0, 127, 255
+                .text
+                addiu ${'$'}t1, ${'$'}zero, 66
+                la ${'$'}t0, payload
+                sb ${'$'}t1, 0(${'$'}t0)
+                nop
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 3)
+                addBreakpoint(it, 6)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 3)
+            val disposable = Disposer.newDisposable()
+            var afterDisposal: () -> Unit = {}
+            try {
+                val (table, field, panel) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsMemoryTest", "Debug", "MIPS", disposable)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val content = requireNotNull(layout.findContent("MarsMipsMemory"))
+                    assertEquals("Memory", content.displayName)
+                    assertFalse(content.isCloseable)
+                    val panel = content.component
+                    val table = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                    val address = requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java))
+                    Triple(table, address, panel)
+                }
+                val buttons = withContext(Dispatchers.EDT) {
+                    UIUtil.findComponentsOfType(panel, JButton::class.java).associateBy { it.text }
+                }
+                assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
+                withContext(Dispatchers.EDT) { buttons.getValue("Next Page").doClick(0) }
+                assertMemory(table, "0x10010100", "00 00 00 00")
+                withContext(Dispatchers.EDT) { buttons.getValue("Previous Page").doClick(0) }
+                assertMemory(table, "0x10010000", "41 00 7f ff")
+                withContext(Dispatchers.EDT) {
+                    field.text = "0X00400000"
+                    field.postActionEvent()
+                    field.text = "0"
+                    buttons.getValue("Go").doClick(0)
+                }
+                assertMemory(table, "0x00000000", "-- -- -- --")
+                withContext(Dispatchers.EDT) {
+                    assertFalse(buttons.getValue("Previous Page").isEnabled)
+                    field.text = "0x00400000"
+                    field.postActionEvent()
+                }
+                assertMemory(table, "0x00400000", "42 00 09 24")
+                withContext(Dispatchers.EDT) {
+                    field.text = "0xffffffff"
+                    field.postActionEvent()
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals(1, table.rowCount)
+                        assertEquals("0xfffffff0", table.getValueAt(0, 0))
+                        assertFalse(buttons.getValue("Next Page").isEnabled)
+                    }
+                }
+                withContext(Dispatchers.EDT) {
+                    field.text = "0x100000000"
+                    field.postActionEvent()
+                    assertEquals(0, table.rowCount)
+                    assertTrue(UIUtil.findComponentsOfType(panel, JBLabel::class.java)
+                        .any { it.text.contains("Enter a 32-bit address") })
+                    field.text = 0x10010003u.toString()
+                    field.postActionEvent()
+                }
+                assertMemory(table, "0x10010000", "41 00 7f ff")
+                withContext(Dispatchers.EDT) {
+                    debug.session.resume()
+                    assertFalse(field.isEnabled)
+                    assertEquals(0, table.rowCount)
+                }
+                debug.assertPausedAt(source, 6)
+                assertMemory(table, "0x10010000", "42 00 7f ff", "B...")
+                withContext(Dispatchers.EDT) {
+                    val (action, event) = backstepAction(debug.session)
+                    action.actionPerformed(event)
+                }
+                debug.assertPausedAt(source, 5)
+                assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
+                afterDisposal = {
+                    field.text = "0x00400000"
+                    field.postActionEvent()
+                    assertEquals("0x10010000", table.getValueAt(0, 0))
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+            }
+            withContext(Dispatchers.EDT) { afterDisposal() }
+            withContext(Dispatchers.EDT) { debug.session.stop() }
+            assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `memory page decodes big endian bytes in address order`() {
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            val memory = machine.memory
+            memory.byteOrder = MemoryState.BIG_ENDIAN
+            memory.setWord(memory.dataBaseAddress, 0x41424300)
+            val row = memoryPage(memory, memory.dataBaseAddress.toLong()).first()
+            assertTrue(row.bytes.startsWith("41 42 43 00"), row.bytes)
+            assertTrue(row.characters.startsWith("ABC."), row.characters)
+        }
+    }
+
+    private suspend fun assertMemory(table: JBTable, address: String, bytes: String, ascii: String = "") {
+        pollAssertionsAsync(3.seconds, 10.milliseconds) {
+            withContext(Dispatchers.EDT) {
+                assertTrue(table.rowCount > 0)
+                assertEquals(address, table.getValueAt(0, 0))
+                assertTrue((table.getValueAt(0, 1) as String).startsWith(bytes))
+                assertTrue((table.getValueAt(0, 2) as String).startsWith(ascii))
+            }
+        }
     }
 
     @Test

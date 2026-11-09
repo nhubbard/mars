@@ -1,6 +1,8 @@
 package edu.missouristate.mars.plugin.debug
 
 import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.ui.RunnerLayoutUi
+import com.intellij.execution.ui.layout.PlaceInGrid
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -25,18 +27,22 @@ import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XExecutionStack
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.xdebugger.frame.XSuspendContext
+import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
+import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
 private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
@@ -75,6 +81,16 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MarsDebugEditors
+
+    override fun createTabLayouter() = object : XDebugTabLayouter() {
+        override fun registerAdditionalContent(ui: RunnerLayoutUi) {
+            val view = MarsMemoryView(session)
+            val content = ui.createContent("MarsMipsMemory", view.component, runMessages.getMessage("debug.memory"), null, view.addressField)
+            content.isCloseable = false
+            content.setDisposer(view)
+            ui.addContent(content, 0, PlaceInGrid.right, true)
+        }
+    }
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
         topToolbar.add(object : DumbAwareAction(
@@ -146,7 +162,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                     process.backstepSlice(engine)
                     val context = suspendContext(machine)
                     withContext(Dispatchers.EDT) { session.positionReached(context) }
-                    command = commands.receive()
+                    command = awaitCommand(context, machine.memory)
                     continue
                 }
                 val target = command.target
@@ -160,7 +176,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                         session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
                         session.positionReached(context)
                     }
-                    command = commands.receive()
+                    command = awaitCommand(context, machine.memory)
                     continue
                 }
                 val event = process.runSlice(engine, command.steps) { pc ->
@@ -192,7 +208,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                                 }
                             }
                         }
-                        if (suspended) command = commands.receive()
+                        if (suspended) command = awaitCommand(context, machine.memory)
                         skipFirst = true
                     }
                     else -> return event
@@ -204,8 +220,29 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         }
     }
 
-    private fun suspendContext(machine: MarsContext): XSuspendContext = machine.claimStoppedSession().use {
-        MarsSuspendContext(MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep())
+    private suspend fun awaitCommand(context: MarsSuspendContext, memory: MemoryState): Command {
+        try {
+            while (true) {
+                val command = select<Command?> {
+                    commands.onReceive { it }
+                    context.memoryRequests.onReceive { request ->
+                        val rows = memoryPage(memory, request.address)
+                        withContext(Dispatchers.EDT) { request.show(rows) }
+                        null
+                    }
+                }
+                if (command != null) return command
+            }
+        } finally {
+            context.memoryRequests.cancel()
+        }
+    }
+
+    private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
+        MarsSuspendContext(
+            MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep(),
+            machine.memory.dataBaseAddress.toUInt().toLong(),
+        )
     }
 
     private fun sourcePosition(machine: MarsContext): XSourcePosition? {
@@ -233,7 +270,8 @@ private object MarsDebugEditors : XDebuggerEditorsProvider() {
         EditorFactory.getInstance().createDocument(expression.expression)
 }
 
-private class MarsSuspendContext(frame: XStackFrame, val canBackstep: Boolean) : XSuspendContext() {
+internal class MarsSuspendContext(frame: XStackFrame, val canBackstep: Boolean, val dataAddress: Long) : XSuspendContext() {
+    val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame
         override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
