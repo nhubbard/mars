@@ -53,6 +53,8 @@ class MipsReferenceIndexPlatformTest {
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
             .end_macro
+            .macro nop
+            .end_macro
             ,,top,, :,, .emit(,,Shared,,,NOP)
             b NOP
             .globl Shared
@@ -102,7 +104,7 @@ class MipsReferenceIndexPlatformTest {
             }
             for (name in listOf("Alias", "Literal", "local", "top", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
                 "trailing", "unused", "ignored",
-                "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s")) {
+                "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s", "nop")) {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()

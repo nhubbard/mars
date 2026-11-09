@@ -87,7 +87,8 @@ class MarsBuildPlatformTest {
             .macro helper (%number)
               li ${'$'}t3, %number
             .end_macro
-            .eqv ARGS (9)
+            .eqv DEFINE .eqv
+            DEFINE ARGS (9)
             .macro body (%value)
               .include "parts/wrapper.s"
             body (42)

@@ -315,9 +315,39 @@ public class Tokenizer {
       Function<String, String> replacements,
       Runnable checkCancellation) {
     var tokenizer = new Tokenizer();
-    tokenizer.errors = errors;
-    TokenList tokens = tokenizer.tokenizeLine(null, 1, line, false, checkCancellation);
-    return tokenizer.processEqv(null, 1, line, tokens, replacements, checkCancellation);
+    return tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation);
+  }
+
+  /** An equivalence recorded while processing a detached line. */
+  public record EquivalenceDefinition(String name, String replacement) {}
+
+  /** The expanded tokens and the optional definition introduced by that same expansion. */
+  public record ExpandedLine(TokenList tokens, EquivalenceDefinition definition) {}
+
+  public static ExpandedLine expandLine(
+      String line,
+      ErrorList errors,
+      Function<String, String> replacements,
+      Runnable checkCancellation) {
+    var tokenizer = new Tokenizer();
+    TokenList tokens = tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation);
+    var definitions = tokenizer.equivalents.entrySet().iterator();
+    if (definitions.hasNext() && !errors.errorsOccurred()) {
+      var definition = definitions.next();
+      return new ExpandedLine(
+          tokens, new EquivalenceDefinition(definition.getKey(), definition.getValue()));
+    }
+    return new ExpandedLine(tokens, null);
+  }
+
+  private TokenList expandDetachedLine(
+      String line,
+      ErrorList errors,
+      Function<String, String> replacements,
+      Runnable checkCancellation) {
+    this.errors = errors;
+    TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
+    return processEqv(null, 1, line, tokens, replacements, checkCancellation);
   }
 
   /**

@@ -33,7 +33,7 @@ class MipsExternalReferencesPlatformTest {
 
     @Test
     fun `first valid external storage wins in expanded include order`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
-        val source = ".eqv SIZE 4\n.data\n.word sha<caret>red\n.include \"parts.s\"\n.extern shared 12\n.extern next 4\n.extern ) 4\n"
+        val source = ".eqv DEFINE .eqv\nDEFINE SIZE 4\n.data\n.word sha<caret>red\n.include \"parts.s\"\n.extern shared 12\n.extern next 4\n.extern ) 4\n"
         val included = ".extern shared SIZE\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("parts.s", included) }
         assertEquals(Target("parts.s", 8), target(source))

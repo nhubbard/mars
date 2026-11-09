@@ -162,6 +162,16 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    fun `generated equivalences bind both macro headers and call arity`() = timeoutRunBlocking<Unit> {
+        val declarations = ".eqv DEFINE .eqv\nDEFINE OPEN .macro\nDEFINE ARGS 1,2\n"
+        val first = ".macro emit (%x)\n.end_macro\n"
+        val second = "OPEN emit (%x,%y)\n.end_macro\n"
+        val source = "$declarations$first$second"
+        assertEquals(Target("macro-call.asm", declarations.length + first.length, null), target("${source}em<caret>it(ARGS)\n"))
+        assertEquals(SymbolKind.MACRO, target("${source}em<caret>it(1)\n")?.kind)
+    }
+
+    @Test
     fun `macro boundary facts stay tolerant around malformed headers and closing lines`() = timeoutRunBlocking<Unit> {
         val malformed = ".end_macro\n.asciiz \"data\"\n.macro nop\n.end_macro\n.macro invalid (ordinary)\n.end_macro\n"
         assertNull(target("$malformed.macro emit\n.end_macro extra\nem<caret>it\n"))

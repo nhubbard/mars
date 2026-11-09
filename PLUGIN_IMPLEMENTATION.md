@@ -160,16 +160,20 @@ macro shadowing, duplicate declarations, and non-label operands.
 
 ## Go to Declaration for equivalences
 
-Symbol references navigate to the first case-sensitive `.eqv` definition in the source
-prefix after expanding physical includes in order. The analysis service reads the per-file
-declaration index, stops at the first match, and guards against include cycles and indexing
-mode. A visible equivalence takes precedence over a same-named label. Supported use sites
+Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source
+prefix after expanding physical includes in order. A visible equivalence takes precedence over
+a same-named label. Supported use sites
 include immediates, segment addresses, operation aliases, macro arguments, and partial
 operands. Replacement text retains its deferred meaning until an alias is expanded.
 
-The query uses the current file as its entry. Equivalence definitions created only by another
-expansion and full build-context binding remain separate. Native fixtures cover ordering,
-label precedence, include cycles, incomplete definitions, and navigation through the IDE.
+The Java tokenizer reports definitions created by expansion, such as `DEFINE LIMIT 7` after
+`.eqv DEFINE .eqv`. Navigation to `LIMIT` opens the written `DEFINE` token. The per-file
+indexes retain physical declarations. An entry-scoped PSI cache shares expanded facts between
+equivalence, macro, and data queries. It records the first effective definition by name and
+locates the caret in include order by binary search. Changes to contributing PSI or the VFS
+structure invalidate the cache. The selected build entry supplies context for included
+editors. Native fixtures cover definition order, malformed and duplicate definitions,
+include cycles, an include appearing after lookup, and unsaved edits.
 
 ## Go to Declaration for macro calls
 
@@ -180,18 +184,18 @@ Macro boundary facts are cached on each file's PSI and combined with physical in
 source order, so a macro can open and close in different files. Missing and cyclic includes
 leave the editor query usable while the assembler reports source errors.
 
-The query uses the current file as its entry. It supplies visible physical `.eqv` definitions
+The query supplies visible physical and generated `.eqv` definitions from the entry prefix
 to the Java tokenizer before counting arguments. The tokenizer preserves replacement source
 text, retokenizes chained substitutions and reports cycles. This covers aliases that add tokens
-or supply the outer call parentheses. Calls in macro bodies and definitions created by other
-expansions still require build-context binding. IDE fixtures exercise redefinitions, arity,
+or supply the outer call parentheses. Calls in macro bodies still require expansion context.
+IDE fixtures exercise redefinitions, arity,
 case, incomplete definitions, raw call arguments, nested includes, and the indexing guard.
 An assembler-backed fixture compares the selected overload with the emitted instruction.
 
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,
 including definitions from earlier includes. Calls use the expanded name and arity
-while navigating to the written header. Header aliases link to their physical `.eqv`
+while navigating to the written header. Header aliases link to their effective `.eqv`
 definitions. A use of an expanded formal opens the header because the expanded token
 column may have no corresponding source token.
 
@@ -280,7 +284,7 @@ The generated parser preserves the complete `.extern` payload and exposes addres
 as native declarations. References prefer a local label, then the first valid external
 reservation in include order. `.globl` continues to bind only local definitions. Navigation
 and operand completion use the Java tokenizer to check the expanded name and nonnegative
-size, including physical `.eqv` aliases visible at the reservation. The per-file declaration
+size, including `.eqv` aliases visible at the reservation. The per-file declaration
 and reference indexes rebuild for the external symbol kind.
 
 The query follows the current entry and physical includes. Storage created only during macro
