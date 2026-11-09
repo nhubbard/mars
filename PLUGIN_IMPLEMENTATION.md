@@ -1255,23 +1255,11 @@ restores the rest of the response, the game state, and its diagnostic.
 An assembly fixture sorts a real task through loads and stores and
 verifies that rewind restores the sorted task and request word.
 
-## Screen Magnifier capture and rendering
+## Screen Magnifier scope decision
 
-The capture model intersects the requested desktop rectangle with each
-display's logical bounds and keeps that display's highest-resolution
-bitmap. Rendering uses logical placement and nearest-neighbor scaling,
-including when a selection crosses displays at different pixel densities.
-Gaps between displays retain the viewport background.
-
-Zoom runs from 1× to 4× in half steps. Center alignment independently
-centers a small image or scrolls to the center of a large one on each
-axis. Upper-left alignment starts at the origin. Annotation coordinates
-follow the image when zoom changes, and the displayed stroke width stays
-constant. Marks repaint with the image and are clipped to its bounds.
-
-The model distinguishes an off-screen selection, an unavailable capture
-backend, and a permission error. The IntelliJ tool window, region
-selection, host AWT capture, and annotation controls are the next slice.
+Screen Magnifier is outside the IntelliJ plugin scope by user decision.
+The capture and annotation prototype was removed from the plugin.
+The M6 educational-tool target is 13 tools, with Intro to Tools next.
 
 ## Next slices
 

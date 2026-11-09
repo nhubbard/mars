@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-08. **Status:** complete planning baseline; proposed components are not implemented unless stated otherwise.
 
-**Product target:** full MARS feature parity inside IntelliJ IDEA 2026.3, plus native language and debugger capabilities.
+**Product target:** MARS feature parity within the recorded scope in IntelliJ IDEA 2026.3, plus native language and debugger capabilities.
 The independent engine stays Java. All new plugin production and test code is Kotlin.
 A Java plugin exception requires evidence that Kotlin cannot implement the required integration.
 Convenience, examples written in Java, and annotation processing alone do not justify an exception.
@@ -33,7 +33,7 @@ framework or API explicitly requires it, such as a Settings page lookup; explain
 
 ### 1.1 Scope and disposition rules
 
-The plugin must preserve every existing user capability. A later delivery step does not constitute feature deferral.
+The plugin must preserve every existing user capability in scope. A later delivery step does not constitute feature deferral.
 This plan assigns every production source file and packaged resource to a component below.
 A component may have several source files. Conversely, a source file may serve several features.
 The primary mapping in the appendix identifies its owner; the feature tables describe the shared responsibilities.
@@ -44,10 +44,11 @@ The primary mapping in the appendix identifies its owner; the feature tables des
 | Direct reimplementation | Implement equivalent behavior in Kotlin against native IntelliJ APIs. Preserve data and semantic contracts. |
 | Redesign | Preserve the capability while replacing the interaction, ownership, or implementation structure. |
 | Retire implementation | Remove an obsolete implementation from the plugin design because IntelliJ supplies its capability. The capability remains. |
+| Exclude from plugin | An explicit scope decision recorded in the component inventory. |
 | Deferral | Use only if unresolved future details prevent a responsible disposition decision. This inventory has **no deferred features**. |
 
-No existing user feature is proposed for retirement. Retired items are implementation mechanisms such as the jEdit widget,
-standalone window shell, or desktop service loader. The separate desktop application remains available during implementation.
+Screen Magnifier (T14) is the one explicit feature exclusion. Other retirements are implementation mechanisms such as
+the jEdit widget, standalone window shell, or desktop service loader. The separate desktop application remains available during implementation.
 It is not a plugin runtime dependency. This plan does not authorize deleting desktop sources as a shortcut to parity.
 
 The baseline is Java/Kotlin-level integration for **MIPS development**. It does not mean implementing JVM debugging,
@@ -686,7 +687,7 @@ native/scalable icons while preserving the actions. Never bundle the desktop jar
 ## 9. All educational tools
 
 The loader registers **14 tools**. The additional tool source files are support classes, not five extra products.
-Every tool remains in scope. Port behavior and data formats to Kotlin models; rebuild its UI as native content.
+Thirteen tools are in scope for IntelliJ. Port their behavior and data formats to Kotlin models and rebuild their UI as native content.
 Tool models receive a session/device port explicitly. They must not receive `VenusUI`, `DesktopSession`, or a process-wide machine.
 
 All connected tools retain connect/disconnect, reset, configuration and help capability where present.
@@ -708,12 +709,8 @@ explicitly owns a headless device. Headless device state and visible renderer li
 | T11 | `MemoryReferenceVisualization` | Redesign as access-density model and grid renderer | Base/range, words per cell, unit/display sizes, access colors/counts, reset and configuration changes; complete events independent of render rate. |
 | T12 | `MipsXray`, `FunctionUnitVisualization`, `UnitAnimation`, datapath XML/images | Redesign as instruction/datapath model, timeline and animation content | Opcode/function selection, register/ALU/control paths, XML parsing and diagrams, pause/rate/reset; deterministic animation clock and accessible textual equivalent. |
 | T13 | `ScavengerHunt` | Redesign as game/world model and MMIO panel, retaining the existing administration/player protocol | Authentication/player ID, initialization, turns, energy, locations/tasks, movement/ready handshakes, per-player address regions, bounded world updates and reset. |
-| T14 | `ScreenMagnifier` and its package-private capture/settings/scribbler classes | Redesign as zoom/capture/annotation content with an explicit capture port | Capture rectangle/alignment, zoom/scale, refresh, drawing/annotation and preferences; OS permission failure, multi-display/HiDPI transforms and cleanup. |
+| T14 | `ScreenMagnifier` and its package-private capture/settings/scribbler classes | Exclude from plugin by user decision | Record the exclusion in the release ledger. |
 | T15 | `MarsTool`, `MarsToolProvider`, `AbstractMarsToolAndApplication`, `ToolLoader`, `ToolAction` | Retire desktop loading/window framework in plugin; implement Kotlin `MarsToolProvider` extension point and lazy content registry | Unique provider IDs, ordering, error reporting, lazy creation, session binding, unload/disposal, registration test and third-party example. |
-
-The magnifier is not dropped merely because the IDE has font zoom. Font zoom does not replace screen capture or annotation.
-Use an injectable capture backend, including a host screen-capture implementation where supported. Explain missing OS permission and allow retry.
-Test capture transforms and render output without requiring a real desktop; add supported-OS smoke checks for the capture boundary.
 
 Source behavior needs characterization before it becomes a parity oracle.
 For example, `DigitalLabSim.addAsObserver()` currently registers the first display address and the text range,
@@ -843,7 +840,7 @@ Tests must not require the local IntelliJ source checkout or absolute paths from
 
 ## 11. Delivery sequence and release gates
 
-These are implementation dependencies. Every feature in the inventory remains committed scope.
+These are implementation dependencies for the features in scope.
 No item below is deferred merely because it appears late in the sequence.
 
 | Milestone | Work and dependency | Exit evidence |
@@ -854,8 +851,8 @@ No item below is deferred merely because it appears late in the sequence.
 | M3: Run and complete I/O | R01–R06, I01–I08, run configurations and process/console adapters | Every syscall family, waiting-input stop, restart and project closure; concurrent run transcripts; native Run action. |
 | M4: Debug and machine views | D01–D12, V01–V07, B05 export; breakpoint boundary and history APIs | Source/instruction stepping, delay slots, conditions/logpoints, watches/set value, reverse, exceptions, disassembly and memory watchpoints through real XDebugger. |
 | M5: Complete language experience | E04, E06–E10, remaining E09 behavior, docs/settings/actions | Completion/docs/rename/navigation/format/intention/inlay tests; native keymaps; source-map navigation across macros. |
-| M6: Every educational tool | T01–T15 and device/history integration, V08 and settings details | All 14 tools ported, each with deterministic model corpus, session isolation, configuration, disposal and platform presentation test. |
-| M7: Parity and release qualification | B06 launcher parity, all settings/help/resources, native action equivalence, host matrix and package checks | Every mapping ID accepted; near-full coverage gates; no unexplained exclusion, deferred feature or retired user capability; fresh install/upgrade evidence. |
+| M6: Educational tools | T01–T13, T15 and device/history integration, V08 and settings details | All 13 in-scope tools ported, with deterministic model tests, session isolation, configuration, disposal and platform presentation coverage as applicable. |
+| M7: Parity and release qualification | B06 launcher parity, all settings/help/resources, native action equivalence, host matrix and package checks | Every mapping ID accepted; near-full coverage gates; no unexplained exclusion, deferral or retirement; fresh install/upgrade evidence. |
 
 M4 depends on the richer source map and worker commands from M0/M2. Tools depend on complete typed event/device contracts,
 not on a UI being finished first. Work within a milestone can proceed independently only where ownership is already explicit.
@@ -893,7 +890,7 @@ conflicting requirements, source evidence, alternatives and decision owner. Ask 
 
 Initial decisions: native Kotlin PSI integration; Java engine retained; in-process execution; one machine per invocation;
 public Build event builders; native Run/Debug consoles; custom XDebugger process; native machine/tool contents;
-all 14 tools retained; zero user-feature retirements; no older-IDE compatibility layer; Jupiter-only tests.
+13 educational tools in scope, with Screen Magnifier excluded by user decision. Use Jupiter-only tests and target IntelliJ 2026.3.
 
 ### 12.3 Final parity checklist
 
@@ -904,7 +901,7 @@ all 14 tools retained; zero user-feature retirements; no older-IDE compatibility
 - Console/file/dialog/audio/time/random behavior, exit statuses and all six dump formats remain available.
 - Editing reaches native resolve, navigation, rename, completion, diagnostics, docs, formatting and search functionality.
 - Run/Debug support breakpoints, pause/stop/reset, source/instruction steps, watches/edits, reverse, memory and coprocessor views.
-- Every educational tool works in multiple sessions without a desktop dependency.
+- Every in-scope educational tool works in multiple sessions without a desktop dependency.
 - Coverage, lifecycle, cancellation, performance, accessibility, package and supported-OS checks pass.
 
 Performance acceptance uses repeatable source and event corpora. Record baseline completion/analysis latency, build time,
