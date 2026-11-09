@@ -14,6 +14,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -81,6 +82,73 @@ class MipsStructureViewPlatformTest {
                 assertEquals(fixture.file.text.lastIndexOf("entry:"), fixture.editor.caretModel.offset)
             } finally {
                 Disposer.dispose(view)
+            }
+        }
+    }
+
+    @Test
+    fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            externalLocal: nop
+            .end_macro
+            entry: OPEN NAME (%reg)
+                local: nop
+            CLOSE
+            WHOLE
+                second: nop
+            CLOSE
+            .macro WRITTEN
+                third: nop
+            .end_macro
+            outside: nop
+        """.trimIndent()
+        withContext(Dispatchers.EDT) {
+            val macros = fixture.addFileToProject("macro-outline.s", source)
+            fixture.addFileToProject("outline-entry.asm", """
+                .eqv OPEN .macro
+                .eqv CLOSE .end_macro
+                .eqv NAME emit
+                .eqv WHOLE .macro whole
+                .eqv WRITTEN written
+                .macro external
+                .include "macro-outline.s"
+            """.trimIndent())
+            fixture.configureFromExistingVirtualFile(macros.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
+            val model = builder.createStructureViewModel(fixture.editor)
+            try {
+                val root = model.root
+                val nodes = root.children.map { it as StructureViewTreeElement }
+                assertEquals(listOf("externalLocal", "entry", "emit", "whole", "written", "outside"), nodes.map(::name))
+                assertEquals(listOf("local"), nodes[2].children.map { it.presentation.presentableText })
+                assertEquals(listOf("second"), nodes[3].children.map { it.presentation.presentableText })
+                assertEquals(listOf("third"), nodes[4].children.map { it.presentation.presentableText })
+                for ((node, spelling) in listOf(nodes[2] to "NAME", nodes[3] to "WHOLE")) {
+                    assertNotNull(node.presentation.getIcon(false))
+                    assertTrue(node.canNavigateToSource())
+                    assertNotNull(withContext(Dispatchers.Default) { readAction { node.navigationRequest() } })
+                    node.navigate(true)
+                    assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
+                    assertSame(node.value, model.currentEditorElement)
+                }
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    assertEquals(listOf("externalLocal", "entry", "local", "second", "WRITTEN", "outside"),
+                        root.children.map { it.presentation.presentableText })
+                    assertNull(model.currentEditorElement)
+                }
+                WriteCommandAction.runWriteCommandAction(current) {
+                    fixture.editor.document.setText(".end_macro\nWHOLE\n    second: nop\nCLOSE\n")
+                }
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+                val onlyMacro = root.children.single()
+                assertEquals("whole", onlyMacro.presentation.presentableText)
+                assertEquals("second", onlyMacro.children.single().presentation.presentableText)
+            } finally {
+                Disposer.dispose(model)
             }
         }
     }

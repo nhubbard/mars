@@ -91,13 +91,14 @@ plugin without a plugin error. The visual acceptance limit above still applies.
 
 ## Native Structure view
 
-IntelliJ's Structure view and File Structure popup list written labels, macros,
-`.eqv` constants, and `.extern` declarations in source order. Written labels inside
-a macro appear below its header, including in an unfinished macro. The outline
-reads the current file's PSI and uses IntelliJ smart pointers for navigation, so
-it works with unsaved edits and during indexing. It shows declarations present
-in the current file's syntax. Include expansion and generated symbols are handled
-by the separate source analysis and navigation features.
+IntelliJ's Structure view and File Structure popup list labels, macros, `.eqv`
+constants, and `.extern` declarations in source order. After indexing, the
+include-ordered analysis supplies macro names and boundaries introduced by
+equivalences. Written declarations inside a local macro appear below it, even
+when the macro has no closing directive yet. An opening line in another file
+does not add a remote node to the outline. Navigation opens the written token
+that supplied the macro name. During indexing, the outline uses the current
+file's written PSI and still follows unsaved edits.
 
 ## Native macro folding
 

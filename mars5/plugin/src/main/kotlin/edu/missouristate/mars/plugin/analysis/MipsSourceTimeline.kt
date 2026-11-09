@@ -75,7 +75,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macroNames.add(event.name)
                 if (macro == null) {
                     macro = event
+                    cursor.locations.localMacros[event.header] = event
                     if (event.header !is MipsDeclaration) {
+                        cursor.locations.generatedMacroNames.add(event.nameOffset)
                         val parts = cursor.locations.generatedMacroParts
                         if (event.nameOffset != event.directiveOffset) parts[event.nameOffset] = MacroPart.NAME
                         for (formal in event.parameters) {
@@ -152,6 +154,12 @@ internal class MipsSourceTimeline(
     fun localMacroBodies(file: MipsFile): List<MacroBody> =
         files.getValue(file.viewProvider.virtualFile).localMacroBodies
 
+    fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
+        files.getValue(file.viewProvider.virtualFile).localMacros
+
+    fun isGeneratedMacroName(file: MipsFile, offset: Int): Boolean =
+        offset in files.getValue(file.viewProvider.virtualFile).generatedMacroNames
+
     fun generatedMacroPart(file: MipsFile, offset: Int): MacroPart? =
         files.getValue(file.viewProvider.virtualFile).generatedMacroParts[offset]
 
@@ -223,6 +231,8 @@ internal class SourceFileEvents(val file: MipsFile) {
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
     val macroClosingLines = HashSet<Int>()
+    val localMacros = LinkedHashMap<PsiElement, Begin>()
+    val generatedMacroNames = HashSet<Int>()
     val localMacroBodies = ArrayList<MacroBody>()
     var end = 0
 }
