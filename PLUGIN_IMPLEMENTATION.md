@@ -1210,6 +1210,29 @@ completed instructions while moving. The model preserves fractional
 positions and publishes integer coordinates. Backstep restores the clock,
 position, port values, and pen trail from the instruction's checkpoint.
 
+## Scavenger Hunt game model
+
+The game model keeps 22 players, seven common locations, and a 20-word
+sorting task for each player. It reproduces the original seed-42 sequence
+for location placement, initial task data, and replacements after successful
+tasks. A new round resets the authentication sequence, player progress, and
+task stream while preserving the program-supplied turn count.
+
+Administrator ID 999 starts rounds. Each authentication attempt advances
+the 32-bit sequence, and an invalid ID leaves the current player unchanged.
+A move spends one energy and must stay inside the 712 by 652 coordinate
+bounds and within 2.5 pixels. A correctly ordered task refills energy to 20.
+The legacy task check accepts signed words in nondecreasing order. Progress
+is recorded when a player reaches a location, and the finish score measures
+executed instructions since initialization.
+
+The model is ready for the MMIO device. That slice will publish the
+initial and updated player words, tie device updates to instruction history,
+and test the administrator and player programs through the simulator. The
+full device uses the original `0xffff8000` player region and `0xffffe000`
+administration region. Those 22 player slots cannot fit into compact MMIO,
+and the default player region overlaps MarsBot's ports.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
