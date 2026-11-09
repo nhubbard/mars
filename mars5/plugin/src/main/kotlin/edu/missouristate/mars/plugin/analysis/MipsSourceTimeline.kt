@@ -89,6 +89,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 val lineStart = sourceLineStart(cursor.locations.file.viewProvider.contents, event.offset)
                 cursor.locations.macroClosingLines.add(lineStart)
                 val definition = macro
+                if (definition != null && definition.header.containingFile === cursor.locations.file) {
+                    cursor.locations.localMacroBodies.add(MacroBody(definition.header, event.offset))
+                }
                 val arity = definition?.arity
                 if (arity != null) {
                     closedMacros.getOrPut(definition.name, ::LinkedHashMap)
@@ -145,6 +148,9 @@ internal class MipsSourceTimeline(
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
     fun macroAt(file: MipsFile, offset: Int): Begin? = openMacro(prefixEnd(file, offset))
+
+    fun localMacroBodies(file: MipsFile): List<MacroBody> =
+        files.getValue(file.viewProvider.virtualFile).localMacroBodies
 
     fun generatedMacroPart(file: MipsFile, offset: Int): MacroPart? =
         files.getValue(file.viewProvider.virtualFile).generatedMacroParts[offset]
@@ -210,11 +216,14 @@ internal data class SourceEventSite(val offset: Int, val index: Int)
 
 internal enum class MacroPart { NAME, PARAMETER }
 
+internal data class MacroBody(val opening: PsiElement, val closingOffset: Int)
+
 internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
     val macroClosingLines = HashSet<Int>()
+    val localMacroBodies = ArrayList<MacroBody>()
     var end = 0
 }
 

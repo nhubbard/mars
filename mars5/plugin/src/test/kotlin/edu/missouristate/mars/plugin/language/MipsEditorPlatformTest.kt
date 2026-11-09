@@ -1,16 +1,21 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.folding.CodeFoldingManager
 import com.intellij.codeInsight.highlighting.BraceMatchingUtil
 import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.TextAttributesKey
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -540,6 +545,95 @@ class MipsEditorPlatformTest {
     }
 
     @Test
+    fun `native folding pairs aliased boundaries using the including entry`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = "OPEN emit (%dest) # header\n    addiu %dest, \$zero, 7\nSTOP # closer\n"
+        val documents = PsiDocumentManager.getInstance(current)
+        val refresh = current.service<MipsFoldingRefresh>()
+        val entry = withContext(Dispatchers.EDT) {
+            val plain = fixture.addFileToProject("notes.txt", "Notes")
+            FileEditorManager.getInstance(current).openFile(plain.virtualFile, FileEditorOpenRequest.defaults())
+            val notes = documents.getDocument(plain)!!
+            WriteCommandAction.runWriteCommandAction(current) {
+                notes.insertString(notes.textLength, "\n")
+                EditorFactory.getInstance().createDocument("").insertString(0, "Scratch")
+            }
+            val macros = fixture.addFileToProject("fold-macros.s", source)
+            val entry = fixture.addFileToProject(
+                "fold-entry.asm", ".eqv OPEN .macro\n.eqv STOP .end_macro\n.include \"fold-macros.s\"\n",
+            )
+            fixture.configureFromExistingVirtualFile(macros.virtualFile)
+            entry
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val folding = CodeFoldingManager.getInstance(current)
+        val aliases = readAction { documents.getDocument(entry)!! }
+        val original = readAction { aliases.text }
+        suspend fun changeCloser(replacement: String) {
+            withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(current) {
+                    aliases.setText(original.replace(".end_macro", replacement))
+                }
+                documents.commitDocument(aliases)
+            }
+            refresh.waitForRefresh()
+        }
+        withContext(Dispatchers.EDT) {
+            val editor = fixture.editor
+            folding.updateFoldRegions(editor)
+            val fold = editor.foldingModel.allFoldRegions.single()
+            assertEquals(source.indexOf('\n'), fold.startOffset)
+            assertEquals(source.indexOf("\nSTOP"), fold.endOffset)
+            assertEquals(" …", fold.placeholderText)
+            editor.caretModel.moveToOffset(source.indexOf("emit"))
+            fixture.performEditorAction(IdeActions.ACTION_COLLAPSE_REGION)
+            assertFalse(editor.foldingModel.allFoldRegions.single().isExpanded)
+            fixture.performEditorAction(IdeActions.ACTION_EXPAND_REGION)
+            assertTrue(editor.foldingModel.allFoldRegions.single().isExpanded)
+        }
+        changeCloser("nop")
+        withContext(Dispatchers.EDT) {
+            folding.updateFoldRegions(fixture.editor)
+            assertTrue(fixture.editor.foldingModel.allFoldRegions.isEmpty())
+        }
+        changeCloser(".end_macro")
+        withContext(Dispatchers.EDT) {
+            folding.updateFoldRegions(fixture.editor)
+            assertEquals(source.indexOf("\nSTOP"), fixture.editor.foldingModel.allFoldRegions.single().endOffset)
+            assertEquals(source, fixture.editor.document.text)
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.insertString(source.length, "# notes\n")
+            }
+            documents.commitDocument(fixture.editor.document)
+        }
+        refresh.waitForRefresh()
+        withContext(Dispatchers.EDT) {
+            folding.updateFoldRegions(fixture.editor)
+            assertEquals(source.indexOf("\nSTOP"), fixture.editor.foldingModel.allFoldRegions.single().endOffset)
+        }
+    }
+
+    @Test
+    fun `folding avoids pairing a macro with an extra terminator after an included close`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = ".macro emit\n  nop\n.include \"close.s\"\nother: nop\n.end_macro\n.macro local\n  nop\n.end_macro\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("close.s", ".end_macro\n")
+            fixture.configureByText("split-fold.asm", source)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val editor = fixture.editor
+            EditorTestUtil.buildInitialFoldingsInBackground(editor)
+            assertEquals(2, editor.foldingModel.allFoldRegions.size)
+            CodeFoldingManager.getInstance(current).updateFoldRegions(editor)
+            val fold = editor.foldingModel.allFoldRegions.single()
+            assertEquals(source.indexOf('\n', source.indexOf(".macro local")), fold.startOffset)
+            assertEquals(source.lastIndexOf("\n.end_macro"), fold.endOffset)
+        }
+    }
+
+    @Test
     fun `folding follows valid terminators after unsaved edits during indexing`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
@@ -562,6 +656,8 @@ class MipsEditorPlatformTest {
                 assertEquals(source.indexOf(header) + header.length, fold.startOffset)
                 assertEquals(source.length - 1, fold.endOffset)
                 assertEquals("\n$body", editor.document.text.substring(fold.startOffset, fold.endOffset))
+                val descriptor = MipsFoldingBuilder().buildFoldRegions(fixture.file, editor.document, false).single()
+                assertEquals(fold.textRange, descriptor.range)
             }
         }
     }

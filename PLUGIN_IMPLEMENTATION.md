@@ -101,11 +101,13 @@ by the separate source analysis and navigation features.
 
 ## Native macro folding
 
-IntelliJ can collapse nonblank bodies of physically complete multi-line macros
-in `.asm` and `.s` files. The opening signature, any inline header comment, and
-the closing directive remain visible. Folding follows the current file's PSI,
-including unsaved changes, and leaves incomplete macros expanded until a
-standalone terminator appears.
+IntelliJ collapses nonblank macro bodies in `.asm` and `.s` files. After indexing,
+the shared assembly timeline pairs the opening and closing lines, including
+boundaries supplied by equivalences in the including entry. Both boundaries must
+be in the same file. The signature, its inline comment, and the terminator stay
+visible. The initial fast pass and indexing-mode pass use the current file's
+written directives. Unsaved changes in MARS documents can add or remove folds
+in other open MARS editors through IntelliJ's folding refresh API.
 
 ## Mnemonic and directive completion
 
