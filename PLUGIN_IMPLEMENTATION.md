@@ -106,8 +106,10 @@ the shared assembly timeline pairs the opening and closing lines, including
 boundaries supplied by equivalences in the including entry. Both boundaries must
 be in the same file. The signature, its inline comment, and the terminator stay
 visible. The initial fast pass and indexing-mode pass use the current file's
-written directives. Unsaved changes in MARS documents can add or remove folds
-in other open MARS editors through IntelliJ's folding refresh API.
+written directives. Unsaved changes in MARS documents and explicit assembly
+entry selection can add or remove folds in other open MARS editors through
+IntelliJ's folding refresh API. Platform tests also cover creating, rewriting,
+and deleting an unopened include on disk.
 
 ## Mnemonic and directive completion
 

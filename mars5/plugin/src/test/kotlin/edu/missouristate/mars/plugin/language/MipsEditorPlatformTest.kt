@@ -18,6 +18,8 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.options.colors.ColorSettingsPages
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -27,7 +29,9 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.EditorTestUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.build.MarsBuildService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,8 +42,12 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.awt.Color
 import java.awt.Font
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.writeText
 
 @TestApplication
 class MipsEditorPlatformTest {
@@ -611,6 +619,95 @@ class MipsEditorPlatformTest {
             folding.updateFoldRegions(fixture.editor)
             assertEquals(source.indexOf("\nSTOP"), fixture.editor.foldingModel.allFoldRegions.single().endOffset)
         }
+    }
+
+    @Test
+    fun `folding refreshes after an unopened include is created changed or deleted on disk`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val entry = directory.resolve("external-fold.asm")
+            val alias = directory.resolve("aliases.s")
+            val source = ".include \"aliases.s\"\nOPEN emit\n    nop\nSTOP\n"
+            val definitions = ".eqv OPEN .macro\n.eqv STOP .end_macro\n"
+            val file = withContext(Dispatchers.IO) {
+                entry.writeText(source)
+                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(entry)!!
+            }
+            withContext(Dispatchers.EDT) { fixture.configureFromExistingVirtualFile(file) }
+            val folding = CodeFoldingManager.getInstance(current)
+            val refresh = current.service<MipsFoldingRefresh>()
+            suspend fun assertFold(expected: Boolean) {
+                IndexingTestUtil.suspendUntilIndexesAreReady(current)
+                refresh.waitForRefresh()
+                withContext(Dispatchers.EDT) {
+                    val editor = fixture.editor
+                    folding.updateFoldRegions(editor)
+                    val regions = editor.foldingModel.allFoldRegions
+                    if (expected) {
+                        val fold = regions.single()
+                        assertEquals(source.indexOf("\n    nop"), fold.startOffset)
+                        assertEquals(source.indexOf("\nSTOP"), fold.endOffset)
+                    } else {
+                        assertTrue(regions.isEmpty())
+                    }
+                    assertEquals(source, editor.document.text)
+                }
+            }
+            suspend fun changeOnDisk(change: () -> Unit) = withContext(Dispatchers.IO) {
+                change()
+                VfsUtil.markDirtyAndRefresh(false, true, true, file.parent)
+            }
+            assertFold(false)
+            changeOnDisk { alias.writeText(definitions) }
+            assertFold(true)
+            changeOnDisk { alias.writeText(definitions.replace(".end_macro", "nop")) }
+            assertFold(false)
+            changeOnDisk { alias.writeText(definitions) }
+            assertFold(true)
+            changeOnDisk { Files.delete(alias) }
+            assertFold(false)
+        }
+
+    @Test
+    fun `folding follows the selected assembly entry in a shared editor without source edits`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = "OPEN emit\n    nop\nSTOP\n"
+        val (plainEntry, macroEntry) = withContext(Dispatchers.EDT) {
+            val macros = fixture.addFileToProject("shared.s", source)
+            val include = ".include \"shared.s\"\n"
+            val plain = fixture.addFileToProject("plain.asm", ".eqv OPEN .set\n.eqv STOP .set noat\n$include")
+            val expanded = fixture.addFileToProject("macro.asm", ".eqv OPEN .macro\n.eqv STOP .end_macro\n${include}emit\n")
+            fixture.configureFromExistingVirtualFile(macros.virtualFile)
+            plain.virtualFile.toNioPath() to expanded.virtualFile.toNioPath()
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val folding = CodeFoldingManager.getInstance(current)
+        val refresh = current.service<MipsFoldingRefresh>()
+        suspend fun assertFold(expected: Boolean) = withContext(Dispatchers.EDT) {
+            val editor = fixture.editor
+            folding.updateFoldRegions(editor)
+            val regions = editor.foldingModel.allFoldRegions
+            assertEquals(if (expected) 1 else 0, regions.size)
+            if (expected) {
+                val fold = regions.single()
+                assertEquals(source.indexOf('\n'), fold.startOffset)
+                assertEquals(source.indexOf("\nSTOP"), fold.endOffset)
+            }
+            assertEquals(source, editor.document.text)
+        }
+        suspend fun select(entry: Path) {
+            val component = MarsSessionService.createMarsComponent()
+            component.context().use {
+                assertTrue(current.service<MarsBuildService>().assemble(entry, component, activateBuildView = false))
+            }
+            refresh.waitForRefresh()
+        }
+        refresh.waitForRefresh()
+        assertFold(false)
+        select(macroEntry)
+        assertFold(true)
+        select(plainEntry)
+        assertFold(false)
     }
 
     @Test
