@@ -111,6 +111,25 @@ class MipsEquivalenceReferencesPlatformTest {
     }
 
     @Test
+    fun `macro operands that record equivalences are visible after the call`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val macro = ".macro discard (%first, %directive, %name, %value)\nnop\n.end_macro\n"
+        val use = "addiu \$t0, \$zero, CO<caret>UNT\n"
+        val context = project.get().service<MarsSessionService>().context
+        for (directive in listOf(".eQv", "DEFINE")) {
+            val call = "discard ignored $directive COUNT 7\n"
+            val source = ".eqv DEFINE .eqv\n$macro$call$use"
+            val entry = directory.resolve("entry.asm").also { it.writeText(source.replace("<caret>", "")) }
+            val program = context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0, 0x24080007), program.machineList.map { it.binaryStatement })
+            val declaration = target(source)
+            assertTrue(declaration?.inEntry == true)
+            assertEquals(directive, declaration?.name)
+            assertEquals(source.indexOf(directive, source.indexOf(call)), declaration?.offset)
+            assertNull(target(".eqv DEFINE .eqv\n$macro$use$call"))
+        }
+    }
+
+    @Test
     fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val source = ".eqv DEFINE .eqv\n.include \"late.s\"\nli \$t0, CO<caret>UNT\n"

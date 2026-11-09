@@ -54,9 +54,15 @@ internal sealed interface MipsSourceEvent {
         private val head = owner.operationHead
         override val offset = head.textOffset
         private val followsLabel = owner.parent.node.findChildByType(labelType) != null
+        private val thirdToken = if (owner.elementType == operationCandidateType && !followsLabel) {
+            lazy(LazyThreadSafetyMode.PUBLICATION) {
+                val tokens = macroLineTokens(head)
+                if (tokens.size() >= 3) tokens[2] else null
+            }
+        } else null
 
         fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
-            if (!hasLeadingEquivalence(head, replacement)) return null
+            if (!hasLeadingEquivalence(head, replacement) && !canDefineFromOperand(replacement)) return null
             val errors = ErrorList()
             val expanded = Tokenizer.tokenizeMappedLine(
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
@@ -66,7 +72,11 @@ internal sealed interface MipsSourceEvent {
             if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
             if (errors.errorsOccurred()) return null
             tokens.discardTrailingComment()
-            expanded.expanded().definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
+            expanded.expanded().definition()?.let {
+                val directiveOffset = sourceLineStart(head) + expanded.equivalenceDirectiveOffset()
+                val site = head.containingFile.findElementAt(directiveOffset)!!
+                return Equivalence(site, it.name(), it.replacement())
+            }
             // In an open macro a label is part of the body, even before a closing directive.
             val operation = if (!inMacro && startsWithLabel) 2 else 0
             if (operation >= tokens.size()) return null
@@ -77,6 +87,15 @@ internal sealed interface MipsSourceEvent {
                 Directives.EXTERN -> externalReservation(head, tokens, operation)
                 in dataStateDirectives -> DataDirective(offset, directive)
                 else -> null
+            }
+        }
+
+        private fun canDefineFromOperand(replacement: (String) -> String?): Boolean {
+            val token = thirdToken?.value ?: return false
+            return when (token.type) {
+                TokenTypes.DIRECTIVE -> Directives.matchDirective(token.value) == Directives.EQV
+                TokenTypes.IDENTIFIER -> replacement(token.value) != null
+                else -> false
             }
         }
     }
@@ -142,6 +161,7 @@ internal sealed interface MipsSourceEvent {
 }
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
+private val operationCandidateType = MipsTypes.psi("OPERATION_CANDIDATE")
 private val labelType = MipsTypes.psi("LABEL")
 private val wordTypes = setOf(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
 private val sourceEventTypes = setOf(

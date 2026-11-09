@@ -386,6 +386,14 @@ public class Tokenizer {
       return expanded;
     }
 
+    /** Returns the written offset of the directive that introduced the definition, or -1. */
+    public int equivalenceDirectiveOffset() {
+      if (expanded.definition() == null) {
+        return -1;
+      }
+      return tokens().get(equivalenceDirectiveIndex(tokens())).getOriginalStartPos() - 1;
+    }
+
     /** Maps a zero-based token offset to the original character or the alias that supplied it. */
     public int originalOffset(int offset) {
       return Tokenizer.originalOffset(edits, offset);
@@ -766,14 +774,18 @@ public class Tokenizer {
     return originalOffset(edits, token.getStartPos() - 1) + 1;
   }
 
+  private static int equivalenceDirectiveIndex(TokenList tokens) {
+    // MARS also recognizes .eqv as the third token, even without a leading label.
+    return tokens.get(0).getType() == TokenTypes.DIRECTIVE ? 0 : 2;
+  }
+
   private boolean recordEquivalence(
       MIPSprogram program, int lineNum, String line, TokenList tokens, List<SourceEdit> edits,
       Macro.ExpandedLine expansion) {
     if (tokens.size() < 3) {
       return false;
     }
-    // The directive can be preceded by a label and colon.
-    int directive = tokens.get(0).getType() == TokenTypes.DIRECTIVE ? 0 : 2;
+    int directive = equivalenceDirectiveIndex(tokens);
     Token directiveToken = tokens.get(directive);
     if (directiveToken.getType() != TokenTypes.DIRECTIVE
         || Directives.matchDirective(directiveToken.getValue()) != Directives.EQV) {
