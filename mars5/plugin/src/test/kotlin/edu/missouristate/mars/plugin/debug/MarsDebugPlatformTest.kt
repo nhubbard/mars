@@ -15,6 +15,7 @@ import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunnerLayoutUi
+import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
@@ -38,6 +39,8 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.wm.RegisterToolWindowTask
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiErrorElement
@@ -48,10 +51,14 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.ui.UiInterceptors
+import com.intellij.ui.ComponentUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
+import com.intellij.util.ui.withShowingChanged
 import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
@@ -92,7 +99,10 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunOptions
+import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
+import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.plugin.tools.FloatingPointView
 import java.awt.event.ActionEvent
 import java.io.File
 import java.nio.file.Files
@@ -102,6 +112,7 @@ import java.util.concurrent.TimeUnit
 import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JPanel
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -2159,6 +2170,113 @@ class MarsDebugPlatformTest {
 
     private fun addBreakpoint(file: VirtualFile, line: Int) =
         WriteAction.compute<_, RuntimeException> { debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, line, null) }
+
+    @Test
+    fun `floating point tool edits only the selected paused register and refreshes the debugger`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("float-tool.asm",
+                "lui \$t0, 0x3fc0\nmtc1 \$t0, \$f0\nmfc1 \$t1, \$f0\nli \$v0, 5\nsyscall\n")
+                .virtualFile.also { addBreakpoint(it, 2) }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 2)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val parent = JPanel()
+            val (view, content, other) = withContext(Dispatchers.EDT) {
+                val manager = ToolWindowManager.getInstance(project)
+                val id = DefaultDebugExecutor.getDebugExecutorInstance().toolWindowId
+                val window = manager.getToolWindow(id) ?: manager.registerToolWindow(RegisterToolWindowTask(id))
+                fun attach(handler: MarsProcessHandler, number: Long) =
+                    RunContentDescriptor(null, handler, JPanel(), "Floating point test").let { descriptor ->
+                        descriptor.executionId = number
+                        ContentFactory.getInstance().createContent(descriptor.component, descriptor.displayName, false).also {
+                            it.putUserData(RunContentDescriptor.DESCRIPTOR_KEY, descriptor)
+                            it.setDisposer(descriptor)
+                            window.contentManager.addContent(it)
+                        }
+                    }
+                val content = attach(process, 1)
+                val runFile = fixture.addFileToProject("float-read-only.asm", "nop\n").virtualFile
+                val running = project.service<MarsRunService>().createProcess(runFile.toNioPath(), memoryDumps = emptyList())
+                val other = attach(running, 2)
+                running.startNotify()
+                val view = FloatingPointView(project)
+                ComponentUtil.forceMarkAsShowing(parent, true)
+                withForcedRespectIsShowingClientProperty {
+                    withShowingChanged { parent.add(view.component) }
+                    UIUtil.dispatchAllInvocationEvents()
+                }
+                Triple(view, content, other)
+            }
+            fun hex() = UIUtil.findComponentsOfType(view.component, JBTextField::class.java).single { it.columns == 12 }
+            fun register() = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 33 }
+            fun write(bits: String) {
+                hex().text = bits
+                hex().postActionEvent()
+            }
+            try {
+                val frame = withContext(Dispatchers.EDT) {
+                    register().selectedIndex = 1
+                    assertFalse(hex().isEditable)
+                    UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 2 }.selectedIndex = 1
+                    assertEquals("0x3fc00000", hex().text)
+                    assertTrue(hex().isEditable)
+                    assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+                    write("80000000")
+                    write("7fc00123")
+                    requireNotNull(debug.session.currentStackFrame)
+                }
+                pollAssertionsAsync(5.seconds, 20.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, "\$f0"))
+                        assertEquals("0x7fc00123", hex().text)
+                        assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                    }
+                }
+                withContext(Dispatchers.EDT) {
+                    UIUtil.findComponentsOfType(view.component, JButton::class.java).single { it.text == "Reset" }.doClick()
+                }
+                pollAssertionsAsync(5.seconds, 20.milliseconds) {
+                    withContext(Dispatchers.EDT) { assertEquals("0x00000000", hex().text) }
+                }
+                val occupied = CompletableDeferred<Unit>()
+                val release = CompletableDeferred<Unit>()
+                val suspension = withContext(Dispatchers.EDT) {
+                    assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                }
+                assertTrue(suspension.inspectionRequests.trySend {
+                    occupied.complete(Unit)
+                    release.await()
+                }.isSuccess)
+                try {
+                    occupied.await()
+                    withContext(Dispatchers.EDT) {
+                        repeat(17) { write("3f800000") }
+                        val labels = UIUtil.findComponentsOfType(view.component, JBLabel::class.java).map { it.text }
+                        assertTrue(runMessages.getMessage("debug.register.edit.unavailable") in labels, labels.toString())
+                        debug.session.resume()
+                    }
+                } finally {
+                    release.complete(Unit)
+                }
+                pollAssertionsAsync(5.seconds, 20.milliseconds) {
+                    withContext(Dispatchers.EDT) { assertFalse(hex().isEditable) }
+                }
+                withContext(Dispatchers.IO) { process.processInput.write("0\n".toByteArray()) }
+                assertEquals(0, debug.exit.await())
+                assertEquals(0, process.floatingRegisterBits(0))
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(view)
+                    content.manager?.removeContent(content, true)
+                    other.manager?.removeContent(other, true)
+                    withForcedRespectIsShowingClientProperty {
+                        withShowingChanged { parent.remove(view.component) }
+                    }
+                }
+            }
+        }
+    }
 
     private suspend fun withDebug(file: VirtualFile, configure: MarsRunOptions.() -> Unit = {}, action: suspend (DebugLaunch) -> Unit) {
         val disposable = Disposer.newDisposable()

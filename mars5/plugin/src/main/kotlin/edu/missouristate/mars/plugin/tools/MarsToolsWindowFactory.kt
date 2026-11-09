@@ -53,6 +53,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab("xray.name", xray.component, xray)
         val cache = DataCacheView(project)
         addTab("cache.name", cache.component, cache)
+        val floatingPoint = FloatingPointView(project)
+        addTab("float.name", floatingPoint.component, floatingPoint)
     }
 }
 

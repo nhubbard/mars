@@ -78,6 +78,9 @@ internal class MarsProcessHandler(
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
+    @Volatile private var readFloatingRegister: ((Int) -> Int)? = null
+
+    fun floatingRegisterBits(number: Int): Int? = readFloatingRegister?.invoke(number)
 
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
@@ -169,10 +172,17 @@ internal class MarsProcessHandler(
                                 }
                             }
                         })
-                        val stop = bitmapDisplay.observe(session.memory).use {
-                            memoryReferences.observe(session.memory).use {
-                                dataCache.observe(session.memory).use { execute(session) }
+                        val floatingRegisters = session.coprocessor1.registers
+                        readFloatingRegister = { floatingRegisters[it].valueNoNotify }
+                        val stop = try {
+                            bitmapDisplay.observe(session.memory).use {
+                                memoryReferences.observe(session.memory).use {
+                                    dataCache.observe(session.memory).use { execute(session) }
+                                }
                             }
+                        } finally {
+                            // The execution tab can still show the final words after the session closes.
+                            readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
                         if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, sources)
                         when (stop.reason()) {

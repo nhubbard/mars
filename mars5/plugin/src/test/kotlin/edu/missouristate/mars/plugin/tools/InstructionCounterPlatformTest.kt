@@ -18,6 +18,7 @@ import com.intellij.ui.ColorPanel
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBTextArea
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
@@ -73,7 +74,7 @@ class InstructionCounterPlatformTest {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
             val contents = window.contentManager.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
-                "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator"),
+                "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -88,6 +89,12 @@ class InstructionCounterPlatformTest {
         val (panel, statistics, branches, bitmap, references) = panels
         val xray = panels[5]
         val cache = panels[6]
+        val floating = panels[7]
+        val (floatSelector, floatRegister) = withContext(Dispatchers.EDT) {
+            UIUtil.findComponentsOfType(floating, JComboBox::class.java).sortedBy { it.itemCount }
+        }
+        fun floatField(columns: Int) = UIUtil.findComponentsOfType(floating, JBTextField::class.java).single { it.columns == columns }
+        fun floatLabels() = UIUtil.findComponentsOfType(floating, JBLabel::class.java).map { it.text }
         val cacheSelector = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(cache, JComboBox::class.java).single { it.itemCount == 0 }
         }
@@ -119,6 +126,7 @@ class InstructionCounterPlatformTest {
                     assertEquals(entries, bitmapSelector.itemCount)
                     assertEquals(entries, referenceSelector.itemCount)
                     assertEquals(entries, cacheSelector.itemCount)
+                    assertEquals(entries, floatSelector.itemCount)
                     assertTrue(count in labels(), labels().toString())
                 }
             }
@@ -134,7 +142,9 @@ class InstructionCounterPlatformTest {
                 executionWindow.contentManager.addContent(content)
             }
 
-        suspend fun launch(executor: Executor, number: Long, source: String, captureGrids: Boolean = false) = withContext(Dispatchers.EDT) {
+        suspend fun launch(
+            executor: Executor, number: Long, source: String, captureGrids: Boolean = false, start: Boolean = true,
+        ) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("counter-$number.asm", source).virtualFile
             val process = project.getService(MarsRunService::class.java).createProcess(
                 file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureGrids, captureReferences = captureGrids,
@@ -144,7 +154,7 @@ class InstructionCounterPlatformTest {
                 isActivateToolWindowWhenAdded = false
             }
             val content = addExecutionContent(executor, descriptor)
-            process.startNotify()
+            if (start) process.startNotify()
             content
         }
 
@@ -194,6 +204,29 @@ class InstructionCounterPlatformTest {
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 assertEquals("Static data", baseLabel())
                 assertEquals(null, tooltip(references, 10, 10))
+                assertFalse(floatRegister.isEnabled)
+                fun enter(columns: Int, text: String) = floatField(columns).apply {
+                    this.text = text
+                    postActionEvent()
+                }
+                enter(16, "-1.5")
+                assertEquals("0xbfc00000", floatField(12).text)
+                assertTrue("(-1)^1 × 2^0 × 1.10000000000000000000000 (binary significand)" in floatLabels())
+                enter(12, "7f800000")
+                assertTrue("Infinity" in floatLabels())
+                enter(12, "7fc00123")
+                assertTrue("NaN" in floatLabels())
+                assertTrue("Exponent bits are all ones. Fraction bits as hexadecimal: 0x00400123" in floatLabels())
+                floatField(8).text = "0"
+                enter(23, "1")
+                assertEquals("0x00000001", floatField(12).text)
+                assertTrue("Subnormal" in floatLabels())
+                assertTrue("(-1)^0 × 2^-126 × 0.00000000000000000000001 (binary significand)" in floatLabels())
+                enter(16, "invalid")
+                assertTrue(floatLabels().any { it.startsWith("Enter a floating-point value") })
+                assertEquals("0x00000001", floatField(12).text)
+                button("Reset", floating).doClick()
+                assertEquals("0x00000000", floatField(12).text)
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
                     isActivateToolWindowWhenAdded = false
                 }
@@ -464,6 +497,34 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(branchRun.manager).removeContent(branchRun, true))
             }
             waitFor(0, "0 (0%)")
+            val floatRun = launch(run, 5, "lui \$t0, 0x3fc0\nmtc1 \$t0, \$f0\n", start = false)
+            waitFor(1, "0 (0%)")
+            withContext(Dispatchers.EDT) {
+                floatRegister.selectedIndex = 1
+                assertTrue("Waiting for register data." in floatLabels())
+                assertFalse(floatField(12).isEditable)
+                floatRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler!!.startNotify()
+            }
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) { assertEquals("0x3fc00000", floatField(12).text) }
+            }
+            withContext(Dispatchers.EDT) {
+                assertEquals("1.5", floatField(16).text)
+                assertFalse(button("Reset", floating).isEnabled)
+                floatField(12).text = "ffffffff"
+                floatField(12).postActionEvent()
+                assertTrue("Attached registers are editable during a debugger pause." in floatLabels())
+                floatRegister.selectedIndex = 0
+                assertEquals("0x3fc00000", floatField(12).text)
+                assertTrue(floatField(12).isEditable)
+                button("Reset", floating).doClick()
+                assertEquals("0x00000000", floatField(12).text)
+                floatRegister.selectedIndex = 1
+                assertEquals("0x3fc00000", floatField(12).text)
+                floatRegister.selectedIndex = 0
+                assertTrue(checkNotNull(floatRun.manager).removeContent(floatRun, true))
+            }
+            waitFor(0, "0 (0%)")
         } finally {
             withContext(Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
@@ -475,6 +536,8 @@ class InstructionCounterPlatformTest {
                         container.remove(bitmap)
                         container.remove(references)
                         container.remove(xray)
+                        container.remove(cache)
+                        container.remove(floating)
                     }
                 }
             }

@@ -1101,6 +1101,17 @@ access log and restarts the random sequence. The table shows each block's tag
 and last result. The optional log retains the most recent 128 accesses while
 the totals include all observations.
 
+## Floating Point Representation
+
+The Floating Point Representation tab provides an independent binary32
+calculator and can attach to any FPR in the selected Run or Debug execution.
+It converts decimal, hexadecimal and separate sign, exponent and fraction
+fields, with IEEE 754 classification, effective exponent, hidden bit and NaN
+payload. Run and resumed Debug views follow the raw register value and retain
+the last value after execution. Editing and reset are available during a
+debugger pause through the same serialized register edits as the Variables
+view. A changed register establishes a new backstep baseline.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
