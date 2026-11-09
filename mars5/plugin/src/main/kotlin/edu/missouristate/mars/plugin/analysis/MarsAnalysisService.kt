@@ -14,6 +14,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
@@ -105,10 +106,46 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return listOfNotNull(macro.declaration.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
     }
 
-    private fun visitMacroPrefix(root: MipsFile, offset: Int, onClosed: (MipsMacroEvent.Begin) -> Unit): MipsMacroEvent.Begin? {
+    private fun visitMacroPrefix(root: MipsFile, offset: Int, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
+        var open: MipsSourceEvent.Begin? = null
+        visitSourcePrefix(root, offset) { event ->
+            when (event) {
+                is MipsSourceEvent.Begin -> open = open ?: event
+                is MipsSourceEvent.End -> {
+                    open?.let(onClosed)
+                    open = null
+                }
+                else -> Unit
+            }
+        }
+        return open
+    }
+
+    internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {
+        if (DumbService.isDumb(project)) return false
+        var inMacro = false
+        var inData = false
+        var dataList = Directives.WORD
+        visitSourcePrefix(root, position.textOffset) { event ->
+            when (event) {
+                is MipsSourceEvent.Begin -> inMacro = true
+                is MipsSourceEvent.End -> inMacro = false
+                is MipsSourceEvent.DataDirective -> if (!inMacro) {
+                    when (event.directive) {
+                        Directives.DATA, Directives.KDATA -> inData = true
+                        Directives.TEXT, Directives.KTEXT -> inData = false
+                        else -> dataList = event.directive
+                    }
+                }
+                is MipsSourceEvent.Include -> Unit
+            }
+        }
+        return !inMacro && inData && Directives.isIntegerDirective(dataList)
+    }
+
+    private fun visitSourcePrefix(root: MipsFile, offset: Int, visit: (MipsSourceEvent) -> Unit) {
         val visited = hashSetOf(root.viewProvider.virtualFile)
-        val pending = ArrayDeque(listOf(mipsMacroEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
-        var open: MipsMacroEvent.Begin? = null
+        val pending = ArrayDeque(listOf(mipsSourceEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val events = pending.last()
@@ -116,21 +153,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 pending.removeLast()
                 continue
             }
-            when (val event = events.next()) {
-                is MipsMacroEvent.Begin -> open = open ?: event
-                is MipsMacroEvent.End -> {
-                    open?.let(onClosed)
-                    open = null
-                }
-                is MipsMacroEvent.Include -> {
-                    val included = resolveInclude(event.literal, event.path)
-                    if (included is MipsFile && visited.add(included.viewProvider.virtualFile)) {
-                        pending.addLast(mipsMacroEvents(included).iterator())
-                    }
+            val event = events.next()
+            visit(event)
+            if (event is MipsSourceEvent.Include) {
+                val included = resolveInclude(event.literal, event.path)
+                if (included is MipsFile && visited.add(included.viewProvider.virtualFile)) {
+                    pending.addLast(mipsSourceEvents(included).iterator())
                 }
             }
         }
-        return open
     }
 
     /** Finds the first physical .eqv in the expanded prefix of the current entry. */

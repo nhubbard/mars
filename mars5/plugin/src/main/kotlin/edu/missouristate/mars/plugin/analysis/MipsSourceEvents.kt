@@ -7,6 +7,7 @@ import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
@@ -18,33 +19,45 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 
-internal sealed interface MipsMacroEvent {
+internal sealed interface MipsSourceEvent {
     val offset: Int
 
-    data class Begin(val declaration: MipsDeclaration, val parameters: List<Token>) : MipsMacroEvent {
+    data class Begin(val declaration: MipsDeclaration, val parameters: List<Token>) : MipsSourceEvent {
         override val offset = declaration.textOffset
         val arity: Int get() = parameters.size
     }
 
-    data class End(override val offset: Int) : MipsMacroEvent
+    data class End(override val offset: Int) : MipsSourceEvent
 
-    data class Include(val literal: MipsStringLiteral, val path: String) : MipsMacroEvent {
+    data class Include(val literal: MipsStringLiteral, val path: String) : MipsSourceEvent {
         override val offset = literal.textOffset
     }
+
+    data class DataDirective(override val offset: Int, val directive: Directives) : MipsSourceEvent
 }
 
-private val macroEventTypes = setOf(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"))
+private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
+private val sourceEventTypes = setOf(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement)
+private val dataStateDirectives = setOf(
+    Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
+    Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE, Directives.ASCII, Directives.ASCIIZ,
+)
 
-/** Physical boundary tokens only. A macro can open and close in different files after expansion. */
-internal fun mipsMacroEvents(file: MipsFile): List<MipsMacroEvent> = CachedValuesManager.getCachedValue(file) {
+/** Physical source events that affect macro boundaries or the current data list. */
+internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedValuesManager.getCachedValue(file) {
     val paths = mipsIncludePaths(file)
     val events = buildList {
-        for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in macroEventTypes }) {
+        for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes }) {
             ProgressManager.checkCanceled()
             when (element) {
-                is MipsDeclaration -> macroParameters(element)?.let { add(MipsMacroEvent.Begin(element, it)) }
-                is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsMacroEvent.Include(element, it)) }
-                else -> if (isMacroEnd(element)) add(MipsMacroEvent.End(element.textOffset))
+                is MipsDeclaration -> macroParameters(element)?.let { add(MipsSourceEvent.Begin(element, it)) }
+                is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
+                else -> if (element.node.elementType == directiveStatement) {
+                    val directive = Directives.matchDirective(element.firstChild.text)
+                    if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
+                } else if (isMacroEnd(element)) {
+                    add(MipsSourceEvent.End(element.textOffset))
+                }
             }
         }
     }

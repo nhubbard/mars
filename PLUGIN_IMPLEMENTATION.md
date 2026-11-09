@@ -197,6 +197,19 @@ include. Resolving a body edited directly in a separate included file still need
 of the containing build context. Fixtures cover both parameter spellings, duplicate names,
 address and operation uses, include boundaries, case, and indexing mode.
 
+## Go to Declaration for data labels and exports
+
+Native references navigate from `.globl` lists, integer data operands and their continued
+lists. The same cached physical source events used for macro navigation carry the active
+segment and data-list directive through includes. Directives inside unexpanded macro bodies
+do not change this physical state. A matching macro call takes precedence over a bare list.
+The assembler-backed fixture verifies that continued lists store the address of the label
+identified by the editor.
+
+The query uses the current file as its entry and follows physical directives. Segment or
+list changes created by macro or equivalence expansion still require build-context binding.
+`.extern` storage declarations and separate assembly entries remain separate symbol work.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.
