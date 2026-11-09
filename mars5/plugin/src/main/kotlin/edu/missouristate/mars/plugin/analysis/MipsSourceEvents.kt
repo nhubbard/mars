@@ -101,6 +101,9 @@ internal sealed interface MipsSourceEvent {
         val arity: Int?, // A malformed signature still opens a scope for its accepted parameters.
     ) : Effective {
         override val offset = header.textOffset
+        val parametersByName: Map<String, Token> by lazy {
+            buildMap { for (parameter in parameters) putIfAbsent(parameter.value, parameter) }
+        }
     }
 
     data class End(override val offset: Int) : Effective
@@ -189,10 +192,13 @@ internal fun macroLineTokens(element: PsiElement, fromLineStart: Boolean = false
 internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): String {
     val offset = element.textOffset
     val text = element.containingFile.viewProvider.contents
-    val start = if (fromLineStart) CharArrayUtil.shiftBackwardUntil(text, offset - 1, "\r\n") + 1 else offset
+    val start = if (fromLineStart) sourceLineStart(element) else offset
     val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
     return text.subSequence(start, end).toString()
 }
+
+internal fun sourceLineStart(element: PsiElement): Int =
+    CharArrayUtil.shiftBackwardUntil(element.containingFile.viewProvider.contents, element.textOffset - 1, "\r\n") + 1
 
 /** A candidate can acquire an operation or label from either of its first two written tokens. */
 internal fun hasLeadingEquivalence(head: PsiElement, replacement: (String) -> String?): Boolean {

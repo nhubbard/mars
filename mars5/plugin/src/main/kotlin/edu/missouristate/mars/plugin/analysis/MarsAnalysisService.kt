@@ -359,11 +359,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
         if (DumbService.isDumb(project)) return null
         // A parameter on an aliased opening line is a formal, before that line opens the scope.
-        val lineStart = CharArrayUtil.shiftBackwardUntil(root.viewProvider.contents, position.textOffset - 1, "\r\n") + 1
-        val macro = visitMacroPrefix(editorPrefix(root, lineStart).events) {} ?: return null
+        val macro = editorTimeline(root).macroAt(root, sourceLineStart(position)) ?: return null
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
-        val parameter = macro.parameters.firstOrNull { it.value == name } ?: return emptyList()
+        val parameter = macro.parametersByName[name] ?: return emptyList()
         // Expanded token columns need not correspond to a physical token in the header.
         if (macro.expanded) return listOf(macro.header)
         return listOfNotNull(macro.header.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
@@ -417,7 +416,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =
         editorTimeline(file).prefix(file, offset)
 
-    private fun editorTimeline(file: MipsFile): MipsSourceTimeline =
+    internal fun editorTimeline(file: MipsFile): MipsSourceTimeline =
         selectedTimeline(file)?.takeIf { it.includes(file) } ?: mipsSourceTimeline(file)
 
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
@@ -432,8 +431,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     /** Finds the first effective .eqv before the reference in the selected entry. */
     internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
-        val lineStart = CharArrayUtil.shiftBackwardUntil(root.viewProvider.contents, position.textOffset - 1, "\r\n") + 1
-        return editorPrefix(root, lineStart).equivalence(position.text)?.site
+        return editorPrefix(root, sourceLineStart(position)).equivalence(position.text)?.site
     }
 
     private fun MipsDeclarationSite.isLiteralLabel(file: MipsFile, timeline: MipsSourceTimeline): Boolean =
