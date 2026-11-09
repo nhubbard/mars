@@ -97,6 +97,11 @@ public final class InstructionContext {
     return lastTransfer;
   }
 
+  public void returnFromException() {
+    setProgramCounter(coprocessor0.getValue(Coprocessor0State.EPC));
+    lastTransfer = StepEvent.ExceptionReturn.INSTANCE;
+  }
+
   public int updateCoprocessor0(int number, int value) {
     int old = coprocessor0.updateRegister(number, value);
     if (session.backStepper.enabled()

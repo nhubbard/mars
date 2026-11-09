@@ -13,6 +13,9 @@ public interface SimulatorListener {
    */
   void onStep(StepEvent event);
 
+  /** Called after undo with the number of completed steps remaining on the current path. */
+  default void onBackstep(long stepCount) {}
+
   /**
    * Called when execution stops for any reason.
    *

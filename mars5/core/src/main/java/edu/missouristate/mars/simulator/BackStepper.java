@@ -184,6 +184,11 @@ public class BackStepper {
     return engaged && !empty();
   }
 
+  /** Upper bound on the number of undoable instructions. */
+  public int capacity() {
+    return backSteps.capacity;
+  }
+
   /** The instruction that actually ran, even when its code has since been overwritten. */
   ProgramStatement previousInstruction() {
     if (!canBackstep()) {

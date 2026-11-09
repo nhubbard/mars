@@ -33,6 +33,7 @@ class SimulatorEngineTest {
       assertThat(events.getFirst())
           .isEqualTo(new StepEvent(pc, session.memory.getStatement(pc).getBinaryStatement(), 1));
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(events.get(events.size() - 2)).isEqualTo(0L);
       assertThat(events.getLast()).isEqualTo(new StopEvent(StopEvent.Reason.BACKSTEP, 0));
       assertThat(session.registerFile.getPC()).isEqualTo(pc);
       assertThat(session.registerFile.getValue(8)).isZero();
@@ -140,6 +141,20 @@ class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
       assertThat(events.get(events.size() - 2)).isEqualTo(
           new StepEvent(entry, session.memory.getStatementNoNotify(entry).getBinaryStatement(), 4));
+    }
+  }
+
+  @Test
+  void exceptionReturnReportsItsTransferAfterRestoringTheProgramCounter() throws Exception {
+    try (var session = load(".text\neret\nnop\n")) {
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      int target = session.registerFile.getPC() + 4;
+      session.editCoprocessor0Register(Coprocessor0State.EPC, target);
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(((StepEvent) events.getFirst()).transfer()).isEqualTo(StepEvent.ExceptionReturn.INSTANCE);
+      assertThat(session.registerFile.getPC()).isEqualTo(target);
     }
   }
 
@@ -411,6 +426,10 @@ class SimulatorEngineTest {
     return new SimulatorListener() {
       public void onStep(StepEvent event) {
         events.add(event);
+      }
+
+      public void onBackstep(long stepCount) {
+        events.add(stepCount);
       }
 
       public void onStop(StopEvent event) {

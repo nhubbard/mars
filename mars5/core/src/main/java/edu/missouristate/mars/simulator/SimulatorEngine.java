@@ -267,7 +267,11 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
             if (program != session.getProgram()) {
               throw new IllegalStateException("Program was replaced");
             }
+            long previousStepCount = stepCount;
             undo(wholeSource);
+            if (stepCount != previousStepCount) {
+              notifyListeners(listener -> listener.onBackstep(stepCount));
+            }
           } catch (Exception error) {
             state = SimulatorState.STOPPED;
             notifyListeners(

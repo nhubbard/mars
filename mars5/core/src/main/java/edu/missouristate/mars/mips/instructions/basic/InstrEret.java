@@ -19,7 +19,7 @@ public class InstrEret extends BasicInstruction {
               Binary.clearBit(
                   context.coprocessor0.getValue(Coprocessor0State.STATUS),
                   Coprocessor0State.EXCEPTION_LEVEL));
-          context.setProgramCounter(context.coprocessor0.getValue(Coprocessor0State.EPC));
+          context.returnFromException();
         });
   }
 }
