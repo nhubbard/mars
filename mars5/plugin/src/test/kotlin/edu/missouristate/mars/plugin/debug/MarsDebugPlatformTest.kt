@@ -1950,6 +1950,8 @@ class MarsDebugPlatformTest {
                     debug.assertPausedAt(file, 5)
                     val stale = assertInstanceOf(MemoryExportCapture.Failed::class.java, queued.await())
                     assertTrue(stale.message.contains("resumed or stopped"))
+                    val late = assertInstanceOf(MemoryExportCapture.Failed::class.java, pause.captureForExport(options))
+                    assertEquals(stale.message, late.message)
                     assertFalse(Files.exists(output))
                 } finally {
                     releaseWriter.countDown()
