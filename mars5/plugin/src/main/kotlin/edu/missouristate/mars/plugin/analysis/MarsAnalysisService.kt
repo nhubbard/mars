@@ -8,7 +8,6 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
@@ -17,6 +16,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
+import com.intellij.util.containers.SLRUMap
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
@@ -37,9 +37,7 @@ import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
-import java.util.TreeSet
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 
@@ -54,7 +52,8 @@ internal data class IndexedSymbolCandidates(
 @Service(Service.Level.PROJECT)
 class MarsAnalysisService(private val project: Project, scope: CoroutineScope) : Disposable {
     private val coordinator = AnalysisCoordinator(scope)
-    private val lastBuild = AtomicReference<BuiltSymbols>()
+    private val lastBuild = AtomicReference<BuildSelection>()
+    private val backgroundSymbols = SLRUMap<Path, AssemblySymbols>(0, 8)
 
     val snapshot: PublishedAnalysis get() = coordinator.snapshot
 
@@ -62,46 +61,44 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun selectedAssemblyEntry(file: MipsFile): Path? {
         val build = lastBuild.get() ?: return null
-        return build.entry.takeIf { build.sourcePath(file) != null }
+        return build.request.entry.takeIf { build.snapshot.sourcePath(file) != null }
     }
 
     internal class SymbolBuild(val entry: Path)
 
-    private class BuiltSymbols(
+    private class BuildSelection(
         val request: SymbolBuild,
-        val revisions: Map<Path, Long> = emptyMap(),
-        val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
-        val texts: Map<Path, String> = emptyMap(),
-    ) {
-        val entry = request.entry
-        private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
-        val localSymbols = symbols.locals()[entry].orEmpty()
-
-        fun sourcePath(file: MipsFile): Path? = sourcesByUrl[file.viewProvider.virtualFile.url]
-
-        private val completionNames = TreeSet<String>().apply {
-            for (definitions in listOf(localSymbols, symbols.globals())) {
-                for ((name, definition) in definitions) {
-                    ProgressManager.checkCanceled()
-                    if (definition.macroPrivate()) continue
-                    val type = TokenTypes.matchTokenType(name)
-                    if (type == TokenTypes.IDENTIFIER || type == TokenTypes.OPERATOR) add(name)
-                }
-            }
-        }
-
-        fun matchingNames(prefix: String): List<String> =
-            completionNames.tailSet(prefix).asSequence().takeWhile { it.startsWith(prefix) }.toList()
-    }
+        val snapshot: AssemblySymbols = AssemblySymbols(request.entry),
+    )
 
     internal fun beginSymbolBuild(entry: Path): SymbolBuild =
-        SymbolBuild(entry.toAbsolutePath().normalize()).also { lastBuild.set(BuiltSymbols(it)) }
+        SymbolBuild(entry.toAbsolutePath().normalize()).also { lastBuild.set(BuildSelection(it)) }
 
     internal fun publishBuiltSymbols(build: SymbolBuild, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
         val current = lastBuild.get()
         if (current.request === build) {
-            lastBuild.compareAndSet(current, BuiltSymbols(build, sources.revisions, symbols, sources.snapshot.texts()))
+            val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts())
+            lastBuild.compareAndSet(current, BuildSelection(build, snapshot))
         }
+    }
+
+    /** The external pass has validated this snapshot under the read action in which it is published. */
+    internal fun publishBackgroundSymbols(snapshot: AssemblySymbols) {
+        synchronized(backgroundSymbols) { backgroundSymbols.put(snapshot.entry, snapshot) }
+    }
+
+    private fun <T : Any> fromAssemblySymbols(file: MipsFile, lookup: (AssemblySymbols, Path) -> T?): T? {
+        val selected = lastBuild.get()?.snapshot?.let { snapshot ->
+            snapshot.sourcePath(file)?.let { snapshot to it }
+        }
+        if (selected != null) lookup(selected.first, selected.second)?.let { return it }
+        if (DumbService.isDumb(project)) return null
+        val candidates = synchronized(backgroundSymbols) { backgroundSymbols.values() }
+            .mapNotNull { snapshot -> snapshot.sourcePath(file)?.let { snapshot to it } }
+        if (candidates.isEmpty()) return null
+        val entry = selected?.first?.entry ?: inferredMipsAssemblyEntry(file)
+        val candidate = candidates.firstOrNull { it.first.entry == entry } ?: return null
+        return lookup(candidate.first, candidate.second)
     }
 
     /** Joins physical names with the last compatible assembly for this entry. */
@@ -140,8 +137,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
-        val build = lastBuild.get() ?: return null
-        if (build.sourcePath(root) == null) return null
+        return fromAssemblySymbols(root) { snapshot, _ -> builtLabelTarget(snapshot, name, allowExternal) }
+    }
+
+    private fun builtLabelTarget(build: AssemblySymbols, name: String, allowExternal: Boolean): PsiElement? {
         val definition = build.localSymbols[name] ?: build.symbols.globals()[name] ?: return null
         if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
 
@@ -161,16 +160,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return file.findElementAt(offset)
     }
 
-    private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> {
-        val build = lastBuild.get() ?: return emptyList()
-        val activeSource = build.sourcePath(root) ?: return emptyList()
+    private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> =
+        fromAssemblySymbols(root) { snapshot, source -> builtLabelNames(snapshot, source, offset, prefix) }.orEmpty()
+
+    private fun builtLabelNames(build: AssemblySymbols, activeSource: Path, offset: Int, prefix: String): List<String>? {
         val names = build.matchingNames(prefix)
-        if (names.isEmpty()) return emptyList()
+        if (names.isEmpty()) return null
         val valid = build.revisions.validateSourceDocuments { path, document, revision ->
             document.modificationStamp == revision ||
                 path == activeSource && preservesBuiltLabelNames(build.texts.getValue(path), document, offset)
         }
-        return if (valid) names else emptyList()
+        return names.takeIf { valid }
     }
 
     private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {
@@ -291,7 +291,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         selectedPrefix(file, offset)?.asSequence() ?: sourcePrefix(file, offset)
 
     private fun selectedPrefix(file: MipsFile, offset: Int): List<MipsSourceEvent>? {
-        val build = lastBuild.get() ?: return null
+        val build = lastBuild.get()?.snapshot ?: return null
         val path = build.sourcePath(file) ?: return null
         if (path == build.entry) return null
         val entry = VirtualFileManager.getInstance().findFileByNioPath(build.entry) ?: return null
@@ -456,5 +456,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }
     }
 
-    override fun dispose() = coordinator.close()
+    override fun dispose() {
+        coordinator.close()
+        synchronized(backgroundSymbols) { backgroundSymbols.clear() }
+    }
 }

@@ -239,8 +239,11 @@ For an include, diagnostics use the selected entry or infer it when there is exa
 containing root. An ambiguous include needs an explicit entry. Before marking source,
 the pass checks that the entry and source revisions are still current. Reverse include
 queries use the shared index directly so a newly introduced parent can invalidate an
-inferred context. Background results currently feed diagnostics. Build-backed symbol
-navigation and completion still use the explicit assembly result.
+inferred context. Successful background results also supply symbol navigation and completion
+without a manual build. The project keeps a bounded cache of detached symbol maps and uses
+only the map for the selected or uniquely inferred entry. The editor can reuse a compatible
+map for completion while the current instruction operand is incomplete. Stale results and
+changes elsewhere in the captured source graph cannot supply names.
 
 ## Go to Declaration for data labels and exports
 

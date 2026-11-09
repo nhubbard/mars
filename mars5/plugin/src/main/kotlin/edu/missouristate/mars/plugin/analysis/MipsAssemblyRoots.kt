@@ -3,9 +3,24 @@ package edu.missouristate.mars.plugin.analysis
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeManager
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import java.nio.file.Path
+
+internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
+    CachedValuesManager.getCachedValue(file) {
+        val entry = mipsAssemblyRoots(file.project, file.viewProvider.virtualFile).singleOrNull()
+            ?.let { it.toNioPath().toAbsolutePath().normalize() }
+        CachedValueProvider.Result.create(
+            entry, PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
+        )
+    }
 
 /** Finds top-level MIPS entries, including the file itself when it has no MIPS includers. */
 internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<VirtualFile> {

@@ -11,11 +11,12 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiFile
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.AssemblySymbols
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.collectAssemblySources
-import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
+import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.analysis.validateSourceDocuments
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import java.nio.file.Path
@@ -29,7 +30,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
         val structureStamp: Long,
     )
 
-    data class Result(val input: Input, val diagnostics: List<AssemblyError>)
+    data class Result(val input: Input, val diagnostics: List<AssemblyError>, val symbols: AssemblySymbols?)
 
     override fun collectInformation(psiFile: PsiFile): Input? {
         val file = psiFile as? MipsFile ?: return null
@@ -38,7 +39,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
         val source = virtualFile.toNioPath().toAbsolutePath().normalize()
         val selected = file.project.service<MarsAnalysisService>().selectedAssemblyEntry(file)
         val explicit = selected?.let { collectAssemblySources(listOf(it), null) }?.takeIf { source in it.revisions }
-        val sources = explicit ?: collectAssemblySources(listOf(inferredEntry(file) ?: return null), null)
+        val sources = explicit ?: collectAssemblySources(listOf(inferredMipsAssemblyEntry(file) ?: return null), null)
         return Input(source, selected, sources, VirtualFileManager.getInstance().structureModificationCount)
     }
 
@@ -48,24 +49,34 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
         val result = component.context().use {
             collectedInfo.sources.assembleIn(component, ProgressManager::checkCanceled)
         }
-        return Result(collectedInfo, result.errors().filter { it.file() == collectedInfo.source })
+        val sources = collectedInfo.sources
+        val symbols = result.program()?.let {
+            AssemblySymbols(sources.snapshot.entries().single(), sources.revisions, it.symbolMap(), sources.snapshot.texts())
+        }
+        return Result(collectedInfo, result.errors().filter { it.file() == collectedInfo.source }, symbols)
     }
 
     override fun apply(psiFile: PsiFile, annotationResult: Result, holder: AnnotationHolder) {
-        for ((diagnostic, range) in currentDiagnostics(psiFile as MipsFile, annotationResult)) {
+        for ((diagnostic, range) in acceptResult(psiFile as MipsFile, annotationResult)) {
             val severity = if (diagnostic.isWarning) HighlightSeverity.WARNING else HighlightSeverity.ERROR
             holder.newAnnotation(severity, diagnostic.message()).range(range).create()
         }
     }
 
-    internal fun currentDiagnostics(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>> {
-        if (result.diagnostics.isEmpty()) return emptyList()
+    internal fun acceptResult(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>> {
+        val diagnostics = validatedDiagnostics(file, result) ?: return emptyList()
+        result.symbols?.let { file.project.service<MarsAnalysisService>().publishBackgroundSymbols(it) }
+        return diagnostics
+    }
+
+    private fun validatedDiagnostics(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>>? {
+        if (result.diagnostics.isEmpty() && result.symbols == null) return null
         val input = result.input
-        if (VirtualFileManager.getInstance().structureModificationCount != input.structureStamp) return emptyList()
+        if (VirtualFileManager.getInstance().structureModificationCount != input.structureStamp) return null
         val selected = file.project.service<MarsAnalysisService>().selectedAssemblyEntry(file)
-        if (selected != input.selectedEntry) return emptyList()
+        if (selected != input.selectedEntry) return null
         val entry = input.sources.snapshot.entries().single()
-        if (entry != selected && entry != inferredEntry(file)) return emptyList()
+        if (entry != selected && entry != inferredMipsAssemblyEntry(file)) return null
         var ranges = emptyList<Pair<AssemblyError, TextRange>>()
         val valid = input.sources.revisions.validateSourceDocuments { path, document, revision ->
             if (path == input.source) ranges = result.diagnostics.mapNotNull { error ->
@@ -73,12 +84,8 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
             }
             document.modificationStamp == revision
         }
-        return if (valid) ranges else emptyList()
+        return ranges.takeIf { valid }
     }
-
-    private fun inferredEntry(file: MipsFile): Path? =
-        mipsAssemblyRoots(file.project, file.viewProvider.virtualFile).singleOrNull()
-            ?.let { it.toNioPath().toAbsolutePath().normalize() }
 }
 
 internal fun diagnosticRange(document: Document, error: AssemblyError): TextRange? {

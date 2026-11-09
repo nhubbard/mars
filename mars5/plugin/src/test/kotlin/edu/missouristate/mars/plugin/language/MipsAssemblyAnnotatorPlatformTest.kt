@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -16,11 +17,13 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -40,6 +43,91 @@ class MipsAssemblyAnnotatorPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val annotator = MipsAssemblyAnnotator()
+
+    @Test
+    fun `background highlighting makes generated labels available without a build`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"defs.s\"\nemit (generated)\nemit (generatedOther)\nj generated\n"
+        val (entry, unrelated) = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("defs.s", ".macro emit (%entry)\n%entry: nop\n.end_macro\n")
+            val entry = fixture.addFileToProject("entry.asm", source).virtualFile
+            val unrelated = fixture.addFileToProject("unrelated.s", "j gen\n") as MipsFile
+            fixture.configureFromExistingVirtualFile(entry)
+            entry to unrelated
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val file = fixture.file as MipsFile
+        val analysis = project.service<MarsAnalysisService>()
+        val operand = source.lastIndexOf("generated")
+        suspend fun target() = readAction {
+            file.findReferenceAt(operand)?.resolve()?.let { it.text to it.containingFile.name }
+        }
+        suspend fun names() = readAction { analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen") }
+        suspend fun highlight() = withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+
+        assertNull(target())
+        val captured = readAction { annotator.collectInformation(file)!! }
+        val older = withContext(Dispatchers.Default) { annotator.doAnnotate(captured) }
+        highlight()
+        assertEquals("%entry" to "defs.s", target())
+        assertEquals(setOf("generated", "generatedOther"), names())
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                assertTrue(analysis.labelCompletionNames(file, file.findElementAt(operand)!!, "gen").isEmpty())
+            }
+        }
+        readAction {
+            assertTrue(analysis.labelCompletionNames(unrelated, unrelated.findElementAt(2)!!, "gen").isEmpty())
+        }
+
+        withContext(Dispatchers.EDT) { edit(entry, source.substring(0, operand) + "gen\n") }
+        highlight()
+        assertNull(target())
+        withContext(Dispatchers.EDT) {
+            fixture.editor.caretModel.moveToOffset(operand + 3)
+            fixture.completeBasic()
+            assertEquals(setOf("generated", "generatedOther"), fixture.lookupElementStrings.orEmpty().toSet())
+            fixture.lookup.hideLookup(true)
+        }
+
+        val replacement = source.replace("generated", "genFreshX")
+        withContext(Dispatchers.EDT) { edit(entry, replacement) }
+        assertTrue(names().isEmpty())
+        highlight()
+        assertEquals(setOf("genFreshX", "genFreshXOther"), names())
+        readAction { assertTrue(annotator.acceptResult(file, older).isEmpty()) }
+        assertEquals(setOf("genFreshX", "genFreshXOther"), names())
+        assertEquals("%entry" to "defs.s", target())
+    }
+
+    @Test
+    fun `background symbols respect ambiguity and refresh the selected entry`() = timeoutRunBlocking<Unit> {
+        val selectedSource = "target: nop\n.include \"part.s\"\n"
+        val (first, second) = withContext(Dispatchers.EDT) {
+            val part = fixture.addFileToProject("part.s", "j target\n").virtualFile
+            val first = fixture.addFileToProject("first.s", selectedSource).virtualFile
+            val second = fixture.addFileToProject("second.s", "nop\n").virtualFile
+            fixture.configureFromExistingVirtualFile(part)
+            fixture.editor.caretModel.moveToOffset(3)
+            first to second
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        suspend fun target() = readAction {
+            GotoDeclarationAction.findTargetElement(project, fixture.editor, 3)
+                ?.let { it.containingFile.virtualFile to it.textOffset }
+        }
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        assertEquals(first, target()?.first)
+        withContext(Dispatchers.EDT) { edit(second, selectedSource) }
+        assertNull(target())
+
+        project.service<MarsBuildService>().assemble(second.toNioPath())
+        assertEquals(second, target()?.first)
+        val leading = "# moved\n"
+        withContext(Dispatchers.EDT) { edit(second, leading + selectedSource) }
+        assertNull(target())
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        assertEquals(second to leading.length, target())
+    }
 
     @Test
     fun `native editor highlighting shows assembler errors and warnings and clears them on edits`() = timeoutRunBlocking<Unit> {
@@ -65,6 +153,8 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(fixture.doHighlighting().none {
                 it.description?.contains("missing") == true || it.description?.contains("ignores the .set directive") == true
             })
+            edit(include, "known: nop\nj missing\n")
+            assertTrue(fixture.doHighlighting().none { it.description?.contains("missing") == true })
         }
         assertSame(program, session.program)
     }
@@ -84,7 +174,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         suspend fun collect() = readAction { annotator.collectInformation(part) }
         suspend fun analyze(input: MipsAssemblyAnnotator.Input) =
             withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
-        suspend fun current(result: MipsAssemblyAnnotator.Result) = readAction { annotator.currentDiagnostics(part, result) }
+        suspend fun current(result: MipsAssemblyAnnotator.Result) = readAction { annotator.acceptResult(part, result) }
 
         val input = collect()!!
         assertEquals(listOf(main.toNioPath()), input.sources.snapshot.entries())
