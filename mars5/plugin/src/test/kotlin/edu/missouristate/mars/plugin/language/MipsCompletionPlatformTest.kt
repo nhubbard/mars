@@ -113,6 +113,71 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `macro formal completion replaces the whole token after an aliased included header`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val definitions = ".eqv OPEN .macro\n.eqv FORMALS (%value, %valueMore)\nOPEN emit FORMALS\n"
+            val source = ".include \"formals.s\"\naddiu \$t0, \$zero, %va<caret>lueSuffix\n.end_macro\nemit(7, 0)\n"
+            withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("formals.s", definitions)
+                fixture.configureByText("formal-completion.asm", source)
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                val choices = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith('%') }
+                assertEquals(setOf("%value", "%valueMore"), choices.map { it.lookupString }.toSet())
+                fixture.lookup.setCurrentItem(choices.single { it.lookupString == "%value" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                fixture.file.text.also { assertEquals(source.replace("%va<caret>lueSuffix", "%value"), it) }
+            }
+            directory.resolve("formals.s").writeText(definitions)
+            val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
+    fun `formal suggestions follow token context case and macro scope`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val formals = setOf("%value", "%valueMore", "\$destination", "\$distance")
+        val header = ".macro emit (${formals.joinToString()})\n"
+        val end = ".end_macro\n"
+        val percent = setOf("%value", "%valueMore")
+        val spim = setOf("\$destination", "\$distance")
+        val cases = listOf(
+            "$header    <caret>\n$end" to formals,
+            "$header    %<caret>\n$end" to percent,
+            "$header    %va<caret>: nop\n$end" to percent,
+            "$header    other(%va<caret>)\n$end" to percent,
+            "$header    lw \$t0, 0(\$d<caret>)\n$end" to spim,
+            "$header    .eqv \$destination 7\n    li \$t0, <caret>\n$end" to (formals - "\$destination"),
+            "$header    li \$t0, %V<caret>\n$end" to emptySet(),
+            "$header    li \$t0, VALUE<caret>\n$end" to emptySet(),
+            "$header    .asciiz \"%va<caret>\"\n$end" to emptySet(),
+            "$header    # %va<caret>\n$end" to emptySet(),
+            "$header${end}li \$t0, %va<caret>\n" to emptySet(),
+            ".macro emit (%va<caret>lue, %valueMore)\n$end" to emptySet(),
+        )
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            for ((source, expected) in cases) {
+                fixture.configureByText("formal-scope.asm", source)
+                val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it in formals }
+                assertEquals(expected, names.toSet(), source)
+            }
+            fixture.configureByText("formal-registers.asm", "$header    li \$<caret>, 7\n$end")
+            val names = fixture.completeBasic().orEmpty().map { it.lookupString }
+            assertTrue("\$t0" in names && spim.all { it in names }, names.toString())
+            val file = fixture.file as MipsFile
+            val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
+            val analysis = current.service<MarsAnalysisService>()
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertTrue(analysis.macroParameterNames(file, position).isEmpty())
+            }
+        }
+    }
+
+    @Test
     fun `macro suggestions honor case active aliases and incomplete definitions`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -258,8 +323,12 @@ class MipsCompletionPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
-            val names = fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.endsWith("Label") }
-            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel"), names.toSet())
+            val choices = fixture.completeBasic().orEmpty().filter { it.lookupString.endsWith("Label") }
+            val (parameters, labels) = choices.partition {
+                LookupElementPresentation().also(it::renderElement).typeText == "Macro parameter"
+            }
+            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel"), labels.map { it.lookupString }.toSet())
+            assertEquals(setOf("\$includedParameterLabel", "\$parameterLabel"), parameters.map { it.lookupString }.toSet())
         }
     }
 

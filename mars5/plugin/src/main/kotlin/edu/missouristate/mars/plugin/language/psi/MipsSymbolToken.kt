@@ -26,11 +26,19 @@ import edu.missouristate.mars.plugin.language.macroParameterColor
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.punctuationColor
 
+private val equivalenceContexts = TokenSet.create(
+    MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
+    MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"),
+)
+internal val macroParameterUseContexts = TokenSet.orSet(
+    equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
+)
+
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
     override fun getReference(): PsiReference? {
         val identifier = TokenTypes.isValidIdentifier(text)
         val context = PsiUtilCore.getElementType(parent)
-        val parameter = elementType in parameterTypes && context in parameterContexts && Macro.tokenIsMacroParameter(text, true)
+        val parameter = elementType in parameterTypes && context in macroParameterUseContexts && Macro.tokenIsMacroParameter(text, true)
         val label = identifier && context == referenceExpression &&
             MipsInstructionOperand.at(this, containingFile as MipsFile)?.acceptsLabel == true
         val aliasOperand = identifier && context == invocationToken
@@ -139,15 +147,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val referenceExpression = MipsTypes.psi("REFERENCE_EXPR")
         val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
-        val equivalenceContexts = TokenSet.create(
-            referenceExpression, MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
-            operationCandidate, invocationToken,
-        )
         val macroHeaderContexts = TokenSet.create(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER"))
         val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))
-        val parameterContexts = TokenSet.orSet(
-            equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
-        )
         val numericTypes = setOf(TokenTypes.INTEGER_5, TokenTypes.INTEGER_16, TokenTypes.INTEGER_16U,
             TokenTypes.INTEGER_32, TokenTypes.REAL_NUMBER)
         val registerTypes = setOf(TokenTypes.REGISTER_NAME, TokenTypes.REGISTER_NUMBER, TokenTypes.FP_REGISTER_NAME)

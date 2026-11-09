@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.DynamicBundle
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionInitializationContext
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -18,6 +19,7 @@ import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
 import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
 class MipsCompletionContributor : CompletionContributor(), DumbAware {
     init {
@@ -51,22 +53,39 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 }
             }
         })
+        extend(CompletionType.BASIC, macroParameterPosition, object : CompletionProvider<CompletionParameters>() {
+            override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+                val prefix = prefix(parameters)
+                if (prefix.isNotEmpty() && prefix.first() !in "%$") return
+                val file = parameters.originalFile as MipsFile
+                val names = file.project.service<MarsAnalysisService>().macroParameterNames(file, parameters.position)
+                result.withPrefixMatcher(prefix).addAllElements(
+                    names.filter { it.startsWith(prefix) }.map {
+                        LookupElementBuilder.create(it).withTypeText(messages.getMessage("completion.macro.parameter"))
+                    },
+                )
+            }
+        })
     }
 
     override fun duringCompletion(context: CompletionInitializationContext) {
         val token = context.file.findElementAt(context.startOffset) ?: return
-        if (statementHead.accepts(token) || operandPosition.accepts(token)) {
+        if (statementHead.accepts(token) || operandPosition.accepts(token) || macroParameterPosition.accepts(token)) {
             context.setReplacementOffset(token.textRange.endOffset)
         }
     }
 
     private companion object {
+        val messages = DynamicBundle(MipsCompletionContributor::class.java, "messages.MarsBundle")
         val statementHead = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DOLLAR_WORD")))
             .withParent(psiElement().withElementType(TokenSet.create(MipsTypes.psi("OPERATION"), MipsTypes.psi("OPERATION_CANDIDATE"))))
         val operandPosition = psiElement()
             .withElementType(TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER")))
             .andNot(statementHead)
+        val macroParameterPosition = psiElement()
+            .withElementType(TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("WORD")))
+            .withParent(psiElement().withElementType(macroParameterUseContexts))
 
         val registerSpellings by lazy {
             val integer = RegisterNames.integerSpellings()

@@ -439,13 +439,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
-        if (DumbService.isDumb(project)) return null
-        // A parameter on an aliased opening line is a formal, before that line opens the scope.
-        val macro = editorTimeline(root).macroAt(root, sourceLineStart(position)) ?: return null
+        val macro = macroBodyPrefix(root, position)?.openMacro ?: return null
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parametersByName[name] ?: return emptyList()
         return listOfNotNull(macro.header.containingFile.findElementAt(parameter.offset))
+    }
+
+    internal fun macroParameterNames(root: MipsFile, position: PsiElement): List<String> {
+        val prefix = macroBodyPrefix(root, position) ?: return emptyList()
+        return prefix.openMacro?.parametersByName?.keys.orEmpty().filter { prefix.equivalence(it) == null }
+    }
+
+    private fun macroBodyPrefix(root: MipsFile, position: PsiElement): MipsSourceTimeline.Prefix? {
+        if (DumbService.isDumb(project)) return null
+        // A parameter on an aliased opening line is a formal, before that line opens the scope.
+        return editorPrefix(root, sourceLineStart(position))
     }
 
     internal fun generatedMacroPart(root: MipsFile, position: PsiElement): MacroPart? {

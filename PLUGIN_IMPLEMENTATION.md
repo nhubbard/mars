@@ -261,9 +261,9 @@ An assembler-backed fixture compares the selected overload with the emitted inst
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,
 including definitions from earlier includes. Calls use the expanded name and arity
-while navigating to the written header. Header aliases link to their effective `.eqv`
-definitions. A use of an expanded formal opens the header because the expanded token
-column may have no corresponding source token.
+while navigating to the written token that supplies the name. Header aliases link to
+their effective `.eqv` definitions. A use of an expanded formal opens the written
+parameter or the alias that supplies it.
 
 ## Go to Declaration for macro parameters
 
@@ -273,16 +273,18 @@ so navigation selects the first matching spelling and opens its precise source o
 Parameter uses are distinct from header declarations and quoted or commented text.
 An undeclared SPIM parameter in an active macro does not bind to an outer label.
 
-The current file is the entry for this query, including a header supplied by an earlier
-include. Resolving a body edited directly in a separate included file still needs selection
-of the containing build context. Fixtures cover both parameter spellings, duplicate names,
-address and operation uses, include boundaries, case, and indexing mode.
+The query uses the selected assembly entry or the unique including entry when IntelliJ
+can infer one. Fixtures cover both parameter spellings, duplicate names, address and
+operation uses, include boundaries, case, and indexing mode.
 
 Parameters can also supply a label name, as in `%entry: addiu $t0, $zero, 7`.
 The parser retains separate label and instruction nodes, and navigation on the label token
-finds the formal parameter for both MARS and SPIM spellings. Label completion hides parameter
-spellings inside macros, including in included bodies, and preserves literal dollar-prefixed
-labels outside them. The assembler fixture verifies that a macro-generated label can be exported.
+finds the formal parameter for both MARS and SPIM spellings. Completion offers the current
+macro's formals at operation, operand, and label use sites, including expanded headers and
+included bodies. The lookup marks them as **Macro parameter** alongside the regular register
+and label suggestions. It observes case and visible equivalences. Tab replaces the whole
+parameter token. The assembler fixtures verify the inserted code and an exported
+macro-generated label.
 
 After a successful assembly, a reference without a physical label target can use that build
 from its entry or any captured include. The Java core publishes immutable local and global
