@@ -15,6 +15,7 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.util.BaseListPopupStep
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssembledInstruction
@@ -42,11 +43,11 @@ internal class MarsShowExpansionAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val (file, editor) = target(e) ?: return
         val project = file.project
-        val revision = editor.document.modificationStamp
+        val sourceText = editor.document.immutableCharSequence
         val line = editor.document.getLineNumber(editor.caretModel.offset) + 1
         e.coroutineScope.launch(Dispatchers.Default) {
             val preview = withBackgroundProgress(project, messages.getMessage("expansion.progress")) {
-                inspectExpansion(file, line, revision)
+                inspectExpansion(file, line, sourceText)
             }
             withContext(Dispatchers.EDT) { showExpansionPreview(project, editor, preview) }
         }
@@ -80,10 +81,12 @@ internal sealed interface ExpansionPreview {
     }
 }
 
-internal suspend fun inspectExpansion(file: MipsFile, line: Int, revision: Long): ExpansionPreview {
+internal suspend fun inspectExpansion(file: MipsFile, line: Int, sourceText: CharSequence): ExpansionPreview {
     val smart = ReadConstraint.inSmartMode(file.project)
     val capture = constrainedReadAction(smart) { collectEditorAssembly(file) } ?: return ExpansionPreview.Unavailable.ENTRY
-    if (!revision.equals(capture.sources.revisions[capture.source])) return ExpansionPreview.Unavailable.CHANGED
+    if (!StringUtil.equals(sourceText, capture.sources.snapshot.texts()[capture.source])) {
+        return ExpansionPreview.Unavailable.CHANGED
+    }
     return capture.expansionAt(file, line)
 }
 
@@ -96,7 +99,9 @@ internal suspend fun EditorAssemblyCapture.expansionAt(file: MipsFile, line: Int
         result.program()?.instructionsAt(Location(source, line), cancellation::ensureActive)
     }
     val valid = constrainedReadAction(ReadConstraint.inSmartMode(file.project)) {
-        validate(file) { _, document, stamp -> document.modificationStamp == stamp }
+        val current = collectEditorAssembly(file)
+        // A filesystem refresh can replace cached documents while preserving the assembled inputs.
+        current?.let { it.options to it.sources.snapshot } == (options to sources.snapshot)
     }
     if (!valid) return ExpansionPreview.Unavailable.CHANGED
     if (rows == null) return ExpansionPreview.Unavailable.ASSEMBLY
@@ -134,7 +139,7 @@ private fun originStep(project: Project, editor: Editor, capture: EditorAssembly
 internal fun expansionSourceTarget(project: Project, capture: EditorAssemblyCapture, location: Location): OpenFileDescriptor? {
     val file = VirtualFileManager.getInstance().findFileByNioPath(location.file()) ?: return null
     val document = FileDocumentManager.getInstance().getDocument(file) ?: return null
-    if (!document.modificationStamp.equals(capture.sources.revisions[location.file()]) ||
+    if (!StringUtil.equals(document.immutableCharSequence, capture.sources.snapshot.texts()[location.file()]) ||
         location.line() > document.lineCount
     ) return null
     return OpenFileDescriptor(project, file, document.getLineStartOffset(location.line() - 1))

@@ -126,19 +126,19 @@ class MarsExpansionPlatformTest {
     @Test
     fun `empty failed stale and ambiguous requests yield distinct results`() = timeoutRunBlocking<Unit> {
         val current = project.get()
-        val (file, revision) = withContext(Dispatchers.EDT) {
+        val (file, text) = withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("shared.s", "# comment\nunknown_instruction\n")
             fixture.configureFromExistingVirtualFile(source.virtualFile)
-            (fixture.file as MipsFile) to fixture.editor.document.modificationStamp
+            (fixture.file as MipsFile) to fixture.editor.document.immutableCharSequence
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        assertEquals(ExpansionPreview.Unavailable.CHANGED, inspectExpansion(file, 1, revision - 1))
-        assertEquals(ExpansionPreview.Unavailable.ASSEMBLY, inspectExpansion(file, 2, revision))
-        val nextRevision = withContext(Dispatchers.EDT) {
+        assertEquals(ExpansionPreview.Unavailable.CHANGED, inspectExpansion(file, 1, "nop\n"))
+        assertEquals(ExpansionPreview.Unavailable.ASSEMBLY, inspectExpansion(file, 2, text))
+        val nextText = withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(current) { fixture.editor.document.setText("# comment\nnop\n") }
-            fixture.editor.document.modificationStamp
+            fixture.editor.document.immutableCharSequence
         }
-        assertEquals(ExpansionPreview.Unavailable.EMPTY, inspectExpansion(file, 1, nextRevision))
+        assertEquals(ExpansionPreview.Unavailable.EMPTY, inspectExpansion(file, 1, nextText))
         withContext(Dispatchers.EDT) {
             showExpansionPreview(current, fixture.editor, ExpansionPreview.Unavailable.EMPTY)
             val factory = EditorFactory.getInstance()
@@ -146,8 +146,11 @@ class MarsExpansionPlatformTest {
             factory.releaseEditor(editor)
             showExpansionPreview(current, editor, ExpansionPreview.Unavailable.EMPTY)
         }
-        val preview = inspectExpansion(file, 2, nextRevision) as ExpansionPreview.Instructions
+        val preview = inspectExpansion(file, 2, nextText) as ExpansionPreview.Instructions
         assertEquals("nop", preview.rows.single().assembly().trim())
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("unrelated.txt", "new file") }
+        val afterUnrelatedEdit = preview.capture.expansionAt(file, 2) as ExpansionPreview.Instructions
+        assertEquals(preview.rows, afterUnrelatedEdit.rows)
         withContext(Dispatchers.EDT) {
             val path = file.virtualFile.toNioPath()
             assertNull(expansionSourceTarget(current, preview.capture, Location(path, 99)))
@@ -162,6 +165,7 @@ class MarsExpansionPlatformTest {
             fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
-        assertEquals(ExpansionPreview.Unavailable.ENTRY, inspectExpansion(file, 1, nextRevision))
+        assertEquals(ExpansionPreview.Unavailable.ENTRY, inspectExpansion(file, 1, nextText))
+        assertEquals(ExpansionPreview.Unavailable.CHANGED, preview.capture.expansionAt(file, 2))
     }
 }
