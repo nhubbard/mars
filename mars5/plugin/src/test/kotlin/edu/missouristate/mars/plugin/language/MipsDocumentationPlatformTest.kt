@@ -4,10 +4,13 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -133,6 +136,64 @@ class MipsDocumentationPlatformTest {
             ".eqv OP .InClUdE\nO<caret>P \"aliases.s\"",
         )
         for (source in sources) assertNull(documentation(source), source)
+    }
+
+    @Test
+    fun `macro documentation shows the selected overload and escapes the header comment`() = timeoutRunBlocking<Unit> {
+        val definitions = """
+            .eqv OPEN .macro
+            .eqv TWO (%left, %right)
+            .macro emit (%value) # Emit <one> & advance
+            .end_macro
+            OPEN emit TWO # Emit both
+            .end_macro
+            .eqv CALL row: emit
+        """.trimIndent()
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("macros.s", definitions) }
+        val include = ".include \"macros.s\"\n"
+        val one = documentation("${include}em<caret>it(7)").orEmpty()
+        assertTrue("emit(%value)" in one && "Emit &lt;one&gt; &amp; advance" in one, one)
+        val two = documentation("${include}CA<caret>LL(7, 8)").orEmpty()
+        assertTrue("emit(%left, %right)" in two && "Emit both" in two, two)
+        readAction {
+            val target = IdeDocumentationTargetProvider.getInstance(project.get())
+                .documentationTargets(fixture.editor, fixture.file, fixture.editor.caretModel.offset).single()
+            assertEquals("emit", target.computePresentation().presentableText)
+            assertEquals("macros.s", target.computePresentation().locationText)
+            val navigation = target.navigatable as OpenFileDescriptor
+            assertEquals("macros.s", navigation.file.name)
+            assertEquals(definitions.indexOf("emit TWO"), navigation.offset)
+        }
+        assertNull(documentation("${include}em<caret>it()"))
+        assertNull(documentation("em<caret>it(7)\n$include"))
+        assertNull(documentation("${include}.macro outer\nem<caret>it(7)\n.end_macro\n"))
+        assertNull(documentation("${include}emit(CA<caret>LL)"))
+    }
+
+    @Test
+    fun `macro documentation follows edits and disappears when the invocation stops binding`() = timeoutRunBlocking<Unit> {
+        val source = ".macro emit (%first)\n.end_macro\nentry: em<caret>it(1)\n"
+        assertTrue("emit(%first)" in documentation(source).orEmpty())
+        val current = project.get()
+        val pointer = readAction {
+            IdeDocumentationTargetProvider.getInstance(current)
+                .documentationTargets(fixture.editor, fixture.file, fixture.editor.caretModel.offset)
+                .single().createPointer()
+        }
+        suspend fun edit(text: String, replacement: String) = withContext(Dispatchers.EDT) {
+            val document = fixture.editor.document
+            val start = document.text.indexOf(text)
+            WriteCommandAction.runWriteCommandAction(current) {
+                document.replaceString(start, start + text.length, replacement)
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        edit("%first", "%new")
+        assertTrue("emit(%new)" in computeDocumentationBlocking(pointer)?.html.orEmpty())
+        edit("(1)", "()")
+        assertNull(computeDocumentationBlocking(pointer))
+        edit("emit()", "")
+        assertNull(computeDocumentationBlocking(pointer))
     }
 
     private suspend fun documentation(source: String, filename: String = "doc.asm"): String? {

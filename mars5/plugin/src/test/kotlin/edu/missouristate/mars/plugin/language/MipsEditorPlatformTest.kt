@@ -132,7 +132,6 @@ class MipsEditorPlatformTest {
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertNull(analysis.expandedInstructionAlias(file, head, head.text))
                 assertNull(analysis.operationSite(file, head))
-                assertNull(analysis.operationSite(file, head, recognizeMacros = true))
                 val literal = file.findElementAt(source.indexOf("addiu COLON"))!!
                 assertFalse(analysis.isGeneratedLabel(file, literal))
                 assertEquals(literal.textRange, analysis.operationSite(file, literal)?.range)

@@ -69,7 +69,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         val file = element.containingFile as MipsFile
         val analysis = file.project.service<MarsAnalysisService>()
         val head = element.operationHead
-        val site = analysis.operationSite(file, head, recognizeMacros = true)
+        val site = analysis.operationSite(file, head)
         when (site?.type) {
             TokenTypes.OPERATOR -> holder.color(site.range, instructionMnemonicColor)
             TokenTypes.IDENTIFIER -> holder.color(site.range, macroColor)

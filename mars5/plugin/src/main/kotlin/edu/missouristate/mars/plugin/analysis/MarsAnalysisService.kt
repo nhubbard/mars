@@ -223,6 +223,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
+        val definition = macroDefinition(root, position) ?: return null
+        val header = definition.header
+        return header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
+    }
+
+    internal fun macroDefinition(root: MipsFile, position: PsiElement): MipsSourceEvent.Begin? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, position.textOffset)
         val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true))
@@ -304,21 +310,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
-    internal fun operationSite(root: MipsFile, head: PsiElement, recognizeMacros: Boolean = false): OperationSite? {
+    internal fun operationSite(root: MipsFile, head: PsiElement): OperationSite? {
         val prefix = leadingEquivalencePrefix(root, head)
-        if (prefix != null) return expandedOperationSite(root, head, prefix, recognizeMacros)
+        if (prefix != null) return expandedOperationSite(root, head, prefix)
         if (head.elementType == mnemonicType) return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
-        if (recognizeMacros && !DumbService.isDumb(project)) {
+        if (!DumbService.isDumb(project)) {
             val timeline = editorTimeline(root)
             if (head.text in timeline.macroNames) {
-                return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset), true)
+                return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset))
             }
         }
         return null
     }
 
     private fun expandedOperationSite(
-        root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean,
+        root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix,
     ): OperationSite? {
         val source = sourceLine(head)
         val expansion = Tokenizer.tokenizeMappedLine(
@@ -327,7 +333,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val tokens = expansion.tokens().operationTokens()
         if (tokens.isEmpty) return null
         val operation = tokens[0]
-        val type = effectiveOperationType(operation, prefix, recognizeMacros) ?: return null
+        val type = effectiveOperationType(operation, prefix) ?: return null
         val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
         return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
     }
@@ -345,7 +351,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
-        val type = if (tokens.isEmpty) null else effectiveOperationType(tokens[0], prefix, recognizeMacros = true)
+        val type = if (tokens.isEmpty) null else effectiveOperationType(tokens[0], prefix)
         // Even a macro call can record an equivalence as a tokenizer side effect.
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
@@ -372,10 +378,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }.toMap()
     }
 
-    private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean): TokenTypes? =
+    private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix): TokenTypes? =
         when {
             operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
-            recognizeMacros && prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
+            prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
             operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
             else -> null
         }
@@ -424,12 +430,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return this
     }
 
-    private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
+    private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): MipsSourceEvent.Begin? {
         if (prefix.openMacro != null) return null
-        val arity = macroArgumentCount(tokens)
-        val definition = prefix.macroOverload(tokens[0].value, arity) ?: return null
-        val header = definition.header
-        return header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
+        return prefix.macroOverload(tokens[0].value, macroArgumentCount(tokens))
     }
 
     private fun macroArgumentCount(tokens: TokenList): Int = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1

@@ -107,7 +107,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         private fun operandColor(file: MipsFile, analysis: MarsAnalysisService): TextAttributesKey? {
             if (labelUse(file, analysis) != null) return labelColor
             if (!aliasOperand) return null
-            val operation = analysis.operationSite(file, element.parent.parent.operationHead, recognizeMacros = true)
+            val operation = analysis.operationSite(file, element.parent.parent.operationHead)
             return macroParameterColor.takeIf {
                 operation?.type == TokenTypes.IDENTIFIER && operation.range.endOffset <= element.textOffset
             }

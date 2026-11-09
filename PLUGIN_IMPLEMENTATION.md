@@ -179,6 +179,13 @@ include order. Go to Declaration on that token opens the written equivalence def
 The include prepass requires a physical `.include`, so that entry is available on the physical
 directive.
 
+On a resolved macro call, Quick Documentation shows the selected overload's expanded
+formal parameters and the comment on its opening line. The popup identifies the source
+file and can navigate to the written macro name, including when an equivalence supplied
+the signature. Its smart pointer rebinds the call after an edit and drops the target if
+the invocation no longer matches. Parameter Info continues to show the available
+overloads while a call is being typed.
+
 Jupiter fixtures use IntelliJ's documentation service to resolve source and lookup targets,
 render their content, and verify that comments, strings, labels and unrelated lookup items
 stay outside the catalog provider.
