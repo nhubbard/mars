@@ -57,7 +57,8 @@ private class MipsBlock(
     }
 
     private fun isOpaque() = myNode.elementType in opaque ||
-        myNode.elementType == candidate && rawOperation !in formatOperations
+        myNode.elementType == candidate && rawOperation !in formatOperations ||
+        myNode.elementType == operandFragment && line?.fragmentAddressOpenings == null
 
     override fun getIndent() = indent
 
@@ -87,11 +88,12 @@ private class MipsBlock(
     } else Indent.getNoneIndent()
 
     private fun layoutOf(child: ASTNode): FormattingLine? {
-        val operation = child.findChildByType(operationOwners) ?: return null
+        val operation = child.findChildByType(operationOwners)
+        val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
+        val anchor = operation?.let { it.psi.operationHead } ?: child.psi.takeIf { hasFragment } ?: return null
         val context = timeline.value ?: return null
-        val head = operation.psi.operationHead
-        if (operation.elementType != candidate && head !in context.generatedLabelSites) return null
-        return analysis.formattingLine(head.containingFile as MipsFile, head, context)
+        if (operation?.elementType != candidate && !hasFragment && anchor !in context.generatedLabelSites) return null
+        return analysis.formattingLine(anchor.containingFile as MipsFile, anchor, context, hasFragment)
     }
 
     private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
@@ -128,6 +130,7 @@ private class MipsBlock(
             after in signs -> if (gap.length == 0) readOnly else oneSpace
             after in closingPunctuation || before == leftParen -> noSpaces
             after == leftParen && (myNode.elementType == address ||
+                right.startOffset in line?.fragmentAddressOpenings.orEmpty() ||
                 rawOperation == TokenTypes.OPERATOR && before in addressOffsets) -> noSpaces
             before == colon && myNode.elementType == repetition -> noSpaces
             before in separators || after == comment -> oneSpace
@@ -153,14 +156,16 @@ private class MipsBlock(
         val separators = TokenSet.create(comma, colon)
         val indentedScopes = TokenSet.create(MipsTypes.file, macro)
         val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
+        val operandFragment = MipsTypes.psi("OPERAND_FRAGMENT")
+        val operandOwners = TokenSet.orSet(operationOwners,
+            TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("DATA_CONTINUATION")))
         val executableHeads = TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
         val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
         val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER, TokenTypes.DIRECTIVE)
         val addressOffsets = TokenSet.create(MipsTypes.psi("NUMBER"), MipsTypes.psi("WORD"),
             MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("PARAMETER"))
         // A physical alias can represent several tokens. Apply spacing only at written boundaries.
-        val opaque = TokenSet.create(replacement, MipsTypes.psi("OPERAND_FRAGMENT"),
-            MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
+        val opaque = TokenSet.create(replacement, MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
 
         val readOnly: Spacing = Spacing.getReadOnlySpacing()
         val noSpaces: Spacing = Spacing.createSpacing(0, 0, 0, false, 0)

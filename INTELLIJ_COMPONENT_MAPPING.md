@@ -392,8 +392,8 @@ including when replacements introduce an instruction, address, label separator, 
 
 Use the expanded role of label and directive aliases to place their statements at the margin.
 Indent macro bodies using the include-ordered scope, including boundaries supplied by aliases.
-For future formatter work, project composite operand layouts onto the written tokens, including
-aliases that supply several operands or punctuation within an operand.
+Reparse operand fragments completed by alias expansion and project address spacing onto written
+parentheses. Extend that projection to already-parseable operands whose roles change after expansion.
 Apply spacing or indentation only at physical boundaries that preserve the assembler's token sequence
 and the stored replacement text. An alias spanning several roles should retain its own editor color.
 

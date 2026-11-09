@@ -141,6 +141,75 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `aliases that complete an operand expose its safe spacing boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv OPEN (
+            .eqv CLOSE )
+            .eqv BASE ${'$'}sp
+            .eqv OFFSET -4
+            .eqv DEST ${'$'}t0
+            .eqv PREFIX 4(
+            .eqv PAIR 7,   9
+            .data
+            values: .word PAIR
+            .text
+            lw  DEST , OFFSET  ( BASE CLOSE
+            lw  ${'$'}t1  , PREFIX   BASE  )
+            lw  ${'$'}t2 , OFFSET OPEN  BASE )
+            lw  DEST  ( BASE CLOSE
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("compound-addresses.asm", source)
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertEquals("""
+            .eqv OPEN (
+            .eqv CLOSE )
+            .eqv BASE ${'$'}sp
+            .eqv OFFSET -4
+            .eqv DEST ${'$'}t0
+            .eqv PREFIX 4(
+            .eqv PAIR 7,   9
+            .data
+            values: .word PAIR
+            .text
+                lw DEST, OFFSET(BASE CLOSE
+                lw ${'$'}t1, PREFIX BASE)
+                lw ${'$'}t2, OFFSET OPEN BASE)
+                lw DEST (BASE CLOSE
+        """.trimIndent(), formatted)
+        assertEquals(assemble(directory.resolve("compound-before.asm"), source),
+            assemble(directory.resolve("compound-after.asm"), formatted))
+    }
+
+    @Test
+    fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = """
+                .eqv OFFSET 4
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST
+                .text
+                lw ${'$'}t0 , OFFSET  ( ${'$'}sp
+                lw ${'$'}t1 , FIRST  ( ${'$'}sp
+                lw ${'$'}t2 , UNKNOWN  ( ${'$'}sp
+                .word OFFSET    )
+                next: nop
+            """.trimIndent()
+            fixture.configureByText("incomplete-addresses.asm", source)
+            val result = reformat()
+            assertTrue("${'$'}t0 , OFFSET  ( ${'$'}sp" in result, result)
+            assertTrue("${'$'}t1 , FIRST  ( ${'$'}sp" in result, result)
+            assertTrue("${'$'}t2 , UNKNOWN  ( ${'$'}sp" in result, result)
+            assertTrue(".word OFFSET    )" in result, result)
+            assertTrue("next: nop" in result, result)
+            assertEquals(result, reformat())
+        }
+    }
+
+    @Test
     fun `expanded labels and directives set the margin without rewriting aliases`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv DATA .data

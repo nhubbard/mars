@@ -12,7 +12,10 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.psi.SyntaxTraverser
+import com.intellij.psi.TokenType
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.elementType
 import com.intellij.util.containers.SLRUMap
@@ -29,6 +32,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
@@ -43,7 +47,12 @@ internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val
 
 internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
 
-internal data class FormattingLine(val operationType: TokenTypes?, val atMargin: Boolean)
+internal data class FormattingLine(
+    val operationType: TokenTypes?,
+    val atMargin: Boolean,
+    // A non-null set means the expanded fragment has complete syntax.
+    val fragmentAddressOpenings: Set<Int>?,
+)
 
 internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
@@ -52,6 +61,10 @@ internal data class MacroInvocation(
 internal data class MacroArityMismatch(val site: PsiElement, val name: String, val actual: Int, val expected: List<Int>)
 
 private val mnemonicType = MipsTypes.psi("MNEMONIC")
+private val addressExpressionType = MipsTypes.psi("ADDRESS_EXPR")
+private val leftParenType = MipsTypes.psi("LEFT_PAREN")
+private val incompleteOperandTypes = setOf(TokenType.ERROR_ELEMENT, MipsTypes.psi("OPERAND_FRAGMENT"),
+    MipsTypes.psi("UNCLOSED_STRING"))
 
 internal data class IndexedSymbolCandidates(
     val declarations: List<IndexedSymbolSite>,
@@ -316,20 +329,37 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
     }
 
-    internal fun formattingLine(root: MipsFile, head: PsiElement, timeline: MipsSourceTimeline): FormattingLine? {
-        val prefix = timeline.prefix(root, sourceLineStart(head))
+    internal fun formattingLine(
+        root: MipsFile, anchor: PsiElement, timeline: MipsSourceTimeline, hasFragment: Boolean,
+    ): FormattingLine? {
+        val start = sourceLineStart(anchor)
+        val prefix = timeline.prefix(root, start)
+        val source = sourceLine(anchor, fromLineStart = true)
         val errors = ErrorList()
-        val expanded = Tokenizer.expandLine(
-            sourceLine(head, fromLineStart = true), errors,
-            { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
-        )
+        val replacement: (String) -> String? = { prefix.equivalence(it)?.replacement }
+        val mapped = if (hasFragment) Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled) else null
+        val expanded = mapped?.expanded() ?: Tokenizer.expandLine(source, errors, replacement, ProgressManager::checkCanceled)
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
         val type = if (tokens.isEmpty) null else effectiveOperationType(tokens[0], prefix, recognizeMacros = true)
         // Even a macro call can record an equivalence as a tokenizer side effect.
-        val spacingType = type.takeIf { expanded.definition() == null }
-        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE)
+        val canFormatOperands = expanded.definition() == null
+        val spacingType = type.takeIf { canFormatOperands }
+        val openings = if (canFormatOperands) mapped?.let { completeFragmentAddressOpenings(it, source, start) } else null
+        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings)
+    }
+
+    private fun completeFragmentAddressOpenings(mapped: Tokenizer.MappedLine, source: String, start: Int): Set<Int>? {
+        val expanded = mapped.tokens().processedLine
+        if (expanded == source) return null
+        val file = PsiFileFactory.getInstance(project).createFileFromText("expanded.asm", MipsFileType, expanded)
+        val tree = SyntaxTraverser.astTraverser(file.node)
+        if (tree.filterTypes { it in incompleteOperandTypes }.firstOrNull() != null) return null
+        return tree.asSequence().filter { it.elementType == addressExpressionType }.map {
+            val opening = it.findChildByType(leftParenType)!!
+            start + mapped.originalOffset(opening.startOffset)
+        }.toSet()
     }
 
     private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean): TokenTypes? =

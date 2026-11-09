@@ -347,23 +347,25 @@ public class Tokenizer {
       ErrorList errors,
       Function<String, String> replacements,
       Runnable checkCancellation) {
-    var tokenizer = new Tokenizer();
     var edits = new ArrayList<SourceEdit>();
-    return new MappedLine(
-        tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, edits), edits);
+    return new MappedLine(expandLine(line, errors, replacements, checkCancellation, edits), edits);
   }
 
   public static final class MappedLine {
-    private final TokenList tokens;
+    private final ExpandedLine expanded;
     private final List<SourceEdit> edits;
 
-    private MappedLine(TokenList tokens, List<SourceEdit> edits) {
-      this.tokens = tokens;
+    private MappedLine(ExpandedLine expanded, List<SourceEdit> edits) {
+      this.expanded = expanded;
       this.edits = edits;
     }
 
     public TokenList tokens() {
-      return tokens;
+      return expanded.tokens();
+    }
+
+    public ExpandedLine expanded() {
+      return expanded;
     }
 
     /** Maps a zero-based token offset to the original character or the alias that supplied it. */
@@ -393,9 +395,18 @@ public class Tokenizer {
       ErrorList errors,
       Function<String, String> replacements,
       Runnable checkCancellation) {
+    return expandLine(line, errors, replacements, checkCancellation, null);
+  }
+
+  private static ExpandedLine expandLine(
+      String line,
+      ErrorList errors,
+      Function<String, String> replacements,
+      Runnable checkCancellation,
+      List<SourceEdit> edits) {
     var tokenizer = new Tokenizer();
     TokenList tokens =
-        tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, null);
+        tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, edits);
     var definitions = tokenizer.equivalents.entrySet().iterator();
     if (definitions.hasNext() && !errors.errorsOccurred()) {
       var definition = definitions.next();
