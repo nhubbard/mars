@@ -147,11 +147,19 @@ public class Tokenizer {
       String line = source.get(i);
       Token include =
           firstIncludePath(tokenizeLine(program, i + 1, line, false, checkCancellation));
-      if (include == null) {
+      String filename = quotedIncludePath(include);
+      if (filename == null) {
+        if (include != null) {
+          errors.add(
+              new ErrorMessage(
+                  program,
+                  include.getSourceLine(),
+                  include.getStartPos(),
+                  "Unterminated .include path"));
+        }
         result.add(new SourceLine(line, program, i + 1));
         continue;
       }
-      String filename = unquote(include);
       // Handle either absolute or relative pathname for .include file.
       if (!new File(filename).isAbsolute()) {
         filename = new File(program.getFilename()).getParent() + File.separator + filename;
@@ -191,8 +199,7 @@ public class Tokenizer {
     if (sourceLine.indexOf('.') < 0) {
       return null;
     }
-    Token include = firstIncludePath(tokenizeLine(1, sourceLine, new ErrorList(), false));
-    return include == null ? null : unquote(include);
+    return quotedIncludePath(firstIncludePath(tokenizeLine(1, sourceLine, new ErrorList(), false)));
   }
 
   private static Token firstIncludePath(TokenList tokens) {
@@ -205,8 +212,15 @@ public class Tokenizer {
     return null;
   }
 
-  private static String unquote(Token path) {
+  private static String quotedIncludePath(Token path) {
+    if (path == null) {
+      return null;
+    }
     String value = path.getValue();
+    // The tokenizer also classifies a quote that runs to the end of the line as QUOTED_STRING.
+    if (value.length() < 2 || value.charAt(value.length() - 1) != '"') {
+      return null;
+    }
     return value.substring(1, value.length() - 1);
   }
 

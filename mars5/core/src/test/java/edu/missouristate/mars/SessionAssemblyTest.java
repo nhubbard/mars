@@ -11,6 +11,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
 import edu.missouristate.mars.assembler.SymbolTable;
+import edu.missouristate.mars.assembler.Tokenizer;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.di.CoreModule;
@@ -437,6 +438,53 @@ class SessionAssemblyTest {
         assertThat(error.message()).contains("undefined", "not found");
       });
       assertThat(assembler.assemble(entries).succeeded()).isTrue();
+    }
+  }
+
+  @Test
+  void unfinishedIncludePathsReportSourceDiagnosticsWithoutLoadingTruncatedFiles() {
+    var main = directory.resolve("main.s");
+    var part = directory.resolve("part.s");
+    String bareQuote = ".include \"";
+    String partialPath = "prefix: .InClUdE ,, \"part.sx";
+    String completePath = "prefix: .InClUdE ,, \"part.s\"";
+    var tokenizer = new Tokenizer();
+    assertThat(tokenizer.findIncludePath(bareQuote)).isNull();
+    assertThat(tokenizer.findIncludePath(partialPath)).isNull();
+    assertThat(tokenizer.findIncludePath(completePath)).isEqualTo("part.s");
+
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var unfinished =
+          assembler.assembleSnapshot(
+              new AssemblySourceSnapshot(
+                  List.of(main),
+                  Map.of(main, bareQuote + "\r\n" + partialPath + "\r\nnop\r\n", part, "j missing\n")),
+              null,
+              true,
+              false);
+      assertThat(unfinished.succeeded()).isFalse();
+      assertThat(unfinished.errors()).satisfiesExactly(
+          first -> {
+            assertThat(first.file()).isEqualTo(main);
+            assertThat(first.line()).isEqualTo(1);
+            assertThat(first.column()).isEqualTo(bareQuote.indexOf('"') + 1);
+            assertThat(first.message()).contains("Unterminated .include path");
+          },
+          second -> {
+            assertThat(second.file()).isEqualTo(main);
+            assertThat(second.line()).isEqualTo(2);
+            assertThat(second.column()).isEqualTo(partialPath.indexOf('"') + 1);
+            assertThat(second.message()).contains("Unterminated .include path");
+          });
+      var completed =
+          assembler.assembleSnapshot(
+              new AssemblySourceSnapshot(
+                  List.of(main), Map.of(main, completePath + "\nj entry\n", part, "entry: nop\n")),
+              null,
+              true,
+              false);
+      assertThat(completed.succeeded()).isTrue();
     }
   }
 

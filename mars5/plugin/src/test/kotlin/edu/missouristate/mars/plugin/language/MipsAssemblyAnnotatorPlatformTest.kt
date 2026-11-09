@@ -17,6 +17,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.elementType
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -251,6 +252,40 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(fixture.doHighlighting().none { it.description?.contains("missing") == true })
         }
         assertSame(program, session.program)
+    }
+
+    @Test
+    fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking<Unit> {
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile
+            val part = fixture.addFileToProject("part.s", "target: nop\n").virtualFile
+            fixture.configureFromExistingVirtualFile(entry)
+            entry to part
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val file = fixture.file as MipsFile
+        val entryPath = main.toNioPath()
+        val includePath = include.toNioPath()
+        withContext(Dispatchers.EDT) {
+            for (unfinished in listOf("\"", "\"part.sx")) {
+                val source = ".include $unfinished\ntail: nop\n"
+                edit(main, source)
+                val input = readAction { requireNotNull(annotator.collectInformation(file)) }
+                assertEquals(setOf(entryPath), input.sources.revisions.keys)
+                val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+                val (error, range) = readAction { annotator.acceptResult(file, result).single() }
+                assertEquals("Unterminated .include path", error.message())
+                assertEquals(unfinished, range.substring(source))
+                assertTrue(fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR })
+                assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
+            }
+            val completed = ".include \"part.s\"\nj target\n"
+            edit(main, completed)
+            val captured = readAction { requireNotNull(annotator.collectInformation(file)).sources }
+            assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
+            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            assertEquals(include, file.findReferenceAt(completed.indexOf("part.s"))?.resolve()?.containingFile?.virtualFile)
+        }
     }
 
     @Test
