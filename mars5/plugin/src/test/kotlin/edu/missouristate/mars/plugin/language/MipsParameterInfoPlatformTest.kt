@@ -76,6 +76,7 @@ class MipsParameterInfoPlatformTest {
                 DEFINE SHIFT SLL ${'$'}t0
                 DEFINE LOAD lw ${'$'}t0
                 DEFINE OFFSET -4(
+                DEFINE REGS ${'$'}t0,${'$'}t1
                 DEFINE PREFIX row:
                 DEFINE SEP :
                 DEFINE DIVIDE div ${'$'}t0,${'$'}t1
@@ -86,6 +87,11 @@ class MipsParameterInfoPlatformTest {
             assertEquals("sll \$t1,<b>\$t2</b>,10", info("${include}SHIFT bad%<caret>"))
             assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}SHIFT \$t1, <caret>"))
             assertEquals(info("lw \$t0, -4(<caret>"), info("${include}LOAD OFFSET<caret>"))
+            assertEquals(info("lw \$t0, -4(<caret>"), info("${include}entry: lw \$t0, OFFSET<caret> \$sp)"))
+            assertEquals("sll \$t1,\$t2,<b>10</b>", info("${include}entry: sll REGS, <caret>4"))
+            DumbModeTestUtils.runInDumbModeSynchronously(project.get()) {
+                assertEquals("sll \$t1,<b>\$t2</b>,10", fixture.parameterInfoAtCaret)
+            }
             assertEquals(info("sll \$t0, <caret>"), info("${include}PREFIX sll \$t0, <caret>"))
             assertEquals(info("sll \$t0, <caret>"), info("${include}split SEP sll \$t0, <caret>"))
             assertEquals(info("sll \$t0, <caret>"), info("${include}addiu SEP sll \$t0, <caret>"))
@@ -100,6 +106,7 @@ class MipsParameterInfoPlatformTest {
             for (source in listOf(
                 ".eqv WORDS .word\nWORDS <caret>1",
                 ".eqv FIRST SECOND\n.eqv SECOND FIRST\nFIRST <caret>",
+                ".eqv FIRST SECOND\n.eqv SECOND FIRST\nsll FIRST, <caret>",
                 ".eqv SHIFT sll \$t0\n.eqv FIRST SECOND\n.eqv SECOND FIRST\nSHIFT FIRST <caret>",
                 ".eqv PREFIX row:\nPREFIX <caret>",
                 ".eqv SEP :\naddiu SEP <caret>",

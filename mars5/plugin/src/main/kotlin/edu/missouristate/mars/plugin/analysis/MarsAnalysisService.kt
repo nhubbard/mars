@@ -282,18 +282,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return MacroArityMismatch(root.findElementAt(offset)!!, name, actual, definitions.keys.sorted())
     }
 
-    internal fun expandedInstructionAlias(
-        root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
-    ): TokenList? = expandedOperationAlias(root, head, source, allowIncompleteOperand)
-        ?.takeIf { it[0].type == TokenTypes.OPERATOR }
-
     internal fun editorInstructionTokens(
         root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? {
-        if (head.elementType != mnemonicType || isGeneratedMnemonicLabel(root, head)) {
-            return expandedInstructionAlias(root, head, source, allowIncompleteOperand)
+        val prefix = if (head.elementType != mnemonicType || isGeneratedMnemonicLabel(root, head)) {
+            leadingEquivalencePrefix(root, head) ?: return null
+        } else {
+            val written = Tokenizer().tokenizeLine(1, source, ErrorList(), false).also { it.processedLine = source }
+            val operands = 1 until written.size()
+            if (operands.none { written[it].type == TokenTypes.IDENTIFIER } || DumbService.isDumb(project)) return written
+            val visible = editorPrefix(root, sourceLineStart(head))
+            // Only identifiers can be equivalence names. Unbound operands keep their written spans.
+            if (operands.none { visible.equivalence(written[it].value) != null }) return written
+            visible
         }
-        return Tokenizer().tokenizeLine(1, source, ErrorList(), false).also { it.processedLine = source }
+        return expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand)
+            ?.takeIf { !it.isEmpty && it[0].type == TokenTypes.OPERATOR }
     }
 
     private fun isGeneratedMnemonicLabel(root: MipsFile, head: PsiElement): Boolean {
@@ -302,11 +306,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return editorTimeline(root).generatedLabels[head.text].orEmpty().any { it.site == original }
     }
 
-    internal fun expandedOperationAlias(
-        root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
-    ): TokenList? {
+    private fun expandedOperationAlias(root: MipsFile, head: PsiElement, source: String): TokenList? {
         val prefix = leadingEquivalencePrefix(root, head) ?: return null
-        return expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand)
+        return expandedOperation(prefix, writtenOperationPrefix(head, source))
             ?.takeUnless(TokenList::isEmpty)
     }
 

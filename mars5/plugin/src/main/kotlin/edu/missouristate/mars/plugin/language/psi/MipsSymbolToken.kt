@@ -26,9 +26,10 @@ import edu.missouristate.mars.plugin.language.macroParameterColor
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.punctuationColor
 
-private val equivalenceContexts = TokenSet.create(
-    MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
-    MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"),
+private val instructionOperandContexts = TokenSet.create(MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"))
+private val equivalenceContexts = TokenSet.orSet(
+    instructionOperandContexts,
+    TokenSet.create(MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"), MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN")),
 )
 internal val macroParameterUseContexts = TokenSet.orSet(
     equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
@@ -39,7 +40,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         val identifier = TokenTypes.isValidIdentifier(text)
         val context = PsiUtilCore.getElementType(parent)
         val parameter = elementType in parameterTypes && context in macroParameterUseContexts && Macro.tokenIsMacroParameter(text, true)
-        val label = identifier && context == referenceExpression &&
+        val label = identifier && context in instructionOperandContexts &&
             MipsInstructionOperand.at(this, containingFile as MipsFile)?.acceptsLabel == true
         val aliasOperand = identifier && context == invocationToken
         val equivalence = identifier && elementType != mnemonic &&
@@ -144,7 +145,6 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
 
     private companion object {
         val mnemonic = MipsTypes.psi("MNEMONIC")
-        val referenceExpression = MipsTypes.psi("REFERENCE_EXPR")
         val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
         val macroHeaderContexts = TokenSet.create(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("MACRO_PARAMETER"))

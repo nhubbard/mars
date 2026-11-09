@@ -163,8 +163,10 @@ The native Parameter Info action lists distinct basic and pseudo-instruction for
 Java catalog at an instruction's operands. It uses the core token spans to highlight the
 current operand token, including a base register inside parentheses. The popup follows
 whitespace-separated operands, repeated commas, signs, and incomplete address syntax.
-For an instruction supplied by an equivalence, the handler uses the include-ordered source
-cache and highlights the next operand after any tokens supplied by the alias. IntelliJ owns
+For an instruction or operand supplied by an equivalence, the handler uses the include-ordered
+source cache and counts the expanded tokens, including delimiters and multi-operand aliases.
+Register and label completion and instruction references use the same token positions.
+While indexes rebuild, written mnemonics retain their written-token hints. IntelliJ owns
 the popup and caret updates. When an edit changes the expanded mnemonic, the popup rejects
 its old instruction forms.
 

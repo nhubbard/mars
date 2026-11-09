@@ -85,6 +85,14 @@ class MipsLabelReferencesPlatformTest {
     fun `label binding follows assembler operand formats`() = timeoutRunBlocking<Unit> {
         configure("nop: nop\nlw \$t0, n<caret>op+4(\$sp)\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
+        configure("target: nop\n.eqv PAIR \$t0, \$t1\nentry: beq PAIR, tar<caret>get\n")
+        readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
+        configure("target: nop\n.eqv OPEN (\nentry: lw \$t0, tar<caret>get OPEN \$sp)\n")
+        readAction {
+            val reference = referenceAtCaret()!!
+            assertEquals(MipsTypes.psi("OPERAND_FRAGMENT"), reference.element.parent.node.elementType)
+            assertEquals(0, reference.resolve()?.textOffset)
+        }
         for (source in listOf("lw \$t0, 4(\$s<caret>p)\n", "b invalid<caret>%name\n")) {
             configure(source)
             readAction { assertNull(referenceAtCaret(), source) }

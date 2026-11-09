@@ -143,7 +143,7 @@ class MipsEditorPlatformTest {
             val head = file.findElementAt(source.indexOf("BRANCH target"))!!
             val analysis = current.service<MarsAnalysisService>()
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                assertNull(analysis.expandedInstructionAlias(file, head, head.text))
+                assertNull(analysis.editorInstructionTokens(file, head, head.text))
                 assertNull(analysis.operationSite(file, head))
                 val literal = file.findElementAt(source.indexOf("addiu COLON"))!!
                 assertFalse(analysis.isGeneratedLabel(file, literal))

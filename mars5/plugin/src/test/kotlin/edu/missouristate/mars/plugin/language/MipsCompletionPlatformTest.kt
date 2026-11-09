@@ -253,6 +253,46 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `completion follows operands and punctuation from unsaved included equivalences`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val aliases = ".eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n.eqv DEST \$f0\n.eqv PAIR \$t0, \$t1\n"
+            val prefix = ".include \"outer.s\"\n"
+            val source = prefix + "entry: lwc1 DEST, ADDRESS \$s<caret>9)\n"
+            val inner = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("outer.s", ".include \"aliases.s\"\n")
+                fixture.addFileToProject("aliases.s", aliases).virtualFile
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val completed = withContext(Dispatchers.EDT) {
+                fixture.configureByText("operand-aliases.asm", source)
+                val registers = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith('$') }
+                assertEquals(((0..7).map { "\$s$it" } + "\$sp").toSet(), registers.map { it.lookupString }.toSet())
+                fixture.lookup.setCurrentItem(registers.single { it.lookupString == "\$s2" })
+                fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+                assertEquals(source.replace("\$s<caret>9", "\$s2"), fixture.file.text)
+                val completed = fixture.file.text
+
+                val document = FileDocumentManager.getInstance().getDocument(inner)!!
+                WriteCommandAction.runWriteCommandAction(current) {
+                    document.setText(aliases.replace("-4(", "-4"))
+                    PsiDocumentManager.getInstance(current).commitAllDocuments()
+                }
+                fixture.configureByText("operand-aliases.asm", source)
+                assertTrue(fixture.completeBasic().orEmpty().none { it.lookupString.startsWith('$') })
+
+                fixture.configureByText("branch-aliases.asm", prefix + "entry: beq PAIR, tar<caret>\ntarget: nop\ntarget2: nop\n")
+                assertEquals(setOf("target", "target2"), fixture.completeBasic().orEmpty().map { it.lookupString }.toSet())
+                completed
+            }
+            directory.resolve("outer.s").writeText(".include \"aliases.s\"\n")
+            directory.resolve("aliases.s").writeText(aliases)
+            val entry = directory.resolve("entry.asm").also { it.writeText(completed) }
+            val program = current.service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0xc640fffc.toInt()), program.machineList.map { it.binaryStatement })
+        }
+
+    @Test
     fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {
