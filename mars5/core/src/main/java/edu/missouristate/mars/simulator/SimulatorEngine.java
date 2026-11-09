@@ -1,6 +1,7 @@
 package edu.missouristate.mars.simulator;
 
 import edu.missouristate.mars.MIPSprogram;
+import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.*;
 import edu.missouristate.mars.core.MarsContext;
 import java.util.Arrays;
@@ -232,7 +233,16 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     backstepAsync();
   }
 
-  public synchronized CompletableFuture<Void> backstepAsync() {
+  public CompletableFuture<Void> backstepAsync() {
+    return backstepAsync(false);
+  }
+
+  /** Undoes the most recently executed source statement, or one instruction without source. */
+  public CompletableFuture<Void> backstepSourceAsync() {
+    return backstepAsync(true);
+  }
+
+  private synchronized CompletableFuture<Void> backstepAsync(boolean wholeSource) {
     if (closed || session.isClosing()) {
       throw new IllegalStateException("Simulator is closed");
     }
@@ -248,6 +258,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
       stepCount = 0;
     }
     var completion = new CompletableFuture<Void>();
+    request = Request.NONE;
     state = SimulatorState.RUNNING;
     executor.execute(
         () -> {
@@ -256,12 +267,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
             if (program != session.getProgram()) {
               throw new IllegalStateException("Program was replaced");
             }
-            if (!session.backStepper.empty()) {
-              session.backStepper.backStep();
-              if (stepCount > 0) {
-                stepCount--;
-              }
-            }
+            undo(wholeSource);
           } catch (Exception error) {
             state = SimulatorState.STOPPED;
             notifyListeners(
@@ -282,6 +288,31 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
           completion.complete(null);
         });
     return completion;
+  }
+
+  private void undo(boolean wholeSource) {
+    var history = session.backStepper;
+    var instruction = wholeSource ? history.previousInstruction() : null;
+    while (history.canBackstep() && request == Request.NONE) {
+      history.backStep();
+      if (stepCount > 0) {
+        stepCount--;
+      }
+      if (!wholeSource) {
+        return;
+      }
+      var earlier = history.previousInstruction();
+      if (instruction == null
+          || instruction.getInstructionOrigin() == null
+          || earlier == null
+          || earlier.getInstructionOrigin() != instruction.getInstructionOrigin()
+          || Integer.compareUnsigned(earlier.getAddress(), instruction.getAddress()) >= 0) {
+        return;
+      }
+      // An earlier emitted instruction can belong to the same execution. A loop to the
+      // same or a lower address begins another execution of the source statement.
+      instruction = earlier;
+    }
   }
 
   /** Used by the session to reject mutation while a worker owns execution. */

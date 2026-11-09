@@ -59,11 +59,16 @@ private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
 private const val SOURCE_STEP_LIMIT = 256L
 private const val CALL_STEP_LIMIT = 100_000L
 
+private enum class ReverseStep(val messageKey: String) {
+    INSTRUCTION("debug.backstep"),
+    SOURCE("debug.backstep.source"),
+}
+
 internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : XDebugProcess(session) {
     private data class Command(
         val steps: Long = 0,
         val target: Location? = null,
-        val backstep: Boolean = false,
+        val backstep: ReverseStep? = null,
         val sourceStep: SourceStep? = null,
         val stepOver: StepOver? = null,
     )
@@ -125,19 +130,21 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 commands.trySend(Command(steps = 1))
             }
         })
-        topToolbar.add(object : DumbAwareAction(
-            runMessages.getMessage("debug.backstep"),
-            runMessages.getMessage("debug.backstep.description"),
-            AllIcons.Actions.Rollback,
-        ) {
-            override fun getActionUpdateThread() = ActionUpdateThread.BGT
-            override fun update(event: AnActionEvent) { event.presentation.isEnabled = canBackstep() }
-            override fun actionPerformed(event: AnActionEvent) {
-                if (!canBackstep()) return
-                session.sessionResumed()
-                commands.trySend(Command(backstep = true))
-            }
-        })
+        for (step in ReverseStep.entries) {
+            topToolbar.add(object : DumbAwareAction(
+                runMessages.getMessage(step.messageKey),
+                runMessages.getMessage("${step.messageKey}.description"),
+                if (step == ReverseStep.SOURCE) AllIcons.Actions.Undo else AllIcons.Actions.Rollback,
+            ) {
+                override fun getActionUpdateThread() = ActionUpdateThread.BGT
+                override fun update(event: AnActionEvent) { event.presentation.isEnabled = canBackstep() }
+                override fun actionPerformed(event: AnActionEvent) {
+                    if (!canBackstep()) return
+                    session.sessionResumed()
+                    commands.trySend(Command(backstep = step))
+                }
+            })
+        }
     }
 
     private fun canBackstep() = (session.suspendContext as? MarsSuspendContext)?.canBackstep == true
@@ -193,8 +200,9 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             var command = Command()
             var skipFirst = false
             while (true) {
-                if (command.backstep) {
-                    process.backstepSlice(engine)
+                val backstep = command.backstep
+                if (backstep != null) {
+                    process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
                     withSuspension(machine) { context ->
                         withContext(Dispatchers.EDT) { session.positionReached(context) }
                         command = awaitCommand(context, machine.memory)
@@ -372,7 +380,7 @@ internal class MarsSuspendContext(
 
 internal data class SourceStep(private val start: Int, private val origin: Origin) {
     // A loop back to the same address is a new execution of the source statement.
-    fun reached(memory: MemoryState, pc: Int): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin != origin
+    fun reached(memory: MemoryState, pc: Int): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin !== origin
 }
 
 // The simulator worker owns this state for one Step Over command, including across logpoints.

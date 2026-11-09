@@ -184,6 +184,15 @@ public class BackStepper {
     return engaged && !empty();
   }
 
+  /** The instruction that actually ran, even when its code has since been overwritten. */
+  ProgramStatement previousInstruction() {
+    if (!canBackstep()) {
+      return null;
+    }
+    var step = backSteps.peek();
+    return step.frame == 0 ? null : step.ps;
+  }
+
   /**
    * Determine whether the next back-step action occurred as the result of an instruction that
    * executed in the "delay slot" of a delayed branch.

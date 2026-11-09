@@ -798,9 +798,9 @@ Step Out remains pending until the debugger can track callers across commands.
 
 Step Into advances until the live instruction's source origin changes or execution
 returns to the starting address. A pseudo-instruction's emitted instructions share
-an origin. A macro origin includes its invocation chain, so consecutive expansions
-of the same physical body line still produce distinct stops. The simulator checks
-that boundary alongside line breakpoints on its execution worker. A source step
+one origin object. Each macro expansion has its own occurrence,
+so consecutive executions of the same physical body line still produce distinct stops.
+The simulator checks that boundary alongside line breakpoints on its execution worker. A source step
 has a 256-instruction limit per simulator slice, and stepping from a position with
 no source origin executes one instruction. The Debug toolbar's Step Instruction
 action always executes one machine instruction.
@@ -864,16 +864,22 @@ policy. XDebugger handles valid log output, dependencies, and the decision to su
 A platform test verifies false and true conditions, the exact logged values, both error
 paths, and continuation through non-suspending logpoints.
 
-## Instruction backstep
+## Instruction and source backstep
 
-The native Debug toolbar offers **Backstep Instruction** while the paused
-session has history. The simulator worker undoes one recorded instruction,
-and XDebugger receives a new source position and Variables frame. The
-toolbar action becomes disabled when the history runs out or execution resumes.
+XDebugger has no reverse-step callback. Its Debug toolbar extension exposes **Backstep Instruction**
+and **Backstep Source Statement** while the paused session has history. Instruction backstep undoes
+one machine instruction.
+Source backstep groups the recorded instructions from the most recent execution of a source
+statement, including a pseudo-instruction's expansion. Macro invocations and loop iterations are
+separate steps. An instruction without source, such as rewritten code,
+is undone by itself. If the undo history begins partway through a statement, the operation stops
+at the oldest available instruction.
 
-The debugger fixture walks backward over a syscall and its setup instructions.
-It checks that the PC and registers return to their earlier values and that
-console output already produced remains visible.
+The simulator worker does the undo and XDebugger receives one updated source position and
+Variables frame. Both actions become disabled when history runs out or execution resumes.
+Fixtures cover undo across a syscall, included statements and repeated macro invocations with a
+multi-instruction pseudo-op, a repeated loop instruction, and rewritten code. Console output
+already produced remains visible.
 
 ## Memory inspection
 

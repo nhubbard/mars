@@ -535,6 +535,78 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 4)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
+                val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
+                action.actionPerformed(event)
+            }
+            assertNull(debug.nextPosition())
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "\$t2"))
+                assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
+                val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(file, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x00000000", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "word(pc+4)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `source steps keep included statements and repeated macro calls separate`(macro: Boolean) = timeoutRunBlocking<Unit> {
+        val bodyLine = if (macro) 1 else 0
+        val secondLine = 1
+        val afterLine = if (macro) 3 else 1
+        val (entry, include) = withContext(Dispatchers.EDT) {
+            val instruction = "li \$t0, 0x12345678\n"
+            val bodyText = if (macro) ".macro load\n${instruction}.end_macro\n" else instruction.repeat(2)
+            val calls = if (macro) "load()\nload()\n" else ""
+            val entryText = ".include \"undo-body.s\"\n${calls}after: nop\n"
+            val body = fixture.addFileToProject("undo-body.s", bodyText).virtualFile
+            val file = fixture.addFileToProject("undo-expansions.asm", entryText).virtualFile
+            addBreakpoint(body, bodyLine)
+            file to body
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(include, bodyLine)
+            val (action, event) = withContext(Dispatchers.EDT) {
+                val result = toolbarAction(debug.session, "Backstep Source Statement")
+                assertFalse(result.second.presentation.isEnabled)
+                result.first.actionPerformed(result.second)
+                assertTrue(debug.session.isSuspended)
+                debug.session.setBreakpointMuted(true)
+                debug.session.stepInto()
+                result
+            }
+            debug.assertPausedAt(include, secondLine)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x00400008", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "pc"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(entry, afterLine)
+            for ((line, pc, register) in listOf(
+                Triple(secondLine, "0x00400008", "0x12345678"),
+                Triple(bodyLine, "0x00400000", "0x00000000"),
+            )) {
+                withContext(Dispatchers.EDT) {
+                    action.update(event)
+                    assertTrue(event.presentation.isEnabled)
+                    action.actionPerformed(event)
+                }
+                debug.assertPausedAt(include, line)
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals(pc, evaluate(debug.session, frame, "pc"))
+                    assertEquals(register, evaluate(debug.session, frame, "\$t0"))
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                action.update(event)
+                assertFalse(event.presentation.isEnabled)
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())

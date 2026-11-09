@@ -89,8 +89,8 @@ internal class MarsProcessHandler(
             if (breakpoint == null) simulator.runAsync(steps, null) else simulator.runUntilAsync(steps, breakpoint)
         }
 
-    suspend fun backstepSlice(simulator: SimulatorEngine) {
-        awaitSlice(simulator, simulator::backstepAsync)
+    suspend fun backstepSlice(simulator: SimulatorEngine, wholeSource: Boolean) {
+        awaitSlice(simulator) { if (wholeSource) simulator.backstepSourceAsync() else simulator.backstepAsync() }
     }
 
     private suspend fun <T> awaitSlice(simulator: SimulatorEngine, start: () -> CompletableFuture<T>): T {

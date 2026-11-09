@@ -49,6 +49,24 @@ class SimulatorEngineTest {
   }
 
   @Test
+  void reverseSourceStepUndoesOneLoopIterationAndKeepsTheOtherHistory() throws Exception {
+    try (var session = load(".text\nloop: b loop\n")) {
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      int entry = session.registerFile.getPC();
+      engine.runAsync(4, null).get(5, TimeUnit.SECONDS);
+      engine.backstepSourceAsync().get(5, TimeUnit.SECONDS);
+      assertThat(session.registerFile.getPC()).isEqualTo(entry);
+      assertThat(session.backStepper.canBackstep()).isTrue();
+      assertThat(events.getLast()).isEqualTo(new StopEvent(StopEvent.Reason.BACKSTEP, 0));
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(events.get(events.size() - 2)).isEqualTo(
+          new StepEvent(entry, session.memory.getStatementNoNotify(entry).getBinaryStatement(), 4));
+    }
+  }
+
+  @Test
   void jumpWithZeroLinkRegisterDoesNotReportACall() throws Exception {
     try (var session = load(".text\njalr $zero,$t0\n")) {
       var engine = session.simulator();
