@@ -32,6 +32,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
 import kotlinx.coroutines.CoroutineStart
@@ -161,6 +162,26 @@ class MarsBuildPlatformTest {
             assertTrue(events.tryReceive().isFailure)
         } finally {
             Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `cancelled build coroutine stops repeated data writes inside the assembler`() = timeoutRunBlocking<Unit> {
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("repeat.asm", ".data\n.word 7:200\n.text\nnop\n").virtualFile.toNioPath()
+        }
+        val capture = captureAssemblySources(listOf(entry), null)
+        val component = MarsSessionService.createMarsComponent()
+        component.context().use { session ->
+            val build = async(start = CoroutineStart.LAZY) { capture.assembleIn(component) }
+            val firstWord = session.memory.dataBaseAddress
+            session.memory.addObserver({ build.cancel() }, firstWord)
+            build.start()
+            build.join()
+            assertTrue(build.isCancelled)
+            assertEquals(7, session.memory.getWordNoNotify(firstWord))
+            assertEquals(0, session.memory.getWordNoNotify(firstWord + 4))
+            assertNull(session.program)
         }
     }
 

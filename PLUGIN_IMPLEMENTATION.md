@@ -295,14 +295,15 @@ positions stay visible as messages.
 Jupiter IDE fixtures invoke the registered action with an unsaved include,
 verify an exact Unicode and tab-aware diagnostic offset, and check success,
 failure, cancellation, and isolation from the current simulation program.
-Cancellation is observed at capture and publication boundaries. The Java assembly
-API also accepts a cooperative cancellation check through source loading,
-include and equivalence processing, macro expansion, and both assembly passes.
-Core tests cancel at each checkpoint visited by a representative build and
-verify that an interrupted assembly publishes no program and releases its session.
+The build coroutine supplies its cancellation check to the Java core for source
+loading, include and equivalence processing, macro expansion, and both assembly
+passes. Core tests cancel at each checkpoint visited by a representative build
+and verify that an interrupted assembly publishes no program and releases its
+session. An IntelliJ fixture cancels on the first write of a repeated data
+directive and verifies that the next word stays untouched.
 
-The clean IntelliJ 2026.3 launch passed 1,281 tests, including 79 plugin tests,
-and authored plugin code covered all 689 lines and 424 branch outcomes.
+The clean IntelliJ 2026.3 launch passed 1,283 tests, including 80 plugin tests,
+and authored plugin code covered all 690 lines and 424 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256. Visual verification
 remains open.

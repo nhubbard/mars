@@ -16,12 +16,17 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssemblyError
+import edu.missouristate.mars.api.AssemblyResult
+import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
@@ -46,12 +51,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             val capture = captureAssemblySources(listOf(entry), null)
             checkCanceled()
             val component = MarsSessionService.createMarsComponent()
-            val result = component.context().use {
-                val settings = component.simulationSettings()
-                component.assembler().assembleSnapshot(
-                    capture.snapshot, capture.exceptionHandler, settings.isExtendedAssemblerEnabled, settings.isWarningsAreErrors,
-                )
-            }
+            val result = component.context().use { capture.assembleIn(component) }
             checkCanceled()
             val events = readAction {
                 result.errors().map { diagnosticEvent(project, progress.id, it, capture.revisions) }
@@ -83,6 +83,15 @@ internal class MarsBuildService(private val project: Project, private val scope:
     companion object {
         private val bundle = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
     }
+}
+
+internal suspend fun CapturedAssemblySources.assembleIn(component: MarsComponent): AssemblyResult {
+    val settings = component.simulationSettings()
+    val context = currentCoroutineContext()
+    return component.assembler().assembleSnapshot(
+        snapshot, exceptionHandler, settings.isExtendedAssemblerEnabled, settings.isWarningsAreErrors,
+        context::ensureActive,
+    )
 }
 
 /** Called under a read action so the stamp and position are checked against the same document. */
