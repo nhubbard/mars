@@ -5,6 +5,7 @@ import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -14,6 +15,7 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -23,6 +25,36 @@ import org.junit.jupiter.api.Test
 class MipsEditorPlatformTest {
     private val project = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(project)
+
+    @Test
+    fun `assembly editors render basic and pseudo instruction mnemonics as keywords`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = """
+                .text
+                entry: addiu ${'$'}t0, ${'$'}zero, 1
+                    LI ${'$'}v0, 10
+                    c.eq.s ${'$'}f0, ${'$'}f2
+                    s.s ${'$'}f0, value
+                    syscall
+            """.trimIndent()
+            for (extension in listOf("asm", "s")) {
+                val file = fixture.addFileToProject("highlight.$extension", source)
+                fixture.configureFromExistingVirtualFile(file.virtualFile)
+                assertSame(MipsFileType, fixture.file.fileType)
+                val editor = fixture.editor
+                val expected = editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.KEYWORD)
+                val label = editor.highlighter.createIterator(source.indexOf("entry")).textAttributes
+                for (mnemonic in listOf("addiu", "LI", "c.eq.s", "s.s", "syscall")) {
+                    val offset = source.indexOf(mnemonic)
+                    val token = editor.highlighter.createIterator(offset)
+                    assertEquals(mnemonic, source.substring(token.start, token.end), "$extension at $offset")
+                    assertEquals(expected.foregroundColor, token.textAttributes.foregroundColor, mnemonic)
+                    assertEquals(expected.fontType, token.textAttributes.fontType, mnemonic)
+                    assertNotEquals(label, token.textAttributes, mnemonic)
+                }
+            }
+        }
+    }
 
     @Test
     fun `platform comment action toggles a MARS line without changing string hashes`() = timeoutRunBlocking<Unit> {
