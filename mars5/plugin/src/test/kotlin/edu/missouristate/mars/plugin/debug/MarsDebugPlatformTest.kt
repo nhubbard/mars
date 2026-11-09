@@ -424,6 +424,85 @@ class MarsDebugPlatformTest {
         }
     }
 
+    @Test
+    fun `memory watches read the current suspension across a store and backstep`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("watch-memory.asm", """
+                .data
+                buffer: .word 0x11223344
+                pointer: .word buffer
+                .text
+                la ${'$'}t0, buffer
+                li ${'$'}t1, 0x55667788
+                sw ${'$'}t1, 0(${'$'}t0)
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 6)
+            val before = withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val expected = mapOf(
+                    "byte(buffer)" to "0x00000044",
+                    "byte(buffer+3)" to "0x00000011",
+                    "half(\$t0+2)" to "0x00001122",
+                    "word(buffer)" to "0x11223344",
+                    "word(word(pointer))" to "0x11223344",
+                    "word(pc)" to "0xad090000",
+                    "word(0xffff0000)" to "0x00000000",
+                    "byte(buffer+1) + 1" to "0x00000034",
+                    "1 - byte(buffer)" to "0xffffffbd",
+                    "-byte(buffer)" to "0xffffffbc",
+                )
+                for ((expression, value) in expected) assertEquals(value, evaluate(debug.session, frame, expression), expression)
+                for (expression in listOf("word(buffer+1)", "half(buffer+1)", "word(1.5)", "word(0)",
+                    "-word(0)", "word(0)+1", "1+word(0)", "word(word(0))")) {
+                    assertEquals("The memory address is invalid, unaligned, or unavailable.",
+                        evaluate(debug.session, frame, expression), expression)
+                }
+                assertEquals("Enter a register, label, number, or an expression using + and -.",
+                    evaluate(debug.session, frame, "word(unknown)"))
+                debug.session.stepInto()
+                frame
+            }
+            debug.assertPausedAt(source, 7)
+            withContext(Dispatchers.EDT) {
+                val after = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x55667788", evaluate(debug.session, after, "word(buffer)"))
+                assertEquals("Memory is unavailable for this debugger frame.", evaluate(debug.session, before, "word(buffer)"))
+                assertEquals("0x10010000", evaluate(debug.session, before, "buffer"))
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 6)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x11223344", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "word(buffer)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `watch reads honor big endian and cancellation completes pending requests`() {
+        MarsSessionService.createMarsComponent().context().use { machine ->
+            val memory = machine.memory
+            memory.setByteOrder(MemoryState.BIG_ENDIAN)
+            val address = memory.memoryMapBaseAddress
+            memory.setWord(address, 0x11223344)
+            val notices = ArrayList<Any>()
+            memory.addObserver { notices.add(it) }
+            assertEquals(0x11, WatchMemoryWidth.BYTE.inspect(memory, address))
+            assertEquals(0x3344, WatchMemoryWidth.HALF.inspect(memory, address + 2))
+            assertTrue(notices.isEmpty())
+        }
+        val requests = watchMemoryRequests()
+        var unavailable = false
+        assertTrue(requests.trySend(WatchMemoryRequest({ fail<Unit>("Cancelled request ran") }, { unavailable = true })).isSuccess)
+        requests.cancel()
+        assertTrue(unavailable)
+    }
+
     private suspend fun registerValues(session: XDebugSession, frame: XStackFrame): Map<String, String> {
         val tree = XDebuggerTree(
             project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,

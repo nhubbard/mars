@@ -781,8 +781,13 @@ The existing assembly expression parser handles numeric and character literals,
 parentheses, and unary or binary `+` and `-`. Integer arithmetic wraps to 32 bits
 and displays hexadecimal. Floating-point arithmetic displays a decimal result.
 
-Evaluation operates on the paused frame's snapshot. The evaluator excludes code
-fragments and assignments. Memory expressions and breakpoint conditions are
+Scalar evaluation operates on the paused frame's snapshot. Explicit `byte(address)`,
+`half(address)`, and `word(address)` reads run on the simulator worker that owns the
+current pause. Addresses can use registers, labels, arithmetic, and nested reads.
+Byte and halfword values are zero-extended and follow the machine's byte order.
+The inspector reads code and mapped data without emitting simulated access events.
+Resume and backstep close the old pause's request queue. A retained frame keeps its
+scalar values and reports its memory as unavailable. Breakpoint conditions are
 separate debugger work.
 
 ## Instruction backstep

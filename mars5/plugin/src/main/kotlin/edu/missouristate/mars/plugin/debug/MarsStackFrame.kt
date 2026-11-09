@@ -16,6 +16,7 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.Register
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
+import kotlinx.coroutines.channels.SendChannel
 
 /** Captures the registers while the simulation is suspended. The UI only reads the captured values. */
 internal class MarsStackFrame(
@@ -24,8 +25,9 @@ internal class MarsStackFrame(
     project: Project,
     localSymbols: Map<String, Definition>,
     globalSymbols: Map<String, Definition>,
+    watchRequests: SendChannel<WatchMemoryRequest>,
 ) : XStackFrame() {
-    private val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols)
+    private val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols, watchRequests)
     private val registerGroups = XValueChildrenList().apply {
         val cpu = machine.registerFile
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {

@@ -163,9 +163,10 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             while (true) {
                 if (command.backstep) {
                     process.backstepSlice(engine)
-                    val context = suspendContext(machine)
-                    withContext(Dispatchers.EDT) { session.positionReached(context) }
-                    command = awaitCommand(context, machine.memory)
+                    withSuspension(machine) { context ->
+                        withContext(Dispatchers.EDT) { session.positionReached(context) }
+                        command = awaitCommand(context, machine.memory)
+                    }
                     continue
                 }
                 val target = command.target
@@ -174,12 +175,13 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 var hits = emptyList<LineBreakpoint>()
                 var targetHit = false
                 if (target != null && targets.isEmpty()) {
-                    val context = suspendContext(machine)
-                    withContext(Dispatchers.EDT) {
-                        session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
-                        session.positionReached(context)
+                    withSuspension(machine) { context ->
+                        withContext(Dispatchers.EDT) {
+                            session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
+                            session.positionReached(context)
+                        }
+                        command = awaitCommand(context, machine.memory)
                     }
-                    command = awaitCommand(context, machine.memory)
                     continue
                 }
                 val event = process.runSlice(engine, command.steps) { pc ->
@@ -195,23 +197,24 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 val reason: StopEvent.Reason = event.reason()
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
-                        val context = suspendContext(machine)
-                        val suspended = withContext(Dispatchers.EDT) {
-                            when (reason) {
-                                StopEvent.Reason.BREAKPOINT -> {
-                                    if (hits.any { session.breakpointReached(it, null, context) }) true
-                                    else if (targetHit) {
+                        withSuspension(machine) { context ->
+                            val suspended = withContext(Dispatchers.EDT) {
+                                when (reason) {
+                                    StopEvent.Reason.BREAKPOINT -> {
+                                        if (hits.any { session.breakpointReached(it, null, context) }) true
+                                        else if (targetHit) {
+                                            session.positionReached(context)
+                                            true
+                                        } else false
+                                    }
+                                    else -> {
                                         session.positionReached(context)
                                         true
-                                    } else false
-                                }
-                                else -> {
-                                    session.positionReached(context)
-                                    true
+                                    }
                                 }
                             }
+                            if (suspended) command = awaitCommand(context, machine.memory)
                         }
-                        if (suspended) command = awaitCommand(context, machine.memory)
                         skipFirst = true
                     }
                     else -> return event
@@ -224,20 +227,30 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     private suspend fun awaitCommand(context: MarsSuspendContext, memory: MemoryState): Command {
-        try {
-            while (true) {
-                val command = select<Command?> {
-                    commands.onReceive { it }
-                    context.memoryRequests.onReceive { request ->
-                        val rows = memoryPage(memory, request.address)
-                        withContext(Dispatchers.EDT) { request.show(rows) }
-                        null
-                    }
+        while (true) {
+            val command = select<Command?> {
+                commands.onReceive { it }
+                context.memoryRequests.onReceive { request ->
+                    val rows = memoryPage(memory, request.address)
+                    withContext(Dispatchers.EDT) { request.show(rows) }
+                    null
                 }
-                if (command != null) return command
+                context.watchRequests.onReceive { request ->
+                    request.inspect(memory)
+                    null
+                }
             }
+            if (command != null) return command
+        }
+    }
+
+    private suspend fun withSuspension(machine: MarsContext, action: suspend (MarsSuspendContext) -> Unit) {
+        val context = suspendContext(machine)
+        try {
+            action(context)
         } finally {
             context.memoryRequests.cancel()
+            context.watchRequests.cancel()
         }
     }
 
@@ -252,11 +265,15 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val symbols = program.symbolMap()
         val scope = statement?.sourceMIPSprogram ?: program
         val localSymbols = symbols.locals().getValue(Path.of(scope.filename).toAbsolutePath().normalize())
+        val watchRequests = watchMemoryRequests()
         MarsSuspendContext(
-            MarsStackFrame(sourcePosition(statement?.instructionOrigin), machine, session.project, localSymbols, symbols.globals()),
+            MarsStackFrame(
+                sourcePosition(statement?.instructionOrigin), machine, session.project, localSymbols, symbols.globals(), watchRequests,
+            ),
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             ++suspensionNumber,
+            watchRequests,
         )
     }
 
@@ -284,6 +301,7 @@ internal class MarsSuspendContext(
     val canBackstep: Boolean,
     val memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,
+    val watchRequests: Channel<WatchMemoryRequest>,
 ) : XSuspendContext() {
     val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
