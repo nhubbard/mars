@@ -13,8 +13,9 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.FileBasedIndex
+import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Macro
-import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
@@ -73,22 +74,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
         if (DumbService.isDumb(project)) return null
-        val name = position.text
         val offset = position.textOffset
-        val tokens = macroLineTokens(position)
+        val replacements = HashMap<String, String>()
+        val errors = ErrorList()
+        val tokens = Tokenizer.tokenizeWithEquivalences(sourceLine(position), errors, { symbol ->
+            replacements.getOrPut(symbol) {
+                equivalenceTarget(root, symbol, offset)?.let {
+                    Tokenizer.readEquivalenceReplacement(sourceLine(it, fromLineStart = true), symbol)
+                }.orEmpty()
+            }.ifEmpty { null }
+        }, ProgressManager::checkCanceled)
+        if (errors.errorsOccurred()) return null
+        tokens.discardTrailingComment()
+        val name = tokens[0].value
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
         var target: MipsDeclaration? = null
         val open = visitMacroPrefix(root, offset) { definition ->
             if (definition.arity == arity && definition.declaration.name == name) target = definition.declaration
         }
-        if (open != null || target == null) return null
-        // An equivalence can insert or remove argument tokens. Leave that call to build-context binding.
-        for (index in 1 until tokens.size()) {
-            val token = tokens[index]
-            if (token.type == TokenTypes.IDENTIFIER &&
-                equivalenceTarget(root, token.value, offset + token.startPos - 1) != null) return null
-        }
-        return target
+        return target.takeIf { open == null }
     }
 
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */

@@ -52,14 +52,20 @@ internal fun mipsMacroEvents(file: MipsFile): List<MipsMacroEvent> = CachedValue
 }
 
 internal fun macroLineTokens(element: PsiElement, fromLineStart: Boolean = false): TokenList {
+    val line = sourceLine(element, fromLineStart)
+    return Tokenizer().tokenizeLine(1, line, ErrorList(), false).also(TokenList::discardTrailingComment)
+}
+
+internal fun sourceLine(element: PsiElement, fromLineStart: Boolean = false): String {
     val offset = element.textOffset
     val text = element.containingFile.viewProvider.contents
     val start = if (fromLineStart) CharArrayUtil.shiftBackwardUntil(text, offset - 1, "\r\n") + 1 else offset
     val end = CharArrayUtil.shiftForwardUntil(text, offset, "\r\n")
-    val line = text.subSequence(start, end).toString()
-    val tokens = Tokenizer().tokenizeLine(1, line, ErrorList(), false)
-    if (tokens[tokens.size() - 1].type == TokenTypes.COMMENT) tokens.remove(tokens.size() - 1)
-    return tokens
+    return text.subSequence(start, end).toString()
+}
+
+internal fun TokenList.discardTrailingComment() {
+    if (this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
 private fun macroParameters(declaration: MipsDeclaration): List<Token>? {

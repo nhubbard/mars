@@ -13,14 +13,18 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsMacroReferencesPlatformTest {
@@ -42,6 +46,42 @@ class MipsMacroReferencesPlatformTest {
         assertNull(target(".macro emit\nem<caret>it\n"))
         assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it(symbol)\n")?.offset)
         assertNull(target("$first$second.eqv ARGS 1,2\nem<caret>it(ARGS)\n"))
+    }
+
+    @Test
+    fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val one = ".macro emit (%x)\naddiu \$t0, \$zero, %x\n.end_macro\n"
+        val two = ".macro emit (%x,%y)\naddiu \$t1, \$zero, %y\n.end_macro\n"
+        val definitions = one + two
+        val aliases = ".eqv ARGS PAIR\n.eqv PAIR 1,2 # comment\n.eqv OPEN (\n.eqv CLOSE )\n"
+        val call = "em<caret>it(ARGS)\n"
+        val twoArguments = "$definitions$aliases$call"
+        val oneArgument = "$definitions${aliases}em<caret>it OPEN 1 CLOSE\n"
+        assertEquals(definitions.lastIndexOf("emit"), target(twoArguments)?.offset)
+        assertEquals(one.indexOf("emit"), target(oneArgument)?.offset)
+        assertEquals(one.indexOf("emit"), target("$definitions$call$aliases")?.offset)
+        assertNull(target("$definitions.eqv FIRST SECOND\n.eqv SECOND FIRST\nem<caret>it(FIRST)\n"))
+
+        val context = project.get().service<MarsSessionService>().context
+        for ((source, encoding) in listOf(twoArguments to 0x24090002, oneArgument to 0x24080001)) {
+            val entry = directory.resolve("macro.asm").also { it.writeText(source.replace("<caret>", "")) }
+            val program = context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(encoding), program.machineList.map { it.binaryStatement })
+        }
+    }
+
+    @Test
+    fun `macro arguments expand using definitions from earlier nested includes`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("parts/arguments.s", ".eqv ARGS 1,,2\n")
+            fixture.addFileToProject("parts/outer.s", ".include \"arguments.s\"\n")
+        }
+        val one = ".macro emit (%x)\n.end_macro\n"
+        val two = ".macro emit (%x,%y)\n.end_macro\n"
+        val include = ".include \"parts/outer.s\"\n"
+        val source = "$include$one$two"
+        assertEquals(source.lastIndexOf("emit"), target("${source}em<caret>it(ARGS)\n")?.offset)
+        assertEquals(one.indexOf("emit"), target("$one${two}em<caret>it(ARGS)\n$include")?.offset)
     }
 
     @Test

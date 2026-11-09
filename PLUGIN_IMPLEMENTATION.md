@@ -176,10 +176,13 @@ Macro boundary facts are cached on each file's PSI and combined with physical in
 source order, so a macro can open and close in different files. Missing and cyclic includes
 leave the editor query usable while the assembler reports source errors.
 
-The query uses the current file as its entry. Calls in macro bodies depend on when that body
-expands, and argument equivalences can change the token count. Both require build-context
-binding. IDE fixtures exercise redefinitions, arity, case, incomplete definitions, raw call
-arguments, nested includes, and the indexing guard.
+The query uses the current file as its entry. It supplies visible physical `.eqv` definitions
+to the Java tokenizer before counting arguments. The tokenizer preserves replacement source
+text, retokenizes chained substitutions and reports cycles. This covers aliases that add tokens
+or supply the outer call parentheses. Calls in macro bodies and definitions created by other
+expansions still require build-context binding. IDE fixtures exercise redefinitions, arity,
+case, incomplete definitions, raw call arguments, nested includes, and the indexing guard.
+An assembler-backed fixture compares the selected overload with the emitted instruction.
 
 ## Go to Declaration for macro parameters
 

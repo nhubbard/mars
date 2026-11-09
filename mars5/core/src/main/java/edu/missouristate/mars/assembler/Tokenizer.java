@@ -5,6 +5,7 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.io.*;
 import java.util.*;
+import java.util.function.Function;
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -300,6 +301,25 @@ public class Tokenizer {
     }
   }
 
+  /** Reads a physical .eqv definition, or returns null if it does not validly define the name. */
+  public static String readEquivalenceReplacement(String line, String name) {
+    var tokenizer = new Tokenizer();
+    tokenizer.tokenizeLine(1, line);
+    return tokenizer.errors.errorsOccurred() ? null : tokenizer.equivalents.get(name);
+  }
+
+  /** Tokenizes a detached line. The replacement lookup returns null for an undefined name. */
+  public static TokenList tokenizeWithEquivalences(
+      String line,
+      ErrorList errors,
+      Function<String, String> replacements,
+      Runnable checkCancellation) {
+    var tokenizer = new Tokenizer();
+    tokenizer.errors = errors;
+    TokenList tokens = tokenizer.tokenizeLine(null, 1, line, false, checkCancellation);
+    return tokenizer.processEqv(null, 1, line, tokens, replacements, checkCancellation);
+  }
+
   /**
    * Will tokenize one line of source code. If lexical errors are discovered, they are noted in an
    * ErrorMessage object which is added to the provided ErrorList instead of the Tokenizer's error
@@ -508,7 +528,7 @@ public class Tokenizer {
       this.processCandidateToken(token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
     }
     if (doEqvSubstitutes) {
-      result = processEqv(program, lineNum, theLine, result, checkCancellation);
+      result = processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation);
     }
     return result;
   }
@@ -517,9 +537,9 @@ public class Tokenizer {
   // directive, including a new .eqv definition.
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
-      Runnable checkCancellation) {
-    Token token = nextEquivalenceUse(program, lineNum, theLine, tokens);
-    if (token == null) {
+      Function<String, String> replacements, Runnable checkCancellation) {
+    EquivalenceUse use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
+    if (use == null) {
       return tokens;
     }
     String originalLine = theLine;
@@ -527,6 +547,7 @@ public class Tokenizer {
     var path = new ArrayDeque<EquivalenceExpansion>();
     var active = new HashSet<String>();
     do {
+      Token token = use.token();
       String symbol = token.getValue();
       int start = token.getStartPos() - 1;
       // Substitutions are selected left to right. While expanding a replacement, the text
@@ -548,25 +569,35 @@ public class Tokenizer {
       }
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
-      theLine = theLine.substring(0, start) + equivalents.get(symbol) + theLine.substring(end);
+      theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = tokenizeLine(program, lineNum, theLine, false, checkCancellation);
-      token = nextEquivalenceUse(program, lineNum, theLine, tokens);
-    } while (token != null);
+      use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
+    } while (use != null);
     return tokens;
   }
 
   private record EquivalenceExpansion(String symbol, int suffixLength) {}
 
-  private Token nextEquivalenceUse(MIPSprogram program, int lineNum, String line, TokenList tokens) {
+  private record EquivalenceUse(Token token, String replacement) {}
+
+  private EquivalenceUse nextEquivalenceUse(
+      MIPSprogram program,
+      int lineNum,
+      String line,
+      TokenList tokens,
+      Function<String, String> replacements) {
     tokens.setProcessedLine(line);
     if (recordEquivalence(program, lineNum, line, tokens)) {
       return null;
     }
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
-      if (token.getType() == TokenTypes.IDENTIFIER && equivalents.containsKey(token.getValue())) {
-        return token;
+      if (token.getType() == TokenTypes.IDENTIFIER) {
+        String replacement = replacements.apply(token.getValue());
+        if (replacement != null) {
+          return new EquivalenceUse(token, replacement);
+        }
       }
     }
     return null;
