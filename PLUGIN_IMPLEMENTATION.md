@@ -1184,6 +1184,21 @@ discarded on rewind. The final display stays available while its execution
 tab is open. A connection owned by the panel closes when the panel is
 disposed. The launch option keeps the device connected for the execution.
 
+## MarsBot model
+
+The Kotlin model uses the legacy word ports at `0xffff8010` for heading,
+`0xffff8020` for the pen, `0xffff8030` and `0xffff8040` for coordinates,
+and `0xffff8050` for movement. Compact layouts use the corresponding
+`0x7f90` through `0x7fd0` ports. Heading is clockwise from north.
+A pen value of 1 draws and 0 lifts the pen. A nonzero movement value starts
+the robot. Coordinates are clamped to the 512×512 board.
+
+One tick moves the robot by one pixel. The default clock ticks every 64
+completed instructions while moving. The model preserves fractional
+positions and publishes integer coordinates. Backstep restores the clock,
+position, port values, and pen trail from the instruction's checkpoint.
+The IntelliJ panel and Run and Debug attachment are the next slice.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

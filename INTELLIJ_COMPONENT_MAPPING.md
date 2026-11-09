@@ -728,6 +728,8 @@ Add a protocol trace that covers every documented register and interrupt, then d
 Preserve the documented device capability; do not reproduce a confirmed defect merely to match the old callback structure.
 
 The game and robot retain their MMIO contracts. UI controls must dispatch device input through the session worker.
+MarsBot's default ports overlap the first Scavenger Hunt player region. When both tools are available,
+reject simultaneous attachment to those addresses in one execution.
 Do not mutate core memory from a Swing timer. Devices must run without their panel visible when explicitly attached to a run.
 Store tool configuration per project/run as appropriate; never share one cache/BHT/robot model across concurrent sessions.
 
