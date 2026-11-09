@@ -19,13 +19,14 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
 
     override fun getDemoText() = """
         .eqv <equivalence>COUNT</equivalence> 3
+        .eqv <equivalence>AGAIN</equivalence> <replacement>loop</replacement>
         .macro <macro>decrement</macro> (%counter)
             <instruction>addiu</instruction> %counter, %counter, -1
         .end_macro
         .text
         <label>main</label>: <instruction>li</instruction> ${'$'}t0, <equivalence>COUNT</equivalence>
         <label>loop</label>: <macro>decrement</macro> (${'$'}t0)
-              <instruction>bgtz</instruction> ${'$'}t0, <label>loop</label>
+              <instruction>bgtz</instruction> ${'$'}t0, <equivalence>AGAIN</equivalence>
               <instruction>li</instruction> ${'$'}v0, 10
               <instruction>syscall</instruction>
     """.trimIndent()
@@ -37,6 +38,9 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
             "label" to labelColor,
             "macro" to macroColor,
             "equivalence" to equivalenceColor,
+            "replacement" to equivalenceReplacementColor,
+            "parameter" to macroParameterColor,
+            "punctuation" to punctuationColor,
         )
     }
 }

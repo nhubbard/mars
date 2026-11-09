@@ -5,4 +5,10 @@
       <option name="FONT_TYPE" value="1"/>
     </value>
   </option>
+  <option name="MARS_MIPS_PUNCTUATION">
+    <value><option name="FOREGROUND" value="B4A7F0"/></value>
+  </option>
+  <option name="MARS_MIPS_MACRO_PARAMETER">
+    <value><option name="FOREGROUND" value="E0BD78"/></value>
+  </option>
 </list>

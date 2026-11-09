@@ -203,9 +203,52 @@ class MipsEditorPlatformTest {
             assertColor("addiu ${'$'}t0", instructionMnemonicColor)
             assertColor(".eqv COUNT", equivalenceColor, "COUNT")
             assertColor("CALL (COUNT)", equivalenceColor, "COUNT")
-            assertColor("(${'$'}parameter)\n", DefaultLanguageHighlighterColors.PARAMETER, "${'$'}parameter")
-            assertColor("paint (${'$'}parameter)", DefaultLanguageHighlighterColors.PARAMETER, "${'$'}parameter")
+            assertColor("(${'$'}parameter)\n", macroParameterColor, "${'$'}parameter")
+            assertColor("paint (${'$'}parameter)", macroParameterColor, "${'$'}parameter")
             assertColor("DATA\n.extern", DefaultLanguageHighlighterColors.KEYWORD, "DATA")
+        }
+    }
+
+    @Test
+    fun `signed literals punctuation macro formals and equivalence replacements get visible styles`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("punctuation.asm", """
+                .eqv DISP -4
+                .eqv NEXT repeat_loop
+                .eqv INCREMENT addiu
+                .macro bump (%counter)
+                    addiu %counter, %counter, -1
+                .end_macro
+                repeat_loop: bump (${'$'}t0)
+                lw ${'$'}t1, -4(${'$'}t0)
+                la ${'$'}t0, repeat_loop+4
+                .word - 5
+                -
+            """.trimIndent())
+            val source = fixture.file.text
+            val highlights = fixture.doHighlighting()
+            fun hasHighlight(context: String, token: String, key: TextAttributesKey): Boolean {
+                val start = source.indexOf(context) + context.indexOf(token)
+                return highlights.any {
+                    it.startOffset == start && it.endOffset == start + token.length && it.forcedTextAttributesKey == key
+                }
+            }
+            for (context in listOf("DISP -4", "%counter, -1", "-4(${'$'}t0)")) {
+                assertTrue(hasHighlight(context, "-", DefaultLanguageHighlighterColors.NUMBER), context)
+            }
+            assertFalse(hasHighlight("repeat_loop+4", "+", DefaultLanguageHighlighterColors.NUMBER))
+            assertFalse(hasHighlight(".word - 5", "-", DefaultLanguageHighlighterColors.NUMBER))
+            assertTrue(hasHighlight("NEXT repeat_loop", "repeat_loop", equivalenceReplacementColor))
+            assertTrue(hasHighlight("INCREMENT addiu", "addiu", equivalenceReplacementColor))
+            val editor = fixture.editor
+            val scheme = editor.colorsScheme
+            val punctuation = scheme.getAttributes(punctuationColor).foregroundColor
+            val parameters = scheme.getAttributes(macroParameterColor).foregroundColor
+            for (offset in source.indices.filter { source[it] in ":()" }) {
+                assertEquals(punctuation, editor.highlighter.createIterator(offset).textAttributes.foregroundColor)
+            }
+            val parameterOffset = source.indexOf("%counter")
+            assertEquals(parameters, editor.highlighter.createIterator(parameterOffset).textAttributes.foregroundColor)
         }
     }
 
@@ -233,12 +276,15 @@ class MipsEditorPlatformTest {
         assertTrue(page.colorDescriptors.isEmpty())
         assertEquals(
             mapOf("Instruction mnemonic" to instructionMnemonicColor, "Label" to labelColor,
-                "Macro name" to macroColor, "Equivalence" to equivalenceColor),
+                "Macro name" to macroColor, "Equivalence" to equivalenceColor,
+                "Equivalence replacement symbol" to equivalenceReplacementColor, "Macro parameter" to macroParameterColor,
+                "Punctuation and operators" to punctuationColor),
             page.attributeDescriptors.associate { it.displayName to it.key },
         )
         assertEquals(
             mapOf("instruction" to instructionMnemonicColor, "label" to labelColor, "macro" to macroColor,
-                "equivalence" to equivalenceColor),
+                "equivalence" to equivalenceColor, "replacement" to equivalenceReplacementColor,
+                "parameter" to macroParameterColor, "punctuation" to punctuationColor),
             page.additionalHighlightingTagToDescriptorMap,
         )
         assertTrue(page.demoText.contains("<instruction>li</instruction>"))
@@ -255,6 +301,9 @@ class MipsEditorPlatformTest {
             assertEquals(Color(accent), mnemonic.foregroundColor, name)
             assertEquals(Font.BOLD, mnemonic.fontType, name)
             assertNotEquals(scheme.getAttributes(HighlighterColors.TEXT).foregroundColor, mnemonic.foregroundColor, name)
+            val text = scheme.getAttributes(HighlighterColors.TEXT).foregroundColor
+            assertNotEquals(text, scheme.getAttributes(punctuationColor).foregroundColor, name)
+            assertNotEquals(text, scheme.getAttributes(macroParameterColor).foregroundColor, name)
         }
     }
 

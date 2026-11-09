@@ -381,6 +381,15 @@ Store syntactic declarations in stubs. Resolve build-dependent symbols against a
 Cross-file indices must depend only on the indexed file's content; model include dependencies outside those indices.
 Avoid duplicating the full assembler in inspections. Add pure core analysis operations where necessary.
 
+Extend native inspections and formatting to signed literals, macro declarations and calls, formal parameters,
+offset-and-base operands, label declarations and references, and `.eqv` definitions and substitutions.
+Inspect undefined or duplicate macro parameters, bad macro arity, invalid register and offset combinations,
+and cyclic equivalences using the same source-order and expansion rules as assembly. Use IntelliJ's
+`FormattingModelBuilder` and code-style settings to handle sign adjacency, operand parentheses, label colons,
+and macro indentation. For `.eqv` replacements and incomplete statements, retain any spacing or punctuation
+that can change the expanded token sequence. Test formatting for idempotence and equivalent assembler output,
+including when replacements introduce an instruction, address, label separator, or macro boundary.
+
 Diagnostic mapping must distinguish line/column conventions, UTF-16 editor offsets, byte encodings, tabs, and macro-origin chains.
 Do not assume assembler columns already equal IntelliJ offsets. Test non-ASCII text before the reported column.
 Every diagnostic carries the source identity and stamp used to compute it. Never apply ranges to a newer document blindly.

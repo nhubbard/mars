@@ -10,6 +10,13 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.syntax.psi.lexer.LexerAdapter
 import com.intellij.psi.tree.IElementType
 
+internal val punctuationColor = TextAttributesKey.createTextAttributesKey(
+    "MARS_MIPS_PUNCTUATION", DefaultLanguageHighlighterColors.OPERATION_SIGN,
+)
+internal val macroParameterColor = TextAttributesKey.createTextAttributesKey(
+    "MARS_MIPS_MACRO_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER,
+)
+
 class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : SyntaxHighlighterBase() {
     private val colors = buildMap<IElementType, TextAttributesKey> {
         for (name in listOf("DIRECTIVE", "MACRO", "END_MACRO", "EQV", "INCLUDE", "SET", "SEGMENT", "EXTERN")) {
@@ -20,12 +27,12 @@ class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : S
         put(MipsTypes.psi("COMMENT"), DefaultLanguageHighlighterColors.LINE_COMMENT)
         put(MipsTypes.psi("NUMBER"), DefaultLanguageHighlighterColors.NUMBER)
         put(MipsTypes.psi("REGISTER"), DefaultLanguageHighlighterColors.INSTANCE_FIELD)
-        put(MipsTypes.psi("PARAMETER"), DefaultLanguageHighlighterColors.PARAMETER)
-        put(MipsTypes.psi("COMMA"), DefaultLanguageHighlighterColors.COMMA)
-        put(MipsTypes.psi("COLON"), DefaultLanguageHighlighterColors.SEMICOLON)
+        put(MipsTypes.psi("PARAMETER"), macroParameterColor)
         for (name in listOf("WORD", "DOLLAR_WORD", "MNEMONIC")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.IDENTIFIER)
-        for (name in listOf("LEFT_PAREN", "RIGHT_PAREN")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.PARENTHESES)
-        for (name in listOf("PLUS", "MINUS", "EQUALITY", "RELATION", "BIT_OR", "BIT_XOR", "BIT_AND", "BIT_NOT", "SHIFT")) {
+        for (name in listOf("COMMA", "COLON", "LEFT_PAREN", "RIGHT_PAREN", "PLUS", "MINUS")) {
+            put(MipsTypes.psi(name), punctuationColor)
+        }
+        for (name in listOf("EQUALITY", "RELATION", "BIT_OR", "BIT_XOR", "BIT_AND", "BIT_NOT", "SHIFT")) {
             put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.OPERATION_SIGN)
         }
     }

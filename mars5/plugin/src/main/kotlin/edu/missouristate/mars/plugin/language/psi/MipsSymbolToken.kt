@@ -1,7 +1,6 @@
 package edu.missouristate.mars.plugin.language.psi
 
 import com.intellij.openapi.components.service
-import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementResolveResult
@@ -20,6 +19,7 @@ import edu.missouristate.mars.plugin.language.MipsInstructionOperand
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.equivalenceColor
 import edu.missouristate.mars.plugin.language.labelColor
+import edu.missouristate.mars.plugin.language.macroParameterColor
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
     override fun getReference(): PsiReference? {
@@ -76,7 +76,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             val file = element.containingFile as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()
             if (equivalence && analysis.equivalenceTarget(file, element) != null) return equivalenceColor
-            if (parameter && analysis.macroParameterTargets(file, element) != null) return DefaultLanguageHighlighterColors.PARAMETER
+            if (parameter && analysis.macroParameterTargets(file, element) != null) return macroParameterColor
             return labelColor.takeIf { labelUse(file, analysis) != null }
         }
 
