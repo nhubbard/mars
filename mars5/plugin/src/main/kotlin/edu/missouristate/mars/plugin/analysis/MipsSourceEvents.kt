@@ -60,9 +60,11 @@ internal sealed interface MipsSourceEvent {
             // In an open macro a label is part of the body, even before a closing directive.
             val operation = if (!inMacro && tokens.beginsWithLabel()) 2 else 0
             if (operation >= tokens.size()) return null
-            return when (Directives.matchDirective(tokens[operation].value)) {
+            val directive = Directives.matchDirective(tokens[operation].value)
+            return when (directive) {
                 Directives.MACRO -> macroSignature(head, tokens, operation + 1, expanded = true)
                 Directives.END_MACRO -> End(offset).takeIf { tokens.size() == operation + 1 }
+                in dataStateDirectives -> DataDirective(offset, directive)
                 else -> null
             }
         }

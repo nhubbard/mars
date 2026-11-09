@@ -5,9 +5,11 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import java.util.BitSet
 
 /** Include-ordered editor facts, cached against the PSI files that contributed them. */
 internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedValuesManager.getCachedValue(entry) {
@@ -15,6 +17,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val events = ArrayList<MipsSourceEvent>()
     val files = HashMap<VirtualFile, SourceFileEvents>()
     val equivalences = HashMap<String, IndexedEquivalence>()
+    val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
         val locations = SourceFileEvents()
@@ -24,6 +27,8 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
 
     enter(entry)
     var inMacro = false
+    var inData = false
+    var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
     while (pending.isNotEmpty()) {
         ProgressManager.checkCanceled()
@@ -44,6 +49,13 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         when (event) {
             is MipsSourceEvent.Begin -> inMacro = true
             is MipsSourceEvent.End -> inMacro = false
+            is MipsSourceEvent.DataDirective -> if (!inMacro) {
+                when (event.directive) {
+                    Directives.DATA, Directives.KDATA -> inData = true
+                    Directives.TEXT, Directives.KTEXT -> inData = false
+                    else -> dataList = event.directive
+                }
+            }
             is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, IndexedEquivalence(index, event))
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path)
@@ -54,14 +66,16 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             else -> Unit
         }
+        if (!inMacro && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(events.size)
     }
-    CachedValueProvider.Result.create(MipsSourceTimeline(events, files, equivalences), dependencies)
+    CachedValueProvider.Result.create(MipsSourceTimeline(events, files, equivalences, integerDataPrefixes), dependencies)
 }
 
 internal class MipsSourceTimeline(
     private val events: List<MipsSourceEvent>,
     private val files: Map<VirtualFile, SourceFileEvents>,
     private val equivalences: Map<String, IndexedEquivalence>,
+    private val integerDataPrefixes: BitSet,
 ) {
     fun entryPrefix(file: MipsFile, offset: Int): Prefix = prefix(files.getValue(file.viewProvider.virtualFile), offset)
 
@@ -72,13 +86,14 @@ internal class MipsSourceTimeline(
         val match = locations.sites.binarySearchBy(offset) { it.offset }
         val insertion = if (match >= 0) match else -match - 1
         val end = locations.sites.getOrNull(insertion)?.index ?: locations.end
-        return Prefix(events.subList(0, end), equivalences, end)
+        return Prefix(events.subList(0, end), equivalences, end, integerDataPrefixes[end])
     }
 
     class Prefix(
         val events: List<MipsSourceEvent>,
         private val equivalences: Map<String, IndexedEquivalence>,
         private val end: Int,
+        val hasIntegerDataList: Boolean,
     ) {
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition

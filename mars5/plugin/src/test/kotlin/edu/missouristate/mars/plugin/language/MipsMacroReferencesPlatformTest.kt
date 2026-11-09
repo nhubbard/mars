@@ -212,6 +212,16 @@ class MipsMacroReferencesPlatformTest {
         }
     }
 
+    @Test
+    fun `a candidate that expands to a label alone has no macro operation`() = timeoutRunBlocking<Unit> {
+        assertEquals(SymbolKind.CONSTANT, target(".eqv PREFIX row:\nPRE<caret>FIX\n")?.kind)
+        readAction {
+            val file = fixture.file as MipsFile
+            val use = file.findElementAt(fixture.editor.caretModel.offset)!!
+            assertNull(project.get().service<MarsAnalysisService>().macroTarget(file, use))
+        }
+    }
+
     private data class Target(val file: String, val offset: Int, val kind: SymbolKind?)
 
     private suspend fun target(source: String): Target? {

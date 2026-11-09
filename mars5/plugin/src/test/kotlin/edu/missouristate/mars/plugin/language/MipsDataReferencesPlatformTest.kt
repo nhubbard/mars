@@ -72,6 +72,79 @@ class MipsDataReferencesPlatformTest {
     }
 
     @Test
+    fun `aliased segment and data directives bind operands and write the same addresses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = """
+            .eqv DEFINE .eqv
+            DEFINE DATA_SEG .data
+            DEFINE WORDS .word
+            DEFINE PREFIX row:
+            DEFINE TWO 2
+            DEFINE CODE .text
+        """.trimIndent() + "\n"
+        val source = """
+            .include "directives.s"
+            DATA_SEG
+            PREFIX WORDS target
+            TWO, target
+            CODE
+            .globl target
+            target: nop
+        """.trimIndent() + "\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("directives.s", definitions) }
+        for (line in listOf("PREFIX WORDS", "TWO,")) {
+            assertEquals(SymbolKind.LABEL, target(source.replace("$line target", "$line tar<caret>get")), line)
+        }
+        directory.resolve("directives.s").writeText(definitions)
+        val entry = directory.resolve("entry.asm").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        val memory = context.memory
+        val address = context.symbolTable.getAddress("target")
+        assertEquals(memory.textBaseAddress, address)
+        assertEquals(address, memory.getWordNoNotify(memory.dataBaseAddress))
+        assertEquals(2, memory.getWordNoNotify(memory.dataBaseAddress + 4))
+        assertEquals(address, memory.getWordNoNotify(memory.dataBaseAddress + 8))
+    }
+
+    @Test
+    fun `aliased data state changes respect includes text switches and macro bodies`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("setup.s", """
+                .eqv KERNEL .kdata
+                .eqv HALVES .half
+                .eqv REALS .float
+                .eqv STRINGS .asciiz
+                .eqv CODE .ktext
+                KERNEL
+                HALVES 1
+            """.trimIndent() + "\n")
+        }
+        val setup = ".include \"setup.s\"\n"
+        val use = "2, tar<caret>get\ntarget: .word 1\n"
+        for (change in listOf("REALS 0", "STRINGS \"\"", "CODE", ".macro pending")) {
+            assertNull(target("$setup$change\n$use"), change)
+        }
+        for (change in listOf("CODE\nKERNEL", "REALS 0\nHALVES 1", ".macro pending\nREALS 0\nCODE\n.end_macro")) {
+            assertEquals(SymbolKind.LABEL, target("$setup$change\n$use"), change)
+        }
+    }
+
+    @Test
+    fun `ambiguous candidates are checked after expansion before binding labels`() = timeoutRunBlocking<Unit> {
+        val setup = ".eqv WORDS .word\n.eqv ALIGN .align\n.eqv OP nop\n.eqv FIRST SECOND\n.eqv SECOND FIRST\n.data\n"
+        val label = "\ntarget: .word 1\n"
+        for (line in listOf("WORDS tar<caret>get : 2", "ALIGN tar<caret>get", "OP tar<caret>get",
+            "FIRST tar<caret>get", "missing tar<caret>get .word 7")) {
+            assertNull(target("$setup$line$label"), line)
+        }
+        assertEquals(SymbolKind.LABEL, target("${setup}slot: WORDS tar<caret>get$label"))
+        assertEquals(SymbolKind.LABEL, target("${setup}WORDS .tar<caret>get\n.target: .word 1\n"))
+        val macro = ".eqv PREFIX row:\n.macro emit (%arg)\n.end_macro\n"
+        assertNull(target("$macro${setup}PREFIX emit tar<caret>get$label"))
+        assertEquals(SymbolKind.LABEL, target("$macro${setup}PREFIX other tar<caret>get$label"))
+    }
+
+    @Test
     fun `the assembler stores the address identified by navigation`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = ".data\n.word 0\n.align 2\ntar<caret>get\n2, target\n.text\n.globl target\ntarget: nop\n"
         assertEquals(SymbolKind.LABEL, target(source))

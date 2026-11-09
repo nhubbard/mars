@@ -24,6 +24,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
@@ -212,12 +213,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, position.textOffset)
+        val tokens = expandedOperation(prefix, position) ?: return null
+        return matchingMacro(prefix, tokens)
+    }
+
+    private fun expandedOperation(prefix: MipsSourceTimeline.Prefix, head: PsiElement): TokenList? {
         val errors = ErrorList()
         val tokens = Tokenizer.tokenizeWithEquivalences(
-            sourceLine(position), errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+            sourceLine(head, fromLineStart = true), errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
         if (errors.errorsOccurred()) return null
         tokens.discardTrailingComment()
+        if (tokens.beginsWithLabel()) {
+            tokens.remove(0)
+            tokens.remove(0)
+        }
+        return tokens.takeUnless(TokenList::isEmpty)
+    }
+
+    private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
         val name = tokens[0].value
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
         var target: PsiElement? = null
@@ -259,25 +273,23 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
-        var inMacro = false
-        var inData = false
-        var dataList = Directives.WORD
-        for (event in editorPrefix(root, position.textOffset).events) {
-            ProgressManager.checkCanceled()
-            when (event) {
-                is MipsSourceEvent.Begin -> inMacro = true
-                is MipsSourceEvent.End -> inMacro = false
-                is MipsSourceEvent.DataDirective -> if (!inMacro) {
-                    when (event.directive) {
-                        Directives.DATA, Directives.KDATA -> inData = true
-                        Directives.TEXT, Directives.KTEXT -> inData = false
-                        else -> dataList = event.directive
-                    }
-                }
-                else -> Unit
+        return editorPrefix(root, position.textOffset).hasIntegerDataList
+    }
+
+    /** An ambiguous physical operation may be a data directive or a continuation after substitution. */
+    internal fun isIntegerDataCandidate(root: MipsFile, head: PsiElement, macroHead: Boolean): Boolean {
+        val prefix = editorPrefix(root, head.textOffset)
+        val tokens = expandedOperation(prefix, head) ?: return false
+        val integerOperands = (0 until tokens.size()).all { index ->
+            val token = tokens[index]
+            when (token.type) {
+                TokenTypes.DIRECTIVE -> index == 0 && Directives.isIntegerDirective(Directives.matchDirective(token.value))
+                TokenTypes.IDENTIFIER -> index != 0 || !token.value.startsWith('.')
+                else -> TokenTypes.isIntegerTokenType(token.type)
             }
         }
-        return !inMacro && inData && Directives.isIntegerDirective(dataList)
+        // A matched macro call takes precedence over a bare list in the assembler.
+        return integerOperands && (macroHead || matchingMacro(prefix, tokens) == null)
     }
 
     private fun editorPrefix(file: MipsFile, offset: Int): MipsSourceTimeline.Prefix =

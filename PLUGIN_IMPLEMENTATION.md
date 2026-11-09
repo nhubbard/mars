@@ -268,15 +268,15 @@ changes elsewhere in the captured source graph cannot supply names.
 ## Go to Declaration for data labels and exports
 
 Native references navigate from `.globl` lists, integer data operands and their continued
-lists. The same cached physical source events used for macro navigation carry the active
-segment and data-list directive through includes. Directives inside unexpanded macro bodies
-do not change this physical state. A matching macro call takes precedence over a bare list.
-The assembler-backed fixture verifies that continued lists store the address of the label
-identified by the editor.
+lists. The include-ordered source cache records integer data-list state at each effective
+event, so operand lookups can read the state at the caret without replaying the prefix.
+Physical directives and those created by `.eqv` expansion both contribute segment and list
+changes. Directives inside unexpanded macro bodies leave that state alone.
 
-The query uses the current file as its entry and follows physical directives. Segment or
-list changes created by macro or equivalence expansion still require build-context binding.
-Separate assembly entries still require build-context binding.
+The Java tokenizer classifies ambiguous operands after substitution, including when an
+alias introduces a leading label. A matching macro call takes precedence over a bare list.
+The assembler-backed fixture verifies the words written for both inline and continued
+operands. Segment and list changes caused by executing a macro require expansion context.
 
 ## External storage declarations
 

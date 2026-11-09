@@ -13,7 +13,6 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
-import edu.missouristate.mars.plugin.analysis.macroLineTokens
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsInstructionOperand
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -69,13 +68,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             if (!analysis.hasIntegerDataList(file, element)) return false
             if (data == DataLabelOperand.LIST) return true
             val head = if (macroCall) element else element.parent.parent.firstChild
-            if (head.text.startsWith('.')) return false
-            val tokens = macroLineTokens(head)
-            if ((0 until tokens.size()).any { tokens[it].type != TokenTypes.IDENTIFIER && !TokenTypes.isIntegerTokenType(tokens[it].type) }) {
-                return false
-            }
-            // A matched macro call takes precedence over a bare list in the assembler.
-            return macroCall || analysis.macroTarget(file, head) == null
+            return analysis.isIntegerDataCandidate(file, head, macroCall)
         }
     }
 

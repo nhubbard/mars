@@ -155,7 +155,15 @@ class MarsBuildPlatformTest {
     fun `an included data continuation inherits the selected entry segment and list`() = timeoutRunBlocking<Unit> {
         val (entry, data) = withContext(Dispatchers.EDT) {
             val data = fixture.addFileToProject("values.s", "value\n").virtualFile
-            val entry = fixture.addFileToProject("entry.s", ".data\nvalue: .word 42\n.include \"values.s\"\n.text\nnop\n").virtualFile
+            val entry = fixture.addFileToProject("entry.s", """
+                .eqv DATA_SEG .data
+                .eqv WORDS .word
+                DATA_SEG
+                value: WORDS 42
+                .include "values.s"
+                .text
+                nop
+            """.trimIndent() + "\n").virtualFile
             fixture.configureFromExistingVirtualFile(data)
             entry to data
         }
