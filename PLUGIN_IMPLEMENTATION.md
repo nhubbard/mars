@@ -203,8 +203,8 @@ finds the formal parameter for both MARS and SPIM spellings. Label completion hi
 spellings inside macros, including in included bodies, and preserves literal dollar-prefixed
 labels outside them. The assembler fixture verifies that a macro-generated label can be exported.
 
-After **Assemble Current MIPS File**, a reference without a physical label target can use the
-most recent successful build for its entry. The Java core publishes immutable local and global
+After a successful assembly, a reference without a physical label target can use that build
+from its entry or any captured include. The Java core publishes immutable local and global
 symbol definitions with final addresses and physical origins, including nested macro calls.
 Exporting a label preserves its definition site. The editor opens that site in the macro body
 and checks the captured document revisions before following the link. Starting a new build
@@ -215,9 +215,15 @@ with MARS MIPS.
 Instruction operand completion also joins the last build's local and global names with physical
 declarations. The assembler marks names it rewrites for macro hygiene, so completion can omit
 those names while preserving caller-supplied spellings with similar suffixes. Completion searches
-the built names by prefix and retains them while typing on one ordinary instruction line.
-Other source changes, including changes in any captured include, require another build.
-Automatic background analysis and selection of a containing entry from an included file remain open.
+the built names by prefix and retains them while typing on one ordinary instruction line in
+the active source. Edits elsewhere in the captured graph require another build.
+
+**Build → Assemble Containing MIPS Entry** lists top-level MIPS sources that reach the open
+file through includes. It follows IntelliJ's reverse include index and offers each entry
+once. Choosing an entry builds it and selects its context for build-backed label navigation
+and completion in its included files. The Build menu retains a separate action to assemble
+the current file as an entry. Automatic background analysis and physical prefix resolution
+for macro parameters and equivalences across the selected include context remain open.
 
 ## Go to Declaration for data labels and exports
 

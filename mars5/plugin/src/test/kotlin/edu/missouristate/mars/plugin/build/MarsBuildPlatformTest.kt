@@ -14,6 +14,8 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
@@ -33,7 +35,9 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -65,6 +69,117 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `choosing a containing entry changes navigation and completion in a shared include`() = timeoutRunBlocking<Unit> {
+        val source = "j selectedName\n"
+        val (first, second, shared) = withContext(Dispatchers.EDT) {
+            val shared = fixture.addFileToProject("parts/shared.s", source).virtualFile
+            fixture.addFileToProject("parts/wrapper.s", ".include \"shared.s\"\n")
+            val first = fixture.addFileToProject("first_entry.asm", "selectedName: nop\nselectedAlpha: nop\n.include \"parts/wrapper.s\"\n").virtualFile
+            val second = fixture.addFileToProject("second.asm", "selectedBeta: nop\nselectedName: nop\n.include \"parts/wrapper.s\"\n").virtualFile
+            fixture.configureFromExistingVirtualFile(shared)
+            fixture.editor.caretModel.moveToOffset(5)
+            Triple(first, second, shared)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val group = containingEntriesGroup()
+        val actions = readAction { group.getChildren(event(group, project, shared)) }
+        assertEquals(listOf(first.presentableUrl, second.presentableUrl), actions.map { it.templatePresentation.text })
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            fun target() = GotoDeclarationAction.findTargetElement(project, fixture.editor, fixture.editor.caretModel.offset)
+            suspend fun choose(action: AnAction, entry: VirtualFile) {
+                withContext(Dispatchers.EDT) { action.actionPerformed(event(action, project, shared)) }
+                val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+                assertEquals("Assemble ${entry.name}", start.buildDescriptor.title)
+                assertInstanceOf(SuccessResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+            }
+            fun assertNames(vararg names: String) {
+                fixture.editor.caretModel.moveToOffset(5)
+                fixture.completeBasic()
+                assertEquals(names.toSet(), fixture.lookupElementStrings.orEmpty().filter { it.startsWith("sel") }.toSet())
+                fixture.lookup.hideLookup(true)
+            }
+
+            readAction { assertNull(target()) }
+            choose(actions[0], first)
+            val unrelated = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("unrelated.s", "j sel\n") as MipsFile
+            }
+            readAction {
+                assertEquals(first, target()?.containingFile?.virtualFile)
+                val analysis = project.service<MarsAnalysisService>()
+                val include = fixture.file as MipsFile
+                assertTrue(analysis.labelTargets(include, include.findElementAt(0)!!, allowExternal = true).isEmpty())
+                assertTrue(analysis.labelCompletionNames(unrelated, unrelated.findElementAt(2)!!, "sel").isEmpty())
+            }
+            withContext(Dispatchers.EDT) {
+                assertNames("selectedName", "selectedAlpha")
+                edit(shared, "j sel\n")
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                assertNames("selectedName", "selectedAlpha")
+            }
+            readAction { assertNull(target()) }
+            withContext(Dispatchers.EDT) {
+                edit(shared, source)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+            choose(actions[1], second)
+            readAction {
+                val declaration = target()
+                assertEquals(second, declaration?.containingFile?.virtualFile)
+                assertEquals("selectedBeta: nop\n".length, declaration?.textOffset)
+            }
+            withContext(Dispatchers.EDT) {
+                assertNames("selectedName", "selectedBeta")
+                edit(second, "# changed entry\n" + Files.readString(second.toNioPath()))
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+            readAction { assertNull(target()) }
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `containing entry menu follows only MIPS roots and handles cycles and indexing`() = timeoutRunBlocking<Unit> {
+        val (payload, entry, cycle) = withContext(Dispatchers.EDT) {
+            val payload = fixture.addFileToProject("payload.txt", "nop\n").virtualFile
+            val entry = fixture.addFileToProject("entry.s", ".include \"payload.txt\"\n").virtualFile
+            fixture.addFileToProject("foreign.xml", """<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="payload.txt"/>""")
+            val cycle = fixture.addFileToProject("cycle.s", ".include \"other.s\"\n").virtualFile
+            fixture.addFileToProject("other.s", ".include \"cycle.s\"\n")
+            Triple(payload, entry, cycle)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val group = containingEntriesGroup()
+        readAction {
+            assertEquals(ActionUpdateThread.BGT, group.actionUpdateThread)
+            assertTrue(group.templatePresentation.isPopupGroup)
+            assertTrue(group.templatePresentation.isHideGroupIfEmpty)
+            assertEquals("Assemble Containing MIPS Entry", group.templatePresentation.text)
+            assertTrue(group.getChildren(null).isEmpty())
+            assertTrue(group.getChildren(event(group, null, payload)).isEmpty())
+            assertTrue(group.getChildren(event(group, project, null)).isEmpty())
+            assertTrue(group.getChildren(event(group, project, payload.parent)).isEmpty())
+            assertTrue(group.getChildren(event(group, project, cycle)).isEmpty())
+            assertTrue(group.getChildren(event(group, project, entry)).isEmpty())
+            assertEquals(setOf("entry.s", "foreign.xml"), FileIncludeManager.getManager(project).getIncludingFiles(payload, true).map { it.name }.toSet())
+            val child = group.getChildren(event(group, project, payload)).single()
+            assertEquals(entry.presentableUrl, child.templatePresentation.text)
+        }
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                assertTrue(group.getChildren(event(group, project, payload)).isEmpty())
+            }
+        }
+    }
+
+    private fun containingEntriesGroup() = assertInstanceOf(
+        MarsContainingEntriesGroup::class.java, ActionManager.getInstance().getAction("Mars.AssembleContainingEntry"),
+    )
 
     @Test
     fun `completion keeps generated names while typing a direct instruction operand`() = timeoutRunBlocking<Unit> {
@@ -488,7 +603,7 @@ class MarsBuildPlatformTest {
         withContext(Dispatchers.EDT) { action.actionPerformed(invocation) }
     }
 
-    private fun event(action: MarsAssembleAction, project: Project?, file: VirtualFile?): AnActionEvent {
+    private fun event(action: AnAction, project: Project?, file: VirtualFile?): AnActionEvent {
         val context = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project)
             .add(CommonDataKeys.VIRTUAL_FILE, file).build()
         return AnActionEvent.createEvent(action, context, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)

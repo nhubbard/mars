@@ -39,5 +39,8 @@
     <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </action>
+    <group id="Mars.AssembleContainingEntry" class="edu.missouristate.mars.plugin.build.MarsContainingEntriesGroup" popup="true">
+      <add-to-group group-id="BuildMenu" anchor="last"/>
+    </group>
   </actions>
 </idea-plugin>

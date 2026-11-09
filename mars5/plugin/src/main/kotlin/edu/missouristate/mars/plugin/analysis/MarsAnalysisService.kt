@@ -64,10 +64,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val entry: Path,
         val revisions: Map<Path, Long> = emptyMap(),
         val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
-        val entryText: String = "",
+        val texts: Map<Path, String> = emptyMap(),
     ) {
+        private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
+        val localSymbols = symbols.locals()[entry].orEmpty()
+
+        fun sourcePath(file: MipsFile): Path? = sourcesByUrl[file.viewProvider.virtualFile.url]
+
         private val completionNames = TreeSet<String>().apply {
-            for (definitions in listOf(symbols.locals()[entry].orEmpty(), symbols.globals())) {
+            for (definitions in listOf(localSymbols, symbols.globals())) {
                 for ((name, definition) in definitions) {
                     ProgressManager.checkCanceled()
                     if (definition.macroPrivate()) continue
@@ -86,7 +91,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun publishBuiltSymbols(build: BuiltSymbols, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
         lastBuild.compareAndSet(build, BuiltSymbols(
-            build.entry, sources.revisions, symbols, sources.snapshot.texts().getValue(build.entry),
+            build.entry, sources.revisions, symbols, sources.snapshot.texts(),
         ))
     }
 
@@ -126,8 +131,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
-        val build = builtSymbols(root) ?: return null
-        val definition = build.symbols.locals()[build.entry].orEmpty()[name] ?: build.symbols.globals()[name] ?: return null
+        val build = lastBuild.get() ?: return null
+        if (build.sourcePath(root) == null) return null
+        val definition = build.localSymbols[name] ?: build.symbols.globals()[name] ?: return null
         if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
 
         val location = definition.origin().location()
@@ -147,18 +153,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> {
-        val build = builtSymbols(root) ?: return emptyList()
+        val build = lastBuild.get() ?: return emptyList()
+        val activeSource = build.sourcePath(root) ?: return emptyList()
         val names = build.matchingNames(prefix)
         if (names.isEmpty()) return emptyList()
         val valid = build.validateSources { path, document, revision ->
             document.modificationStamp == revision ||
-                path == build.entry && preservesBuiltLabelNames(build.entryText, document, offset)
+                path == activeSource && preservesBuiltLabelNames(build.texts.getValue(path), document, offset)
         }
         return if (valid) names else emptyList()
-    }
-
-    private fun builtSymbols(root: MipsFile): BuiltSymbols? = lastBuild.get()?.takeIf {
-        root.viewProvider.virtualFile.url == VfsUtilCore.pathToUrl(it.entry.invariantSeparatorsPathString)
     }
 
     private fun BuiltSymbols.validateSources(accept: (Path, Document, Long) -> Boolean): Boolean {
