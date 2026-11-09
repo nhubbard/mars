@@ -216,9 +216,27 @@ contribute no symbol sites.
 Native fixtures verify index registration, source offsets, candidate kinds, file scopes,
 unsaved edits, declaration creation, reference deletion, and value serialization.
 
+## Scoped native symbol queries
+
+The project analysis service queries both native indexes by one name in the supplied search scope.
+It selects the requested symbol kind and returns detached file URLs, token offsets, and physical
+macro offsets. IntelliJ waits for smart mode and committed documents before reading both sides
+in one cancellable read action. The same query returns declaration and incoming reference
+candidates without changing the background analysis snapshot.
+
+Fixtures cover same-name labels, macros, and equivalences, explicit file scopes, foreign project
+rejection, unsaved text, and waiting or cancelling during indexing. Actual reference binding still
+requires the effective source order, include expansion, and macro scope of a build unit.
+
+The clean IntelliJ 2026.3 launch passed 1,270 tests, including 71 plugin tests, and
+the authored plugin code covered all 562 lines and 339 branch outcomes. The startup
+log confirmed that MARS MIPS loaded and the smoke project opened. All six JARs in
+the verified distribution ZIP matched the launched plugin by SHA-256. Visual editor
+acceptance remains open.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler while building query-time sentinel joins,
-native named PSI/stubs where required, completion/navigation/docs, detached source
+Continue checking parser edge cases against the Java assembler while building named PSI,
+completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

@@ -3,15 +3,22 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.indexing.FileBasedIndex
+import edu.missouristate.mars.plugin.analysis.IndexedSymbolCandidates
+import edu.missouristate.mars.plugin.analysis.IndexedSymbolSite
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.SourceId
+import edu.missouristate.mars.plugin.analysis.SymbolKey
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsReferenceExternalizer
@@ -21,9 +28,13 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -126,6 +137,11 @@ class MipsReferenceIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).isEmpty())
             assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "unsaved", scope).toSet())
         }
+        val edited = project.service<MarsAnalysisService>().lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
+        assertEquals(
+            IndexedSymbolCandidates(emptyList(), listOf(IndexedSymbolSite(SourceId(use.virtualFile.url), 2, -1))),
+            edited,
+        )
         withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) { use.virtualFile.delete(this) }
         }
@@ -146,5 +162,74 @@ class MipsReferenceIndexPlatformTest {
                 assertEquals(-1, it.read())
             }
         }
+    }
+
+    @Test
+    fun `project service joins exact names and kinds across the supplied native scope`() = timeoutRunBlocking<Unit> {
+        val project = project.get()
+        val (label, macro, constant, branch, call) = withContext(Dispatchers.EDT) {
+            listOf(
+                fixture.addFileToProject("label.asm", "shared: nop\n").virtualFile,
+                fixture.addFileToProject("macro.s", ".macro shared (%x)\n.end_macro\n").virtualFile,
+                fixture.addFileToProject("constant.asm", ".eqv shared 7\n").virtualFile,
+                fixture.addFileToProject("branch.s", "b shared\n").virtualFile,
+                fixture.addFileToProject("call.asm", "shared(7)\n").virtualFile,
+            )
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val service = project.service<MarsAnalysisService>()
+        val before = service.snapshot
+        val scope = GlobalSearchScope.projectScope(project)
+        val expectedBranch = IndexedSymbolSite(SourceId(branch.url), 2, -1)
+        val expectedCall = IndexedSymbolSite(SourceId(call.url), 0, -1)
+        val expectedLabel = IndexedSymbolSite(SourceId(label.url), 0, -1)
+
+        val labels = service.lookupCandidates(SymbolKey("shared", SymbolKind.LABEL), scope)
+        assertEquals(listOf(expectedLabel), labels.declarations)
+        assertEquals(setOf(expectedBranch, expectedCall), labels.references.toSet())
+        val macros = service.lookupCandidates(SymbolKey("shared", SymbolKind.MACRO), scope)
+        assertEquals(listOf(IndexedSymbolSite(SourceId(macro.url), 7, -1)), macros.declarations)
+        assertEquals(listOf(expectedCall), macros.references)
+        val constants = service.lookupCandidates(SymbolKey("shared", SymbolKind.CONSTANT), scope)
+        assertEquals(listOf(IndexedSymbolSite(SourceId(constant.url), 5, -1)), constants.declarations)
+        assertEquals(setOf(expectedBranch, expectedCall), constants.references.toSet())
+
+        val narrow = GlobalSearchScope.filesScope(project, listOf(label, call))
+        assertEquals(
+            IndexedSymbolCandidates(listOf(expectedLabel), listOf(expectedCall)),
+            service.lookupCandidates(SymbolKey("shared", SymbolKind.LABEL), narrow),
+        )
+        val empty = IndexedSymbolCandidates(emptyList(), emptyList())
+        assertEquals(empty, service.lookupCandidates(SymbolKey("Shared", SymbolKind.LABEL), scope))
+        assertEquals(empty, service.lookupCandidates(SymbolKey("shared", SymbolKind.LABEL), GlobalSearchScope.EMPTY_SCOPE))
+        assertSame(before, service.snapshot)
+    }
+
+    @Test
+    fun `lookup can wait for smart mode or be cancelled while indexing`() = timeoutRunBlocking<Unit> {
+        val project = project.get()
+        val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("code.s", "entry: b entry\n").virtualFile }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val service = project.service<MarsAnalysisService>()
+        val scope = GlobalSearchScope.fileScope(project, file)
+        val key = SymbolKey("entry", SymbolKind.LABEL)
+        val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
+        val waiting = try {
+            val lookup = async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
+            val cancelled = async(start = CoroutineStart.UNDISPATCHED) { service.lookupCandidates(key, scope) }
+            cancelled.cancelAndJoin()
+            assertTrue(cancelled.isCancelled)
+            assertFalse(lookup.isCompleted)
+            lookup
+        } finally {
+            DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
+        }
+        assertEquals(
+            IndexedSymbolCandidates(
+                listOf(IndexedSymbolSite(SourceId(file.url), 0, -1)),
+                listOf(IndexedSymbolSite(SourceId(file.url), 9, -1)),
+            ),
+            waiting.await(),
+        )
     }
 }

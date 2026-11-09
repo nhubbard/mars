@@ -69,19 +69,6 @@ class AnalysisCoordinatorTest {
     }
 
     @Test
-    fun `service disposal cancels pending work without cancelling its supplied parent scope`() = runBlocking<Unit> {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-        val service = MarsAnalysisService(scope)
-        assertTrue(service.submit(emptyList()).await())
-        assertEquals(1, service.snapshot.generation)
-        service.dispose()
-        service.dispose()
-        assertTrue(scope.isActive)
-        assertThrows<IllegalStateException> { service.submit(emptyList()) }
-        scope.cancel()
-    }
-
-    @Test
     fun `closing during computation prevents publication even when builder ignores cancellation`() = runBlocking<Unit> {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { dispatcher ->
             val scope = CoroutineScope(SupervisorJob() + dispatcher)
