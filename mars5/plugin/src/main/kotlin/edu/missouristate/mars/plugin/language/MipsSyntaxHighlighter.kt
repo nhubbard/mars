@@ -23,7 +23,9 @@ class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : S
             put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.KEYWORD)
         }
         for (name in listOf("STRING", "UNCLOSED_STRING", "CHARACTER")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.STRING)
-        for (name in listOf("UNCLOSED_CHARACTER", "BAD_CHARACTER")) put(MipsTypes.psi(name), HighlighterColors.BAD_CHARACTER)
+        for (name in listOf("UNCLOSED_CHARACTER", "INVALID_CHARACTER", "BAD_CHARACTER")) {
+            put(MipsTypes.psi(name), HighlighterColors.BAD_CHARACTER)
+        }
         put(MipsTypes.psi("COMMENT"), DefaultLanguageHighlighterColors.LINE_COMMENT)
         put(MipsTypes.psi("NUMBER"), DefaultLanguageHighlighterColors.NUMBER)
         put(MipsTypes.psi("REGISTER"), DefaultLanguageHighlighterColors.INSTANCE_FIELD)

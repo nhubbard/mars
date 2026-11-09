@@ -5,6 +5,7 @@ import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
@@ -718,11 +719,11 @@ class MipsParserPlatformTest {
     @Test
     fun `character literals may contain delimiters and assembler escapes`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val literals = listOf("','", "'#'", "':'", "'('", "')'", "'+'", "'-'", "'\"'", "' '",
-            "'\\''", "'\\\\'", "'\\n'", "'\\0'", "'\\+77'", "'\\-00'")
+            "'\\''", "'\\\\'", "'\\n'", "'\\0'", "'\\+77'", "'\\-00'", "'\\١٢٣'", "'\\377'", "'é'")
         val source = ".data\n.word ${literals.joinToString(", ")}\n.text\nnop\n"
         assertAssembles(directory, source, 0)
         val memory = project.get().service<MarsSessionService>().context.memory
-        val characters = ",#:()+-\" '\\\n\u0000?\u0000"
+        val characters = ",#:()+-\" '\\\n\u0000?\u0000Sÿé"
         assertEquals(characters.map(Char::code),
             literals.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
         readAction {
@@ -744,6 +745,25 @@ class MipsParserPlatformTest {
             assertEquals(listOf("(", "'D", "9", ")"), descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
             assertEquals(listOf("# keep"), descendants(file.node, "COMMENT").map { it.text }.toList())
             assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+        }
+    }
+
+    @Test
+    fun `closed invalid characters are errors without consuming later source tokens`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = ".byte 'ab', 7, '\\q', 8\n.eqv BROKEN '\\400', 9\nemit('', '\\,', 10)\nnext: nop\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid.asm", MipsFileType, source)
+            assertEquals(source, file.text)
+            val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            assertEquals(listOf("'ab'", "'\\q'", "'\\400'", "''", "'\\,'"), errors.map { it.text })
+            assertTrue(errors.all { it.errorDescription == "Invalid MARS character literal" })
+            assertEquals(listOf("'ab'", "7", "'\\q'", "8"), descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("'\\400'", "9"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
+            assertEquals(listOf("(", "''", "'\\,'", "10", ")"),
+                descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
+            assertEquals("next:", descendants(file.node, "LABEL").single().text)
+            assertArrayEquals(arrayOf(HighlighterColors.BAD_CHARACTER),
+                MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("INVALID_CHARACTER")))
         }
     }
 
@@ -941,7 +961,7 @@ class MipsParserPlatformTest {
                 values: .word 1, 2:3, -4
                 .double 1.2e-5, +Infinity, NaN
                 .asciiz "Hello # world", "escaped\\\"quote"
-                .byte 'a', '\\n', '\\123'
+                .byte 'a', '\n', '\123'
                 .text
                 main: print(10)
                 lw ${'$'}t0, values+4(${'$'}sp)

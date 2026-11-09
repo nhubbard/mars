@@ -941,6 +941,7 @@ class MarsDebugPlatformTest {
                     "NaN >= 0" to "0x00000000",
                     "-0.0 == 0.0" to "0x00000001",
                     "'<' < '>'" to "0x00000001",
+                    "'\\377'" to "0x000000ff",
                     "1 | 2 ^ 3 & 6" to "0x00000001",
                     "4 & 2 == 2" to "0x00000000",
                     "1 << 2 + 1" to "0x00000008",
@@ -958,7 +959,8 @@ class MarsDebugPlatformTest {
                 for (expression in listOf("", "1".repeat(1025), "1\n2", "1\r2", "1,2", "1+", "\"text\"",
                     "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3",
                     "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2",
-                    "1 |", "1 ^", "1 &", "1 >>", "~", "1 && 1", "1 <<= 2", "1 & 2.5", "2.5 | 1", "~2.5")) {
+                    "1 |", "1 ^", "1 &", "1 >>", "~", "1 && 1", "1 <<= 2", "1 & 2.5", "2.5 | 1", "~2.5",
+                    "'ab'", "'\\400'", "'\\q'", "0xGG")) {
                     assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
                         evaluate(debug.session, second, expression), expression)
                 }

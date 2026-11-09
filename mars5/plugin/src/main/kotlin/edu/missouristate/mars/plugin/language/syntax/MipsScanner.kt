@@ -1,8 +1,10 @@
 package edu.missouristate.mars.plugin.language.syntax
 
+import edu.missouristate.mars.assembler.Tokenizer
+
 enum class MipsTokenKind {
     SPACE, NEWLINE, COMMENT, WORD, DIRECTIVE, REGISTER, PARAMETER, NUMBER,
-    STRING, CHARACTER, UNCLOSED_STRING, UNCLOSED_CHARACTER,
+    STRING, CHARACTER, UNCLOSED_STRING, UNCLOSED_CHARACTER, INVALID_CHARACTER,
     COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, EQUALITY, RELATION,
     BIT_OR, BIT_XOR, BIT_AND, BIT_NOT, SHIFT, BAD_CHARACTER,
 }
@@ -65,9 +67,18 @@ object MipsScanner {
                         closed = true
                         break
                     }
-                    if (character == '\\' && position < end && source[position] != '\r' && source[position] != '\n') position++
+                    if (character == '\\' && position < end && source[position] !in "\r\n") {
+                        // A broken escape can end at a separator, leaving the next operand intact.
+                        if (source[position] in " \t,:()#" &&
+                            (position + 1 == end || source[position + 1] != '\'')) break
+                        position++
+                    }
                 }
-                if (closed) MipsTokenKind.CHARACTER else MipsTokenKind.UNCLOSED_CHARACTER
+                when {
+                    !closed -> MipsTokenKind.UNCLOSED_CHARACTER
+                    Tokenizer.decodeCharacterLiteral(source.subSequence(start, position)) < 0 -> MipsTokenKind.INVALID_CHARACTER
+                    else -> MipsTokenKind.CHARACTER
+                }
             }
             first in ",:()+-" -> when (first) {
                 ',' -> MipsTokenKind.COMMA

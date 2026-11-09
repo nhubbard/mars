@@ -302,6 +302,28 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `editor marks the invalid literal while assembly retains the error at its alias use`() = timeoutRunBlocking<Unit> {
+        val source = ".eqv BROKEN 'ab'\n.data\n.word BROKEN, 7\n"
+        val file = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("characters.asm", source).virtualFile
+            fixture.configureFromExistingVirtualFile(file)
+            file
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val input = readAction { requireNotNull(annotator.collectInformation(fixture.file)) }
+        val assembled = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+        val diagnostics = readAction { annotator.acceptResult(fixture.file as MipsFile, assembled) }
+        assertEquals(listOf(source.indexOf("'ab'"), source.lastIndexOf("BROKEN")), diagnostics.map { it.second.startOffset })
+        withContext(Dispatchers.EDT) {
+            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            assertEquals(source.indexOf("'ab'"), error.startOffset)
+            assertEquals("Invalid MARS character literal", error.description)
+            edit(file, source.replace("'ab'", "'a'"))
+            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+        }
+    }
+
+    @Test
     fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking<Unit> {
         val (main, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile

@@ -90,6 +90,10 @@ class MipsScannerTest {
         assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMENT), kinds("'# comment"))
         assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.SPACE), kinds("' "))
         assertEquals(MipsToken(MipsTokenKind.UNCLOSED_CHARACTER, 0, 1), MipsScanner.next("'#'", 0, 2))
+        assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMA), kinds("'\\,"))
+        assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMA, MipsTokenKind.NUMBER), kinds("'\\,7"))
+        assertEquals(listOf(MipsTokenKind.INVALID_CHARACTER, MipsTokenKind.COMMA, MipsTokenKind.NUMBER), kinds("'\\,',7"))
+        assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMENT), kinds("'\\# keep"))
     }
 
     @Test

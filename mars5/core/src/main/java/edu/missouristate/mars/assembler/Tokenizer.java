@@ -58,12 +58,9 @@ public class Tokenizer {
   private ErrorList errors;
   private MIPSprogram sourceMIPSprogram;
   private final Map<String, String> equivalents = new HashMap<>();
-  // The 8 escaped characters are: single quote, double quote, backslash, newline (linefeed),
-  // tab, backspace, return, form feed.  The characters and their corresponding decimal codes:
+  // Single-character escape spellings and their corresponding values.
   private static final String escapedCharacters = "'\"\\ntbrf0";
-  private static final String[] escapedCharactersValues = {
-    "39", "34", "92", "10", "9", "8", "13", "12", "0"
-  };
+  private static final int[] escapedCharactersValues = {'\'', '"', '\\', '\n', '\t', '\b', '\r', '\f', 0};
 
   /** Simple constructor. Initializes empty error list. */
   public Tokenizer() {
@@ -796,8 +793,11 @@ public class Tokenizer {
       int tokenStartPos,
       TokenList tokenList) {
     String value = new String(token, 0, tokenPos);
-    if (!value.isEmpty() && value.charAt(0) == '\'') {
-      value = preprocessCharacterLiteral(value);
+    if (value.charAt(0) == '\'') {
+      int character = decodeCharacterLiteral(value);
+      if (character >= 0) {
+        value = Integer.toString(character);
+      }
     }
     TokenTypes type =
         TokenTypes.matchTokenType(
@@ -842,33 +842,29 @@ public class Tokenizer {
     }
   }
 
-  // If passed a candidate character literal, attempt to translate it into integer constant.
-  // If the translation fails, return original value.
-  private String preprocessCharacterLiteral(String value) {
-    // must start and end with quote and have something in between
-    if (value.length() < 3 || value.charAt(0) != '\'' || value.charAt(value.length() - 1) != '\'') {
-      return value;
+  /** Decodes one MARS character literal, or returns -1 for an invalid spelling. */
+  public static int decodeCharacterLiteral(CharSequence literal) {
+    int length = literal.length();
+    if (length < 3 || literal.charAt(0) != '\'' || literal.charAt(length - 1) != '\'') {
+      return -1;
     }
-    String quotesRemoved = value.substring(1, value.length() - 1);
-    // if not escaped, then if one character left return its value else return original.
-    if (quotesRemoved.charAt(0) != '\\') {
-      return (quotesRemoved.length() == 1) ? Integer.toString(quotesRemoved.charAt(0)) : value;
+    char character = literal.charAt(1);
+    if (character != '\\') {
+      return length == 3 && character != '\'' ? character : -1;
     }
-    // now we know it is escape sequence and have to decode which of the 8: ',",\,n,t,b,r,f
-    if (quotesRemoved.length() == 2) {
-      int escapedCharacterIndex = escapedCharacters.indexOf(quotesRemoved.charAt(1));
-      return (escapedCharacterIndex >= 0) ? escapedCharactersValues[escapedCharacterIndex] : value;
+    if (length == 4) {
+      int index = escapedCharacters.indexOf(literal.charAt(2));
+      return index >= 0 ? escapedCharactersValues[index] : -1;
     }
-    // last valid possibility is 3 digit octal code 000 through 377
-    if (quotesRemoved.length() == 4) {
+    if (length == 6) {
       try {
-        int intValue = Integer.parseInt(quotesRemoved.substring(1), 8);
-        if (intValue >= 0 && intValue <= 255) {
-          return Integer.toString(intValue);
+        int number = Integer.parseInt(literal, 2, length - 1, 8);
+        if (number >= 0 && number <= 255) {
+          return number;
         }
       } catch (NumberFormatException ignored) {
       } // if not valid octal, will fall through and reject
     }
-    return value;
+    return -1;
   }
 }

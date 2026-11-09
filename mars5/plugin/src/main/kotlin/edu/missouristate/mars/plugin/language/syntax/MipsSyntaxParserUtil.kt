@@ -9,6 +9,7 @@ import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.INVALID_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.LEFT_PAREN
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MINUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.MNEMONIC
@@ -66,10 +67,14 @@ internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: In
 @Suppress("UNUSED_PARAMETER")
 internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
-    if (builder.tokenType != UNCLOSED_CHARACTER) return false
+    val message = when (builder.tokenType) {
+        UNCLOSED_CHARACTER -> "syntax.character.unclosed"
+        INVALID_CHARACTER -> "syntax.character.invalid"
+        else -> return false
+    }
     val marker = builder.mark()
     builder.advanceLexer()
-    marker.error(syntaxMessages.getMessage("syntax.character.unclosed"))
+    marker.error(syntaxMessages.getMessage(message))
     return true
 }
 

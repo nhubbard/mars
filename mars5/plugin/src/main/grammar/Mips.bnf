@@ -18,6 +18,7 @@
     COMMENT="regexp:#[^\\r\\n]*"
     UNCLOSED_STRING="regexp:\"[^\"]*"
     UNCLOSED_CHARACTER="regexp:'[^']*"
+    INVALID_CHARACTER="regexp:'[^\r\n]*'"
     BAD_CHARACTER="regexp:!"
     MACRO=".macro"
     END_MACRO=".end_macro"

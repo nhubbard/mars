@@ -57,6 +57,7 @@ object MipsTypes {
         "BIT_NOT" to MipsSyntaxTypes.BIT_NOT,
         "SHIFT" to MipsSyntaxTypes.SHIFT,
         "CHARACTER" to MipsSyntaxTypes.CHARACTER,
+        "INVALID_CHARACTER" to MipsSyntaxTypes.INVALID_CHARACTER,
         "COLON" to MipsSyntaxTypes.COLON,
         "COMMA" to MipsSyntaxTypes.COMMA,
         "COMMENT" to MipsSyntaxTypes.COMMENT,

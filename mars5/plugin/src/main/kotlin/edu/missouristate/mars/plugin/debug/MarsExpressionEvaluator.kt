@@ -12,7 +12,6 @@ import com.intellij.psi.TokenType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator
-import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -102,15 +101,12 @@ internal class MarsExpressionEvaluator(
     }
 
     private fun evaluateNode(node: ASTNode): Evaluation? = when (node.elementType) {
-        literalType -> {
-            val (type, value) = if (node.firstChildNode.elementType == characterType) {
-                val token = Tokenizer().tokenizeLine(1, node.text, ErrorList(), false)[0]
-                token.type to token.value
-            } else {
-                // The expression lexer already determined the numeric boundary, including hexadecimal exponents.
-                val text = node.text
-                TokenTypes.matchTokenType(text) to text
-            }
+        literalType -> if (node.firstChildNode.elementType == characterType) {
+            Immediate(Word(Tokenizer.decodeCharacterLiteral(node.text)))
+        } else {
+            // The expression lexer already determined the numeric boundary, including hexadecimal exponents.
+            val value = node.text
+            val type = TokenTypes.matchTokenType(value)
             when {
                 TokenTypes.isIntegerTokenType(type) -> Immediate(Word(Binary.stringToInt(value)))
                 TokenTypes.isFloatingTokenType(type) -> Immediate(Real(value.toDouble()))

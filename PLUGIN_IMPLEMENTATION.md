@@ -684,6 +684,12 @@ and retains later data operands, equivalence replacement tokens, macro arguments
 and comments. The assembler-backed fixture checks delimiter characters, escaped
 apostrophes and backslashes, and signed octal escapes.
 
+The lexer, assembler, and debugger share the character decoder. Closed invalid
+spellings get a syntax error over the original literal without consuming later
+operands. IntelliJ's syntax pass reports the literal in the editor, and Build
+also reports any error at an alias use. The source indexes rebuild with the
+revised token boundaries.
+
 ## Macro substitution positions
 
 Macro expansion uses the token spans from the equivalence-processed body and
