@@ -522,6 +522,44 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build reports an unfinished string on an unsaved included data continuation`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val line = "  \"unfinished"
+            val source = ".data\n.asciiz \"head\"\n$line\n"
+            val (main, include) = withContext(Dispatchers.EDT) {
+                val entry = fixture.addFileToProject("main.asm", ".include \"strings.s\"\n.text\nnop\n").virtualFile
+                val part = fixture.addFileToProject("strings.s", ".data\n.asciiz \"saved\"\n").virtualFile
+                edit(part, source)
+                entry to part
+            }
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertEquals("Unterminated string literal", error.message)
+            assertEquals(include.toNioPath(), error.filePosition.path)
+            assertEquals(2, error.filePosition.startLine)
+            assertEquals(2, error.filePosition.startColumn)
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(include, link.file)
+                assertEquals(source.indexOf(line) + 2, link.offset)
+            }
+            assertInstanceOf(FailureResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+            assertEquals(".data\n.asciiz \"saved\"\n", Files.readString(include.toNioPath()))
+
+            withContext(Dispatchers.EDT) { edit(include, source.replace(line, "$line\"")) }
+            invokeAction(main)
+            assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            assertInstanceOf(SuccessResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `registered action assembles unsaved sources and reports clickable diagnostics`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {

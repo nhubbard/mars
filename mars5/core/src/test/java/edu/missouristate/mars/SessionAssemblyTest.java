@@ -489,6 +489,42 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void unfinishedDataStringsReportAtTheIncludedSourceAndPreserveClosedEscapes() throws Exception {
+    var main = directory.resolve("main.s");
+    var part = directory.resolve("strings.s");
+    String entry = ".include \"strings.s\"\n.text\nnop\n";
+    String unfinished = ".data\r\n.ascii \"\r\n.asciiz \"partial\r\n  \"trailing\\\r\n";
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var result = assembler.assembleSnapshot(
+          new AssemblySourceSnapshot(List.of(main), Map.of(main, entry, part, unfinished)),
+          null,
+          true,
+          false);
+      assertThat(result.succeeded()).isFalse();
+      assertThat(result.errors()).hasSize(3).allSatisfy(error -> {
+        assertThat(error.file()).isEqualTo(part);
+        assertThat(error.message()).isEqualTo("Unterminated string literal");
+      });
+      assertThat(result.errors()).extracting(error -> List.of(error.line(), error.column()))
+          .containsExactly(List.of(2, 8), List.of(3, 9), List.of(4, 3));
+
+      String completed = ".data\n.ascii \"\", \"OK\"\n.asciiz \"tail\\\"\n";
+      var valid = assembler.assembleSnapshot(
+          new AssemblySourceSnapshot(List.of(main), Map.of(main, entry, part, completed)),
+          null,
+          true,
+          false);
+      assertThat(valid.succeeded()).isTrue();
+      int base = session.memory.dataBaseAddress;
+      String expected = "OKtail\"\0";
+      for (int i = 0; i < expected.length(); i++) {
+        assertThat(session.memory.getByte(base + i)).isEqualTo((int) expected.charAt(i));
+      }
+    }
+  }
+
+  @Test
   void capturedSourceAliasesCannotBypassIncludeRecursionChecks() {
     var main = directory.resolve("main.s");
     var snapshot = new AssemblySourceSnapshot(List.of(main),

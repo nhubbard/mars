@@ -708,6 +708,10 @@ numeric PSI for decimal, hexadecimal, suffixed, and signed exponent forms.
 
 ## Double-quoted strings
 
+The assembler reports an unfinished `.ascii` or `.asciiz` string at its opening
+quote, including on continuation lines in unsaved includes. Build diagnostics link
+to that position. Closed strings retain MARS's existing escape behavior.
+
 The lexer follows the assembler's immediate-backslash rule for double quotes
 and its acceptance of a final escaped quote at the end of a line. This keeps
 embedded comment markers inside data strings and preserves the complete raw

@@ -850,6 +850,13 @@ final class FirstPassProcessor {
                 token.getSourceLine(),
                 token.getStartPos(),
                 "\"" + token.getValue() + "\" is not a valid character string"));
+      } else if (!token.hasClosingDoubleQuote()) {
+        errors.add(
+            new ErrorMessage(
+                token.getSourceMIPSprogram(),
+                token.getSourceLine(),
+                token.getStartPos(),
+                "Unterminated string literal"));
       } else {
         String quote = token.getValue();
         char theChar;

@@ -213,14 +213,10 @@ public class Tokenizer {
   }
 
   private static String quotedIncludePath(Token path) {
-    if (path == null) {
+    if (path == null || !path.hasClosingDoubleQuote()) {
       return null;
     }
     String value = path.getValue();
-    // The tokenizer also classifies a quote that runs to the end of the line as QUOTED_STRING.
-    if (value.length() < 2 || value.charAt(value.length() - 1) != '"') {
-      return null;
-    }
     return value.substring(1, value.length() - 1);
   }
 

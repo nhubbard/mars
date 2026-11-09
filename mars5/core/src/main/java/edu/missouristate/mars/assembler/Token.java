@@ -135,6 +135,11 @@ public class Token {
     return value;
   }
 
+  /** A token starting with a double quote can reach the end of its line without closing. */
+  boolean hasClosingDoubleQuote() {
+    return value.length() > 1 && value.charAt(value.length() - 1) == '"';
+  }
+
   /**
    * Get a String representing the token. This method is equivalent to getValue().
    *
