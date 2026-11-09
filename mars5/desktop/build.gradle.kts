@@ -28,6 +28,9 @@ tasks.jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
+tasks.processResources {
+  from(rootProject.layout.projectDirectory.dir("shared/datapath"))
+}
 
 tasks.test {
   useJUnitPlatform()

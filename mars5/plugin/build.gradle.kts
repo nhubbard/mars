@@ -67,6 +67,10 @@ kotlin {
 
 tasks.test { useJUnitPlatform { includeEngines("junit-jupiter") } }
 
+tasks.processResources {
+  from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
+}
+
 jacoco { toolVersion = "0.8.16" }
 
 tasks.jacocoTestReport {

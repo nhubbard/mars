@@ -1456,10 +1456,10 @@ No resource is discarded without checking its consumers and preserving the relev
 | [core/PseudoOps.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/PseudoOps.txt) | C04: retain canonical metadata |
 | [core/Settings.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/Settings.properties) | S07: retain and map typed defaults |
 | [core/edu/missouristate/mars/instructions/basic-instructions.list](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/edu/missouristate/mars/instructions/basic-instructions.list) | C04: retain canonical metadata |
-| [desktop/ALUcontrolDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/ALUcontrolDatapath.xml) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/ALUcontrolDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/ALUcontrolDatapath.xml) | T12: preserve datapath content in Kotlin tool |
 | [desktop/MARSlicense.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/MARSlicense.txt) | H01: preserve/update bundled documentation and attribution |
-| [desktop/MipsXRayOpcode.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/MipsXRayOpcode.xml) | T12: preserve datapath content in Kotlin tool |
-| [desktop/controlDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/controlDatapath.xml) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/MipsXRayOpcode.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/MipsXRayOpcode.xml) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/controlDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/controlDatapath.xml) | T12: preserve datapath content in Kotlin tool |
 | [desktop/help/Acknowledgements.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/Acknowledgements.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/BugReportingHelp.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/BugReportingHelp.html) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/ExceptionsHelp.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/ExceptionsHelp.html) | H01: preserve/update bundled documentation and attribution |
@@ -1480,7 +1480,7 @@ No resource is discarded without checking its consumers and preserving the relev
 | [desktop/help/SyscallMessageDialogQuestion.gif](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/SyscallMessageDialogQuestion.gif) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/SyscallMessageDialogWarning.gif](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/SyscallMessageDialogWarning.gif) | H01: preserve/update bundled documentation and attribution |
 | [desktop/help/mipsref.pdf](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/mipsref.pdf) | H01: preserve/update bundled documentation and attribution |
-| [desktop/images/ALUcontrol.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/ALUcontrol.png) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/images/ALUcontrol.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/images/ALUcontrol.png) | T12: preserve datapath content in Kotlin tool |
 | [desktop/images/Assemble16.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Assemble16.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
 | [desktop/images/Assemble22.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Assemble22.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
 | [desktop/images/Copy16.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Copy16.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
@@ -1534,12 +1534,12 @@ No resource is discarded without checking its consumers and preserving the relev
 | [desktop/images/Stop22.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Stop22.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
 | [desktop/images/Undo16.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Undo16.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
 | [desktop/images/Undo22.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/Undo22.png) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
-| [desktop/images/control.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/control.png) | T12: preserve datapath content in Kotlin tool |
-| [desktop/images/datapath.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/datapath.png) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/images/control.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/images/control.png) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/images/datapath.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/images/datapath.png) | T12: preserve datapath content in Kotlin tool |
 | [desktop/images/mars.ico](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/mars.ico) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
 | [desktop/images/mars32.ico](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/mars32.ico) | V08: preserve informational assets; replace obsolete action icons with native/scalable icons |
-| [desktop/images/register.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/images/register.png) | T12: preserve datapath content in Kotlin tool |
-| [desktop/registerDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/registerDatapath.xml) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/images/register.png](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/images/register.png) | T12: preserve datapath content in Kotlin tool |
+| [shared/datapath/registerDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/registerDatapath.xml) | T12: preserve datapath content in Kotlin tool |
 | [plugin/META-INF/plugin.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/plugin/src/main/resources/META-INF/plugin.xml) | C01: extend native registrations |
 
 [ParserDefinition]: https://github.com/JetBrains/intellij-community/blob/c91871ae2864649d952825cff72569e3db0e7ac6/platform/core-api/src/com/intellij/lang/ParserDefinition.java#L20
