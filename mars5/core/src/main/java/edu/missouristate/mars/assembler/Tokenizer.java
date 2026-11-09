@@ -546,7 +546,7 @@ public class Tokenizer {
         tokens.setProcessedLine(originalLine);
         return tokens;
       }
-      int end = start + symbol.length();
+      int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
       theLine = theLine.substring(0, start) + equivalents.get(symbol) + theLine.substring(end);
       program = sourceMIPSprogram;
@@ -604,8 +604,7 @@ public class Tokenizer {
       }
     }
     int start = tokens.get(directive + 2).getStartPos() - 1;
-    Token lastOperand = tokens.get(last);
-    int end = lastOperand.getStartPos() - 1 + lastOperand.getValue().length();
+    int end = tokens.get(last).getEndPos() - 1;
     String expression = line.substring(start, end);
     String previous = equivalents.putIfAbsent(symbol, expression);
     if (previous != null && !previous.equals(expression)) {
@@ -645,7 +644,7 @@ public class Tokenizer {
           new ErrorMessage(
               program, line, tokenStartPos, theLine + "\nInvalid language element: " + value));
     }
-    Token toke = new Token(type, value, program, line, tokenStartPos);
+    Token toke = new Token(type, value, program, line, tokenStartPos, tokenPos);
     tokenList.add(toke);
   }
 

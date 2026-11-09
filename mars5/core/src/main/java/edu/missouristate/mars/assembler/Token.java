@@ -44,6 +44,7 @@ public class Token {
   private final MIPSprogram sourceMIPSprogram;
   private final int sourceLine;
   private final int sourcePos;
+  private final int sourceEndPos;
   // original program and line will differ from the above if token was defined in an included file
   private MIPSprogram originalMIPSprogram;
   private int originalSourceLine;
@@ -59,11 +60,17 @@ public class Token {
    * @see TokenTypes
    */
   public Token(TokenTypes type, String value, MIPSprogram sourceMIPSprogram, int line, int start) {
+    this(type, value, sourceMIPSprogram, line, start, value.length());
+  }
+
+  Token(TokenTypes type, String value, MIPSprogram sourceMIPSprogram, int line, int start,
+      int sourceLength) {
     this.type = type;
     this.value = value;
     this.sourceMIPSprogram = sourceMIPSprogram;
     this.sourceLine = line;
     this.sourcePos = start;
+    this.sourceEndPos = start + sourceLength;
     this.originalMIPSprogram = sourceMIPSprogram;
     this.originalSourceLine = line;
   }
@@ -119,9 +126,10 @@ public class Token {
   }
 
   /**
-   * Produces source code of this token.
+   * Returns the token value used by the assembler. A character literal's value is its
+   * decoded integer spelling.
    *
-   * @return String containing source code of this token.
+   * @return String containing the token value.
    */
   public String getValue() {
     return value;
@@ -161,5 +169,10 @@ public class Token {
    */
   public int getStartPos() {
     return sourcePos;
+  }
+
+  /** Returns the one-based exclusive end of this token's original spelling on its source line. */
+  int getEndPos() {
+    return sourceEndPos;
   }
 }

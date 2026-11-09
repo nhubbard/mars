@@ -85,6 +85,22 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `equivalence replacement preserves the original character literal in editor PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val spellings = listOf("'A'" to 65, "'\\n'" to 10, "'\\101'" to 65, "'\\''" to 39, "'\\\\'" to 92)
+        for ((literal, value) in spellings) {
+            val source = ".eqv VALUE $literal, # preserve the literal\nli \$t0, VALUE\n"
+            assertAssembles(directory, source, 0x24080000 or value)
+            readAction {
+                val statement = assertParses(source).node.findChildByType(MipsTypes.psi("STATEMENT"))!!
+                val replacement = statement.findChildByType(MipsTypes.psi("EQUIVALENCE"))!!
+                    .findChildByType(MipsTypes.psi("REPLACEMENT"))!!
+                assertEquals(literal, replacement.text)
+                assertEquals(MipsTypes.psi("CHARACTER"), replacement.firstChildNode.elementType)
+            }
+        }
+    }
+
+    @Test
     fun `macro signatures preserve percent names and assembler accepted punctuation`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val signatures = listOf(
             "%value!" to ")%value!(,",

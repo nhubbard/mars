@@ -361,6 +361,38 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void equivalencesPreserveCharacterLiteralSpellingBeforeRetokenizing() throws Exception {
+    var main = directory.resolve("main.s");
+    var source = """
+        .eqv LETTER 'A', # trailing separator and comment
+        .eqv LETTER 'A'
+        .eqv NEWLINE '\\n'
+        .eqv OCTAL '\\101'
+        .eqv APOSTROPHE '\\''
+        .eqv BACKSLASH '\\\\'
+        .eqv WIDE '鯉'
+        .eqv PAIR 99, '\\0'
+        .data
+        .word LETTER, NEWLINE, OCTAL, APOSTROPHE, BACKSLASH, WIDE, PAIR
+        .text
+        nop
+        """;
+    var snapshot = new AssemblySourceSnapshot(List.of(main), Map.of(main, source));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      assertThat(result.succeeded()).isTrue();
+      int[] expected = {65, 10, 65, 39, 92, '鯉', 99, 0};
+      for (int i = 0; i < expected.length; i++) {
+        assertThat(session.memory.getWordNoNotify(session.memory.dataBaseAddress + i * 4))
+            .isEqualTo(expected[i]);
+      }
+      assertThat(session.getProgram().getSourceLineList().get(9).getSource())
+          .isEqualTo(".word 'A', '\\n', '\\101', '\\'', '\\\\', '鯉', 99, '\\0'");
+    }
+  }
+
+  @Test
   void cancellationAtAnySnapshotCheckpointPropagatesAndReleasesTheSession() throws Exception {
     var main = directory.resolve("main.s");
     var definitions = directory.resolve("defs.s");

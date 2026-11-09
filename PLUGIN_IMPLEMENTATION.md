@@ -327,6 +327,15 @@ and authored plugin code covered all 690 lines and 424 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
 
+## Equivalence character literals
+
+Tokenizer tokens retain the source end position alongside the value the
+assembler uses. Equivalence replacement slices the original source span before
+re-tokenizing, so ordinary, escaped, octal, and non-ASCII character literals
+keep their full spelling. The core fixture checks the resulting data and the
+expanded source text. The IDE fixture checks the literal's PSI and the emitted
+instruction.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
