@@ -77,6 +77,7 @@ public class HexTextDumpFormat extends AbstractDumpFormat {
         }
         out.println(string);
       }
+      checkOutput(out);
     }
   }
 }

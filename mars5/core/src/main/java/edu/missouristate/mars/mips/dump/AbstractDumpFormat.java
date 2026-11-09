@@ -106,6 +106,12 @@ public abstract class AbstractDumpFormat implements DumpFormat {
     return commandDescriptor;
   }
 
+  protected static void checkOutput(PrintStream out) throws IOException {
+    if (out.checkError()) {
+      throw new IOException("Could not write the memory dump");
+    }
+  }
+
   /**
    * Write MIPS memory contents according to the specification for this format.
    *

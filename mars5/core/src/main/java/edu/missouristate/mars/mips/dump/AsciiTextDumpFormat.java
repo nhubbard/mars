@@ -78,6 +78,7 @@ public class AsciiTextDumpFormat extends AbstractDumpFormat {
         }
         out.println(Binary.intToAscii(temp));
       }
+      checkOutput(out);
     }
   }
 }

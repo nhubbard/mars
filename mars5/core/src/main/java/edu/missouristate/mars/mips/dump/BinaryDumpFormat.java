@@ -73,6 +73,7 @@ public class BinaryDumpFormat extends AbstractDumpFormat {
           out.write((word >>> (i << 3)) & 0xFF);
         }
       }
+      checkOutput(out);
     }
   }
 }

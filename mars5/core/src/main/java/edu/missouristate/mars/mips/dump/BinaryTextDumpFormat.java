@@ -77,6 +77,7 @@ public class BinaryTextDumpFormat extends AbstractDumpFormat {
         }
         out.println(string);
       }
+      checkOutput(out);
     }
   }
 }

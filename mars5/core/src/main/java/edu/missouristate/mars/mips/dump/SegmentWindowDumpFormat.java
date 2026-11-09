@@ -75,85 +75,69 @@ public class SegmentWindowDumpFormat extends AbstractDumpFormat {
   public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
       throws AddressErrorException, IOException {
 
-    PrintStream out = new PrintStream(new FileOutputStream(file));
-
     boolean hexAddresses = session.settings.displayAddressesInHex();
-
-    // If address in data segment, print in same format as Data Segment Window
-    if (session.memory.inDataSegment(firstAddress)) {
-      boolean hexValues = session.settings.displayValuesInHex();
-      int offset = 0;
-      StringBuilder string = new StringBuilder();
-      try {
-        for (int address = firstAddress;
-            address <= lastAddress;
-            address += MemoryState.WORD_LENGTH_BYTES) {
-          if (offset % 8 == 0) {
-            string =
-                new StringBuilder(
-                    ((hexAddresses)
-                            ? Binary.intToHexString(address)
-                            : Binary.unsignedIntToIntString(address))
-                        + "    ");
-          }
-          offset++;
-          Integer temp = session.memory.getRawWordOrNull(address);
-          if (temp == null) {
-            break;
-          }
-          string
-              .append(
-                  (hexValues)
-                      ? Binary.intToHexString(temp)
-                      : ("           " + temp).substring(temp.toString().length()))
-              .append(" ");
-          if (offset % 8 == 0) {
-            out.println(string);
-            string = new StringBuilder();
-          }
-        }
-      } finally {
-        out.close();
+    try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
+      if (session.memory.inDataSegment(firstAddress)) {
+        dumpData(firstAddress, lastAddress, session, hexAddresses, out);
+      } else if (session.memory.inTextSegment(firstAddress)) {
+        dumpText(firstAddress, lastAddress, session, hexAddresses, out);
       }
-      return;
+      checkOutput(out);
     }
+  }
 
-    if (!session.memory.inTextSegment(firstAddress)) {
-      return;
+  private static void dumpData(
+      int firstAddress, int lastAddress, MarsContext session, boolean hexAddresses, PrintStream out)
+      throws AddressErrorException {
+    boolean hexValues = session.settings.displayValuesInHex();
+    int wordsInRow = 0;
+    StringBuilder row = new StringBuilder();
+    for (int address = firstAddress;
+        address <= lastAddress;
+        address += MemoryState.WORD_LENGTH_BYTES) {
+      Integer word = session.memory.getRawWordOrNull(address);
+      if (word == null) {
+        break;
+      }
+      if (wordsInRow == 0) {
+        row.append(formatAddress(address, hexAddresses)).append("    ");
+      }
+      row.append(hexValues ? Binary.intToHexString(word) : ("           " + word).substring(word.toString().length()))
+          .append(' ');
+      if (++wordsInRow == 8) {
+        out.println(row);
+        row.setLength(0);
+        wordsInRow = 0;
+      }
     }
-    // If address in text segment, print in same format as Text Segment Window
+    if (wordsInRow != 0) {
+      out.println(row);
+    }
+  }
+
+  private static void dumpText(
+      int firstAddress, int lastAddress, MarsContext session, boolean hexAddresses, PrintStream out)
+      throws AddressErrorException {
     out.println(" Address    Code        Basic                     Source");
-    //           12345678901234567890123456789012345678901234567890
-    //                    1         2         3         4         5
     out.println();
-    String string;
-    try {
-      for (int address = firstAddress;
-          address <= lastAddress;
-          address += MemoryState.WORD_LENGTH_BYTES) {
-        string =
-            ((hexAddresses)
-                    ? Binary.intToHexString(address)
-                    : Binary.unsignedIntToIntString(address))
-                + "  ";
-        Integer temp = session.memory.getRawWordOrNull(address);
-        if (temp == null) {
-          break;
-        }
-        string += Binary.intToHexString(temp) + "  ";
-        try {
-          ProgramStatement ps = session.memory.getStatement(address);
-          string +=
-              (ps.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22);
-          string +=
-              (((ps.getSource().isEmpty()) ? "" : ps.getSourceLine()) + "     ").substring(0, 5);
-          string += ps.getSource();
-        } catch (AddressErrorException ignored) {
-        }
-        out.println(string);
+    for (int address = firstAddress;
+        address <= lastAddress;
+        address += MemoryState.WORD_LENGTH_BYTES) {
+      ProgramStatement statement = session.memory.getStatementNoNotify(address);
+      if (statement == null) {
+        break;
       }
-    } finally {
-      out.close();
+      String source = statement.getSource();
+      out.println(
+          formatAddress(address, hexAddresses) + "  "
+              + Binary.intToHexString(statement.getBinaryStatement()) + "  "
+              + (statement.getPrintableBasicAssemblyStatement() + "                      ").substring(0, 22)
+              + ((source.isEmpty() ? "" : statement.getSourceLine()) + "     ").substring(0, 5)
+              + source);
     }
+  }
+
+  private static String formatAddress(int address, boolean hexAddresses) {
+    return hexAddresses ? Binary.intToHexString(address) : Binary.unsignedIntToIntString(address);
   }
 }

@@ -2,23 +2,30 @@ package edu.missouristate.mars.mips.dump;
 
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.mips.hardware.*;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.HexFormat;
 
 /**
- * Intel's Hex memory initialization format
+ * Intel HEX memory initialization format
  *
  * @author Leo Alterman
  * @version July 2011
  */
 public class IntelHexDumpFormat extends AbstractDumpFormat {
 
-  /** Constructor. File extention is "hex". */
+  private static final HexFormat HEX = HexFormat.of().withUpperCase();
+
+  /** Constructor. File extension is "hex". */
   public IntelHexDumpFormat() {
     super("Intel hex format", "HEX", "Written as Intel Hex Memory File", "hex");
   }
 
   /**
-   * Write MIPS memory contents according to the Memory Initialization File (MIF) specification.
+   * Write Intel HEX records with addresses relative to the first exported word.
+   * Extended linear address records carry the high bits when the offset reaches 64 KiB.
    *
    * @param file File in which to store MIPS memory contents.
    * @param firstAddress first (lowest) memory address to dump. In bytes but must be on word
@@ -31,41 +38,31 @@ public class IntelHexDumpFormat extends AbstractDumpFormat {
   public void dumpMemoryRange(File file, int firstAddress, int lastAddress, MarsContext session)
       throws AddressErrorException, IOException {
     try (PrintStream out = new PrintStream(new FileOutputStream(file))) {
-      StringBuilder string;
+      int upperAddress = 0;
       for (int address = firstAddress;
           address <= lastAddress;
           address += MemoryState.WORD_LENGTH_BYTES) {
-        Integer temp = session.memory.getRawWordOrNull(address);
-        if (temp == null) {
+        Integer word = session.memory.getRawWordOrNull(address);
+        if (word == null) {
           break;
         }
-        string = new StringBuilder(Integer.toHexString(temp));
-        while (string.length() < 8) {
-          string.insert(0, '0');
+        int offset = address - firstAddress;
+        int upper = offset >>> 16;
+        if (upper != upperAddress) {
+          int checksum = 2 + 4 + (upper >>> 8) + (upper & 0xFF);
+          out.println(":02000004" + HEX.toHexDigits((short) upper) + HEX.toHexDigits((byte) -checksum));
+          upperAddress = upper;
         }
-        StringBuilder addr = new StringBuilder(Integer.toHexString(address - firstAddress));
-        while (addr.length() < 4) {
-          addr.insert(0, '0');
+        int checksum = 4 + (offset & 0xFF) + ((offset >>> 8) & 0xFF);
+        for (int shift = 0; shift < Integer.SIZE; shift += Byte.SIZE) {
+          checksum += (word >>> shift) & 0xFF;
         }
-        String chksum;
-        int tmp_chksum = 0;
-        tmp_chksum += 4;
-        tmp_chksum += 0xFF & (address - firstAddress);
-        tmp_chksum += 0xFF & ((address - firstAddress) >> 8);
-        tmp_chksum += 0xFF & temp;
-        tmp_chksum += 0xFF & (temp >> 8);
-        tmp_chksum += 0xFF & (temp >> 16);
-        tmp_chksum += 0xFF & (temp >> 24);
-        tmp_chksum = tmp_chksum % 256;
-        tmp_chksum = ~tmp_chksum + 1;
-        chksum = Integer.toHexString(0xFF & tmp_chksum);
-        if (chksum.length() == 1) {
-          chksum = '0' + chksum;
-        }
-        String finalstr = ":04" + addr + "00" + string + chksum;
-        out.println(finalstr.toUpperCase());
+        out.println(
+            ":04" + HEX.toHexDigits((short) offset) + "00" + HEX.toHexDigits(word)
+                + HEX.toHexDigits((byte) -checksum));
       }
       out.println(":00000001FF");
+      checkOutput(out);
     }
   }
 }
