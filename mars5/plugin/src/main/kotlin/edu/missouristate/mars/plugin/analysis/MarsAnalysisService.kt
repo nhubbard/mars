@@ -37,6 +37,7 @@ import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
+import java.util.TreeSet
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.CoroutineScope
@@ -63,16 +64,33 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val entry: Path,
         val revisions: Map<Path, Long> = emptyMap(),
         val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
-    )
+        val entryText: String = "",
+    ) {
+        private val completionNames = TreeSet<String>().apply {
+            for (definitions in listOf(symbols.locals()[entry].orEmpty(), symbols.globals())) {
+                for ((name, definition) in definitions) {
+                    ProgressManager.checkCanceled()
+                    if (definition.macroPrivate()) continue
+                    val type = TokenTypes.matchTokenType(name)
+                    if (type == TokenTypes.IDENTIFIER || type == TokenTypes.OPERATOR) add(name)
+                }
+            }
+        }
+
+        fun matchingNames(prefix: String): List<String> =
+            completionNames.tailSet(prefix).asSequence().takeWhile { it.startsWith(prefix) }.toList()
+    }
 
     internal fun beginSymbolBuild(entry: Path): BuiltSymbols =
         BuiltSymbols(entry.toAbsolutePath().normalize()).also(lastBuild::set)
 
-    internal fun publishBuiltSymbols(build: BuiltSymbols, revisions: Map<Path, Long>, symbols: AssemblySymbolMap) {
-        lastBuild.compareAndSet(build, BuiltSymbols(build.entry, revisions, symbols))
+    internal fun publishBuiltSymbols(build: BuiltSymbols, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
+        lastBuild.compareAndSet(build, BuiltSymbols(
+            build.entry, sources.revisions, symbols, sources.snapshot.texts().getValue(build.entry),
+        ))
     }
 
-    /** Reads the index only for files in the current physical include graph. */
+    /** Joins physical names with the last compatible assembly for this entry. */
     internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
         for (scope in labelScopes(root, macroOffset(position))) {
             for ((name, sites) in declarations(scope.file)) {
@@ -83,6 +101,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             }
         }
         for ((name, _) in externalSymbols(root) { it.startsWith(prefix) }) add(name)
+        addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix))
     }
 
     internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<PsiElement> {
@@ -107,22 +126,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
-        val build = lastBuild.get() ?: return null
-        if (root.viewProvider.virtualFile.url != VfsUtilCore.pathToUrl(build.entry.invariantSeparatorsPathString)) return null
+        val build = builtSymbols(root) ?: return null
         val definition = build.symbols.locals()[build.entry].orEmpty()[name] ?: build.symbols.globals()[name] ?: return null
         if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
 
         val location = definition.origin().location()
-        val files = VirtualFileManager.getInstance()
-        val documents = FileDocumentManager.getInstance()
         var target: Document? = null
-        for ((path, revision) in build.revisions) {
-            ProgressManager.checkCanceled()
-            val source = files.findFileByNioPath(path) ?: return null
-            val document = documents.getDocument(source) ?: return null
-            if (document.modificationStamp != revision) return null
+        val valid = build.validateSources { path, document, revision ->
             if (path == location.file()) target = document
+            document.modificationStamp == revision
         }
+        if (!valid) return null
         val document = target ?: return null
         val manager = PsiDocumentManager.getInstance(project)
         if (!manager.isCommitted(document)) return null
@@ -130,6 +144,33 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val start = document.getLineStartOffset(location.line() - 1)
         val offset = CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
         return file.findElementAt(offset)
+    }
+
+    private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> {
+        val build = builtSymbols(root) ?: return emptyList()
+        val names = build.matchingNames(prefix)
+        if (names.isEmpty()) return emptyList()
+        val valid = build.validateSources { path, document, revision ->
+            document.modificationStamp == revision ||
+                path == build.entry && preservesBuiltLabelNames(build.entryText, document, offset)
+        }
+        return if (valid) names else emptyList()
+    }
+
+    private fun builtSymbols(root: MipsFile): BuiltSymbols? = lastBuild.get()?.takeIf {
+        root.viewProvider.virtualFile.url == VfsUtilCore.pathToUrl(it.entry.invariantSeparatorsPathString)
+    }
+
+    private fun BuiltSymbols.validateSources(accept: (Path, Document, Long) -> Boolean): Boolean {
+        val files = VirtualFileManager.getInstance()
+        val documents = FileDocumentManager.getInstance()
+        for ((path, revision) in revisions) {
+            ProgressManager.checkCanceled()
+            val source = files.findFileByNioPath(path) ?: return false
+            val document = documents.getDocument(source) ?: return false
+            if (!accept(path, document, revision)) return false
+        }
+        return true
     }
 
     private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {

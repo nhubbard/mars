@@ -210,8 +210,14 @@ Exporting a label preserves its definition site. The editor opens that site in t
 and checks the captured document revisions before following the link. Starting a new build
 supersedes the previous result, and a late older build cannot replace the current result.
 Direct navigation works before building. Build-backed links open definitions in files associated
-with MARS MIPS. Expansion-based completion, automatic background analysis, and selection of a
-containing entry from an included file are still separate work.
+with MARS MIPS.
+
+Instruction operand completion also joins the last build's local and global names with physical
+declarations. The assembler marks names it rewrites for macro hygiene, so completion can omit
+those names while preserving caller-supplied spellings with similar suffixes. Completion searches
+the built names by prefix and retains them while typing on one ordinary instruction line.
+Other source changes, including changes in any captured include, require another build.
+Automatic background analysis and selection of a containing entry from an included file remain open.
 
 ## Go to Declaration for data labels and exports
 

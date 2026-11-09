@@ -9,6 +9,7 @@ import com.intellij.build.events.SkippedResult
 import com.intellij.build.events.StartBuildEvent
 import com.intellij.build.events.SuccessResult
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
+import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -64,6 +65,72 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `completion keeps generated names while typing a direct instruction operand`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "macro.s"
+            emit (generatedOne)
+            emit (generated_M0)
+            reserve (generatedStorage)
+            .extern ) 4
+            .extern ${'$'}t0 4
+            .globl generatedOne
+            nop: nop
+            j generatedOne
+        """.trimIndent()
+        val body = """
+            .macro emit (%entry)
+              generatedPrivate: nop
+              %entry: nop
+            .end_macro
+            .macro reserve (%name)
+              .extern %name 4
+            .end_macro
+        """.trimIndent()
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val definitions = fixture.addFileToProject("macro.s", body).virtualFile
+            val entry = fixture.addFileToProject("entry.asm", source).virtualFile
+            fixture.configureFromExistingVirtualFile(entry)
+            entry to definitions
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        project.service<MarsBuildService>().assemble(main.toNioPath())
+        withContext(Dispatchers.EDT) {
+            val names = setOf("generatedOne", "generated_M0", "generatedStorage")
+            fun candidates(caret: Int): Set<String> {
+                fixture.editor.caretModel.moveToOffset(caret)
+                fixture.completeBasic()
+                return fixture.lookupElementStrings.orEmpty().filter { it.startsWith("gen") }.toSet()
+            }
+            fun change(file: VirtualFile, text: String) {
+                edit(file, text)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+
+            val originalOperand = source.lastIndexOf("generatedOne")
+            assertEquals(names, candidates(originalOperand + 3))
+            fixture.lookup.hideLookup(true)
+            val partial = source.substring(0, originalOperand) + "genOld"
+            change(main, partial)
+            assertEquals(names, candidates(originalOperand + 3))
+            fixture.lookup.setCurrentItem(fixture.lookup.items.single { it.lookupString == "generatedOne" })
+            fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+            assertEquals(source, fixture.editor.document.text)
+
+            change(main, "$source\nj unmatched")
+            assertTrue(candidates(fixture.editor.document.textLength).isEmpty())
+            val changedInvocation = source.replace("emit (generatedOne)", "emit (anotherName)")
+            change(main, "$changedInvocation\nj gen")
+            assertTrue(candidates(fixture.editor.document.textLength).isEmpty())
+
+            change(main, "$source\nj gen")
+            assertEquals(names, candidates(fixture.editor.document.textLength))
+            fixture.lookup.hideLookup(true)
+            change(include, "# an include changed\n$body")
+            assertTrue(candidates(fixture.editor.document.textLength).isEmpty())
+        }
+    }
 
     @Test
     fun `successful assembly navigates generated labels until a captured include changes`() = timeoutRunBlocking<Unit> {
@@ -153,15 +220,16 @@ class MarsBuildPlatformTest {
         val program = component.context().use { capture.assembleIn(component).program() }
         val older = analysis.beginSymbolBuild(path)
         val current = analysis.beginSymbolBuild(path)
-        analysis.publishBuiltSymbols(older, capture.revisions, program.symbolMap())
+        analysis.publishBuiltSymbols(older, capture, program.symbolMap())
         fun target(file: PsiElement) = file.containingFile.findReferenceAt(file.text.lastIndexOf("generated"))?.resolve()
         readAction { assertNull(target(entry)) }
-        analysis.publishBuiltSymbols(current, capture.revisions, program.symbolMap())
+        analysis.publishBuiltSymbols(current, capture, program.symbolMap())
         readAction {
             assertEquals("%entry", target(entry)?.text)
             assertNull(target(other))
         }
-        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture.revisions - setOf(includePath), program.symbolMap())
+        val missingRevision = capture.copy(revisions = capture.revisions - setOf(includePath))
+        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), missingRevision, program.symbolMap())
         readAction { assertNull(target(entry)) }
 
         val plain = withContext(Dispatchers.EDT) {
@@ -176,7 +244,7 @@ class MarsBuildPlatformTest {
         val plainCapture = captureAssemblySources(listOf(path), null)
         val plainComponent = MarsSessionService.createMarsComponent()
         val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program() }
-        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture.revisions, plainProgram.symbolMap())
+        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture, plainProgram.symbolMap())
         assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
         readAction { assertNull(target(entry)) }
 
@@ -196,7 +264,8 @@ class MarsBuildPlatformTest {
             WriteCommandAction.runWriteCommandAction(project) {
                 includeDocument.setText(changedText)
                 val revisions = mapOf(path to mainDocument.modificationStamp, includePath to includeDocument.modificationStamp)
-                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), revisions, changedResult.program().symbolMap())
+                val updated = capture.copy(snapshot = changed, revisions = revisions)
+                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), updated, changedResult.program().symbolMap())
                 assertFalse(PsiDocumentManager.getInstance(project).isCommitted(includeDocument))
                 assertNull(target(entry))
             }

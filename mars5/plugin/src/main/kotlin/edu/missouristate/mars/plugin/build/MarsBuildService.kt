@@ -72,7 +72,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             }
             checkCanceled()
             succeeded = result.succeeded()
-            if (succeeded) analysis.publishBuiltSymbols(symbolBuild, capture.revisions, result.program().symbolMap())
+            if (succeeded) analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
             return succeeded
         } catch (cancel: CancellationException) {
             cancelled = true
