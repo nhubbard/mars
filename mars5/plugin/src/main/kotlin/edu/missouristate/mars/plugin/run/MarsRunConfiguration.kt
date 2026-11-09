@@ -51,6 +51,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var connectDigitalLab: Boolean by property(false)
     var connectKeyboardDisplay: Boolean by property(false)
     var connectMarsBot: Boolean by property(false)
+    var connectScavengerHunt: Boolean by property(false)
     var memoryDumps by list<RunMemoryDumpState>()
 }
 
@@ -77,7 +78,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         }
     }
 
+    private fun checkDeviceConflict(invalid: (String) -> Exception) {
+        if (options.connectMarsBot && options.connectScavengerHunt) {
+            throw invalid(runMessages.getMessage("run.connect.deviceConflict"))
+        }
+    }
+
     override fun checkConfiguration() {
+        checkDeviceConflict { RuntimeConfigurationError(it) }
         val entry = runFilePath(project, options.sourcePath) ?: throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
         memoryDumps(entry) { RuntimeConfigurationError(it) }
     }
@@ -91,6 +99,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var connectDigitalLab = false
         private var connectKeyboardDisplay = false
         private var connectMarsBot = false
+        private var connectScavengerHunt = false
         private val dumps = RunMemoryDumpEditor(project) { runFilePath(project, sourceField.text.trim()) }
         private lateinit var sourceField: JTextField
         private val form = panel {
@@ -102,6 +111,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             row { checkBox(runMessages.getMessage("run.connect.digitalLab")).bindSelected(::connectDigitalLab) }
             row { checkBox(runMessages.getMessage("run.connect.keyboardDisplay")).bindSelected(::connectKeyboardDisplay) }
             row { checkBox(runMessages.getMessage("run.connect.marsBot")).bindSelected(::connectMarsBot) }
+            row { checkBox(runMessages.getMessage("run.connect.scavengerHunt")).bindSelected(::connectScavengerHunt) }
             row(runMessages.getMessage("run.export.title")) {
                 cell(dumps.component).align(AlignX.FILL).comment(runMessages.getMessage("run.export.help"))
             }
@@ -115,6 +125,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             connectDigitalLab = configuration.options.connectDigitalLab
             connectKeyboardDisplay = configuration.options.connectKeyboardDisplay
             connectMarsBot = configuration.options.connectMarsBot
+            connectScavengerHunt = configuration.options.connectScavengerHunt
             dumps.reset(configuration.options.memoryDumps)
             form.reset()
         }
@@ -128,6 +139,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.connectDigitalLab = connectDigitalLab
             configuration.options.connectKeyboardDisplay = connectKeyboardDisplay
             configuration.options.connectMarsBot = connectMarsBot
+            configuration.options.connectScavengerHunt = connectScavengerHunt
             configuration.options.memoryDumps = dumps.copyRows()
         }
         override fun createEditor() = form
@@ -138,10 +150,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
         val entry = runFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
+        checkDeviceConflict { ExecutionException(it) }
         return MarsRunState(
             environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
             memoryDumps(entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
-            options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot,
+            options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
 }
@@ -154,15 +167,16 @@ internal class MarsRunState(
     private val connectDigitalLab: Boolean,
     private val connectKeyboardDisplay: Boolean,
     private val connectMarsBot: Boolean,
+    private val connectScavengerHunt: Boolean,
 ) :
     CommandLineState(environment) {
     override fun startProcess() =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, execute)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

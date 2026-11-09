@@ -58,7 +58,7 @@ internal class MarsBotView(project: Project) : Disposable {
     init {
         toggle.addActionListener {
             val device = selected!!
-            device.setConnected(!device.snapshot().connected)
+            selector.process!!.setMarsBotConnected(!device.snapshot().connected)
             render()
         }
         reset.addActionListener {
@@ -99,7 +99,9 @@ internal class MarsBotView(project: Project) : Disposable {
     private fun render() {
         select(selector.process?.marsBot)
         val snapshot = selected?.snapshot()
-        toggle.isEnabled = snapshot?.available == true
+        val blocked = selector.process?.scavengerHuntSnapshot()?.connected == true
+        toggle.isEnabled = snapshot?.available == true && !blocked
+        toggle.toolTipText = if (blocked) toolsMessages.getMessage("run.connect.deviceConflict") else null
         toggle.text = toolsMessages.getMessage(if (snapshot?.connected == true) "counter.disconnect" else "counter.connect")
         reset.isEnabled = snapshot != null
         clock.isEnabled = toggle.isEnabled

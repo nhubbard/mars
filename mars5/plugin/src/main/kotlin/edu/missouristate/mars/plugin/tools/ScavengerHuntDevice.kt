@@ -20,12 +20,17 @@ import edu.missouristate.mars.plugin.tools.ScavengerHuntGame.Result
 import java.util.function.Consumer
 
 /** One simulation worker owns the protocol. The view reads immutable snapshots. */
-internal class ScavengerHuntDevice(session: MarsContext) : AutoCloseable {
+internal class ScavengerHuntDevice(session: MarsContext, connectAtLaunch: Boolean = true) : AutoCloseable {
     /** A null game rejection denotes a store to another player's region. */
     data class Diagnostic(val address: Int, val rejection: Rejection?)
-    data class Snapshot(val game: ScavengerHuntGame, val diagnostic: Diagnostic?)
+    data class Snapshot(
+        val game: ScavengerHuntGame, val diagnostic: Diagnostic?,
+        val available: Boolean, val connected: Boolean, val resetPending: Boolean,
+    )
 
-    private inner class Frame(val before: Snapshot) : Runnable {
+    private data class State(val game: ScavengerHuntGame = ScavengerHuntGame(), val diagnostic: Diagnostic? = null)
+
+    private inner class Frame(val before: State) : Runnable {
         var overwritten: MutableMap<Int, Int>? = null
 
         fun record(address: Int, value: Int) {
@@ -46,36 +51,63 @@ internal class ScavengerHuntDevice(session: MarsContext) : AutoCloseable {
         override fun onStop(event: StopEvent) = Unit
         override fun onError(event: ErrorEvent) = discardInstruction()
     }
+    private val backStepper = session.backStepper
     private val history: AutoCloseable
     private val stores = mutableListOf<Store>()
-    private var state = Snapshot(ScavengerHuntGame(), null)
+    private var state = State()
     private var frame: Frame? = null
+    private var inactiveFrame = Frame(state)
     private var attached = true
+    private var connected = false
+    private var resetPending = false
+    private var wrotePort = false
 
     init {
         require(supports(memory)) { "The original Scavenger Hunt registers require the default memory map" }
-        memory.addObserver(observer, playerBase, playerEnd)
-        memory.addObserver(observer, authentication, turns)
-        history = session.backStepper.addInstructionCheckpoint(::capture)
+        setConnected(connectAtLaunch)
+        history = backStepper.addInstructionCheckpoint(::capture)
         simulator.addListener(listener)
     }
 
     @Synchronized
-    fun snapshot() = state
+    fun snapshot() = Snapshot(state.game, state.diagnostic, attached, connected, resetPending)
+
+    @Synchronized
+    fun setConnected(value: Boolean) {
+        val next = attached && value
+        if (next == connected) return
+        connected = next
+        if (connected) {
+            memory.addObserver(observer, playerBase, playerEnd)
+            memory.addObserver(observer, authentication, turns)
+        } else {
+            memory.deleteObserver(observer)
+            resetPending = false
+            discardInstruction()
+        }
+    }
+
+    @Synchronized
+    fun requestReset() {
+        if (connected) resetPending = true
+    }
 
     @Synchronized
     override fun close() {
         attached = false
+        setConnected(false)
         simulator.removeListener(listener)
-        memory.deleteObserver(observer)
         history.close()
         discardInstruction()
     }
 
     @Synchronized
     private fun record(notice: MemoryAccessNotice) {
-        if (attached && notice.origin() == EXECUTION && notice.accessType == WRITE &&
-            notice.length == WORD_LENGTH_BYTES && notice.address and 3 == 0
+        if (!connected || notice.origin() != EXECUTION || notice.accessType != WRITE) return
+        // A connection made during an instruction starts processing at the next captured boundary.
+        wrotePort = true
+        if (notice.length == WORD_LENGTH_BYTES && notice.address and 3 == 0 &&
+            (frame != null || !backStepper.enabled())
         ) {
             stores += Store(notice.address, memory.getWordNoNotify(notice.address))
         }
@@ -84,6 +116,13 @@ internal class ScavengerHuntDevice(session: MarsContext) : AutoCloseable {
     @Synchronized
     private fun completeInstruction(instruction: Long) {
         try {
+            // Wait for an instruction with no device-port store so reset can journal full words.
+            if (resetPending && !wrotePort) {
+                if (backStepper.enabled() && frame == null) return
+                resetPending = false
+                state = state.copy(game = state.game.copy(playerId = administratorId))
+                startRound(instruction)
+            }
             for ((address, value) in stores) {
                 when (address) {
                     authentication -> Unit
@@ -164,7 +203,7 @@ internal class ScavengerHuntDevice(session: MarsContext) : AutoCloseable {
     private fun player(id: Int) = state.game.round!!.players[id]
 
     private fun update(address: Int, result: Result) {
-        state = Snapshot(result.game, result.rejection?.let { Diagnostic(address, it) })
+        state = State(result.game, result.rejection?.let { Diagnostic(address, it) })
     }
 
     private fun publishPosition(base: Int, player: Player) {
@@ -188,17 +227,21 @@ internal class ScavengerHuntDevice(session: MarsContext) : AutoCloseable {
     @Synchronized
     private fun discardInstruction() {
         stores.clear()
+        wrotePort = false
         frame = null
     }
 
     @Synchronized
     private fun capture(): Runnable {
-        return Frame(state).also { frame = it }
+        if (connected) return Frame(state).also { frame = it }
+        if (inactiveFrame.before !== state) inactiveFrame = Frame(state)
+        return inactiveFrame
     }
 
     @Synchronized
     private fun restore(previous: Frame) {
         state = previous.before
+        resetPending = false
         previous.overwritten?.forEach { (address, value) -> memory.setWord(address, value) }
     }
 

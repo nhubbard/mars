@@ -30,6 +30,7 @@ import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
 import edu.missouristate.mars.plugin.tools.MarsBotDevice
+import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
@@ -65,11 +66,15 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectDigitalLab: Boolean = false,
         connectKeyboardDisplay: Boolean = false,
         connectMarsBot: Boolean = false,
+        connectScavengerHunt: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
-    ) = MarsProcessHandler(
-        project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
-        connectDigitalLab, connectKeyboardDisplay, connectMarsBot, execute,
-    )
+    ): MarsProcessHandler {
+        require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
+        return MarsProcessHandler(
+            project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
+        )
+    }
 }
 
 internal class MarsProcessHandler(
@@ -81,6 +86,7 @@ internal class MarsProcessHandler(
     connectDigitalLab: Boolean,
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
+    private val connectScavengerHunt: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
@@ -90,10 +96,34 @@ internal class MarsProcessHandler(
     val digitalLab = DigitalLabDevice(connectDigitalLab)
     val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
     val marsBot = MarsBotDevice(connectMarsBot)
+    private var scavengerHunt: ScavengerHuntDevice? = null
+    private var finishedHunt: ScavengerHuntDevice.Snapshot? = null
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
     @Volatile private var readFloatingRegister: ((Int) -> Int)? = null
+
+    @Synchronized
+    fun scavengerHuntSnapshot() = scavengerHunt?.snapshot() ?: finishedHunt
+
+    @Synchronized
+    fun setScavengerHuntConnected(value: Boolean) {
+        if (!value || !marsBot.snapshot().connected) scavengerHunt?.setConnected(value)
+    }
+
+    @Synchronized
+    fun setMarsBotConnected(value: Boolean) {
+        if (!value || scavengerHunt?.snapshot()?.connected != true) marsBot.setConnected(value)
+    }
+
+    @Synchronized
+    fun resetScavengerHunt() {
+        scavengerHunt?.requestReset()
+    }
+
+    fun releaseScavengerHuntView() {
+        if (!connectScavengerHunt) setScavengerHuntConnected(false)
+    }
 
     fun floatingRegisterBits(number: Int): Int? = readFloatingRegister?.invoke(number)
 
@@ -198,7 +228,7 @@ internal class MarsProcessHandler(
                                     dataCache.observe(session.memory).use {
                                         digitalLab.observe(session).use {
                                             keyboardDisplay.observe(session).use {
-                                                marsBot.observe(session).use { execute(session) }
+                                                executeWithWorldDevices(session)
                                             }
                                         }
                                     }
@@ -218,6 +248,24 @@ internal class MarsProcessHandler(
             }
         }
     }
+    private suspend fun executeWithWorldDevices(session: MarsContext): StopEvent {
+        val (bot, hunt) = synchronized(this) {
+            val device = ScavengerHuntDevice(session, connectScavengerHunt).also { scavengerHunt = it }
+            marsBot.observe(session) to device
+        }
+        return bot.use {
+            try {
+                execute(session)
+            } finally {
+                synchronized(this) {
+                    hunt.close()
+                    finishedHunt = hunt.snapshot()
+                    scavengerHunt = null
+                }
+            }
+        }
+    }
+
     private suspend fun exportAfterRun(session: MarsContext, sources: Set<Path>) {
         val exporter = project.service<MarsMemoryExportService>()
         for (selection in memoryDumps) {

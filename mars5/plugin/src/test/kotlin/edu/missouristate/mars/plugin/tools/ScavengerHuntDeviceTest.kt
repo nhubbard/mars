@@ -1,5 +1,9 @@
 package edu.missouristate.mars.plugin.tools
 
+import edu.missouristate.mars.api.ErrorEvent
+import edu.missouristate.mars.api.SimulatorListener
+import edu.missouristate.mars.api.StepEvent
+import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.api.StopEvent.Reason.BREAKPOINT
 import edu.missouristate.mars.api.StopEvent.Reason.EXCEPTION
 import edu.missouristate.mars.api.StopEvent.Reason.STEP_LIMIT
@@ -263,6 +267,7 @@ class ScavengerHuntDeviceTest {
             li ${'$'}t0, 1
             sb ${'$'}t0, 8(${'$'}s0)
             sw ${'$'}t0, 8(${'$'}s0)
+            nop
             sw ${'$'}t0, 8(${'$'}s0)
             nop
         """) { session, device ->
@@ -278,12 +283,15 @@ class ScavengerHuntDeviceTest {
             assertNull(device.snapshot().game.round)
             session.backStepper.setEnabled(false)
             step(session)
+            assertEquals(5L, device.snapshot().game.round!!.firstInstruction)
+            device.requestReset()
+            step(session)
             val finished = device.snapshot()
-            assertEquals(5L, finished.game.round!!.firstInstruction)
+            assertEquals(6L, finished.game.round!!.firstInstruction)
             device.close()
             assertEquals(0, session.memory.countObservers())
             step(session)
-            assertEquals(finished, device.snapshot())
+            assertEquals(finished.copy(available = false, connected = false), device.snapshot())
         }
         MarsSessionService.createMarsComponent().context().use { session ->
             session.memory.memoryMapLimitAddress = turns
@@ -292,6 +300,81 @@ class ScavengerHuntDeviceTest {
             assertFalse(ScavengerHuntDevice.supports(session.memory))
             assertThrows(IllegalArgumentException::class.java) { ScavengerHuntDevice(session) }
             assertEquals(0, session.memory.countObservers())
+        }
+    }
+
+    @Test
+    fun `attaching during a double store leaves that instruction unclaimed`() {
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val file = directory.resolve("attach.asm").also {
+                it.writeText("""
+                    lui ${'$'}t0, 0xffff
+                    ori ${'$'}t0, ${'$'}t0, 0xe000
+                    sdc1 ${'$'}f2, 0(${'$'}t0)
+                    nop
+                    nop
+                """.trimIndent())
+            }
+            session.assemble(listOf(file))
+            lateinit var device: ScavengerHuntDevice
+            val connect = Consumer<MemoryAccessNotice> { notice ->
+                if (notice.accessType == WRITE) {
+                    device.setConnected(true)
+                    device.requestReset()
+                }
+            }
+            session.memory.addObserver(connect, authentication)
+            device = ScavengerHuntDevice(session, connectAtLaunch = false)
+            device.use {
+                device.requestReset()
+                assertFalse(device.snapshot().resetPending)
+                step(session, 3)
+                val attached = device.snapshot()
+                assertTrue(attached.resetPending)
+                assertEquals(0, attached.game.authenticationSequence)
+                assertNull(attached.game.round)
+                session.memory.deleteObserver(connect)
+                step(session)
+                assertEquals(4L, device.snapshot().game.round!!.firstInstruction)
+                device.setConnected(false)
+                step(session)
+                val disconnected = device.snapshot()
+                assertFalse(disconnected.connected)
+                backstep(session)
+                assertEquals(disconnected, device.snapshot())
+            }
+        }
+    }
+
+    @Test
+    fun `reset waits for a reversible instruction after a boundary attachment`() {
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val file = directory.resolve("reset.asm").also { it.writeText("nop\nnop\nnop\n") }
+            session.assemble(listOf(file))
+            lateinit var device: ScavengerHuntDevice
+            val simulator = session.simulator()
+            val connect = object : SimulatorListener {
+                override fun onStep(event: StepEvent) {
+                    device.setConnected(true)
+                    device.requestReset()
+                    simulator.removeListener(this)
+                }
+                override fun onStop(event: StopEvent) = Unit
+                override fun onError(event: ErrorEvent) = Unit
+            }
+            simulator.addListener(connect)
+            device = ScavengerHuntDevice(session, connectAtLaunch = false)
+            device.use {
+                step(session)
+                assertTrue(device.snapshot().resetPending)
+                assertNull(device.snapshot().game.round)
+                step(session)
+                assertFalse(device.snapshot().resetPending)
+                assertEquals(2L, device.snapshot().game.round!!.firstInstruction)
+                backstep(session)
+                assertNull(device.snapshot().game.round)
+                assertFalse(device.snapshot().resetPending)
+            }
         }
     }
 

@@ -1210,7 +1210,21 @@ completed instructions while moving. The model preserves fractional
 positions and publishes integer coordinates. Backstep restores the clock,
 position, port values, and pen trail from the instruction's checkpoint.
 
-## Scavenger Hunt game and MMIO device
+## Scavenger Hunt
+
+Open **View → Tool Windows → MARS Tools → Scavenger Hunt** and select a
+Run or Debug execution. Connect from the panel, or enable **Connect
+Scavenger Hunt from launch** when the assembly program initializes the
+game immediately. Try `examples/scavenger-hunt/round.asm`. The map shows
+the seven locations and each player's position. Click a scoreboard header
+to sort the player list. The final board remains visible with the execution
+tab.
+
+**Reset** starts a fresh round at the next instruction boundary without
+a store to the device's ports. Debug backstep restores the previous round
+and discards pending resets. The default player regions overlap MarsBot's
+ports, so the run configuration and both panels allow one of these devices
+per execution.
 
 The game model keeps 22 players, seven common locations, and a 20-word
 sorting task for each player. It reproduces the original seed-42 sequence
@@ -1240,10 +1254,6 @@ restores the words it wrote, and the device's instruction checkpoint
 restores the rest of the response, the game state, and its diagnostic.
 An assembly fixture sorts a real task through loads and stores and
 verifies that rewind restores the sorted task and request word.
-
-The 22 original player regions require the default memory map and
-overlap MarsBot's ports. The Run and Debug options and scoreboard panel
-are the next slice. They will reject simultaneous attachment.
 
 ## Next slices
 

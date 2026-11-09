@@ -201,6 +201,47 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `native Run plays the Scavenger Hunt sample with the panel closed`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        val process = CompletableDeferred<MarsProcessHandler>()
+        try {
+            withContext(Dispatchers.EDT) {
+                val source = requireNotNull(javaClass.getResourceAsStream("/scavenger-hunt/round.asm"))
+                    .bufferedReader().use { it.readText() }
+                val file = fixture.addFileToProject("round.asm", source).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                config.options.connectScavengerHunt = true
+                config.options.delayedBranching = true
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) {
+                            handler.addProcessListener(recording)
+                            process.complete(handler as MarsProcessHandler)
+                        }
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            assertEquals(0, recording.exit.await(), recording.stderr.toString())
+            assertEquals("Round complete. Open Scavenger Hunt to inspect the scoreboard.\n", recording.stdout.toString())
+            val snapshot = requireNotNull(process.await().scavengerHuntSnapshot())
+            assertFalse(snapshot.available)
+            assertFalse(snapshot.connected)
+            assertEquals(1, snapshot.game.playerId)
+            assertEquals(40, snapshot.game.turnsRemaining)
+            val players = requireNotNull(snapshot.game.round).players
+            assertEquals(listOf(293, 217), players.take(2).map { it.position.x })
+            assertEquals(listOf(20, 0), players.take(2).map { it.energy })
+            assertEquals(listOf(1, 1), players.take(2).map { it.visitedMask.countOneBits() })
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `configuration serializes a source path and rejects invalid or unsafe launches`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("entry.s", "nop\n")
@@ -222,6 +263,16 @@ class MarsRunPlatformTest {
             config.options.connectKeyboardDisplay = true
             config.options.connectMarsBot = true
             config.checkConfiguration()
+            config.options.connectScavengerHunt = true
+            assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+            val conflictEnvironment = ExecutionEnvironmentBuilder.create(executor, config).build()
+            assertThrows<ExecutionException> { config.getState(executor, conflictEnvironment) }
+            assertThrows<IllegalArgumentException> {
+                project.getService(MarsRunService::class.java).createProcess(
+                    source.virtualFile.toNioPath(), memoryDumps = emptyList(),
+                    connectMarsBot = true, connectScavengerHunt = true,
+                )
+            }
             val state = Element("configuration")
             config.writeExternal(state)
             val restored = type.createTemplateConfiguration(project)
@@ -234,6 +285,7 @@ class MarsRunPlatformTest {
             assertTrue(restored.options.connectDigitalLab)
             assertTrue(restored.options.connectKeyboardDisplay)
             assertTrue(restored.options.connectMarsBot)
+            assertTrue(restored.options.connectScavengerHunt)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
@@ -243,6 +295,7 @@ class MarsRunPlatformTest {
             assertFalse(previousConfiguration.options.connectDigitalLab)
             assertFalse(previousConfiguration.options.connectKeyboardDisplay)
             assertFalse(previousConfiguration.options.connectMarsBot)
+            assertFalse(previousConfiguration.options.connectScavengerHunt)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
@@ -255,6 +308,7 @@ class MarsRunPlatformTest {
                 val digitalLab = flags.getValue("Connect Digital Lab Sim from launch")
                 val keyboardDisplay = flags.getValue("Connect Keyboard and Display Simulator from launch")
                 val marsBot = flags.getValue("Connect MarsBot from launch")
+                val hunt = flags.getValue("Connect Scavenger Hunt from launch")
                 assertFalse(delay.isSelected)
                 assertFalse(modify.isSelected)
                 assertFalse(capture.isSelected)
@@ -262,6 +316,7 @@ class MarsRunPlatformTest {
                 assertFalse(digitalLab.isSelected)
                 assertFalse(keyboardDisplay.isSelected)
                 assertFalse(marsBot.isSelected)
+                assertFalse(hunt.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
                 assertTrue(modify.isSelected)
@@ -270,6 +325,7 @@ class MarsRunPlatformTest {
                 assertTrue(digitalLab.isSelected)
                 assertTrue(keyboardDisplay.isSelected)
                 assertTrue(marsBot.isSelected)
+                assertTrue(hunt.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
@@ -279,6 +335,7 @@ class MarsRunPlatformTest {
                 digitalLab.isSelected = false
                 keyboardDisplay.isSelected = false
                 marsBot.isSelected = false
+                hunt.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
@@ -288,6 +345,7 @@ class MarsRunPlatformTest {
                 assertFalse(restored.options.connectDigitalLab)
                 assertFalse(restored.options.connectKeyboardDisplay)
                 assertFalse(restored.options.connectMarsBot)
+                assertFalse(restored.options.connectScavengerHunt)
             } finally {
                 Disposer.dispose(editor)
             }

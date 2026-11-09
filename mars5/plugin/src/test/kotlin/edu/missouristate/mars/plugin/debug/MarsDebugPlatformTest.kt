@@ -1098,6 +1098,59 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `Scavenger Hunt reset and memory rewind together through Debug`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("hunt-debug.asm", """
+                lui ${'$'}t0, 0xffff
+                ori ${'$'}t0, ${'$'}t0, 0xe000
+                li ${'$'}t1, 1
+                sw ${'$'}t1, 8(${'$'}t0)
+                sw ${'$'}t1, 0(${'$'}t0)
+                sw ${'$'}zero, 4(${'$'}t0)
+                sb ${'$'}t1, 0(${'$'}t0)
+                nop
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
+        }
+        withDebug(source, { connectScavengerHunt = true }) { debug ->
+            debug.assertPausedAt(source, 6)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val started = requireNotNull(process.scavengerHuntSnapshot())
+            assertTrue(started.connected)
+            assertEquals(0, started.game.playerId)
+            withContext(Dispatchers.EDT) {
+                process.releaseScavengerHuntView()
+                process.setMarsBotConnected(true)
+                assertFalse(process.marsBot.snapshot().connected)
+                assertTrue(process.scavengerHuntSnapshot()!!.connected)
+                process.resetScavengerHunt()
+                assertTrue(process.scavengerHuntSnapshot()!!.resetPending)
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 7)
+            assertTrue(process.scavengerHuntSnapshot()!!.resetPending)
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
+            debug.assertPausedAt(source, 8)
+            assertEquals(999, process.scavengerHuntSnapshot()!!.game.playerId)
+            assertFalse(process.scavengerHuntSnapshot()!!.resetPending)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x000003e7", evaluate(debug.session, frame, "word(0xffffe004)"))
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 7)
+            assertEquals(started, process.scavengerHuntSnapshot())
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "word(0xffffe004)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("digital-lab-debug.asm", """
