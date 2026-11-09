@@ -389,6 +389,12 @@ The physical PSI and indexes retain the source spelling. Expansion uses the core
 the same leading-label rule as assembly, including the rule that labels inside a macro body do
 not expose a following closing directive.
 
+A physical `.end_macro` closes a macro only when the rest of the line contains
+separators or a comment. If extra tokens are present while editing, the parser
+reports the malformed line and keeps later declarations and references in the
+macro up to its standalone terminator. Both source indexes rebuild their
+physical macro ownership on upgrade.
+
 ## Macro parameter spellings
 
 Macro signatures preserve parentheses and commas as tokens. The assembler ignores those tokens

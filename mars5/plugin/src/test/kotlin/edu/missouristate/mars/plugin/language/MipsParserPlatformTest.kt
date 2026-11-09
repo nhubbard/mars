@@ -325,6 +325,30 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed macro endings preserve body scope until a standalone terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val valid = ".macro emit\nbody: addiu \$t0, \$zero, 7\n.end_macro,, # close\nemit\n"
+        assertAssembles(directory, valid)
+        readAction {
+            val validMacro = descendants(assertParses(valid).node, "MACRO_DEFINITION").single()
+            assertEquals(listOf("body:"), descendants(validMacro, "LABEL").map { it.text }.toList())
+            for (suffix in listOf("stray", ")", ".eqv NOT_A_DEFINITION 7")) {
+                val broken = valid.replace("body:", ".end_macro $suffix\nbody:")
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("macro.asm", MipsFileType, broken)
+                assertEquals(broken, file.node.text)
+                val macro = descendants(file.node, "MACRO_DEFINITION").single()
+                assertEquals(listOf("body:"), descendants(macro, "LABEL").map { it.text }.toList(), suffix)
+                assertEquals(broken.lastIndexOf(".end_macro"), macro.lastChildNode.startOffset, suffix)
+                val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+                assertTrue(errors.isNotEmpty(), suffix)
+                val malformedLine = broken.indexOf(".end_macro") until broken.indexOf("body:")
+                assertTrue(errors.all { it.textOffset in malformedLine }, errors.map { it.textOffset to it.errorDescription }.toString())
+                assertTrue(descendants(file.node, "EQUIVALENCE").none(), suffix)
+                assertEquals(listOf("emit"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
+            }
+        }
+    }
+
+    @Test
     fun `assembler commas remain punctuation without blocking native syntax`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             , , # separators alone

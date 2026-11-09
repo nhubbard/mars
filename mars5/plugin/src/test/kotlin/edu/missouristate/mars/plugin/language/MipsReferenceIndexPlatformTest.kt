@@ -50,6 +50,7 @@ class MipsReferenceIndexPlatformTest {
             .eqv Alias .emit
             .eqv Literal NOP
             ,,.macro,, .emit (%arg FORMALS)
+              .end_macro stray
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
             .end_macro
@@ -103,13 +104,13 @@ class MipsReferenceIndexPlatformTest {
                 assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
             }
             for (name in listOf("Alias", "Literal", "local", "top", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
-                "trailing", "unused", "ignored",
+                "trailing", "unused", "ignored", "stray",
                 "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s", "nop")) {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(10, extension.version)
+            assertEquals(11, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
