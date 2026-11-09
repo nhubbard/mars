@@ -1007,6 +1007,51 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `keyboard and display attach before the first debug instruction and rewind with the session`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("terminal-debug.asm", """
+                lui ${'$'}t0, 0xffff
+                li ${'$'}t1, 65
+                sb ${'$'}t1, 12(${'$'}t0)
+                nop
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
+        }
+        withDebug(source, { connectKeyboardDisplay = true }) { debug ->
+            debug.assertPausedAt(source, 2)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val terminal = process.keyboardDisplay
+            assertTrue(terminal.snapshot().connected)
+            terminal.configure(terminal.snapshot().options.copy(instructions = 1))
+            terminal.sendKey('K')
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000001", evaluate(debug.session, frame, "word(0xffff0008)"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 3)
+            assertEquals("", terminal.snapshot().display.text)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x0000004b", evaluate(debug.session, frame, "word(0xffff0004)"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 4)
+            assertEquals("A", terminal.snapshot().display.text)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 3)
+            assertEquals("", terminal.snapshot().display.text)
+            assertEquals(1, terminal.snapshot().remaining)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+            assertEquals("A", terminal.snapshot().display.text)
+        }
+    }
+
+    @Test
     fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("digital-lab-debug.asm", """

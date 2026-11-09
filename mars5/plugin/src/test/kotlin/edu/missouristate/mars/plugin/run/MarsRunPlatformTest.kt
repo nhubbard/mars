@@ -179,6 +179,7 @@ class MarsRunPlatformTest {
             config.options.captureBitmap = true
             config.options.captureReferences = true
             config.options.connectDigitalLab = true
+            config.options.connectKeyboardDisplay = true
             config.checkConfiguration()
             val state = Element("configuration")
             config.writeExternal(state)
@@ -190,6 +191,7 @@ class MarsRunPlatformTest {
             assertTrue(restored.options.captureBitmap)
             assertTrue(restored.options.captureReferences)
             assertTrue(restored.options.connectDigitalLab)
+            assertTrue(restored.options.connectKeyboardDisplay)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
@@ -197,6 +199,7 @@ class MarsRunPlatformTest {
             assertFalse(previousConfiguration.options.captureBitmap)
             assertFalse(previousConfiguration.options.captureReferences)
             assertFalse(previousConfiguration.options.connectDigitalLab)
+            assertFalse(previousConfiguration.options.connectKeyboardDisplay)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
@@ -207,17 +210,20 @@ class MarsRunPlatformTest {
                 val capture = flags.getValue("Capture Bitmap Display from launch")
                 val references = flags.getValue("Capture memory references from launch")
                 val digitalLab = flags.getValue("Connect Digital Lab Sim from launch")
+                val keyboardDisplay = flags.getValue("Connect Keyboard and Display Simulator from launch")
                 assertFalse(delay.isSelected)
                 assertFalse(modify.isSelected)
                 assertFalse(capture.isSelected)
                 assertFalse(references.isSelected)
                 assertFalse(digitalLab.isSelected)
+                assertFalse(keyboardDisplay.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
                 assertTrue(modify.isSelected)
                 assertTrue(capture.isSelected)
                 assertTrue(references.isSelected)
                 assertTrue(digitalLab.isSelected)
+                assertTrue(keyboardDisplay.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
@@ -225,6 +231,7 @@ class MarsRunPlatformTest {
                 capture.isSelected = false
                 references.isSelected = false
                 digitalLab.isSelected = false
+                keyboardDisplay.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
@@ -232,6 +239,7 @@ class MarsRunPlatformTest {
                 assertFalse(restored.options.captureBitmap)
                 assertFalse(restored.options.captureReferences)
                 assertFalse(restored.options.connectDigitalLab)
+                assertFalse(restored.options.connectKeyboardDisplay)
             } finally {
                 Disposer.dispose(editor)
             }

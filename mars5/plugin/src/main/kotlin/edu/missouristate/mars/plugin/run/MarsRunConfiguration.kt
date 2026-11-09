@@ -49,6 +49,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var captureBitmap: Boolean by property(false)
     var captureReferences: Boolean by property(false)
     var connectDigitalLab: Boolean by property(false)
+    var connectKeyboardDisplay: Boolean by property(false)
     var memoryDumps by list<RunMemoryDumpState>()
 }
 
@@ -87,6 +88,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var captureBitmap = false
         private var captureReferences = false
         private var connectDigitalLab = false
+        private var connectKeyboardDisplay = false
         private val dumps = RunMemoryDumpEditor(project) { runFilePath(project, sourceField.text.trim()) }
         private lateinit var sourceField: JTextField
         private val form = panel {
@@ -96,6 +98,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
             row { checkBox(runMessages.getMessage("run.capture.references")).bindSelected(::captureReferences) }
             row { checkBox(runMessages.getMessage("run.connect.digitalLab")).bindSelected(::connectDigitalLab) }
+            row { checkBox(runMessages.getMessage("run.connect.keyboardDisplay")).bindSelected(::connectKeyboardDisplay) }
             row(runMessages.getMessage("run.export.title")) {
                 cell(dumps.component).align(AlignX.FILL).comment(runMessages.getMessage("run.export.help"))
             }
@@ -107,6 +110,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             captureBitmap = configuration.options.captureBitmap
             captureReferences = configuration.options.captureReferences
             connectDigitalLab = configuration.options.connectDigitalLab
+            connectKeyboardDisplay = configuration.options.connectKeyboardDisplay
             dumps.reset(configuration.options.memoryDumps)
             form.reset()
         }
@@ -118,6 +122,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.captureBitmap = captureBitmap
             configuration.options.captureReferences = captureReferences
             configuration.options.connectDigitalLab = connectDigitalLab
+            configuration.options.connectKeyboardDisplay = connectKeyboardDisplay
             configuration.options.memoryDumps = dumps.copyRows()
         }
         override fun createEditor() = form
@@ -131,7 +136,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         return MarsRunState(
             environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
             memoryDumps(entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
-            options.connectDigitalLab,
+            options.connectDigitalLab, options.connectKeyboardDisplay,
         )
     }
 }
@@ -142,13 +147,16 @@ internal class MarsRunState(
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
     private val connectDigitalLab: Boolean,
+    private val connectKeyboardDisplay: Boolean,
 ) :
     CommandLineState(environment) {
     override fun startProcess() =
-        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences, connectDigitalLab)
+        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
+            connectDigitalLab, connectKeyboardDisplay)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
-        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences, connectDigitalLab, execute)
+        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
+            connectDigitalLab, connectKeyboardDisplay, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

@@ -77,7 +77,7 @@ class InstructionCounterPlatformTest {
             val contents = window.contentManager.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
                 "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation",
-                "Digital Lab Sim"),
+                "Digital Lab Sim", "Keyboard and Display Simulator"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -605,6 +605,7 @@ class InstructionCounterPlatformTest {
                         container.remove(cache)
                         container.remove(floating)
                         container.remove(lab)
+                        container.remove(panels[9])
                     }
                 }
             }

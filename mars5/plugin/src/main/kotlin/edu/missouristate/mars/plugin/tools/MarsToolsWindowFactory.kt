@@ -10,6 +10,7 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
@@ -28,10 +29,11 @@ import kotlinx.coroutines.withContext
 
 internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        fun addTab(name: String, component: JComponent, view: Disposable) {
+        fun addTab(name: String, component: JComponent, view: Disposable): Content {
             val content = ContentFactory.getInstance().createContent(component, toolsMessages.getMessage(name), false)
             content.setDisposer(view)
             toolWindow.contentManager.addContent(content)
+            return content
         }
         val counter = InstructionCountsView(
             project, listOf("counter.r", "counter.i", "counter.j", "counter.other"), showBars = false,
@@ -57,6 +59,9 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab("float.name", floatingPoint.component, floatingPoint)
         val digitalLab = DigitalLabView(project)
         addTab("digitalLab.name", digitalLab.component, digitalLab)
+        val keyboardDisplay = KeyboardDisplayView(project)
+        addTab("keyboardDisplay.name", keyboardDisplay.component, keyboardDisplay)
+            .setPreferredFocusableComponent(keyboardDisplay.inputComponent)
     }
 }
 

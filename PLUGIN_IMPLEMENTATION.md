@@ -1160,7 +1160,15 @@ keypad port, and pending device interrupt bits from the same instruction frame
 as the CPU. A queued key press is discarded on rewind, so stepping forward
 again requires fresh input.
 
-## Keyboard and Display Simulator model
+## Keyboard and Display Simulator
+
+Open **View → Tool Windows → MARS Tools → Keyboard and Display Simulator**
+and select a Run or Debug execution. Click **Connect** or enable **Connect
+Keyboard and Display Simulator from launch** when the program needs the
+device immediately. Type in the **Keyboard** field to send an input byte.
+The **Display** uses the IDE console editor and font settings. The panel
+offers fixed, uniform, and normal delay modes and a **Display after delay**
+toggle. Try the echo program in `examples/mmio-terminal/echo.asm`.
 
 The Kotlin device implements the receiver control and data words at MMIO
 base + `0x00` and `0x04` and the transmitter control and data words at
@@ -1172,8 +1180,9 @@ clears the display and bell with packed coordinates addresses an 80-column,
 
 Instruction checkpoints restore the display, ready bits, receiver data,
 pending interrupts, and the delay sequence. Unapplied host keystrokes are
-discarded on rewind. The model is covered by protocol and assembled-program
-tests. The IntelliJ tool panel and Run and Debug controls are the next slice.
+discarded on rewind. The final display stays available while its execution
+tab is open. A connection owned by the panel closes when the panel is
+disposed. The launch option keeps the device connected for the execution.
 
 ## Next slices
 
