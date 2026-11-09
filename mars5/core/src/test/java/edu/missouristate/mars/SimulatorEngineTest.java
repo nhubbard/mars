@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SimulatorEngineTest {
   @TempDir Path directory;
@@ -43,6 +45,51 @@ class SimulatorEngineTest {
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(engine.runAsync(0, null).get(5, TimeUnit.SECONDS).reason())
           .isEqualTo(StopEvent.Reason.NORMAL_EXIT);
+    }
+  }
+
+  @Test
+  void jumpWithZeroLinkRegisterDoesNotReportACall() throws Exception {
+    try (var session = load(".text\njalr $zero,$t0\n")) {
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(((StepEvent) events.getFirst()).transfer()).isNull();
+      assertThat(session.registerFile.getValue(0)).isZero();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void onlyTakenLinkingBranchesReportCalls(boolean delayedBranching) throws Exception {
+    try (var session =
+        load(
+            """
+            .text
+            addiu $t0,$zero,-1
+            bgezal $t0,target
+            nop
+            bgezal $zero,target
+            nop
+            nop
+            target: nop
+            """)) {
+      session.settings.setDelayedBranchingEnabled(delayedBranching);
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      int entry = session.registerFile.getPC();
+      engine.runAsync(4, null).get(5, TimeUnit.SECONDS);
+      var transfers =
+          events.stream()
+              .filter(StepEvent.class::isInstance)
+              .map(StepEvent.class::cast)
+              .map(StepEvent::transfer)
+              .toList();
+      int returnAddress = entry + (delayedBranching ? 20 : 16);
+      assertThat(transfers).containsExactly(null, null, null, new StepEvent.Call(31, returnAddress));
+      assertThat(session.registerFile.getValue(31)).isEqualTo(returnAddress);
     }
   }
 

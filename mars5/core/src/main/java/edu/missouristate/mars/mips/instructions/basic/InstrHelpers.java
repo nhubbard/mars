@@ -27,7 +27,7 @@ class InstrHelpers {
   }
 
   static void processReturnAddress(InstructionContext context, int register) {
-    context.updateRegister(
+    context.link(
         register,
         context.registerFile.getProgramCounter()
             + (context.settings().isDelayedBranchingEnabled()

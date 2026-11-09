@@ -4,6 +4,7 @@ import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap;
 import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.api.Program;
+import edu.missouristate.mars.api.StepEvent;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.assembler.*;
@@ -513,7 +514,15 @@ public class MIPSprogram implements Program {
 
   /** Result of one session instruction; a null stop reason means execution can continue. */
   public record ExecutionStep(
-      int pc, int instruction, boolean executed, StopEvent.Reason stopReason) {}
+      int pc,
+      int instruction,
+      boolean executed,
+      StopEvent.Reason stopReason,
+      StepEvent.Transfer transfer) {
+    public ExecutionStep(int pc, int instruction, boolean executed, StopEvent.Reason stopReason) {
+      this(pc, instruction, executed, stopReason, null);
+    }
+  }
 
   /** Executes one instruction on the owning session's execution thread. */
   public ExecutionStep executeSessionInstruction() throws ProcessingException {
@@ -564,7 +573,8 @@ public class MIPSprogram implements Program {
       return new ExecutionStep(
           pc, statement.getBinaryStatement(), true, StopEvent.Reason.NORMAL_EXIT);
     }
-    return new ExecutionStep(pc, statement.getBinaryStatement(), true, null);
+    return new ExecutionStep(
+        pc, statement.getBinaryStatement(), true, null, sessionExecution.lastTransfer());
   }
 
   /** Synchronous, frontend-independent execution for a session-owned program. */

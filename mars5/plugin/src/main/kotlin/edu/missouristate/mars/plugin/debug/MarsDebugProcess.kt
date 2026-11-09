@@ -31,9 +31,14 @@ import com.intellij.xdebugger.frame.XExecutionStack
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.api.SimulatorListener
+import edu.missouristate.mars.api.StepEvent
+import edu.missouristate.mars.api.StepEvent.Call
+import edu.missouristate.mars.api.StepEvent.ExceptionEntry
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -52,10 +57,15 @@ import kotlinx.coroutines.withContext
 
 private typealias LineBreakpoint = XLineBreakpoint<XBreakpointProperties<*>>
 private const val SOURCE_STEP_LIMIT = 256L
+private const val CALL_STEP_LIMIT = 100_000L
 
 internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : XDebugProcess(session) {
     private data class Command(
-        val steps: Long = 0, val target: Location? = null, val backstep: Boolean = false, val sourceStep: SourceStep? = null,
+        val steps: Long = 0,
+        val target: Location? = null,
+        val backstep: Boolean = false,
+        val sourceStep: SourceStep? = null,
+        val stepOver: StepOver? = null,
     )
 
     private val commands = Channel<Command>(Channel.CONFLATED)
@@ -139,8 +149,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val sourceStep = (context as? MarsSuspendContext)?.sourceStep
         commands.trySend(Command(steps = if (sourceStep == null) 1 else SOURCE_STEP_LIMIT, sourceStep = sourceStep))
     }
-    override fun startStepOver(context: XSuspendContext?) = rejectCommand("debug.call.step.unavailable", context)
-    override fun startStepOut(context: XSuspendContext?) = rejectCommand("debug.call.step.unavailable", context)
+    override fun startStepOver(context: XSuspendContext?) {
+        val stopped = context as? MarsSuspendContext ?: return
+        commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOver = StepOver(stopped.sourceStep)))
+    }
+    override fun startStepOut(context: XSuspendContext?) = rejectCommand("debug.step.out.unavailable", context)
     override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
         val target = position.file.location(position.line)
         if (target == null) rejectCommand("debug.breakpoint.no.code", context)
@@ -203,15 +216,23 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                     }
                     continue
                 }
-                val event = process.runSlice(engine, command.steps) { pc ->
-                    if (skip) {
-                        skip = false
-                        false
-                    } else {
-                        hits = addresses[pc].orEmpty()
-                        stepOrTargetReached = pc in targets || command.sourceStep?.reached(machine.memory, pc) == true
-                        hits.isNotEmpty() || stepOrTargetReached
+                val stepOver = command.stepOver
+                stepOver?.let(engine::addListener)
+                val event = try {
+                    process.runSlice(engine, command.steps) { pc ->
+                        if (skip) {
+                            skip = false
+                            false
+                        } else {
+                            hits = addresses[pc].orEmpty()
+                            val stepReached = stepOver?.reached(machine.memory, pc)
+                                ?: command.sourceStep?.reached(machine.memory, pc)
+                            stepOrTargetReached = pc in targets || stepReached == true
+                            hits.isNotEmpty() || stepOrTargetReached
+                        }
                     }
+                } finally {
+                    stepOver?.let(engine::removeListener)
                 }
                 val reason: StopEvent.Reason = event.reason()
                 when (reason) {
@@ -352,6 +373,30 @@ internal class MarsSuspendContext(
 internal data class SourceStep(private val start: Int, private val origin: Origin) {
     // A loop back to the same address is a new execution of the source statement.
     fun reached(memory: MemoryState, pc: Int): Boolean = pc == start || memory.sourceStatement(pc)?.instructionOrigin != origin
+}
+
+// The simulator worker owns this state for one Step Over command, including across logpoints.
+private class StepOver(private val source: SourceStep?) : SimulatorListener {
+    private val returnAddresses = ArrayDeque<Int>()
+    private var enteredHandler = false
+
+    override fun onStep(event: StepEvent) {
+        when (val transfer = event.transfer() ?: return) {
+            is Call -> returnAddresses.addLast(transfer.returnAddress())
+            is ExceptionEntry -> enteredHandler = true
+        }
+    }
+
+    override fun onStop(event: StopEvent) = Unit
+    override fun onError(event: ErrorEvent) = Unit
+
+    fun reached(memory: MemoryState, pc: Int): Boolean {
+        if (enteredHandler) return true
+        if (returnAddresses.isEmpty()) return source?.reached(memory, pc) != false
+        if (returnAddresses.last() != pc) return false
+        returnAddresses.removeLast()
+        return returnAddresses.isEmpty()
+    }
 }
 
 private fun MemoryState.sourceStatement(pc: Int): ProgramStatement? {

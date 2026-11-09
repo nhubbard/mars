@@ -788,10 +788,10 @@ eligible while the editor is indexing or lacks the containing entry's definition
 assembled source map determines the actual address at debug time.
 
 The Debug view shows one simulated CPU frame. Resume, Pause, Stop, source
-Step Into, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
+Step Into, Step Over, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
-Call-aware stepping reports that it is unavailable.
+Step Out remains pending until the debugger can track callers across commands.
 
 Step Into advances until the live instruction's source origin changes or execution
 returns to the starting address. A pseudo-instruction's emitted instructions share
@@ -801,6 +801,13 @@ that boundary alongside line breakpoints on its execution worker. A source step
 has a 256-instruction limit per simulator slice, and stepping from a position with
 no source origin executes one instruction. The Debug toolbar's Step Instruction
 action always executes one machine instruction.
+
+Step Over follows the same source boundaries when the statement makes no call. For an executed
+linking jump or taken linking branch, it follows the return addresses reported by the simulator.
+This handles nested calls, recursion, delay slots, and link registers other than `$ra`. Breakpoints
+can stop inside a callee, and an exception handler stops the step at its entry. A slice stops at the
+100,000-instruction limit if the call runs that long, keeping control available when code does not
+return conventionally.
 
 Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
 include and repeated macro expansions, aliased instructions and calls, instruction stepping, Run to Cursor,

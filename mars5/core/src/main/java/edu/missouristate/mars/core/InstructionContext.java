@@ -4,6 +4,7 @@ import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.MarsSettings;
+import edu.missouristate.mars.api.StepEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
@@ -36,6 +37,7 @@ public final class InstructionContext {
   private final MarsContext session;
   private final SyscallEnvironment environment;
   private int exitCode;
+  private StepEvent.Transfer lastTransfer;
 
   /** Uses a session's registers and a caller-supplied syscall I/O environment. */
   public InstructionContext(MarsContext session, SyscallEnvironment environment) {
@@ -81,6 +83,18 @@ public final class InstructionContext {
       session.backStepper.addPCRestore(old);
     }
     return old;
+  }
+
+  /** Writes the link register and records call evidence for this instruction. */
+  public void link(int register, int returnAddress) {
+    updateRegister(register, returnAddress);
+    if (register != 0) {
+      lastTransfer = new StepEvent.Call(register, returnAddress);
+    }
+  }
+
+  public StepEvent.Transfer lastTransfer() {
+    return lastTransfer;
   }
 
   public int updateCoprocessor0(int number, int value) {
@@ -233,6 +247,7 @@ public final class InstructionContext {
   private void executeInstruction(ProgramStatement statement, boolean dispatchHandler)
       throws ProcessingException {
     Objects.requireNonNull(statement);
+    lastTransfer = null;
     BackStepper history = session.backStepper;
     boolean recording =
         history != null && history.beginInstruction(registerFile.getProgramCounter(), statement);
@@ -262,6 +277,7 @@ public final class InstructionContext {
         }
         setProgramCounter(memory().exceptionHandlerAddress);
         delayedBranch.clear();
+        lastTransfer = StepEvent.ExceptionEntry.INSTANCE;
       }
       completeInstruction();
     } finally {

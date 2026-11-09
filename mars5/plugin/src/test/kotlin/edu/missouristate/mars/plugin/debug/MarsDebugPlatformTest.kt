@@ -191,8 +191,6 @@ class MarsDebugPlatformTest {
                 }
                 debug.assertPausedAt(include, 2)
             }
-            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
-            debug.assertPausedAt(include, 2)
             withContext(Dispatchers.EDT) { debug.session.stepOut() }
             debug.assertPausedAt(include, 2)
             withContext(Dispatchers.EDT) {
@@ -406,6 +404,114 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `step over a recursive call stops after all matching returns`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-over-recursion.s", """
+                li ${'$'}a0, 2
+                jal descend
+                done: nop
+                li ${'$'}v0, 10
+                syscall
+                descend:
+                beq ${'$'}a0, ${'$'}zero, leaf
+                addiu ${'$'}sp, ${'$'}sp, -4
+                sw ${'$'}ra, 0(${'$'}sp)
+                addiu ${'$'}a0, ${'$'}a0, -1
+                jal descend
+                return_again: lw ${'$'}ra, 0(${'$'}sp)
+                addiu ${'$'}sp, ${'$'}sp, 4
+                leaf: addiu ${'$'}t0, ${'$'}t0, 1
+                jr ${'$'}ra
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 1)
+                val logpoint = addBreakpoint(it, 10)
+                WriteAction.run<RuntimeException> { logpoint.setSuspendPolicy(SuspendPolicy.NONE) }
+            }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            debug.assertPausedAt(file, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x00000003", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `step over respects delay slots custom links and enabled breakpoints`(breakInsideCall: Boolean) = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-over-link.s", """
+                la ${'$'}t0, callee
+                jalr ${'$'}s0, ${'$'}t0
+                addiu ${'$'}t2, ${'$'}t2, 1
+                done: nop
+                li ${'$'}v0, 10
+                syscall
+                callee: j tail
+                nop
+                tail: addiu ${'$'}t2, ${'$'}t2, 2
+                jr ${'$'}s0
+                nop
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 1)
+                if (breakInsideCall) addBreakpoint(it, 8)
+            }
+        }
+        withDebug(file, { delayedBranching = true }) { debug ->
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            debug.assertPausedAt(file, if (breakInsideCall) 8 else 3)
+            withContext(Dispatchers.EDT) {
+                val result = if (breakInsideCall) "0x00000001" else "0x00000003"
+                assertEquals(result, evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `step over stops at an exception handler or reports an unhandled fault`(hasHandler: Boolean) = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            val handler = if (hasHandler) ".ktext 0x80000180\nhandler: nop\n" else ""
+            fixture.addFileToProject("step-over-trap.s", "jal callee\nnop\ncallee: break\n$handler")
+                .virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            if (hasHandler) {
+                debug.assertPausedAt(file, 4)
+                withContext(Dispatchers.EDT) { debug.session.stop() }
+            }
+            assertEquals(if (hasHandler) 130 else 1, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `step over groups a pseudo instruction without a call`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-over-pseudo.s", "li \$t0, 0x12345678\nnop\n")
+                .virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `debugging configured self modifying code steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-patch.s", """
@@ -424,7 +530,7 @@ class MarsDebugPlatformTest {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
                 assertEquals("0x00000000", evaluate(debug.session, frame, "\$t2"))
-                debug.session.stepInto()
+                debug.session.stepOver(false)
             }
             debug.assertPausedAt(file, 4)
             withContext(Dispatchers.EDT) {
@@ -1092,6 +1198,7 @@ class MarsDebugPlatformTest {
                         val session = debugger.debugSessions.single()
                         session.debugProcess.startPausing()
                         session.debugProcess.startStepOver(null)
+                        session.debugProcess.startStepOut(null)
                         val editors = session.debugProcess.editorsProvider
                         val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
                         assertEquals("1", editors.createDocument(project, expression, null, EvaluationMode.EXPRESSION).text)
