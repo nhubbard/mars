@@ -234,9 +234,29 @@ log confirmed that MARS MIPS loaded and the smoke project opened. All six JARs i
 the verified distribution ZIP matched the launched plugin by SHA-256. Visual editor
 acceptance remains open.
 
+## Go to Symbol
+
+IntelliJ's `gotoSymbolContributor` exposes MARS labels, macros, and equivalences in
+Go to Symbol. It uses the declaration index for names and exact offsets, then checks
+each offset against the current named PSI before returning it. Native PSI navigation
+opens the name token. Duplicate declarations remain separate results, and each result
+shows a kind-specific icon and its source filename. The declaration index and navigation share the
+same PSI name extraction.
+
+Jupiter IDE fixtures exercise the registered extension, exact and scoped search,
+duplicate declarations, incomplete declarations, stale offsets, early termination,
+unsaved edits, and file deletion. The IDE navigation descriptors point to the name
+tokens for each declaration kind. Rename requires build-context reference binding.
+
+The clean IntelliJ 2026.3 launch passed 1,272 tests, including 73 plugin tests,
+and the authored plugin code covered all 591 lines and 360 branch outcomes.
+IntelliJ loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256. Visual verification
+remains open because the window controls could not attach to the temporary IDE.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler while building named PSI,
-completion/navigation/docs, detached source
+Continue checking parser edge cases against the Java assembler while building
+completion, build-context reference binding, documentation, and detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

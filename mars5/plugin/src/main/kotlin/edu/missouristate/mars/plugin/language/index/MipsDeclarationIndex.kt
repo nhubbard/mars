@@ -3,7 +3,6 @@ package edu.missouristate.mars.plugin.language.index
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
-import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.DataIndexer
@@ -16,6 +15,7 @@ import com.intellij.util.io.EnumeratorStringDescriptor
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.io.DataInput
 import java.io.DataOutput
 
@@ -36,21 +36,15 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
         content.psiFile.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 ProgressManager.checkCanceled()
-                val kind = when (element.node.elementType) {
-                    MipsTypes.psi("LABEL") -> SymbolKind.LABEL
-                    MipsTypes.psi("MACRO_SIGNATURE") -> SymbolKind.MACRO
-                    MipsTypes.psi("EQUIVALENCE") -> SymbolKind.CONSTANT
-                    else -> null
-                }
-                if (kind != null) {
-                    val name = element.node.findChildByType(NAMES)?.psi
+                if (element is MipsDeclaration) {
+                    val name = element.name
                     if (name != null) {
-                        val scopeStart = if (kind == SymbolKind.MACRO) element.parent else element
+                        val scopeStart = if (element.kind == SymbolKind.MACRO) element.parent else element
                         val macro = PsiTreeUtil.findFirstParent(scopeStart, true) {
                             PsiUtilCore.getElementType(it) == MipsTypes.psi("MACRO_DEFINITION")
                         }
-                        declarations.getOrPut(name.text, ::ArrayList).add(
-                            MipsDeclarationSite(kind, name.textOffset, macro?.textOffset ?: -1),
+                        declarations.getOrPut(name, ::ArrayList).add(
+                            MipsDeclarationSite(element.kind, element.textOffset, macro?.textOffset ?: -1),
                         )
                     }
                 }
@@ -62,10 +56,6 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
 
     companion object {
         val NAME: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
-        private val NAMES = TokenSet.create(
-            MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DIRECTIVE"),
-            MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"),
-        )
     }
 }
 

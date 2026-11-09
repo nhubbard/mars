@@ -9,6 +9,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.platform.syntax.psi.lexer.LexerAdapter
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.tree.TokenSet
+import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 
 class MipsParserDefinition : ParserDefinition {
     override fun createLexer(project: Project?) = LexerAdapter(MipsLexer(), MipsTypes.converter)
@@ -18,7 +20,12 @@ class MipsParserDefinition : ParserDefinition {
     override fun getFileNodeType() = MipsTypes.file
     override fun getCommentTokens() = TokenSet.create(MipsTypes.psi("COMMENT"))
     override fun getStringLiteralElements() = TokenSet.create(MipsTypes.psi("STRING"), MipsTypes.psi("CHARACTER"))
-    override fun createElement(node: ASTNode) = ASTWrapperPsiElement(node)
+    override fun createElement(node: ASTNode) = when (node.elementType) {
+        MipsTypes.psi("LABEL") -> MipsDeclaration(node, SymbolKind.LABEL)
+        MipsTypes.psi("MACRO_SIGNATURE") -> MipsDeclaration(node, SymbolKind.MACRO)
+        MipsTypes.psi("EQUIVALENCE") -> MipsDeclaration(node, SymbolKind.CONSTANT)
+        else -> ASTWrapperPsiElement(node)
+    }
     override fun createFile(viewProvider: FileViewProvider) = MipsFile(viewProvider)
 }
 

@@ -19,6 +19,7 @@
     <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
+    <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>
     <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
     <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
