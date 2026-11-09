@@ -25,7 +25,7 @@ data class MipsReferenceSite(val kind: SymbolKind, val offset: Int, val macroOff
 
 class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 6
+    override fun getVersion(): Int = 7
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -63,9 +63,9 @@ class MipsReferenceIndex : FileBasedIndexExtension<String, List<MipsReferenceSit
         private val EXPANSION_CONTEXTS = TokenSet.create(
             MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("REPLACEMENT"),
         )
-        private val LABEL_KINDS = listOf(SymbolKind.LABEL)
+        private val LABEL_KINDS = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
         private val CONSTANT_KINDS = listOf(SymbolKind.CONSTANT)
-        private val OPERAND_KINDS = listOf(SymbolKind.LABEL, SymbolKind.CONSTANT)
+        private val OPERAND_KINDS = LABEL_KINDS + SymbolKind.CONSTANT
 
         private fun targetKinds(element: PsiElement): List<SymbolKind> {
             val context = PsiUtilCore.getElementType(element.parent)

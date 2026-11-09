@@ -16,6 +16,7 @@ import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -25,6 +26,7 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 
@@ -54,9 +56,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
             }
         }
+        for ((name, _) in externalSymbols(root) { it.startsWith(prefix) }) add(name)
     }
 
-    internal fun labelTargets(root: MipsFile, position: PsiElement): List<MipsDeclaration> {
+    internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<MipsDeclaration> {
         val name = position.text
         val activeMacro = macroOffset(position)
         val local = ArrayList<MipsDeclaration>()
@@ -70,7 +73,52 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
             }
         }
-        return local.ifEmpty { outer }
+        return local.ifEmpty { outer }.ifEmpty {
+            if (allowExternal) listOfNotNull(externalSymbols(root) { it == name }.firstOrNull()?.second) else emptyList()
+        }
+    }
+
+    private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {
+        if (DumbService.isDumb(project)) return@sequence
+        var inMacro = false
+        val definitions = HashMap<String, MipsDeclaration>()
+        val replacements = HashMap<String, String>()
+        for (event in sourcePrefix(root, root.textLength)) {
+            when (event) {
+                is MipsSourceEvent.Begin -> inMacro = true
+                is MipsSourceEvent.End -> inMacro = false
+                is MipsSourceEvent.Declaration -> {
+                    val declaration = event.declaration
+                    val physicalName = declaration.name ?: continue
+                    if (declaration.kind == SymbolKind.CONSTANT) {
+                        definitions.putIfAbsent(physicalName, declaration)
+                    } else if (!inMacro && (matches(physicalName) || physicalName in definitions)) {
+                        val name = externalName(declaration) { symbol ->
+                            definitions[symbol]?.let { definition ->
+                                replacements.getOrPut(symbol) {
+                                    Tokenizer.readEquivalenceReplacement(sourceLine(definition, fromLineStart = true), symbol).orEmpty()
+                                }.ifEmpty { null }
+                            }
+                        }
+                        if (name != null && matches(name)) yield(name to declaration)
+                    }
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    private fun externalName(declaration: MipsDeclaration, replacement: (String) -> String?): String? {
+        val errors = ErrorList()
+        val tokens = Tokenizer.tokenizeWithEquivalences(
+            sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
+        )
+        tokens.discardTrailingComment()
+        if (errors.errorsOccurred() || tokens.size() != 3) return null
+        val size = tokens[2]
+        if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
+        val name = tokens[1]
+        return name.value.takeIf { name.type == TokenTypes.IDENTIFIER || name.type == TokenTypes.OPERATOR }
     }
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
@@ -108,7 +156,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun visitMacroPrefix(root: MipsFile, offset: Int, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
         var open: MipsSourceEvent.Begin? = null
-        visitSourcePrefix(root, offset) { event ->
+        for (event in sourcePrefix(root, offset)) {
             when (event) {
                 is MipsSourceEvent.Begin -> open = open ?: event
                 is MipsSourceEvent.End -> {
@@ -126,7 +174,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         var inMacro = false
         var inData = false
         var dataList = Directives.WORD
-        visitSourcePrefix(root, position.textOffset) { event ->
+        for (event in sourcePrefix(root, position.textOffset)) {
             when (event) {
                 is MipsSourceEvent.Begin -> inMacro = true
                 is MipsSourceEvent.End -> inMacro = false
@@ -137,13 +185,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                         else -> dataList = event.directive
                     }
                 }
-                is MipsSourceEvent.Include -> Unit
+                else -> Unit
             }
         }
         return !inMacro && inData && Directives.isIntegerDirective(dataList)
     }
 
-    private fun visitSourcePrefix(root: MipsFile, offset: Int, visit: (MipsSourceEvent) -> Unit) {
+    private fun sourcePrefix(root: MipsFile, offset: Int): Sequence<MipsSourceEvent> = sequence {
         val visited = hashSetOf(root.viewProvider.virtualFile)
         val pending = ArrayDeque(listOf(mipsSourceEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
         while (pending.isNotEmpty()) {
@@ -154,7 +202,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 continue
             }
             val event = events.next()
-            visit(event)
+            yield(event)
             if (event is MipsSourceEvent.Include) {
                 val included = resolveInclude(event.literal, event.path)
                 if (included is MipsFile && visited.add(included.viewProvider.virtualFile)) {

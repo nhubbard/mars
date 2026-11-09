@@ -457,7 +457,7 @@ class MipsParserPlatformTest {
             assertTrue(program.assemblyDiagnostics.errorMessages.single().message.contains(".set"))
 
             readAction {
-                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET", "SEGMENT").map(MipsTypes::psi).toSet()
+                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET", "SEGMENT", "EXTERN").map(MipsTypes::psi).toSet()
                 val parsed = listOf(entry, included).flatMap { text ->
                     SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
                 }.toSet()

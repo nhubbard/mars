@@ -34,10 +34,17 @@ internal sealed interface MipsSourceEvent {
     }
 
     data class DataDirective(override val offset: Int, val directive: Directives) : MipsSourceEvent
+
+    data class Declaration(val declaration: MipsDeclaration) : MipsSourceEvent {
+        override val offset = declaration.textOffset
+    }
 }
 
 private val directiveStatement = MipsTypes.psi("DIRECTIVE_STATEMENT")
-private val sourceEventTypes = setOf(MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement)
+private val sourceEventTypes = setOf(
+    MipsTypes.psi("MACRO_SIGNATURE"), MipsTypes.psi("END_MACRO"), MipsTypes.psi("STRING"), directiveStatement,
+    MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("EXTERNAL_NAME"),
+)
 private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
     Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE, Directives.ASCII, Directives.ASCIIZ,
@@ -50,7 +57,11 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
         for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes }) {
             ProgressManager.checkCanceled()
             when (element) {
-                is MipsDeclaration -> macroParameters(element)?.let { add(MipsSourceEvent.Begin(element, it)) }
+                is MipsDeclaration -> if (element.kind == SymbolKind.MACRO) {
+                    macroParameters(element)?.let { add(MipsSourceEvent.Begin(element, it)) }
+                } else {
+                    add(MipsSourceEvent.Declaration(element))
+                }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
                 else -> if (element.node.elementType == directiveStatement) {
                     val directive = Directives.matchDirective(element.firstChild.text)

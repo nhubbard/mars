@@ -74,7 +74,7 @@ class MipsReferenceIndexPlatformTest {
             val scope = GlobalSearchScope.fileScope(project.get(), file)
             fun sites(name: String) = index.getValues(MipsReferenceIndex.NAME, name, scope).flatten()
             val macro = source.indexOf(".macro")
-            val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.CONSTANT)
+            val operandKinds = listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.CONSTANT)
             assertEquals(
                 operandKinds.map { MipsReferenceSite(it, source.indexOf("Shared+"), macro) } +
                     SymbolKind.entries.map { MipsReferenceSite(it, source.indexOf("Shared,"), -1) } +
@@ -86,7 +86,7 @@ class MipsReferenceIndexPlatformTest {
             )
             assertEquals(
                 listOf(source.indexOf("NOP"), source.indexOf("NOP)"), source.lastIndexOf("NOP"))
-                    .map { MipsReferenceSite(SymbolKind.LABEL, it, -1) },
+                    .flatMap { offset -> listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL).map { MipsReferenceSite(it, offset, -1) } },
                 sites("NOP"),
             )
             assertEquals(
@@ -106,7 +106,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(6, extension.version)
+            assertEquals(7, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

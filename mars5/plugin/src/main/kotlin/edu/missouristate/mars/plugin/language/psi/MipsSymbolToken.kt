@@ -58,7 +58,10 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             }
             val resolvesLabel = label || data == DataLabelOperand.EXPORT ||
                 data != null && resolvesDataLabel(file, analysis)
-            return if (resolvesLabel) analysis.labelTargets(file, element).map(::PsiElementResolveResult).toTypedArray() else emptyArray()
+            return if (resolvesLabel) {
+                analysis.labelTargets(file, element, allowExternal = data != DataLabelOperand.EXPORT)
+                    .map(::PsiElementResolveResult).toTypedArray()
+            } else emptyArray()
         }
 
         private fun resolvesDataLabel(file: MipsFile, analysis: MarsAnalysisService): Boolean {

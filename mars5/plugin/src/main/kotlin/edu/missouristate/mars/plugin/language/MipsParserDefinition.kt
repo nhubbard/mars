@@ -24,6 +24,7 @@ class MipsParserDefinition : ParserDefinition {
         MipsTypes.psi("LABEL") -> MipsDeclaration(node, SymbolKind.LABEL)
         MipsTypes.psi("MACRO_SIGNATURE") -> MipsDeclaration(node, SymbolKind.MACRO)
         MipsTypes.psi("EQUIVALENCE") -> MipsDeclaration(node, SymbolKind.CONSTANT)
+        MipsTypes.psi("EXTERNAL_NAME") -> MipsDeclaration(node, SymbolKind.EXTERNAL)
         else -> ASTWrapperPsiElement(node)
     }
     override fun createFile(viewProvider: FileViewProvider) = MipsFile(viewProvider)

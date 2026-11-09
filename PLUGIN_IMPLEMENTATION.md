@@ -208,7 +208,21 @@ identified by the editor.
 
 The query uses the current file as its entry and follows physical directives. Segment or
 list changes created by macro or equivalence expansion still require build-context binding.
-`.extern` storage declarations and separate assembly entries remain separate symbol work.
+Separate assembly entries still require build-context binding.
+
+## External storage declarations
+
+The generated parser preserves the complete `.extern` payload and exposes addressable names
+as native declarations. References prefer a local label, then the first valid external
+reservation in include order. `.globl` continues to bind only local definitions. Navigation
+and operand completion use the Java tokenizer to check the expanded name and nonnegative
+size, including physical `.eqv` aliases visible at the reservation. The per-file declaration
+and reference indexes rebuild for the external symbol kind.
+
+The query follows the current entry and physical includes. Storage created only during macro
+expansion and visibility across separate assembly entries still need build-context binding.
+The fixtures cover names, aliases, invalid reservations, parser recovery, completion, and the
+addresses the assembler allocates for duplicate declarations and subsequent reservations.
 
 ## Native declaration index
 

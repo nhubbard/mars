@@ -40,6 +40,7 @@ class MipsLexer : LexerBase() {
                 Directives.EQV -> MipsSyntaxTypes.EQV
                 Directives.INCLUDE -> MipsSyntaxTypes.INCLUDE
                 Directives.SET -> MipsSyntaxTypes.SET
+                Directives.EXTERN -> MipsSyntaxTypes.EXTERN
                 Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT -> MipsSyntaxTypes.SEGMENT
                 null -> MipsSyntaxTypes.WORD
                 else -> MipsSyntaxTypes.DIRECTIVE

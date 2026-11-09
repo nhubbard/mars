@@ -11,7 +11,7 @@ data class OccurrenceId(val source: SourceId, val localId: String) {
     init { require(localId.isNotBlank()) { "Occurrence identity must not be blank" } }
 }
 
-enum class SymbolKind { LABEL, MACRO, CONSTANT }
+enum class SymbolKind { LABEL, MACRO, CONSTANT, EXTERNAL }
 
 data class SymbolKey(val name: String, val kind: SymbolKind) {
     init { require(name.isNotBlank()) { "Symbol name must not be blank" } }

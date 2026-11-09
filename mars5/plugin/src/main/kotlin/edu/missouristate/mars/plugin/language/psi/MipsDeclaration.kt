@@ -23,6 +23,7 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapper
             SymbolKind.LABEL -> AllIcons.Nodes.Bookmark
             SymbolKind.MACRO -> AllIcons.Nodes.Function
             SymbolKind.CONSTANT -> AllIcons.Nodes.Constant
+            SymbolKind.EXTERNAL -> AllIcons.Nodes.Field
         }, null,
     )
 
