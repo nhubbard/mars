@@ -26,6 +26,7 @@ import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
+import edu.missouristate.mars.plugin.tools.xray.XRayTrace
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -72,6 +73,7 @@ internal class MarsProcessHandler(
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
     val branchHistory = BranchHistoryTable()
+    val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
 
@@ -155,7 +157,9 @@ internal class MarsProcessHandler(
                                 instructionCounter.record(instruction)
                                 instructionStatistics.record(word, instruction)
                                 branchHistory.record(event)
+                                xray.record(event)
                             }
+                            override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
                                 if (execution.isActive) {

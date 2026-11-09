@@ -17,6 +17,7 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
+import edu.missouristate.mars.plugin.tools.xray.XRayView
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -48,6 +49,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab(Mode.BITMAP.nameKey, bitmap.component, bitmap)
         val references = MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
         addTab(Mode.REFERENCES.nameKey, references.component, references)
+        val xray = XRayView(project)
+        addTab("xray.name", xray.component, xray)
     }
 }
 

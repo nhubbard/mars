@@ -1348,6 +1348,8 @@ class MarsDebugPlatformTest {
         }
         withDebug(source) { debug ->
             debug.assertPausedAt(source, 0)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            assertTrue(process.xray.snapshot().isEmpty())
             val (action, event) = withContext(Dispatchers.EDT) {
                 val result = backstepAction(debug.session)
                 val (action, event) = result
@@ -1360,6 +1362,7 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(source, 3)
             assertEquals("7", debug.stdout.toString())
+            assertEquals(listOf(1L, 2L, 3L), process.xray.snapshot().map { it.stepCount() })
             for (line in 2 downTo 0) {
                 withContext(Dispatchers.EDT) {
                     action.update(event)
@@ -1368,6 +1371,7 @@ class MarsDebugPlatformTest {
                 }
                 debug.assertPausedAt(source, line)
                 assertEquals("7", debug.stdout.toString())
+                assertEquals(line, process.xray.snapshot().size)
             }
             withContext(Dispatchers.EDT) {
                 action.update(event)
