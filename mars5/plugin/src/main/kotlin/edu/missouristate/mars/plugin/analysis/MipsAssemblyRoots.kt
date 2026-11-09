@@ -12,20 +12,36 @@ import com.intellij.psi.util.PsiModificationTracker
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
+import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.dotSegments
 import java.nio.file.Path
 
-internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
+private data class AssemblyAncestors(val roots: List<VirtualFile>, val withoutRoot: Set<VirtualFile>)
+
+private fun assemblyAncestors(file: MipsFile): AssemblyAncestors =
     CachedValuesManager.getCachedValue(file) {
-        val entry = mipsAssemblyRoots(file.project, file.viewProvider.virtualFile).singleOrNull()
-            ?.let { it.toNioPath().toAbsolutePath().normalize() }
         CachedValueProvider.Result.create(
-            entry, PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
+            assemblyAncestors(file.project, file.viewProvider.virtualFile),
+            PsiModificationTracker.MODIFICATION_COUNT, VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS,
         )
     }
 
+internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
+    assemblyAncestors(file).roots.singleOrNull()?.let { it.toNioPath().toAbsolutePath().normalize() }
+
+/** In a graph without an entry, an outgoing edge to an ancestor closes a cycle. */
+internal fun closesRootlessMipsIncludeCycle(file: MipsFile, literal: MipsStringLiteral, path: String): Boolean {
+    val candidates = assemblyAncestors(file).withoutRoot
+    if (candidates.isEmpty()) return false
+    val target = resolveMipsInclude(literal, path) ?: return false
+    return target.virtualFile in candidates
+}
+
 /** Finds top-level MIPS entries, including the file itself when it has no MIPS includers. */
-internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<VirtualFile> {
+internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<VirtualFile> =
+    assemblyAncestors(project, selected).roots
+
+private fun assemblyAncestors(project: Project, selected: VirtualFile): AssemblyAncestors {
     val manager = FileIncludeManager.getManager(project)
     val psi = PsiManager.getInstance(project)
     val visited = hashSetOf(selected)
@@ -54,5 +70,5 @@ internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<Vi
         if (includers.isEmpty()) roots.add(file)
         for (includer in includers) if (visited.add(includer)) pending.addLast(includer)
     }
-    return roots
+    return AssemblyAncestors(roots, if (roots.isEmpty()) visited else emptySet())
 }

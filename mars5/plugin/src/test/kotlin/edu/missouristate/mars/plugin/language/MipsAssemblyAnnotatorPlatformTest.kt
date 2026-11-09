@@ -381,6 +381,51 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `rootless cycles highlight each participating path and respect the selected build`() = timeoutRunBlocking<Unit> {
+        val (first, second, third) = withContext(Dispatchers.EDT) {
+            val a = fixture.addFileToProject("a.asm", ".include \"b.s\"\n.include \"leaf.s\"\n.include \"missing.s\"\n")
+            val b = fixture.addFileToProject("b.s", ".include \"c.s\"\n")
+            val c = fixture.addFileToProject("c.s", ".include \"a.asm\"\n")
+            fixture.addFileToProject("leaf.s", ".asciiz \"ordinary string\"\n")
+            Triple(a.virtualFile, b.virtualFile, c.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        for ((file, target) in listOf(first to "b.s", second to "c.s", third to "a.asm")) {
+            withContext(Dispatchers.EDT) {
+                fixture.configureFromExistingVirtualFile(file)
+                assertNull(annotator.collectInformation(fixture.file))
+                val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+                val error = errors.single()
+                assertEquals("Recursive .include cycle through $target", error.description)
+                assertEquals("\"$target\"", fixture.file.text.substring(error.startOffset, error.endOffset))
+            }
+        }
+
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(first)
+            edit(third, "nop\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors.single().description.startsWith("Error reading include file"))
+            edit(third, ".include \"a.asm\"\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertEquals("Recursive .include cycle through b.s", errors.single().description)
+        }
+
+        project.service<MarsBuildService>().assemble(first.toNioPath())
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(third)
+            val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors.single().description.startsWith("Recursive include of file"))
+        }
+    }
+
+    @Test
     fun `editor diagnostic ranges handle absent positions and columns beyond the line`() = timeoutRunBlocking<Unit> {
         readAction {
             val document = EditorFactory.getInstance().createDocument("nop\nj label\n")

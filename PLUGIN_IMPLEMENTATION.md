@@ -383,6 +383,11 @@ is created. Tests verify fresh native resolution and reverse lookup for that cas
 requires unresolved path sentinels and VFS structure dependencies for future semantic caches.
 Production query consumers must follow that rule. Visual acceptance remains open as described above.
 
+When an include group has no top-level entry, the editor highlights its cyclic
+paths using the cached reverse include graph. Includes that leave the cycle
+remain ordinary references. Selecting an assembly in Build uses the assembler's
+own diagnostic for the directive that closes the cycle.
+
 ## Include navigation and refactoring
 
 The native AST factory creates a PSI leaf for MARS string tokens. Only strings selected by the
