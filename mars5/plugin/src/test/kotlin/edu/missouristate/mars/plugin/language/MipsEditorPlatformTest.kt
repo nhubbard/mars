@@ -5,15 +5,19 @@ import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.EditorTestUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -215,6 +219,59 @@ class MipsEditorPlatformTest {
             fixture.configureByText(MipsFileType, "# <caret>")
             fixture.type("\"'`")
             fixture.checkResult("# \"'`<caret>")
+        }
+    }
+
+    @Test
+    fun `native folding hides only the macro body and leaves its header and terminator visible`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val header = "macro_label: .MaCrO emit (%value) # signature"
+            val body = "  # body comment\n  addiu \$t0, \$zero, %value"
+            val source = "$header\n$body\n.EnD_mAcRo,, # terminator\nnext: nop\n"
+            for (extension in listOf("asm", "s")) {
+                fixture.configureByText("fold.$extension", source)
+                val editor = fixture.editor
+                EditorTestUtil.buildInitialFoldingsInBackground(editor)
+                val fold = editor.foldingModel.allFoldRegions.single()
+                assertTrue(fold.isExpanded)
+                assertEquals(header.length, fold.startOffset)
+                assertEquals(source.indexOf("\n.EnD_mAcRo"), fold.endOffset)
+                assertEquals("\n$body", source.substring(fold.startOffset, fold.endOffset))
+                assertEquals(" …", fold.placeholderText)
+                editor.caretModel.moveToOffset(source.indexOf("emit"))
+                fixture.performEditorAction(IdeActions.ACTION_COLLAPSE_REGION)
+                assertFalse(fold.isExpanded)
+                fixture.performEditorAction(IdeActions.ACTION_EXPAND_REGION)
+                assertTrue(fold.isExpanded)
+                assertEquals(source, editor.document.text)
+            }
+        }
+    }
+
+    @Test
+    fun `folding follows valid terminators after unsaved edits during indexing`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText(PlainTextFileType.INSTANCE, ".macro ignored\nnop\n.end_macro")
+            assertTrue(MipsFoldingBuilder().buildFoldRegions(fixture.file, fixture.editor.document, true).isEmpty())
+            val header = ".macro pending"
+            val body = ".end_macro stray\n.end_macro .include \"part.s\"\ninside: nop"
+            val source = ".macro empty\n.end_macro\n.macro blank\n\n.end_macro\n$header\n$body\n"
+            fixture.configureByText("unfinished.asm", source)
+            val editor = fixture.editor
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                EditorTestUtil.buildInitialFoldingsInBackground(editor)
+                assertTrue(editor.foldingModel.allFoldRegions.isEmpty())
+                WriteCommandAction.runWriteCommandAction(current) {
+                    editor.document.insertString(source.length, ".end_macro,, # real terminator\nnext: nop\n")
+                }
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+                EditorTestUtil.buildInitialFoldingsInBackground(editor)
+                val fold = editor.foldingModel.allFoldRegions.single()
+                assertEquals(source.indexOf(header) + header.length, fold.startOffset)
+                assertEquals(source.length - 1, fold.endOffset)
+                assertEquals("\n$body", editor.document.text.substring(fold.startOffset, fold.endOffset))
+            }
         }
     }
 

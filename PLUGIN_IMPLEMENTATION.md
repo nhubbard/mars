@@ -99,6 +99,14 @@ it works with unsaved edits and during indexing. It shows declarations present
 in the current file's syntax. Include expansion and generated symbols are handled
 by the separate source analysis and navigation features.
 
+## Native macro folding
+
+IntelliJ can collapse nonblank bodies of physically complete multi-line macros
+in `.asm` and `.s` files. The opening signature, any inline header comment, and
+the closing directive remain visible. Folding follows the current file's PSI,
+including unsaved changes, and leaves incomplete macros expanded until a
+standalone terminator appears.
+
 ## Mnemonic and directive completion
 
 IntelliJ's basic completion uses the generated parser's statement-head PSI and the Java core's
