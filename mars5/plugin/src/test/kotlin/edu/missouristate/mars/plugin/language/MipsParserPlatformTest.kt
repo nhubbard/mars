@@ -665,6 +665,38 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `character literals may contain delimiters and assembler escapes`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val literals = listOf("','", "'#'", "':'", "'('", "')'", "'+'", "'-'", "'\"'", "' '",
+            "'\\''", "'\\\\'", "'\\n'", "'\\0'", "'\\+77'", "'\\-00'")
+        val source = ".data\n.word ${literals.joinToString(", ")}\n.text\nnop\n"
+        assertAssembles(directory, source, 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        val characters = ",#:()+-\" '\\\n\u0000?\u0000"
+        assertEquals(characters.map(Char::code),
+            literals.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
+        readAction {
+            assertEquals(literals, descendants(assertParses(source).node, "LITERAL_EXPR").map { it.text }.toList())
+        }
+    }
+
+    @Test
+    fun `unfinished characters retain later operands replacement tokens and macro arguments`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = ".byte 'A, 'B', 7 # keep\n.eqv BROKEN 'C, 8\nemit('D, 9)\nnext: nop\n"
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, source)
+            assertEquals(source, file.text)
+            val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            assertEquals(listOf("'A", "'C", "'D"), errors.map { it.text })
+            assertTrue(errors.all { it.errorDescription == "Unterminated character literal" })
+            assertEquals(listOf("'A", "'B'", "7"), descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("'C", "8"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
+            assertEquals(listOf("(", "'D", "9", ")"), descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
+            assertEquals(listOf("# keep"), descendants(file.node, "COMMENT").map { it.text }.toList())
+            assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+        }
+    }
+
+    @Test
     fun `double-quoted data follows assembler quote boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val first = "\"A" + "\\\\" + "\"#B\""
         val second = "\"C" + "\\\\" + "\""

@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -73,7 +73,7 @@ macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 // Equivalence replacement is source text, not an eagerly evaluated expression.
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
-private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | STRING | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN
+private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | STRING | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN | unfinished_character
 private signed_number ::= <<startsSignedNumber>> (PLUS | MINUS) NUMBER
 // MARS warns and ignores .set, so its payload is a sequence of assembler tokens.
 ignored_set ::= SET assembly_token* {elementType=directive_statement}
@@ -115,7 +115,8 @@ add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
 address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
 group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
-literal_expr ::= NUMBER | STRING | CHARACTER
+literal_expr ::= NUMBER | STRING | CHARACTER | unfinished_character
+private unfinished_character ::= <<recoverCharacterLiteral>>
 reference_expr ::= WORD | MNEMONIC | REGISTER | DOLLAR_WORD | PARAMETER | DIRECTIVE | SET
 
 private nested_expression ::= expr

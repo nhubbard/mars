@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language.syntax
 
+import com.intellij.DynamicBundle
 import com.intellij.platform.syntax.SyntaxElementType
 import com.intellij.platform.syntax.element.SyntaxTokenTypes.WHITE_SPACE
 import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
@@ -15,6 +16,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NUMBER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PARAMETER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.PLUS
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.REGISTER
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.UNCLOSED_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.WORD
 
 internal object DebuggerExpressionParsing : ParserUserState
@@ -26,6 +28,7 @@ private val addressOffsets = setOf(NUMBER, CHARACTER, WORD, MNEMONIC, DOLLAR_WOR
 private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
+private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
 
 /** Apply the assembler's boundaries for address and signed operands. */
 @Suppress("UNUSED_PARAMETER")
@@ -56,6 +59,17 @@ internal fun continueOperand(runtime: SyntaxGeneratedParserRuntime, level: Int):
 internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
+}
+
+/** Retain the broken literal and keep parsing the other operands on the line. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.tokenType != UNCLOSED_CHARACTER) return false
+    val marker = builder.mark()
+    builder.advanceLexer()
+    marker.error(syntaxMessages.getMessage("syntax.character.unclosed"))
+    return true
 }
 
 // MARS ignores separators when deciding whether the previous token is an identifier.

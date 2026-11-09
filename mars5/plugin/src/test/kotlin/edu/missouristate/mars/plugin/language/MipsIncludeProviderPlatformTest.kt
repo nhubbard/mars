@@ -64,7 +64,7 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(4, provider.version)
+        assertEquals(5, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
     }

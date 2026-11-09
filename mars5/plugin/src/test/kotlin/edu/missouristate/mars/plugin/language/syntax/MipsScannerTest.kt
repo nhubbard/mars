@@ -73,6 +73,23 @@ class MipsScannerTest {
     }
 
     @Test
+    fun `unfinished character literals leave delimiters and later values available`() {
+        val source = "'A, 'B', 7 # still a comment"
+        val tokens = MipsScanner.scan(source)
+        assertEquals(listOf("'A", ",", " ", "'B'", ",", " ", "7", " ", "# still a comment"),
+            tokens.map { source.substring(it.start, it.end) })
+        assertEquals(
+            listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMA, MipsTokenKind.SPACE,
+                MipsTokenKind.CHARACTER, MipsTokenKind.COMMA, MipsTokenKind.SPACE, MipsTokenKind.NUMBER,
+                MipsTokenKind.SPACE, MipsTokenKind.COMMENT),
+            tokens.map { it.kind },
+        )
+        assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.COMMENT), kinds("'# comment"))
+        assertEquals(listOf(MipsTokenKind.UNCLOSED_CHARACTER, MipsTokenKind.SPACE), kinds("' "))
+        assertEquals(MipsToken(MipsTokenKind.UNCLOSED_CHARACTER, 0, 1), MipsScanner.next("'#'", 0, 2))
+    }
+
+    @Test
     fun `broken strings never consume the next line and exponent signs do not eat address offsets`() {
         for (newline in listOf("\n", "\r", "\r\n")) {
             for (quote in listOf("\"", "'")) {

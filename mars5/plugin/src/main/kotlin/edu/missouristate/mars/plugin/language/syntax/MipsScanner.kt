@@ -11,6 +11,8 @@ data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
 
 /** Lossless file-local scanning. Every token ends at a restartable boundary; strings end at EOL. */
 object MipsScanner {
+    private const val characterDelimiters = " \t,:()#\"+-"
+
     fun scan(source: CharSequence): List<MipsToken> = buildList {
         var position = 0
         while (position < source.length) {
@@ -51,7 +53,13 @@ object MipsScanner {
             first == '\'' -> {
                 var closed = false
                 while (position < end && source[position] != '\r' && source[position] != '\n') {
-                    val character = source[position++]
+                    val character = source[position]
+                    // A separator can itself be the character, as in ',' or '#'.
+                    if (character in characterDelimiters &&
+                        !(position == start + 1 && position + 1 < end && source[position + 1] == '\'')) {
+                        break
+                    }
+                    position++
                     if (character == '\'') {
                         closed = true
                         break

@@ -633,6 +633,12 @@ keep their full spelling. The core fixture checks the resulting data and the
 expanded source text. The IDE fixture checks the literal's PSI and the emitted
 instruction.
 
+An unfinished character literal ends at the next separator, unless that separator
+is the character inside a closed literal. The parser marks the unfinished span
+and retains later data operands, equivalence replacement tokens, macro arguments,
+and comments. The assembler-backed fixture checks delimiter characters, escaped
+apostrophes and backslashes, and signed octal escapes.
+
 ## Macro substitution positions
 
 Macro expansion uses the token spans from the equivalence-processed body and
