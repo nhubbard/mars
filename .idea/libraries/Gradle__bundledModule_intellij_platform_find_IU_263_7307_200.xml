@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="Gradle: bundledModule:intellij.platform.find:IU-263.7307.200" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="bundledModule" artifactId="intellij.platform.find" version="IU-263.7307.200" baseVersion="IU-263.7307.200" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/lib/intellij.platform.find.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

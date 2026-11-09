@@ -50,6 +50,116 @@
     <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.buildView:IU-263.7307.200" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger:IU-263.7307.200" level="project" />
     <orderEntry type="module-library" scope="PROVIDED">
+      <library name="Gradle: bundledPlugin:com.intellij.java:IU-263.7307.200">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/debugger-memory-agent.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/idea_rt.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij-test-discovery-agent.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.compiler.antTasks.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.compiler.instrumentationUtil.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.compiler.instrumentationUtil.java8.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.debugger.libraries.jb.jdi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.frontback.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.frontback.psi.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.frontback.psi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.guiForms.compiler.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.psi.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.psi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.java.syntax.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.libraries.jps.javac.extension.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.libraries.test.discovery.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/intellij.platform.jps.build.javac.rt.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/java-impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/jps-launcher.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.jvm.advanced.java.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.jvm.advanced.java.logpoints.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.jvm.advanced.mcpServer.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.logpoints.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.logpoints.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.logpoints.frontend.split.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.logpoints.java.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.debugger.logpoints.shared.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.analysis.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.analysis.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.backend.split.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.bookmarks.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.codeserver.core.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.codeserver.highlighting.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.compiler.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.compiler.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.copyright.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.impl.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.impl.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.impl.shared.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.debugger.memory.agent.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.duplicates.analysis.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.duplicates.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.duplicatesDetection.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.impl.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.impl.dashboard.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.impl.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.impl.shared.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.execution.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.featuresTrainer.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.frontend.split.base.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.frontend.split.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.impl.inspections.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.impl.refactorings.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.indexing.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.indexing.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.indexing.serializers.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.jam.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.jam.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.langInjection.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.langInjection.jps.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.manifest.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.performancePlugin.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.promo.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.remoteServers.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.remoteServers.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.structuralSearch.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.structureView.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.terminal.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.terminal.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.terminal.shared.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.todo.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.typeMigration.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.uast.ide.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.uast.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.ui.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.ultimate.icons.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.unscramble.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.vcs.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.java.xml.dom.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jsp.base.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jsp.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jsp.spi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jvm.analysis.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jvm.analysis.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jvm.analysis.quickFix.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.jvm.analysis.refactoring.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.libraries.completion.ranking.java.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.platform.jps.build.dependencyGraph.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.platform.jps.build.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.platform.uast.ide.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.platform.uast.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.profiler.ultimate.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.profiler.ultimate.vcs.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/modules/intellij.uiDesigner.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java/lib/sa-jdwp.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="PROVIDED">
       <library name="Gradle: idea:idea:aarch64:2026.3">
         <CLASSES>
           <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/lib/external-system-rt.jar!/" />
@@ -306,6 +416,164 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.rpc:IU-263.7307.200" level="project" />
+    <orderEntry type="module-library" scope="PROVIDED">
+      <library name="Gradle: bundledPlugin:com.intellij.xml:IU-263.7307.200">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.libraries.isorelax.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.libraries.jing.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.libraries.xerces.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.libraries.xml.resolver.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.relaxng.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.analysis.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.analysis.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.dom.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.dom.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.emmet.backend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.emmet.frontend.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.emmet.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.emmet.shared.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.langInjection.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.parser.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.psi.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.psi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.structureView.impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.structureView.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.syntax.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.ui.common.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/modules/intellij.xml.vcs.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/xml-plugin/lib/xml-plugin.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" scope="PROVIDED">
+      <library name="Gradle: bundledPlugin:intellij.java.aetherDependencyResolver.plugin:IU-263.7307.200">
+        <CLASSES>
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.maven.resolver.provider.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.maven.resolver.transport.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/intellij.libraries.plexus.utils.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/java-aetherDependencyResolver-plugin.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-builder-support.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-model-builder.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-model.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-repository-metadata.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-api.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-connector-basic.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-impl.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-named-locks.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-provider.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-spi.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-transport-file.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-transport-http.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/maven-resolver-util.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/modules/intellij.java.aetherDependencyResolver.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/modules/intellij.repository.search.completion.jar!/" />
+          <root url="jar://$USER_HOME$/.gradle/caches/9.9.0/transforms/989e9d8a9d8a47058441f85883a290a1/transformed/extracted/plugins/java-aetherDependencyResolver-plugin/lib/modules/intellij.repository.search.ultimate.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.stream:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.threadDumpParser:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.kernel.backend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.backend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.externalSystem:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.structureView:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.externalSystem.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.builtInServer.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ide.favoritesTreeView:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ide.internal:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ml:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.projectView:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.projectView.backend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.regexp:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.spellchecker:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.wsl.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ide.designer:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.feedback:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.kotlin.metadata:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.frontend.split:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.langInjection:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.rd.client:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.frontend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.rpc.backend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.polySymbols:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.polySymbols.web:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.rpc.topics:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.commons.cli:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.lucene.common:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ssh:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.remoteController:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.java.websocket:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jsch.agent.proxy:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jsch.agent.proxy.sshj:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.sshj:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.buildScripts.downloader:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.eel.tcp:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.externalProcessAuthHelper:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.find:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.frontend.split.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.frontend.split.connection:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.managed.cache:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.settings.local:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.split:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.split.connection:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.split.connection.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.split.protocol:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.split.statistics:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.undo.split:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.rd.client.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.frontend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.rpc:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.shared:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.testRunner:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.debugger.impl.ui:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.rd.platform:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.rd.ui:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jzlib:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ssh.core:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.teamcity.service.messages:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.buildScripts.concurrency:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.daemon.client:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.daemon.client:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.daemon.light:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ijent.ssh:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ijent.ssh.daemon:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.rd.ide.model.generated:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.kernel.base.frontend.split:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.plugins.frontend.split.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.kernel.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.rpc.split:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.kotlinx.serialization.cbor:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.codeWithMe.lobby.server.api:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.ice4j:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jitsi.utils:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jna:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jnaerator.runtime:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.quiche.jna.stubs:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.tls.channel:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.rpc.topics.frontend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.execution.impl.frontend:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.jvm.native.trusted.roots:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.ktor.client.cio:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledPlugin:com.intellij.modules.ultimate:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ijent.community.ui:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ijent.impl:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.daemon.connection.ssh.prompts:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ide.updateChecker:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.pluginManager.shared.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.plugins.shared.split.base:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.grpc:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.grpc.netty.shaded:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.libraries.protobuf.kotlin:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.daemon.statistics:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ssh.ui:IU-263.7307.200" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="Gradle: bundledModule:intellij.platform.ide.remote:IU-263.7307.200" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: com.google.dagger:dagger:2.59.2" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: jakarta.inject:jakarta.inject-api:2.0.1" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: javax.inject:javax.inject:1" level="project" />
