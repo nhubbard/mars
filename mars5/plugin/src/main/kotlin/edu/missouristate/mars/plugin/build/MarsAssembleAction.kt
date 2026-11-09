@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.task.ProjectTaskManager
 import edu.missouristate.mars.plugin.language.MipsFileType
 
 internal open class MarsAssembleAction(
@@ -26,7 +27,7 @@ internal open class MarsAssembleAction(
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = sourceFile(e) ?: return
-        project.service<MarsBuildService>().assembleInBackground(MarsSourceSet(file.toNioPath(), mode))
+        ProjectTaskManager.getInstance(project).run(MarsBuildTask(MarsSourceSet(file.toNioPath(), mode)))
     }
 
     private fun sourceFile(e: AnActionEvent) = (entry ?: e.getData(CommonDataKeys.VIRTUAL_FILE))?.takeIf {
@@ -46,7 +47,7 @@ internal class MarsAssembleProjectAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val sources = project.service<MarsAssemblySettings>().projectSourceSet() ?: return
-        project.service<MarsBuildService>().assembleInBackground(sources)
+        ProjectTaskManager.getInstance(project).run(MarsBuildTask(sources))
     }
 }
 

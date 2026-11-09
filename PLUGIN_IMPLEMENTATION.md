@@ -1326,6 +1326,13 @@ portability. IntelliJ refreshes editor diagnostics and symbol resolution
 when the list changes. Project builds use unsaved source text and the
 project's exception handler.
 
+The MIPS Build menu actions submit full assembly tasks through IntelliJ's
+`ProjectTaskManager`. The MARS runner handles its own tasks and uses the
+same source capture and Build output as Run and Debug. A batch assembles
+each distinct source selection once, reports assembly errors to the caller,
+and stops pending assembly tasks on cancellation. Java and Kotlin builds
+continue through their existing runners.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

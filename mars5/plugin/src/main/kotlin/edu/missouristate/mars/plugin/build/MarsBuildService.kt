@@ -17,6 +17,8 @@ import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
+import com.intellij.task.ProjectTaskRunner
+import com.intellij.task.TaskRunnerResults
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.di.MarsComponent
@@ -30,19 +32,29 @@ import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.future.asCompletableFuture
+import org.jetbrains.concurrency.asPromise
+
+internal val buildMessages = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
-    fun assembleInBackground(sourceSet: MarsSourceSet) = scope.launch(Dispatchers.Default) {
-        withBackgroundProgress(project, bundle.getMessage("build.progress")) { assemble(sourceSet) }
-    }
+    fun assembleTasks(tasks: List<MarsBuildTask>) = scope.async<ProjectTaskRunner.Result>(Dispatchers.Default) {
+        var result = TaskRunnerResults.SUCCESS
+        withBackgroundProgress(project, buildMessages.getMessage("build.progress")) {
+            for (task in tasks.distinctBy(MarsBuildTask::sources)) {
+                if (!assemble(task.sources)) result = TaskRunnerResults.FAILURE
+            }
+        }
+        result
+    }.asCompletableFuture().asPromise()
 
     internal suspend fun assemble(entry: Path) = assemble(MarsSourceSet(entry))
 
-    internal suspend fun assemble(sourceSet: MarsSourceSet) {
+    internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean {
         val component = MarsSessionService.createMarsComponent()
-        component.context().use { assemble(sourceSet, component, activateBuildView = true) }
+        return component.context().use { assemble(sourceSet, component, activateBuildView = true) }
     }
 
     internal suspend fun assemble(
@@ -58,7 +70,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         val analysis = project.service<MarsAnalysisService>()
         val symbolBuild = analysis.beginSymbolBuild(sourceSet, options)
         val descriptor = DefaultBuildDescriptor(
-            Any(), bundle.getMessage("build.title", entry.fileName.toString()),
+            Any(), buildMessages.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
         ).apply { isActivateToolWindowWhenAdded = activateBuildView }
         val progressDescriptor = object : BuildProgressDescriptor {
@@ -104,10 +116,6 @@ internal class MarsBuildService(private val project: Project, private val scope:
             succeeded -> progress.finish()
             else -> progress.fail()
         }
-    }
-
-    companion object {
-        private val bundle = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
     }
 }
 

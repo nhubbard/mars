@@ -32,6 +32,7 @@ import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.PathChooserDialog
 import com.intellij.openapi.fileChooser.impl.FileChooserFactoryImpl
 import com.intellij.openapi.options.ConfigurationException
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
@@ -46,6 +47,11 @@ import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.task.ProjectTask
+import com.intellij.task.ProjectTaskContext
+import com.intellij.task.ProjectTaskManager
+import com.intellij.task.ProjectTaskRunner
+import com.intellij.task.impl.ProjectTaskList
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
@@ -78,6 +84,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
+import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -92,6 +99,71 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `native build task batches report failures and assemble duplicate requests once`() = timeoutRunBlocking<Unit> {
+        val (first, broken, last) = withContext(Dispatchers.EDT) {
+            fun task(name: String, source: String): MarsBuildTask =
+                MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
+            Triple(task("first.asm", "nop\n"), task("broken.asm", "la \$t0, undefined\n"), task("last.asm", "nop\n"))
+        }
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val context = ProjectTaskContext()
+            val unrelated = ProjectTask { "Unrelated build task" }
+            val runner = ProjectTaskRunner.EP_NAME.findExtensionOrFail(MarsProjectTaskRunner::class.java)
+            assertTrue(runner.canRun(project, first, context))
+            assertFalse(runner.canRun(project, unrelated, null))
+            assertEquals("Assemble first.asm", first.presentableName)
+            assertFalse(first.isIncrementalBuild)
+            val tasks = ProjectTaskList.asList(first, MarsBuildTask(first.sources), broken, unrelated, last)
+            val manager = ProjectTaskManager.getInstance(project)
+            val result = manager.run(context, tasks).await()
+            assertSame(context, result.context)
+            assertFalse(result.isAborted)
+            assertTrue(result.hasErrors())
+            val received = buildList {
+                while (true) add(events.tryReceive().getOrNull() ?: break)
+            }
+            val starts = received.filterIsInstance<StartBuildEvent>()
+            val finishes = received.filterIsInstance<FinishBuildEvent>()
+            assertEquals(listOf(first.presentableName, broken.presentableName, last.presentableName), starts.map { it.message })
+            assertEquals(starts.map { it.id }, finishes.map { it.id })
+            assertInstanceOf(SuccessResult::class.java, finishes[0].result)
+            assertInstanceOf(FailureResult::class.java, finishes[1].result)
+            assertInstanceOf(SuccessResult::class.java, finishes[2].result)
+            assertEquals(1, received.filterIsInstance<FileMessageEvent>().size)
+            val success = manager.run(last).await()
+            assertFalse(success.isAborted)
+            assertFalse(success.hasErrors())
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+        }
+    }
+
+    @Test
+    fun `native build task cancellation reports aborted and stops the batch`() = timeoutRunBlocking<Unit> {
+        val (first, last) = withContext(Dispatchers.EDT) {
+            fun task(name: String, source: String) =
+                MarsBuildTask(MarsSourceSet(fixture.addFileToProject(name, source).virtualFile.toNioPath()))
+            task("cancel-first.s", "la \$t0, undefined\n") to task("cancel-last.s", "nop\n")
+        }
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable) { if (it is FileMessageEvent) throw ProcessCanceledException() }
+            val result = ProjectTaskManager.getInstance(project).run(ProjectTaskList.asList(first, last)).await()
+            assertTrue(result.isAborted)
+            assertFalse(result.hasErrors())
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(SkippedResult::class.java, finish.result)
+            assertTrue(events.tryReceive().isFailure)
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+        }
+    }
 
     @Test
     fun `ordered project sources persist and update assembly and editor analysis`() = timeoutRunBlocking<Unit> {
