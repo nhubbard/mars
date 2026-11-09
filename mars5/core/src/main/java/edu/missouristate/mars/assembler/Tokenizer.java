@@ -338,8 +338,49 @@ public class Tokenizer {
       Function<String, String> replacements,
       Runnable checkCancellation) {
     var tokenizer = new Tokenizer();
-    return tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation);
+    return tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, null);
   }
+
+  /** Tokenizes a detached line and preserves the source positions of expanded tokens. */
+  public static MappedLine tokenizeMappedLine(
+      String line,
+      ErrorList errors,
+      Function<String, String> replacements,
+      Runnable checkCancellation) {
+    var tokenizer = new Tokenizer();
+    var edits = new ArrayList<SourceEdit>();
+    return new MappedLine(
+        tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, edits), edits);
+  }
+
+  public static final class MappedLine {
+    private final TokenList tokens;
+    private final List<SourceEdit> edits;
+
+    private MappedLine(TokenList tokens, List<SourceEdit> edits) {
+      this.tokens = tokens;
+      this.edits = edits;
+    }
+
+    public TokenList tokens() {
+      return tokens;
+    }
+
+    /** Maps a zero-based token offset to the original character or the alias that supplied it. */
+    public int originalOffset(int offset) {
+      for (int i = edits.size() - 1; i >= 0; i--) {
+        SourceEdit edit = edits.get(i);
+        if (offset >= edit.start() + edit.insertedLength()) {
+          offset += edit.removedLength() - edit.insertedLength();
+        } else if (offset >= edit.start()) {
+          offset = edit.start();
+        }
+      }
+      return offset;
+    }
+  }
+
+  private record SourceEdit(int start, int removedLength, int insertedLength) {}
 
   /** An equivalence recorded while processing a detached line. */
   public record EquivalenceDefinition(String name, String replacement) {}
@@ -353,7 +394,8 @@ public class Tokenizer {
       Function<String, String> replacements,
       Runnable checkCancellation) {
     var tokenizer = new Tokenizer();
-    TokenList tokens = tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation);
+    TokenList tokens =
+        tokenizer.expandDetachedLine(line, errors, replacements, checkCancellation, null);
     var definitions = tokenizer.equivalents.entrySet().iterator();
     if (definitions.hasNext() && !errors.errorsOccurred()) {
       var definition = definitions.next();
@@ -367,10 +409,11 @@ public class Tokenizer {
       String line,
       ErrorList errors,
       Function<String, String> replacements,
-      Runnable checkCancellation) {
+      Runnable checkCancellation,
+      List<SourceEdit> edits) {
     this.errors = errors;
     TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
-    return processEqv(null, 1, line, tokens, replacements, checkCancellation);
+    return processEqv(null, 1, line, tokens, replacements, checkCancellation, edits);
   }
 
   /**
@@ -581,7 +624,8 @@ public class Tokenizer {
       this.processCandidateToken(token, program, lineNum, theLine, tokenPos, tokenStartPos, result);
     }
     if (doEqvSubstitutes) {
-      result = processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation);
+      result =
+          processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation, null);
     }
     return result;
   }
@@ -590,7 +634,7 @@ public class Tokenizer {
   // directive, including a new .eqv definition.
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
-      Function<String, String> replacements, Runnable checkCancellation) {
+      Function<String, String> replacements, Runnable checkCancellation, List<SourceEdit> edits) {
     EquivalenceUse use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements);
     if (use == null) {
       return tokens;
@@ -622,6 +666,9 @@ public class Tokenizer {
       }
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
+      if (edits != null) {
+        edits.add(new SourceEdit(start, end - start, use.replacement().length()));
+      }
       theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = tokenizeLine(program, lineNum, theLine, false, checkCancellation);

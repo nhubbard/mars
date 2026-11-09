@@ -33,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -726,6 +727,23 @@ class SessionAssemblyTest {
     assertThatThrownBy(() -> new AssemblySourceSnapshot(List.of(), Map.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("At least one source file");
+  }
+
+  @Test
+  void mappedEquivalenceTokensKeepOriginalPositionsAcrossNestedReplacements() {
+    String source = "LABEL OP $t0, $zero, COUNT";
+    var replacements = Map.of(
+        "LABEL", "NAME :", "NAME", "entry", "OP", "NEXT", "NEXT", "addiu", "COUNT", "7");
+    var errors = new ErrorList();
+    var mapped = Tokenizer.tokenizeMappedLine(source, errors, replacements::get, () -> {});
+
+    assertThat(errors.errorsOccurred()).isFalse();
+    var tokens = IntStream.range(0, mapped.tokens().size()).mapToObj(mapped.tokens()::get).toList();
+    assertThat(tokens).extracting(token -> token.getValue())
+        .containsExactly("entry", ":", "addiu", "$t0", "$zero", "7");
+    assertThat(tokens).extracting(token -> mapped.originalOffset(token.getStartPos() - 1))
+        .containsExactly(0, 0, source.indexOf("OP"), source.indexOf("$t0"),
+            source.indexOf("$zero"), source.indexOf("COUNT"));
   }
 
   @Test
