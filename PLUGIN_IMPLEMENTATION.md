@@ -844,12 +844,18 @@ literal, or a label alone leaves the line without a breakpoint. Unresolved opera
 eligible while the editor is indexing or lacks the containing entry's definitions. The
 assembled source map determines the actual address at debug time.
 
-The Debug view shows one simulated CPU frame. Resume, Pause, Stop, source
+The Debug view shows the live CPU frame followed by observed callers and
+interrupted locations. Older frames navigate to the physical source of the call
+or interrupted instruction when available. Calls from executable data show an
+address. Older frames show read-only call metadata. Live registers and expression
+evaluation belong to the current CPU frame.
+
+Resume, Pause, Stop, source
 Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
 
-Step Out uses the simulator's observed link writes and tracks arrival at the saved
+Step Out uses the simulator's observed link writes and completed jumps to saved
 return addresses across pauses. Recursive calls have distinct frames even when
 their return addresses match. A breakpoint or exception handler can interrupt
 Step Out. The eret instruction restores the interrupted call history, and backstep

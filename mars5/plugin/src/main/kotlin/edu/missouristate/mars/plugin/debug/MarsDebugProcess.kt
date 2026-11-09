@@ -30,7 +30,6 @@ import com.intellij.xdebugger.breakpoints.XBreakpointType
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
-import com.intellij.xdebugger.frame.XExecutionStack
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.ProgramStatement
@@ -43,9 +42,11 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.Call
 import edu.missouristate.mars.api.StepEvent.ExceptionEntry
 import edu.missouristate.mars.api.StepEvent.ExceptionReturn
+import edu.missouristate.mars.api.StepEvent.Jump
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.debug.DebuggerCallStack.CallerSite
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsSyntaxHighlighter
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
@@ -53,10 +54,13 @@ import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.nio.file.Path
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
@@ -216,7 +220,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {
         val engine = machine.simulator()
-        val calls = DebuggerCallStack(machine.backStepper.capacity()) { machine.registerFile.programCounterRegister.valueNoNotify }
+        val calls = DebuggerCallStack(machine.backStepper.capacity()) { machine.memory.sourceStatement(it)?.instructionOrigin }
         engine.addListener(calls)
         simulator = engine
         val map = machine.program.sourceMap()
@@ -357,8 +361,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     private suspend fun withSuspension(
         machine: MarsContext, calls: DebuggerCallStack, action: suspend (MarsSuspendContext) -> Unit,
-    ) {
-        val context = suspendContext(machine, calls.stepOutTarget())
+    ) = coroutineScope {
+        val context = suspendContext(machine, calls.stepOutTarget(), calls.callers(), this)
         try {
             action(context)
         } finally {
@@ -366,11 +370,13 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             context.watchRequests.cancel()
             context.registerEdits.cancel()
             context.memoryExports.cancel()
+            coroutineContext.cancelChildren()
         }
     }
 
     private fun suspendContext(
         machine: MarsContext, stepOutTarget: DebuggerCallStack.StepOutTarget?,
+        callers: Sequence<CallerSite>, frameScope: CoroutineScope,
     ): MarsSuspendContext = machine.claimStoppedSession().use {
         val pc = machine.registerFile.programCounterRegister.valueNoNotify
         val statement = machine.memory.sourceStatement(pc)
@@ -382,13 +388,14 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val watchRequests = watchMemoryRequests()
         val registerEdits = registerEditRequests()
         val number = ++suspensionNumber
+        val frame = MarsStackFrame(
+            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, registerEdits,
+        ) {
+            val current = session.suspendContext
+            current is MarsSuspendContext && current.registerEdits === registerEdits
+        }
         MarsSuspendContext(
-            MarsStackFrame(
-                sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, registerEdits,
-            ) {
-                val current = session.suspendContext
-                current is MarsSuspendContext && current.registerEdits === registerEdits
-            },
+            frame,
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             number,
@@ -396,6 +403,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             registerEdits,
             origin?.let { SourceStep(pc, it) },
             stepOutTarget,
+            MarsExecutionStack(frame, callers, ::sourcePosition, frameScope),
         )
     }
 
@@ -435,6 +443,7 @@ internal class MarsSuspendContext(
     val registerEdits: Channel<RegisterEditRequest>,
     val sourceStep: SourceStep?,
     val stepOutTarget: DebuggerCallStack.StepOutTarget?,
+    private val stack: MarsExecutionStack,
 ) : XSuspendContext() {
     @Volatile var canBackstep = canBackstep
         private set
@@ -449,13 +458,7 @@ internal class MarsSuspendContext(
 
     val memoryExports = Channel<MemoryExportRequest>(16, onUndeliveredElement = MemoryExportRequest::unavailable)
     val inspectionRequests = Channel<suspend (MemoryState) -> Unit>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
-        override fun getTopFrame() = frame
-        override fun computeStackFrames(firstFrameIndex: Int, container: XStackFrameContainer) {
-            container.addStackFrames(if (firstFrameIndex == 0) listOf(frame) else emptyList(), true)
-        }
-    }
-    override fun getActiveExecutionStack(): XExecutionStack = stack
+    override fun getActiveExecutionStack() = stack
 }
 
 internal data class SourceStep(private val start: Int, private val origin: Origin) {
@@ -467,12 +470,17 @@ internal data class SourceStep(private val start: Int, private val origin: Origi
 private class StepOver(private val source: SourceStep?) : SimulatorListener {
     private val returnAddresses = ArrayDeque<Int>()
     private var enteredHandler = false
+    private var returned = false
 
     override fun onStep(event: StepEvent) {
         when (val transfer = event.transfer() ?: return) {
             is Call -> returnAddresses.addLast(transfer.returnAddress())
             is ExceptionEntry -> enteredHandler = true
             is ExceptionReturn -> Unit
+            is Jump -> if (returnAddresses.lastOrNull() == transfer.target()) {
+                returnAddresses.removeLast()
+                returned = returnAddresses.isEmpty()
+            }
         }
     }
 
@@ -480,11 +488,7 @@ private class StepOver(private val source: SourceStep?) : SimulatorListener {
     override fun onError(event: ErrorEvent) = Unit
 
     fun reached(memory: MemoryState, pc: Int): Boolean {
-        if (enteredHandler) return true
-        if (returnAddresses.isEmpty()) return source?.reached(memory, pc) != false
-        if (returnAddresses.last() != pc) return false
-        returnAddresses.removeLast()
-        return returnAddresses.isEmpty()
+        return enteredHandler || returned || (returnAddresses.isEmpty() && source?.reached(memory, pc) != false)
     }
 }
 

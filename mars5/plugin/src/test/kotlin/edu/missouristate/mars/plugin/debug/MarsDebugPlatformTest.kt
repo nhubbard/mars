@@ -63,6 +63,7 @@ import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
@@ -537,16 +538,26 @@ class MarsDebugPlatformTest {
         }
         withDebug(file) { debug ->
             debug.assertPausedAt(file, 4)
+            val nested = debug.frames()
+            assertEquals(listOf(4, 8, 8, 1), nested.map { it.sourcePosition?.line })
+            assertEquals(3, nested.drop(1).map { it.equalityObject }.toSet().size)
+            assertNull(nested[1].evaluator)
+            assertEquals(nested.drop(2).map { it.equalityObject }, debug.frames(2).map { it.equalityObject })
+            assertTrue(debug.frames(4).isEmpty())
             for (line in listOf(9, 9, 2)) {
                 withContext(Dispatchers.EDT) { debug.session.stepOut() }
                 debug.assertPausedAt(file, line)
             }
+            assertEquals(listOf(2), debug.frames().map { it.sourcePosition?.line })
             withContext(Dispatchers.EDT) {
                 val (action, event) = if (wholeSource) toolbarAction(debug.session, "Backstep Source Statement") else backstepAction(debug.session)
                 assertTrue(event.presentation.isEnabled)
                 action.actionPerformed(event)
             }
             debug.assertPausedAt(file, 11)
+            val rewound = debug.frames(1).single()
+            assertEquals(1, rewound.sourcePosition?.line)
+            assertEquals(nested.last().equalityObject, rewound.equalityObject)
             withContext(Dispatchers.EDT) { debug.session.stepOut() }
             debug.assertPausedAt(file, 2)
             withContext(Dispatchers.EDT) { debug.session.resume() }
@@ -578,14 +589,70 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 3)
             withContext(Dispatchers.EDT) { debug.session.stepOut() }
             debug.assertPausedAt(file, 7)
+            val (interrupted, caller) = debug.frames(1)
+            assertEquals(4, interrupted.sourcePosition?.line)
+            assertEquals(0, caller.sourcePosition?.line)
+            withContext(Dispatchers.EDT) {
+                assertEquals("Interrupted at step-out-trap.s:5", frameLabel(interrupted))
+                assertEquals("Caller at step-out-trap.s:1", frameLabel(caller))
+                assertEquals(mapOf("Interrupted address" to "0x00400010"), callerFields(debug.session, interrupted, 1))
+                assertEquals(
+                    mapOf("Call address" to "0x00400000", "Return address" to "0x00400004", "Link register" to "\$31"),
+                    callerFields(debug.session, caller, 3),
+                )
+            }
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(file, 10)
             withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
             debug.assertPausedAt(file, 5)
+            assertEquals(caller.equalityObject, debug.frames(1).single().equalityObject)
             withContext(Dispatchers.EDT) { debug.session.stepOut() }
             debug.assertPausedAt(file, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `deep caller stacks deliver multiple batches and keep executable data addresses`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("deep-callers.s", """
+                .data
+                code: .word 0x0320f809, 0x2402000a, 0x0000000c
+                .text
+                la ${'$'}t9, descend
+                la ${'$'}t0, code
+                li ${'$'}a0, 65
+                jr ${'$'}t0
+                descend: beq ${'$'}a0, ${'$'}zero, leaf
+                addiu ${'$'}a0, ${'$'}a0, -1
+                jal descend
+                leaf: nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 10) }
+        }
+        withDebug(file, { selfModifyingCode = true }) { debug ->
+            debug.assertPausedAt(file, 10)
+            val frames = debug.frames()
+            assertEquals(67, frames.size)
+            assertEquals(66, frames.drop(1).map { it.equalityObject }.toSet().size)
+            val tail = debug.frames(64)
+            assertEquals(listOf(9, 9, null), tail.map { it.sourcePosition?.line })
+            val obsolete = CompletableDeferred<Unit>()
+            withContext(Dispatchers.EDT) {
+                assertEquals("Caller at 0x10010000", frameLabel(tail.last()))
+                requireNotNull(debug.session.suspendContext?.activeExecutionStack).computeStackFrames(0, object : XStackFrameContainer {
+                    override fun isObsolete(): Boolean {
+                        obsolete.complete(Unit)
+                        return true
+                    }
+
+                    override fun addStackFrames(stackFrames: List<XStackFrame>, last: Boolean) = fail<Unit>("Received obsolete frames")
+                    override fun errorOccurred(errorMessage: String) = fail<Unit>(errorMessage)
+                })
+            }
+            obsolete.await()
+            withContext(Dispatchers.EDT) { debug.session.stop() }
+            assertEquals(130, debug.exit.await())
         }
     }
 
@@ -609,9 +676,9 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `step over groups a pseudo instruction without a call`() = timeoutRunBlocking<Unit> {
+    fun `step over groups a pseudo instruction and follows a jump without a call`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("step-over-pseudo.s", "li \$t0, 0x12345678\nnop\n")
+            fixture.addFileToProject("step-over-pseudo.s", "li \$t0, 0x12345678\nj end\nnop\nend: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
         }
         withDebug(file) { debug ->
@@ -620,8 +687,11 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 1)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
-                debug.session.resume()
+                debug.session.stepOver(false)
             }
+            debug.assertPausedAt(file, 3)
+            assertTrue(debug.frames(1).isEmpty())
+            withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
         }
     }
@@ -996,6 +1066,25 @@ class MarsDebugPlatformTest {
         inspectRegisterNodes(session, frame) { values ->
             values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
         }
+
+    private suspend fun callerFields(session: XDebugSession, frame: XStackFrame, count: Int): Map<String, String> {
+        val tree = XDebuggerTree(
+            project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
+        )
+        try {
+            val root = XStackFrameNode(tree, frame, null)
+            tree.setRoot(root, true)
+            val values = children(root, count).map { assertInstanceOf(XValueNodeImpl::class.java, it) }
+            pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(values.all { it.isComputed }) }
+            assertTrue(values.all { it.valueContainer.modifier == null })
+            return values.associate { requireNotNull(it.name) to requireNotNull(it.rawValue) }
+        } finally {
+            Disposer.dispose(tree)
+        }
+    }
+
+    private fun frameLabel(frame: XStackFrame): String =
+        SimpleColoredComponent().also(frame::customizePresentation).toString()
 
     private suspend fun <T> inspectRegisterNodes(
         session: XDebugSession, frame: XStackFrame, inspect: suspend (List<XValueNodeImpl>) -> T,
@@ -2085,6 +2174,25 @@ class MarsDebugPlatformTest {
         override fun sessionPaused() { positions.trySend(session.topFramePosition) }
 
         suspend fun nextPosition() = positions.receive()
+
+        suspend fun frames(first: Int = 0): List<XStackFrame> {
+            val result = CompletableDeferred<List<XStackFrame>>()
+            withContext(Dispatchers.EDT) {
+                val stack = requireNotNull(session.suspendContext?.activeExecutionStack)
+                val collected = ArrayList<XStackFrame>()
+                stack.computeStackFrames(first, object : XStackFrameContainer {
+                    override fun addStackFrames(stackFrames: List<XStackFrame>, last: Boolean) {
+                        collected.addAll(stackFrames)
+                        if (last) result.complete(collected)
+                    }
+
+                    override fun errorOccurred(errorMessage: String) {
+                        result.completeExceptionally(AssertionError(errorMessage))
+                    }
+                })
+            }
+            return result.await()
+        }
 
         suspend fun assertPausedAt(file: VirtualFile, line: Int) {
             val position = requireNotNull(nextPosition())
