@@ -104,6 +104,19 @@ class MipsDocumentationPlatformTest {
     }
 
     @Test
+    fun `labels supplied by aliases leave documentation on the written operation`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv LABEL entry:\n.eqv OP NEXT\n.eqv NEXT nop\n.eqv BOTH row: nop\n"
+        val nop = documentation("n<caret>op")
+        assertTrue("nop" in nop.orEmpty())
+        assertEquals(nop, documentation(definitions + "LABEL n<caret>op"))
+        assertEquals(nop, documentation(definitions + "LABEL O<caret>P"))
+        assertEquals(nop, documentation(definitions + "BO<caret>TH"))
+        assertNull(documentation(definitions + "LA<caret>BEL nop"))
+        assertNull(documentation(definitions + "LABEL nop O<caret>P"))
+        assertEquals(documentation(".wo<caret>rd 7"), documentation(definitions + "LABEL .wo<caret>rd 7"))
+    }
+
+    @Test
     fun `alias documentation is limited to operation heads with a catalog operation`() = timeoutRunBlocking<Unit> {
         val sources = listOf(
             ".eqv OP nop\nO<caret>P: nop",

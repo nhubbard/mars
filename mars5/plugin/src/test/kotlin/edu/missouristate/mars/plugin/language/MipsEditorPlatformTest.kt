@@ -92,10 +92,17 @@ class MipsEditorPlatformTest {
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 .eqv LABEL row:
+                .eqv OTHER there:
+                .eqv BOTH next: addiu
+                .eqv NAME split
+                .eqv COLON :
                 entry: BRANCH target
                 DATA_SEG
                 FIRST
                 LABEL
+                OTHER addiu ${'$'}t0, ${'$'}zero, 7
+                NAME COLON BRANCH target
+                BOTH ${'$'}t0, ${'$'}t0, 1
                 BRANCH: nop
                 target: nop
                 LATE target
@@ -107,13 +114,20 @@ class MipsEditorPlatformTest {
             val file = fixture.file as MipsFile
             val source = file.text
             val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
-            assertEquals(listOf("BRANCH", "nop", "nop"), highlights.sortedBy { it.startOffset }.map {
-                source.substring(it.startOffset, it.endOffset)
-            })
+            val expected = listOf(
+                "BRANCH target" to "BRANCH", "addiu \$t0, \$zero, 7" to "addiu",
+                "BRANCH target\nBOTH" to "BRANCH", "BOTH \$t0, \$t0, 1" to "BOTH",
+                "nop\ntarget" to "nop", "nop\nLATE" to "nop",
+            ).map { (context, mnemonic) ->
+                val start = source.indexOf(context)
+                start until (start + mnemonic.length)
+            }
+            assertEquals(expected, highlights.sortedBy { it.startOffset }.map { it.startOffset until it.endOffset })
             val head = file.findElementAt(source.indexOf("BRANCH target"))!!
             val analysis = current.service<MarsAnalysisService>()
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertNull(analysis.expandedInstructionAlias(file, head, head.text))
+                assertNull(analysis.expandedOperationSite(file, head))
             }
         }
     }

@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 
 internal val instructionMnemonicColor =
@@ -17,13 +18,14 @@ internal val instructionMnemonicColor =
 internal class MipsInstructionHighlighter : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val mnemonic = when (element.elementType) {
-            operationType -> element
+            operationType -> element.textRange
             candidateType -> {
                 val head = element.firstChild
                 val file = element.containingFile as MipsFile
                 val analysis = file.project.service<MarsAnalysisService>()
-                analysis.expandedInstructionAlias(file, head, head.text) ?: return
-                head
+                val site = analysis.expandedOperationSite(file, head) ?: return
+                if (site.token.type != TokenTypes.OPERATOR) return
+                site.range
             }
             else -> return
         }

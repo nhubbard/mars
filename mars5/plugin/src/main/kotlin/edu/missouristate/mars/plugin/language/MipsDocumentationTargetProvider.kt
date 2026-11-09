@@ -18,7 +18,6 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
-import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import java.util.TreeMap
@@ -30,17 +29,19 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         val token = file.findElementAt(adjusted) ?: return emptyList()
         val owner = token.parent
         val ownerType = PsiUtilCore.getElementType(owner)
-        if (ownerType == operationCandidate && owner.firstChild == token) {
+        val candidate = when (ownerType) {
+            operationCandidate -> owner
+            invocationToken -> owner.parent
+            else -> null
+        }
+        if (candidate != null) {
             val analysis = file.project.service<MarsAnalysisService>()
-            val operation = analysis.expandedOperationAlias(file, token, token.text)?.get(0) ?: return emptyList()
-            return when (operation.type) {
-                TokenTypes.OPERATOR -> listOf(MipsDocumentationCatalog[operation.value])
-                TokenTypes.DIRECTIVE ->
-                    // Includes are expanded before equivalences, so a generated .include cannot open a file.
-                    if (Directives.INCLUDE.name.equals(operation.value, ignoreCase = true)) emptyList()
-                    else listOf(MipsDocumentationCatalog[operation.value])
-                else -> emptyList()
-            }
+            val site = analysis.expandedOperationSite(file, candidate.firstChild) ?: return emptyList()
+            if (site.range.startOffset != token.textOffset) return emptyList()
+            // Includes are expanded before equivalences, so a generated .include cannot open a file.
+            val operation = site.token.value
+            if (Directives.INCLUDE.name.equals(operation, ignoreCase = true)) return emptyList()
+            return listOf(MipsDocumentationCatalog[operation])
         }
         val keyword = when (PsiUtilCore.getElementType(token)) {
             includeType -> ownerType in includeOwners
@@ -56,6 +57,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
     private companion object {
         val includeType = MipsTypes.psi("INCLUDE")
         val operationCandidate = MipsTypes.psi("OPERATION_CANDIDATE")
+        val invocationToken = MipsTypes.psi("INVOCATION_TOKEN")
         val macroEndType = MipsTypes.psi("END_MACRO")
         val includeOwners = TokenSet.create(MipsTypes.psi("INCLUDE_LINE"), MipsTypes.psi("DIRECTIVE_STATEMENT"))
         val macroEndOwners = TokenSet.create(MipsTypes.psi("MACRO_DEFINITION"), MipsTypes.psi("STATEMENT"))

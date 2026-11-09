@@ -8,6 +8,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -21,6 +22,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -36,6 +38,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 
 internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val macroOffset: Int)
+
+internal data class ExpandedOperationSite(val token: Token, val range: TextRange)
 
 internal data class IndexedSymbolCandidates(
     val declarations: List<IndexedSymbolSite>,
@@ -212,6 +216,23 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return expandedOperation(prefix, source, allowIncompleteOperand)?.takeUnless(TokenList::isEmpty)
     }
 
+    /** An equivalence can put the mnemonic at the head itself or after a generated label. */
+    internal fun expandedOperationSite(root: MipsFile, head: PsiElement): ExpandedOperationSite? {
+        if (DumbService.isDumb(project)) return null
+        val prefix = editorPrefix(root, head.textOffset)
+        if (prefix.equivalence(head.text) == null) return null
+        val source = sourceLine(head)
+        val expansion = Tokenizer.tokenizeMappedLine(
+            source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+        )
+        val tokens = expansion.tokens().operationTokens()
+        if (tokens.isEmpty) return null
+        val operation = tokens[0]
+        if (operation.type != TokenTypes.OPERATOR && operation.type != TokenTypes.DIRECTIVE) return null
+        val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
+        return ExpandedOperationSite(operation, root.findElementAt(offset)!!.textRange)
+    }
+
     /** Unresolved operations may still become executable in a containing entry or macro expansion. */
     internal fun canSetOperationBreakpoint(root: MipsFile, head: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return true
@@ -232,12 +253,16 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // On a circular expansion the tokenizer restores the original source, so the token spans
         // cannot be used to highlight an operand. Other errors can be unfinished operand tokens.
         if (errors.errorsOccurred() && (!allowIncompleteOperand || tokens.processedLine == source)) return null
-        tokens.discardTrailingComment()
-        if (tokens.beginsWithLabel()) {
-            tokens.remove(0)
-            tokens.remove(0)
+        return tokens.operationTokens()
+    }
+
+    private fun TokenList.operationTokens(): TokenList {
+        discardTrailingComment()
+        if (beginsWithLabel()) {
+            remove(0)
+            remove(0)
         }
-        return tokens
+        return this
     }
 
     private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
