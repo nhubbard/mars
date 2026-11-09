@@ -47,11 +47,13 @@ internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val
 
 internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
 
+internal enum class OperandParenthesis { ADDRESS, GROUP }
+
 internal data class FormattingLine(
     val operationType: TokenTypes?,
     val atMargin: Boolean,
-    // A non-null set means the expanded fragment has complete syntax.
-    val fragmentAddressOpenings: Set<Int>?,
+    // Null means the formatter has no complete expanded operand layout.
+    val operandParentheses: Map<Int, OperandParenthesis>?,
 )
 
 internal data class MacroInvocation(
@@ -62,6 +64,7 @@ internal data class MacroArityMismatch(val site: PsiElement, val name: String, v
 
 private val mnemonicType = MipsTypes.psi("MNEMONIC")
 private val addressExpressionType = MipsTypes.psi("ADDRESS_EXPR")
+private val groupExpressionType = MipsTypes.psi("GROUP_EXPR")
 private val leftParenType = MipsTypes.psi("LEFT_PAREN")
 private val incompleteOperandTypes = setOf(TokenType.ERROR_ELEMENT, MipsTypes.psi("OPERAND_FRAGMENT"),
     MipsTypes.psi("UNCLOSED_STRING"))
@@ -330,14 +333,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun formattingLine(
-        root: MipsFile, anchor: PsiElement, timeline: MipsSourceTimeline, hasFragment: Boolean,
+        root: MipsFile, anchor: PsiElement, timeline: MipsSourceTimeline, projectOperands: Boolean,
     ): FormattingLine? {
         val start = sourceLineStart(anchor)
         val prefix = timeline.prefix(root, start)
         val source = sourceLine(anchor, fromLineStart = true)
         val errors = ErrorList()
         val replacement: (String) -> String? = { prefix.equivalence(it)?.replacement }
-        val mapped = if (hasFragment) Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled) else null
+        val mapped = if (projectOperands) Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled) else null
         val expanded = mapped?.expanded() ?: Tokenizer.expandLine(source, errors, replacement, ProgressManager::checkCanceled)
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
@@ -346,20 +349,27 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // Even a macro call can record an equivalence as a tokenizer side effect.
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
-        val openings = if (canFormatOperands) mapped?.let { completeFragmentAddressOpenings(it, source, start) } else null
+        val openings = if (canFormatOperands) mapped?.let { expandedOperandParentheses(it, source, start) } else null
         return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings)
     }
 
-    private fun completeFragmentAddressOpenings(mapped: Tokenizer.MappedLine, source: String, start: Int): Set<Int>? {
+    private fun expandedOperandParentheses(
+        mapped: Tokenizer.MappedLine, source: String, start: Int,
+    ): Map<Int, OperandParenthesis>? {
         val expanded = mapped.tokens().processedLine
         if (expanded == source) return null
         val file = PsiFileFactory.getInstance(project).createFileFromText("expanded.asm", MipsFileType, expanded)
         val tree = SyntaxTraverser.astTraverser(file.node)
         if (tree.filterTypes { it in incompleteOperandTypes }.firstOrNull() != null) return null
-        return tree.asSequence().filter { it.elementType == addressExpressionType }.map {
-            val opening = it.findChildByType(leftParenType)!!
-            start + mapped.originalOffset(opening.startOffset)
-        }.toSet()
+        return tree.asSequence().mapNotNull { node ->
+            val role = when (node.elementType) {
+                addressExpressionType -> OperandParenthesis.ADDRESS
+                groupExpressionType -> OperandParenthesis.GROUP
+                else -> return@mapNotNull null
+            }
+            val opening = node.findChildByType(leftParenType)!!
+            (start + mapped.originalOffset(opening.startOffset)) to role
+        }.toMap()
     }
 
     private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean): TokenTypes? =

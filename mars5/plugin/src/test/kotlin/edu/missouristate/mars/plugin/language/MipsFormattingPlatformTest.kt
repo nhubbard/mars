@@ -185,16 +185,58 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `complete operands use expanded address and group roles when spacing parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv LOAD lw
+            .eqv DEST ${'$'}t0
+            .eqv BASE ${'$'}sp
+            .eqv PAIR ${'$'}t2, 8
+            .eqv LABEL entry:
+            .text
+            lw  DEST( BASE )
+            LOAD  DEST( BASE )
+            LABEL lw DEST( BASE )
+            lw  PAIR   ( BASE )
+            LOAD PAIR   ( BASE )
+            lw ${'$'}t1, 4   ( ${'$'}sp )
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("complete-alias-addresses.asm", source)
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertEquals("""
+            .eqv LOAD lw
+            .eqv DEST ${'$'}t0
+            .eqv BASE ${'$'}sp
+            .eqv PAIR ${'$'}t2, 8
+            .eqv LABEL entry:
+            .text
+                lw DEST (BASE)
+                LOAD DEST (BASE)
+            LABEL lw DEST (BASE)
+                lw PAIR(BASE)
+                LOAD PAIR(BASE)
+                lw ${'$'}t1, 4(${'$'}sp)
+        """.trimIndent(), formatted)
+        assertEquals(assemble(directory.resolve("complete-before.asm"), source),
+            assemble(directory.resolve("complete-after.asm"), formatted))
+    }
+
+    @Test
     fun `operand aliases that leave invalid or incomplete syntax keep their internal spacing`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = """
                 .eqv OFFSET 4
+                .eqv LOAD lw
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 .text
                 lw ${'$'}t0 , OFFSET  ( ${'$'}sp
                 lw ${'$'}t1 , FIRST  ( ${'$'}sp
                 lw ${'$'}t2 , UNKNOWN  ( ${'$'}sp
+                LOAD ${'$'}t3, OFFSET  ( ${'$'}sp
                 .word OFFSET    )
                 next: nop
             """.trimIndent()
@@ -203,6 +245,7 @@ class MipsFormattingPlatformTest {
             assertTrue("${'$'}t0 , OFFSET  ( ${'$'}sp" in result, result)
             assertTrue("${'$'}t1 , FIRST  ( ${'$'}sp" in result, result)
             assertTrue("${'$'}t2 , UNKNOWN  ( ${'$'}sp" in result, result)
+            assertTrue("LOAD ${'$'}t3, OFFSET (${'$'}sp" in result, result)
             assertTrue(".word OFFSET    )" in result, result)
             assertTrue("next: nop" in result, result)
             assertEquals(result, reformat())

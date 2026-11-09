@@ -11,6 +11,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
 import com.intellij.psi.formatter.common.AbstractBlock
@@ -22,6 +23,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.FormattingLine
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
+import edu.missouristate.mars.plugin.analysis.OperandParenthesis
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -58,7 +60,7 @@ private class MipsBlock(
 
     private fun isOpaque() = myNode.elementType in opaque ||
         myNode.elementType == candidate && rawOperation !in formatOperations ||
-        myNode.elementType == operandFragment && line?.fragmentAddressOpenings == null
+        myNode.elementType == operandFragment && line?.operandParentheses == null
 
     override fun getIndent() = indent
 
@@ -92,9 +94,17 @@ private class MipsBlock(
         val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
         val anchor = operation?.let { it.psi.operationHead } ?: child.psi.takeIf { hasFragment } ?: return null
         val context = timeline.value ?: return null
-        if (operation?.elementType != candidate && !hasFragment && anchor !in context.generatedLabelSites) return null
-        return analysis.formattingLine(anchor.containingFile as MipsFile, anchor, context, hasFragment)
+        val file = anchor.containingFile as MipsFile
+        val projectOperands = hasFragment || child.textContains('(') &&
+            hasVisibleAlias(child, context.prefix(file, sourceLineStart(anchor)))
+        if (operation?.elementType != candidate && !projectOperands && anchor !in context.generatedLabelSites) return null
+        return analysis.formattingLine(file, anchor, context, projectOperands)
     }
+
+    private fun hasVisibleAlias(child: ASTNode, prefix: MipsSourceTimeline.Prefix): Boolean =
+        SyntaxTraverser.astTraverser(child).filterTypes { it in aliasTokens }.any {
+            prefix.equivalence(it.text) != null
+        }
 
     private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
         if (child.elementType != statement) return Indent.getNoneIndent()
@@ -121,6 +131,7 @@ private class MipsBlock(
         val before = PsiUtilCore.getElementType(TreeUtil.findLastLeaf(left))
         val after = PsiUtilCore.getElementType(TreeUtil.findFirstLeaf(right))
         val gap = source.subSequence(left.textRange.endOffset, right.startOffset)
+        val expandedParenthesis = line?.operandParentheses?.get(right.startOffset)
         return when {
             gap.any { it !in " \t\r\n" } -> readOnly
             StringUtil.containsLineBreak(gap) -> keepLines
@@ -129,9 +140,9 @@ private class MipsBlock(
             before in signs -> readOnly
             after in signs -> if (gap.length == 0) readOnly else oneSpace
             after in closingPunctuation || before == leftParen -> noSpaces
-            after == leftParen && (myNode.elementType == address ||
-                right.startOffset in line?.fragmentAddressOpenings.orEmpty() ||
-                rawOperation == TokenTypes.OPERATOR && before in addressOffsets) -> noSpaces
+            after == leftParen && expandedParenthesis == OperandParenthesis.ADDRESS -> noSpaces
+            after == leftParen && expandedParenthesis == OperandParenthesis.GROUP -> oneSpace
+            after == leftParen && myNode.elementType == address -> noSpaces
             before == colon && myNode.elementType == repetition -> noSpaces
             before in separators || after == comment -> oneSpace
             gap.isNotEmpty() -> oneSpace
@@ -157,13 +168,12 @@ private class MipsBlock(
         val indentedScopes = TokenSet.create(MipsTypes.file, macro)
         val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val operandFragment = MipsTypes.psi("OPERAND_FRAGMENT")
+        val aliasTokens = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"))
         val operandOwners = TokenSet.orSet(operationOwners,
             TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("DATA_CONTINUATION")))
         val executableHeads = TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
         val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
         val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER, TokenTypes.DIRECTIVE)
-        val addressOffsets = TokenSet.create(MipsTypes.psi("NUMBER"), MipsTypes.psi("WORD"),
-            MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("PARAMETER"))
         // A physical alias can represent several tokens. Apply spacing only at written boundaries.
         val opaque = TokenSet.create(replacement, MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
 
