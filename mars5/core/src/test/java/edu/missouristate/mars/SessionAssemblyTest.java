@@ -10,6 +10,7 @@ import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
+import edu.missouristate.mars.assembler.SourceLine;
 import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.assembler.Tokenizer;
 import edu.missouristate.mars.core.MarsContext;
@@ -613,6 +614,71 @@ class SessionAssemblyTest {
         assertThat(error.line()).isEqualTo(1);
         assertThat(error.message()).contains("Error reading include file", throughLink.toString());
       });
+    }
+  }
+
+  @Test
+  void diskIncludesReportTheDirectiveThatClosesACycle() throws Exception {
+    var main = source("main.s", "# leading comment\n.include \"./main.s\"\n");
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var direct = assembler.assemble(List.of(main));
+      assertThat(direct.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(main);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.message()).contains("Recursive include of file");
+      });
+
+      var parts = Files.createDirectory(directory.resolve("parts"));
+      Files.createSymbolicLink(parts.resolve("through-root"), directory);
+      Files.writeString(main, ".include \"parts/outer.s\"\n");
+      var outer = Files.writeString(parts.resolve("outer.s"), "# outer\n.include \"through-root/main.s\"\n");
+      var indirect = assembler.assemble(List.of(main));
+      assertThat(indirect.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(outer);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.message()).contains("Recursive include of file", "through-root");
+      });
+    }
+  }
+
+  @Test
+  void symlinkedSourceFilesKeepTheirOwnRelativeIncludeDirectories() throws Exception {
+    var template = source("template.s", ".include \"value.s\"\n");
+    var main = source("main.s", ".include \"left/template.s\"\n.include \"right/template.s\"\n");
+    var left = Files.createDirectory(directory.resolve("left"));
+    var right = Files.createDirectory(directory.resolve("right"));
+    Files.createSymbolicLink(left.resolve("template.s"), template);
+    Files.createSymbolicLink(right.resolve("template.s"), template);
+    Files.writeString(left.resolve("value.s"), "addiu $t0, $zero, 7\n");
+    Files.writeString(right.resolve("value.s"), "addiu $t1, $zero, 2\n");
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assemble(List.of(main));
+      assertThat(result.succeeded()).isTrue();
+      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+          .containsExactly(0x24080007, 0x24090002);
+    }
+  }
+
+  @Test
+  void deeplyNestedCapturedIncludesKeepSourceOrderWithoutUsingTheCallStack() {
+    var texts = new HashMap<Path, String>();
+    var main = directory.resolve("main.s");
+    texts.put(main, "addiu $t0, $zero, 1\n.include \"part0.s\"\naddiu $t2, $zero, 3\n");
+    int depth = 5_000;
+    for (int index = 0; index < depth; index++) {
+      texts.put(directory.resolve("part" + index + ".s"), ".include \"part" + (index + 1) + ".s\"\n");
+    }
+    var leaf = directory.resolve("part" + depth + ".s");
+    texts.put(leaf, "addiu $t1, $zero, 2\n");
+    var snapshot = new AssemblySourceSnapshot(List.of(main), texts);
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.succeeded()).isTrue();
+      assertThat(session.getProgram().getMachineList()).extracting(ProgramStatement::getBinaryStatement)
+          .containsExactly(0x24080001, 0x24090002, 0x240a0003);
+      assertThat(session.getProgram().getSourceLineList()).extracting(SourceLine::getFilename)
+          .containsExactly(main.toString(), leaf.toString(), main.toString());
     }
   }
 

@@ -144,6 +144,21 @@ public class MIPSprogram implements Program {
     return filename;
   }
 
+  /** Identifies a source and its relative-include directory without changing its display path. */
+  public Path getIncludeIdentity() {
+    Path path = Path.of(filename).toAbsolutePath();
+    if (sourceSnapshot != null) {
+      return path;
+    }
+    try {
+      // Keep the final name. A file symlink's relative includes still start beside that link.
+      return path.getParent().toRealPath().resolve(path.getFileName());
+    } catch (IOException unavailable) {
+      // The source may have been removed since it was read.
+      return path.normalize();
+    }
+  }
+
   /**
    * Produces list of tokens that comprise the program.
    *

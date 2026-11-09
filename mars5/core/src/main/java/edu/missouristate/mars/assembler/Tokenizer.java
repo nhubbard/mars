@@ -4,6 +4,7 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 
@@ -102,8 +103,7 @@ public class Tokenizer {
     sourceMIPSprogram = p;
     equivalents.clear();
     ArrayList<TokenList> tokenList = new ArrayList<>();
-    // ArrayList source = p.getSourceList();
-    ArrayList<SourceLine> source = processIncludes(p, new HashSet<>(), checkCancellation);
+    ArrayList<SourceLine> source = processIncludes(p, checkCancellation);
     p.setSourceLineList(source);
     TokenList currentLineTokens;
     String sourceLine;
@@ -131,22 +131,32 @@ public class Tokenizer {
     return tokenList;
   }
 
-  // pre-pre-processing pass through source code to process any ".include" directives.
-  // When one is encountered, the contents of the included file are inserted at that
-  // point.  If no .include statements, the return value is a new array list but
-  // with the same lines of source code.  Uses recursion to correctly process included
-  // files that themselves have .include.  Plus it will detect and report recursive
-  // includes both direct and indirect.
-  // DPS 11-Jan-2013
+  private record IncludeFrame(MIPSprogram program, ListIterator<String> lines) {
+    IncludeFrame(MIPSprogram program) {
+      this(program, program.getSourceList().listIterator());
+    }
+  }
+
+  // Expand includes depth first, preserving their original file and line for diagnostics.
   private ArrayList<SourceLine> processIncludes(
-      MIPSprogram program, Set<String> includedPaths, Runnable checkCancellation)
+      MIPSprogram root, Runnable checkCancellation)
       throws ProcessingException {
-    ArrayList<String> source = program.getSourceList();
-    ArrayList<SourceLine> result = new ArrayList<>(source.size());
-    for (int i = 0; i < source.size(); i++) {
-      String line = source.get(i);
+    var pending = new ArrayDeque<IncludeFrame>();
+    pending.push(new IncludeFrame(root));
+    var includedPaths = new HashSet<Path>();
+    var result = new ArrayList<SourceLine>(root.getSourceList().size());
+    while (!pending.isEmpty()) {
+      var frame = pending.peek();
+      if (!frame.lines().hasNext()) {
+        pending.pop();
+        continue;
+      }
+      checkCancellation.run();
+      MIPSprogram program = frame.program();
+      String line = frame.lines().next();
+      int lineNumber = frame.lines().nextIndex();
       Token include =
-          firstIncludePath(tokenizeLine(program, i + 1, line, false, checkCancellation));
+          firstIncludePath(tokenizeLine(program, lineNumber, line, false, checkCancellation));
       String filename = quotedIncludePath(include);
       if (filename == null) {
         if (include != null) {
@@ -157,12 +167,13 @@ public class Tokenizer {
                   include.getStartPos(),
                   "Unterminated .include path"));
         }
-        result.add(new SourceLine(line, program, i + 1));
+        result.add(new SourceLine(line, program, lineNumber));
         continue;
       }
       // Handle either absolute or relative pathname for .include file.
       if (!new File(filename).isAbsolute()) {
-        filename = new File(program.getFilename()).getParent() + File.separator + filename;
+        File parent = new File(program.getFilename()).getAbsoluteFile().getParentFile();
+        filename = new File(parent, filename).getPath();
       }
       MIPSprogram incl = program.createRelatedProgram();
       try {
@@ -176,17 +187,19 @@ public class Tokenizer {
                 "Error reading include file " + filename));
         throw new ProcessingException(errors);
       }
-      String includedPath = incl.getFilename();
-      if (!includedPaths.add(includedPath)) {
+      if (includedPaths.isEmpty()) {
+        includedPaths.add(root.getIncludeIdentity());
+      }
+      if (!includedPaths.add(incl.getIncludeIdentity())) {
         errors.add(
             new ErrorMessage(
                 program,
                 include.getSourceLine(),
                 include.getStartPos(),
-                "Recursive include of file " + includedPath));
+                "Recursive include of file " + incl.getFilename()));
         throw new ProcessingException(errors);
       }
-      result.addAll(processIncludes(incl, includedPaths, checkCancellation));
+      pending.push(new IncludeFrame(incl));
     }
     return result;
   }
