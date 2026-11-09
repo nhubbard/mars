@@ -202,7 +202,16 @@ The parser retains separate label and instruction nodes, and navigation on the l
 finds the formal parameter for both MARS and SPIM spellings. Label completion hides parameter
 spellings inside macros, including in included bodies, and preserves literal dollar-prefixed
 labels outside them. The assembler fixture verifies that a macro-generated label can be exported.
-Resolving that generated name at its use site still requires expansion-aware binding.
+
+After **Assemble Current MIPS File**, a reference without a physical label target can use the
+most recent successful build for its entry. The Java core publishes immutable local and global
+symbol definitions with final addresses and physical origins, including nested macro calls.
+Exporting a label preserves its definition site. The editor opens that site in the macro body
+and checks the captured document revisions before following the link. Starting a new build
+supersedes the previous result, and a late older build cannot replace the current result.
+Direct navigation works before building. Build-backed links open definitions in files associated
+with MARS MIPS. Expansion-based completion, automatic background analysis, and selection of a
+containing entry from an included file are still separate work.
 
 ## Go to Declaration for data labels and exports
 

@@ -4,16 +4,24 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ReadConstraint
 import com.intellij.openapi.application.constrainedReadAction
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.FileBasedIndex
+import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
@@ -28,6 +36,9 @@ import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.util.Binary
+import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.io.path.invariantSeparatorsPathString
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 
@@ -42,10 +53,24 @@ internal data class IndexedSymbolCandidates(
 @Service(Service.Level.PROJECT)
 class MarsAnalysisService(private val project: Project, scope: CoroutineScope) : Disposable {
     private val coordinator = AnalysisCoordinator(scope)
+    private val lastBuild = AtomicReference<BuiltSymbols>()
 
     val snapshot: PublishedAnalysis get() = coordinator.snapshot
 
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
+
+    internal class BuiltSymbols(
+        val entry: Path,
+        val revisions: Map<Path, Long> = emptyMap(),
+        val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
+    )
+
+    internal fun beginSymbolBuild(entry: Path): BuiltSymbols =
+        BuiltSymbols(entry.toAbsolutePath().normalize()).also(lastBuild::set)
+
+    internal fun publishBuiltSymbols(build: BuiltSymbols, revisions: Map<Path, Long>, symbols: AssemblySymbolMap) {
+        lastBuild.compareAndSet(build, BuiltSymbols(build.entry, revisions, symbols))
+    }
 
     /** Reads the index only for files in the current physical include graph. */
     internal fun labelCompletionNames(root: MipsFile, position: PsiElement, prefix: String): Set<String> = buildSet {
@@ -60,7 +85,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         for ((name, _) in externalSymbols(root) { it.startsWith(prefix) }) add(name)
     }
 
-    internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<MipsDeclaration> {
+    internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<PsiElement> {
         val name = position.text
         val activeMacro = macroOffset(position)
         val local = ArrayList<MipsDeclaration>()
@@ -74,9 +99,37 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 matches.addAll(listOfNotNull(MipsDeclaration.findAt(scope.file, site.offset, name)))
             }
         }
-        return local.ifEmpty { outer }.ifEmpty {
-            if (allowExternal) listOfNotNull(externalSymbols(root) { it == name }.firstOrNull()?.second) else emptyList()
+        if (local.isNotEmpty()) return local
+        if (outer.isNotEmpty()) return outer
+        val built = builtLabelTarget(root, name, allowExternal)
+        if (built != null) return listOf(built)
+        return if (allowExternal) listOfNotNull(externalSymbols(root) { it == name }.firstOrNull()?.second) else emptyList()
+    }
+
+    private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
+        val build = lastBuild.get() ?: return null
+        if (root.viewProvider.virtualFile.url != VfsUtilCore.pathToUrl(build.entry.invariantSeparatorsPathString)) return null
+        val definition = build.symbols.locals()[build.entry].orEmpty()[name] ?: build.symbols.globals()[name] ?: return null
+        if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
+
+        val location = definition.origin().location()
+        val files = VirtualFileManager.getInstance()
+        val documents = FileDocumentManager.getInstance()
+        var target: Document? = null
+        for ((path, revision) in build.revisions) {
+            ProgressManager.checkCanceled()
+            val source = files.findFileByNioPath(path) ?: return null
+            val document = documents.getDocument(source) ?: return null
+            if (document.modificationStamp != revision) return null
+            if (path == location.file()) target = document
         }
+        val document = target ?: return null
+        val manager = PsiDocumentManager.getInstance(project)
+        if (!manager.isCommitted(document)) return null
+        val file = manager.getPsiFile(document) as? MipsFile ?: return null
+        val start = document.getLineStartOffset(location.line() - 1)
+        val offset = CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
+        return file.findElementAt(offset)
     }
 
     private fun externalSymbols(root: MipsFile, matches: (String) -> Boolean): Sequence<Pair<String, MipsDeclaration>> = sequence {

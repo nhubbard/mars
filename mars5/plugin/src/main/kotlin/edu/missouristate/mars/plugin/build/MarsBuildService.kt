@@ -9,6 +9,7 @@ import com.intellij.build.progress.BuildProgress
 import com.intellij.build.progress.BuildProgressDescriptor
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.checkCanceled
@@ -20,6 +21,7 @@ import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
@@ -41,6 +43,8 @@ internal class MarsBuildService(private val project: Project, private val scope:
     }
 
     internal suspend fun assemble(entry: Path, component: MarsComponent, activateBuildView: Boolean): Boolean {
+        val analysis = project.service<MarsAnalysisService>()
+        val symbolBuild = analysis.beginSymbolBuild(entry)
         val descriptor = DefaultBuildDescriptor(
             Any(), bundle.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
@@ -68,6 +72,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             }
             checkCanceled()
             succeeded = result.succeeded()
+            if (succeeded) analysis.publishBuiltSymbols(symbolBuild, capture.revisions, result.program().symbolMap())
             return succeeded
         } catch (cancel: CancellationException) {
             cancelled = true

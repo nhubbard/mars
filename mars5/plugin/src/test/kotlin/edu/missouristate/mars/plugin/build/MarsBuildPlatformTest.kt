@@ -8,6 +8,7 @@ import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.SkippedResult
 import com.intellij.build.events.StartBuildEvent
 import com.intellij.build.events.SuccessResult
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -19,6 +20,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -27,16 +29,21 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import edu.missouristate.mars.api.AssemblyError
+import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
 import kotlinx.coroutines.CoroutineStart
@@ -57,6 +64,146 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `successful assembly navigates generated labels until a captured include changes`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val source = """
+                .include "definitions.s"
+                emit (generated)
+                emit (privateLabel)
+                reserve (storage)
+                j generated
+                j privateLabel
+                la ${'$'}t0, storage
+                .globl generated
+            """.trimIndent()
+            val body = ".macro emit (%entry)\n  %entry: nop\n.end_macro\n" +
+                ".macro reserve (%name)\n  .extern %name 4\n.end_macro\n"
+            val offset = source.indexOf("j generated") + 3
+            val (main, include) = withContext(Dispatchers.EDT) {
+                val entry = fixture.addFileToProject("main.asm", source).virtualFile
+                val definitions = fixture.addFileToProject("definitions.s", "# unchanged on disk\n").virtualFile
+                edit(definitions, body)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                fixture.configureFromExistingVirtualFile(entry)
+                fixture.editor.caretModel.moveToOffset(offset)
+                entry to definitions
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            suspend fun assemble() {
+                invokeAction(main)
+                assertInstanceOf(StartBuildEvent::class.java, events.receive())
+                assertInstanceOf(SuccessResult::class.java, assertInstanceOf(FinishBuildEvent::class.java, events.receive()).result)
+            }
+            fun target(at: Int = offset): PsiElement? = fixture.file.findReferenceAt(at)?.resolve()
+            readAction { assertNull(target()) }
+            assemble()
+            readAction {
+                val declaration = GotoDeclarationAction.findTargetElement(project, fixture.editor, offset)!!
+                assertEquals(include, declaration.containingFile.virtualFile)
+                assertEquals("%entry", declaration.text)
+                assertEquals(body.lastIndexOf("%entry"), declaration.textOffset)
+                assertEquals(declaration, target(source.lastIndexOf("generated")))
+                assertEquals(declaration, target(source.lastIndexOf("privateLabel")))
+                val storage = source.lastIndexOf("storage")
+                assertEquals(".extern", target(storage)?.text)
+                val file = fixture.file as MipsFile
+                val analysis = project.service<MarsAnalysisService>()
+                assertTrue(analysis.labelTargets(file, file.findElementAt(storage)!!, allowExternal = false).isEmpty())
+                assertTrue(analysis.labelTargets(file, file.findElementAt(source.indexOf("emit"))!!, allowExternal = true).isEmpty())
+            }
+            val moved = "# moved in the editor\n$body"
+            withContext(Dispatchers.EDT) {
+                edit(include, moved)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+            }
+            readAction { assertNull(target()) }
+            assemble()
+            readAction { assertEquals(moved.lastIndexOf("%entry"), target()?.textOffset) }
+            val parent = withContext(Dispatchers.EDT) {
+                include.parent.also { WriteCommandAction.runWriteCommandAction(project) { include.delete(this) } }
+            }
+            readAction { assertNull(target()) }
+            withContext(Dispatchers.EDT) {
+                WriteCommandAction.runWriteCommandAction(project) { parent.createChildDirectory(this, "definitions.s") }
+            }
+            readAction { assertNull(target()) }
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `assembled targets observe committed PSI file type and the latest build request`() = timeoutRunBlocking<Unit> {
+        val (entry, other, include) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.asm", ".include \"macro.s\"\nemit (generated)\nj generated\n")
+            val unrelated = fixture.addFileToProject("other.asm", "j generated\n")
+            val definitions = fixture.addFileToProject("macro.s", ".macro emit (%entry)\n%entry: nop\n.end_macro\n")
+            Triple(main, unrelated, definitions)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val analysis = project.service<MarsAnalysisService>()
+        val path = entry.virtualFile.toNioPath()
+        val includePath = include.virtualFile.toNioPath()
+        val capture = captureAssemblySources(listOf(path), null)
+        val component = MarsSessionService.createMarsComponent()
+        val program = component.context().use { capture.assembleIn(component).program() }
+        val older = analysis.beginSymbolBuild(path)
+        val current = analysis.beginSymbolBuild(path)
+        analysis.publishBuiltSymbols(older, capture.revisions, program.symbolMap())
+        fun target(file: PsiElement) = file.containingFile.findReferenceAt(file.text.lastIndexOf("generated"))?.resolve()
+        readAction { assertNull(target(entry)) }
+        analysis.publishBuiltSymbols(current, capture.revisions, program.symbolMap())
+        readAction {
+            assertEquals("%entry", target(entry)?.text)
+            assertNull(target(other))
+        }
+        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture.revisions - setOf(includePath), program.symbolMap())
+        readAction { assertNull(target(entry)) }
+
+        val plain = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("macro.txt", include.text).virtualFile
+        }
+        val plainPath = plain.toNioPath()
+        withContext(Dispatchers.EDT) {
+            val file = entry.virtualFile
+            edit(file, entry.text.replace("macro.s", "macro.txt"))
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+        val plainCapture = captureAssemblySources(listOf(path), null)
+        val plainComponent = MarsSessionService.createMarsComponent()
+        val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program() }
+        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture.revisions, plainProgram.symbolMap())
+        assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
+        readAction { assertNull(target(entry)) }
+
+        val changedText = "# still uncommitted\n" + capture.snapshot.texts().getValue(includePath)
+        val changed = AssemblySourceSnapshot(listOf(path), capture.snapshot.texts() + (includePath to changedText))
+        val changedComponent = MarsSessionService.createMarsComponent()
+        val changedResult = changedComponent.context().use {
+            changedComponent.assembler().assembleSnapshot(changed, null, true, false)
+        }
+        assertTrue(changedResult.succeeded())
+        withContext(Dispatchers.EDT) {
+            edit(entry.virtualFile, capture.snapshot.texts().getValue(path))
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            val documents = FileDocumentManager.getInstance()
+            val mainDocument = documents.getDocument(entry.virtualFile)!!
+            val includeDocument = documents.getDocument(include.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(project) {
+                includeDocument.setText(changedText)
+                val revisions = mapOf(path to mainDocument.modificationStamp, includePath to includeDocument.modificationStamp)
+                analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), revisions, changedResult.program().symbolMap())
+                assertFalse(PsiDocumentManager.getInstance(project).isCommitted(includeDocument))
+                assertNull(target(entry))
+            }
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+        readAction { assertEquals("%entry", target(entry)?.text) }
+    }
 
     @Test
     fun `registered action assembles unsaved sources and reports clickable diagnostics`() = timeoutRunBlocking<Unit> {
