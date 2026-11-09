@@ -213,7 +213,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, position.textOffset)
-        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true)) ?: return null
+        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true))
+            ?.takeUnless(TokenList::isEmpty) ?: return null
         return matchingMacro(prefix, tokens)
     }
 
@@ -228,7 +229,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
         if (prefix.equivalence(head.text) == null) return null
-        return expandedOperation(prefix, source, allowIncompleteOperand)
+        return expandedOperation(prefix, source, allowIncompleteOperand)?.takeUnless(TokenList::isEmpty)
+    }
+
+    /** Unresolved operations may still become executable in a containing entry or macro expansion. */
+    internal fun canSetOperationBreakpoint(root: MipsFile, head: PsiElement): Boolean {
+        if (DumbService.isDumb(project)) return true
+        val prefix = editorPrefix(root, head.textOffset)
+        if (prefix.equivalence(head.text) == null) return true
+        val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return true
+        if (tokens.isEmpty) return false
+        return tokens[0].type == TokenTypes.OPERATOR || tokens[0].type == TokenTypes.IDENTIFIER
     }
 
     private fun expandedOperation(
@@ -246,7 +257,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             tokens.remove(0)
             tokens.remove(0)
         }
-        return tokens.takeUnless(TokenList::isEmpty)
+        return tokens
     }
 
     private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
@@ -297,7 +308,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     /** An ambiguous physical operation may be a data directive or a continuation after substitution. */
     internal fun isIntegerDataCandidate(root: MipsFile, head: PsiElement, macroHead: Boolean): Boolean {
         val prefix = editorPrefix(root, head.textOffset)
-        val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return false
+        val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true))
+            ?.takeUnless(TokenList::isEmpty) ?: return false
         val integerOperands = (0 until tokens.size()).all { index ->
             val token = tokens[index]
             when (token.type) {

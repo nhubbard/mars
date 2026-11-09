@@ -142,6 +142,13 @@ class MipsDataReferencesPlatformTest {
         val macro = ".eqv PREFIX row:\n.macro emit (%arg)\n.end_macro\n"
         assertNull(target("$macro${setup}PREFIX emit tar<caret>get$label"))
         assertEquals(SymbolKind.LABEL, target("$macro${setup}PREFIX other tar<caret>get$label"))
+        assertEquals(SymbolKind.CONSTANT, target("$macro${setup}PRE<caret>FIX$label"))
+        readAction {
+            val file = fixture.file as MipsFile
+            val head = file.findElementAt(fixture.editor.caretModel.offset)!!
+            val analysis = file.project.service<MarsAnalysisService>()
+            assertEquals(false, analysis.isIntegerDataCandidate(file, head, macroHead = true))
+        }
     }
 
     @Test

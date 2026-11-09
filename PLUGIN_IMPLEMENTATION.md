@@ -735,13 +735,19 @@ resolves physical lines against the assembled image and publishes an address
 lookup to the simulator worker. Registration changes update that lookup
 without scanning the registered lines for each instruction.
 
+Breakpoint placement uses the editor's include-ordered equivalences. Aliases that expand
+to instructions or possible macro calls offer a breakpoint. Expansion to a directive, a
+literal, or a label alone leaves the line without a breakpoint. Unresolved operations stay
+eligible while the editor is indexing or lacks the containing entry's definitions. The
+assembled source map determines the actual address at debug time.
+
 The Debug view shows one simulated CPU frame. Resume, Pause, Stop, instruction
 Step Into, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 expressions and call-aware stepping report that they are unavailable.
 
 Jupiter fixtures exercise IntelliJ's line-breakpoint toggle, stops in an
-include and repeated macro expansions, instruction stepping, Run to Cursor,
+include and repeated macro expansions, aliased instructions and calls, instruction stepping, Run to Cursor,
 breakpoint updates, logpoints, unmapped positions, and process shutdown.
 
 ## Register inspection in Debug Variables

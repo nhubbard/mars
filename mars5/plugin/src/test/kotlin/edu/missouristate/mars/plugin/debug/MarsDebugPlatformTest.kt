@@ -33,6 +33,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -222,6 +223,83 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
             assertEquals("4243", debug.stdout.toString())
+        }
+    }
+
+    @Test
+    fun `aliased instructions and macro calls bind native breakpoints to their machine code`() = timeoutRunBlocking<Unit> {
+        val (entry, definitions) = withContext(Dispatchers.EDT) {
+            val definitions = fixture.addFileToProject("aliases.s", """
+                .eqv DEFINE .eqv
+                DEFINE AREA .data
+                DEFINE WORDS .word
+                DEFINE VALUE 2
+                DEFINE ROW location:
+                DEFINE CODE .text
+                DEFINE SETUP li ${'$'}a0
+                DEFINE PREFIX before:
+                DEFINE CALL emit
+                .macro emit (%value)
+                  li ${'$'}a0, %value
+                  li ${'$'}v0, 1
+                  syscall
+                .end_macro
+            """.trimIndent() + "\n").virtualFile
+            val entry = fixture.addFileToProject("aliased-breakpoints.asm", """
+                .include "aliases.s"
+                AREA
+                WORDS 7
+                VALUE
+                ROW
+                CODE
+                start: SETUP 42
+                li ${'$'}v0, 1
+                syscall
+                PREFIX CALL(43)
+            """.trimIndent() + "\n").virtualFile
+            for (line in 0..5) assertFalse(breakpointType.canPutAt(entry, line, project), "line $line")
+            for (line in listOf(6, 9)) {
+                assertTrue(breakpointType.canPutAt(entry, line, project), "line $line")
+                XDebuggerUtil.getInstance().toggleLineBreakpoint(project, breakpointType, entry, line)
+            }
+            entry to definitions
+        }
+        pollAssertionsAsync(5.seconds, 10.milliseconds) {
+            withContext(Dispatchers.EDT) {
+                for (line in listOf(6, 9)) {
+                    assertEquals(1, debugger.breakpointManager.findBreakpointsAtLine(breakpointType, entry, line).size)
+                }
+            }
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, 6)
+            assertEquals("", debug.stdout.toString())
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(definitions, 10)
+            assertEquals("42", debug.stdout.toString())
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+            assertEquals("4243", debug.stdout.toString())
+        }
+    }
+
+    @Test
+    fun `incomplete or unavailable alias context keeps breakpoint placement provisional`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("provisional.s", """
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST
+                .eqv AREA .data
+                FIRST 1
+                AREA
+                unknown 1
+            """.trimIndent()).virtualFile
+            assertTrue(breakpointType.canPutAt(file, 3, project))
+            assertFalse(breakpointType.canPutAt(file, 4, project))
+            assertTrue(breakpointType.canPutAt(file, 5, project))
+            DumbModeTestUtils.runInDumbModeSynchronously(project) {
+                assertTrue(breakpointType.canPutAt(file, 4, project))
+            }
         }
     }
 
