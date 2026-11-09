@@ -1,8 +1,11 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.AssemblySymbolMap;
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
 import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.core.*;
+import java.nio.file.Path;
 import java.util.*;
 
 /** Orchestrates symbol/directive processing, pseudo expansion and machine-code emission. */
@@ -10,6 +13,7 @@ public final class Assembler {
   private final AssemblyContext context;
   private ErrorList errors;
   private InstructionSourceMap sourceMap = InstructionSourceMap.EMPTY;
+  private AssemblySymbolMap symbolMap = AssemblySymbolMap.EMPTY;
 
   public Assembler(MarsContext session) {
     this(new AssemblyContext(session));
@@ -25,6 +29,10 @@ public final class Assembler {
 
   public InstructionSourceMap getSourceMap() {
     return sourceMap;
+  }
+
+  public AssemblySymbolMap getSymbolMap() {
+    return symbolMap;
   }
 
   public ArrayList<ProgramStatement> assemble(MIPSprogram program, boolean extended)
@@ -53,6 +61,7 @@ public final class Assembler {
       throws ProcessingException {
     try (var lease = context.session().claimStoppedSession()) {
       sourceMap = InstructionSourceMap.EMPTY;
+      symbolMap = AssemblySymbolMap.EMPTY;
       var first = new FirstPassProcessor(context, checkCancellation);
       try {
         errors = first.process(programs, extended, warnings);
@@ -62,8 +71,24 @@ public final class Assembler {
       }
       var result =
           new SecondPassProcessor(context, checkCancellation).process(programs, errors, warnings);
+      var locals = new HashMap<Path, Map<String, Definition>>();
+      for (var program : programs) {
+        checkCancellation.run();
+        var entry = Path.of(program.getFilename()).toAbsolutePath().normalize();
+        locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
+      }
+      symbolMap = new AssemblySymbolMap(locals, definitions(context.symbols(), checkCancellation));
       sourceMap = result.sourceMap();
       return result.instructions();
     }
+  }
+
+  private static Map<String, Definition> definitions(SymbolTable table, Runnable checkCancellation) {
+    var result = new HashMap<String, Definition>();
+    for (var symbol : table.getAllSymbols()) {
+      checkCancellation.run();
+      result.put(symbol.getName(), new Definition(symbol.getAddress(), symbol.kind(), symbol.origin()));
+    }
+    return result;
   }
 }

@@ -5,6 +5,8 @@ import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.instructions.Instruction;
@@ -221,40 +223,23 @@ final class FirstPassProcessor {
    * Any label definition will be recorded in the symbol table. NOTE: the ArrayList parameter will
    * be modified.
    */
-  void stripLabels(TokenList tokens) {
-    // If there is a label, handle it here and strip it off.
-    boolean thereWasLabel = this.parseAndRecordLabel(tokens);
-    if (thereWasLabel) {
-      tokens.remove(0); // Remove the IDENTIFIER.
-      tokens.remove(0); // Remove the COLON, shifted to 0 by previous remove
+  void stripLabels(TokenList tokens, SourceLine physicalLine, Origin caller) {
+    if (!tokenListBeginsWithLabel(tokens)) {
+      return;
     }
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////////
-  // Parse and record label, if there is one. Note the identifier and its colon are
-  // two separate tokens, since they may be separated by spaces in source code.
-  private boolean parseAndRecordLabel(TokenList tokens) {
-    if (tokens.size() < 2) {
-      return false;
-    } else {
-      Token token = tokens.get(0);
-      if (tokenListBeginsWithLabel(tokens)) {
-        if (token.getType() == TokenTypes.OPERATOR) {
-          // an instruction name was used as label (e.g. lw:), so change its token type
-          token.setType(TokenTypes.IDENTIFIER);
-        }
-        fileCurrentlyBeingAssembled
-            .getLocalSymbolTable()
-            .addSymbol(
-                token,
-                (this.inDataSegment) ? dataAddress.get() : textAddress.get(),
-                this.inDataSegment,
-                this.errors);
-        return true;
-      } else {
-        return false;
-      }
+    Token token = tokens.get(0);
+    tokens.remove(0);
+    tokens.remove(0); // The colon shifted to the first position.
+    if (token.getType() == TokenTypes.OPERATOR) {
+      // An instruction name was used as a label.
+      token.setType(TokenTypes.IDENTIFIER);
     }
+    fileCurrentlyBeingAssembled.getLocalSymbolTable().addSymbol(
+        token,
+        inDataSegment ? dataAddress.get() : textAddress.get(),
+        inDataSegment ? Kind.DATA : Kind.TEXT,
+        Parser.origin(physicalLine, caller),
+        errors);
   } // parseLabel()
 
   private boolean tokenListBeginsWithLabel(TokenList tokens) {
@@ -270,7 +255,7 @@ final class FirstPassProcessor {
   // //////////////////////////////////////////////////////////////////////////////////
   // This source code line is a directive, not a MIPS instruction. Let's carry it out.
   @SuppressWarnings("StatementWithEmptyBody")
-  void executeDirective(TokenList tokens) {
+  void executeDirective(TokenList tokens, SourceLine physicalLine, Origin caller) {
     Token token = tokens.get(0);
     Directives direct = Directives.matchDirective(token.getValue());
     if (context.debug()) {
@@ -462,7 +447,8 @@ final class FirstPassProcessor {
       int size = Binary.stringToInt(tokens.get(2).getValue());
       // If label already in global symtab, do nothing. If not, add it right now.
       if (context.symbols().getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
-        context.symbols().addSymbol(tokens.get(1), this.externAddress, Symbol.DATA_SYMBOL, errors);
+        context.symbols().addSymbol(
+            tokens.get(1), externAddress, Kind.EXTERNAL, Parser.origin(physicalLine, caller), errors);
         this.externAddress += size;
       }
     } else if (direct == Directives.SET) {
@@ -539,7 +525,7 @@ final class FirstPassProcessor {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
           context
               .symbols()
-              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.getType(), errors);
+              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.kind(), symtabEntry.origin(), errors);
         }
       }
     }

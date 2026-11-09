@@ -1,5 +1,8 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
+
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
 
@@ -37,7 +40,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 public class Symbol {
   private final String name;
   private int address;
-  private final boolean data; // boolean true if data symbol false if text symbol.
+  private final Kind kind;
+  private final Origin origin;
   public static final boolean TEXT_SYMBOL = false;
   public static final boolean DATA_SYMBOL = true;
 
@@ -49,9 +53,22 @@ public class Symbol {
    * @param data The type of Symbol that it is.
    */
   public Symbol(String name, int address, boolean data) {
+    this(name, address, data ? Kind.DATA : Kind.TEXT, null);
+  }
+
+  Symbol(String name, int address, Kind kind, Origin origin) {
     this.name = name;
     this.address = address;
-    this.data = data;
+    this.kind = kind;
+    this.origin = origin;
+  }
+
+  Kind kind() {
+    return kind;
+  }
+
+  Origin origin() {
+    return origin;
   }
 
   /**
@@ -78,7 +95,7 @@ public class Symbol {
    * @return The type of the data.
    */
   public boolean getType() {
-    return this.data;
+    return kind != Kind.TEXT;
   }
 
   /**

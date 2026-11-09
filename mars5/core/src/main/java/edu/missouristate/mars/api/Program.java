@@ -13,4 +13,9 @@ public interface Program {
   default InstructionSourceMap sourceMap() {
     return InstructionSourceMap.EMPTY;
   }
+
+  /** Returns the definitions for the original assembled image. */
+  default AssemblySymbolMap symbolMap() {
+    return AssemblySymbolMap.EMPTY;
+  }
 }

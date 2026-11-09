@@ -66,7 +66,7 @@ final class Parser {
     if (pass.inMacroSegment) {
       pass.detectLabels(tokens, macroPool.getCurrent());
     } else {
-      pass.stripLabels(tokens);
+      pass.stripLabels(tokens, physicalLine, caller);
     }
     if (tokens.isEmpty()) {
       return null;
@@ -77,7 +77,7 @@ final class Parser {
 
     // Let's handle the directives here...
     if (tokenType == TokenTypes.DIRECTIVE) {
-      pass.executeDirective(tokens);
+      pass.executeDirective(tokens, physicalLine, caller);
       return null;
     }
 
@@ -265,7 +265,7 @@ final class Parser {
     return null;
   }
 
-  private static Origin origin(SourceLine line, Origin caller) {
+  static Origin origin(SourceLine line, Origin caller) {
     return new Origin(new Location(Path.of(line.getFilename()), line.getLineNumber()), caller);
   }
 

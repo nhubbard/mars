@@ -1,5 +1,8 @@
 package edu.missouristate.mars.assembler;
 
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
+
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.util.Binary;
 import java.util.*;
@@ -67,6 +70,10 @@ public class SymbolTable {
    * @param errors List to which to add any processing errors that occur.
    */
   public void addSymbol(Token token, int address, boolean b, ErrorList errors) {
+    addSymbol(token, address, b ? Kind.DATA : Kind.TEXT, null, errors);
+  }
+
+  void addSymbol(Token token, int address, Kind kind, Origin origin, ErrorList errors) {
     String label = token.getValue();
     if (getSymbol(label) != null) {
       errors.add(
@@ -76,7 +83,7 @@ public class SymbolTable {
               token.getStartPos(),
               "label \"" + label + "\" already defined"));
     } else {
-      Symbol s = new Symbol(label, address, b);
+      Symbol s = new Symbol(label, address, kind, origin);
       table.add(s);
     }
   }

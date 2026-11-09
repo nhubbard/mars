@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
@@ -305,6 +307,56 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> map.origins().clear()).isInstanceOf(UnsupportedOperationException.class);
       assertThatThrownBy(() -> map.breakpoints().get(new Location(calls, 2)).clear())
           .isInstanceOf(UnsupportedOperationException.class);
+    }
+  }
+
+  @Test
+  void symbolMapPreservesExpandedDefinitionsAcrossIncludesAndExports() throws Exception {
+    var main = directory.resolve("main.s");
+    var other = directory.resolve("other.s");
+    var macros = directory.resolve("macros.s");
+    var sources = new AssemblySourceSnapshot(
+        List.of(main, other),
+        Map.of(main, """
+                .include "macros.s"
+                .data
+                .byte 1
+                word: .word 2
+                .extern storage 4
+                .text
+                outer (exported)
+                outer (privateLabel)
+                .globl exported
+                """,
+            macros, """
+                .macro inner (%entry)
+                %entry:
+                  nop
+                .end_macro
+                .macro outer (%name)
+                  inner (%name)
+                .end_macro
+                """,
+            other, ".text\nprivateLabel: j exported\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      var map = result.program().symbolMap();
+      int text = session.memory.textBaseAddress;
+      var firstCall = new Origin(new Location(main, 7), null);
+      var secondCall = new Origin(new Location(main, 8), null);
+      var exported = new Origin(new Location(macros, 2), new Origin(new Location(macros, 6), firstCall));
+      var local = new Origin(new Location(macros, 2), new Origin(new Location(macros, 6), secondCall));
+      assertThat(map.globals()).containsExactlyInAnyOrderEntriesOf(Map.of(
+          "exported", new Definition(text, Kind.TEXT, exported),
+          "storage", new Definition(session.memory.externBaseAddress, Kind.EXTERNAL, new Origin(new Location(main, 5), null))));
+      assertThat(map.locals().get(main)).containsExactlyInAnyOrderEntriesOf(Map.of(
+          "word", new Definition(session.memory.dataBaseAddress + 4, Kind.DATA, new Origin(new Location(main, 4), null)),
+          "privateLabel", new Definition(text + 4, Kind.TEXT, local)));
+      assertThat(map.locals().get(other)).containsExactlyEntriesOf(Map.of(
+          "privateLabel", new Definition(text + 8, Kind.TEXT, new Origin(new Location(other, 2), null))));
+      assertThatThrownBy(() -> map.locals().get(main).clear()).isInstanceOf(UnsupportedOperationException.class);
+      assertThatThrownBy(() -> map.globals().clear()).isInstanceOf(UnsupportedOperationException.class);
     }
   }
 
