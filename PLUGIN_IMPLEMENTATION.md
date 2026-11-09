@@ -220,10 +220,12 @@ the active source. Edits elsewhere in the captured graph require another build.
 
 **Build → Assemble Containing MIPS Entry** lists top-level MIPS sources that reach the open
 file through includes. It follows IntelliJ's reverse include index and offers each entry
-once. Choosing an entry builds it and selects its context for build-backed label navigation
-and completion in its included files. The Build menu retains a separate action to assemble
-the current file as an entry. Automatic background analysis and physical prefix resolution
-for macro parameters and equivalences across the selected include context remain open.
+once. Choosing an entry builds it and selects its context for the editor. Label navigation
+and completion use successful build results. Equivalence definitions, macro calls and
+parameters, and the active data list use live source events up to the caret in expanded
+include order. That context is available after a failed build and drops back to the open
+file when the selected entry no longer reaches it. The Build menu retains a separate action
+to assemble the current file as an entry. Automatic background assembly remains open.
 
 ## Go to Declaration for data labels and exports
 

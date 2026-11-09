@@ -14,6 +14,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
@@ -60,12 +61,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
 
-    internal class BuiltSymbols(
-        val entry: Path,
+    internal class SymbolBuild(val entry: Path)
+
+    private class BuiltSymbols(
+        val request: SymbolBuild,
         val revisions: Map<Path, Long> = emptyMap(),
         val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
         val texts: Map<Path, String> = emptyMap(),
     ) {
+        val entry = request.entry
         private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
         val localSymbols = symbols.locals()[entry].orEmpty()
 
@@ -86,13 +90,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             completionNames.tailSet(prefix).asSequence().takeWhile { it.startsWith(prefix) }.toList()
     }
 
-    internal fun beginSymbolBuild(entry: Path): BuiltSymbols =
-        BuiltSymbols(entry.toAbsolutePath().normalize()).also(lastBuild::set)
+    internal fun beginSymbolBuild(entry: Path): SymbolBuild =
+        SymbolBuild(entry.toAbsolutePath().normalize()).also { lastBuild.set(BuiltSymbols(it)) }
 
-    internal fun publishBuiltSymbols(build: BuiltSymbols, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
-        lastBuild.compareAndSet(build, BuiltSymbols(
-            build.entry, sources.revisions, symbols, sources.snapshot.texts(),
-        ))
+    internal fun publishBuiltSymbols(build: SymbolBuild, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
+        val current = lastBuild.get()
+        if (current.request === build) {
+            lastBuild.compareAndSet(current, BuiltSymbols(build, sources.revisions, symbols, sources.snapshot.texts()))
+        }
     }
 
     /** Joins physical names with the last compatible assembly for this entry. */
@@ -222,11 +227,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
         if (DumbService.isDumb(project)) return null
         val offset = position.textOffset
+        val selected = selectedPrefix(root, offset)
         val replacements = HashMap<String, String>()
         val errors = ErrorList()
         val tokens = Tokenizer.tokenizeWithEquivalences(sourceLine(position), errors, { symbol ->
             replacements.getOrPut(symbol) {
-                equivalenceTarget(root, symbol, offset)?.let {
+                equivalenceTarget(root, symbol, offset, selected)?.let {
                     Tokenizer.readEquivalenceReplacement(sourceLine(it, fromLineStart = true), symbol)
                 }.orEmpty()
             }.ifEmpty { null }
@@ -236,7 +242,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val name = tokens[0].value
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
         var target: MipsDeclaration? = null
-        val open = visitMacroPrefix(root, offset) { definition ->
+        val open = visitMacroPrefix(selected?.asSequence() ?: sourcePrefix(root, offset)) { definition ->
             if (definition.arity == arity && definition.declaration.name == name) target = definition.declaration
         }
         return target.takeIf { open == null }
@@ -245,16 +251,16 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
         if (DumbService.isDumb(project)) return null
-        val macro = visitMacroPrefix(root, position.textOffset) {} ?: return null
+        val macro = visitMacroPrefix(editorPrefix(root, position.textOffset)) {} ?: return null
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parameters.firstOrNull { it.value == name } ?: return emptyList()
         return listOfNotNull(macro.declaration.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
     }
 
-    private fun visitMacroPrefix(root: MipsFile, offset: Int, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
+    private fun visitMacroPrefix(events: Sequence<MipsSourceEvent>, onClosed: (MipsSourceEvent.Begin) -> Unit): MipsSourceEvent.Begin? {
         var open: MipsSourceEvent.Begin? = null
-        for (event in sourcePrefix(root, offset)) {
+        for (event in events) {
             when (event) {
                 is MipsSourceEvent.Begin -> open = open ?: event
                 is MipsSourceEvent.End -> {
@@ -272,7 +278,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         var inMacro = false
         var inData = false
         var dataList = Directives.WORD
-        for (event in sourcePrefix(root, position.textOffset)) {
+        for (event in editorPrefix(root, position.textOffset)) {
             when (event) {
                 is MipsSourceEvent.Begin -> inMacro = true
                 is MipsSourceEvent.End -> inMacro = false
@@ -289,9 +295,29 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return !inMacro && inData && Directives.isIntegerDirective(dataList)
     }
 
-    private fun sourcePrefix(root: MipsFile, offset: Int): Sequence<MipsSourceEvent> = sequence {
-        val visited = hashSetOf(root.viewProvider.virtualFile)
-        val pending = ArrayDeque(listOf(mipsSourceEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
+    private fun editorPrefix(file: MipsFile, offset: Int): Sequence<MipsSourceEvent> =
+        selectedPrefix(file, offset)?.asSequence() ?: sourcePrefix(file, offset)
+
+    private fun selectedPrefix(file: MipsFile, offset: Int): List<MipsSourceEvent>? {
+        val build = lastBuild.get() ?: return null
+        val path = build.sourcePath(file) ?: return null
+        if (path == build.entry) return null
+        val entry = VirtualFileManager.getInstance().findFileByNioPath(build.entry) ?: return null
+        val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
+        var reached = false
+        val prefix = sourcePrefix(file, offset, entryPsi) { reached = true }.toList()
+        return prefix.takeIf { reached }
+    }
+
+    private fun sourcePrefix(
+        file: MipsFile, offset: Int, entry: MipsFile = file, onReached: () -> Unit = {},
+    ): Sequence<MipsSourceEvent> = sequence {
+        val entryFile = entry.viewProvider.virtualFile
+        val activeFile = file.viewProvider.virtualFile
+        val visited = hashSetOf(entryFile)
+        val physicalPrefix = mipsSourceEvents(file).asSequence().takeWhile { it.offset < offset }
+        val initial = if (entryFile == activeFile) physicalPrefix.iterator() else mipsSourceEvents(entry).iterator()
+        val pending = ArrayDeque(listOf(initial))
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val events = pending.last()
@@ -304,18 +330,32 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             if (event is MipsSourceEvent.Include) {
                 val included = resolveInclude(event.literal, event.path)
                 if (included is MipsFile && visited.add(included.viewProvider.virtualFile)) {
-                    pending.addLast(mipsSourceEvents(included).iterator())
+                    if (included.viewProvider.virtualFile == activeFile) {
+                        onReached()
+                        // Once the active file is entered, its caret is the end of the prefix.
+                        pending.clear()
+                        pending.addLast(physicalPrefix.iterator())
+                    } else {
+                        pending.addLast(mipsSourceEvents(included).iterator())
+                    }
                 }
             }
         }
     }
 
     /** Finds the first physical .eqv in the expanded prefix of the current entry. */
-    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): MipsDeclaration? =
-        equivalenceTarget(root, position.text, position.textOffset)
-
-    private fun equivalenceTarget(root: MipsFile, name: String, offset: Int): MipsDeclaration? {
+    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): MipsDeclaration? {
         if (DumbService.isDumb(project)) return null
+        return equivalenceTarget(root, position.text, position.textOffset, selectedPrefix(root, position.textOffset))
+    }
+
+    private fun equivalenceTarget(
+        root: MipsFile, name: String, offset: Int, selected: List<MipsSourceEvent>?,
+    ): MipsDeclaration? {
+        if (selected != null) {
+            return selected.asSequence().filterIsInstance<MipsSourceEvent.Declaration>().map { it.declaration }
+                .firstOrNull { it.kind == SymbolKind.CONSTANT && it.name == name && it.hasReplacement() }
+        }
         val visited = hashSetOf(root.viewProvider.virtualFile)
         val pending = ArrayDeque(listOf(equivalenceScope(root, name, offset)))
         while (pending.isNotEmpty()) {
@@ -339,12 +379,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val declaration = declarations(file)[name].orEmpty().asSequence()
             .filter { it.kind == SymbolKind.CONSTANT && it.offset < limit }
             .mapNotNull { MipsDeclaration.findAt(file, it.offset, name) }
-            .firstOrNull { it.node.findChildByType(MipsTypes.psi("REPLACEMENT")) != null }
+            .firstOrNull { it.hasReplacement() }
         val before = declaration?.textOffset ?: limit
         // The shared include path cache preserves ascending physical offsets.
         val includes = mipsIncludePaths(file).entries.asSequence().takeWhile { it.key < before }.iterator()
         return EquivalenceScope(file, includes, declaration)
     }
+
+    private fun MipsDeclaration.hasReplacement() = node.findChildByType(MipsTypes.psi("REPLACEMENT")) != null
 
     private data class EquivalenceScope(
         val file: MipsFile,

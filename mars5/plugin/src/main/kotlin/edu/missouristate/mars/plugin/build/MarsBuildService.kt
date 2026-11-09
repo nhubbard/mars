@@ -18,6 +18,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblyResult
+import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
@@ -59,6 +60,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         try {
             val capture = captureAssemblySources(listOf(entry), null)
             checkCanceled()
+            analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
             val result = capture.assembleIn(component)
             checkCanceled()
             val events = readAction {

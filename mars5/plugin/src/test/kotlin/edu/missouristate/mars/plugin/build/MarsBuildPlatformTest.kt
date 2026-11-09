@@ -71,6 +71,104 @@ class MarsBuildPlatformTest {
     private val project get() = projectFixture.get()
 
     @Test
+    fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking<Unit> {
+        val source = """
+            li ${'$'}t0, %value
+            li ${'$'}t1, COUNT
+            .end_macro
+            helper ARGS
+            li ${'$'}t2, LATE
+        """.trimIndent()
+        fun entry(values: String) = """
+            .eqv UNUSED 1
+            .extern reservation 4
+            .include "$values"
+            .macro helper (%number)
+              li ${'$'}t3, %number
+            .end_macro
+            .eqv ARGS (9)
+            .macro body (%value)
+              .include "parts/wrapper.s"
+            body (42)
+            .eqv LATE 99
+        """.trimIndent()
+        val (first, second) = withContext(Dispatchers.EDT) {
+            val shared = fixture.addFileToProject("parts/shared.s", source).virtualFile
+            fixture.addFileToProject("parts/wrapper.s", ".include \"shared.s\"\n")
+            fixture.addFileToProject("first-values.s", ".eqv COUNT 7\n")
+            fixture.addFileToProject("second-values.s", ".eqv COUNT 11\n")
+            val first = fixture.addFileToProject("first.s", entry("first-values.s")).virtualFile
+            val second = fixture.addFileToProject("second.s", entry("second-values.s")).virtualFile
+            fixture.configureFromExistingVirtualFile(shared)
+            first to second
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        fun target(name: String) = fixture.file.findReferenceAt(source.indexOf(name))?.resolve()
+        suspend fun assemble(file: VirtualFile): Boolean {
+            val component = MarsSessionService.createMarsComponent()
+            return component.context().use {
+                project.service<MarsBuildService>().assemble(file.toNioPath(), component, activateBuildView = false)
+            }
+        }
+        readAction {
+            assertNull(target("COUNT"))
+            assertNull(target("%value"))
+        }
+        for ((entry, values) in listOf(first to "first-values.s", second to "second-values.s")) {
+            assertFalse(assemble(entry))
+            readAction {
+                assertEquals(values, target("COUNT")?.containingFile?.name)
+                assertEquals(entry, target("%value")?.containingFile?.virtualFile)
+                assertEquals("%value", target("%value")?.text)
+                assertEquals(entry, target("helper")?.containingFile?.virtualFile)
+                assertEquals("helper (%number)", target("helper")?.text)
+                assertEquals(entry, target("ARGS")?.containingFile?.virtualFile)
+                assertNull(target("LATE"))
+            }
+        }
+        withContext(Dispatchers.EDT) {
+            edit(second, ".eqv COUNT\n" + entry("second-values.s"))
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+        readAction { assertEquals("second-values.s", target("COUNT")?.containingFile?.name) }
+        withContext(Dispatchers.EDT) {
+            edit(second, entry("second-values.s").replace(".include \"parts/wrapper.s\"", ".end_macro"))
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+        readAction {
+            assertNull(target("COUNT"))
+            assertNull(target("%value"))
+            assertNull(target("helper"))
+        }
+        val plain = withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(project) { second.delete(this) }
+            fixture.addFileToProject("entry.txt", entry("second-values.s")).virtualFile
+        }
+        readAction { assertNull(target("COUNT")) }
+        assertFalse(assemble(plain))
+        readAction { assertNull(target("COUNT")) }
+    }
+
+    @Test
+    fun `an included data continuation inherits the selected entry segment and list`() = timeoutRunBlocking<Unit> {
+        val (entry, data) = withContext(Dispatchers.EDT) {
+            val data = fixture.addFileToProject("values.s", "value\n").virtualFile
+            val entry = fixture.addFileToProject("entry.s", ".data\nvalue: .word 42\n.include \"values.s\"\n.text\nnop\n").virtualFile
+            fixture.configureFromExistingVirtualFile(data)
+            entry to data
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        fun target() = fixture.file.findReferenceAt(1)?.resolve()
+        readAction { assertNull(target()) }
+        project.service<MarsBuildService>().assemble(entry.toNioPath())
+        readAction {
+            assertEquals(data, fixture.file.virtualFile)
+            assertEquals(entry, target()?.containingFile?.virtualFile)
+            assertEquals("value", target()?.text)
+        }
+    }
+
+    @Test
     fun `choosing a containing entry changes navigation and completion in a shared include`() = timeoutRunBlocking<Unit> {
         val source = "j selectedName\n"
         val (first, second, shared) = withContext(Dispatchers.EDT) {
