@@ -1160,6 +1160,21 @@ keypad port, and pending device interrupt bits from the same instruction frame
 as the CPU. A queued key press is discarded on rewind, so stepping forward
 again requires fresh input.
 
+## Keyboard and Display Simulator model
+
+The Kotlin device implements the receiver control and data words at MMIO
+base + `0x00` and `0x04` and the transmitter control and data words at
+`0x08` and `0x0c`. It applies host input at instruction boundaries and
+counts completed instructions for fixed, uniform, and normal transmit delays.
+Output can appear when a write is accepted or after the delay. Form feed
+clears the display and bell with packed coordinates addresses an 80-column,
+24-row screen. Carriage return and line feed move the cursor in screen mode.
+
+Instruction checkpoints restore the display, ready bits, receiver data,
+pending interrupts, and the delay sequence. Unapplied host keystrokes are
+discarded on rewind. The model is covered by protocol and assembled-program
+tests. The IntelliJ tool panel and Run and Debug controls are the next slice.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
