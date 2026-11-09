@@ -1007,8 +1007,11 @@ class MarsDebugPlatformTest {
                 nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
         }
-        withDebug(source) { debug ->
+        withDebug(source, { captureBitmap = true }) { debug ->
             debug.assertPausedAt(source, 6)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val display = process.bitmapDisplay
+            assertNull(display.snapshot().frame.image)
             val before = withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 val expected = mapOf(
@@ -1043,6 +1046,7 @@ class MarsDebugPlatformTest {
                 frame
             }
             debug.assertPausedAt(source, 7)
+            assertEquals(0xff667788.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
             withContext(Dispatchers.EDT) {
                 val after = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x55667788", evaluate(debug.session, after, "word(buffer)"))
@@ -1052,6 +1056,7 @@ class MarsDebugPlatformTest {
                 action.actionPerformed(event)
             }
             debug.assertPausedAt(source, 6)
+            assertEquals(0xff223344.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
             withContext(Dispatchers.EDT) {
                 assertEquals("0x11223344", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "word(buffer)"))
                 debug.session.resume()

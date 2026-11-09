@@ -43,6 +43,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab("statistics.name", statistics.component, statistics)
         val branchHistory = BranchHistoryView(project)
         addTab("branchHistory.name", branchHistory.component, branchHistory)
+        val bitmap = BitmapDisplayView(project)
+        addTab("bitmap.name", bitmap.component, bitmap)
     }
 }
 

@@ -176,6 +176,7 @@ class MarsRunPlatformTest {
             config.options.sourcePath = source.virtualFile.path
             config.options.delayedBranching = true
             config.options.selfModifyingCode = true
+            config.options.captureBitmap = true
             config.checkConfiguration()
             val state = Element("configuration")
             config.writeExternal(state)
@@ -184,10 +185,12 @@ class MarsRunPlatformTest {
             assertEquals(config.options.sourcePath, restored.options.sourcePath)
             assertTrue(restored.options.delayedBranching)
             assertTrue(restored.options.selfModifyingCode)
+            assertTrue(restored.options.captureBitmap)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
             assertFalse(previousConfiguration.options.selfModifyingCode)
+            assertFalse(previousConfiguration.options.captureBitmap)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
@@ -195,19 +198,24 @@ class MarsRunPlatformTest {
                 val flags = UIUtil.findComponentsOfType(editor.component, JCheckBox::class.java).associateBy { it.text }
                 val delay = flags.getValue("Enable delayed branching")
                 val modify = flags.getValue("Allow self-modifying code")
+                val capture = flags.getValue("Capture Bitmap Display from launch")
                 assertFalse(delay.isSelected)
                 assertFalse(modify.isSelected)
+                assertFalse(capture.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
                 assertTrue(modify.isSelected)
+                assertTrue(capture.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
                 modify.isSelected = false
+                capture.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
                 assertFalse(restored.options.selfModifyingCode)
+                assertFalse(restored.options.captureBitmap)
             } finally {
                 Disposer.dispose(editor)
             }

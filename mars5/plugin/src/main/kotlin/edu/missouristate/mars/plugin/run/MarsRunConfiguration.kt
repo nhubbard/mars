@@ -46,6 +46,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var delayedBranching: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
+    var captureBitmap: Boolean by property(false)
     var memoryDumps by list<RunMemoryDumpState>()
 }
 
@@ -81,12 +82,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var source = ""
         private var delayedBranching = false
         private var selfModifyingCode = false
+        private var captureBitmap = false
         private val dumps = RunMemoryDumpEditor(project) { runFilePath(project, sourceField.text.trim()) }
         private lateinit var sourceField: JTextField
         private val form = panel {
             row(runMessages.getMessage("run.source")) { sourceField = textField().bindText(::source).component }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
+            row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
             row(runMessages.getMessage("run.export.title")) {
                 cell(dumps.component).align(AlignX.FILL).comment(runMessages.getMessage("run.export.help"))
             }
@@ -95,6 +98,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             source = configuration.options.sourcePath.orEmpty()
             delayedBranching = configuration.options.delayedBranching
             selfModifyingCode = configuration.options.selfModifyingCode
+            captureBitmap = configuration.options.captureBitmap
             dumps.reset(configuration.options.memoryDumps)
             form.reset()
         }
@@ -103,6 +107,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.sourcePath = source.trim()
             configuration.options.delayedBranching = delayedBranching
             configuration.options.selfModifyingCode = selfModifyingCode
+            configuration.options.captureBitmap = captureBitmap
             configuration.options.memoryDumps = dumps.copyRows()
         }
         override fun createEditor() = form
@@ -115,7 +120,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val entry = runFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
         return MarsRunState(
             environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
-            memoryDumps(entry) { ExecutionException(it) },
+            memoryDumps(entry) { ExecutionException(it) }, options.captureBitmap,
         )
     }
 }
@@ -123,12 +128,13 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 internal class MarsRunState(
     private val environment: ExecutionEnvironment, val entry: Path, private val options: MarsExecutionOptions,
     private val memoryDumps: List<MemoryExportSelection>,
+    private val captureBitmap: Boolean,
 ) :
     CommandLineState(environment) {
-    override fun startProcess() = service().createProcess(entry, options, memoryDumps)
+    override fun startProcess() = service().createProcess(entry, options, memoryDumps, captureBitmap)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
-        service().createProcess(entry, options, memoryDumps, execute)
+        service().createProcess(entry, options, memoryDumps, captureBitmap, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

@@ -24,6 +24,8 @@ import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
+import edu.missouristate.mars.plugin.tools.BitmapDisplay.Base
+import java.awt.image.BufferedImage
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
@@ -52,28 +54,28 @@ class InstructionCounterPlatformTest {
         val debug = DefaultDebugExecutor.getDebugExecutorInstance()
         val container = JPanel()
         val window = withContext(Dispatchers.EDT) { manager.registerToolWindow(RegisterToolWindowTask("MARS Tools")) }
-        val (panel, statistics, branches) = withContext(Dispatchers.EDT) {
+        val (panel, statistics, branches, bitmap) = withContext(Dispatchers.EDT) {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
-            val (counter, stats, history) = window.contentManager.contents
-            assertEquals("Instruction Counter", counter.displayName)
-            assertEquals("Instruction Statistics", stats.displayName)
-            assertEquals("Branch History Table", history.displayName)
+            val contents = window.contentManager.contents
+            assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display"),
+                contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
                 UIUtil.dispatchAllInvocationEvents()
                 withShowingChanged {
-                    container.add(counter.component)
-                    container.add(stats.component)
-                    container.add(history.component)
+                    contents.forEach { container.add(it.component) }
                 }
                 UIUtil.dispatchAllInvocationEvents()
             }
-            Triple(counter.component, stats.component, history.component)
+            contents.map { it.component }
         }
         val selector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JComboBox::class.java).single() }
         val statsSelector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(statistics, JComboBox::class.java).single() }
         val branchSelector = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(branches, JComboBox::class.java).single { it.itemCount == 0 }
+        }
+        val bitmapSelector = withContext(Dispatchers.EDT) {
+            UIUtil.findComponentsOfType(bitmap, JComboBox::class.java).single { it.itemCount == 0 }
         }
         fun button(text: String, component: JComponent = panel) =
             UIUtil.findComponentsOfType(component, JButton::class.java).single { it.text == text }
@@ -89,6 +91,7 @@ class InstructionCounterPlatformTest {
                     assertEquals(entries, selector.itemCount)
                     assertEquals(entries, statsSelector.itemCount)
                     assertEquals(entries, branchSelector.itemCount)
+                    assertEquals(entries, bitmapSelector.itemCount)
                     assertTrue(count in labels(), labels().toString())
                 }
             }
@@ -104,9 +107,11 @@ class InstructionCounterPlatformTest {
                 executionWindow.contentManager.addContent(content)
             }
 
-        suspend fun launch(executor: Executor, number: Long, source: String) = withContext(Dispatchers.EDT) {
+        suspend fun launch(executor: Executor, number: Long, source: String, captureBitmap: Boolean = false) = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("counter-$number.asm", source).virtualFile
-            val process = project.getService(MarsRunService::class.java).createProcess(file.toNioPath(), memoryDumps = emptyList())
+            val process = project.getService(MarsRunService::class.java).createProcess(
+                file.toNioPath(), memoryDumps = emptyList(), captureBitmap = captureBitmap,
+            )
             val descriptor = RunContentDescriptor(null, process, JPanel(), "Counter sample").apply {
                 executionId = number
                 isActivateToolWindowWhenAdded = false
@@ -117,10 +122,32 @@ class InstructionCounterPlatformTest {
         }
 
         try {
+            fun renderBitmap(): BufferedImage {
+                val canvas = UIUtil.findComponentsOfType(bitmap, BitmapCanvas::class.java).single()
+                canvas.setSize(512, 512)
+                return BufferedImage(512, 512, BufferedImage.TYPE_INT_RGB).also { image ->
+                    val graphics = image.createGraphics()
+                    try {
+                        canvas.paint(graphics)
+                    } finally {
+                        graphics.dispose()
+                    }
+                }
+            }
+            @Suppress("UNCHECKED_CAST")
+            fun baseChoice() = UIUtil.findComponentsOfType(bitmap, JComboBox::class.java)
+                .single { it.itemCount > 0 && it.getItemAt(0) is Base } as JComboBox<Base>
+            fun baseLabel(): String {
+                val combo = baseChoice()
+                return combo.renderer.getListCellRendererComponent(JList(), Base.STATIC_DATA, 2, false, false)
+                    .accessibleContext.accessibleName
+            }
             withContext(Dispatchers.EDT) {
                 assertFalse(button("Connect").isEnabled)
                 assertFalse(button("Reset").isEnabled)
                 assertFalse(button("Apply and Reset", branches).isEnabled)
+                assertFalse(button("Apply and Clear", bitmap).isEnabled)
+                assertEquals("Static data", baseLabel())
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
                     isActivateToolWindowWhenAdded = false
                 }
@@ -128,6 +155,11 @@ class InstructionCounterPlatformTest {
             }
             val first = launch(run, 1, "addiu \$t0, \$zero, 7\n")
             waitFor(1, "1 (100%)")
+            val firstBitmap = (first.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).bitmapDisplay
+            withContext(Dispatchers.EDT) {
+                button("Connect", bitmap).doClick()
+                assertTrue(firstBitmap.snapshot().connected)
+            }
             val second = launch(debug, 2, "nop\nnop\n")
             waitFor(2, "1 (100%)")
             withContext(Dispatchers.EDT) {
@@ -159,6 +191,33 @@ class InstructionCounterPlatformTest {
             }
             waitFor(1, "1 (100%)")
             withContext(Dispatchers.EDT) { assertTrue(checkNotNull(first.manager).removeContent(first, true)) }
+            waitFor(0, "0 (0%)")
+            assertFalse(firstBitmap.snapshot().connected)
+
+            val bitmapRun = launch(
+                run, 4, "lui \$t0, 0x1001\nlui \$t1, 0xff\nsw \$t1, 0(\$t0)\nli \$t1, 0xff\nsw \$t1, 4(\$t0)\n",
+                captureBitmap = true,
+            )
+            waitFor(1, "5 (100%)")
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertEquals("0x10010000 (Static data)", baseLabel())
+                    val image = renderBitmap()
+                    assertEquals(0xff000000.toInt(), image.getRGB(0, 127))
+                    assertEquals(0xffff0000.toInt(), image.getRGB(0, 128))
+                    assertEquals(0xff0000ff.toInt(), image.getRGB(1, 128))
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                baseChoice().selectedItem = Base.HEAP
+                button("Disconnect", bitmap).doClick()
+                button("Apply and Clear", bitmap).doClick()
+                assertEquals(0xff000000.toInt(), renderBitmap().getRGB(0, 128))
+                button("Connect", bitmap).doClick()
+                button("Reset", bitmap).doClick()
+                assertEquals(Base.HEAP, baseChoice().selectedItem)
+                assertTrue(checkNotNull(bitmapRun.manager).removeContent(bitmapRun, true))
+            }
             waitFor(0, "0 (0%)")
 
             val branchRun = launch(run, 3, "beq \$zero, \$zero, next\nnext: bne \$zero, \$zero, next\n")
@@ -201,6 +260,7 @@ class InstructionCounterPlatformTest {
                         container.remove(panel)
                         container.remove(statistics)
                         container.remove(branches)
+                        container.remove(bitmap)
                     }
                 }
             }
