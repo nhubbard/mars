@@ -427,7 +427,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): PsiElement? {
         if (prefix.openMacro != null) return null
         val arity = macroArgumentCount(tokens)
-        return prefix.macroOverload(tokens[0].value, arity)?.header
+        val definition = prefix.macroOverload(tokens[0].value, arity) ?: return null
+        val header = definition.header
+        return header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
     }
 
     private fun macroArgumentCount(tokens: TokenList): Int = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
@@ -440,9 +442,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val name = position.text
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parametersByName[name] ?: return emptyList()
-        // Expanded token columns need not correspond to a physical token in the header.
-        if (macro.expanded) return listOf(macro.header)
-        return listOfNotNull(macro.header.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
+        return listOfNotNull(macro.header.containingFile.findElementAt(parameter.offset))
+    }
+
+    internal fun generatedMacroPart(root: MipsFile, position: PsiElement): MacroPart? {
+        if (DumbService.isDumb(project)) return null
+        return editorTimeline(root).generatedMacroPart(root, position.textOffset)
     }
 
     internal fun hasIntegerDataList(root: MipsFile, position: PsiElement): Boolean {

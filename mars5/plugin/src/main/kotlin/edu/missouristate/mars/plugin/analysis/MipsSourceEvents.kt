@@ -31,7 +31,7 @@ internal sealed interface MipsSourceEvent {
     class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
         private val tokens = macroLineTokens(declaration)
-        private val direct = macroSignature(declaration, tokens, 0, expanded = false)
+        private val direct = macroSignature(declaration, tokens, 0, offset)
 
         fun bind(replacement: (String) -> String?): Begin? {
             val needsExpansion = (0 until tokens.size()).any {
@@ -40,12 +40,13 @@ internal sealed interface MipsSourceEvent {
             }
             if (!needsExpansion) return direct
             val errors = ErrorList()
-            val expanded = Tokenizer.tokenizeWithEquivalences(
-                sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
+            val directive = declaration.parent.firstChild
+            val expanded = Tokenizer.tokenizeMappedLine(
+                sourceLine(directive), errors, replacement, ProgressManager::checkCanceled,
             )
-            expanded.discardTrailingComment()
+            expanded.tokens().discardTrailingComment()
             if (errors.errorsOccurred()) return null
-            return macroSignature(declaration, expanded, 1, expanded = true)
+            return macroSignature(declaration, expanded.tokens(), 1, directive.textOffset, expanded)
         }
     }
 
@@ -57,7 +58,7 @@ internal sealed interface MipsSourceEvent {
         fun bind(inMacro: Boolean, replacement: (String) -> String?, addLabel: (String, PsiElement) -> Unit): Effective? {
             if (!hasLeadingEquivalence(head, replacement)) return null
             val errors = ErrorList()
-            val expanded = Tokenizer.expandLine(
+            val expanded = Tokenizer.tokenizeMappedLine(
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
             )
             val tokens = expanded.tokens()
@@ -65,13 +66,13 @@ internal sealed interface MipsSourceEvent {
             if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
             if (errors.errorsOccurred()) return null
             tokens.discardTrailingComment()
-            expanded.definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
+            expanded.expanded().definition()?.let { return Equivalence(head, it.name(), it.replacement()) }
             // In an open macro a label is part of the body, even before a closing directive.
             val operation = if (!inMacro && startsWithLabel) 2 else 0
             if (operation >= tokens.size()) return null
             val directive = Directives.matchDirective(tokens[operation].value)
             return when (directive) {
-                Directives.MACRO -> macroSignature(head, tokens, operation + 1, expanded = true)
+                Directives.MACRO -> macroSignature(head, tokens, operation + 1, sourceLineStart(head), expanded)
                 Directives.END_MACRO -> End(offset).takeIf { tokens.size() == operation + 1 }
                 Directives.EXTERN -> externalReservation(head, tokens, operation)
                 in dataStateDirectives -> DataDirective(offset, directive)
@@ -97,14 +98,17 @@ internal sealed interface MipsSourceEvent {
     }
 
     data class Begin(
-        val header: PsiElement, val name: String, val parameters: List<Token>, val expanded: Boolean,
+        val header: PsiElement, val name: String, val nameOffset: Int, val directiveOffset: Int,
+        val parameters: List<MacroFormal>,
         val arity: Int?, // A malformed signature still opens a scope for its accepted parameters.
     ) : Effective {
         override val offset = header.textOffset
-        val parametersByName: Map<String, Token> by lazy {
+        val parametersByName: Map<String, MacroFormal> by lazy {
             buildMap { for (parameter in parameters) putIfAbsent(parameter.value, parameter) }
         }
     }
+
+    data class MacroFormal(val value: String, val offset: Int)
 
     data class End(override val offset: Int) : Effective
 
@@ -220,13 +224,22 @@ internal fun TokenList.discardTrailingComment() {
     if (this[size() - 1].type == TokenTypes.COMMENT) remove(size() - 1)
 }
 
-private fun macroSignature(header: PsiElement, tokens: TokenList, nameIndex: Int, expanded: Boolean): MipsSourceEvent.Begin? {
+private fun macroSignature(
+    header: PsiElement, tokens: TokenList, nameIndex: Int, start: Int, mapped: Tokenizer.MappedLine? = null,
+): MipsSourceEvent.Begin? {
     if (nameIndex >= tokens.size() || tokens[nameIndex].type != TokenTypes.IDENTIFIER) return null
+    fun originalOffset(token: Token): Int {
+        val column = token.startPos - 1
+        return start + (mapped?.originalOffset(column) ?: column)
+    }
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
     val parameters = arguments.takeWhile { Macro.tokenIsMacroParameter(it.value, true) }
     val arity = arguments.size.takeIf { it == parameters.size }
-    return MipsSourceEvent.Begin(header, tokens[nameIndex].value, parameters, expanded, arity)
+    val name = tokens[nameIndex]
+    val directive = if (nameIndex == 0) start else originalOffset(tokens[nameIndex - 1])
+    return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
+        parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) }, arity)
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

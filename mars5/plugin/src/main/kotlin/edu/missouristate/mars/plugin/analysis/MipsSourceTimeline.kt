@@ -13,6 +13,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import java.util.BitSet
@@ -72,7 +73,16 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         when (event) {
             is Begin -> {
                 macroNames.add(event.name)
-                macro = macro ?: event
+                if (macro == null) {
+                    macro = event
+                    if (event.header !is MipsDeclaration) {
+                        val parts = cursor.locations.generatedMacroParts
+                        if (event.nameOffset != event.directiveOffset) parts[event.nameOffset] = MacroPart.NAME
+                        for (formal in event.parameters) {
+                            if (formal.offset != event.directiveOffset) parts.putIfAbsent(formal.offset, MacroPart.PARAMETER)
+                        }
+                    }
+                }
                 macroBoundaries[eventCount] = macro
             }
             is MipsSourceEvent.End -> {
@@ -136,6 +146,9 @@ internal class MipsSourceTimeline(
 
     fun macroAt(file: MipsFile, offset: Int): Begin? = openMacro(prefixEnd(file, offset))
 
+    fun generatedMacroPart(file: MipsFile, offset: Int): MacroPart? =
+        files.getValue(file.viewProvider.virtualFile).generatedMacroParts[offset]
+
     fun closesMacroOnLine(file: MipsFile, lineStart: Int): Boolean =
         lineStart in files.getValue(file.viewProvider.virtualFile).macroClosingLines
 
@@ -195,8 +208,11 @@ internal class MipsSourceTimeline(
 
 internal data class SourceEventSite(val offset: Int, val index: Int)
 
+internal enum class MacroPart { NAME, PARAMETER }
+
 internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
+    val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
     val macroClosingLines = HashSet<Int>()
     var end = 0

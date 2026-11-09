@@ -14,12 +14,14 @@ import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.plugin.analysis.MacroPart
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsInstructionOperand
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.equivalenceColor
 import edu.missouristate.mars.plugin.language.labelColor
+import edu.missouristate.mars.plugin.language.macroColor
 import edu.missouristate.mars.plugin.language.macroParameterColor
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.punctuationColor
@@ -41,7 +43,15 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
 
     override fun getReferences(): Array<PsiReference> = listOfNotNull(reference).toTypedArray()
 
-    internal fun highlightingColor() = (reference as? SymbolReference)?.highlightingColor()
+    internal fun highlightingColor(): TextAttributesKey? {
+        val file = containingFile as MipsFile
+        val analysis = file.project.service<MarsAnalysisService>()
+        return when (analysis.generatedMacroPart(file, this)) {
+            MacroPart.NAME -> macroColor
+            MacroPart.PARAMETER -> macroParameterColor
+            null -> (reference as? SymbolReference)?.highlightingColor()
+        }
+    }
 
     private class SymbolReference(
         element: MipsSymbolToken,

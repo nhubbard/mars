@@ -210,6 +210,61 @@ class MipsEditorPlatformTest {
     }
 
     @Test
+    fun `aliased macro headers color their written name and formals`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .eqv OPEN .macro
+            .eqv CLOSE .end_macro
+            .eqv NAME emit
+            .eqv FORMALS (%reg, %value)
+            .eqv BOTH blended (%arg)
+            .eqv COMPLETE .macro whole (%arg)
+            OPEN NAME FORMALS
+              addiu %reg, ${'$'}zero, %value
+            CLOSE
+            OPEN simple (%arg)
+              nop
+            CLOSE
+            OPEN BOTH
+              nop
+            CLOSE
+            COMPLETE
+              nop
+            CLOSE
+            emit (${'$'}t0, 7)
+            simple (2)
+            blended (3)
+            whole (4)
+        """.trimIndent()
+        withContext(Dispatchers.EDT) { fixture.configureByText("alias-headers.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val file = fixture.file as MipsFile
+            val highlights = fixture.doHighlighting()
+            fun color(context: String, word: String): TextAttributesKey? {
+                val start = source.indexOf(context) + context.indexOf(word)
+                return highlights.singleOrNull {
+                    it.startOffset == start && it.endOffset == start + word.length && it.forcedTextAttributesKey != null
+                }?.forcedTextAttributesKey
+            }
+            assertEquals(DefaultLanguageHighlighterColors.KEYWORD, color("OPEN NAME FORMALS", "OPEN"))
+            assertEquals(macroColor, color("OPEN NAME FORMALS", "NAME"))
+            assertEquals(macroParameterColor, color("OPEN NAME FORMALS", "FORMALS"))
+            assertEquals(macroColor, color("OPEN simple", "simple"))
+            assertEquals(macroParameterColor, color("simple (%arg)", "%arg"))
+            assertEquals(macroColor, color("OPEN BOTH", "BOTH"))
+            assertEquals(DefaultLanguageHighlighterColors.KEYWORD, color("\nCOMPLETE\n", "COMPLETE"))
+            for (call in listOf("emit (", "simple (2)", "blended (3)", "whole (4)")) {
+                assertEquals(macroColor, color(call, call.substringBefore(' ')), call)
+            }
+            val name = file.findElementAt(source.indexOf("NAME FORMALS"))!!
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertNull(current.service<MarsAnalysisService>().generatedMacroPart(file, name))
+            }
+        }
+    }
+
+    @Test
     fun `macro arguments and aliases take the colors of their use sites`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {

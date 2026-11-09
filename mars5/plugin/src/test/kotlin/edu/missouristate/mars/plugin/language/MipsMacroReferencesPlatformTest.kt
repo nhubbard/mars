@@ -120,7 +120,7 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
-    fun `aliased macro boundaries follow include order and navigate to their written opener`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+    fun `aliased macro boundaries follow include order and navigate to their written name`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val definitions = ".eqv START OPEN\n.eqv OPEN .MaCrO\n.eqv STOP .EnD_MaCrO\n"
         val header = "entry: START emit (%value)\n"
         val body = "addiu \$t0, \$zero, %value\n"
@@ -133,7 +133,7 @@ class MipsMacroReferencesPlatformTest {
             fixture.addFileToProject("open.s", header + body)
             fixture.addFileToProject("close.s", footer)
         }
-        assertEquals(Target("open.s", header.indexOf("START"), null), target("$include$close$call"))
+        assertEquals(Target("open.s", header.indexOf("emit"), null), target("$include$close$call"))
         assertNull(target("$include$call$close"))
         assertEquals(SymbolKind.CONSTANT, target("${definitions}entry: ST<caret>ART emit (%value)\n")?.kind)
         assertEquals(SymbolKind.CONSTANT, target("$include ST<caret>OP\n")?.kind)
@@ -167,7 +167,8 @@ class MipsMacroReferencesPlatformTest {
         val first = ".macro emit (%x)\n.end_macro\n"
         val second = "OPEN emit (%x,%y)\n.end_macro\n"
         val source = "$declarations$first$second"
-        assertEquals(Target("macro-call.asm", declarations.length + first.length, null), target("${source}em<caret>it(ARGS)\n"))
+        assertEquals(Target("macro-call.asm", declarations.length + first.length + second.indexOf("emit"), null),
+            target("${source}em<caret>it(ARGS)\n"))
         assertEquals(SymbolKind.MACRO, target("${source}em<caret>it(1)\n")?.kind)
     }
 

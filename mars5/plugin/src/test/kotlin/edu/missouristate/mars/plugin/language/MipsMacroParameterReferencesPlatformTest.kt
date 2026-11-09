@@ -78,7 +78,7 @@ class MipsMacroParameterReferencesPlatformTest {
         val include = ".include \"aliases.s\"\n"
         val header = ".macro NAME FORMALS\n"
         configure("$include${header}li \$t0, %val<caret>ue\n.end_macro\n")
-        assertEquals(Target("macro-parameters.asm", "NAME FORMALS", include.length + header.indexOf("NAME")), target())
+        assertEquals(Target("macro-parameters.asm", "FORMALS", include.length + header.indexOf("FORMALS")), target())
         configure("$include.macro NAME FOR<caret>MALS\n.end_macro\n")
         assertEquals(Target("aliases.s", ".eqv FORMALS (%value)", aliases.indexOf("FORMALS")), target())
         configure("$include.macro NA<caret>ME FORMALS\n.end_macro\n")
@@ -86,7 +86,7 @@ class MipsMacroParameterReferencesPlatformTest {
         configure("$include.macro emit \$SP<caret>IM\n.end_macro\n")
         assertEquals(Target("aliases.s", ".eqv \$SPIM \$value", aliases.indexOf("\$SPIM")), target())
         configure("$include.macro emit \$SPIM\nli \$t0, \$val<caret>ue\n.end_macro\n")
-        assertEquals("emit \$SPIM", target()?.text)
+        assertEquals("\$SPIM", target()?.text)
     }
 
     @Test
@@ -112,12 +112,15 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
-    fun `parameters in an aliased macro body navigate to its physical opening token`() = timeoutRunBlocking<Unit> {
-        val aliases = ".eqv START .macro\n.eqv STOP .end_macro\n"
+    fun `parameters in an aliased macro body navigate to the exact written formal`() = timeoutRunBlocking<Unit> {
+        val aliases = ".eqv START .macro\n.eqv STOP .end_macro\n.eqv FULL .macro emit (%value)\n"
         val header = "START emit (%value)\n"
         val use = "li \$t0, %val<caret>ue\n"
         configure("$aliases$header$use" + "STOP\n")
-        assertEquals(Target("macro-parameters.asm", "START", aliases.length), target())
+        assertEquals(Target("macro-parameters.asm", "%value", aliases.length + header.indexOf("%value")), target())
+        configure("${aliases}FULL\n${use}STOP\n")
+        assertEquals("FULL", target()?.text)
+        assertEquals(aliases.length, target()?.offset)
         configure("$aliases${header}STOP\n$use")
         assertNull(target())
         configure("$aliases${header.replace("%value", "%val<caret>ue")}STOP\n")
