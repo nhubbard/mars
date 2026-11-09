@@ -58,6 +58,7 @@ class MipsReferenceIndexPlatformTest {
             .globl Shared
             .word ${'$'}gcc
             .float NaN, Infinity
+            .set noat ), :
             li ${'$'}v0, invalid%name
             .asciiz "literal"
             # comment
@@ -93,12 +94,12 @@ class MipsReferenceIndexPlatformTest {
             )
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
             for (name in listOf("Alias", "Literal", "local", "top", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
-                "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s")) {
+                "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s")) {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(3, extension.version)
+            assertEquals(4, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

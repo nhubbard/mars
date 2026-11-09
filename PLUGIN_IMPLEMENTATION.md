@@ -391,6 +391,11 @@ expected directive set from the core catalog. It verifies the emitted user and
 kernel instructions, data bytes and values, alignment and reserved space, global
 and external symbols, and the assembler's `.set` warning.
 
+The native parser preserves `.set` operands as raw assembler tokens because
+the core ignores the directive's payload. A fixture covers mixed case, no
+operands, unmatched punctuation, and an equivalence that expands to `.set`.
+Ignored operands no longer appear in the symbol reference index.
+
 The clean IntelliJ 2026.3 launch passed 1,293 tests, including 86 plugin tests,
 and authored plugin code covered all 699 lines and 432 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the

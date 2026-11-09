@@ -50,6 +50,7 @@ object MipsTypes {
         "END_MACRO" to MipsSyntaxTypes.END_MACRO,
         "EQV" to MipsSyntaxTypes.EQV,
         "INCLUDE" to MipsSyntaxTypes.INCLUDE,
+        "SET" to MipsSyntaxTypes.SET,
         "LEFT_PAREN" to MipsSyntaxTypes.LEFT_PAREN,
         "MACRO" to MipsSyntaxTypes.MACRO,
         "MINUS" to MipsSyntaxTypes.MINUS,

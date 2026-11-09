@@ -33,7 +33,7 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapper
         private val bundle = DynamicBundle(MipsDeclaration::class.java, "messages.MarsBundle")
         private val NAMES = TokenSet.create(
             MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DIRECTIVE"),
-            MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"),
+            MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"), MipsTypes.psi("SET"),
         )
 
         // An indexed offset may outlive the PSI it described. Verify the current identifier.

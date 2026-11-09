@@ -326,6 +326,29 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `ignored set payloads retain assembler tokens without operand errors`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val context = project.get().service<MarsSessionService>().context
+        for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".eqv OPTION .set\nOPTION ), :")) {
+            val source = "$directive # ignored by the assembler\nentry: nop\n"
+            val path = directory.resolve("set.asm").also { it.writeText(source) }
+            val program = context.assemble(listOf(path), null, true, false)
+            assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+            val warning = program.assemblyDiagnostics.errorMessages.single()
+            assertTrue(warning.isWarning)
+            assertTrue(warning.message.contains("ignores the .set directive"))
+            readAction { assertParses(source) }
+        }
+        // Lexical coloring and tolerant name parsing are also preserved for the specialized token.
+        readAction {
+            assertParses(".set: nop\nb .set\n")
+            assertArrayEquals(
+                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
+                MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("SET")),
+            )
+        }
+    }
+
+    @Test
     fun `every core directive parses and assembles in ordinary and comma-heavy source`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv WORD_VALUE 7
@@ -379,7 +402,7 @@ class MipsParserPlatformTest {
             assertTrue(program.assemblyDiagnostics.errorMessages.single().message.contains(".set"))
 
             readAction {
-                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE").map(MipsTypes::psi).toSet()
+                val directiveTypes = listOf("DIRECTIVE", "EQV", "MACRO", "END_MACRO", "INCLUDE", "SET").map(MipsTypes::psi).toSet()
                 val parsed = listOf(entry, included).flatMap { text ->
                     SyntaxTraverser.astTraverser(assertParses(text).node).filterTypes { it in directiveTypes }.map { it.text }.toList()
                 }.toSet()
