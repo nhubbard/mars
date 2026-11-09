@@ -844,14 +844,18 @@ assembled symbols. Expressions accept CPU register names and numbers, `pc`, `hi`
 Local labels use the active instruction's assembly entry, then global labels.
 The generated parser has an expression entry point for the debugger. It accepts
 one complete expression with numeric and character literals, parentheses, unary
-and binary `+` and `-`, and `==`, `!=`, `<`, `<=`, `>`, and `>=`. Arithmetic binds
-more tightly than relational operators, which bind more tightly than equality.
-Only the debugger lexer emits comparison tokens. The assembly editor continues
-to reject them in source operands and recover at the next line.
+and binary `+` and `-`, comparisons, and bitwise operators. From tightest to loosest,
+the binary operator groups are addition and subtraction, shifts, relational comparisons,
+equality, `&`, `^`, and `|`. Unary `~` complements a word. Use
+parentheses around a mask before comparing it, as in `(word(flags) & 0xff) == 7`.
+Comparison and bitwise tokens are recognized only in the debugger.
 
 Integer arithmetic wraps to 32 bits and displays hexadecimal. Floating-point
 arithmetic displays a decimal result. Comparisons use signed integer values or
 the decoded floating-point value, and return `0x00000001` or `0x00000000`.
+Bitwise operators require integer operands and return a 32-bit word. Shifts use
+the low five bits of the count, as MIPS variable shifts do. The `>>` operator
+preserves the sign bit and `>>>` fills from the left with zeros.
 
 Scalar evaluation operates on the paused frame's snapshot. Explicit `byte(address)`,
 `half(address)`, and `word(address)` reads run on the simulator worker that owns the

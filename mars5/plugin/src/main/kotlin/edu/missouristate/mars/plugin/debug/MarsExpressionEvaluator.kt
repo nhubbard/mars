@@ -70,9 +70,10 @@ internal class MarsExpressionEvaluator(
             is ReadMemory -> {
                 val request = WatchMemoryRequest(
                     inspect = { memory ->
-                        val value = result.inspect(memory)
-                        if (value == null) callback.errorOccurred(runMessages.getMessage("debug.evaluate.memory.invalid"))
-                        else callback.evaluated(RegisterValue(source, value::display))
+                        result.inspect(memory).fold(
+                            { value -> callback.evaluated(RegisterValue(source, value::display)) },
+                            { error -> callback.errorOccurred(error.message!!) },
+                        )
                     },
                     unavailable = { callback.errorOccurred(runMessages.getMessage("debug.evaluate.memory.unavailable")) },
                 )
@@ -84,10 +85,8 @@ internal class MarsExpressionEvaluator(
     // The debugger calls this while the stopped machine is still owned by its execution coroutine.
     suspend fun evaluateAtBreakpoint(expression: String, memory: MemoryState): Result<Scalar> {
         val evaluation = readAction { evaluateSource(expression.trim()) }
-            ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.evaluate.invalid")))
-        val value = evaluation.resolve(memory)
-            ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.evaluate.memory.invalid")))
-        return Result.success(value)
+            ?: return invalidExpression()
+        return evaluation.resolve(memory)
     }
 
     private fun evaluateSource(source: String): Evaluation? {
@@ -115,9 +114,15 @@ internal class MarsExpressionEvaluator(
         groupType -> evaluateNode(node.getChildren(expressionParts).single())
         unaryType -> {
             val (operator, operand) = node.getChildren(expressionParts)
-            evaluateNode(operand)?.let { if (operator.elementType == minusType) it.map(Scalar::negated) else it }
+            evaluateNode(operand)?.let { value ->
+                when (operator.elementType) {
+                    minusType -> value.map(Scalar::negated)
+                    bitNotType -> value.map { (it as? Word)?.let { word -> Word(word.bits.inv()) } }
+                    else -> value
+                }
+            }
         }
-        addType, equalityType, relationType -> {
+        in binaryTypes -> {
             val (left, operator, right) = node.getChildren(expressionParts)
             val leftValue = evaluateNode(left)
             val rightValue = evaluateNode(right)
@@ -133,32 +138,36 @@ internal class MarsExpressionEvaluator(
         val width = WatchMemoryWidth.entries.firstOrNull { it.spelling == operator.text } ?: return null
         val value = evaluateNode(address) ?: return null
         return ReadMemory { memory ->
-            val location = value.resolve(memory) as? Word ?: return@ReadMemory null
-            width.inspect(memory, location.bits)?.let(::Word)
+            val resolved = value.resolve(memory).getOrElse { return@ReadMemory Result.failure(it) }
+            val location = resolved as? Word ?: return@ReadMemory invalidMemory()
+            width.inspect(memory, location.bits)?.let { Result.success(Word(it)) } ?: invalidMemory()
         }
     }
 
     private sealed interface Evaluation {
-        fun resolve(memory: MemoryState): Scalar? = when (this) {
-            is Immediate -> value
+        fun resolve(memory: MemoryState): Result<Scalar> = when (this) {
+            is Immediate -> Result.success(value)
             is ReadMemory -> inspect(memory)
         }
 
-        fun map(operation: (Scalar) -> Scalar): Evaluation = when (this) {
-            is Immediate -> Immediate(operation(value))
-            is ReadMemory -> ReadMemory { memory -> inspect(memory)?.let(operation) }
+        fun map(operation: (Scalar) -> Scalar?): Evaluation? = when (this) {
+            is Immediate -> operation(value)?.let(::Immediate)
+            is ReadMemory -> ReadMemory { memory ->
+                val value = inspect(memory).getOrElse { return@ReadMemory Result.failure(it) }
+                expressionValue(operation(value))
+            }
         }
     }
 
     private data class Immediate(val value: Scalar) : Evaluation
-    private class ReadMemory(val inspect: (MemoryState) -> Scalar?) : Evaluation
+    private class ReadMemory(val inspect: (MemoryState) -> Result<Scalar>) : Evaluation
 
-    private fun combine(left: Evaluation, right: Evaluation, operation: (Scalar, Scalar) -> Scalar): Evaluation =
-        if (left is Immediate && right is Immediate) Immediate(operation(left.value, right.value))
+    private fun combine(left: Evaluation, right: Evaluation, operation: (Scalar, Scalar) -> Scalar?): Evaluation? =
+        if (left is Immediate && right is Immediate) operation(left.value, right.value)?.let(::Immediate)
         else ReadMemory { memory ->
-            val a = left.resolve(memory) ?: return@ReadMemory null
-            val b = right.resolve(memory) ?: return@ReadMemory null
-            operation(a, b)
+            val a = left.resolve(memory).getOrElse { return@ReadMemory Result.failure(it) }
+            val b = right.resolve(memory).getOrElse { return@ReadMemory Result.failure(it) }
+            expressionValue(operation(a, b))
         }
 
     sealed interface Scalar {
@@ -186,17 +195,21 @@ internal class MarsExpressionEvaluator(
         val referenceType = MipsTypes.psi("REFERENCE_EXPR")
         val groupType = MipsTypes.psi("GROUP_EXPR")
         val unaryType = MipsTypes.psi("UNARY_EXPR")
-        val addType = MipsTypes.psi("ADD_EXPR")
-        val equalityType = MipsTypes.psi("EQUALITY_EXPR")
-        val relationType = MipsTypes.psi("RELATIONAL_EXPR")
         val minusType = MipsTypes.psi("MINUS")
-        val expressionParts = TokenSet.create(
-            literalType, referenceType, groupType, unaryType, addType, MipsTypes.psi("ADDRESS_EXPR"),
-            equalityType, relationType, MipsTypes.psi("PLUS"), minusType, MipsTypes.psi("EQUALITY"), MipsTypes.psi("RELATION"),
+        val bitNotType = MipsTypes.psi("BIT_NOT")
+        val binaryTypes = tokenSet(
+            "ADD_EXPR", "EQUALITY_EXPR", "RELATIONAL_EXPR", "BIT_OR_EXPR", "BIT_XOR_EXPR", "BIT_AND_EXPR", "SHIFT_EXPR",
+        )
+        val expressionParts = TokenSet.orSet(
+            binaryTypes,
+            tokenSet(
+                "LITERAL_EXPR", "REFERENCE_EXPR", "GROUP_EXPR", "UNARY_EXPR", "ADDRESS_EXPR",
+                "PLUS", "MINUS", "EQUALITY", "RELATION", "BIT_OR", "BIT_XOR", "BIT_AND", "BIT_NOT", "SHIFT",
+            ),
         )
         // Every signed MIPS word is exactly representable as a Double. Mixed comparisons use
         // the decoded floating-point value, including IEEE NaN and signed-zero semantics.
-        val binaryOperations = mapOf<String, (Scalar, Scalar) -> Scalar>(
+        val binaryOperations = mapOf<String, (Scalar, Scalar) -> Scalar?>(
             "+" to { a, b -> a + b },
             "-" to { a, b -> a + b.negated() },
             "==" to { a, b -> truth(a.number == b.number) },
@@ -205,7 +218,28 @@ internal class MarsExpressionEvaluator(
             "<=" to { a, b -> truth(a.number <= b.number) },
             ">" to { a, b -> truth(a.number > b.number) },
             ">=" to { a, b -> truth(a.number >= b.number) },
+            "|" to wordOperation(Int::or),
+            "^" to wordOperation(Int::xor),
+            "&" to wordOperation(Int::and),
+            "<<" to wordOperation(Int::shl),
+            ">>" to wordOperation(Int::shr),
+            ">>>" to wordOperation(Int::ushr),
         )
+
+        private fun tokenSet(vararg names: String) = TokenSet.create(*names.map(MipsTypes::psi).toTypedArray())
+
+        private fun wordOperation(operation: (Int, Int) -> Int): (Scalar, Scalar) -> Scalar? = { a, b ->
+            if (a is Word && b is Word) Word(operation(a.bits, b.bits)) else null
+        }
+
+        private fun expressionValue(value: Scalar?): Result<Scalar> =
+            value?.let { Result.success(it) } ?: invalidExpression()
+
+        private fun invalidExpression() = failure("debug.evaluate.invalid")
+
+        private fun invalidMemory() = failure("debug.evaluate.memory.invalid")
+
+        private fun failure(key: String): Result<Scalar> = Result.failure(IllegalArgumentException(runMessages.getMessage(key)))
 
         fun truth(value: Boolean) = Word(if (value) 1 else 0)
     }

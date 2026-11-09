@@ -766,7 +766,8 @@ class MipsParserPlatformTest {
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
             for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1", ".macro 7",
-                ".word 1 != 2", ".word 1 <= 2", ".word (1+2)")) {
+                ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
+                ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
                 val text = broken + "\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)
                 assertEquals(text, file.text)

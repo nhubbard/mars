@@ -23,7 +23,9 @@ class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : S
         put(MipsTypes.psi("PARAMETER"), DefaultLanguageHighlighterColors.PARAMETER)
         put(MipsTypes.psi("COMMA"), DefaultLanguageHighlighterColors.COMMA)
         for (name in listOf("LEFT_PAREN", "RIGHT_PAREN")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.PARENTHESES)
-        for (name in listOf("PLUS", "MINUS", "EQUALITY", "RELATION")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        for (name in listOf("PLUS", "MINUS", "EQUALITY", "RELATION", "BIT_OR", "BIT_XOR", "BIT_AND", "BIT_NOT", "SHIFT")) {
+            put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.OPERATION_SIGN)
+        }
     }
 
     override fun getHighlightingLexer() = LexerAdapter(MipsLexer(debuggerExpression), MipsTypes.converter)

@@ -3,7 +3,8 @@ package edu.missouristate.mars.plugin.language.syntax
 enum class MipsTokenKind {
     SPACE, NEWLINE, COMMENT, WORD, DIRECTIVE, REGISTER, PARAMETER, NUMBER,
     STRING, CHARACTER, UNCLOSED_STRING, UNCLOSED_CHARACTER,
-    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, EQUALITY, RELATION, BAD_CHARACTER,
+    COMMA, COLON, LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, EQUALITY, RELATION,
+    BIT_OR, BIT_XOR, BIT_AND, BIT_NOT, SHIFT, BAD_CHARACTER,
 }
 
 data class MipsToken(val kind: MipsTokenKind, val start: Int, val end: Int)
@@ -66,6 +67,17 @@ object MipsScanner {
                 ')' -> MipsTokenKind.RIGHT_PAREN
                 '+' -> MipsTokenKind.PLUS
                 else -> MipsTokenKind.MINUS
+            }
+            debuggerExpression && first in "|^&~" -> when (first) {
+                '|' -> MipsTokenKind.BIT_OR
+                '^' -> MipsTokenKind.BIT_XOR
+                '&' -> MipsTokenKind.BIT_AND
+                else -> MipsTokenKind.BIT_NOT
+            }
+            debuggerExpression && first in "<>" && position < end && source[position] == first -> {
+                position++
+                if (first == '>' && position < end && source[position] == '>') position++
+                MipsTokenKind.SHIFT
             }
             debuggerExpression && first in "<>=!" -> {
                 val hasEquals = position < end && source[position] == '='

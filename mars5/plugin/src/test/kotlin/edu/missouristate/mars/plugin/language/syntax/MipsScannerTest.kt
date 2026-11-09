@@ -48,6 +48,22 @@ class MipsScannerTest {
     }
 
     @Test
+    fun `bitwise operators have restartable boundaries only in debugger mode`() {
+        for ((operator, expected) in mapOf(
+            "|" to MipsTokenKind.BIT_OR, "^" to MipsTokenKind.BIT_XOR, "&" to MipsTokenKind.BIT_AND,
+            "~" to MipsTokenKind.BIT_NOT, "<<" to MipsTokenKind.SHIFT,
+            ">>" to MipsTokenKind.SHIFT, ">>>" to MipsTokenKind.SHIFT,
+        )) {
+            val source = "1${operator}2"
+            assertEquals(MipsToken(expected, 1, 1 + operator.length),
+                MipsScanner.next(source, 1, debuggerExpression = true))
+            assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 1, 2), MipsScanner.next(source, 1))
+        }
+        assertEquals(MipsToken(MipsTokenKind.SHIFT, 0, 2),
+            MipsScanner.next(">>>", 0, 2, debuggerExpression = true))
+    }
+
+    @Test
     fun `escaped quotes backslashes character escapes and octal characters stay intact`() {
         val source = "\"a\\\"#b\\\\\"\n'\\n' '\\\'' '\\123'"
         val tokens = MipsScanner.scan(source)

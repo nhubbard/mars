@@ -34,6 +34,11 @@
     MINUS="-"
     EQUALITY="regexp:==|!="
     RELATION="regexp:<=|>=|<|>"
+    BIT_OR="|"
+    BIT_XOR="^"
+    BIT_AND="&"
+    BIT_NOT="~"
+    SHIFT="regexp:>>>|>>|<<"
   ]
 }
 file ::= (NEWLINE | statement)*
@@ -97,13 +102,17 @@ private substitutable_operand_token ::= WORD | DOLLAR_WORD | PARAMETER
 operand_list ::= operand+
 operand ::= expr repetition?
 repetition ::= COLON expr {pin=1}
-// The debugger lexer alone emits comparison tokens. Assembly retains its operand grammar.
+// The debugger lexer alone emits comparison and bitwise tokens.
 debugger_expression ::= expr <<eof>> {extraRoot=true}
-expr ::= equality_expr | relational_expr | add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+expr ::= bit_or_expr | bit_xor_expr | bit_and_expr | equality_expr | relational_expr | shift_expr | add_expr | unary_expr | address_expr | group_expr | literal_expr | reference_expr
+bit_or_expr ::= expr BIT_OR expr {pin=2}
+bit_xor_expr ::= expr BIT_XOR expr {pin=2}
+bit_and_expr ::= expr BIT_AND expr {pin=2}
 equality_expr ::= expr EQUALITY expr {pin=2}
 relational_expr ::= expr RELATION expr {pin=2}
+shift_expr ::= expr SHIFT expr {pin=2}
 add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
-unary_expr ::= (PLUS | MINUS) expr
+unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
 address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
 group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
 literal_expr ::= NUMBER | STRING | CHARACTER

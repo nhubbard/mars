@@ -734,14 +734,25 @@ class MarsDebugPlatformTest {
                     "NaN >= 0" to "0x00000000",
                     "-0.0 == 0.0" to "0x00000001",
                     "'<' < '>'" to "0x00000001",
+                    "1 | 2 ^ 3 & 6" to "0x00000001",
+                    "4 & 2 == 2" to "0x00000000",
+                    "1 << 2 + 1" to "0x00000008",
+                    "1 << 2 < 5" to "0x00000001",
+                    "0x80000000 >> 1" to "0xc0000000",
+                    "0x80000000 >>> 1" to "0x40000000",
+                    "8 >> 1 >> 1" to "0x00000002",
+                    "1 << 32" to "0x00000001",
+                    "~1 + 2" to "0x00000000",
+                    "~~1" to "0x00000001",
                 )
                 for ((expression, expected) in expressions) {
                     assertEquals(expected, evaluate(debug.session, second, expression), expression)
                 }
                 for (expression in listOf("", "1".repeat(1025), "1\n2", "1\r2", "1,2", "1+", "\"text\"",
                     "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3",
-                    "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2")) {
-                    assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.",
+                    "1 <", "1 ==", "!= 1", "1 ! 2", "1 < = 2", "1,==1", "(1,)", "1 # == 2", "1:2",
+                    "1 |", "1 ^", "1 &", "1 >>", "~", "1 && 1", "1 <<= 2", "1 & 2.5", "2.5 | 1", "~2.5")) {
+                    assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
                         evaluate(debug.session, second, expression), expression)
                 }
                 assertEquals("0xfffffffe", evaluate(debug.session, second, "\$t0"))
@@ -807,15 +818,20 @@ class MarsDebugPlatformTest {
                     "word(buffer) == 0x11223344" to "0x00000001",
                     "byte(buffer) < half(buffer)" to "0x00000001",
                     "word(buffer + (1 != 1))" to "0x11223344",
+                    "~byte(buffer) & 0xff" to "0x000000bb",
+                    "word(buffer) >>> 24" to "0x00000011",
                 )
                 for ((expression, value) in expected) assertEquals(value, evaluate(debug.session, frame, expression), expression)
                 for (expression in listOf("word(buffer+1)", "half(buffer+1)", "word(1.5)", "word(0)",
-                    "-word(0)", "word(0)+1", "1+word(0)", "word(word(0))", "word(0) != 1", "1 == word(0)")) {
+                    "-word(0)", "word(0)+1", "1+word(0)", "word(word(0))", "word(0) != 1", "1 == word(0)", "~word(0)")) {
                     assertEquals("The memory address is invalid, unaligned, or unavailable.",
                         evaluate(debug.session, frame, expression), expression)
                 }
-                assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.",
-                    evaluate(debug.session, frame, "word(unknown)"))
+                for (expression in listOf("word(unknown)", "byte(buffer) & 0.5", "~(byte(buffer) + 0.5)",
+                    "word(buffer + (byte(buffer) & 0.5))")) {
+                    assertEquals("Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.",
+                        evaluate(debug.session, frame, expression), expression)
+                }
                 debug.session.stepInto()
                 frame
             }
@@ -1102,9 +1118,9 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `debugger editor highlights comparison operators with the expression lexer`() = timeoutRunBlocking<Unit> {
+    fun `debugger editor highlights comparison and bit operators with the expression lexer`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val source = "\$t0 != 7 < 8"
+            val source = "(~\$t0 >>> 7 & 8 ^ 1 | 2) != (3 < 4)"
             val expression = XDebuggerUtil.getInstance().createExpression(source, null, null, EvaluationMode.EXPRESSION)
             val document = MarsDebugEditors.createDocument(project, expression, null, EvaluationMode.EXPRESSION, "breakpoint")
             val factory = EditorFactory.getInstance()
@@ -1114,12 +1130,13 @@ class MarsDebugPlatformTest {
                 assertDoesNotThrow { MarsDebugEditors.afterEditorCreated(null) }
                 MarsDebugEditors.afterEditorCreated(editor)
                 val expected = editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.OPERATION_SIGN)
-                val equality = editor.highlighter.createIterator(source.indexOf('!'))
-                val relation = editor.highlighter.createIterator(source.indexOf('<'))
-                assertEquals(MipsTypes.psi("EQUALITY"), equality.tokenType)
-                assertEquals(MipsTypes.psi("RELATION"), relation.tokenType)
-                assertEquals(expected, equality.textAttributes)
-                assertEquals(expected, relation.textAttributes)
+                for ((spelling, name) in mapOf("~" to "BIT_NOT", ">>>" to "SHIFT", "&" to "BIT_AND",
+                    "^" to "BIT_XOR", "|" to "BIT_OR", "!=" to "EQUALITY", "<" to "RELATION")) {
+                    val operator = editor.highlighter.createIterator(source.indexOf(spelling))
+                    assertEquals(MipsTypes.psi(name), operator.tokenType, spelling)
+                    assertEquals(spelling.length, operator.end - operator.start, spelling)
+                    assertEquals(expected, operator.textAttributes, spelling)
+                }
             } finally {
                 factory.releaseEditor(editor)
             }
@@ -1161,17 +1178,17 @@ class MarsDebugPlatformTest {
                 val trueHit = addBreakpoint(file, 9)
                 assertSame(MarsDebugEditors, breakpointType.getEditorsProvider(trueHit, project))
                 WriteAction.run<RuntimeException> {
-                    falseHit.setCondition("word(flag) != 0")
+                    falseHit.setCondition("(word(flag) & 1) != 0")
                     falseHit.setLogExpression("0x11111111")
                     badCondition.setCondition("unknown")
                     badCondition.setLogExpression("0x22222222")
                     logValue.setCondition("word(flag)")
-                    logValue.setLogExpression("word(flag) + \$t0 + 0x1234")
+                    logValue.setLogExpression("(word(flag) | \$t0) + 0x1235")
                     logValue.suspendPolicy = SuspendPolicy.NONE
                     badLog.setLogExpression("word(flag+1)")
                     badLog.isLogMessage = true
                     badLog.suspendPolicy = SuspendPolicy.NONE
-                    trueHit.setCondition("word(flag) == \$t0")
+                    trueHit.setCondition("((word(flag) << 1) >>> 1) == \$t0")
                     trueHit.setLogExpression("\$t0")
                 }
                 file
@@ -1181,7 +1198,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     assertEquals("0x00000001", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
                 }
-                assertEquals("Could not evaluate MIPS breakpoint condition. Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, or comparisons.", errors.receive())
+                assertEquals("Could not evaluate MIPS breakpoint condition. Enter a valid MIPS debugger expression using registers, labels, numbers, memory reads, arithmetic, comparisons, or bitwise operators.", errors.receive())
                 assertEquals("Could not evaluate MIPS breakpoint log expression. The memory address is invalid, unaligned, or unavailable.", errors.receive())
                 val console = withContext(Dispatchers.EDT) {
                     assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
