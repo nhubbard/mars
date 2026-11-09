@@ -11,7 +11,6 @@ import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
-import com.intellij.openapi.components.serviceIfCreated
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.checkCanceled
@@ -24,9 +23,9 @@ import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
-import edu.missouristate.mars.plugin.language.MipsFoldingRefresh
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -68,7 +67,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
             DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
-            project.serviceIfCreated<MipsFoldingRefresh>()?.assemblyEntryChanged()
+            project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
             val result = capture.assembleIn(component)
             checkCanceled()
             val events = readAction {

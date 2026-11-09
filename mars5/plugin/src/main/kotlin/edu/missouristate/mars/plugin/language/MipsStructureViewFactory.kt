@@ -20,6 +20,7 @@ import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 import javax.swing.Icon
@@ -35,6 +36,11 @@ private class MipsStructureViewBuilder(private val file: MipsFile) : TreeBasedSt
 
 private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
     StructureViewModelBase(file, editor, MipsStructureNode(file)) {
+    init {
+        file.project.messageBus.connect(this)
+            .subscribe(MipsAssemblyContextListener.TOPIC, MipsAssemblyContextListener(::fireModelUpdate))
+    }
+
     override fun isSuitable(element: PsiElement?): Boolean {
         if (element is MipsDeclaration) return true
         if (element !is MipsSymbolToken || DumbService.isDumb(file.project)) return false

@@ -98,7 +98,9 @@ equivalences. Written declarations inside a local macro appear below it, even
 when the macro has no closing directive yet. An opening line in another file
 does not add a remote node to the outline. Navigation opens the written token
 that supplied the macro name. During indexing, the outline uses the current
-file's written PSI and still follows unsaved edits.
+file's written PSI and still follows unsaved edits. Selecting another assembly
+entry refreshes the open Structure pane and folding from the same project
+notification, even when the shared source text stays the same.
 
 ## Native macro folding
 

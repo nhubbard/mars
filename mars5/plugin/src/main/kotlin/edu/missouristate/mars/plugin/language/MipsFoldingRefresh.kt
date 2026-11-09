@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.asDisposable
 import com.intellij.util.ui.update.DebouncedUpdates
+import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.annotations.TestOnly
@@ -44,15 +45,15 @@ internal class MipsFoldingRefresh(project: Project, scope: CoroutineScope) {
                 if (file?.fileType == MipsFileType) refresh.queue(file)
             }
         }, scope.asDisposable())
-        project.messageBus.connect(scope).subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
+        val connection = project.messageBus.connect(scope)
+        connection.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
             override fun exitDumbMode() {
                 // A null source marks a context change affecting every MARS editor.
                 refresh.queue(null)
             }
         })
+        connection.subscribe(MipsAssemblyContextListener.TOPIC, MipsAssemblyContextListener { refresh.queue(null) })
     }
-
-    fun assemblyEntryChanged() = refresh.queue(null)
 
     @TestOnly
     fun waitForRefresh() = refresh.waitForAllExecuted(5.seconds)
