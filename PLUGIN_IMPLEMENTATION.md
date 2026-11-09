@@ -845,10 +845,16 @@ eligible while the editor is indexing or lacks the containing entry's definition
 assembled source map determines the actual address at debug time.
 
 The Debug view shows one simulated CPU frame. Resume, Pause, Stop, source
-Step Into, Step Over, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
+Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. The platform handles breakpoint
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
-Step Out remains pending until the debugger can track callers across commands.
+
+Step Out uses the simulator's observed link writes and tracks arrival at the saved
+return addresses across pauses. Recursive calls have distinct frames even when
+their return addresses match. A breakpoint or exception handler can interrupt
+Step Out. The eret instruction restores the interrupted call history, and backstep
+restores the history at the rewound instruction. Step Out requires an observed
+caller and uses the same 100,000-instruction slice limit as Step Over.
 
 Step Into advances until the live instruction's source origin changes or execution
 returns to the starting address. A pseudo-instruction's emitted instructions share

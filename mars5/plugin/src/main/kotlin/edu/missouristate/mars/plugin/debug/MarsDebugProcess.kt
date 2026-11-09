@@ -42,6 +42,7 @@ import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StepEvent.Call
 import edu.missouristate.mars.api.StepEvent.ExceptionEntry
+import edu.missouristate.mars.api.StepEvent.ExceptionReturn
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -75,6 +76,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val backstep: ReverseStep? = null,
         val sourceStep: SourceStep? = null,
         val stepOver: StepOver? = null,
+        val stepOut: DebuggerCallStack.StepOutTarget? = null,
     )
 
     private val commands = Channel<Command>(Channel.CONFLATED)
@@ -176,7 +178,11 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         val stopped = context as? MarsSuspendContext ?: return
         commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOver = StepOver(stopped.sourceStep)))
     }
-    override fun startStepOut(context: XSuspendContext?) = rejectCommand("debug.step.out.unavailable", context)
+    override fun startStepOut(context: XSuspendContext?) {
+        val target = (context as? MarsSuspendContext)?.stepOutTarget
+        if (target == null) rejectCommand("debug.step.out.unavailable", context)
+        else commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOut = target))
+    }
     override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
         val target = position.file.location(position.line)
         if (target == null) rejectCommand("debug.breakpoint.no.code", context)
@@ -210,6 +216,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {
         val engine = machine.simulator()
+        val calls = DebuggerCallStack(machine.backStepper.capacity()) { machine.registerFile.programCounterRegister.valueNoNotify }
+        engine.addListener(calls)
         simulator = engine
         val map = machine.program.sourceMap()
         try {
@@ -223,7 +231,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 val backstep = command.backstep
                 if (backstep != null) {
                     process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
-                    withSuspension(machine) { context ->
+                    withSuspension(machine, calls) { context ->
                         withContext(Dispatchers.EDT) { session.positionReached(context) }
                         command = awaitCommand(context, machine)
                     }
@@ -235,7 +243,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 var hits = emptyList<XBreakpoint<*>>()
                 var stepOrTargetReached = false
                 if (target != null && targets.isEmpty()) {
-                    withSuspension(machine) { context ->
+                    withSuspension(machine, calls) { context ->
                         withContext(Dispatchers.EDT) {
                             session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
                             session.positionReached(context)
@@ -253,8 +261,12 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                             false
                         } else {
                             hits = addresses[pc].orEmpty()
-                            val stepReached = stepOver?.reached(machine.memory, pc)
-                                ?: command.sourceStep?.reached(machine.memory, pc)
+                            val stepOut = command.stepOut
+                            val stepReached = when {
+                                stepOver != null -> stepOver.reached(machine.memory, pc)
+                                stepOut != null -> calls.reached(stepOut)
+                                else -> command.sourceStep?.reached(machine.memory, pc)
+                            }
                             stepOrTargetReached = pc in targets || stepReached == true
                             hits.isNotEmpty() || stepOrTargetReached
                         }
@@ -265,7 +277,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 val reason: StopEvent.Reason = event.reason()
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
-                        withSuspension(machine) { context ->
+                        withSuspension(machine, calls) { context ->
                             val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
                                 hits.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
                                     .any { handleBreakpoint(it, context, machine.memory) }
@@ -281,6 +293,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 }
             }
         } finally {
+            engine.removeListener(calls)
             simulator = null
             commands.cancel()
         }
@@ -342,8 +355,10 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         withContext(Dispatchers.EDT) { request.callback.valueModified() }
     }
 
-    private suspend fun withSuspension(machine: MarsContext, action: suspend (MarsSuspendContext) -> Unit) {
-        val context = suspendContext(machine)
+    private suspend fun withSuspension(
+        machine: MarsContext, calls: DebuggerCallStack, action: suspend (MarsSuspendContext) -> Unit,
+    ) {
+        val context = suspendContext(machine, calls.stepOutTarget())
         try {
             action(context)
         } finally {
@@ -354,7 +369,9 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         }
     }
 
-    private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
+    private fun suspendContext(
+        machine: MarsContext, stepOutTarget: DebuggerCallStack.StepOutTarget?,
+    ): MarsSuspendContext = machine.claimStoppedSession().use {
         val pc = machine.registerFile.programCounterRegister.valueNoNotify
         val statement = machine.memory.sourceStatement(pc)
         val origin = statement?.instructionOrigin
@@ -378,6 +395,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             watchRequests,
             registerEdits,
             origin?.let { SourceStep(pc, it) },
+            stepOutTarget,
         )
     }
 
@@ -416,6 +434,7 @@ internal class MarsSuspendContext(
     val watchRequests: Channel<WatchMemoryRequest>,
     val registerEdits: Channel<RegisterEditRequest>,
     val sourceStep: SourceStep?,
+    val stepOutTarget: DebuggerCallStack.StepOutTarget?,
 ) : XSuspendContext() {
     @Volatile var canBackstep = canBackstep
         private set
@@ -453,6 +472,7 @@ private class StepOver(private val source: SourceStep?) : SimulatorListener {
         when (val transfer = event.transfer() ?: return) {
             is Call -> returnAddresses.addLast(transfer.returnAddress())
             is ExceptionEntry -> enteredHandler = true
+            is ExceptionReturn -> Unit
         }
     }
 

@@ -503,8 +503,88 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val result = if (breakInsideCall) "0x00000001" else "0x00000003"
                 assertEquals(result, evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
-                debug.session.resume()
+                if (breakInsideCall) debug.session.stepOut() else debug.session.resume()
             }
+            if (breakInsideCall) {
+                debug.assertPausedAt(file, 3)
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `step out tracks repeated recursive return addresses and restores a caller on backstep`(wholeSource: Boolean) = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-out-recursion.s", """
+                li ${'$'}a0, 2
+                jal descend
+                done: li ${'$'}v0, 10
+                syscall
+                descend: beq ${'$'}a0, ${'$'}zero, leaf
+                addiu ${'$'}sp, ${'$'}sp, -4
+                sw ${'$'}ra, 0(${'$'}sp)
+                addiu ${'$'}a0, ${'$'}a0, -1
+                jal descend
+                return_again: lw ${'$'}ra, 0(${'$'}sp)
+                addiu ${'$'}sp, ${'$'}sp, 4
+                leaf: jr ${'$'}ra
+            """.trimIndent()).virtualFile.also {
+                val breakpoint = addBreakpoint(it, 4)
+                WriteAction.run<RuntimeException> { breakpoint.setCondition("\$a0 == 0") }
+            }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 4)
+            for (line in listOf(9, 9, 2)) {
+                withContext(Dispatchers.EDT) { debug.session.stepOut() }
+                debug.assertPausedAt(file, line)
+            }
+            withContext(Dispatchers.EDT) {
+                val (action, event) = if (wholeSource) toolbarAction(debug.session, "Backstep Source Statement") else backstepAction(debug.session)
+                assertTrue(event.presentation.isEnabled)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(file, 11)
+            withContext(Dispatchers.EDT) { debug.session.stepOut() }
+            debug.assertPausedAt(file, 2)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `step out stops at a trap and can still return to the caller after eret`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("step-out-trap.s", """
+                jal callee
+                done: li ${'$'}v0, 10
+                syscall
+                callee: nop
+                break
+                jr ${'$'}ra
+                .ktext 0x80000180
+                mfc0 ${'$'}k0, ${'$'}14
+                addiu ${'$'}k0, ${'$'}k0, 4
+                mtc0 ${'$'}k0, ${'$'}14
+                eret
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 3)
+                addBreakpoint(it, 10)
+            }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 3)
+            withContext(Dispatchers.EDT) { debug.session.stepOut() }
+            debug.assertPausedAt(file, 7)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(file, 10)
+            withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
+            debug.assertPausedAt(file, 5)
+            withContext(Dispatchers.EDT) { debug.session.stepOut() }
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
         }
     }
