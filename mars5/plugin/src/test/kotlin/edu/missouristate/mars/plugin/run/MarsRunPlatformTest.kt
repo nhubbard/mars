@@ -1,5 +1,14 @@
 package edu.missouristate.mars.plugin.run
 
+import com.intellij.build.BuildViewManager
+import com.intellij.build.events.BuildEvent
+import com.intellij.build.events.FailureResult
+import com.intellij.build.events.FileMessageEvent
+import com.intellij.build.events.FinishBuildEvent
+import com.intellij.build.events.SkippedResult
+import com.intellij.build.events.StartBuildEvent
+import com.intellij.execution.BeforeRunTask
+import com.intellij.execution.BeforeRunTaskProvider
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
@@ -7,11 +16,14 @@ import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.impl.ConsoleViewImpl
+import com.intellij.execution.impl.ExecutionManagerImpl
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.RunConfigurationProducer
 import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunProfile
+import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RuntimeConfigurationError
+import com.intellij.execution.configurations.UnknownConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
@@ -26,6 +38,8 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.encoding.EncodingManager
@@ -38,11 +52,17 @@ import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
+import com.intellij.testFramework.replaceService
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
+import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsAssembledProgram
+import edu.missouristate.mars.plugin.build.MarsSourceSet
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
@@ -60,6 +80,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.Channel
 import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -76,6 +97,134 @@ class MarsRunPlatformTest {
     private val type get() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
     private val executor get() = DefaultRunExecutor.getRunExecutorInstance()
     private var runCount = 0
+
+    @ParameterizedTest
+    @ValueSource(strings = ["run", "assembly-error", "assembly-cancelled", "later-task-fails"])
+    fun `native Before Launch assembles once and releases a program if startup is blocked`(scenario: String) = timeoutRunBlocking<Unit> {
+        val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
+        val previous = manager.forceCompilationInTests
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        val aborted = CompletableDeferred<Unit>()
+        val events = Channel<BuildEvent>(Channel.UNLIMITED)
+        var replaced: MarsContext? = null
+        try {
+            val env = withContext(Dispatchers.EDT) {
+                manager.forceCompilationInTests = true
+                val text = "li \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n"
+                val file = fixture.addFileToProject("before-launch.asm",
+                    if (scenario.startsWith("assembly-")) "la \$t0, missing\n" else text,
+                ).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                val provider = requireNotNull(BeforeRunTaskProvider.getProvider(project, MarsBeforeLaunchTaskProvider.ID))
+                assertEquals("Assemble MIPS Sources", provider.name)
+                assertTrue(provider.isSingleton)
+                assertTrue(provider.isDumbAware)
+                assertNull(provider.createTask(UnknownConfigurationType.getInstance().createTemplateConfiguration(project)))
+                val assemble = requireNotNull(provider.createTask(config)).apply { isEnabled = true }
+                config.beforeRunTasks = if (scenario == "run") listOf(assemble, assemble.clone()) else listOf(assemble)
+                if (scenario == "later-task-fails") {
+                    val laterId = Key.create<BeforeRunTask<*>>("Reject MIPS launch in test")
+                    val later = object : BeforeRunTask<BeforeRunTask<*>>(laterId) {}.apply { isEnabled = true }
+                    val rejection = object : BeforeRunTaskProvider<BeforeRunTask<*>>() {
+                        override fun getId() = laterId
+                        override fun getName() = "Reject launch"
+                        override fun createTask(runConfiguration: RunConfiguration) = later
+                        override fun executeTask(
+                            context: DataContext, configuration: RunConfiguration, environment: ExecutionEnvironment, task: BeforeRunTask<*>,
+                        ): Boolean {
+                            val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
+                            val session = MarsSessionService.createMarsComponent().context()
+                            replaced = session
+                            assertTrue(launch.store(MarsAssembledProgram(session, emptySet())))
+                            return false
+                        }
+                    }
+                    BeforeRunTaskProvider.EP_NAME.getPoint(project).registerExtension(rejection, disposable)
+                    config.beforeRunTasks = listOf(assemble, later)
+                }
+                project.replaceService(BuildViewManager::class.java, object : BuildViewManager(project) {
+                    override fun onEvent(buildId: Any, event: BuildEvent) {
+                        if (scenario == "assembly-cancelled" && event is FileMessageEvent) throw ProcessCanceledException()
+                        check(events.trySend(event).isSuccess)
+                    }
+                }, disposable)
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                assertFalse(provider.executeTask(DataContext.EMPTY_CONTEXT, config, environment, assemble))
+                project.getService(MarsRunService::class.java)
+                project.messageBus.syncPublisher(ExecutionManager.EXECUTION_TOPIC).processNotStarted(executor.id, environment)
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment) {
+                        if (env !== environment) return
+                        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
+                        WriteCommandAction.runWriteCommandAction(project) { document.setText(text.replace("42", "99")) }
+                    }
+
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) handler.addProcessListener(recording)
+                    }
+
+                    override fun processNotStarted(executorId: String, env: ExecutionEnvironment) {
+                        if (env === environment) aborted.complete(Unit)
+                    }
+                })
+                environment.runner.execute(environment)
+                environment
+            }
+            if (scenario == "run") {
+                assertEquals(0, recording.exit.await())
+                assertEquals("42", recording.stdout.toString())
+            } else {
+                aborted.await()
+                withContext(Dispatchers.EDT) {
+                    val launch = requireNotNull(env.getUserData(launchAssemblyKey))
+                    assertNull(launch.take())
+                    replaced?.let { session -> assertThrows<IllegalStateException> { session.claimStoppedSession().close() } }
+                    val rejected = MarsSessionService.createMarsComponent().context()
+                    assertFalse(launch.store(MarsAssembledProgram(rejected, emptySet())))
+                    assertThrows<IllegalStateException> { rejected.claimStoppedSession().close() }
+                    assertFalse(recording.exit.isCompleted)
+                }
+            }
+            val received = buildList {
+                while (true) add(events.tryReceive().getOrNull() ?: break)
+            }
+            assertEquals(1, received.filterIsInstance<StartBuildEvent>().size)
+            val result = received.filterIsInstance<FinishBuildEvent>().single().result
+            assertEquals(scenario == "assembly-error", result is FailureResult)
+            assertEquals(scenario == "assembly-cancelled", result is SkippedResult)
+        } finally {
+            withContext(Dispatchers.EDT) {
+                manager.forceCompilationInTests = previous
+                Disposer.dispose(disposable)
+            }
+        }
+    }
+
+    @Test
+    fun `a disposed launch rejects a completed assembly and a disposed service rejects new work`() = timeoutRunBlocking<Unit> {
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("disposed-launch.asm", "nop\n").virtualFile.toNioPath()
+        }
+        val sources = MarsSourceSet(entry)
+        val disposedService = MarsRunService(project, this)
+        withContext(Dispatchers.EDT) { Disposer.dispose(disposedService) }
+        assertFalse(disposedService.prepareLaunch(MarsLaunchAssembly(sources, MarsExecutionOptions())).await())
+        val launch = MarsLaunchAssembly(sources, MarsExecutionOptions())
+        val disposable = Disposer.newDisposable()
+        try {
+            project.replaceService(BuildViewManager::class.java, object : BuildViewManager(project) {
+                override fun onEvent(buildId: Any, event: BuildEvent) {
+                    if (event is FinishBuildEvent) Disposer.dispose(launch)
+                }
+            }, disposable)
+            assertFalse(project.getService(MarsRunService::class.java).prepareLaunch(launch).await())
+            assertNull(launch.take())
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+        }
+    }
 
     @Test
     fun `native Run uses the unsaved include and preserves exit status`() = timeoutRunBlocking<Unit> {

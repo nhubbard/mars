@@ -21,6 +21,7 @@ import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.di.MarsComponent
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -37,6 +38,10 @@ import kotlinx.coroutines.future.asCompletableFuture
 import org.jetbrains.concurrency.asPromise
 
 internal val buildMessages = DynamicBundle(MarsBuildService::class.java, "messages.MarsBundle")
+
+internal class MarsAssembledProgram(val session: MarsContext, val sources: Set<Path>) : AutoCloseable {
+    override fun close() = session.close()
+}
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
@@ -55,6 +60,23 @@ internal class MarsBuildService(private val project: Project, private val scope:
     internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean {
         val component = MarsSessionService.createMarsComponent()
         return component.context().use { assemble(sourceSet, component, activateBuildView = true) }
+    }
+
+    internal suspend fun prepare(
+        sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
+    ): MarsAssembledProgram? {
+        val component = MarsSessionService.createMarsComponent()
+        val session = component.context()
+        var program: MarsAssembledProgram? = null
+        try {
+            var paths = emptySet<Path>()
+            if (assemble(sources, component, activateBuildView, options) { paths = it + sources.entry }) {
+                program = MarsAssembledProgram(session, paths)
+            }
+            return program
+        } finally {
+            if (program == null) session.close()
+        }
     }
 
     internal suspend fun assemble(

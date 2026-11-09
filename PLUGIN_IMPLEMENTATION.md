@@ -1333,6 +1333,15 @@ each distinct source selection once, reports assembly errors to the caller,
 and stops pending assembly tasks on cancellation. Java and Kotlin builds
 continue through their existing runners.
 
+In a MIPS Run or Debug configuration, add **Assemble MIPS Sources** under
+**Before Launch** to put assembly at a specific point in the launch task
+order. Assembly errors appear in the Build tool window and stop the
+launch. A successful task hands its assembled session to Run or Debug,
+including its source map and captured source paths. Later tasks can
+change files on disk or in the editor without changing what that launch
+executes. Without the Before Launch task, Run and Debug assemble as they
+start.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

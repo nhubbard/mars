@@ -20,6 +20,7 @@
   </extensions>
   <extensions defaultExtensionNs="com.intellij">
     <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
+    <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
     <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
                          bundle="messages.MarsBundle" key="build.settings.title"
                          instance="edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable"/>

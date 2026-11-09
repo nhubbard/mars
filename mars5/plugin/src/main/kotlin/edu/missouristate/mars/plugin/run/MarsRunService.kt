@@ -1,15 +1,20 @@
 package edu.missouristate.mars.plugin.run
 
+import com.intellij.execution.ExecutionListener
+import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
+import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.encoding.EncodingManager
+import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.api.ErrorEvent
@@ -19,7 +24,6 @@ import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
-import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
@@ -55,13 +59,33 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Service(Service.Level.PROJECT)
-internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) {
+internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) : Disposable {
+    init {
+        project.messageBus.connect(this).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+            override fun processNotStarted(executorId: String, env: ExecutionEnvironment) {
+                env.getUserData(launchAssemblyKey)?.let(Disposer::dispose)
+            }
+        })
+    }
+
+    override fun dispose() = Unit
+
+    fun prepareLaunch(launch: MarsLaunchAssembly) = scope.async(Dispatchers.Default) {
+        withBackgroundProgress(project, runMessages.getMessage("run.before.launch.assemble")) {
+            if (launch.hasProgram()) return@withBackgroundProgress true
+            if (!Disposer.tryRegister(this@MarsRunService, launch)) return@withBackgroundProgress false
+            val program = project.service<MarsBuildService>().prepare(launch.sources, launch.options, activateBuildView = true)
+            program != null && launch.store(program)
+        }
+    }
+
     fun createProcess(
         entry: Path,
         options: MarsExecutionOptions = MarsExecutionOptions(),
@@ -72,20 +96,19 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectKeyboardDisplay: Boolean = false,
         connectMarsBot: Boolean = false,
         connectScavengerHunt: Boolean = false,
-        sourceSet: MarsSourceSet = MarsSourceSet(entry),
+        launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, sourceSet, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
+            project, scope, launch, Pipe.open(), memoryDumps, captureBitmap, captureReferences,
             connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
 }
 
 internal class MarsProcessHandler(
-    private val project: Project, scope: CoroutineScope, private val sourceSet: MarsSourceSet, private val input: Pipe,
-    private val options: MarsExecutionOptions,
+    private val project: Project, scope: CoroutineScope, private val launch: MarsLaunchAssembly, private val input: Pipe,
     private val memoryDumps: List<MemoryExportSelection>,
     captureBitmap: Boolean,
     captureReferences: Boolean,
@@ -95,7 +118,7 @@ internal class MarsProcessHandler(
     private val connectScavengerHunt: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
-    private val entry = sourceSet.entry
+    private val entry = launch.sources.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
 
     override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
@@ -195,18 +218,13 @@ internal class MarsProcessHandler(
     }
 
     private suspend fun runProgram(): Int {
-        val component = MarsSessionService.createMarsComponent()
-        return component.context().use { session ->
-            var sources = emptySet<Path>()
-            val assembled = project.service<MarsBuildService>().assemble(
-                sourceSet, component, activateBuildView = false, options,
-            ) {
-                sources = it + entry
-            }
-            if (!assembled) {
-                notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
-                return@use 1
-            }
+        val program = launch.take() ?: project.service<MarsBuildService>().prepare(launch.sources, launch.options, activateBuildView = false)
+        if (program == null) {
+            notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
+            return 1
+        }
+        return program.use {
+            val session = program.session
             val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
@@ -254,7 +272,7 @@ internal class MarsProcessHandler(
                             // The execution tab can still show the final words after the session closes.
                             readFloatingRegister = IntArray(floatingRegisters.size) { floatingRegisters[it].valueNoNotify }::get
                         }
-                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, sources)
+                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.sources)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
                             else -> 1

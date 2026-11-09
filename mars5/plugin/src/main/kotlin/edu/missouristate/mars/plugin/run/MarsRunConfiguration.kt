@@ -194,16 +194,18 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         }
         val sources = resolveSourceSet { ExecutionException(it) }
         checkDeviceConflict { ExecutionException(it) }
+        val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
+        val launch = MarsLaunchAssembly(sources, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode))
+        environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, sources, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
-            memoryDumps(sources.entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
+            environment, launch, dumps, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
 }
 
 internal class MarsRunState(
-    private val environment: ExecutionEnvironment, private val sources: MarsSourceSet, private val options: MarsExecutionOptions,
+    private val environment: ExecutionEnvironment, private val launch: MarsLaunchAssembly,
     private val memoryDumps: List<MemoryExportSelection>,
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
@@ -213,15 +215,17 @@ internal class MarsRunState(
     private val connectScavengerHunt: Boolean,
 ) :
     CommandLineState(environment) {
-    val entry: Path get() = sources.entry
+    val entry: Path get() = launch.sources.entry
 
     override fun startProcess() =
-        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, sources)
+        service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
+            captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
-        service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, sources, execute)
+        service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
+            captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

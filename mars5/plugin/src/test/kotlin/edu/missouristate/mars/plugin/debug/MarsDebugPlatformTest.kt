@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.debug
 
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
+import com.intellij.execution.impl.ExecutionManagerImpl
 import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.Executor
@@ -98,6 +99,7 @@ import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import edu.missouristate.mars.plugin.run.MarsRunService
@@ -137,8 +139,9 @@ class MarsDebugPlatformTest {
     private val debugger get() = XDebuggerManager.getInstance(project)
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
 
-    @Test
-    fun `Debug reaches a separate exception handler using unsaved editor text`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `Debug reaches a separate exception handler using unsaved editor text`(beforeLaunch: Boolean) = timeoutRunBlocking<Unit> {
         val (main, kernel) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("exception/main.asm", "break\nnop\n").virtualFile
             val kernel = fixture.addFileToProject("exception/kernel/handler.s", ".ktext 0x80000180\nnop\n").virtualFile
@@ -150,7 +153,7 @@ class MarsDebugPlatformTest {
             addBreakpoint(kernel, 2)
             main to kernel
         }
-        withDebug(main) { debug ->
+        withDebug(main, beforeLaunch = beforeLaunch) { debug ->
             debug.assertPausedAt(kernel, 2)
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
@@ -2541,14 +2544,22 @@ class MarsDebugPlatformTest {
         }
     }
 
-    private suspend fun withDebug(file: VirtualFile, configure: MarsRunOptions.() -> Unit = {}, action: suspend (DebugLaunch) -> Unit) {
+    private suspend fun withDebug(
+        file: VirtualFile, configure: MarsRunOptions.() -> Unit = {}, beforeLaunch: Boolean = false, action: suspend (DebugLaunch) -> Unit,
+    ) {
         val disposable = Disposer.newDisposable()
         val started = CompletableDeferred<DebugLaunch>()
+        val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
+        val previous = manager.forceCompilationInTests
         try {
             withContext(Dispatchers.EDT) {
                 val config = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java).createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
                 config.options.configure()
+                if (beforeLaunch) {
+                    manager.forceCompilationInTests = true
+                    config.beforeRunTasks = listOf(MarsBeforeLaunchTask().apply { isEnabled = true })
+                }
                 val environment = ExecutionEnvironmentBuilder.create(DefaultDebugExecutor.getDebugExecutorInstance(), config).build()
                 val runner = assertInstanceOf(MarsDebugRunner::class.java, environment.runner)
                 assertFalse(runner.canRun(DefaultRunExecutor.EXECUTOR_ID, config))
@@ -2578,6 +2589,7 @@ class MarsDebugPlatformTest {
             action(started.await())
         } finally {
             withContext(Dispatchers.EDT) {
+                manager.forceCompilationInTests = previous
                 debugger.debugSessions.forEach { it.stop() }
                 Disposer.dispose(disposable)
             }
