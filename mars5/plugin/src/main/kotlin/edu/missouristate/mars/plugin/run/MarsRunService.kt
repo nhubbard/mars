@@ -5,6 +5,7 @@ import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SessionSyscallEnvironment
@@ -42,6 +43,7 @@ internal class MarsProcessHandler(
 ) : ProcessHandler() {
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
     private val consoleInput = Channels.newOutputStream(input.sink())
+    private val inputCharset = EncodingManager.getInstance().defaultCharset
     private var status = 1
     private val execution = scope.launch(Dispatchers.Default, start = CoroutineStart.LAZY) {
         status = runProgram()
@@ -79,7 +81,7 @@ internal class MarsProcessHandler(
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
                     val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
-                    SessionSyscallEnvironment(session.memory, stdin, output, error, entry.parent).use { io ->
+                    SessionSyscallEnvironment(session.memory, stdin, output, error, entry.parent, inputCharset).use { io ->
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
                         simulator.addListener(object : SimulatorListener {

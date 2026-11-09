@@ -28,6 +28,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiFileFactory
@@ -50,6 +51,8 @@ import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
 class MarsRunPlatformTest {
@@ -231,8 +234,21 @@ class MarsRunPlatformTest {
         }
     }
 
-    @Test
-    fun `typed console input reaches the line and raw descriptor syscalls`() = timeoutRunBlocking<Unit> {
+    @ParameterizedTest
+    @ValueSource(strings = ["UTF-8", "UTF-16"])
+    fun `typed console input reaches the line and raw descriptor syscalls`(encoding: String) = timeoutRunBlocking<Unit> {
+        val encodingManager = EncodingManager.getInstance()
+        val previousEncoding = withContext(Dispatchers.EDT) {
+            encodingManager.defaultCharsetName.also { encodingManager.defaultCharsetName = encoding }
+        }
+        try {
+            checkConsoleInput(encoding)
+        } finally {
+            withContext(Dispatchers.EDT) { encodingManager.defaultCharsetName = previousEncoding }
+        }
+    }
+
+    private suspend fun checkConsoleInput(encoding: String) {
         val (handler, recording) = run("""
             .data
             buffer: .space 4
@@ -242,15 +258,29 @@ class MarsRunPlatformTest {
             move ${'$'}a0, ${'$'}v0
             li ${'$'}v0, 1
             syscall
+            li ${'$'}v0, 12
+            syscall
+            move ${'$'}a0, ${'$'}v0
+            li ${'$'}v0, 11
+            syscall
             li ${'$'}a0, 0
             la ${'$'}a1, buffer
-            li ${'$'}a2, 4
+            li ${'$'}a2, ${if (encoding == "UTF-16") 4 else 2}
             li ${'$'}v0, 14
             syscall
-            move ${'$'}a2, ${'$'}v0
-            li ${'$'}a0, 1
-            li ${'$'}v0, 15
+            move ${'$'}t0, ${'$'}v0
+            la ${'$'}t1, buffer
+        print_byte:
+            lbu ${'$'}a0, 0(${'$'}t1)
+            li ${'$'}v0, 1
             syscall
+            li ${'$'}a0, 32
+            li ${'$'}v0, 11
+            syscall
+            addiu ${'$'}t1, ${'$'}t1, 1
+            addiu ${'$'}t0, ${'$'}t0, -1
+            bgtz ${'$'}t0, print_byte
+            nop
             li ${'$'}v0, 10
             syscall
         """.trimIndent())
@@ -261,9 +291,10 @@ class MarsRunPlatformTest {
             view
         }
         try {
-            withContext(Dispatchers.EDT) { console.type(console.editor!!, "42\nraw\n") }
+            withContext(Dispatchers.EDT) { console.type(console.editor!!, "42\né\nR\n") }
             assertEquals(0, recording.exit.await())
-            assertEquals("42raw\n", recording.stdout.toString())
+            val expectedBytes = if (encoding == "UTF-16") "0 82 0 10 " else "82 10 "
+            assertEquals("42é$expectedBytes", recording.stdout.toString())
             assertEquals("", recording.stderr.toString())
         } finally {
             withContext(Dispatchers.EDT) {

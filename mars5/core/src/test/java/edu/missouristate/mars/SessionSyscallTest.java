@@ -134,6 +134,44 @@ class SessionSyscallTest {
   }
 
   @Test
+  void textInputPreservesUtf16ByteOrderAcrossRawReadsAndPartialEof() throws Exception {
+    try (var session = session()) {
+      var bytes = new ByteArrayOutputStream();
+      bytes.write(new byte[] {(byte) 0xff, (byte) 0xfe});
+      bytes.write("42\r\n".getBytes(StandardCharsets.UTF_16LE));
+      bytes.write(new byte[] {1, 2, 3});
+      bytes.write("é💡\n\nend\r".getBytes(StandardCharsets.UTF_16LE));
+      var input = new ByteArrayInputStream(bytes.toByteArray());
+      try (var io = new SessionSyscallEnvironment(session.memory, input, System.out, System.err,
+          directory, StandardCharsets.UTF_16)) {
+        assertThat(io.readInt()).isEqualTo(42);
+        var raw = new byte[3];
+        assertThat(io.readFromFile(0, raw, raw.length)).isEqualTo(3);
+        assertThat(raw).containsExactly(1, 2, 3);
+        assertThat(io.readString(20)).isEqualTo("é💡");
+        assertThat(io.readString(20)).isEmpty();
+        assertThat(io.readString(20)).isEqualTo("end");
+        assertThat(io.readString(20)).isNull();
+      }
+    }
+  }
+
+  @Test
+  void malformedConsoleInputIsReplacedWithoutConsumingTheFollowingRawByte() throws Exception {
+    try (var session = session();
+        var io = new SessionSyscallEnvironment(session.memory,
+            new ByteArrayInputStream(new byte[] {(byte) 0xc3, '\n', 'X', (byte) 0xc3}),
+            System.out, System.err, directory, StandardCharsets.UTF_8)) {
+      assertThat(io.readString(20)).isEqualTo("�");
+      var raw = new byte[1];
+      assertThat(io.readFromFile(0, raw, raw.length)).isEqualTo(1);
+      assertThat(raw).containsExactly('X');
+      assertThat(io.readString(20)).isEqualTo("�");
+      assertThat(io.readString(20)).isNull();
+    }
+  }
+
+  @Test
   void consoleInputDialogsAndRawDescriptorsShareOnlyTheirSuppliedStreams() throws Exception {
     try (var session = session()) {
       var output = new ByteArrayOutputStream();

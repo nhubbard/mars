@@ -429,13 +429,13 @@ line and descriptor syscalls. Stop closes the read end after requesting a stop,
 which releases a simulator waiting on input. Process termination closes both
 ends of the pipe.
 
-A Jupiter fixture types into the native console and checks both integer input
-and raw descriptor input in one program. Another waits for the simulator to
-enter a blocking read, then verifies that Stop completes without a runtime
-diagnostic. Native console input follows the IDE's global encoding while the
-Java core still decodes line input in the JVM's default encoding. Matching
-those settings when they differ remains open, along with additional run options
-and debugger integration.
+A Jupiter fixture types into the native console in UTF-8 and UTF-16 and checks
+integer, character, and raw descriptor reads in one program. The Run handler
+uses the global encoding that IntelliJ's console selects when it attaches. The
+session decodes text up to the newline so a following descriptor read sees the
+original bytes. Existing CLI sessions use the JVM's default encoding. Another
+fixture waits for the simulator to enter a blocking read, then verifies that
+Stop completes without a runtime diagnostic.
 
 ## Next slices
 
