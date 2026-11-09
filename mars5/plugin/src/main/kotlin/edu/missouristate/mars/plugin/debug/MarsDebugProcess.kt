@@ -56,6 +56,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private val registered = linkedSetOf<LineBreakpoint>()
     private var sourceMap: InstructionSourceMap? = null
     @Volatile private var addresses = emptyMap<Int, List<LineBreakpoint>>()
+    private var suspensionNumber = 0L
     private val handler = state.debugProcess { debug(this, it) }
 
     private val lineHandler = object : XBreakpointHandler<LineBreakpoint>(MarsLineBreakpointType::class.java) {
@@ -241,7 +242,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
         MarsSuspendContext(
             MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep(),
-            machine.memory.dataBaseAddress.toUInt().toLong(),
+            machine.memory.dataBaseAddress.toUInt().toLong(), ++suspensionNumber,
         )
     }
 
@@ -270,7 +271,12 @@ private object MarsDebugEditors : XDebuggerEditorsProvider() {
         EditorFactory.getInstance().createDocument(expression.expression)
 }
 
-internal class MarsSuspendContext(frame: XStackFrame, val canBackstep: Boolean, val dataAddress: Long) : XSuspendContext() {
+internal class MarsSuspendContext(
+    frame: XStackFrame,
+    val canBackstep: Boolean,
+    val dataAddress: Long,
+    val number: Long,
+) : XSuspendContext() {
     val memoryRequests = Channel<MemoryRequest>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame

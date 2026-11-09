@@ -519,8 +519,9 @@ at the end of the 32-bit address space and show unavailable words with
 dashes.
 
 The debugger reads a page on its background execution coroutine through a
-queue owned by the current suspension. Resume closes that queue and clears
-the view. A new suspension refreshes the selected address, including after
+queue owned by the current suspension. Resume closes that queue, disables
+navigation, and leaves the last completed page labeled with its suspension
+number. A new suspension refreshes the selected address, including after
 instruction backstep. The core exposes code and mapped data for inspection
 without issuing simulated read events.
 

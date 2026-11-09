@@ -359,6 +359,7 @@ class MarsDebugPlatformTest {
                 val buttons = withContext(Dispatchers.EDT) {
                     UIUtil.findComponentsOfType(panel, JButton::class.java).associateBy { it.text }
                 }
+                val labels = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JBLabel::class.java) }
                 assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
                 withContext(Dispatchers.EDT) { buttons.getValue("Next Page").doClick(0) }
                 assertMemory(table, "0x10010100", "00 00 00 00")
@@ -391,19 +392,30 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     field.text = "0x100000000"
                     field.postActionEvent()
-                    assertEquals(0, table.rowCount)
-                    assertTrue(UIUtil.findComponentsOfType(panel, JBLabel::class.java)
-                        .any { it.text.contains("Enter a 32-bit address") })
+                    assertEquals("0xfffffff0", table.getValueAt(0, 0))
+                    assertTrue(labels.any { it.text.contains("Enter a 32-bit address") })
                     field.text = 0x10010003u.toString()
                     field.postActionEvent()
                 }
                 assertMemory(table, "0x10010000", "41 00 7f ff")
                 withContext(Dispatchers.EDT) {
+                    assertTrue(labels.any { it.text == "Memory from suspension 1." })
+                    // Leave a new page request queued as execution resumes.
+                    field.text = "0x00400000"
+                    field.postActionEvent()
+                    assertTrue(labels.any { it.text == "Reading memory… Showing suspension 1." })
                     debug.session.resume()
                     assertFalse(field.isEnabled)
-                    assertEquals(0, table.rowCount)
+                    assertEquals("0x10010000", table.getValueAt(0, 0))
+                    assertTrue(labels.any { it.text == "Last memory snapshot from suspension 1." })
                 }
                 debug.assertPausedAt(source, 6)
+                assertMemory(table, "0x00400000", "42 00 09 24")
+                withContext(Dispatchers.EDT) {
+                    assertTrue(labels.any { it.text == "Memory from suspension 2." })
+                    field.text = "0x10010000"
+                    field.postActionEvent()
+                }
                 assertMemory(table, "0x10010000", "42 00 7f ff", "B...")
                 withContext(Dispatchers.EDT) {
                     val (action, event) = backstepAction(debug.session)
@@ -412,6 +424,7 @@ class MarsDebugPlatformTest {
                 debug.assertPausedAt(source, 5)
                 assertMemory(table, "0x10010000", "41 00 7f ff", "A...")
                 afterDisposal = {
+                    assertTrue(labels.any { it.text == "Memory from suspension 3." })
                     field.text = "0x00400000"
                     field.postActionEvent()
                     assertEquals("0x10010000", table.getValueAt(0, 0))

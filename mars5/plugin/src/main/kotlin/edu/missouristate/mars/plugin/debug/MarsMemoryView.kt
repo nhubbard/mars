@@ -74,6 +74,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         }
     }
     private var address = 0L
+    private var displayedSuspension: Long? = null
     private var revision = 0L
     private var disposed = false
 
@@ -113,7 +114,6 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         val parsed = if (text.startsWith("0x", ignoreCase = true)) text.substring(2).toUIntOrNull(16) else text.toUIntOrNull()
         if (parsed == null) {
             revision++
-            model.items = emptyList()
             status.text = runMessages.getMessage("debug.memory.invalid")
             return
         }
@@ -131,8 +131,8 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         if (context == null) {
             previous.isEnabled = false
             next.isEnabled = false
-            model.items = emptyList()
-            status.text = runMessages.getMessage("debug.memory.pause")
+            status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.last", it) }
+                ?: runMessages.getMessage("debug.memory.pause")
             return
         }
 
@@ -141,12 +141,13 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         addressField.text = Binary.intToHexString(start.toInt())
         previous.isEnabled = start > 0
         next.isEnabled = start < LAST_ROW
-        model.items = emptyList()
-        status.text = runMessages.getMessage("debug.memory.loading")
+        status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.loading.last", it) }
+            ?: runMessages.getMessage("debug.memory.loading")
         context.memoryRequests.trySend(MemoryRequest(start) { rows ->
             if (request == revision) {
                 model.items = rows
-                status.text = ""
+                displayedSuspension = context.number
+                status.text = runMessages.getMessage("debug.memory.current", context.number)
             }
         })
     }
