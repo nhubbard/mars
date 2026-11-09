@@ -407,7 +407,9 @@ Generate catalog tests from the instruction list and pseudo-op resource, not a h
 Cover every directive: `.data`, `.text`, `.word`, `.ascii`, `.asciiz`, `.byte`, `.align`, `.half`, `.space`,
 `.double`, `.float`, `.extern`, `.kdata`, `.ktext`, `.globl`, `.set`, `.eqv`, `.macro`, `.end_macro`, and `.include`.
 Include all accepted operand formats and overloads. Assert PSI recovery and editor responsiveness for each malformed form.
-Macro expansion views show generated instructions and their original source, with a breadcrumb through nested expansions.
+The editor's **Show Generated MIPS Instructions** action assembles captured documents in a detached
+session. It lists each instruction emitted from the caret line with its address and encoding, and
+opens a navigable source and caller chain for nested macro expansions.
 
 ## 5. Projects, assembly, and build integration
 

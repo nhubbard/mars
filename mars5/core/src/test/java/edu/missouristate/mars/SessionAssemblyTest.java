@@ -363,6 +363,17 @@ class SessionAssemblyTest {
       assertThatThrownBy(() -> map.origins().clear()).isInstanceOf(UnsupportedOperationException.class);
       assertThatThrownBy(() -> map.breakpoints().get(new Location(calls, 2)).clear())
           .isInstanceOf(UnsupportedOperationException.class);
+      var expanded = result.program().instructionsAt(new Location(calls, 2), () -> {});
+      assertThat(expanded).extracting(instruction -> instruction.address())
+          .containsExactly(pc, pc + 4, pc + 8, pc + 12);
+      assertThat(expanded.getFirst().assembly()).startsWith("lui ");
+      assertThat(expanded.getFirst().encoding()).isEqualTo(0x3c011234);
+      assertThat(expanded.getFirst().origin()).isSameAs(map.origins().get(pc));
+      assertThat(result.program().instructionsAt(new Location(definitions, 2), () -> {})).hasSize(4);
+      assertThat(result.program().instructionsAt(new Location(main, 1), () -> {})).isEmpty();
+      assertThatThrownBy(() -> result.program().instructionsAt(new Location(calls, 2), () -> {
+        throw new CancellationException("stop inspection");
+      })).isInstanceOf(CancellationException.class);
     }
   }
 
@@ -454,6 +465,8 @@ class SessionAssemblyTest {
       session.memory.setWord(pc, 0);
       assertThat(session.memory.getStatementNoNotify(pc).getInstructionOrigin()).isNull();
       assertThat(program.sourceMap().origins().get(pc)).isSameAs(original);
+      assertThat(program.instructionsAt(original.location(), () -> {}).getFirst().encoding())
+          .isEqualTo(0x24080001);
     }
   }
 

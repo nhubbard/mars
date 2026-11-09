@@ -68,5 +68,8 @@
     <action id="Mars.ExportMemory" class="edu.missouristate.mars.plugin.build.MarsMemoryExportAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </action>
+    <action id="Mars.ShowExpansion" class="edu.missouristate.mars.plugin.language.MarsShowExpansionAction">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
   </actions>
 </idea-plugin>

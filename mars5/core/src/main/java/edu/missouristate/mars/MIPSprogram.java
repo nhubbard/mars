@@ -1,8 +1,10 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.AssembledInstruction;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap;
 import edu.missouristate.mars.api.InstructionSourceMap;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.Program;
 import edu.missouristate.mars.api.StepEvent;
 import edu.missouristate.mars.api.StopEvent;
@@ -575,6 +577,27 @@ public class MIPSprogram implements Program {
   @Override
   public InstructionSourceMap sourceMap() {
     return sourceMap;
+  }
+
+  @Override
+  public List<AssembledInstruction> instructionsAt(Location location, Runnable checkCancellation) {
+    if (machineList == null) {
+      return List.of();
+    }
+    var instructions = new ArrayList<AssembledInstruction>();
+    for (var statement : machineList) {
+      checkCancellation.run();
+      int address = statement.getAddress();
+      var origin = sourceMap.origins().get(address);
+      for (var frame = origin; frame != null; frame = frame.caller()) {
+        if (frame.location().equals(location)) {
+          instructions.add(new AssembledInstruction(
+              address, statement.getBinaryStatement(), statement.getPrintableBasicAssemblyStatement(), origin));
+          break;
+        }
+      }
+    }
+    return List.copyOf(instructions);
   }
 
   @Override

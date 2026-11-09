@@ -62,7 +62,7 @@ class MipsAssemblyAnnotatorPlatformTest {
 
         val entryInput = collect(main)
         val partInput = collect(include)
-        assertSame(entryInput.sources, partInput.sources)
+        assertSame(entryInput.capture.sources, partInput.capture.sources)
         val entryResult = analyze(entryInput)
         val partResult = analyze(partInput)
         assertSame(entryResult.outcome, partResult.outcome)
@@ -72,7 +72,7 @@ class MipsAssemblyAnnotatorPlatformTest {
 
         withContext(Dispatchers.EDT) { edit(include.virtualFile, "defined: nop\n") }
         val changed = collect(include)
-        assertNotSame(partInput.sources, changed.sources)
+        assertNotSame(partInput.capture.sources, changed.capture.sources)
         val corrected = analyze(changed)
         assertNotSame(partResult.outcome, corrected.outcome)
         assertTrue(corrected.diagnostics.isEmpty())
@@ -81,7 +81,7 @@ class MipsAssemblyAnnotatorPlatformTest {
 
         withContext(Dispatchers.EDT) { fixture.addFileToProject("new-file.txt", "") }
         val afterCreation = collect(main)
-        assertEquals(changed.sources.revisions, afterCreation.sources.revisions)
+        assertEquals(changed.capture.sources.revisions, afterCreation.capture.sources.revisions)
         assertNotSame(corrected.outcome, analyze(afterCreation).outcome)
     }
 
@@ -118,7 +118,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         assertEquals(setOf("generated"), names())
         val pending = analysis.beginSymbolBuild(path, options)
-        analysis.publishBuiltSymbols(pending, withoutDelay.input.sources, AssemblySymbolMap.EMPTY)
+        analysis.publishBuiltSymbols(pending, withoutDelay.input.capture.sources, AssemblySymbolMap.EMPTY)
         assertTrue(names().isEmpty())
 
         val component = MarsSessionService.createMarsComponent()
@@ -127,8 +127,8 @@ class MipsAssemblyAnnotatorPlatformTest {
             session.program.symbolMap().locals().getValue(path).getValue("marker").address()
         }
         val delayed = analyze()
-        assertEquals(options, delayed.input.options)
-        assertSame(withoutDelay.input.sources, delayed.input.sources)
+        assertEquals(options, delayed.input.capture.options)
+        assertSame(withoutDelay.input.capture.sources, delayed.input.capture.sources)
         assertNotSame(withoutDelay.outcome, delayed.outcome)
         assertEquals(original + 4, assembledAddress)
         assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address())
@@ -318,7 +318,7 @@ class MipsAssemblyAnnotatorPlatformTest {
                 val source = ".include $unfinished\ntail: nop\n"
                 edit(main, source)
                 val input = readAction { requireNotNull(annotator.collectInformation(file)) }
-                assertEquals(setOf(entryPath), input.sources.revisions.keys)
+                assertEquals(setOf(entryPath), input.capture.sources.revisions.keys)
                 val result = withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
                 val (error, range) = readAction { annotator.acceptResult(file, result).single() }
                 assertEquals("Unterminated .include path", error.message())
@@ -328,7 +328,7 @@ class MipsAssemblyAnnotatorPlatformTest {
             }
             val completed = ".include \"part.s\"\nj target\n"
             edit(main, completed)
-            val captured = readAction { requireNotNull(annotator.collectInformation(file)).sources }
+            val captured = readAction { requireNotNull(annotator.collectInformation(file)).capture.sources }
             assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
             assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
             assertEquals(include, file.findReferenceAt(completed.indexOf("part.s"))?.resolve()?.containingFile?.virtualFile)
@@ -353,11 +353,11 @@ class MipsAssemblyAnnotatorPlatformTest {
         suspend fun current(result: MipsAssemblyAnnotator.Result) = readAction { annotator.acceptResult(part, result) }
 
         val input = collect()!!
-        assertEquals(listOf(main.toNioPath()), input.sources.snapshot.entries())
+        assertEquals(listOf(main.toNioPath()), input.capture.sources.snapshot.entries())
         val original = analyze(input)
         assertEquals(TextRange(2, 9), current(original).single().second)
-        val unknownPosition = AssemblyError(input.source, 99, 0, "unknown position", false)
-        val incomplete = original.outcome.copy(diagnostics = mapOf(input.source to (original.diagnostics + unknownPosition)))
+        val unknownPosition = AssemblyError(input.capture.source, 99, 0, "unknown position", false)
+        val incomplete = original.outcome.copy(diagnostics = mapOf(input.capture.source to (original.diagnostics + unknownPosition)))
         assertEquals(1, current(original.copy(outcome = incomplete)).size)
         val cancelled = async(Dispatchers.Default) {
             currentCoroutineContext().job.cancel()
@@ -375,18 +375,18 @@ class MipsAssemblyAnnotatorPlatformTest {
 
         project.service<MarsBuildService>().assemble(main.toNioPath())
         val selected = analyze(collect()!!)
-        assertEquals(main.toNioPath(), selected.input.selectedAssembly?.entry)
+        assertEquals(main.toNioPath(), selected.input.capture.selectedAssembly?.entry)
         assertEquals(1, current(selected).size)
         project.service<MarsBuildService>().assemble(other.toNioPath())
         assertTrue(current(selected).isEmpty())
         val switched = analyze(collect()!!)
-        assertEquals(other.toNioPath(), switched.input.selectedAssembly?.entry)
+        assertEquals(other.toNioPath(), switched.input.capture.selectedAssembly?.entry)
         assertEquals(1, current(switched).size)
         readAction {
             val unrelated = PsiManager.getInstance(project).findFile(dependency)!!
             val inferred = annotator.collectInformation(unrelated)!!
-            assertNull(inferred.selectedAssembly)
-            assertEquals(listOf(main.toNioPath()), inferred.sources.snapshot.entries())
+            assertNull(inferred.capture.selectedAssembly)
+            assertEquals(listOf(main.toNioPath()), inferred.capture.sources.snapshot.entries())
         }
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("new-file.txt", "")
@@ -394,11 +394,11 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertTrue(current(switched).isEmpty())
 
         withContext(Dispatchers.EDT) { edit(other, "nop\n") }
-        assertEquals(listOf(main.toNioPath()), collect()!!.sources.snapshot.entries())
+        assertEquals(listOf(main.toNioPath()), collect()!!.capture.sources.snapshot.entries())
         withContext(Dispatchers.EDT) {
             WriteCommandAction.runWriteCommandAction(project) { other.delete(this) }
         }
-        assertEquals(listOf(main.toNioPath()), collect()!!.sources.snapshot.entries())
+        assertEquals(listOf(main.toNioPath()), collect()!!.capture.sources.snapshot.entries())
     }
 
     @Test

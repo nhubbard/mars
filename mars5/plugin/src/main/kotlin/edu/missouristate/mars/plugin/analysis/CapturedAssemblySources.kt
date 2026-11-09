@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
@@ -14,6 +15,9 @@ import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.di.MarsComponent
+import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService.AssemblySelection
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
@@ -27,6 +31,39 @@ internal data class CapturedAssemblySources(
     val exceptionHandler: Path?,
     val revisions: Map<Path, Long>,
 )
+
+internal data class EditorAssemblyCapture(
+    val source: Path,
+    val selectedAssembly: AssemblySelection?,
+    val sources: CapturedAssemblySources,
+    val options: MarsExecutionOptions,
+    val structureStamp: Long,
+) {
+    fun validate(file: MipsFile, accept: (Path, Document, Long) -> Boolean): Boolean {
+        if (VirtualFileManager.getInstance().structureModificationCount != structureStamp) return false
+        val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
+        if (selected != selectedAssembly) return false
+        val entry = sources.snapshot.entries().single()
+        if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
+        return sources.revisions.validateSourceDocuments(accept)
+    }
+}
+
+/** Chooses the same assembly entry for editor diagnostics and on-demand inspection. */
+internal fun collectEditorAssembly(file: MipsFile): EditorAssemblyCapture? {
+    val virtualFile = file.viewProvider.virtualFile
+    if (!virtualFile.isInLocalFileSystem) return null
+    val source = virtualFile.toNioPath().toAbsolutePath().normalize()
+    val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
+    val explicit = selected?.let { selection ->
+        collectBackgroundAssemblySources(file.project, selection.entry).takeIf { source in it.revisions }
+            ?.let { it to selection.options }
+    }
+    val (sources, options) = explicit ?: (
+        collectBackgroundAssemblySources(file.project, inferredMipsAssemblyEntry(file) ?: return null) to MarsExecutionOptions()
+    )
+    return EditorAssemblyCapture(source, selected, sources, options, VirtualFileManager.getInstance().structureModificationCount)
+}
 
 private data class SourceDocument(val text: String, val revision: Long, val identity: Path)
 
