@@ -13,7 +13,7 @@ import com.intellij.util.indexing.IndexedFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsLexer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
-import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DIRECTIVE
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.INCLUDE
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.NEWLINE
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.STRING
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
@@ -57,8 +57,7 @@ internal fun collectMipsIncludes(text: CharSequence): Array<FileIncludeInfo> {
                     includes.add(FileIncludeInfo(quoted.substring(1, quoted.length - 1), lexer.getTokenStart()))
                     includedOnLine = true
                 }
-                expectingPath = type == DIRECTIVE &&
-                    text.subSequence(lexer.getTokenStart(), lexer.getTokenEnd()).toString().equals(".include", ignoreCase = true)
+                expectingPath = type == INCLUDE
             }
         }
         lexer.advance()

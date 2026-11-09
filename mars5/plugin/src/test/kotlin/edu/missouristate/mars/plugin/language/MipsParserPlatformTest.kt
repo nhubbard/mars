@@ -183,6 +183,44 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `include prepass replaces labels equivalences and unfinished instructions`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        directory.resolve("included.s").writeText("addiu \$t0,\$zero,7")
+        val lines = listOf(
+            ": .include \"included.s\"",
+            "before: .include \"included.s\" +",
+            ".eqv NEVER 42 .include \"included.s\"",
+            "lw \$t0,0(\$sp .include \"included.s\"",
+            ".include 1 .InClUdE ,, \"included.s\"",
+        )
+        for (line in lines) {
+            assertAssembles(directory, line)
+            readAction {
+                val file = assertParses(line)
+                val include = descendants(file.node, "INCLUDE_LINE").single()
+                assertEquals(line, include.text)
+                for (type in listOf("LABEL", "EQUIVALENCE", "INSTRUCTION")) {
+                    assertTrue(descendants(file.node, type).none(), line)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `an include can replace a macro closing line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        directory.resolve("body.s").writeText("addiu \$t0,\$zero,7")
+        val include = ".end_macro .include \"body.s\""
+        val source = ".macro emit\n$include\n.end_macro\nemit"
+        assertAssembles(directory, source)
+        readAction {
+            val file = assertParses(source)
+            val macro = descendants(file.node, "MACRO_DEFINITION").single()
+            assertEquals(include, descendants(macro, "INCLUDE_LINE").single().text)
+            assertEquals(".end_macro", macro.lastChildNode.text)
+            assertTrue(descendants(assertParses(".include 1").node, "INCLUDE_LINE").none())
+        }
+    }
+
+    @Test
     fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
         val instructions = InstructionSet().also { it.populate() }
         assertTrue(instructions.instructionList.size > 155, "The basic and pseudo-instruction catalogs must both be populated")

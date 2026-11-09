@@ -189,10 +189,24 @@ produce structured address PSI and that the fragments retain their exact operand
 The clean sandbox launch ran 1,262 tests and loaded the plugin in the smoke project. The rebuilt
 plugin archive passed its integrity check. Visual editor acceptance remains open.
 
+## Whole-line include preprocessing
+
+The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the
+physical line. It preserves the full token sequence and avoids producing declaration or instruction
+nodes for the replaced prefix. A valid include on a macro closing line takes precedence over the
+physical closing token. Incomplete include directives still have ordinary directive PSI.
+
+The assembler fixtures cover labels, equivalences, incomplete operands, an earlier include without
+a quoted path, and a macro body inserted in place of a closing line. The declaration index rebuilds
+to drop labels and constants from replaced lines. Editor highlighting and include indexing use the
+same lexer token for the directive.
+The clean launch ran all 1,264 tests and loaded the plugin in the smoke project. The release ZIP
+passed its integrity check, and all six packaged JARs matched the sandbox JARs by SHA-256.
+The window was unavailable to UI automation, so visual editor acceptance remains open.
+
 ## Next slices
 
-Continue checking parser edge cases against the Java assembler, including physical lines replaced
-by the include prepass. Then add symbol reference sentinels,
+Continue checking parser edge cases against the Java assembler while building symbol reference sentinels,
 query-time sentinel joins, native named PSI/stubs where required, completion/navigation/docs, detached source
 analysis and build results. Execution/debugger/tool work follows the component mapping. No existing
 MARS feature is deferred by this delivery order.

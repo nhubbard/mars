@@ -38,6 +38,7 @@ class MipsLexer : LexerBase() {
                 Directives.MACRO -> MipsSyntaxTypes.MACRO
                 Directives.END_MACRO -> MipsSyntaxTypes.END_MACRO
                 Directives.EQV -> MipsSyntaxTypes.EQV
+                Directives.INCLUDE -> MipsSyntaxTypes.INCLUDE
                 null -> MipsSyntaxTypes.WORD
                 else -> MipsSyntaxTypes.DIRECTIVE
             }
