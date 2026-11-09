@@ -16,6 +16,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunnerLayoutUi
 import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -27,6 +28,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
@@ -45,6 +47,7 @@ import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
+import com.intellij.ui.UiInterceptors
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.table.JBTable
@@ -71,23 +74,43 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
+import edu.missouristate.mars.mips.dump.DumpFormat
+import edu.missouristate.mars.mips.dump.DumpFormatLoader
+import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
+import edu.missouristate.mars.plugin.build.MarsMemoryExportService
+import edu.missouristate.mars.plugin.build.MemoryExportCapture
+import edu.missouristate.mars.plugin.build.MemoryExportOptions
+import edu.missouristate.mars.plugin.build.MemoryExportRegion
+import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
+import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsRunOptions
+import java.awt.event.ActionEvent
+import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import javax.swing.Icon
 import javax.swing.JButton
+import javax.swing.JComboBox
+import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -1599,6 +1622,153 @@ class MarsDebugPlatformTest {
             assertTrue(row.bytes.startsWith("41 42 43 00"), row.bytes)
             assertTrue(row.characters.startsWith("ABC."), row.characters)
         }
+    }
+
+    @Test
+    fun `Debug Memory exports each pause and rejects a dialog completed after resume`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val file = exportDebugProgram()
+            val output = directory.resolve("paused.hex")
+            val notifications = Channel<Notification>(Channel.UNLIMITED)
+            val disposable = Disposer.newDisposable()
+            try {
+                withDebug(file) { debug ->
+                    debug.assertPausedAt(file, 3)
+                    val button = withContext(Dispatchers.EDT) {
+                        project.messageBus.connect(disposable).subscribe(Notifications.TOPIC, object : Notifications {
+                            override fun notify(notification: Notification) {
+                                if (notification.groupId == "MARS Memory Export") notifications.trySend(notification)
+                            }
+                        })
+                        replaceMemoryExportSaveDialog(disposable) { _, base, name ->
+                            assertEquals(file.toNioPath().parent, base)
+                            assertEquals("export-debug-memory", name)
+                            output
+                        }
+                        val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsExportTest", "Debug", "MIPS", disposable)
+                        debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                        val panel = requireNotNull(layout.findContent("MarsMipsMemory")).component
+                        UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Export Memory…" }
+                    }
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(button.isEnabled)
+                        interceptMemoryExportDialog { it.doCancelAction() }
+                        button.doClick(0)
+                        assertFalse(Files.exists(output))
+                        interceptMemoryExportDialog(::selectExportDataWord)
+                        button.doClick(0)
+                    }
+                    assertEquals(NotificationType.INFORMATION, notifications.receive().type)
+                    assertEquals(listOf("00000007"), Files.readAllLines(output))
+                    withContext(Dispatchers.EDT) {
+                        interceptMemoryExportDialog { dialog ->
+                            selectExportDataWord(dialog)
+                            debug.session.resume()
+                            assertFalse(button.isEnabled)
+                            val event = ActionEvent(button, ActionEvent.ACTION_PERFORMED, "stale")
+                            button.actionListeners.forEach { it.actionPerformed(event) }
+                        }
+                        button.doClick(0)
+                    }
+                    debug.assertPausedAt(file, 5)
+                    val failure = notifications.receive()
+                    assertEquals(NotificationType.ERROR, failure.type)
+                    assertTrue(failure.content.contains("resumed or stopped"))
+                    assertEquals(listOf("00000007"), Files.readAllLines(output))
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(button.isEnabled)
+                        interceptMemoryExportDialog(::selectExportDataWord)
+                        button.doClick(0)
+                    }
+                    assertEquals(NotificationType.INFORMATION, notifications.receive().type)
+                    assertEquals(listOf("00000009"), Files.readAllLines(output))
+                }
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(disposable)
+                    UiInterceptors.clear()
+                }
+            }
+        }
+
+    @Test
+    fun `the debugger can resume during export IO and discards requests queued for an old pause`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val file = exportDebugProgram()
+            val releaseWriter = CountDownLatch(1)
+            val writing = CompletableDeferred<Unit>()
+            val hex = DumpFormatLoader.FORMATS.single { it.commandDescriptor == "HexText" }
+            val format = object : DumpFormat by hex {
+                override fun write(file: File, snapshot: MemoryDumpSnapshot) {
+                    writing.complete(Unit)
+                    check(releaseWriter.await(10, TimeUnit.SECONDS))
+                    hex.write(file, snapshot)
+                }
+            }
+            val options = MemoryExportOptions(format, MemoryExportRegion.RANGE, 0x10010000u..0x10010000u)
+            withDebug(file) { debug ->
+                debug.assertPausedAt(file, 3)
+                val pause = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                val output = directory.resolve("detached")
+                val job = project.service<MarsMemoryExportService>().exportCapturedInBackground(options, output) {
+                    pause.captureForExport(options)
+                }
+                try {
+                    writing.await()
+                    val inspecting = CompletableDeferred<Unit>()
+                    val releaseInspection = CompletableDeferred<Unit>()
+                    pause.inspectionRequests.send {
+                        inspecting.complete(Unit)
+                        releaseInspection.await()
+                    }
+                    inspecting.await()
+                    val queued = async(start = CoroutineStart.UNDISPATCHED) { pause.captureForExport(options) }
+                    try {
+                        withContext(Dispatchers.EDT) { debug.session.resume() }
+                    } finally {
+                        releaseInspection.complete(Unit)
+                    }
+                    debug.assertPausedAt(file, 5)
+                    val stale = assertInstanceOf(MemoryExportCapture.Failed::class.java, queued.await())
+                    assertTrue(stale.message.contains("resumed or stopped"))
+                    assertFalse(Files.exists(output))
+                } finally {
+                    releaseWriter.countDown()
+                }
+                job.join()
+                assertEquals(listOf("00000007"), Files.readAllLines(output))
+            }
+
+            val cancelled = CompletableDeferred<MemoryExportCapture>().also { it.cancel() }
+            MarsSessionService.createMarsComponent().context().use { machine ->
+                MemoryExportRequest(options, cancelled).capture(machine)
+                assertTrue(cancelled.isCancelled)
+            }
+        }
+
+    private suspend fun exportDebugProgram(): VirtualFile = withContext(Dispatchers.EDT) {
+        fixture.addFileToProject("export-debug.s", """
+            .data
+            payload: .word 7
+            .text
+            addiu ${'$'}t0, ${'$'}zero, 9
+            sw ${'$'}t0, payload
+            nop
+        """.trimIndent()).virtualFile.also {
+            addBreakpoint(it, 3)
+            addBreakpoint(it, 5)
+        }
+    }
+
+    private fun selectExportDataWord(dialog: MarsMemoryExportDialog) {
+        val (region, format) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+        region.selectedItem = MemoryExportRegion.RANGE
+        format.selectedItem = DumpFormatLoader.FORMATS.single { it.commandDescriptor == "HexText" }
+        val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+        first.text = "0x10010000"
+        last.text = first.text
+        assertTrue(dialog.performValidateAll().isEmpty())
+        dialog.performOKAction()
     }
 
     private suspend fun assertMemory(table: JBTable, address: String, bytes: String, ascii: String = "") {

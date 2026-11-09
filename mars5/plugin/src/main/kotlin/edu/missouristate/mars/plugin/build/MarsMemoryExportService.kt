@@ -10,6 +10,7 @@ import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.dump.SegmentWindowDumpFormat
 import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.MemoryState.WORD_LENGTH_BYTES
@@ -22,6 +23,8 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -29,10 +32,15 @@ import kotlinx.coroutines.withContext
 internal class MarsMemoryExportService(private val project: Project, private val scope: CoroutineScope) {
     private val messages = memoryExportMessages
 
-    fun exportInBackground(entry: Path, options: MemoryExportOptions, output: Path) = scope.launch(Dispatchers.Default) {
-        val error = withBackgroundProgress(project, messages.getMessage("export.progress")) {
-            export(entry, options, output)
-        }
+    fun exportInBackground(entry: Path, options: MemoryExportOptions, output: Path) =
+        exportInBackground(output) { export(entry, options, output) }
+
+    fun exportCapturedInBackground(
+        options: MemoryExportOptions, output: Path, capture: suspend () -> MemoryExportCapture,
+    ) = exportInBackground(output) { writeCapture(options, output, capture()) }
+
+    private fun exportInBackground(output: Path, export: suspend () -> String?) = scope.launch(Dispatchers.Default) {
+        val error = withBackgroundProgress(project, messages.getMessage("export.progress")) { export() }
         val group = NotificationGroupManager.getInstance().getNotificationGroup("MARS Memory Export")
         if (error == null) {
             LocalFileSystem.getInstance().refreshNioFiles(listOf(output), true, false, null)
@@ -49,50 +57,65 @@ internal class MarsMemoryExportService(private val project: Project, private val
             if (!project.service<MarsBuildService>().assemble(entry, component, activateBuildView = true)) {
                 return messages.getMessage("run.assembly.failed")
             }
-            withContext(Dispatchers.IO) { writeMemory(options, output, session) }
+            val caller = currentCoroutineContext()
+            val capture = captureMemory(options, session, caller::ensureActive)
+            writeCapture(options, output, capture)
         }
     }
 
-    private suspend fun writeMemory(options: MemoryExportOptions, output: Path, session: MarsContext): String? {
-        val memory = session.memory
-        val (first, limit) = when (options.region) {
-            MemoryExportRegion.TEXT -> memory.textBaseAddress to memory.textLimitAddress.toUInt().toLong()
-            MemoryExportRegion.DATA -> memory.dataBaseAddress to memory.dataSegmentLimitAddress.toUInt().toLong()
-            MemoryExportRegion.RANGE -> options.range.first.toInt() to options.range.last.toLong() + WORD_LENGTH_BYTES
-        }
-        if (options.format is SegmentWindowDumpFormat) {
-            val last = (limit - WORD_LENGTH_BYTES).toInt()
-            val userText = memory.inTextSegment(first) && memory.inTextSegment(last)
-            val userData = memory.inDataSegment(first) && memory.inDataSegment(last)
-            if (!userText && !userData) return messages.getMessage("export.window.range")
-        }
+    private suspend fun writeCapture(
+        options: MemoryExportOptions, output: Path, capture: MemoryExportCapture,
+    ): String? = when (capture) {
+        is MemoryExportCapture.Failed -> capture.message
+        is MemoryExportCapture.Ready -> withContext(Dispatchers.IO) { writeMemory(options, output, capture.snapshot) }
+    }
+
+    private suspend fun writeMemory(options: MemoryExportOptions, output: Path, snapshot: MemoryDumpSnapshot): String? {
         try {
-            val start = first.toUInt().toLong()
-            var address = start
-            while (address < limit) {
-                checkCanceled()
-                if (memory.getRawWordOrNull(address.toInt()) == null) {
-                    if (options.region == MemoryExportRegion.RANGE) {
-                        return messages.getMessage("export.unpopulated", Binary.intToHexString(address.toInt()))
-                    }
-                    break
-                }
-                address += WORD_LENGTH_BYTES
-            }
-            if (address == start) return messages.getMessage("export.empty")
             val temporary = Files.createTempFile(output.toAbsolutePath().parent, ".mars-memory-", ".tmp")
             try {
-                options.format.dumpMemoryRange(temporary.toFile(), first, (address - WORD_LENGTH_BYTES).toInt(), session)
+                options.format.write(temporary.toFile(), snapshot)
                 checkCanceled()
                 Files.move(temporary, output, ATOMIC_MOVE, REPLACE_EXISTING)
             } finally {
                 Files.deleteIfExists(temporary)
             }
-        } catch (e: AddressErrorException) {
-            return messages.getMessage("export.invalid.memory", Binary.intToHexString(e.address))
         } catch (e: IOException) {
             return messages.getMessage("export.io.error", output, e.localizedMessage)
         }
         return null
     }
+}
+
+internal sealed interface MemoryExportCapture {
+    data class Ready(val snapshot: MemoryDumpSnapshot) : MemoryExportCapture
+    data class Failed(val message: String) : MemoryExportCapture
+}
+
+internal fun captureMemory(
+    options: MemoryExportOptions, session: MarsContext, checkCancellation: () -> Unit,
+): MemoryExportCapture {
+    val messages = memoryExportMessages
+    val memory = session.memory
+    val (first, last) = when (options.region) {
+        MemoryExportRegion.TEXT -> memory.textBaseAddress to memory.textLimitAddress - WORD_LENGTH_BYTES
+        MemoryExportRegion.DATA -> memory.dataBaseAddress to memory.dataSegmentLimitAddress - WORD_LENGTH_BYTES
+        MemoryExportRegion.RANGE -> options.range.first.toInt() to options.range.last.toInt()
+    }
+    if (options.format is SegmentWindowDumpFormat) {
+        val userText = memory.inTextSegment(first) && memory.inTextSegment(last)
+        val userData = memory.inDataSegment(first) && memory.inDataSegment(last)
+        if (!userText && !userData) return MemoryExportCapture.Failed(messages.getMessage("export.window.range"))
+    }
+    val snapshot = try {
+        options.format.capture(session, first, last, checkCancellation)
+    } catch (e: AddressErrorException) {
+        return MemoryExportCapture.Failed(messages.getMessage("export.invalid.memory", Binary.intToHexString(e.address)))
+    }
+    val nextAddress = first.toUInt().toLong() + snapshot.size().toLong() * WORD_LENGTH_BYTES
+    if (options.region == MemoryExportRegion.RANGE && nextAddress <= last.toUInt().toLong()) {
+        return MemoryExportCapture.Failed(messages.getMessage("export.unpopulated", Binary.intToHexString(nextAddress.toInt())))
+    }
+    if (snapshot.size() == 0) return MemoryExportCapture.Failed(messages.getMessage("export.empty"))
+    return MemoryExportCapture.Ready(snapshot)
 }

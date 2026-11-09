@@ -21,6 +21,7 @@ import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
+import java.nio.file.Path
 import javax.swing.JTextField
 
 internal val memoryExportMessages = DynamicBundle(MarsMemoryExportAction::class.java, "messages.MarsBundle")
@@ -35,23 +36,32 @@ internal class MarsMemoryExportAction : DumbAwareAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val entry = sourceFile(e) ?: return
-        val dialog = MarsMemoryExportDialog(project)
-        dialog.show()
-        if (!dialog.isOK) return
-
-        val options = dialog.options()
-        val messages = memoryExportMessages
-        val descriptor = FileSaverDescriptor(messages.getMessage("export.save.title"), options.format.description.trim())
-        options.format.fileExtension?.let { descriptor.withExtensionFilter(it) }
-        val chooser = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
-        val name = "${entry.nameWithoutExtension}-memory"
-        val output = chooser.save(entry.toNioPath().parent, name)?.file?.toPath() ?: return
-        project.service<MarsMemoryExportService>().exportInBackground(entry.toNioPath(), options, output)
+        val path = entry.toNioPath()
+        val (options, output) = chooseMemoryExport(project, path) ?: return
+        project.service<MarsMemoryExportService>().exportInBackground(path, options, output)
     }
 
     private fun sourceFile(e: AnActionEvent): VirtualFile? = e.getData(CommonDataKeys.VIRTUAL_FILE)?.takeIf {
         it.isLocalSource() && it.fileType == MipsFileType
     }
+}
+
+internal data class MemoryExportSelection(val options: MemoryExportOptions, val output: Path)
+
+internal fun chooseMemoryExport(project: Project, entry: Path): MemoryExportSelection? {
+    val dialog = MarsMemoryExportDialog(project)
+    dialog.show()
+    if (!dialog.isOK) return null
+
+    val options = dialog.options()
+    val descriptor = FileSaverDescriptor(
+        memoryExportMessages.getMessage("export.save.title"), options.format.description.trim(),
+    )
+    options.format.fileExtension?.let { descriptor.withExtensionFilter(it) }
+    val chooser = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
+    val name = "${entry.fileName.toString().substringBeforeLast('.')}-memory"
+    val output = chooser.save(entry.parent, name)?.file?.toPath() ?: return null
+    return MemoryExportSelection(options, output)
 }
 
 internal enum class MemoryExportRegion(val label: String) {

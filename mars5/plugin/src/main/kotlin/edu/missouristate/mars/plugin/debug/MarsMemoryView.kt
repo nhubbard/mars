@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.debug
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -18,10 +19,13 @@ import com.intellij.xdebugger.XDebugSessionListener
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.STACK_POINTER_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.build.MarsMemoryExportService
+import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import java.awt.Font
 import java.awt.event.ItemEvent
+import java.nio.file.Path
 import java.util.HexFormat
 import javax.swing.JButton
 import javax.swing.JTable
@@ -70,11 +74,12 @@ internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
 }
 
 /** The Debug tab requests bounded reads from the owner of the current suspension. */
-internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
+internal class MarsMemoryView(private val session: XDebugSession, private val entry: Path) : Disposable {
     val addressField = JBTextField(12)
     private val go = JButton(runMessages.getMessage("debug.memory.go"))
     private val previous = JButton(runMessages.getMessage("debug.memory.previous"))
     private val next = JButton(runMessages.getMessage("debug.memory.next"))
+    private val export = JButton(runMessages.getMessage("debug.memory.export"))
     private val regions = ComboBox(MemoryRegion.entries.toTypedArray()).apply {
         renderer = textListCellRenderer(runMessages.getMessage("debug.memory.region")) { runMessages.getMessage(it.label) }
         selectedItem = null
@@ -106,6 +111,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
             cell(previous)
             cell(next)
             cell(regions)
+            cell(export)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
         row { cell(status) }
@@ -116,6 +122,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         addressField.addActionListener { navigate() }
         previous.addActionListener { move(-BYTES_PER_PAGE) }
         next.addActionListener { move(BYTES_PER_PAGE) }
+        export.addActionListener { exportSuspension() }
         regions.addItemListener { event ->
             if (event.stateChange == ItemEvent.SELECTED) {
                 regions.selectedItem = null
@@ -129,6 +136,15 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
             override fun sessionStopped() = refreshOnEdt()
         }, this)
         refresh()
+    }
+
+    private fun exportSuspension() {
+        val suspension = session.suspendContext as? MarsSuspendContext ?: return
+        val project = session.project
+        val (options, output) = chooseMemoryExport(project, entry) ?: return
+        project.service<MarsMemoryExportService>().exportCapturedInBackground(options, output) {
+            suspension.captureForExport(options)
+        }
     }
 
     private fun refreshOnEdt() = UIUtil.invokeLaterIfNeeded { refresh() }
@@ -161,6 +177,7 @@ internal class MarsMemoryView(private val session: XDebugSession) : Disposable {
         val paused = context != null
         addressField.isEnabled = paused
         go.isEnabled = paused
+        export.isEnabled = paused
         regions.isEnabled = paused
         if (context == null) {
             previous.isEnabled = false

@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.build
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -159,29 +160,19 @@ class MarsMemoryExportPlatformTest {
         var cancelSave = true
         try {
             withContext(Dispatchers.EDT) {
-                val application = ApplicationManager.getApplication()
-                application.replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
-                    override fun createSaveFileDialog(descriptor: FileSaverDescriptor, project: Project?): FileSaverDialog {
-                        assertEquals("Save MIPS Memory Dump", descriptor.title)
-                        return object : FileSaverDialog {
-                            override fun save(baseDir: VirtualFile?, filename: String?): VirtualFileWrapper? =
-                                error("Expected a NIO base directory")
+                replaceMemoryExportSaveDialog(disposable) { descriptor, baseDir, filename ->
+                    assertEquals("Save MIPS Memory Dump", descriptor.title)
+                    assertEquals(entry.parent, baseDir)
+                    assertEquals("entry-memory", filename)
+                    saved = true
+                    if (cancelSave) null else output
+                }
 
-                            override fun save(baseDir: Path?, filename: String?): VirtualFileWrapper? {
-                                assertEquals(entry.parent, baseDir)
-                                assertEquals("entry-memory", filename)
-                                saved = true
-                                return if (cancelSave) null else VirtualFileWrapper(output.toFile())
-                            }
-                        }
-                    }
-                }, disposable)
-
-                intercept { it.doCancelAction() }
+                interceptMemoryExportDialog { it.doCancelAction() }
                 action.actionPerformed(enabled)
                 assertFalse(saved)
 
-                intercept {
+                interceptMemoryExportDialog {
                     assertTrue(it.performValidateAll().isEmpty())
                     it.performOKAction()
                 }
@@ -190,7 +181,7 @@ class MarsMemoryExportPlatformTest {
                 assertFalse(Files.exists(output))
 
                 cancelSave = false
-                intercept { dialog ->
+                interceptMemoryExportDialog { dialog ->
                     val combos = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
                     combos[0].selectedItem = MemoryExportRegion.RANGE
                     combos[1].selectedItem = format("HEX")
@@ -228,14 +219,29 @@ class MarsMemoryExportPlatformTest {
 
     private fun format(name: String) = DumpFormatLoader.FORMATS.single { it.commandDescriptor == name }
 
-    private fun intercept(onShow: (MarsMemoryExportDialog) -> Unit) =
-        UiInterceptors.register(object : UiInterceptors.UiInterceptor<MarsMemoryExportDialog>(MarsMemoryExportDialog::class.java) {
-            override fun doIntercept(component: MarsMemoryExportDialog) = onShow(component)
-        })
-
     private fun event(action: AnAction, project: Project?, file: VirtualFile?): AnActionEvent {
         val context = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project)
             .add(CommonDataKeys.VIRTUAL_FILE, file).build()
         return AnActionEvent.createEvent(action, context, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
     }
+}
+
+internal fun interceptMemoryExportDialog(onShow: (MarsMemoryExportDialog) -> Unit) =
+    UiInterceptors.register(object : UiInterceptors.UiInterceptor<MarsMemoryExportDialog>(MarsMemoryExportDialog::class.java) {
+        override fun doIntercept(component: MarsMemoryExportDialog) = onShow(component)
+    })
+
+internal fun replaceMemoryExportSaveDialog(
+    disposable: Disposable, select: (FileSaverDescriptor, Path?, String?) -> Path?,
+) {
+    ApplicationManager.getApplication().replaceService(FileChooserFactory::class.java, object : FileChooserFactoryImpl() {
+        override fun createSaveFileDialog(descriptor: FileSaverDescriptor, project: Project?): FileSaverDialog =
+            object : FileSaverDialog {
+                override fun save(baseDir: VirtualFile?, filename: String?): VirtualFileWrapper? =
+                    error("Expected a NIO base directory")
+
+                override fun save(baseDir: Path?, filename: String?): VirtualFileWrapper? =
+                    select(descriptor, baseDir, filename)?.let { VirtualFileWrapper(it.toFile()) }
+            }
+    }, disposable)
 }

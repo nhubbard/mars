@@ -80,7 +80,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private val commands = Channel<Command>(Channel.CONFLATED)
     @Volatile private var simulator: SimulatorEngine? = null
     private val bindings = Any()
-    private val entry = state.entry.normalize().toString()
+    private val entryPath = state.entry.normalize()
+    private val entry = entryPath.toString()
     private val registeredLines = linkedSetOf<LineBreakpoint>()
     private val registeredAddresses = linkedSetOf<AddressBreakpoint>()
     private var sourceMap: InstructionSourceMap? = null
@@ -118,7 +119,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     override fun createTabLayouter() = object : XDebugTabLayouter() {
         override fun registerAdditionalContent(ui: RunnerLayoutUi) {
-            val view = MarsMemoryView(session)
+            val view = MarsMemoryView(session, entryPath)
             val content = ui.createContent("MarsMipsMemory", view.component, runMessages.getMessage("debug.memory"), null, view.addressField)
             content.isCloseable = false
             content.setDisposer(view)
@@ -316,6 +317,10 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                     request.inspect(machine.memory)
                     null
                 }
+                context.memoryExports.onReceive { request ->
+                    request.capture(machine)
+                    null
+                }
                 context.registerEdits.onReceive { request ->
                     // A selected edit completes before the worker can start another command.
                     withContext(NonCancellable) { editRegister(machine, context, request) }
@@ -345,6 +350,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             context.inspectionRequests.cancel()
             context.watchRequests.cancel()
             context.registerEdits.cancel()
+            context.memoryExports.cancel()
         }
     }
 
@@ -422,6 +428,7 @@ internal class MarsSuspendContext(
         memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
     }
 
+    val memoryExports = Channel<MemoryExportRequest>(16, onUndeliveredElement = MemoryExportRequest::unavailable)
     val inspectionRequests = Channel<suspend (MemoryState) -> Unit>(16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     private val stack = object : XExecutionStack(runMessages.getMessage("debug.cpu")) {
         override fun getTopFrame() = frame
