@@ -70,10 +70,10 @@ public class SymbolTable {
    * @param errors List to which to add any processing errors that occur.
    */
   public void addSymbol(Token token, int address, boolean b, ErrorList errors) {
-    addSymbol(token, address, b ? Kind.DATA : Kind.TEXT, null, errors);
+    addSymbol(token, address, b ? Kind.DATA : Kind.TEXT, null, false, errors);
   }
 
-  void addSymbol(Token token, int address, Kind kind, Origin origin, ErrorList errors) {
+  void addSymbol(Token token, int address, Kind kind, Origin origin, boolean macroPrivate, ErrorList errors) {
     String label = token.getValue();
     if (getSymbol(label) != null) {
       errors.add(
@@ -83,7 +83,7 @@ public class SymbolTable {
               token.getStartPos(),
               "label \"" + label + "\" already defined"));
     } else {
-      Symbol s = new Symbol(label, address, kind, origin);
+      Symbol s = new Symbol(label, address, kind, origin, macroPrivate);
       table.add(s);
     }
   }

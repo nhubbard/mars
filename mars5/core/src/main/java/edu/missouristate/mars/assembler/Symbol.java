@@ -42,6 +42,7 @@ public class Symbol {
   private int address;
   private final Kind kind;
   private final Origin origin;
+  private final boolean macroPrivate;
   public static final boolean TEXT_SYMBOL = false;
   public static final boolean DATA_SYMBOL = true;
 
@@ -53,14 +54,15 @@ public class Symbol {
    * @param data The type of Symbol that it is.
    */
   public Symbol(String name, int address, boolean data) {
-    this(name, address, data ? Kind.DATA : Kind.TEXT, null);
+    this(name, address, data ? Kind.DATA : Kind.TEXT, null, false);
   }
 
-  Symbol(String name, int address, Kind kind, Origin origin) {
+  Symbol(String name, int address, Kind kind, Origin origin, boolean macroPrivate) {
     this.name = name;
     this.address = address;
     this.kind = kind;
     this.origin = origin;
+    this.macroPrivate = macroPrivate;
   }
 
   Kind kind() {
@@ -69,6 +71,10 @@ public class Symbol {
 
   Origin origin() {
     return origin;
+  }
+
+  boolean macroPrivate() {
+    return macroPrivate;
   }
 
   /**

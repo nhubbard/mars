@@ -87,7 +87,8 @@ public final class Assembler {
     var result = new HashMap<String, Definition>();
     for (var symbol : table.getAllSymbols()) {
       checkCancellation.run();
-      result.put(symbol.getName(), new Definition(symbol.getAddress(), symbol.kind(), symbol.origin()));
+      result.put(symbol.getName(), new Definition(
+          symbol.getAddress(), symbol.kind(), symbol.origin(), symbol.macroPrivate()));
     }
     return result;
   }

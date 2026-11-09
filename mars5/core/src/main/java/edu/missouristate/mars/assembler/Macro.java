@@ -5,6 +5,8 @@ import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.MIPSprogram;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /*
 Copyright (c) 2013-2014.
@@ -143,13 +145,22 @@ public class Macro {
    * @return <code>line</code>-th line of source code, with substituted arguments
    */
   public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
+    return expandLine(line, args, counter, Set.of(), errors).text();
+  }
+
+  record ExpandedLine(String text, Set<String> renamedLabels) {}
+
+  ExpandedLine expandLine(
+      int line, TokenList args, long counter, Set<String> privateArguments, ErrorList errors) {
     TokenList tokens = program.getTokenList().get(line - 1);
     var source = new StringBuilder(tokens.getProcessedLine());
+    HashSet<String> renamedLabels = null;
 
     // Replace from right to left so earlier token offsets stay valid.
     for (int i = tokens.size() - 1; i >= 0; i--) {
       Token token = tokens.get(i);
       String substitute;
+      boolean renamed;
       if (tokenIsMacroParameter(token.getValue(), true)) {
         int repl = -1;
         for (int j = 0; j < this.args.size(); j++) {
@@ -166,14 +177,22 @@ public class Macro {
               new ErrorMessage(
                   program, token.getSourceLine(), token.getStartPos(), "Unknown macro parameter"));
         }
+        renamed = repl != -1 && privateArguments.contains(substitute);
       } else if (tokenIsMacroLabel(token.getValue())) {
         substitute = token.getValue() + "_M" + counter;
+        renamed = true;
       } else {
         continue;
       }
+      if (renamed) {
+        if (renamedLabels == null) {
+          renamedLabels = new HashSet<>();
+        }
+        renamedLabels.add(substitute);
+      }
       source.replace(token.getStartPos() - 1, token.getEndPos() - 1, substitute);
     }
-    return source.toString();
+    return new ExpandedLine(source.toString(), renamedLabels == null ? Set.of() : renamedLabels);
   }
 
   /** returns true if <code>value</code> is name of a label defined in this macro's body. */

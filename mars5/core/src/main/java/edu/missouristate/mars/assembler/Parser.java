@@ -8,6 +8,7 @@ import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Set;
 
 /*
 Copyright (c) 2003-2012,  Pete Sanderson and Kenneth Vollmar
@@ -49,12 +50,12 @@ final class Parser {
       TokenList tokenList, SourceLine physicalLine, boolean extendedAssemblerEnabled) {
     return parseLine(
         tokenList, physicalLine.getSource(), physicalLine.getLineNumber(),
-        extendedAssemblerEnabled, physicalLine, null);
+        extendedAssemblerEnabled, physicalLine, null, Set.of());
   }
 
   private ArrayList<ProgramStatement> parseLine(
       TokenList tokenList, String source, int sourceLineNumber, boolean extendedAssemblerEnabled,
-      SourceLine physicalLine, Origin caller) {
+      SourceLine physicalLine, Origin caller, Set<String> renamedLabels) {
 
     ArrayList<ProgramStatement> ret = new ArrayList<>();
 
@@ -66,7 +67,7 @@ final class Parser {
     if (pass.inMacroSegment) {
       pass.detectLabels(tokens, macroPool.getCurrent());
     } else {
-      pass.stripLabels(tokens, physicalLine, caller);
+      pass.stripLabels(tokens, physicalLine, caller, renamedLabels);
     }
     if (tokens.isEmpty()) {
       return null;
@@ -77,7 +78,7 @@ final class Parser {
 
     // Let's handle the directives here...
     if (tokenType == TokenTypes.DIRECTIVE) {
-      pass.executeDirective(tokens, physicalLine, caller);
+      pass.executeDirective(tokens, physicalLine, caller, renamedLabels);
       return null;
     }
 
@@ -133,7 +134,8 @@ final class Parser {
         var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();
-          String substituted = macro.getSubstitutedLine(i, tokens, counter, pass.errors);
+          var expanded = macro.expandLine(i, tokens, counter, renamedLabels, pass.errors);
+          String substituted = expanded.text();
           TokenList tokenList2 =
               pass.fileCurrentlyBeingAssembled
                   .getTokenizer()
@@ -158,7 +160,8 @@ final class Parser {
                   sourceLineNumber,
                   extendedAssemblerEnabled,
                   physicalLines.get(i - 1),
-                  invocation);
+                  invocation,
+                  expanded.renamedLabels());
           if (statements != null) {
             ret.addAll(statements);
           }

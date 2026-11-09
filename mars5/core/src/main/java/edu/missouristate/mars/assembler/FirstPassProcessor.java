@@ -12,6 +12,7 @@ import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
 import java.util.ArrayList;
+import java.util.Set;
 
 /*
 Copyright (c) 2003-2012,  Pete Sanderson and Kenneth Vollmar
@@ -223,7 +224,7 @@ final class FirstPassProcessor {
    * Any label definition will be recorded in the symbol table. NOTE: the ArrayList parameter will
    * be modified.
    */
-  void stripLabels(TokenList tokens, SourceLine physicalLine, Origin caller) {
+  void stripLabels(TokenList tokens, SourceLine physicalLine, Origin caller, Set<String> renamedLabels) {
     if (!tokenListBeginsWithLabel(tokens)) {
       return;
     }
@@ -239,6 +240,7 @@ final class FirstPassProcessor {
         inDataSegment ? dataAddress.get() : textAddress.get(),
         inDataSegment ? Kind.DATA : Kind.TEXT,
         Parser.origin(physicalLine, caller),
+        renamedLabels.contains(token.getValue()),
         errors);
   } // parseLabel()
 
@@ -255,7 +257,7 @@ final class FirstPassProcessor {
   // //////////////////////////////////////////////////////////////////////////////////
   // This source code line is a directive, not a MIPS instruction. Let's carry it out.
   @SuppressWarnings("StatementWithEmptyBody")
-  void executeDirective(TokenList tokens, SourceLine physicalLine, Origin caller) {
+  void executeDirective(TokenList tokens, SourceLine physicalLine, Origin caller, Set<String> renamedLabels) {
     Token token = tokens.get(0);
     Directives direct = Directives.matchDirective(token.getValue());
     if (context.debug()) {
@@ -447,8 +449,10 @@ final class FirstPassProcessor {
       int size = Binary.stringToInt(tokens.get(2).getValue());
       // If label already in global symtab, do nothing. If not, add it right now.
       if (context.symbols().getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
+        var name = tokens.get(1);
         context.symbols().addSymbol(
-            tokens.get(1), externAddress, Kind.EXTERNAL, Parser.origin(physicalLine, caller), errors);
+            name, externAddress, Kind.EXTERNAL, Parser.origin(physicalLine, caller),
+            renamedLabels.contains(name.getValue()), errors);
         this.externAddress += size;
       }
     } else if (direct == Directives.SET) {
@@ -525,7 +529,8 @@ final class FirstPassProcessor {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
           context
               .symbols()
-              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.kind(), symtabEntry.origin(), errors);
+              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.kind(), symtabEntry.origin(),
+                  symtabEntry.macroPrivate(), errors);
         }
       }
     }
