@@ -1,6 +1,8 @@
 package edu.missouristate.mars.plugin.language.psi
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiPolyVariantReferenceBase
@@ -16,6 +18,8 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsInstructionOperand
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.equivalenceColor
+import edu.missouristate.mars.plugin.language.labelColor
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
     override fun getReference(): PsiReference? {
@@ -33,6 +37,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     }
 
     override fun getReferences(): Array<PsiReference> = listOfNotNull(reference).toTypedArray()
+
+    internal fun highlightingColor() = (reference as? SymbolReference)?.highlightingColor()
 
     private class SymbolReference(
         element: MipsSymbolToken,
@@ -59,14 +65,30 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 val target = analysis.macroTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
             }
+            val use = labelUse(file, analysis)
+            return if (use != null) {
+                analysis.labelTargets(file, element, allowExternal = use == LabelUse.REFERENCE)
+                    .map(::PsiElementResolveResult).toTypedArray()
+            } else emptyArray()
+        }
+
+        fun highlightingColor(): TextAttributesKey? {
+            val file = element.containingFile as MipsFile
+            val analysis = file.project.service<MarsAnalysisService>()
+            if (equivalence && analysis.equivalenceTarget(file, element) != null) return equivalenceColor
+            if (parameter && analysis.macroParameterTargets(file, element) != null) return DefaultLanguageHighlighterColors.PARAMETER
+            return labelColor.takeIf { labelUse(file, analysis) != null }
+        }
+
+        private fun labelUse(file: MipsFile, analysis: MarsAnalysisService): LabelUse? {
             val instructionLabel = label || aliasOperand && MipsInstructionOperand.at(element, file)?.acceptsLabel == true
             val exportsLabel = data == DataLabelOperand.EXPORT || aliasOperand && equivalence && !instructionLabel &&
                 analysis.isAliasedExportOperand(file, element.parent.parent.firstChild, element)
-            val resolvesLabel = instructionLabel || exportsLabel || data != null && resolvesDataLabel(file, analysis)
-            return if (resolvesLabel) {
-                analysis.labelTargets(file, element, allowExternal = !exportsLabel)
-                    .map(::PsiElementResolveResult).toTypedArray()
-            } else emptyArray()
+            return when {
+                exportsLabel -> LabelUse.EXPORT
+                instructionLabel || data != null && resolvesDataLabel(file, analysis) -> LabelUse.REFERENCE
+                else -> null
+            }
         }
 
         private fun resolvesDataLabel(file: MipsFile, analysis: MarsAnalysisService): Boolean {
@@ -76,6 +98,8 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             return analysis.isIntegerDataCandidate(file, head, macroCall)
         }
     }
+
+    private enum class LabelUse { EXPORT, REFERENCE }
 
     private companion object {
         val mnemonic = MipsTypes.psi("MNEMONIC")

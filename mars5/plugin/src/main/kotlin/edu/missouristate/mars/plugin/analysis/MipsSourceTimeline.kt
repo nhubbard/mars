@@ -106,6 +106,13 @@ internal class MipsSourceTimeline(
     val generatedLabels: Map<String, List<GeneratedLabel>>,
     private val macroBoundaries: TreeMap<Int, MipsSourceEvent.Begin?>,
 ) {
+    val macroNames: Set<String> by lazy {
+        events.filterIsInstance<MipsSourceEvent.Begin>().mapTo(HashSet(), MipsSourceEvent.Begin::name)
+    }
+    val generatedLabelSites: Set<PsiElement> by lazy {
+        generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
+    }
+
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
     fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().map(SourceFileEvents::file)

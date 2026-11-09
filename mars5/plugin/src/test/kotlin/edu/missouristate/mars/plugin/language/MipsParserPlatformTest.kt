@@ -980,7 +980,11 @@ class MipsParserPlatformTest {
         for (mnemonic in listOf("addiu", "LI", "c.eq.s")) {
             lexer.start(mnemonic)
             assertSame(MipsTypes.psi("MNEMONIC"), lexer.tokenType)
-            assertTrue(highlighter.getTokenHighlights(lexer.tokenType!!).isEmpty(), mnemonic)
+            assertArrayEquals(
+                arrayOf(DefaultLanguageHighlighterColors.IDENTIFIER),
+                highlighter.getTokenHighlights(lexer.tokenType!!),
+                mnemonic,
+            )
         }
     }
 

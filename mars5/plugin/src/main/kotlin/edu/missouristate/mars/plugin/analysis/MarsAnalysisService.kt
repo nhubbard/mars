@@ -267,14 +267,22 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
-    internal fun operationSite(root: MipsFile, head: PsiElement): OperationSite? {
+    internal fun operationSite(root: MipsFile, head: PsiElement, recognizeMacros: Boolean = false): OperationSite? {
         val prefix = leadingEquivalencePrefix(root, head)
-        if (prefix != null) return expandedOperationSite(root, head, prefix)
-        if (head.elementType != mnemonicType) return null
-        return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
+        if (prefix != null) return expandedOperationSite(root, head, prefix, recognizeMacros)
+        if (head.elementType == mnemonicType) return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
+        if (recognizeMacros && !DumbService.isDumb(project)) {
+            val timeline = editorTimeline(root)
+            if (head.text in timeline.macroNames) {
+                return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset), true)
+            }
+        }
+        return null
     }
 
-    private fun expandedOperationSite(root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix): OperationSite? {
+    private fun expandedOperationSite(
+        root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean,
+    ): OperationSite? {
         val source = sourceLine(head)
         val expansion = Tokenizer.tokenizeMappedLine(
             source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
@@ -282,9 +290,20 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val tokens = expansion.tokens().operationTokens()
         if (tokens.isEmpty) return null
         val operation = tokens[0]
-        if (operation.type != TokenTypes.OPERATOR && operation.type != TokenTypes.DIRECTIVE) return null
+        val type = when {
+            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+            recognizeMacros && operation.value in editorTimeline(root).macroNames &&
+                visibleMacros(prefix) { it == operation.value }.isNotEmpty() -> TokenTypes.IDENTIFIER
+            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
+            else -> return null
+        }
         val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
-        return OperationSite(operation.value, operation.type, root.findElementAt(offset)!!.textRange)
+        return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
+    }
+
+    internal fun isGeneratedLabel(root: MipsFile, element: PsiElement): Boolean {
+        if (DumbService.isDumb(project)) return false
+        return element in editorTimeline(root).generatedLabelSites
     }
 
     /** Unresolved operations may still become executable in a containing entry or macro expansion. */

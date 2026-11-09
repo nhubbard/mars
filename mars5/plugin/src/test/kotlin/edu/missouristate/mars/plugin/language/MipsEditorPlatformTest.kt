@@ -10,11 +10,13 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.options.colors.ColorSettingsPages
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.TokenType
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.EditorTestUtil
@@ -130,7 +132,9 @@ class MipsEditorPlatformTest {
             DumbModeTestUtils.runInDumbModeSynchronously(current) {
                 assertNull(analysis.expandedInstructionAlias(file, head, head.text))
                 assertNull(analysis.operationSite(file, head))
+                assertNull(analysis.operationSite(file, head, recognizeMacros = true))
                 val literal = file.findElementAt(source.indexOf("addiu COLON"))!!
+                assertFalse(analysis.isGeneratedLabel(file, literal))
                 assertEquals(literal.textRange, analysis.operationSite(file, literal)?.range)
                 assertEquals("addiu", analysis.editorInstructionTokens(file, literal, literal.text)?.get(0)?.value)
             }
@@ -138,18 +142,111 @@ class MipsEditorPlatformTest {
     }
 
     @Test
-    fun `color settings expose a mnemonic preview and distinct light and dark defaults`() {
+    fun `labels macros and equivalences use semantic colors in assembly editors`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("definitions.s", """
+                .macro paint (%value)
+                    li ${'$'}t0, %value
+                .end_macro
+            """.trimIndent())
+            fixture.configureByText("symbols.asm", """
+                .include "definitions.s"
+                .eqv COUNT 7
+                .eqv MARKER next:
+                .eqv CALL paint
+                .eqv DATA .data
+                DATA
+                .extern buffer 4
+                table: .word buffer
+                .text
+                .globl main
+                main: CALL (COUNT)
+                MARKER paint (COUNT)
+                addiu ${'$'}t0, ${'$'}t0, 1
+                bgtz ${'$'}t0, next
+                j missing
+                local (2)
+                .macro local (${'$'}parameter)
+                    paint (${'$'}parameter)
+                .end_macro
+                .macro target (%where)
+                %where: nop
+                .end_macro
+                local (5)
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val source = fixture.file.text
+            val highlights = fixture.doHighlighting()
+            fun assertColor(context: String, key: TextAttributesKey, word: String = context.substringBefore(' ')) {
+                val start = source.indexOf(context) + context.indexOf(word)
+                assertTrue(start >= 0 && highlights.any {
+                    it.startOffset == start && it.endOffset == start + word.length && it.forcedTextAttributesKey == key
+                }, context)
+            }
+            assertColor("buffer 4", labelColor)
+            assertColor(".word buffer", labelColor, "buffer")
+            assertColor("table:", labelColor, "table")
+            assertColor(".globl main", labelColor, "main")
+            assertColor("main: CALL", labelColor, "main")
+            assertColor("MARKER paint", labelColor)
+            assertColor("bgtz ${'$'}t0, next", labelColor, "next")
+            assertColor("j missing", labelColor, "missing")
+            assertColor(".macro local", macroColor, "local")
+            assertColor("CALL (COUNT)", macroColor)
+            assertColor("paint (COUNT)", macroColor)
+            assertColor("paint (${'$'}parameter)", macroColor)
+            assertColor("local (5)", macroColor)
+            assertTrue(highlights.none { it.startOffset == source.indexOf("local (2)") && it.forcedTextAttributesKey == macroColor })
+            assertColor("addiu ${'$'}t0", instructionMnemonicColor)
+            assertColor(".eqv COUNT", equivalenceColor, "COUNT")
+            assertColor("CALL (COUNT)", equivalenceColor, "COUNT")
+            assertColor("(${'$'}parameter)\n", DefaultLanguageHighlighterColors.PARAMETER, "${'$'}parameter")
+            assertColor("paint (${'$'}parameter)", DefaultLanguageHighlighterColors.PARAMETER, "${'$'}parameter")
+            assertColor("DATA\n.extern", DefaultLanguageHighlighterColors.KEYWORD, "DATA")
+        }
+    }
+
+    @Test
+    fun `all significant lexer tokens have an editor color category`() {
+        val syntax = MipsSyntaxHighlighter()
+        val source = ".text .macro .end_macro .eqv .include .set .extern .word foo addiu \$macro \$t0 %p 7 \"ok\" 'a' : , ( ) + - # note\n\"incomplete\n'bad\n"
+        val lexer = syntax.highlightingLexer
+        lexer.start(source)
+        while (lexer.tokenType != null) {
+            val type = lexer.tokenType!!
+            if (type != TokenType.WHITE_SPACE && type != MipsTypes.psi("NEWLINE")) {
+                assertTrue(syntax.getTokenHighlights(type).isNotEmpty(), type.toString())
+            }
+            lexer.advance()
+        }
+    }
+
+    @Test
+    fun `color settings expose previews and theme-aware defaults`() {
         val page = ColorSettingsPages.getInstance().registeredPages.filterIsInstance<MipsColorSettingsPage>().single()
         assertEquals("MARS MIPS", page.displayName)
         assertSame(MipsFileType.icon, page.icon)
         assertInstanceOf(MipsSyntaxHighlighter::class.java, page.highlighter)
         assertTrue(page.colorDescriptors.isEmpty())
-        val descriptor = page.attributeDescriptors.single()
-        assertEquals("Instruction mnemonic", descriptor.displayName)
-        assertSame(instructionMnemonicColor, descriptor.key)
-        assertEquals(mapOf("instruction" to instructionMnemonicColor), page.additionalHighlightingTagToDescriptorMap)
+        assertEquals(
+            mapOf("Instruction mnemonic" to instructionMnemonicColor, "Label" to labelColor,
+                "Macro name" to macroColor, "Equivalence" to equivalenceColor),
+            page.attributeDescriptors.associate { it.displayName to it.key },
+        )
+        assertEquals(
+            mapOf("instruction" to instructionMnemonicColor, "label" to labelColor, "macro" to macroColor,
+                "equivalence" to equivalenceColor),
+            page.additionalHighlightingTagToDescriptorMap,
+        )
         assertTrue(page.demoText.contains("<instruction>li</instruction>"))
+        assertTrue(page.demoText.contains("<label>loop</label>"))
+        assertTrue(page.demoText.contains("<macro>decrement</macro>"))
         assertSame(DefaultLanguageHighlighterColors.KEYWORD, instructionMnemonicColor.fallbackAttributeKey)
+        assertEquals("KOTLIN_LABEL", labelColor.fallbackAttributeKey?.externalName)
+        assertEquals("KOTLIN_FUNCTION_DECLARATION", macroColor.fallbackAttributeKey?.externalName)
 
         val colors = EditorColorsManager.getInstance()
         for ((name, accent) in mapOf("Default" to 0x0033B3, "Darcula" to 0xCF8E6D)) {
