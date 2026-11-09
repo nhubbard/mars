@@ -90,6 +90,7 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsRunOptions
+import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import java.awt.event.ActionEvent
 import java.io.File
 import java.nio.file.Files
@@ -1629,10 +1630,19 @@ class MarsDebugPlatformTest {
         timeoutRunBlocking<Unit> {
             val file = exportDebugProgram()
             val output = directory.resolve("paused.hex")
+            val finalDump = directory.resolve("finished.hex")
             val notifications = Channel<Notification>(Channel.UNLIMITED)
             val disposable = Disposer.newDisposable()
             try {
-                withDebug(file) { debug ->
+                withDebug(file, {
+                    memoryDumps.add(RunMemoryDumpState().apply {
+                        outputPath = finalDump.toString()
+                        formatName = "HexText"
+                        region = MemoryExportRegion.RANGE
+                        firstAddress = 0x10010000L
+                        lastAddress = firstAddress
+                    })
+                }) { debug ->
                     debug.assertPausedAt(file, 3)
                     val button = withContext(Dispatchers.EDT) {
                         project.messageBus.connect(disposable).subscribe(Notifications.TOPIC, object : Notifications {
@@ -1682,6 +1692,10 @@ class MarsDebugPlatformTest {
                     }
                     assertEquals(NotificationType.INFORMATION, notifications.receive().type)
                     assertEquals(listOf("00000009"), Files.readAllLines(output))
+                    assertFalse(Files.exists(finalDump))
+                    withContext(Dispatchers.EDT) { debug.session.resume() }
+                    assertEquals(0, debug.exit.await())
+                    assertEquals(listOf("00000009"), Files.readAllLines(finalDump))
                 }
             } finally {
                 withContext(Dispatchers.EDT) {

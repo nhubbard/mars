@@ -21,6 +21,7 @@ import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import javax.swing.JTextField
 
@@ -48,8 +49,10 @@ internal class MarsMemoryExportAction : DumbAwareAction() {
 
 internal data class MemoryExportSelection(val options: MemoryExportOptions, val output: Path)
 
-internal fun chooseMemoryExport(project: Project, entry: Path): MemoryExportSelection? {
-    val dialog = MarsMemoryExportDialog(project)
+internal fun chooseMemoryExport(
+    project: Project, entry: Path?, existing: MemoryExportSelection? = null,
+): MemoryExportSelection? {
+    val dialog = MarsMemoryExportDialog(project, existing?.options)
     dialog.show()
     if (!dialog.isOK) return null
 
@@ -59,8 +62,8 @@ internal fun chooseMemoryExport(project: Project, entry: Path): MemoryExportSele
     )
     options.format.fileExtension?.let { descriptor.withExtensionFilter(it) }
     val chooser = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
-    val name = "${entry.fileName.toString().substringBeforeLast('.')}-memory"
-    val output = chooser.save(entry.parent, name)?.file?.toPath() ?: return null
+    val suggested = existing?.output ?: entry?.resolveSibling("${entry.fileName.toString().substringBeforeLast('.')}-memory")
+    val output = chooser.save(suggested?.parent, suggested?.fileName?.toString() ?: "memory")?.file?.toPath() ?: return null
     return MemoryExportSelection(options, output)
 }
 
@@ -76,7 +79,7 @@ internal data class MemoryExportOptions(
     val range: UIntRange = UIntRange.EMPTY,
 )
 
-internal class MarsMemoryExportDialog(project: Project) : DialogWrapper(project) {
+internal class MarsMemoryExportDialog(project: Project, existing: MemoryExportOptions?) : DialogWrapper(project) {
     private val messages = memoryExportMessages
     private lateinit var region: ComboBox<MemoryExportRegion>
     private lateinit var format: ComboBox<DumpFormat>
@@ -99,6 +102,14 @@ internal class MarsMemoryExportDialog(project: Project) : DialogWrapper(project)
     }
 
     init {
+        if (existing != null) {
+            region.item = existing.region
+            format.item = existing.format
+            if (existing.region == MemoryExportRegion.RANGE) {
+                first.text = Binary.intToHexString(existing.range.first.toInt())
+                last.text = Binary.intToHexString(existing.range.last.toInt())
+            }
+        }
         title = messages.getMessage("export.title")
         init()
     }

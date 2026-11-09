@@ -34,14 +34,25 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
+import com.intellij.ui.ToolbarDecorator
+import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
+import edu.missouristate.mars.mips.dump.DumpFormatLoader
+import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
+import edu.missouristate.mars.plugin.build.MemoryExportRegion
+import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
+import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
+import java.nio.file.Path
 import javax.swing.JCheckBox
+import javax.swing.JComboBox
+import javax.swing.JList
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -52,6 +63,7 @@ import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -227,6 +239,248 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `native run settings add edit remove and round trip memory dump rows`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("dump-settings.s", "nop").virtualFile
+                val config = type.createTemplateConfiguration(project)
+                val editor = config.configurationEditor
+                val disposable = Disposer.newDisposable()
+                try {
+                    editor.resetFrom(config)
+                    val form = editor.component
+                    val list = UIUtil.findComponentOfType(form, JList::class.java)!!
+                    val add = ToolbarDecorator.findAddButton(form)!!
+                    val edit = ToolbarDecorator.findEditButton(form)!!
+                    val remove = ToolbarDecorator.findRemoveButton(form)!!
+                    fun addRow() = add.actionPerformed(TestActionEvent.createTestEvent(add))
+                    fun editRow() = edit.actionPerformed(TestActionEvent.createTestEvent(edit))
+                    val first = directory.resolve("first.hex")
+                    val second = directory.resolve("second.bin")
+                    val edited = directory.resolve("edited.bin")
+                    val saves = ArrayDeque(listOf(first, edited, second))
+                    val suggestions = mutableListOf<Pair<Path?, String?>>()
+                    replaceMemoryExportSaveDialog(disposable) { _, base, name ->
+                        suggestions.add(base to name)
+                        saves.removeFirst()
+                    }
+                    editRow()
+                    interceptMemoryExportDialog { it.doCancelAction() }
+                    addRow()
+                    assertEquals(0, list.model.size)
+
+                    interceptMemoryExportDialog { dialog ->
+                        setDumpDialog(dialog, MemoryExportRegion.RANGE, "HEX", "0x10010000", "0x10010004")
+                    }
+                    addRow()
+                    assertEquals(1, list.model.size)
+                    assertEquals(0, list.selectedIndex)
+                    interceptMemoryExportDialog { dialog ->
+                        val (region, format) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+                        assertEquals(MemoryExportRegion.RANGE, region.selectedItem)
+                        assertSame(DumpFormatLoader.findByCommandDescriptor("HEX"), format.selectedItem)
+                        val (start, end) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+                        assertEquals("0x10010000", start.text)
+                        assertEquals("0x10010004", end.text)
+                        setDumpDialog(dialog, MemoryExportRegion.DATA, "Binary")
+                    }
+                    editRow()
+                    interceptMemoryExportDialog { dialog ->
+                        val region = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java).first()
+                        assertEquals(MemoryExportRegion.DATA, region.selectedItem)
+                        dialog.doCancelAction()
+                    }
+                    editRow()
+                    UIUtil.findComponentOfType(form, JTextField::class.java)!!.text = source.path
+                    interceptMemoryExportDialog { dialog -> setDumpDialog(dialog, MemoryExportRegion.TEXT, "Binary") }
+                    addRow()
+                    assertEquals(listOf(null to "memory", directory to "first.hex", source.toNioPath().parent to "dump-settings-memory"), suggestions)
+                    assertEquals(2, list.model.size)
+                    editor.applyTo(config)
+                    config.checkConfiguration()
+                    val xml = Element("configuration")
+                    config.writeExternal(xml)
+                    val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                    assertEquals(listOf(edited, second), restored.options.memoryDumps.map { it.resolve(project)?.output })
+                    assertEquals(listOf(MemoryExportRegion.DATA, MemoryExportRegion.TEXT), restored.options.memoryDumps.map { it.region })
+                    assertEquals(listOf("Binary", "Binary"), restored.options.memoryDumps.map { it.formatName })
+                    editor.resetFrom(restored)
+                    list.selectedIndex = 0
+                    remove.actionPerformed(TestActionEvent.createTestEvent(remove))
+                    editor.applyTo(restored)
+                    assertEquals(listOf(second), restored.options.memoryDumps.map { it.resolve(project)?.output })
+                    assertEquals(2, config.options.memoryDumps.size)
+                    restored.options.memoryDumps.add(RunMemoryDumpState())
+                    editor.resetFrom(restored)
+                    assertTrue(list.preferredSize.height > 0)
+                } finally {
+                    Disposer.dispose(editor)
+                    Disposer.dispose(disposable)
+                    UiInterceptors.clear()
+                }
+            }
+        }
+
+    @Test
+    fun `stored after-run dump settings validate formats ranges and destinations before launch`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("validation.s", "nop").virtualFile.toNioPath()
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.toString()
+                val output = directory.resolve("sample.hex")
+                fun reject(vararg requests: RunMemoryDumpState, expected: String) {
+                    config.options.memoryDumps = arrayListOf(*requests)
+                    val check = assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                    val message = check.messageHtml.toString()
+                    assertTrue(message.contains(expected), message)
+                    val env = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    val launch = assertThrows<ExecutionException> { config.getState(executor, env) }
+                    assertEquals(message, launch.message)
+                }
+                reject(dumpState(output).apply { formatName = "Unknown" }, expected = "invalid")
+                reject(dumpState(output).apply { outputPath = "relative.hex" }, expected = "invalid")
+                for ((first, last) in listOf(-4L to 0L, 0x1_0000_0000L to 0x1_0000_0000L,
+                    4L to 0L, 0L to 0x1_0000_0000L, 1L to 4L, 0L to 3L)) {
+                    reject(dumpState(output, MemoryExportRegion.RANGE, first, last), expected = "invalid")
+                }
+                reject(dumpState(file), expected = "source file")
+                reject(dumpState(output), dumpState(output), expected = "More than one")
+                val range = dumpState(output, MemoryExportRegion.RANGE, 0x80000180L, 0x80000184L)
+                config.options.memoryDumps = arrayListOf(range)
+                config.checkConfiguration()
+                val xml = Element("configuration")
+                config.writeExternal(xml)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(0x80000180u..0x80000184u, restored.options.memoryDumps.single().resolve(project)?.options?.range)
+                val old = type.createTemplateConfiguration(project).also { it.readExternal(Element("configuration")) }
+                assertTrue(old.options.memoryDumps.isEmpty())
+            }
+        }
+
+    @Test
+    fun `configured dumps use final memory and independent failures preserve the program exit code`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val output = directory.resolve("saved.txt").also { Files.writeString(it, "old") }
+            val binary = directory.resolve("word.bin")
+            val invalidRange = directory.resolve("unchanged").also { Files.writeString(it, "keep") }
+            val missingParent = directory.resolve("absent/machine")
+            val (include, nestedEmpty) = withContext(Dispatchers.EDT) {
+                val empty = fixture.addFileToProject("defs/empty.inc", "").virtualFile.toNioPath()
+                fixture.addFileToProject("defs/outer.inc", ".include \"empty.inc\"\n")
+                val definitions = fixture.addFileToProject("preserved.s", ".eqv EXIT_STATUS 9\n").virtualFile.toNioPath()
+                definitions to empty
+            }
+            val recording = runConfiguredDump("""
+                .include "preserved.s"
+                .include "defs/outer.inc"
+                .data
+                payload: .word 7
+                .text
+                addiu ${'$'}t0, ${'$'}zero, 42
+                sw ${'$'}t0, payload
+                li ${'$'}a0, EXIT_STATUS
+                li ${'$'}v0, 17
+                syscall
+            """.trimIndent(), listOf(
+                dumpState(include),
+                dumpState(nestedEmpty),
+                dumpState(invalidRange, MemoryExportRegion.RANGE, 0, 0),
+                dumpState(output, MemoryExportRegion.RANGE, 0x10010000, 0x10010000),
+                dumpState(missingParent),
+                dumpState(binary, MemoryExportRegion.RANGE, 0x10010000, 0x10010000).apply { formatName = "Binary" },
+            ))
+            assertEquals(9, recording.exit.await())
+            assertEquals(listOf("0000002a"), Files.readAllLines(output))
+            assertArrayEquals(byteArrayOf(42, 0, 0, 0), Files.readAllBytes(binary))
+            assertEquals("keep", Files.readString(invalidRange))
+            assertEquals("", Files.readString(nestedEmpty))
+            assertEquals(".eqv EXIT_STATUS 9\n", Files.readString(include))
+            val errors = recording.stderr.toString()
+            assertTrue(errors.contains("program source file"), errors)
+            assertTrue(errors.contains("outside the memory available"), errors)
+            assertTrue(errors.contains("Could not write"), errors)
+            assertTrue(recording.system.toString().contains("Exported MIPS memory to $output"))
+            assertTrue(recording.system.toString().contains("Exported MIPS memory to $binary"))
+        }
+
+    @Test
+    fun `post-run dumps support runtime faults and cliff termination while failed assembly and Stop preserve files`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val fault = directory.resolve("fault.txt")
+            val (crashed, crashRecording) = run("break\n", listOf(dumpState(fault)))
+            assertEquals(1, crashRecording.exit.await())
+            assertEquals(1, crashed.exitCode)
+            assertEquals(listOf("0000000d"), Files.readAllLines(fault))
+            assertTrue(crashRecording.stderr.toString().contains("MARS runtime error"))
+
+            val cliff = directory.resolve("cliff.txt")
+            assertEquals(0, runConfiguredDump("nop\n", listOf(dumpState(cliff))).exit.await())
+            assertEquals(listOf("00000000"), Files.readAllLines(cliff))
+
+            val untouched = directory.resolve("untouched.txt").also { Files.writeString(it, "keep") }
+            assertEquals(1, runConfiguredDump("b missing\n", listOf(dumpState(untouched))).exit.await())
+            assertEquals("keep", Files.readString(untouched))
+            val (running, console) = run("li \$v0, 1\nsyscall\nloop: b loop\nnop\n", listOf(dumpState(untouched)))
+            console.output.await()
+            withContext(Dispatchers.EDT) { running.destroyProcess() }
+            assertEquals(130, console.exit.await())
+            assertEquals("keep", Files.readString(untouched))
+
+            val (_, bounded) = run("nop\nnop\n", listOf(dumpState(untouched)), limit = 1L)
+            assertEquals(1, bounded.exit.await())
+            assertEquals("keep", Files.readString(untouched))
+        }
+
+    private fun setDumpDialog(
+        dialog: MarsMemoryExportDialog, region: MemoryExportRegion, name: String, first: String = "", last: String = "",
+    ) {
+        val (regionBox, formatBox) = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java)
+        regionBox.selectedItem = region
+        formatBox.selectedItem = DumpFormatLoader.findByCommandDescriptor(name)
+        val (start, end) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+        start.text = first
+        end.text = last
+        assertTrue(dialog.performValidateAll().isEmpty())
+        dialog.performOKAction()
+    }
+
+    private fun dumpState(
+        output: Path, selected: MemoryExportRegion = MemoryExportRegion.TEXT, first: Long = 0, last: Long = 0,
+    ) = RunMemoryDumpState().apply {
+        outputPath = output.toString()
+        formatName = "HexText"
+        region = selected
+        firstAddress = first
+        lastAddress = last
+    }
+
+    private suspend fun runConfiguredDump(source: String, dumps: List<RunMemoryDumpState>): Recording {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        try {
+            withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("configured${++runCount}.s", source).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                config.options.memoryDumps = ArrayList(dumps)
+                config.checkConfiguration()
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) handler.addProcessListener(recording)
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            recording.exit.await()
+            return recording
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `run reports assembly errors runtime exceptions and ordinary cliff termination`() = timeoutRunBlocking<Unit> {
         val cases = listOf(
             Triple("b missing\n", 1, "Assembly failed"),
@@ -398,9 +652,13 @@ class MarsRunPlatformTest {
         override fun getState(executor: Executor, environment: ExecutionEnvironment) = null
     }
 
-    private suspend fun run(source: String): Pair<MarsProcessHandler, Recording> {
+    private suspend fun run(
+        source: String, dumps: List<RunMemoryDumpState> = emptyList(), limit: Long = 0L,
+    ): Pair<MarsProcessHandler, Recording> {
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("run${++runCount}.asm", source).virtualFile }
-        val handler = project.getService(MarsRunService::class.java).createProcess(file.toNioPath())
+        val handler = project.getService(MarsRunService::class.java).createProcess(
+            file.toNioPath(), memoryDumps = dumps.map { requireNotNull(it.resolve(project)) },
+        ) { runSlice(it.simulator(), limit) }
         val recording = Recording()
         handler.addProcessListener(recording)
         withContext(Dispatchers.EDT) { handler.startNotify() }
@@ -410,6 +668,7 @@ class MarsRunPlatformTest {
     private class Recording : ProcessListener {
         val stdout = StringBuilder()
         val stderr = StringBuilder()
+        val system = StringBuilder()
         val output = CompletableDeferred<Unit>()
         val exit = CompletableDeferred<Int>()
 
@@ -419,6 +678,8 @@ class MarsRunPlatformTest {
                 output.complete(Unit)
             } else if (outputType === ProcessOutputTypes.STDERR) {
                 stderr.append(event.text)
+            } else if (outputType === ProcessOutputTypes.SYSTEM) {
+                system.append(event.text)
             }
         }
 

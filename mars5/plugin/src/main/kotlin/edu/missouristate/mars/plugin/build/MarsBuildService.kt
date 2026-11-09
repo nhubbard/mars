@@ -44,6 +44,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     internal suspend fun assemble(
         entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
+        onSourcesCaptured: (Set<Path>) -> Unit = {},
     ): Boolean {
         options.applyTo(component.context().settings)
         val analysis = project.service<MarsAnalysisService>()
@@ -61,6 +62,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var succeeded = false
         try {
             val capture = captureAssemblySources(listOf(entry), null)
+            onSourcesCaptured(capture.snapshot.texts().keys)
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
             DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")

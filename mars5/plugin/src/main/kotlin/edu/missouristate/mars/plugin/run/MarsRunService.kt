@@ -3,9 +3,11 @@ package edu.missouristate.mars.plugin.run
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.api.ErrorEvent
@@ -17,9 +19,13 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.plugin.build.MarsMemoryExportService
+import edu.missouristate.mars.plugin.build.MemoryExportSelection
+import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.PrintStream
 import java.nio.ByteBuffer
 import java.nio.CharBuffer
@@ -44,13 +50,15 @@ internal class MarsRunService(private val project: Project, private val scope: C
     fun createProcess(
         entry: Path,
         options: MarsExecutionOptions = MarsExecutionOptions(),
+        memoryDumps: List<MemoryExportSelection>,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
-    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, execute)
+    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, memoryDumps, execute)
 }
 
 internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val entry: Path, private val input: Pipe,
     private val options: MarsExecutionOptions,
+    private val memoryDumps: List<MemoryExportSelection>,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
@@ -110,7 +118,11 @@ internal class MarsProcessHandler(
     private suspend fun runProgram(): Int {
         val component = MarsSessionService.createMarsComponent()
         return component.context().use { session ->
-            if (!project.getService(MarsBuildService::class.java).assemble(entry, component, activateBuildView = false, options = options)) {
+            var sources = emptySet<Path>()
+            val assembled = project.service<MarsBuildService>().assemble(entry, component, activateBuildView = false, options) {
+                sources = it + entry
+            }
+            if (!assembled) {
                 notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
                 return@use 1
             }
@@ -132,6 +144,7 @@ internal class MarsProcessHandler(
                             }
                         })
                         val stop = execute(session)
+                        if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, sources)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
                             else -> 1
@@ -141,7 +154,33 @@ internal class MarsProcessHandler(
             }
         }
     }
+    private suspend fun exportAfterRun(session: MarsContext, sources: Set<Path>) {
+        val exporter = project.service<MarsMemoryExportService>()
+        for (selection in memoryDumps) {
+            val output = selection.output
+            val error = try {
+                val overwritesSource = withContext(Dispatchers.IO) {
+                    val target = output.parent.toRealPath().resolve(output.fileName).toFile().canonicalFile
+                    sources.any { FileUtil.filesEqual(it.toFile().canonicalFile, target) }
+                }
+                if (overwritesSource) runMessages.getMessage("run.export.source", output)
+                else exporter.exportSession(session, selection)
+            } catch (e: IOException) {
+                memoryExportMessages.getMessage("export.io.error", output, e.localizedMessage)
+            }
+            if (error == null) {
+                val message = memoryExportMessages.getMessage("export.done", output)
+                notifyTextAvailable("$message\n", ProcessOutputTypes.SYSTEM)
+            } else {
+                val message = runMessages.getMessage("run.export.failed", output, error)
+                notifyTextAvailable("$message\n", ProcessOutputTypes.STDERR)
+            }
+        }
+    }
+
 }
+
+private val dumpReasons = setOf(StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION, StopEvent.Reason.EXCEPTION)
 
 /** A descriptor write can split a UTF-8 code point across multiple flushes. */
 internal class ConsoleOutput(private val emit: (String) -> Unit) : ByteArrayOutputStream() {

@@ -27,16 +27,18 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
+import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
-import java.nio.file.InvalidPathException
 import java.nio.file.Path
+import javax.swing.JTextField
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
 
@@ -44,6 +46,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var delayedBranching: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
+    var memoryDumps by list<RunMemoryDumpState>()
 }
 
 internal class MarsRunType : SimpleConfigurationType(
@@ -59,32 +62,40 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 
     public override fun getOptions() = super.getOptions() as MarsRunOptions
 
-    private fun entryPath(): Path? {
-        val value = PathMacroManager.getInstance(project).expandPath(options.sourcePath) ?: return null
-        return try {
-            Path.of(value).takeIf { it.isAbsolute && it.fileName != null }
-        } catch (_: InvalidPathException) {
-            null
+    private fun memoryDumps(entry: Path, invalid: (String) -> Exception): List<MemoryExportSelection> {
+        val outputs = mutableSetOf<Path>()
+        return options.memoryDumps.mapIndexed { index, state ->
+            val selection = state.resolve(project) ?: throw invalid(runMessages.getMessage("run.export.invalid", index + 1))
+            if (selection.output == entry) throw invalid(runMessages.getMessage("run.export.source", selection.output))
+            if (!outputs.add(selection.output)) throw invalid(runMessages.getMessage("run.export.duplicate", selection.output))
+            selection
         }
     }
 
     override fun checkConfiguration() {
-        if (entryPath() == null) throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
+        val entry = runFilePath(project, options.sourcePath) ?: throw RuntimeConfigurationError(runMessages.getMessage("run.source.invalid"))
+        memoryDumps(entry) { RuntimeConfigurationError(it) }
     }
 
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var delayedBranching = false
         private var selfModifyingCode = false
+        private val dumps = RunMemoryDumpEditor(project) { runFilePath(project, sourceField.text.trim()) }
+        private lateinit var sourceField: JTextField
         private val form = panel {
-            row(runMessages.getMessage("run.source")) { textField().bindText(::source) }
+            row(runMessages.getMessage("run.source")) { sourceField = textField().bindText(::source).component }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
+            row(runMessages.getMessage("run.export.title")) {
+                cell(dumps.component).align(AlignX.FILL).comment(runMessages.getMessage("run.export.help"))
+            }
         }
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
             delayedBranching = configuration.options.delayedBranching
             selfModifyingCode = configuration.options.selfModifyingCode
+            dumps.reset(configuration.options.memoryDumps)
             form.reset()
         }
         override fun applyEditorTo(configuration: MarsRunConfiguration) {
@@ -92,6 +103,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.sourcePath = source.trim()
             configuration.options.delayedBranching = delayedBranching
             configuration.options.selfModifyingCode = selfModifyingCode
+            configuration.options.memoryDumps = dumps.copyRows()
         }
         override fun createEditor() = form
     }
@@ -100,19 +112,23 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         if (!TrustedProjects.isProjectTrusted(project)) {
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
-        val entry = entryPath() ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
-        return MarsRunState(environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode))
+        val entry = runFilePath(project, options.sourcePath) ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
+        return MarsRunState(
+            environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
+            memoryDumps(entry) { ExecutionException(it) },
+        )
     }
 }
 
 internal class MarsRunState(
     private val environment: ExecutionEnvironment, val entry: Path, private val options: MarsExecutionOptions,
+    private val memoryDumps: List<MemoryExportSelection>,
 ) :
     CommandLineState(environment) {
-    override fun startProcess() = service().createProcess(entry, options)
+    override fun startProcess() = service().createProcess(entry, options, memoryDumps)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
-        service().createProcess(entry, options, execute)
+        service().createProcess(entry, options, memoryDumps, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

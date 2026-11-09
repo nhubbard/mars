@@ -43,7 +43,6 @@ internal class MarsMemoryExportService(private val project: Project, private val
         val error = withBackgroundProgress(project, messages.getMessage("export.progress")) { export() }
         val group = NotificationGroupManager.getInstance().getNotificationGroup("MARS Memory Export")
         if (error == null) {
-            LocalFileSystem.getInstance().refreshNioFiles(listOf(output), true, false, null)
             group.createNotification(escapeXmlEntities(messages.getMessage("export.done", output)), NotificationType.INFORMATION)
                 .notify(project)
         } else {
@@ -57,10 +56,14 @@ internal class MarsMemoryExportService(private val project: Project, private val
             if (!project.service<MarsBuildService>().assemble(entry, component, activateBuildView = true)) {
                 return messages.getMessage("run.assembly.failed")
             }
-            val caller = currentCoroutineContext()
-            val capture = captureMemory(options, session, caller::ensureActive)
-            writeCapture(options, output, capture)
+            exportSession(session, MemoryExportSelection(options, output))
         }
+    }
+
+    suspend fun exportSession(session: MarsContext, selection: MemoryExportSelection): String? {
+        val caller = currentCoroutineContext()
+        val capture = session.claimStoppedSession().use { captureMemory(selection.options, session, caller::ensureActive) }
+        return writeCapture(selection.options, selection.output, capture)
     }
 
     private suspend fun writeCapture(
@@ -83,6 +86,7 @@ internal class MarsMemoryExportService(private val project: Project, private val
         } catch (e: IOException) {
             return messages.getMessage("export.io.error", output, e.localizedMessage)
         }
+        LocalFileSystem.getInstance().refreshNioFiles(listOf(output), true, false, null)
         return null
     }
 }
