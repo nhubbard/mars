@@ -22,6 +22,8 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.AssemblyError
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsBuildService
@@ -80,6 +82,58 @@ class MipsAssemblyAnnotatorPlatformTest {
         val afterCreation = collect(main)
         assertEquals(changed.sources.revisions, afterCreation.sources.revisions)
         assertNotSame(corrected.outcome, analyze(afterCreation).outcome)
+    }
+
+    @Test
+    fun `background assembly follows option changes for the same selected entry`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("delay-layout.asm", """
+                .macro gen (%label)
+                %label: nop
+                .end_macro
+                .set noat
+                div ${'$'}t0, ${'$'}t1, ${'$'}t2
+                marker: nop
+                gen(generated)
+                j generated
+            """.trimIndent()) as MipsFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val path = file.virtualFile.toNioPath()
+        val build = project.service<MarsBuildService>()
+        suspend fun analyze(): MipsAssemblyAnnotator.Result {
+            val input = readAction { annotator.collectInformation(file)!! }
+            return withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+        }
+        build.assemble(path)
+        val withoutDelay = analyze()
+        assertEquals(1, readAction { annotator.acceptResult(file, withoutDelay).size })
+        val original = requireNotNull(withoutDelay.symbols).localSymbols.getValue("marker").address()
+
+        val options = MarsExecutionOptions(delayedBranching = true)
+        val analysis = project.service<MarsAnalysisService>()
+        suspend fun names() = readAction {
+            analysis.labelCompletionNames(file, file.findElementAt(file.text.lastIndexOf("generated"))!!, "generated")
+        }
+        assertEquals(setOf("generated"), names())
+        val pending = analysis.beginSymbolBuild(path, options)
+        analysis.publishBuiltSymbols(pending, withoutDelay.input.sources, AssemblySymbolMap.EMPTY)
+        assertTrue(names().isEmpty())
+
+        val component = MarsSessionService.createMarsComponent()
+        val assembledAddress = component.context().use { session ->
+            assertTrue(build.assemble(path, component, activateBuildView = false, options = options))
+            session.program.symbolMap().locals().getValue(path).getValue("marker").address()
+        }
+        val delayed = analyze()
+        assertEquals(options, delayed.input.options)
+        assertSame(withoutDelay.input.sources, delayed.input.sources)
+        assertNotSame(withoutDelay.outcome, delayed.outcome)
+        assertEquals(original + 4, assembledAddress)
+        assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address())
+        assertTrue(readAction { annotator.acceptResult(file, withoutDelay).isEmpty() })
+        assertEquals(1, readAction { annotator.acceptResult(file, delayed).size })
+        assertEquals(setOf("generated"), names())
     }
 
     @Test
@@ -239,17 +293,17 @@ class MipsAssemblyAnnotatorPlatformTest {
 
         project.service<MarsBuildService>().assemble(main.toNioPath())
         val selected = analyze(collect()!!)
-        assertEquals(main.toNioPath(), selected.input.selectedEntry)
+        assertEquals(main.toNioPath(), selected.input.selectedAssembly?.entry)
         assertEquals(1, current(selected).size)
         project.service<MarsBuildService>().assemble(other.toNioPath())
         assertTrue(current(selected).isEmpty())
         val switched = analyze(collect()!!)
-        assertEquals(other.toNioPath(), switched.input.selectedEntry)
+        assertEquals(other.toNioPath(), switched.input.selectedAssembly?.entry)
         assertEquals(1, current(switched).size)
         readAction {
             val unrelated = PsiManager.getInstance(project).findFile(dependency)!!
             val inferred = annotator.collectInformation(unrelated)!!
-            assertNull(inferred.selectedEntry)
+            assertNull(inferred.selectedAssembly)
             assertEquals(listOf(main.toNioPath()), inferred.sources.snapshot.entries())
         }
         withContext(Dispatchers.EDT) {

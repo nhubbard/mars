@@ -698,6 +698,14 @@ same captured-source assembly and Build diagnostics as Assemble Current MIPS
 File. It passes the assembled program to the simulator in the session that
 produced it.
 
+The Run configuration also stores delayed branching and self-modifying code.
+Both default to off for older configurations. Run and Debug take an immutable
+snapshot of those choices and apply it to the new session before assembly.
+Delayed branching can add instructions to a pseudo-instruction's expansion,
+so the source map and simulator use the same setting. Background diagnostics
+and symbol facts use the selected launch options and separate cached results
+when those options change.
+
 The process handler preserves simulated exit values, routes stdout and stderr
 to their matching console streams, and requests a stop before releasing the
 session on cancellation or detach. Relative file syscalls resolve from the
@@ -707,6 +715,9 @@ descriptor writes.
 The IDE fixtures exercise native Run with an unsaved include and a nonzero exit
 value, the configuration editor and persistence, runtime and assembly failures,
 split console output, relative file access, and stop and detach.
+Execution fixtures verify delay slots in both Run and Debug, and verify that
+stepping through rewritten code uses the live instruction without a source
+position from the original assembled image.
 
 The clean IntelliJ 2026.3 launch passed 1,300 tests, including 92 plugin tests,
 and authored plugin code covered all 815 lines and 480 branch outcomes.

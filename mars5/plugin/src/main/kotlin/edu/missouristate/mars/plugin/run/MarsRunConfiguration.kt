@@ -27,10 +27,12 @@ import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
+import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.InvalidPathException
@@ -40,6 +42,8 @@ internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "mess
 
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
+    var delayedBranching: Boolean by property(false)
+    var selfModifyingCode: Boolean by property(false)
 }
 
 internal class MarsRunType : SimpleConfigurationType(
@@ -70,16 +74,24 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
+        private var delayedBranching = false
+        private var selfModifyingCode = false
         private val form = panel {
             row(runMessages.getMessage("run.source")) { textField().bindText(::source) }
+            row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
+            row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
         }
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
+            delayedBranching = configuration.options.delayedBranching
+            selfModifyingCode = configuration.options.selfModifyingCode
             form.reset()
         }
         override fun applyEditorTo(configuration: MarsRunConfiguration) {
             form.apply()
             configuration.options.sourcePath = source.trim()
+            configuration.options.delayedBranching = delayedBranching
+            configuration.options.selfModifyingCode = selfModifyingCode
         }
         override fun createEditor() = form
     }
@@ -89,16 +101,18 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
         val entry = entryPath() ?: throw ExecutionException(runMessages.getMessage("run.source.invalid"))
-        return MarsRunState(environment, entry)
+        return MarsRunState(environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode))
     }
 }
 
-internal class MarsRunState(private val environment: ExecutionEnvironment, private val entry: Path) :
+internal class MarsRunState(
+    private val environment: ExecutionEnvironment, private val entry: Path, private val options: MarsExecutionOptions,
+) :
     CommandLineState(environment) {
-    override fun startProcess() = service().createProcess(entry)
+    override fun startProcess() = service().createProcess(entry, options)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
-        service().createProcess(entry, execute)
+        service().createProcess(entry, options, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

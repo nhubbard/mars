@@ -41,6 +41,7 @@ import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
+import javax.swing.JCheckBox
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -107,6 +108,41 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `native Run applies delay slots only to the configuration that enables them`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("delay.asm", """
+                li ${'$'}a0, 1
+                b print_value
+                addiu ${'$'}a0, ${'$'}a0, 2
+                print_value: li ${'$'}v0, 1
+                syscall
+            """.trimIndent()).virtualFile
+        }
+        for ((enabled, expected) in listOf(true to "3", false to "1")) {
+            val disposable = Disposer.newDisposable()
+            val recording = Recording()
+            try {
+                withContext(Dispatchers.EDT) {
+                    val config = type.createTemplateConfiguration(project)
+                    config.options.sourcePath = file.path
+                    config.options.delayedBranching = enabled
+                    val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                        override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                            if (env === environment) handler.addProcessListener(recording)
+                        }
+                    })
+                    environment.runner.execute(environment)
+                }
+                assertEquals(0, recording.exit.await())
+                assertEquals(expected, recording.stdout.toString())
+            } finally {
+                Disposer.dispose(disposable)
+            }
+        }
+    }
+
+    @Test
     fun `configuration serializes a source path and rejects invalid or unsafe launches`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("entry.s", "nop\n")
@@ -120,22 +156,40 @@ class MarsRunPlatformTest {
                 assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
             }
             config.options.sourcePath = source.virtualFile.path
+            config.options.delayedBranching = true
+            config.options.selfModifyingCode = true
             config.checkConfiguration()
             val state = Element("configuration")
             config.writeExternal(state)
             val restored = type.createTemplateConfiguration(project)
             restored.readExternal(state)
             assertEquals(config.options.sourcePath, restored.options.sourcePath)
+            assertTrue(restored.options.delayedBranching)
+            assertTrue(restored.options.selfModifyingCode)
+            val previousConfiguration = type.createTemplateConfiguration(project)
+            previousConfiguration.readExternal(Element("configuration"))
+            assertFalse(previousConfiguration.options.delayedBranching)
+            assertFalse(previousConfiguration.options.selfModifyingCode)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
                 assertEquals("", UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!.text)
+                val flags = UIUtil.findComponentsOfType(editor.component, JCheckBox::class.java).associateBy { it.text }
+                val delay = flags.getValue("Enable delayed branching")
+                val modify = flags.getValue("Allow self-modifying code")
+                assertFalse(delay.isSelected)
+                assertFalse(modify.isSelected)
                 editor.resetFrom(restored)
+                assertTrue(delay.isSelected)
+                assertTrue(modify.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
+                modify.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
+                assertTrue(restored.options.delayedBranching)
+                assertFalse(restored.options.selfModifyingCode)
             } finally {
                 Disposer.dispose(editor)
             }

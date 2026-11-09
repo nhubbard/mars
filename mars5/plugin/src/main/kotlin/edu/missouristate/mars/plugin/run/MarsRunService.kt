@@ -14,6 +14,7 @@ import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -42,12 +43,14 @@ import kotlinx.coroutines.withContext
 internal class MarsRunService(private val project: Project, private val scope: CoroutineScope) {
     fun createProcess(
         entry: Path,
+        options: MarsExecutionOptions = MarsExecutionOptions(),
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
-    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), execute)
+    ) = MarsProcessHandler(project, scope, entry, Pipe.open(), options, execute)
 }
 
 internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val entry: Path, private val input: Pipe,
+    private val options: MarsExecutionOptions,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     // As in IntelliJ's external-task runner, ConsoleView writes to the sink on its input worker.
@@ -107,7 +110,7 @@ internal class MarsProcessHandler(
     private suspend fun runProgram(): Int {
         val component = MarsSessionService.createMarsComponent()
         return component.context().use { session ->
-            if (!project.getService(MarsBuildService::class.java).assemble(entry, component, activateBuildView = false)) {
+            if (!project.getService(MarsBuildService::class.java).assemble(entry, component, activateBuildView = false, options = options)) {
                 notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
                 return@use 1
             }

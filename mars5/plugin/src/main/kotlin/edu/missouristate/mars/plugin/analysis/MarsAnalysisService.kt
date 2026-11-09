@@ -24,6 +24,7 @@ import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
@@ -53,25 +54,29 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
 
-    internal fun selectedAssemblyEntry(file: MipsFile): Path? {
+    internal fun selectedAssembly(file: MipsFile): AssemblySelection? {
         val build = lastBuild.get() ?: return null
-        return build.request.entry.takeIf { build.snapshot.sourcePath(file) != null }
+        return build.request.selection.takeIf { build.snapshot.sourcePath(file) != null }
     }
 
-    internal class SymbolBuild(val entry: Path)
+    internal data class AssemblySelection(val entry: Path, val options: MarsExecutionOptions)
+
+    internal class SymbolBuild(val selection: AssemblySelection) {
+        val entry: Path get() = selection.entry
+    }
 
     private class BuildSelection(
         val request: SymbolBuild,
-        val snapshot: AssemblySymbols = AssemblySymbols(request.entry),
+        val snapshot: AssemblySymbols = AssemblySymbols(request.entry, options = request.selection.options),
     )
 
-    internal fun beginSymbolBuild(entry: Path): SymbolBuild =
-        SymbolBuild(entry.toAbsolutePath().normalize()).also { lastBuild.set(BuildSelection(it)) }
+    internal fun beginSymbolBuild(entry: Path, options: MarsExecutionOptions = MarsExecutionOptions()): SymbolBuild =
+        SymbolBuild(AssemblySelection(entry.toAbsolutePath().normalize(), options)).also { lastBuild.set(BuildSelection(it)) }
 
     internal fun publishBuiltSymbols(build: SymbolBuild, sources: CapturedAssemblySources, symbols: AssemblySymbolMap) {
         val current = lastBuild.get()
         if (current.request === build) {
-            val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts())
+            val snapshot = AssemblySymbols(build.entry, sources.revisions, symbols, sources.snapshot.texts(), build.selection.options)
             lastBuild.compareAndSet(current, BuildSelection(build, snapshot))
         }
     }
@@ -91,7 +96,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             .mapNotNull { snapshot -> snapshot.sourcePath(file)?.let { snapshot to it } }
         if (candidates.isEmpty()) return null
         val entry = selected?.first?.entry ?: inferredMipsAssemblyEntry(file)
-        val candidate = candidates.firstOrNull { it.first.entry == entry } ?: return null
+        val options = selected?.first?.options ?: MarsExecutionOptions()
+        val candidate = candidates.firstOrNull { it.first.entry == entry && it.first.options == options } ?: return null
         return lookup(candidate.first, candidate.second)
     }
 

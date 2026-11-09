@@ -20,6 +20,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.di.MarsComponent
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.assembleIn
@@ -41,9 +42,12 @@ internal class MarsBuildService(private val project: Project, private val scope:
         component.context().use { assemble(entry, component, activateBuildView = true) }
     }
 
-    internal suspend fun assemble(entry: Path, component: MarsComponent, activateBuildView: Boolean): Boolean {
+    internal suspend fun assemble(
+        entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
+    ): Boolean {
+        options.applyTo(component.context().settings)
         val analysis = project.service<MarsAnalysisService>()
-        val symbolBuild = analysis.beginSymbolBuild(entry)
+        val symbolBuild = analysis.beginSymbolBuild(entry, options)
         val descriptor = DefaultBuildDescriptor(
             Any(), bundle.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),

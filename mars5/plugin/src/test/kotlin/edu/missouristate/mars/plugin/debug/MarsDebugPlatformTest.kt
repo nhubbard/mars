@@ -71,6 +71,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
+import edu.missouristate.mars.plugin.run.MarsRunOptions
 import java.nio.file.Path
 import javax.swing.JButton
 import kotlin.time.Duration.Companion.milliseconds
@@ -378,6 +379,56 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(entry, 4)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x3456789a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `source stepping visits a configured branch delay slot before the target`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("debug-delay.s", "b target\nli \$t0, 7\nli \$t0, 9\ntarget: nop\n")
+                .virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file, { delayedBranching = true }) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
+            debug.assertPausedAt(file, 3)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x00000007", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `debugging configured self modifying code steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("debug-patch.s", """
+                la ${'$'}t0, patch
+                li ${'$'}t1, 0x240a002a
+                sw ${'$'}t1, 0(${'$'}t0)
+                patch: nop
+                after_patch: nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
+        }
+        withDebug(file, { selfModifyingCode = true }) { debug ->
+            debug.assertPausedAt(file, 2)
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
+            assertNull(debug.nextPosition())
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x240a002a", evaluate(debug.session, frame, "word(pc)"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, "\$t2"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(file, 4)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t2"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
@@ -1019,13 +1070,14 @@ class MarsDebugPlatformTest {
     private fun addBreakpoint(file: VirtualFile, line: Int) =
         WriteAction.compute<_, RuntimeException> { debugger.breakpointManager.addLineBreakpoint(breakpointType, file.url, line, null) }
 
-    private suspend fun withDebug(file: VirtualFile, action: suspend (DebugLaunch) -> Unit) {
+    private suspend fun withDebug(file: VirtualFile, configure: MarsRunOptions.() -> Unit = {}, action: suspend (DebugLaunch) -> Unit) {
         val disposable = Disposer.newDisposable()
         val started = CompletableDeferred<DebugLaunch>()
         try {
             withContext(Dispatchers.EDT) {
                 val config = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java).createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
+                config.options.configure()
                 val environment = ExecutionEnvironmentBuilder.create(DefaultDebugExecutor.getDebugExecutorInstance(), config).build()
                 val runner = assertInstanceOf(MarsDebugRunner::class.java, environment.runner)
                 assertFalse(runner.canRun(DefaultRunExecutor.EXECUTOR_ID, config))

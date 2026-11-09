@@ -4,6 +4,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.language.MipsFile
 import java.nio.file.Path
 import java.util.TreeSet
@@ -15,6 +16,7 @@ internal class AssemblySymbols(
     val revisions: Map<Path, Long> = emptyMap(),
     val symbols: AssemblySymbolMap = AssemblySymbolMap.EMPTY,
     val texts: Map<Path, String> = emptyMap(),
+    val options: MarsExecutionOptions = MarsExecutionOptions(),
 ) {
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
     val localSymbols = symbols.locals()[entry].orEmpty()
