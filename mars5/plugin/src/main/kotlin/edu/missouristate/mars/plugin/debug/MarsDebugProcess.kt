@@ -22,8 +22,11 @@ import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XExpression
 import com.intellij.xdebugger.XSourcePosition
+import com.intellij.xdebugger.breakpoints.SuspendPolicy
+import com.intellij.xdebugger.breakpoints.XBreakpoint
 import com.intellij.xdebugger.breakpoints.XBreakpointHandler
 import com.intellij.xdebugger.breakpoints.XBreakpointProperties
+import com.intellij.xdebugger.breakpoints.XBreakpointType
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint
 import com.intellij.xdebugger.evaluation.EvaluationMode
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
@@ -76,29 +79,35 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     private val commands = Channel<Command>(Channel.CONFLATED)
     @Volatile private var simulator: SimulatorEngine? = null
     private val bindings = Any()
-    private val registered = linkedSetOf<LineBreakpoint>()
+    private val entry = state.entry.normalize().toString()
+    private val registeredLines = linkedSetOf<LineBreakpoint>()
+    private val registeredAddresses = linkedSetOf<AddressBreakpoint>()
     private var sourceMap: InstructionSourceMap? = null
-    @Volatile private var addresses = emptyMap<Int, List<LineBreakpoint>>()
+    @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
     private var suspensionNumber = 0L
     private val handler = state.debugProcess { debug(this, it) }
 
-    private val lineHandler = object : XBreakpointHandler<LineBreakpoint>(MarsLineBreakpointType::class.java) {
-        override fun registerBreakpoint(breakpoint: LineBreakpoint) {
-            synchronized(bindings) {
-                registered.add(breakpoint)
-                updateBindings()
+    private val lineHandler = bindingHandler(MarsLineBreakpointType::class.java, registeredLines)
+    private val addressHandler = bindingHandler(MarsAddressBreakpointType::class.java, registeredAddresses)
+
+    private fun <B : XBreakpoint<*>> bindingHandler(type: Class<out XBreakpointType<B, *>>, registered: MutableSet<B>) =
+        object : XBreakpointHandler<B>(type) {
+            override fun registerBreakpoint(breakpoint: B) {
+                synchronized(bindings) {
+                    registered.add(breakpoint)
+                    updateBindings()
+                }
+            }
+
+            override fun unregisterBreakpoint(breakpoint: B, temporary: Boolean) {
+                synchronized(bindings) {
+                    registered.remove(breakpoint)
+                    updateBindings()
+                }
             }
         }
 
-        override fun unregisterBreakpoint(breakpoint: LineBreakpoint, temporary: Boolean) {
-            synchronized(bindings) {
-                registered.remove(breakpoint)
-                updateBindings()
-            }
-        }
-    }
-
-    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(lineHandler)
+    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(lineHandler, addressHandler)
     override fun doGetProcessHandler() = handler
     override fun createConsole() = TextConsoleBuilderFactory.getInstance().createBuilder(session.project).console.also {
         it.attachToProcess(handler)
@@ -113,7 +122,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
             content.isCloseable = false
             content.setDisposer(view)
             ui.addContent(content, 0, PlaceInGrid.right, true)
-            val disassembly = MarsDisassemblyView(session)
+            val disassembly = MarsDisassemblyView(session, entry)
             val listing = ui.createContent("MarsMipsDisassembly", disassembly.component, runMessages.getMessage("debug.disassembly"), null, disassembly.focus)
             listing.isCloseable = false
             listing.setDisposer(disassembly)
@@ -179,8 +188,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     private fun updateBindings() {
         val map = sourceMap ?: return
-        val next = mutableMapOf<Int, MutableList<LineBreakpoint>>()
-        for (breakpoint in registered) {
+        val next = mutableMapOf<Int, MutableList<XBreakpoint<*>>>()
+        for (breakpoint in registeredLines) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
             val points = file?.location(breakpoint.line)?.let { map.breakpoints()[it] }.orEmpty()
             if (points.isEmpty()) {
@@ -189,6 +198,10 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 points.forEach { next.getOrPut(it) { mutableListOf() }.add(breakpoint) }
                 session.setBreakpointVerified(breakpoint)
             }
+        }
+        for (breakpoint in registeredAddresses) {
+            val address = breakpoint.properties?.addressIn(entry) ?: continue
+            next.getOrPut(address) { mutableListOf() }.add(breakpoint)
         }
         addresses = next
     }
@@ -217,7 +230,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                 val target = command.target
                 val targets = target?.let { map.breakpoints()[it] }.orEmpty()
                 var skip = skipFirst
-                var hits = emptyList<LineBreakpoint>()
+                var hits = emptyList<XBreakpoint<*>>()
                 var stepOrTargetReached = false
                 if (target != null && targets.isEmpty()) {
                     withSuspension(machine) { context ->
@@ -252,7 +265,8 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
                         withSuspension(machine) { context ->
                             val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
-                                hits.any { handleBreakpoint(it, context, machine.memory) }
+                                hits.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
+                                    .any { handleBreakpoint(it, context, machine.memory) }
                             val positionReached = reason != StopEvent.Reason.BREAKPOINT || stepOrTargetReached
                             if (!breakpointSuspended && positionReached) {
                                 withContext(Dispatchers.EDT) { session.positionReached(context) }
@@ -270,7 +284,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
         }
     }
 
-    private suspend fun handleBreakpoint(breakpoint: LineBreakpoint, context: MarsSuspendContext, memory: MemoryState): Boolean {
+    private suspend fun handleBreakpoint(breakpoint: XBreakpoint<*>, context: MarsSuspendContext, memory: MemoryState): Boolean {
         val evaluator = context.frame.evaluator
         breakpoint.conditionExpression?.let { expression ->
             val condition = evaluator.evaluateAtBreakpoint(expression.expression, memory).getOrElse { error ->

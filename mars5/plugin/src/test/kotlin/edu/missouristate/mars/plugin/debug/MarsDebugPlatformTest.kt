@@ -49,6 +49,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.xmlb.XmlSerializer
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
 import com.intellij.xdebugger.XDebuggerManager
@@ -75,6 +76,7 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import java.nio.file.Path
+import javax.swing.Icon
 import javax.swing.JButton
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -1117,7 +1119,7 @@ class MarsDebugPlatformTest {
             val disposable = Disposer.newDisposable()
             try {
                 val discarded = withContext(Dispatchers.EDT) {
-                    MarsDisassemblyView(debug.session).also(Disposer::dispose)
+                    MarsDisassemblyView(debug.session, source.path).also(Disposer::dispose)
                 }
                 val (table, open, status) = withContext(Dispatchers.EDT) {
                     val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsDisassemblyTest", "Debug", "MIPS", disposable)
@@ -1128,7 +1130,7 @@ class MarsDebugPlatformTest {
                     val panel = content.component
                     Triple(
                         requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)),
-                        requireNotNull(UIUtil.findComponentOfType(panel, JButton::class.java)),
+                        UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Open Source" },
                         requireNotNull(UIUtil.findComponentOfType(panel, JBLabel::class.java)),
                     )
                 }
@@ -1229,13 +1231,143 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `address breakpoints persist by entry and stop in code without source`() = timeoutRunBlocking<Unit> {
+        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+        val source = withContext(Dispatchers.EDT) {
+            val other = fixture.addFileToProject("other.s", "nop\n").virtualFile
+            val file = fixture.addFileToProject("raw-breakpoints.s", """
+                .data
+                code: .word 0x25290001, 0x25290002, 0x25290004, 0x2402000a, 0x0000000c
+                .text
+                la ${'$'}t0, code
+                jr ${'$'}t0
+            """.trimIndent()).virtualFile
+            addBreakpoint(file, 4)
+            WriteAction.run<RuntimeException> {
+                val manager = debugger.breakpointManager
+                manager.addBreakpoint(type, MarsAddressBreakpointProperties(other.path, 0x00400000))
+                manager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400002))
+                assertEquals("Missing MIPS breakpoint address", type.getDisplayText(manager.addBreakpoint(type, null)))
+                val shared = manager.addBreakpoint(type, MarsAddressBreakpointProperties(file.path, 0x00400008))
+                shared.suspendPolicy = SuspendPolicy.NONE
+                shared.setLogExpression("0x12345678")
+            }
+            file
+        }
+        withDebug(source, { selfModifyingCode = true }) { debug ->
+            debug.assertPausedAt(source, 4)
+            val disposable = Disposer.newDisposable()
+            try {
+                val (table, toggle) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsAddressTest", "Debug", "MIPS", disposable)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val panel = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
+                    val table = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                    assertEquals(Icon::class.java, table.getColumnClass(5))
+                    table to UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Toggle Address Breakpoint" }
+                }
+                fun row(address: String) = (0 until table.rowCount).firstOrNull { table.getValueAt(it, 1) == address } ?: -1
+                suspend fun marker(address: String, expected: Icon?) {
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            val index = row(address)
+                            assertTrue(index >= 0, address)
+                            assertSame(expected, table.getValueAt(index, 5), address)
+                        }
+                    }
+                }
+                marker("0x00400000", null)
+                withContext(Dispatchers.EDT) {
+                    table.clearSelection()
+                    assertFalse(toggle.isEnabled)
+                    debug.session.stepInto()
+                }
+                assertNull(debug.nextPosition())
+                val hitAddress = "0x10010004"
+                val logAddress = "0x10010008"
+                marker(hitAddress, null)
+                val point = withContext(Dispatchers.EDT) {
+                    val index = row(hitAddress)
+                    table.setRowSelectionInterval(index, index)
+                    assertTrue(toggle.isEnabled)
+                    toggle.doClick(0)
+                    val point = debugger.breakpointManager.getBreakpoints(type).single {
+                        it.properties?.address == 0x10010004
+                    }
+                    assertEquals("$hitAddress in ${source.path}", type.getDisplayText(point))
+                    assertSame(MarsDebugEditors, type.getEditorsProvider(point, project))
+                    val saved = XmlSerializer.serialize(point.properties.state)
+                    val restored = type.createProperties().also {
+                        it.loadState(XmlSerializer.deserialize(saved, MarsAddressBreakpointProperties::class.java))
+                    }
+                    assertEquals(source.path, restored.entry)
+                    assertEquals(0x10010004, restored.address)
+                    WriteAction.run<RuntimeException> {
+                        point.setCondition("(word(pc) & 0xff) == 2")
+                    }
+                    point
+                }
+                marker(hitAddress, type.enabledIcon)
+                withContext(Dispatchers.EDT) { WriteAction.run<RuntimeException> { point.isEnabled = false } }
+                marker(hitAddress, type.disabledIcon)
+                withContext(Dispatchers.EDT) {
+                    WriteAction.run<RuntimeException> { point.isEnabled = true }
+                    debug.session.setBreakpointMuted(true)
+                }
+                marker(hitAddress, type.mutedEnabledIcon)
+                withContext(Dispatchers.EDT) {
+                    debug.session.setBreakpointMuted(false)
+                    val index = row(logAddress)
+                    table.setRowSelectionInterval(index, index)
+                    toggle.doClick(0)
+                    val logpoint = debugger.breakpointManager.getBreakpoints(type).single { it.properties?.address == 0x10010008 }
+                    WriteAction.run<RuntimeException> {
+                        logpoint.suspendPolicy = SuspendPolicy.NONE
+                        logpoint.setLogExpression("\$t1")
+                    }
+                }
+                marker(logAddress, type.suspendNoneIcon)
+                val console = withContext(Dispatchers.EDT) {
+                    assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView).also { it.component }
+                }
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertNull(debug.nextPosition())
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    assertEquals(hitAddress, evaluate(debug.session, frame, "pc"))
+                    assertEquals("0x00000001", evaluate(debug.session, frame, "\$t1"))
+                }
+                marker(hitAddress, type.enabledIcon)
+                withContext(Dispatchers.EDT) {
+                    val index = row(hitAddress)
+                    table.setRowSelectionInterval(index, index)
+                    toggle.doClick(0)
+                    assertFalse(point in debugger.breakpointManager.getBreakpoints(type))
+                }
+                marker(hitAddress, null)
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val text = console.editor!!.document.text
+                        assertTrue(text.contains("0x12345678"), text)
+                        assertTrue(text.contains("0x00000003"), text)
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+            }
+        }
+    }
+
+    @Test
     fun `disassembly window stays within the unsigned address space`() {
         MarsSessionService.createMarsComponent().context().use { machine ->
             val first = disassemblyWindow(machine.memory, 0)
-            assertEquals("0x00000000", first.first().address)
+            assertEquals(0, first.first().address)
             assertEquals(listOf(first.first()), first.filter(DisassemblyRow::current))
             val last = disassemblyWindow(machine.memory, 0xffff_fffcL)
-            assertEquals("0xfffffffc", last.last().address)
+            assertEquals(0xffff_fffcu.toInt(), last.last().address)
             assertEquals(listOf(last.last()), last.filter(DisassemblyRow::current))
             assertTrue(disassemblyWindow(machine.memory, 0xffff_ffffL).isEmpty())
         }

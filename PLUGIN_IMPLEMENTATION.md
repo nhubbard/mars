@@ -929,6 +929,17 @@ The core read issues no simulated memory events. Fixtures cover navigation,
 source disappearance, code writes and backstep, executable data, invalid words,
 and the bounds of the 32-bit address space.
 
+The **Toggle Address Breakpoint** button adds or removes a breakpoint at the selected
+address for the current assembly entry. IntelliJ stores the entry and address in its
+project breakpoint state. The **MIPS Address Breakpoints** group in the Breakpoints
+dialog provides the usual enabled state, conditions, logging, and dependencies.
+The disassembly marker reflects enabled, disabled, muted, and log-only states.
+
+An address breakpoint stops at the instruction boundary even when the PC has no
+source position. It uses the same worker predicate and expression evaluator as
+line breakpoints. When a logpoint and a suspending breakpoint share an address,
+the debugger processes the logpoint before suspending.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.components.JBLabel
@@ -14,6 +15,10 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
+import com.intellij.xdebugger.XDebuggerManager
+import com.intellij.xdebugger.XDebuggerUtil
+import com.intellij.xdebugger.breakpoints.SuspendPolicy
+import com.intellij.xdebugger.breakpoints.XBreakpointListener
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
@@ -21,13 +26,14 @@ import edu.missouristate.mars.util.Binary
 import java.awt.Font
 import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JButton
+import javax.swing.Icon
 import javax.swing.ListSelectionModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal data class DisassemblyRow(
     val current: Boolean,
-    val address: String,
+    val address: Int,
     val word: String,
     val instruction: String,
     val location: Location?,
@@ -43,7 +49,7 @@ internal fun disassemblyWindow(memory: MemoryState, pc: Long): List<DisassemblyR
         val statement = memory.inspectInstruction(address.toInt())
         DisassemblyRow(
             address == pc,
-            Binary.intToHexString(address.toInt()),
+            address.toInt(),
             statement?.let { Binary.intToHexString(it.binaryStatement) } ?: "—",
             statement?.printableBasicAssemblyStatement?.trimEnd() ?: "—",
             statement?.instructionOrigin?.location(),
@@ -51,15 +57,23 @@ internal fun disassemblyWindow(memory: MemoryState, pc: Long): List<DisassemblyR
     }
 }
 
-internal class MarsDisassemblyView(private val session: XDebugSession) : Disposable {
+internal class MarsDisassemblyView(private val session: XDebugSession, private val entry: String) : Disposable {
+    private val breakpointManager = XDebuggerManager.getInstance(session.project).breakpointManager
+    private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
     private val status = JBLabel()
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
+    private val toggleBreakpoint = JButton(runMessages.getMessage("debug.disassembly.breakpoint.toggle")).apply { isEnabled = false }
+    private var breakpoints = emptyMap<Int, AddressBreakpoint>()
     private val model = ListTableModel<DisassemblyRow>(
         column("debug.disassembly.pc") { if (it.current) "▶" else "" },
-        column("debug.disassembly.address", DisassemblyRow::address),
+        column("debug.disassembly.address") { Binary.intToHexString(it.address) },
         column("debug.disassembly.word", DisassemblyRow::word),
         column("debug.disassembly.instruction", DisassemblyRow::instruction),
         column("debug.disassembly.source") { it.location?.let { site -> "${site.file().fileName}:${site.line()}" }.orEmpty() },
+        object : ColumnInfo<DisassemblyRow, Icon>(runMessages.getMessage("debug.disassembly.breakpoint")) {
+            override fun getColumnClass() = Icon::class.java
+            override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
+        },
     )
     private val table = JBTable(model).apply {
         font = Font(Font.MONOSPACED, font.style, font.size)
@@ -76,25 +90,38 @@ internal class MarsDisassemblyView(private val session: XDebugSession) : Disposa
         row {
             cell(status)
             cell(openSource)
+            cell(toggleBreakpoint)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
     }
 
     init {
-        table.selectionModel.addListSelectionListener { updateNavigation() }
+        table.selectionModel.addListSelectionListener { updateSelection() }
         openSource.addActionListener { target!!.navigate(true) }
+        toggleBreakpoint.addActionListener { toggleSelectedBreakpoint() }
+        breakpointManager.addBreakpointListener(breakpointType, object : XBreakpointListener<AddressBreakpoint> {
+            override fun breakpointAdded(breakpoint: AddressBreakpoint) = onEdt(::reloadBreakpoints)
+            override fun breakpointRemoved(breakpoint: AddressBreakpoint) = onEdt(::reloadBreakpoints)
+            override fun breakpointChanged(breakpoint: AddressBreakpoint) = onEdt(::reloadBreakpoints)
+        }, this)
         session.addSessionListener(object : XDebugSessionListener {
             override fun sessionPaused() = scheduleRefresh()
             override fun sessionResumed() = scheduleRefresh()
             override fun sessionStopped() = scheduleRefresh()
+            override fun breakpointsMuted(muted: Boolean) = onEdt(table::repaint)
         }, this)
+        reloadBreakpoints()
         refresh()
     }
 
     private fun scheduleRefresh() {
         // A session event invalidates an in-flight read before its Swing refresh runs.
         revision.incrementAndGet()
-        ApplicationManager.getApplication().invokeLater(::refresh, ModalityState.defaultModalityState()) { disposed }
+        onEdt(::refresh)
+    }
+
+    private fun onEdt(task: () -> Unit) {
+        ApplicationManager.getApplication().invokeLater(task, ModalityState.defaultModalityState()) { disposed }
     }
 
     private fun refresh() {
@@ -123,13 +150,41 @@ internal class MarsDisassemblyView(private val session: XDebugSession) : Disposa
         }
     }
 
-    private fun updateNavigation() {
-        target = model.items.getOrNull(table.selectedRow)?.location?.let { location ->
+    private fun updateSelection() {
+        val selected = model.items.getOrNull(table.selectedRow)
+        toggleBreakpoint.isEnabled = selected != null
+        target = selected?.location?.let { location ->
             LocalFileSystem.getInstance().findFileByNioFile(location.file())?.let { file ->
                 OpenFileDescriptor(session.project, file, location.line() - 1, 0)
             }
         }
         openSource.isEnabled = target != null
+    }
+
+    private fun reloadBreakpoints() {
+        breakpoints = breakpointManager.getBreakpoints(breakpointType).mapNotNull { breakpoint ->
+            breakpoint.properties?.addressIn(entry)?.let { it to breakpoint }
+        }.toMap()
+        table.repaint()
+    }
+
+    private fun breakpointIcon(address: Int): Icon? {
+        val breakpoint = breakpoints[address] ?: return null
+        return when {
+            !breakpoint.isEnabled -> breakpointType.disabledIcon
+            session.areBreakpointsMuted() -> breakpointType.mutedEnabledIcon
+            breakpoint.suspendPolicy == SuspendPolicy.NONE -> breakpointType.suspendNoneIcon
+            else -> breakpointType.enabledIcon
+        }
+    }
+
+    private fun toggleSelectedBreakpoint() {
+        val address = model.items[table.selectedRow].address
+        WriteAction.run<RuntimeException> {
+            val existing = breakpointManager.getBreakpoints(breakpointType).firstOrNull { it.properties?.addressIn(entry) == address }
+            if (existing == null) breakpointManager.addBreakpoint(breakpointType, MarsAddressBreakpointProperties(entry, address))
+            else breakpointManager.removeBreakpoint(existing)
+        }
     }
 
     override fun dispose() {

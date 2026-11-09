@@ -106,7 +106,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
 }
 
 internal class MarsRunState(
-    private val environment: ExecutionEnvironment, private val entry: Path, private val options: MarsExecutionOptions,
+    private val environment: ExecutionEnvironment, val entry: Path, private val options: MarsExecutionOptions,
 ) :
     CommandLineState(environment) {
     override fun startProcess() = service().createProcess(entry, options)
