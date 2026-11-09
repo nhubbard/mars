@@ -161,6 +161,46 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `native Run draws the MarsBot sample with the panel closed`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        val process = CompletableDeferred<MarsProcessHandler>()
+        try {
+            withContext(Dispatchers.EDT) {
+                val source = requireNotNull(javaClass.getResourceAsStream("/marsbot/square.asm"))
+                    .bufferedReader().use { it.readText() }
+                val file = fixture.addFileToProject("square.asm", source).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                config.options.connectMarsBot = true
+                config.options.delayedBranching = true
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) {
+                            handler.addProcessListener(recording)
+                            process.complete(handler as MarsProcessHandler)
+                        }
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            assertEquals(0, recording.exit.await(), recording.stderr.toString())
+            assertEquals("Square complete. Open the MarsBot tool to inspect its trail.\n", recording.stdout.toString())
+            val snapshot = process.await().marsBot.snapshot()
+            assertFalse(snapshot.available)
+            assertFalse(snapshot.connected)
+            assertFalse(snapshot.world.moving)
+            assertFalse(snapshot.world.penDown)
+            val corners = requireNotNull(snapshot.world.trail).strokes().toList().asReversed()
+            assertEquals(listOf(96 to 96, 416 to 96, 416 to 416, 96 to 416, 96 to 96),
+                (listOf(corners.first().from) + corners.map { it.to }).map { it.x.toInt() to it.y.toInt() })
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `configuration serializes a source path and rejects invalid or unsafe launches`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = fixture.addFileToProject("entry.s", "nop\n")
@@ -180,6 +220,7 @@ class MarsRunPlatformTest {
             config.options.captureReferences = true
             config.options.connectDigitalLab = true
             config.options.connectKeyboardDisplay = true
+            config.options.connectMarsBot = true
             config.checkConfiguration()
             val state = Element("configuration")
             config.writeExternal(state)
@@ -192,6 +233,7 @@ class MarsRunPlatformTest {
             assertTrue(restored.options.captureReferences)
             assertTrue(restored.options.connectDigitalLab)
             assertTrue(restored.options.connectKeyboardDisplay)
+            assertTrue(restored.options.connectMarsBot)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
@@ -200,6 +242,7 @@ class MarsRunPlatformTest {
             assertFalse(previousConfiguration.options.captureReferences)
             assertFalse(previousConfiguration.options.connectDigitalLab)
             assertFalse(previousConfiguration.options.connectKeyboardDisplay)
+            assertFalse(previousConfiguration.options.connectMarsBot)
             val editor = restored.configurationEditor
             try {
                 editor.resetFrom(type.createTemplateConfiguration(project))
@@ -211,12 +254,14 @@ class MarsRunPlatformTest {
                 val references = flags.getValue("Capture memory references from launch")
                 val digitalLab = flags.getValue("Connect Digital Lab Sim from launch")
                 val keyboardDisplay = flags.getValue("Connect Keyboard and Display Simulator from launch")
+                val marsBot = flags.getValue("Connect MarsBot from launch")
                 assertFalse(delay.isSelected)
                 assertFalse(modify.isSelected)
                 assertFalse(capture.isSelected)
                 assertFalse(references.isSelected)
                 assertFalse(digitalLab.isSelected)
                 assertFalse(keyboardDisplay.isSelected)
+                assertFalse(marsBot.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
                 assertTrue(modify.isSelected)
@@ -224,6 +269,7 @@ class MarsRunPlatformTest {
                 assertTrue(references.isSelected)
                 assertTrue(digitalLab.isSelected)
                 assertTrue(keyboardDisplay.isSelected)
+                assertTrue(marsBot.isSelected)
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
@@ -232,6 +278,7 @@ class MarsRunPlatformTest {
                 references.isSelected = false
                 digitalLab.isSelected = false
                 keyboardDisplay.isSelected = false
+                marsBot.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
@@ -240,6 +287,7 @@ class MarsRunPlatformTest {
                 assertFalse(restored.options.captureReferences)
                 assertFalse(restored.options.connectDigitalLab)
                 assertFalse(restored.options.connectKeyboardDisplay)
+                assertFalse(restored.options.connectMarsBot)
             } finally {
                 Disposer.dispose(editor)
             }

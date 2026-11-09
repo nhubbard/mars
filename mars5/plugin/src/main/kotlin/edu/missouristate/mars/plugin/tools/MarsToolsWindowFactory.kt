@@ -62,6 +62,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         val keyboardDisplay = KeyboardDisplayView(project)
         addTab("keyboardDisplay.name", keyboardDisplay.component, keyboardDisplay)
             .setPreferredFocusableComponent(keyboardDisplay.inputComponent)
+        val marsBot = MarsBotView(project)
+        addTab("marsBot.name", marsBot.component, marsBot)
     }
 }
 

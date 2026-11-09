@@ -1184,7 +1184,19 @@ discarded on rewind. The final display stays available while its execution
 tab is open. A connection owned by the panel closes when the panel is
 disposed. The launch option keeps the device connected for the execution.
 
-## MarsBot model
+## MarsBot
+
+Open **View → Tool Windows → MARS Tools → MarsBot**, select an execution, and
+click **Connect**. Enable **Connect MarsBot from launch** in the MIPS Run
+configuration when the program writes to the device immediately. This also
+allows the robot to run with the tool closed. Try `examples/marsbot/square.asm`
+with the default memory layout. The board retains its final trail while the
+execution tab is open.
+
+The panel reports the position, heading, pen and movement state. Hover over
+the MMIO label to see the full port map. Set the clock by entering an
+instruction count and clicking **Set rate** or pressing Enter. Reset clears
+the board and returns the robot to its initial position and heading.
 
 The Kotlin model uses the legacy word ports at `0xffff8010` for heading,
 `0xffff8020` for the pen, `0xffff8030` and `0xffff8040` for coordinates,
@@ -1197,7 +1209,6 @@ One tick moves the robot by one pixel. The default clock ticks every 64
 completed instructions while moving. The model preserves fractional
 positions and publishes integer coordinates. Backstep restores the clock,
 position, port values, and pen trail from the instruction's checkpoint.
-The IntelliJ panel and Run and Debug attachment are the next slice.
 
 ## Next slices
 

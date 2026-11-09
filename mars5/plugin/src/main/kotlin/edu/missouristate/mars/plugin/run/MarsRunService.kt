@@ -29,6 +29,7 @@ import edu.missouristate.mars.plugin.tools.DigitalLabDevice
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice
+import edu.missouristate.mars.plugin.tools.MarsBotDevice
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
@@ -63,10 +64,11 @@ internal class MarsRunService(private val project: Project, private val scope: C
         captureReferences: Boolean = false,
         connectDigitalLab: Boolean = false,
         connectKeyboardDisplay: Boolean = false,
+        connectMarsBot: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
     ) = MarsProcessHandler(
         project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
-        connectDigitalLab, connectKeyboardDisplay, execute,
+        connectDigitalLab, connectKeyboardDisplay, connectMarsBot, execute,
     )
 }
 
@@ -78,6 +80,7 @@ internal class MarsProcessHandler(
     captureReferences: Boolean,
     connectDigitalLab: Boolean,
     connectKeyboardDisplay: Boolean,
+    connectMarsBot: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler() {
     val instructionCounter = InstructionCounter()
@@ -86,6 +89,7 @@ internal class MarsProcessHandler(
     val dataCache = DataCacheSimulator()
     val digitalLab = DigitalLabDevice(connectDigitalLab)
     val keyboardDisplay = KeyboardDisplayDevice(connectKeyboardDisplay)
+    val marsBot = MarsBotDevice(connectMarsBot)
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
@@ -176,6 +180,7 @@ internal class MarsProcessHandler(
                                 xray.record(event)
                                 digitalLab.instructionCompleted(session)
                                 keyboardDisplay.instructionCompleted(session)
+                                marsBot.instructionCompleted()
                             }
                             override fun onBackstep(stepCount: Long) = xray.rewind(stepCount)
                             override fun onStop(event: StopEvent) = Unit
@@ -192,7 +197,9 @@ internal class MarsProcessHandler(
                                 memoryReferences.observe(session.memory).use {
                                     dataCache.observe(session.memory).use {
                                         digitalLab.observe(session).use {
-                                            keyboardDisplay.observe(session).use { execute(session) }
+                                            keyboardDisplay.observe(session).use {
+                                                marsBot.observe(session).use { execute(session) }
+                                            }
                                         }
                                     }
                                 }

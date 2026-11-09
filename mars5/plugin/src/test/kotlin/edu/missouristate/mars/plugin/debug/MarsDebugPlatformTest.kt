@@ -1052,6 +1052,52 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `MarsBot position and pen trail rewind through native Debug`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("mars-bot-debug.asm", """
+                lui ${'$'}t0, 0xffff
+                ori ${'$'}t0, ${'$'}t0, 0x8000
+                li ${'$'}t1, 90
+                sw ${'$'}t1, 0x10(${'$'}t0)
+                li ${'$'}t1, 1
+                sw ${'$'}t1, 0x20(${'$'}t0)
+                sw ${'$'}t1, 0x50(${'$'}t0)
+                nop
+                sw ${'$'}zero, 0x50(${'$'}t0)
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 6) }
+        }
+        withDebug(source, { connectMarsBot = true }) { debug ->
+            debug.assertPausedAt(source, 6)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            val robot = process.marsBot
+            val before = robot.snapshot()
+            assertTrue(before.connected)
+            assertEquals(90, before.world.heading)
+            assertTrue(before.world.penDown)
+            robot.setInstructionsPerTick(1)
+            withContext(Dispatchers.EDT) { debug.session.stepInto() }
+            debug.assertPausedAt(source, 7)
+            assertEquals(1.0, robot.snapshot().world.position.x)
+            assertEquals(1, robot.snapshot().world.trail?.strokes()?.count())
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000001", evaluate(debug.session, frame, "word(0xffff8030)"))
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 6)
+            assertEquals(before.world, robot.snapshot().world)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "word(0xffff8030)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+            assertEquals(2.0, robot.snapshot().world.position.x)
+        }
+    }
+
+    @Test
     fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("digital-lab-debug.asm", """

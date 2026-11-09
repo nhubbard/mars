@@ -33,7 +33,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
     private var connected = connectAtLaunch
     private var hasConnected = connectAtLaunch
     private var world = MarsBotWorld()
-    private var instructionsPerTick = 64
+    private var instructionsPerTick = defaultInstructionsPerTick
     private var remaining = instructionsPerTick
     private var publish = false
     private var checkpoint: RewindState? = null
@@ -72,7 +72,7 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
 
     @Synchronized
     fun setInstructionsPerTick(count: Int) {
-        require(count in 1..1_000_000)
+        require(count in instructionRange)
         instructionsPerTick = count
         remaining = count
     }
@@ -163,5 +163,10 @@ internal class MarsBotDevice(private val connectAtLaunch: Boolean = false) {
         remaining = state.remaining
         publish = state.publish
         state.coordinates?.let { writePosition(source, addresses, it) }
+    }
+
+    companion object {
+        const val defaultInstructionsPerTick = 64
+        val instructionRange = 1..1_000_000
     }
 }

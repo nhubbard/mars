@@ -77,7 +77,7 @@ class InstructionCounterPlatformTest {
             val contents = window.contentManager.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
                 "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation",
-                "Digital Lab Sim", "Keyboard and Display Simulator"),
+                "Digital Lab Sim", "Keyboard and Display Simulator", "MarsBot"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -94,6 +94,7 @@ class InstructionCounterPlatformTest {
         val cache = panels[6]
         val floating = panels[7]
         val lab = panels[8]
+        val marsBot = panels[10]
         val (floatSelector, floatRegister) = withContext(Dispatchers.EDT) {
             UIUtil.findComponentsOfType(floating, JComboBox::class.java).sortedBy { it.itemCount }
         }
@@ -591,6 +592,107 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(labRun.manager).removeContent(labRun, true))
             }
             waitFor(0, "0 (0%)")
+            fun robotClock() = UIUtil.findComponentsOfType(marsBot, JBTextField::class.java).single()
+            fun robotLabels() = UIUtil.findComponentsOfType(marsBot, JBLabel::class.java)
+            fun robotBoard() = UIUtil.findComponentsOfType(marsBot, MarsBotBoard::class.java).single()
+            fun paintRobot(width: Int, height: Int): BufferedImage {
+                val board = robotBoard()
+                board.setSize(width, height)
+                return BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { image ->
+                    val graphics = image.createGraphics()
+                    try { board.paint(graphics) } finally { graphics.dispose() }
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                assertFalse(button("Connect", marsBot).isEnabled)
+                assertFalse(button("Reset", marsBot).isEnabled)
+                assertEquals("Select a MIPS execution to see its robot.", robotBoard().accessibleContext.accessibleDescription)
+                assertFalse(robotClock().isEnabled)
+                marsBot.setSize(JBUI.scale(330), JBUI.scale(460))
+                marsBot.doLayout()
+                val setRate = button("Set rate", marsBot)
+                val bounds = SwingUtilities.convertRectangle(setRate.parent, setRate.bounds, marsBot)
+                assertTrue(bounds.width > 0 && bounds.x + bounds.width <= marsBot.width)
+                robotClock().postActionEvent()
+                paintRobot(1, 1)
+                paintRobot(280, 180)
+            }
+            val robotRun = launch(run, 7, """
+                li ${'$'}v0, 12
+                syscall
+                lui ${'$'}t0, 0xffff
+                ori ${'$'}t0, ${'$'}t0, 0x8000
+                li ${'$'}t1, 90
+                sw ${'$'}t1, 0x10(${'$'}t0)
+                li ${'$'}t1, 1
+                sw ${'$'}t1, 0x20(${'$'}t0)
+                sw ${'$'}t1, 0x50(${'$'}t0)
+                li ${'$'}v0, 12
+                syscall
+                li ${'$'}t1, 128
+                poll:
+                lw ${'$'}t2, 0x30(${'$'}t0)
+                blt ${'$'}t2, ${'$'}t1, poll
+                sw ${'$'}zero, 0x50(${'$'}t0)
+                li ${'$'}v0, 12
+                syscall
+            """.trimIndent())
+            val robotProcess = robotRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler
+            val robot = robotProcess.marsBot
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) { assertTrue(button("Connect", marsBot).isEnabled) }
+            }
+            val beforeTrail = withContext(Dispatchers.EDT) {
+                assertTrue(robotLabels().any { it.text == "MMIO starts at 0xffff8010 (hover for port addresses)" &&
+                    it.toolTipText == "Heading 0xffff8010, pen 0xffff8020, X 0xffff8030, Y 0xffff8040, move 0xffff8050" })
+                button("Connect", marsBot).doClick()
+                assertTrue(robot.snapshot().connected)
+                assertEquals("64", robotClock().text)
+                robotClock().text = "bad"
+                robotClock().postActionEvent()
+                robotClock().text = "0"
+                robotClock().postActionEvent()
+                robotClock().text = "1000001"
+                button("Set rate", marsBot).doClick()
+                assertEquals(64, robot.snapshot().instructionsPerTick)
+                robotClock().text = "1"
+                robotClock().postActionEvent()
+                assertEquals(1, robot.snapshot().instructionsPerTick)
+                paintRobot(280, 180)
+            }
+            robotProcess.processInput.write("x\n".toByteArray())
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertTrue(robotBoard().accessibleContext.accessibleDescription.endsWith("Pen down   Moving"))
+                }
+            }
+            robotProcess.processInput.write("x\n".toByteArray())
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    val position = robot.snapshot().world.position
+                    assertTrue(position.x >= 128)
+                    assertEquals("Position (${position.x.toInt()}, 0)   Heading 90°   Pen down   Stopped",
+                        robotBoard().accessibleContext.accessibleDescription)
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                val image = paintRobot(280, 180)
+                val pad = JBUI.scale(8)
+                val left = (image.width - image.height) / 2 + pad
+                val trailX = left + (image.height - 2 * pad) * 64 / 511
+                assertTrue(beforeTrail.getRGB(trailX, pad) != image.getRGB(trailX, pad))
+                button("Reset", marsBot).doClick()
+                assertEquals(beforeTrail.getRGB(trailX, pad), paintRobot(280, 180).getRGB(trailX, pad))
+                button("Disconnect", marsBot).doClick()
+                assertFalse(robot.snapshot().connected)
+                button("Connect", marsBot).doClick()
+                val content = window.contentManager.contents.single { it.component === marsBot }
+                assertTrue(window.contentManager.removeContent(content, true))
+                assertFalse(robot.snapshot().connected)
+                robotProcess.destroyProcess()
+                assertTrue(checkNotNull(robotRun.manager).removeContent(robotRun, true))
+            }
+            waitFor(0, "0 (0%)")
         } finally {
             withContext(Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
@@ -606,6 +708,7 @@ class InstructionCounterPlatformTest {
                         container.remove(floating)
                         container.remove(lab)
                         container.remove(panels[9])
+                        container.remove(panels[10])
                     }
                 }
             }
