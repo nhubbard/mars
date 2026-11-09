@@ -713,6 +713,44 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `unfinished quotes retain raw operands accepted by the assembler`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            directory.resolve("part.s").writeText("addiu \$t0, \$zero, 7\n")
+            val source = """
+                .eqv RAW "alias
+                .set RAW
+                .set "ignored
+                .text "suffix
+                .macro unused
+                .asciiz "inert
+                .end_macro
+                .macro swallow (%arg)
+                .set %arg
+                .end_macro
+                swallow "argument
+                .include "part.s" "discarded
+            """.trimIndent()
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                val unclosed = descendants(file.node, "UNCLOSED_STRING").map { it.text }.toList()
+                assertEquals(listOf("\"alias", "\"ignored", "\"suffix", "\"inert", "\"argument", "\"discarded"), unclosed)
+                assertEquals("\"alias", descendants(file.node, "REPLACEMENT").single().text)
+                assertEquals("\"argument", descendants(file.node, "INVOCATION_TOKEN").single().text)
+                assertEquals(".include \"part.s\" \"discarded", descendants(file.node, "INCLUDE_LINE").single().text)
+                assertEquals("\"inert", descendants(file.node, "LITERAL_EXPR").single().text)
+                val highlighter = MipsSyntaxHighlighter()
+                assertArrayEquals(
+                    highlighter.getTokenHighlights(MipsTypes.psi("STRING")),
+                    highlighter.getTokenHighlights(MipsTypes.psi("UNCLOSED_STRING")),
+                )
+                val debugger = MipsLexer(debuggerExpression = true)
+                debugger.start("\"incomplete")
+                assertEquals(MipsTypes.syntax.getValue("BAD_CHARACTER"), debugger.getTokenType())
+            }
+        }
+
+    @Test
     fun `ignored set payloads retain assembler tokens without operand errors`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val context = project.get().service<MarsSessionService>().context
         for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".eqv OPTION .set\nOPTION ), :")) {
@@ -933,7 +971,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1", ".macro 7",
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv", ".eqv ,,, 7", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
                 ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
                 val text = broken + "\nnext: nop\n"

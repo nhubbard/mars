@@ -32,7 +32,7 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
 
     override fun getTokenType(): SyntaxElementType? {
         val current = token ?: return null
-        if (debuggerExpression && (current.kind == MipsTokenKind.COMMA || current.kind == MipsTokenKind.COMMENT)) {
+        if (debuggerExpression && current.kind in invalidDebuggerTokens) {
             return MipsSyntaxTypes.BAD_CHARACTER
         }
         return when (current.kind) {
@@ -71,6 +71,7 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
     private fun textOf(token: MipsToken): String = buffer.subSequence(token.start, token.end).toString()
 
     companion object {
+        private val invalidDebuggerTokens = setOf(MipsTokenKind.COMMA, MipsTokenKind.COMMENT, MipsTokenKind.UNCLOSED_STRING)
         private val mnemonics: Set<String> by lazy {
             InstructionDefaults.get().instructionList.mapTo(TreeSet(String.CASE_INSENSITIVE_ORDER)) { it.name }
         }

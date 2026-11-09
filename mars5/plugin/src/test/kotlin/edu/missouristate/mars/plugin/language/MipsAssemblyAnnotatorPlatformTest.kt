@@ -255,6 +255,32 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `only a consumed unfinished quote produces an editor error`() = timeoutRunBlocking<Unit> {
+        val unfinished = "\"data"
+        val source = ".set \"ignored\n.data\n.asciiz $unfinished\n.text\nnext: nop\n"
+        val main = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("quotes.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val error = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            assertEquals("Unterminated string literal", error.description)
+            assertEquals(unfinished, source.substring(error.startOffset, error.endOffset))
+            edit(main, source.replace(unfinished, "$unfinished\""))
+            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+
+            val deferred = ".macro later\n.asciiz $unfinished\n.end_macro\n.data\n.text\nnext: nop\n"
+            edit(main, deferred)
+            assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
+            val invoked = deferred.replace(".data\n", ".data\nlater\n")
+            edit(main, invoked)
+            val expanded = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+            assertEquals("Unterminated string literal", expanded.description)
+            assertEquals(unfinished, invoked.substring(expanded.startOffset, expanded.endOffset))
+        }
+    }
+
+    @Test
     fun `unfinished include paths keep highlighting live and resolve when closed`() = timeoutRunBlocking<Unit> {
         val (main, include) = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("in-progress.asm", ".include \"\ntail: nop\n").virtualFile

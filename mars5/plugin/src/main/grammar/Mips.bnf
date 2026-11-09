@@ -73,7 +73,7 @@ macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 // Equivalence replacement is source text, not an eagerly evaluated expression.
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
-private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | STRING | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN | unfinished_character
+private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN | unfinished_character
 private signed_number ::= <<startsSignedNumber>> (PLUS | MINUS) NUMBER
 // MARS warns and ignores .set, so its payload is a sequence of assembler tokens.
 ignored_set ::= SET assembly_token* {elementType=directive_statement}
@@ -115,7 +115,9 @@ add_expr ::= expr (<<continueOperand>> (PLUS | MINUS)) expr {pin=2}
 unary_expr ::= (PLUS | MINUS | BIT_NOT) expr
 address_expr ::= expr <<continueOperand>> LEFT_PAREN nested_expression RIGHT_PAREN {pin=2}
 group_expr ::= LEFT_PAREN nested_expression RIGHT_PAREN
-literal_expr ::= NUMBER | STRING | CHARACTER | unfinished_character
+literal_expr ::= NUMBER | quoted_operand | CHARACTER | unfinished_character
+// The assembler decides whether an unfinished quote is an error in the active context.
+private quoted_operand ::= STRING | UNCLOSED_STRING
 private unfinished_character ::= <<recoverCharacterLiteral>>
 reference_expr ::= WORD | MNEMONIC | REGISTER | DOLLAR_WORD | PARAMETER | DIRECTIVE | SET
 
