@@ -98,9 +98,14 @@ object MipsScanner {
                     } else break
                 }
                 when {
+                    // A leading dot also starts identifiers. Only a complete decimal takes priority.
+                    first == '.' -> if (numeric && source.subSequence(start, position).toString().toDoubleOrNull() != null) {
+                        MipsTokenKind.NUMBER
+                    } else {
+                        MipsTokenKind.DIRECTIVE
+                    }
                     numeric -> MipsTokenKind.NUMBER
                     first == '$' -> MipsTokenKind.REGISTER
-                    first == '.' -> MipsTokenKind.DIRECTIVE
                     else -> MipsTokenKind.WORD
                 }
             }

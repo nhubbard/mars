@@ -31,6 +31,7 @@ class MipsScannerTest {
             ".text" to MipsTokenKind.DIRECTIVE, "$" + "a0" to MipsTokenKind.REGISTER,
             "%arg" to MipsTokenKind.PARAMETER, "12" to MipsTokenKind.NUMBER, "0" to MipsTokenKind.NUMBER, "012" to MipsTokenKind.NUMBER,
             ".5e-2" to MipsTokenKind.NUMBER, "1.0E+5" to MipsTokenKind.NUMBER,
+            ".1_count" to MipsTokenKind.DIRECTIVE, ".5e" to MipsTokenKind.DIRECTIVE, ".5f" to MipsTokenKind.NUMBER,
             "0x1e" to MipsTokenKind.NUMBER, "0XFF" to MipsTokenKind.NUMBER,
             "\"# not a comment\"" to MipsTokenKind.STRING, "'a'" to MipsTokenKind.CHARACTER,
             "\"open" to MipsTokenKind.UNCLOSED_STRING, "'open" to MipsTokenKind.UNCLOSED_CHARACTER,

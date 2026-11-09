@@ -29,6 +29,9 @@ not assert that its registers, argument types, symbols or segment usage are sema
 Real PSI tests cover every canonical basic/pseudo-instruction example, every program in the core
 assembly corpus, directive/macro variants, malformed lines, truncated input, native syntax entry
 points, file associations, lexer restoration and highlighting.
+Names beginning with a dot and digit, such as `.1_count`, retain their identifier role unless
+the full token is a decimal literal. An assembler-backed fixture verifies these names in label
+declarations and references, macro definitions and invocations, and equivalence definitions.
 
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.

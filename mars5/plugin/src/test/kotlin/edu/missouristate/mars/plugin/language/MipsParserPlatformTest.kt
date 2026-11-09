@@ -457,6 +457,40 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `dot-prefixed names containing digits stay distinct from decimal literals`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv .1_count 7
+            .macro .2_load (%value)
+              addiu ${'$'}t0, ${'$'}zero, %value
+            .end_macro
+            .data
+            .3_data: .float .5e-2
+            .word .3_data
+            .text
+            .4_entry: .2_load(.1_count)
+            la ${'$'}t1, .3_data
+            j .4_entry
+        """.trimIndent()
+        val entry = directory.resolve("dotted-names.asm").also { it.writeText(source) }
+        val context = project.get().service<MarsSessionService>().context
+        val program = context.assemble(listOf(entry), null, true, false)
+        assertEquals(0x24080007, program.machineList.first().binaryStatement)
+        val memory = context.memory
+        val base = memory.dataBaseAddress
+        assertEquals(0.005f.toBits(), memory.getWordNoNotify(base))
+        assertEquals(base, memory.getWordNoNotify(base + 4))
+        readAction {
+            val root = assertParses(source).node
+            assertEquals(listOf(".3_data:", ".4_entry:"), descendants(root, "LABEL").map { it.text }.toList())
+            assertEquals(".2_load (%value)", descendants(root, "MACRO_SIGNATURE").single().text)
+            assertEquals(".2_load(.1_count)", descendants(root, "OPERATION_CANDIDATE").single().text)
+            assertEquals(listOf(".3_data", ".3_data", ".4_entry"),
+                descendants(root, "REFERENCE_EXPR").map { it.text }.filter { it.startsWith('.') }.toList())
+            assertEquals(listOf(".5e-2"), descendants(root, "LITERAL_EXPR").map { it.text }.toList())
+        }
+    }
+
+    @Test
     fun `double-quoted data follows assembler quote boundaries`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val first = "\"A" + "\\\\" + "\"#B\""
         val second = "\"C" + "\\\\" + "\""
