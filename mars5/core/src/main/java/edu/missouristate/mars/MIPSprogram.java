@@ -148,7 +148,7 @@ public class MIPSprogram implements Program {
   public Path getIncludeIdentity() {
     Path path = Path.of(filename).toAbsolutePath();
     if (sourceSnapshot != null) {
-      return path;
+      return sourceSnapshot.includeIdentity(path);
     }
     try {
       // Keep the final name. A file symlink's relative includes still start beside that link.

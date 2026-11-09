@@ -683,6 +683,29 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void capturedIncludeIdentitiesDetectCyclesWithoutResolvingPathsOnDisk() {
+    var main = directory.resolve("main.s");
+    var outer = directory.resolve("parts/outer.s");
+    var alias = directory.resolve("parts/shortcut/main.s");
+    var snapshot = new AssemblySourceSnapshot(
+        List.of(main),
+        Map.of(
+            main, ".include \"parts/outer.s\"\n",
+            outer, "# nested\n.include \"shortcut/main.s\"\n",
+            alias, ".include \"parts/outer.s\"\n"),
+        Map.of(outer, outer, alias, alias),
+        Map.of(alias, main));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.file()).isEqualTo(outer);
+        assertThat(error.line()).isEqualTo(2);
+        assertThat(error.message()).contains("Recursive include of file", alias.toString());
+      });
+    }
+  }
+
+  @Test
   void capturedSourceAliasesCannotBypassIncludeRecursionChecks() {
     var main = directory.resolve("main.s");
     var snapshot = new AssemblySourceSnapshot(List.of(main),
