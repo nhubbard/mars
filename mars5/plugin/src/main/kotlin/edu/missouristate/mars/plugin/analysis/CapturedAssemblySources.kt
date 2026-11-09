@@ -4,7 +4,11 @@ import com.intellij.openapi.application.readAction
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
@@ -29,7 +33,9 @@ internal suspend fun captureAssemblySources(entries: List<Path>, exceptionHandle
     readAction { collectAssemblySources(entries, exceptionHandler) }
 
 /** Called with read access by Build or by IntelliJ's external highlighting pass. */
-internal fun collectAssemblySources(entries: List<Path>, exceptionHandler: Path?): CapturedAssemblySources {
+internal fun collectAssemblySources(
+    entries: List<Path>, exceptionHandler: Path?, onDependency: (Any) -> Unit = {},
+): CapturedAssemblySources {
     val ordered = entries.map { it.toAbsolutePath().normalize() }
     val handler = exceptionHandler?.toAbsolutePath()?.normalize()
     val files = VirtualFileManager.getInstance()
@@ -44,7 +50,10 @@ internal fun collectAssemblySources(entries: List<Path>, exceptionHandler: Path?
         ProgressManager.checkCanceled()
         val path = pending.removeFirst()
         if (!visited.add(path)) continue
-        val document = files.findFileByNioPath(path)?.let(documents::getDocument) ?: continue
+        val file = files.findFileByNioPath(path) ?: continue
+        val document = documents.getDocument(file)
+        onDependency(document ?: file)
+        if (document == null) continue
         val text = document.text
         texts[path] = text
         revisions[path] = document.modificationStamp
@@ -60,6 +69,18 @@ internal fun collectAssemblySources(entries: List<Path>, exceptionHandler: Path?
         }
     }
     return CapturedAssemblySources(AssemblySourceSnapshot(ordered, texts), handler, copyOfMap(revisions))
+}
+
+/** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */
+internal fun collectBackgroundAssemblySources(project: Project, entry: Path): CapturedAssemblySources {
+    val file = VirtualFileManager.getInstance().findFileByNioPath(entry)
+    val psi = file?.let(PsiManager.getInstance(project)::findFile)
+        ?: return collectAssemblySources(listOf(entry), null)
+    return CachedValuesManager.getCachedValue(psi) {
+        val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS)
+        val captured = collectAssemblySources(listOf(psi.virtualFile.toNioPath()), null) { dependencies.add(it) }
+        CachedValueProvider.Result.create(captured, dependencies)
+    }
 }
 
 internal suspend fun CapturedAssemblySources.assembleIn(component: MarsComponent): AssemblyResult {

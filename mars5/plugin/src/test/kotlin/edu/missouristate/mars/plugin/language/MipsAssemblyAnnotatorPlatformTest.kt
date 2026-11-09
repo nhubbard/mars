@@ -31,6 +31,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -43,6 +44,43 @@ class MipsAssemblyAnnotatorPlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val annotator = MipsAssemblyAnnotator()
+
+    @Test
+    fun `entry and include editors reuse one captured assembly until a source changes`() = timeoutRunBlocking<Unit> {
+        val (main, include) = withContext(Dispatchers.EDT) {
+            val part = fixture.addFileToProject("part.s", "j missing\n") as MipsFile
+            val entry = fixture.addFileToProject("entry.s", ".set noat\n.include \"part.s\"\n") as MipsFile
+            entry to part
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        suspend fun collect(file: MipsFile) = readAction { annotator.collectInformation(file)!! }
+        suspend fun analyze(input: MipsAssemblyAnnotator.Input) =
+            withContext(Dispatchers.Default) { annotator.doAnnotate(input) }
+
+        val entryInput = collect(main)
+        val partInput = collect(include)
+        assertSame(entryInput.sources, partInput.sources)
+        val entryResult = analyze(entryInput)
+        val partResult = analyze(partInput)
+        assertSame(entryResult.outcome, partResult.outcome)
+        assertTrue(entryResult.diagnostics.single().isWarning)
+        assertTrue(partResult.diagnostics.single().message().contains("missing"))
+        assertNull(partResult.symbols)
+
+        withContext(Dispatchers.EDT) { edit(include.virtualFile, "defined: nop\n") }
+        val changed = collect(include)
+        assertNotSame(partInput.sources, changed.sources)
+        val corrected = analyze(changed)
+        assertNotSame(partResult.outcome, corrected.outcome)
+        assertTrue(corrected.diagnostics.isEmpty())
+        assertEquals(setOf("defined"), corrected.symbols?.localSymbols?.keys)
+        assertSame(corrected.outcome, analyze(collect(main)).outcome)
+
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("new-file.txt", "") }
+        val afterCreation = collect(main)
+        assertEquals(changed.sources.revisions, afterCreation.sources.revisions)
+        assertNotSame(corrected.outcome, analyze(afterCreation).outcome)
+    }
 
     @Test
     fun `background highlighting makes generated labels available without a build`() = timeoutRunBlocking<Unit> {
@@ -181,7 +219,8 @@ class MipsAssemblyAnnotatorPlatformTest {
         val original = analyze(input)
         assertEquals(TextRange(2, 9), current(original).single().second)
         val unknownPosition = AssemblyError(input.source, 99, 0, "unknown position", false)
-        assertEquals(1, current(original.copy(diagnostics = original.diagnostics + unknownPosition)).size)
+        val incomplete = original.outcome.copy(diagnostics = mapOf(input.source to (original.diagnostics + unknownPosition)))
+        assertEquals(1, current(original.copy(outcome = incomplete)).size)
         val cancelled = async(Dispatchers.Default) {
             currentCoroutineContext().job.cancel()
             assertThrows<ProcessCanceledException> { annotator.doAnnotate(input) }
@@ -217,6 +256,10 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertTrue(current(switched).isEmpty())
 
         withContext(Dispatchers.EDT) { edit(other, "nop\n") }
+        assertEquals(listOf(main.toNioPath()), collect()!!.sources.snapshot.entries())
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(project) { other.delete(this) }
+        }
         assertEquals(listOf(main.toNioPath()), collect()!!.sources.snapshot.entries())
     }
 

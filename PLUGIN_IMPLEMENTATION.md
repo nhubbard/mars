@@ -235,6 +235,11 @@ editor for their physical source file. The pass leaves Build output and running 
 independent. IntelliJ schedules the pass after its ordinary syntax analysis and cancels
 obsolete editor work.
 
+Editors in the same assembly reuse the entry's captured sources through IntelliJ's
+document and VFS dependencies. A bounded project cache also reuses the completed
+assembly for matching source revisions. It keeps warnings and errors grouped by
+physical file, so sharing the work still gives each editor its own diagnostics.
+
 For an include, diagnostics use the selected entry or infer it when there is exactly one
 containing root. An ambiguous include needs an explicit entry. Before marking source,
 the pass checks that the entry and source revisions are still current. Reverse include

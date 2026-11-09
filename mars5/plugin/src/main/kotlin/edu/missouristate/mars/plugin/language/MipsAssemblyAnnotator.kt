@@ -5,17 +5,15 @@ import com.intellij.lang.annotation.ExternalAnnotator
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiFile
 import edu.missouristate.mars.api.AssemblyError
-import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.analysis.AssemblySymbols
+import edu.missouristate.mars.plugin.analysis.BackgroundAssemblyMemo
+import edu.missouristate.mars.plugin.analysis.BackgroundAssemblyOutcome
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
-import edu.missouristate.mars.plugin.analysis.assembleIn
-import edu.missouristate.mars.plugin.analysis.collectAssemblySources
+import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.analysis.validateSourceDocuments
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
@@ -28,33 +26,28 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
         val selectedEntry: Path?,
         val sources: CapturedAssemblySources,
         val structureStamp: Long,
+        val assembly: BackgroundAssemblyMemo,
     )
 
-    data class Result(val input: Input, val diagnostics: List<AssemblyError>, val symbols: AssemblySymbols?)
+    data class Result(val input: Input, val outcome: BackgroundAssemblyOutcome) {
+        val diagnostics = outcome.diagnostics[input.source].orEmpty()
+        val symbols = outcome.symbols
+    }
 
     override fun collectInformation(psiFile: PsiFile): Input? {
         val file = psiFile as? MipsFile ?: return null
         val virtualFile = file.viewProvider.virtualFile
         if (!virtualFile.isInLocalFileSystem) return null
         val source = virtualFile.toNioPath().toAbsolutePath().normalize()
-        val selected = file.project.service<MarsAnalysisService>().selectedAssemblyEntry(file)
-        val explicit = selected?.let { collectAssemblySources(listOf(it), null) }?.takeIf { source in it.revisions }
-        val sources = explicit ?: collectAssemblySources(listOf(inferredMipsAssemblyEntry(file) ?: return null), null)
-        return Input(source, selected, sources, VirtualFileManager.getInstance().structureModificationCount)
+        val analysis = file.project.service<MarsAnalysisService>()
+        val selected = analysis.selectedAssemblyEntry(file)
+        val explicit = selected?.let { collectBackgroundAssemblySources(file.project, it) }?.takeIf { source in it.revisions }
+        val sources = explicit ?: collectBackgroundAssemblySources(file.project, inferredMipsAssemblyEntry(file) ?: return null)
+        return Input(source, selected, sources, VirtualFileManager.getInstance().structureModificationCount, analysis.backgroundAssembly)
     }
 
-    override fun doAnnotate(collectedInfo: Input): Result {
-        ProgressManager.checkCanceled()
-        val component = MarsSessionService.createMarsComponent()
-        val result = component.context().use {
-            collectedInfo.sources.assembleIn(component, ProgressManager::checkCanceled)
-        }
-        val sources = collectedInfo.sources
-        val symbols = result.program()?.let {
-            AssemblySymbols(sources.snapshot.entries().single(), sources.revisions, it.symbolMap(), sources.snapshot.texts())
-        }
-        return Result(collectedInfo, result.errors().filter { it.file() == collectedInfo.source }, symbols)
-    }
+    override fun doAnnotate(collectedInfo: Input): Result =
+        Result(collectedInfo, collectedInfo.assembly.assemble(collectedInfo.sources, collectedInfo.structureStamp))
 
     override fun apply(psiFile: PsiFile, annotationResult: Result, holder: AnnotationHolder) {
         for ((diagnostic, range) in acceptResult(psiFile as MipsFile, annotationResult)) {

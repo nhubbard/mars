@@ -54,6 +54,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private val coordinator = AnalysisCoordinator(scope)
     private val lastBuild = AtomicReference<BuildSelection>()
     private val backgroundSymbols = SLRUMap<Path, AssemblySymbols>(0, 8)
+    internal val backgroundAssembly = BackgroundAssemblyMemo()
 
     val snapshot: PublishedAnalysis get() = coordinator.snapshot
 
@@ -458,6 +459,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     override fun dispose() {
         coordinator.close()
+        backgroundAssembly.clear()
         synchronized(backgroundSymbols) { backgroundSymbols.clear() }
     }
 }
