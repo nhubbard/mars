@@ -330,6 +330,29 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `comma free signed data has the same operand boundaries as the assembler`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .data
+            values: .word 1 -2 +3
+                4-5+6
+                'a'-7
+            .float 1.25-2.5+3e-1
+            .text
+            addiu ${'$'}t0 ${'$'}zero-2
+        """.trimIndent()
+        assertAssembles(directory, source, 0x2408fffe)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        val expected = listOf(1, -2, 3, 4, -5, 6, 'a'.code, -7, 1.25f.toBits(), (-2.5f).toBits(), 0.3f.toBits())
+        assertEquals(expected, expected.indices.map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
+        readAction {
+            val file = assertParses(source)
+            assertEquals(listOf("1", "-2", "+3", "4", "-5", "+6", "'a'", "-7", "1.25", "-2.5", "+3e-1", "\$t0", "\$zero", "-2"),
+                descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertTrue(descendants(file.node, "ADD_EXPR").none())
+        }
+    }
+
+    @Test
     fun `registered native Kotlin parser accepts every canonical instruction example`() = timeoutRunBlocking<Unit> {
         val instructions = InstructionSet().also { it.populate() }
         assertTrue(instructions.instructionList.size > 155, "The basic and pseudo-instruction catalogs must both be populated")
@@ -603,12 +626,12 @@ class MipsParserPlatformTest {
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
             for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".asciiz \"open", ".eqv", ".eqv ,,, 7", ".macro foo (1",
-                ".word 1 != 2", ".word 1 <= 2")) {
+                ".word 1 != 2", ".word 1 <= 2", ".word (1+2)")) {
                 val text = broken + "\nnext: nop\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("broken.asm", MipsFileType, text)
                 assertEquals(text, file.text)
                 assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(), broken)
-                assertTrue(file.node.text.contains("next: nop"))
+                assertEquals("nop", descendants(file.node, "INSTRUCTION").last().text)
             }
         }
     }
@@ -646,7 +669,7 @@ class MipsParserPlatformTest {
             "first: second: nop\nlast:\nLİ \$v0, 1\nB NOP\n.ent ignored, +\n",
             ".word\n.word 1,2,\n.data\n.word 1\n 2 -3 +4\n \"text\" 'a'\n",
             ".macro m(%x,%y)\n lw \$t0,%x(%y)\n.end_macro\nm()\nm(1,2,)\n",
-            "lw \$t0, (\$sp)\n.word (1+2)-3\n.word +(-2)\n",
+            "lw \$t0, (\$sp)\n.word (1 + 2) - 3\n.word +(-2)\n",
             ".data\n.globl main\n.extern name,4\n.align 2\n.space 8\n.half 0xffff\n.ascii \"x\"\n",
             ".kdata 0x90000000\n.ktext 0x80000180\n.set noat\n.include \"other.asm\"\n",
         )

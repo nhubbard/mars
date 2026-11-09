@@ -603,6 +603,15 @@ punctuation leaves and exact source text. A predicate on infix and postfix
 operators keeps a comma-delimited operand separate, including signed data
 values and parenthesized operands.
 
+For comma-free operands, the parser follows MARS's signed-token rule. A sign
+immediately followed by a digit begins a new operand after a number, register,
+or character literal. A sign after an identifier can still introduce a label
+offset. The debugger's expression entry point keeps ordinary arithmetic. An
+assembler-backed fixture compares the PSI operand spans and stored values for
+integer, character, and floating-point lists and continuation lines, then checks
+the machine encoding of an instruction with an adjacent signed immediate. The
+reference index rebuilds against the revised PSI boundaries.
+
 Assembler and PSI fixtures cover leading, repeated, trailing, and standalone
 commas in directives, macro signatures and invocations, instruction operands,
 and labels. The declaration and reference indexes rebuild with the updated

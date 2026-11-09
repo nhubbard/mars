@@ -25,6 +25,7 @@ import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.MipsLexer
 import edu.missouristate.mars.plugin.language.MipsSyntaxDefinition
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.syntax.DebuggerExpressionParsing
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.SendChannel
@@ -93,7 +94,7 @@ internal class MarsExpressionEvaluator(
         if (source.length > 1024 || source.any { it == '\r' || it == '\n' }) return null
         val file = PsiFileFactory.getInstance(project).createFileFromText("watch.asm", MipsFileType, "")
         val builder = PsiSyntaxBuilderFactory.getInstance().createBuilder(file.node, MipsLexer(debuggerExpression = true), text = source)
-        val runtime = createSyntaxGeneratedParserRuntime(MipsLanguage, builder.getSyntaxTreeBuilder())
+        val runtime = createSyntaxGeneratedParserRuntime(MipsLanguage, builder.getSyntaxTreeBuilder(), DebuggerExpressionParsing)
         MipsSyntaxDefinition().parse(MipsTypes.syntax.getValue("DEBUGGER_EXPRESSION"), runtime)
         val root = builder.getTreeBuilt()
         if (SyntaxTraverser.astTraverser(root).filterTypes { it == TokenType.ERROR_ELEMENT }.firstOrNull() != null) return null
