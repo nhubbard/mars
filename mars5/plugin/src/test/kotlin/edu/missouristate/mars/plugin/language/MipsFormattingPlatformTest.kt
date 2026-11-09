@@ -11,6 +11,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.codeStyle.LanguageCodeStyleSettingsProvider
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -83,7 +84,7 @@ class MipsFormattingPlatformTest {
                 lw ${'$'}t0, -4(${'$'}sp)
                 lw ${'$'}t1, OFFSET(${'$'}sp)
                 OP
-                local ( ${'$'}t0 , 2 )
+                local (${'$'}t0, 2)
                 emit( ${'$'}t0  ,  7 ) # invocation may also be a text substitution
             target: nop
                 j target
@@ -91,6 +92,51 @@ class MipsFormattingPlatformTest {
         assertEquals(expected, formatted)
         directory.resolve("macros.s").writeText(".macro emit (%reg, %value)\naddiu %reg, %reg, %value\n.end_macro\n")
         assertEquals(assemble(directory.resolve("before.asm"), source), assemble(directory.resolve("after.asm"), formatted))
+    }
+
+    @Test
+    fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv LOAD lw
+            .eqv CALL emit
+            .eqv OFFSET -4
+            .eqv BASE ${'$'}sp
+            .eqv CLOSE )
+            .eqv DEFINE .eqv
+            .eqv MARKER alias_label:
+            DEFINE KEEP 1,   2
+            .macro emit (%value)
+                li ${'$'}t1, %value
+            .end_macro
+            .macro discard (%a, %b, %c, %d, %e)
+                nop
+            .end_macro
+            .text
+            MARKER
+            LOAD  ${'$'}t0 , OFFSET  ( BASE )
+            LOAD  ${'$'}t2 , ( BASE )
+            CALL( OFFSET )
+            CALL ( OFFSET CLOSE
+            discard ignored .eqv RAW 1,   2
+            .eqv RAW 1,   2
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("alias-layout.asm", source)
+            DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
+                assertTrue("LOAD  ${'$'}t0 , OFFSET  ( BASE )" in reformat())
+            }
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertTrue("    LOAD ${'$'}t0, OFFSET(BASE)" in formatted, formatted)
+        assertTrue("    LOAD ${'$'}t2, (BASE)" in formatted, formatted)
+        assertTrue("    CALL(OFFSET)" in formatted, formatted)
+        assertTrue("    CALL (OFFSET CLOSE" in formatted, formatted)
+        assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
+        assertTrue("discard ignored .eqv RAW 1,   2" in formatted, formatted)
+        assertEquals(assemble(directory.resolve("alias-before.asm"), source),
+            assemble(directory.resolve("alias-after.asm"), formatted))
     }
 
     @Test
@@ -144,6 +190,7 @@ class MipsFormattingPlatformTest {
                 .text
                 entry   :   la ${'$'}t0 , message+4
                 malformed: )  6  (
+                unknown 'X,   7
                 lw ${'$'}t0 , 4  ( ${'$'}sp
                 lw ${'$'}t1  ,  0(${'$'}sp)
                 addiu ${'$'}t0, ${'$'}t0, - 4
@@ -156,6 +203,7 @@ class MipsFormattingPlatformTest {
             assertTrue("1-2+3" in result, result)
             assertTrue("entry: la ${'$'}t0, message+4" in result, result)
             assertTrue("malformed: )  6  (" in result, result)
+            assertTrue("unknown 'X,   7" in result, result)
             assertTrue("${'$'}t1  " in result, result)
             assertTrue("- 4" in result, result)
             assertTrue("next: nop" in result, result)

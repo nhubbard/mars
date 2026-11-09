@@ -7,6 +7,7 @@ import com.intellij.formatting.FormattingModelBuilder
 import com.intellij.formatting.Indent
 import com.intellij.formatting.Spacing
 import com.intellij.lang.ASTNode
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.TokenType
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
@@ -14,7 +15,11 @@ import com.intellij.psi.formatter.common.AbstractBlock
 import com.intellij.psi.impl.source.tree.TreeUtil
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
+import edu.missouristate.mars.assembler.TokenTypes
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
+import edu.missouristate.mars.plugin.language.operationHead
 
 internal class MipsFormattingModelBuilder : FormattingModelBuilder {
     override fun createModel(formattingContext: FormattingContext): FormattingModel {
@@ -26,13 +31,21 @@ internal class MipsFormattingModelBuilder : FormattingModelBuilder {
 
 private class MipsBlock(node: ASTNode, private val indent: Indent, private val source: CharSequence) :
     AbstractBlock(node, null, null) {
+    private val rawOperation = if (node.elementType == candidate) {
+        val owner = node.psi
+        val file = owner.containingFile as MipsFile
+        file.project.service<MarsAnalysisService>().formattingOperationType(file, owner.operationHead)
+    } else null
+
+    private fun isOpaque() = myNode.elementType in opaque ||
+        myNode.elementType == candidate && rawOperation !in formatOperations
 
     override fun getIndent() = indent
 
-    override fun isLeaf() = myNode.firstChildNode == null || myNode.elementType in opaque
+    override fun isLeaf() = myNode.firstChildNode == null || isOpaque()
 
     override fun buildChildren(): List<Block> =
-        if (myNode.elementType in opaque) emptyList() else myNode.getChildren(null).asSequence()
+        if (isOpaque()) emptyList() else myNode.getChildren(null).asSequence()
             .filter { it.textLength > 0 && it.elementType !in trivia }
             .map { MipsBlock(it, indentOf(it), source) }
             .toList()
@@ -64,7 +77,8 @@ private class MipsBlock(node: ASTNode, private val indent: Indent, private val s
             before in signs -> readOnly
             after in signs -> if (gap.length == 0) readOnly else oneSpace
             after in closingPunctuation || before == leftParen -> noSpaces
-            after == leftParen && myNode.elementType == address -> noSpaces
+            after == leftParen && (myNode.elementType == address ||
+                rawOperation == TokenTypes.OPERATOR && before in addressOffsets) -> noSpaces
             before == colon && myNode.elementType == repetition -> noSpaces
             before in separators || after == comment -> oneSpace
             gap.isNotEmpty() -> oneSpace
@@ -91,8 +105,11 @@ private class MipsBlock(node: ASTNode, private val indent: Indent, private val s
         val candidate = MipsTypes.psi("OPERATION_CANDIDATE")
         val executableHeads = TokenSet.create(MipsTypes.psi("INSTRUCTION"), candidate, MipsTypes.psi("DATA_CONTINUATION"))
         val protectedSpacing = TokenSet.create(replacement, TokenType.ERROR_ELEMENT)
-        // A raw operation can be an equivalence-generated directive or a macro invocation.
-        val opaque = TokenSet.create(candidate, replacement, MipsTypes.psi("OPERAND_FRAGMENT"),
+        val formatOperations = setOf(TokenTypes.OPERATOR, TokenTypes.IDENTIFIER)
+        val addressOffsets = TokenSet.create(MipsTypes.psi("NUMBER"), MipsTypes.psi("WORD"),
+            MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("PARAMETER"))
+        // A physical alias can represent several tokens. Apply spacing only at written boundaries.
+        val opaque = TokenSet.create(replacement, MipsTypes.psi("OPERAND_FRAGMENT"),
             MipsTypes.psi("INCLUDE_LINE"), TokenType.ERROR_ELEMENT)
 
         val readOnly: Spacing = Spacing.getReadOnlySpacing()

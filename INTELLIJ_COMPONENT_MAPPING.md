@@ -390,6 +390,11 @@ and macro indentation. For `.eqv` replacements and incomplete statements, retain
 that can change the expanded token sequence. Test formatting for idempotence and equivalent assembler output,
 including when replacements introduce an instruction, address, label separator, or macro boundary.
 
+For future formatter work, project the expanded structure of composite aliases onto the written tokens
+when an alias supplies a label separator, a segment directive, a macro boundary, or several operands.
+Apply spacing or indentation only at physical boundaries that preserve the assembler's token sequence
+and the stored replacement text. An alias spanning several roles should retain its own editor color.
+
 Diagnostic mapping must distinguish line/column conventions, UTF-16 editor offsets, byte encodings, tabs, and macro-origin chains.
 Do not assume assembler columns already equal IntelliJ offsets. Test non-ASCII text before the reported column.
 Every diagnostic carries the source identity and stamp used to compute it. Never apply ranges to a newer document blindly.

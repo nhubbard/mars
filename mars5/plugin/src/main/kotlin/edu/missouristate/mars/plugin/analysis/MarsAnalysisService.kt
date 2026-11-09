@@ -23,6 +23,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -308,16 +309,33 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val tokens = expansion.tokens().operationTokens()
         if (tokens.isEmpty) return null
         val operation = tokens[0]
-        val type = when {
-            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
-            recognizeMacros && operation.value in editorTimeline(root).macroNames &&
-                prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
-            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
-            else -> return null
-        }
+        val type = effectiveOperationType(operation, prefix, recognizeMacros) ?: return null
         val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
         return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
     }
+
+    internal fun formattingOperationType(root: MipsFile, head: PsiElement): TokenTypes? {
+        if (DumbService.isDumb(project)) return null
+        val prefix = editorPrefix(root, sourceLineStart(head))
+        val errors = ErrorList()
+        val expanded = Tokenizer.expandLine(
+            sourceLine(head, fromLineStart = true), errors,
+            { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+        )
+        // Even a macro call can record an equivalence as a tokenizer side effect.
+        if (errors.errorsOccurred() || expanded.definition() != null) return null
+        val tokens = expanded.tokens().operationTokens()
+        if (tokens.isEmpty) return null
+        return effectiveOperationType(tokens[0], prefix, recognizeMacros = true)
+    }
+
+    private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix, recognizeMacros: Boolean): TokenTypes? =
+        when {
+            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+            recognizeMacros && prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
+            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
+            else -> null
+        }
 
     internal fun isGeneratedLabel(root: MipsFile, element: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
