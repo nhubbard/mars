@@ -13,6 +13,7 @@ import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
 import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
+import edu.missouristate.mars.mips.instructions.BasicInstructionFormat;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
@@ -38,6 +39,7 @@ public final class InstructionContext {
   private final SyscallEnvironment environment;
   private int exitCode;
   private StepEvent.Transfer lastTransfer;
+  private StepEvent.BranchOutcome lastBranchOutcome;
 
   /** Uses a session's registers and a caller-supplied syscall I/O environment. */
   public InstructionContext(MarsContext session, SyscallEnvironment environment) {
@@ -95,6 +97,21 @@ public final class InstructionContext {
 
   public StepEvent.Transfer lastTransfer() {
     return lastTransfer;
+  }
+
+  public StepEvent.BranchOutcome lastBranchOutcome() {
+    return lastBranchOutcome;
+  }
+
+  /** Records a taken conditional branch and either executes or schedules its transfer. */
+  public void branch(int displacement) {
+    int target = registerFile.getProgramCounter() + (displacement << 2);
+    lastBranchOutcome = StepEvent.BranchOutcome.TAKEN;
+    if (settings().isDelayedBranchingEnabled()) {
+      delayedBranch.register(target);
+    } else {
+      setProgramCounter(target);
+    }
   }
 
   /** Executes or schedules an unconditional jump. Linking instructions already report a call. */
@@ -266,6 +283,7 @@ public final class InstructionContext {
       throws ProcessingException {
     Objects.requireNonNull(statement);
     lastTransfer = null;
+    lastBranchOutcome = null;
     BackStepper history = session.backStepper;
     boolean recording =
         history != null && history.beginInstruction(registerFile.getProgramCounter(), statement);
@@ -281,6 +299,10 @@ public final class InstructionContext {
               this, statement, "invalid instruction", Exceptions.RESERVED_INSTRUCTION_EXCEPTION);
         }
         instruction.getSimulationCode().simulate(statement, this);
+        if (instruction.getInstructionFormat() == BasicInstructionFormat.I_BRANCH_FORMAT
+            && lastBranchOutcome == null) {
+          lastBranchOutcome = StepEvent.BranchOutcome.NOT_TAKEN;
+        }
       } catch (ProcessingException error) {
         if (!dispatchHandler || error.errors() == null) {
           throw error;
@@ -296,6 +318,7 @@ public final class InstructionContext {
         setProgramCounter(memory().exceptionHandlerAddress);
         delayedBranch.clear();
         lastTransfer = StepEvent.ExceptionEntry.INSTANCE;
+        lastBranchOutcome = null;
       }
       completeInstruction();
     } finally {

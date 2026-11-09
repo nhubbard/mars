@@ -10,12 +10,7 @@ import edu.missouristate.mars.simulator.Exceptions;
 class InstrHelpers {
 
   static void processBranch(InstructionContext context, int displacement) {
-    if (context.settings().isDelayedBranchingEnabled()) {
-      context.delayedBranch.register(
-          context.registerFile.getProgramCounter() + (displacement << 2));
-    } else {
-      context.setProgramCounter(context.registerFile.getProgramCounter() + (displacement << 2));
-    }
+    context.branch(displacement);
   }
 
   static void processReturnAddress(InstructionContext context, int register) {

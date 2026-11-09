@@ -149,7 +149,8 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
         if (result.executed()) {
           steps++;
           stepCount++;
-          var event = new StepEvent(result.pc(), result.instruction(), stepCount, result.transfer());
+          var event = new StepEvent(
+              result.pc(), result.instruction(), stepCount, result.transfer(), result.branchOutcome());
           notifyListeners(listener -> listener.onStep(event));
         }
         if (result.stopReason() != null) {

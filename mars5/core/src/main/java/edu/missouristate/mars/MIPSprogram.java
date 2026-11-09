@@ -588,9 +588,16 @@ public class MIPSprogram implements Program {
       int instruction,
       boolean executed,
       StopEvent.Reason stopReason,
-      StepEvent.Transfer transfer) {
+      StepEvent.Transfer transfer,
+      StepEvent.BranchOutcome branchOutcome) {
     public ExecutionStep(int pc, int instruction, boolean executed, StopEvent.Reason stopReason) {
       this(pc, instruction, executed, stopReason, null);
+    }
+
+    public ExecutionStep(
+        int pc, int instruction, boolean executed, StopEvent.Reason stopReason,
+        StepEvent.Transfer transfer) {
+      this(pc, instruction, executed, stopReason, transfer, null);
     }
   }
 
@@ -644,7 +651,8 @@ public class MIPSprogram implements Program {
           pc, statement.getBinaryStatement(), true, StopEvent.Reason.NORMAL_EXIT);
     }
     return new ExecutionStep(
-        pc, statement.getBinaryStatement(), true, null, sessionExecution.lastTransfer());
+        pc, statement.getBinaryStatement(), true, null, sessionExecution.lastTransfer(),
+        sessionExecution.lastBranchOutcome());
   }
 
   /** Synchronous, frontend-independent execution for a session-owned program. */

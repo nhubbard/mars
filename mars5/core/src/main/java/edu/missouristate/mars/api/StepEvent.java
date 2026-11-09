@@ -7,10 +7,21 @@ package edu.missouristate.mars.api;
  * @param instruction the 32-bit machine-code word that executed
  * @param stepCount total number of instructions executed so far in this run
  * @param transfer observed call, completed non-linking jump, or exception transfer
+ * @param branchOutcome conditional branch decision at this instruction, before any delay slot
  */
-public record StepEvent(int pc, int instruction, long stepCount, Transfer transfer) {
+public record StepEvent(
+    int pc, int instruction, long stepCount, Transfer transfer, BranchOutcome branchOutcome) {
   public StepEvent(int pc, int instruction, long stepCount) {
     this(pc, instruction, stepCount, null);
+  }
+
+  public StepEvent(int pc, int instruction, long stepCount, Transfer transfer) {
+    this(pc, instruction, stepCount, transfer, null);
+  }
+
+  public enum BranchOutcome {
+    TAKEN,
+    NOT_TAKEN
   }
 
   public sealed interface Transfer permits Call, Jump, ExceptionEntry, ExceptionReturn {}

@@ -3,9 +3,11 @@ package edu.missouristate.mars;
 import static org.assertj.core.api.Assertions.*;
 
 import edu.missouristate.mars.api.*;
+import edu.missouristate.mars.api.StepEvent.BranchOutcome;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.simulator.Exceptions;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -140,7 +142,9 @@ class SimulatorEngineTest {
       assertThat(events.getLast()).isEqualTo(new StopEvent(StopEvent.Reason.BACKSTEP, 0));
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
       assertThat(events.get(events.size() - 2)).isEqualTo(
-          new StepEvent(entry, session.memory.getStatementNoNotify(entry).getBinaryStatement(), 4));
+          new StepEvent(
+              entry, session.memory.getStatementNoNotify(entry).getBinaryStatement(), 4,
+              null, BranchOutcome.TAKEN));
     }
   }
 
@@ -215,15 +219,51 @@ class SimulatorEngineTest {
       engine.addListener(listener(events));
       int entry = session.registerFile.getPC();
       engine.runAsync(4, null).get(5, TimeUnit.SECONDS);
-      var transfers =
+      var steps =
           events.stream()
               .filter(StepEvent.class::isInstance)
               .map(StepEvent.class::cast)
-              .map(StepEvent::transfer)
               .toList();
       int returnAddress = entry + (delayedBranching ? 20 : 16);
-      assertThat(transfers).containsExactly(null, null, null, new StepEvent.Call(31, returnAddress));
+      assertThat(steps).extracting(StepEvent::transfer)
+          .containsExactly(null, null, null, new StepEvent.Call(31, returnAddress));
+      assertThat(steps).extracting(StepEvent::branchOutcome)
+          .containsExactly(null, BranchOutcome.NOT_TAKEN, null, BranchOutcome.TAKEN);
       assertThat(session.registerFile.getValue(31)).isEqualTo(returnAddress);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void branchToTheNextInstructionReportsTakenEvenWhenTheProgramCounterLooksSequential(boolean delayed)
+      throws Exception {
+    try (var session = load(".text\nbeq $zero,$zero,next\nnext: nop\n")) {
+      session.settings.setDelayedBranchingEnabled(delayed);
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      int entry = session.registerFile.getPC();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.registerFile.getPC()).isEqualTo(entry + 4);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      engine.runAsync(2, null).get(5, TimeUnit.SECONDS);
+      assertThat(events.stream().filter(StepEvent.class::isInstance).map(StepEvent.class::cast))
+          .extracting(StepEvent::branchOutcome)
+          .containsExactly(BranchOutcome.TAKEN, BranchOutcome.TAKEN, null);
+    }
+  }
+
+  @Test
+  void interruptBeforeABranchDoesNotReportAnOutcome() throws Exception {
+    try (var session = load(".text\nloop: beq $zero,$zero,loop\n.ktext 0x80000180\nnop\n")) {
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      session.requestExternalInterrupt(Exceptions.EXTERNAL_INTERRUPT_KEYBOARD);
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      var event = (StepEvent) events.getFirst();
+      assertThat(event.transfer()).isEqualTo(StepEvent.ExceptionEntry.INSTANCE);
+      assertThat(event.branchOutcome()).isNull();
     }
   }
 
