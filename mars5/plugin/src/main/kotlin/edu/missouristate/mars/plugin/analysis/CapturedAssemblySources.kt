@@ -6,11 +6,14 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.CachedValue
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
+import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
@@ -30,6 +33,8 @@ internal data class CapturedAssemblySources(
     val snapshot: AssemblySourceSnapshot,
     val exceptionHandler: Path?,
     val revisions: Map<Path, Long>,
+    val rootsBySource: Map<Path, Path>,
+    val directoryStamp: Long? = null,
 )
 
 internal data class EditorAssemblyCapture(
@@ -43,7 +48,7 @@ internal data class EditorAssemblyCapture(
         if (VirtualFileManager.getInstance().structureModificationCount != structureStamp) return false
         val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
         if (selected != selectedAssembly) return false
-        val entry = sources.snapshot.entries().single()
+        val entry = sources.snapshot.entries().first()
         if (entry != selected?.entry && entry != inferredMipsAssemblyEntry(file)) return false
         return sources.revisions.validateSourceDocuments(accept)
     }
@@ -56,7 +61,7 @@ internal fun collectEditorAssembly(file: MipsFile): EditorAssemblyCapture? {
     val source = virtualFile.toNioPath().toAbsolutePath().normalize()
     val selected = file.project.service<MarsAnalysisService>().selectedAssembly(file)
     val explicit = selected?.let { selection ->
-        collectBackgroundAssemblySources(file.project, selection.entry).takeIf { source in it.revisions }
+        collectBackgroundAssemblySources(file.project, selection.entry, selection.directory).takeIf { source in it.revisions }
             ?.let { it to selection.options }
     }
     val (sources, options) = explicit ?: (
@@ -76,6 +81,28 @@ private data class IncludeCursor(val path: Path, val lines: Iterator<String>)
 internal suspend fun captureAssemblySources(entries: List<Path>, exceptionHandler: Path?): CapturedAssemblySources =
     readAction { collectAssemblySources(entries, exceptionHandler) }
 
+internal suspend fun captureBuildSources(entry: Path, directory: Boolean): CapturedAssemblySources =
+    readAction { collectBuildSources(entry, directory) }
+
+private fun collectBuildSources(
+    entry: Path, directory: Boolean, onDependency: (Any) -> Unit = {},
+): CapturedAssemblySources {
+    if (!directory) return collectAssemblySources(listOf(entry), null, onDependency)
+    val root = entry.toAbsolutePath().normalize()
+    val vfs = VirtualFileManager.getInstance()
+    val siblings = vfs.findFileByNioPath(root.parent)?.children.orEmpty().asSequence()
+        .filter { it.isAssemblyDirectorySource() }
+        .map { it.toNioPath().toAbsolutePath().normalize() }
+        .filter { it != root }
+        .sortedBy { it.fileName.toString() }
+        .toList()
+    return collectAssemblySources(listOf(root) + siblings, null, onDependency)
+        .copy(directoryStamp = vfs.structureModificationCount)
+}
+
+internal fun VirtualFile.isAssemblyDirectorySource(): Boolean =
+    !isDirectory && extension?.lowercase() in ApplicationInfo.fileExtensions
+
 /** Called with read access by Build or by IntelliJ's external highlighting pass. */
 internal fun collectAssemblySources(
     entries: List<Path>, exceptionHandler: Path?, onDependency: (Any) -> Unit = {},
@@ -85,6 +112,7 @@ internal fun collectAssemblySources(
     val files = VirtualFileManager.getInstance()
     val documents = FileDocumentManager.getInstance()
     val captured = HashMap<Path, SourceDocument>()
+    val rootsBySource = (ordered + listOfNotNull(handler)).associateWithTo(HashMap()) { it }
     val resolvedIncludes = HashMap<Path, Path>()
     val tokenizer = Tokenizer()
 
@@ -106,6 +134,7 @@ internal fun collectAssemblySources(
         val pending = ArrayDeque<IncludeCursor>()
         fun enter(path: Path) {
             val source = capture(path) ?: return
+            rootsBySource.putIfAbsent(path, root)
             if (seen.add(source.identity)) pending.addLast(IncludeCursor(path, source.text.lineSequence().iterator()))
         }
 
@@ -133,17 +162,21 @@ internal fun collectAssemblySources(
     val snapshot = AssemblySourceSnapshot(
         ordered, captured.mapValues { it.value.text }, resolvedIncludes, captured.mapValues { it.value.identity },
     )
-    return CapturedAssemblySources(snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }))
+    return CapturedAssemblySources(snapshot, handler, copyOfMap(captured.mapValues { it.value.revision }), copyOfMap(rootsBySource))
 }
 
 /** Highlighting can reuse capture across editors until an input document or the VFS structure changes. */
-internal fun collectBackgroundAssemblySources(project: Project, entry: Path): CapturedAssemblySources {
+private val singleCaptureKey = Key.create<CachedValue<CapturedAssemblySources>>("mars.single.assembly.sources")
+private val directoryCaptureKey = Key.create<CachedValue<CapturedAssemblySources>>("mars.directory.assembly.sources")
+
+internal fun collectBackgroundAssemblySources(project: Project, entry: Path, directory: Boolean = false): CapturedAssemblySources {
     val file = VirtualFileManager.getInstance().findFileByNioPath(entry)
     val psi = file?.let(PsiManager.getInstance(project)::findFile)
-        ?: return collectAssemblySources(listOf(entry), null)
-    return CachedValuesManager.getCachedValue(psi) {
+        ?: return collectBuildSources(entry, directory)
+    val key = if (directory) directoryCaptureKey else singleCaptureKey
+    return CachedValuesManager.getCachedValue(psi, key) {
         val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS)
-        val captured = collectAssemblySources(listOf(psi.virtualFile.toNioPath()), null) { dependencies.add(it) }
+        val captured = collectBuildSources(psi.virtualFile.toNioPath(), directory) { dependencies.add(it) }
         CachedValueProvider.Result.create(captured, dependencies)
     }
 }

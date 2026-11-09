@@ -120,6 +120,49 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `native Run links an unsaved sibling when directory mode is enabled`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        val recording = Recording()
+        try {
+            val include = withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("main.asm", """
+                    lw ${'$'}a0, VALUE
+                    li ${'$'}v0, 1
+                    syscall
+                    li ${'$'}a0, 9
+                    li ${'$'}v0, 17
+                    syscall
+                """.trimIndent())
+                val include = fixture.addFileToProject("value.s", ".data\n.globl VALUE\nVALUE: .word 1\n").virtualFile
+                val document = FileDocumentManager.getInstance().getDocument(include)!!
+                WriteCommandAction.runWriteCommandAction(project) { document.setText(".data\n.globl VALUE\nVALUE: .word 42\n") }
+
+                val context = ConfigurationContext.createEmptyContextForLocation(PsiLocation.fromPsiElement(source))
+                val producer = RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+                val config = assertInstanceOf(MarsRunConfiguration::class.java, producer.createConfigurationFromContext(context)?.configuration)
+                assertEquals("main", config.name)
+                assertTrue(producer.isConfigurationFromContext(config, context))
+                config.options.assembleDirectory = true
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                val runner = assertInstanceOf(MarsRunRunner::class.java, environment.runner)
+                project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env === environment) handler.addProcessListener(recording)
+                    }
+                })
+                runner.execute(environment)
+                include.toNioPath()
+            }
+            assertEquals(9, recording.exit.await())
+            assertEquals("42", recording.stdout.toString())
+            assertEquals("", recording.stderr.toString())
+            assertEquals(".data\n.globl VALUE\nVALUE: .word 1\n", Files.readString(include))
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `native Run applies delay slots only to the configuration that enables them`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("delay.asm", """
@@ -256,6 +299,7 @@ class MarsRunPlatformTest {
             }
             config.options.sourcePath = source.virtualFile.path
             config.options.delayedBranching = true
+            config.options.assembleDirectory = true
             config.options.selfModifyingCode = true
             config.options.captureBitmap = true
             config.options.captureReferences = true
@@ -279,6 +323,7 @@ class MarsRunPlatformTest {
             restored.readExternal(state)
             assertEquals(config.options.sourcePath, restored.options.sourcePath)
             assertTrue(restored.options.delayedBranching)
+            assertTrue(restored.options.assembleDirectory)
             assertTrue(restored.options.selfModifyingCode)
             assertTrue(restored.options.captureBitmap)
             assertTrue(restored.options.captureReferences)
@@ -289,6 +334,7 @@ class MarsRunPlatformTest {
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
             assertFalse(previousConfiguration.options.delayedBranching)
+            assertFalse(previousConfiguration.options.assembleDirectory)
             assertFalse(previousConfiguration.options.selfModifyingCode)
             assertFalse(previousConfiguration.options.captureBitmap)
             assertFalse(previousConfiguration.options.captureReferences)
@@ -302,6 +348,7 @@ class MarsRunPlatformTest {
                 assertEquals("", UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!.text)
                 val flags = UIUtil.findComponentsOfType(editor.component, JCheckBox::class.java).associateBy { it.text }
                 val delay = flags.getValue("Enable delayed branching")
+                val directory = flags.getValue("Assemble other MIPS files in the source directory")
                 val modify = flags.getValue("Allow self-modifying code")
                 val capture = flags.getValue("Capture Bitmap Display from launch")
                 val references = flags.getValue("Capture memory references from launch")
@@ -310,6 +357,7 @@ class MarsRunPlatformTest {
                 val marsBot = flags.getValue("Connect MarsBot from launch")
                 val hunt = flags.getValue("Connect Scavenger Hunt from launch")
                 assertFalse(delay.isSelected)
+                assertFalse(directory.isSelected)
                 assertFalse(modify.isSelected)
                 assertFalse(capture.isSelected)
                 assertFalse(references.isSelected)
@@ -319,6 +367,7 @@ class MarsRunPlatformTest {
                 assertFalse(hunt.isSelected)
                 editor.resetFrom(restored)
                 assertTrue(delay.isSelected)
+                assertTrue(directory.isSelected)
                 assertTrue(modify.isSelected)
                 assertTrue(capture.isSelected)
                 assertTrue(references.isSelected)
@@ -330,6 +379,7 @@ class MarsRunPlatformTest {
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
                 modify.isSelected = false
+                directory.isSelected = false
                 capture.isSelected = false
                 references.isSelected = false
                 digitalLab.isSelected = false
@@ -339,6 +389,7 @@ class MarsRunPlatformTest {
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
                 assertTrue(restored.options.delayedBranching)
+                assertFalse(restored.options.assembleDirectory)
                 assertFalse(restored.options.selfModifyingCode)
                 assertFalse(restored.options.captureBitmap)
                 assertFalse(restored.options.captureReferences)

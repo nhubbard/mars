@@ -1287,6 +1287,23 @@ shows how to create the native execution selector, bind a listener to the
 selected execution, and update Swing from its own UI coroutine. Instruction
 callbacks run on the simulator worker and should return promptly.
 
+## Directory assembly
+
+Choose **Build → Assemble MIPS Directory** with the entry file active, or
+enable **Assemble other MIPS files in the source directory** in a MIPS
+Run configuration. The entry file is assembled first. Other top-level
+`.asm` and `.s` files follow in filename order, using unsaved editor text.
+The include prepass can still read files in subdirectories or files with
+other extensions. Put include-only fragments in a subdirectory or give
+them an extension such as `.inc` to keep them out of the top-level list.
+
+Run and Debug use the same capture as the Build action. Breakpoints and
+local symbols resolve in the source file that owns the instruction. For
+editing a shared include, the first owning source in build order supplies
+its macro and equivalence context. Editor diagnostics reuse the selected directory build and refresh when
+sibling files are added or removed. Single-file and directory builds
+cache their captures separately.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

@@ -25,7 +25,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.assembleIn
-import edu.missouristate.mars.plugin.analysis.captureAssemblySources
+import edu.missouristate.mars.plugin.analysis.captureBuildSources
 import java.nio.file.Path
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -34,22 +34,22 @@ import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
-    fun assembleCurrentFile(entry: Path) = scope.launch(Dispatchers.Default) {
-        withBackgroundProgress(project, bundle.getMessage("build.progress")) { assemble(entry) }
+    fun assembleCurrentFile(entry: Path, directory: Boolean = false) = scope.launch(Dispatchers.Default) {
+        withBackgroundProgress(project, bundle.getMessage("build.progress")) { assemble(entry, directory) }
     }
 
-    internal suspend fun assemble(entry: Path) {
+    internal suspend fun assemble(entry: Path, directory: Boolean = false) {
         val component = MarsSessionService.createMarsComponent()
-        component.context().use { assemble(entry, component, activateBuildView = true) }
+        component.context().use { assemble(entry, component, activateBuildView = true, directory = directory) }
     }
 
     internal suspend fun assemble(
         entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = MarsExecutionOptions(),
-        onSourcesCaptured: (Set<Path>) -> Unit = {},
+        directory: Boolean = false, onSourcesCaptured: (Set<Path>) -> Unit = {},
     ): Boolean {
         options.applyTo(component.context().settings)
         val analysis = project.service<MarsAnalysisService>()
-        val symbolBuild = analysis.beginSymbolBuild(entry, options)
+        val symbolBuild = analysis.beginSymbolBuild(entry, options, directory)
         val descriptor = DefaultBuildDescriptor(
             Any(), bundle.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
@@ -62,7 +62,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
         var cancelled = false
         var succeeded = false
         try {
-            val capture = captureAssemblySources(listOf(entry), null)
+            val capture = captureBuildSources(entry, directory)
             onSourcesCaptured(capture.snapshot.texts().keys)
             checkCanceled()
             analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)

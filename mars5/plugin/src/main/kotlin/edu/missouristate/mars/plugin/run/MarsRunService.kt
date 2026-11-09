@@ -71,12 +71,13 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectKeyboardDisplay: Boolean = false,
         connectMarsBot: Boolean = false,
         connectScavengerHunt: Boolean = false,
+        assembleDirectory: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent = { runSlice(it.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
             project, scope, entry, Pipe.open(), options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory, execute,
         )
     }
 }
@@ -91,6 +92,7 @@ internal class MarsProcessHandler(
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
+    private val assembleDirectory: Boolean,
     private val execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
@@ -195,7 +197,9 @@ internal class MarsProcessHandler(
         val component = MarsSessionService.createMarsComponent()
         return component.context().use { session ->
             var sources = emptySet<Path>()
-            val assembled = project.service<MarsBuildService>().assemble(entry, component, activateBuildView = false, options) {
+            val assembled = project.service<MarsBuildService>().assemble(
+                entry, component, activateBuildView = false, options, directory = assembleDirectory,
+            ) {
                 sources = it + entry
             }
             if (!assembled) {

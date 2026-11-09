@@ -8,7 +8,10 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 
-internal class MarsAssembleAction(private val entry: VirtualFile? = null) : DumbAwareAction() {
+internal open class MarsAssembleAction(
+    private val entry: VirtualFile? = null,
+    private val directory: Boolean = false,
+) : DumbAwareAction() {
     init {
         if (entry != null) templatePresentation.setText(entry.presentableUrl, false)
     }
@@ -22,13 +25,15 @@ internal class MarsAssembleAction(private val entry: VirtualFile? = null) : Dumb
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val file = sourceFile(e) ?: return
-        project.getService(MarsBuildService::class.java).assembleCurrentFile(file.toNioPath())
+        project.getService(MarsBuildService::class.java).assembleCurrentFile(file.toNioPath(), directory)
     }
 
     private fun sourceFile(e: AnActionEvent) = (entry ?: e.getData(CommonDataKeys.VIRTUAL_FILE))?.takeIf {
         it.isLocalSource() && it.fileType == MipsFileType
     }
 }
+
+internal class MarsAssembleDirectoryAction : MarsAssembleAction(directory = true)
 
 internal fun VirtualFile.isLocalSource() =
     isValid && !isDirectory && fileSystem === LocalFileSystem.getInstance()

@@ -35,6 +35,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.include.FileIncludeManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -42,14 +43,19 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
+import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.replaceService
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
+import edu.missouristate.mars.plugin.analysis.captureBuildSources
+import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
+import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import java.nio.file.Files
@@ -72,6 +78,106 @@ class MarsBuildPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `directory assembly captures sibling documents in deterministic order and shares their analysis`() = timeoutRunBlocking<Unit> {
+        val (main, helper, last) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("project/main.asm", ".text\n.globl entry\nentry: nop\n") as MipsFile
+            val last = fixture.addFileToProject("project/zulu.s", ".eqv NUMBER 11\n.include \"shared/defs.s\"\n.text\nzulu: nop\n") as MipsFile
+            val helper = fixture.addFileToProject("project/Alpha.ASM", ".globl helper\nhelper: nop\n") as MipsFile
+            fixture.addFileToProject("project/shared/defs.s", "addiu \$t2, \$zero, NUMBER\n")
+            fixture.addFileToProject("project/shared/value.inc", ".eqv OTHER_NUMBER 7\n")
+            fixture.addFileToProject("project/shared/ignored.s", "invalid instruction\n")
+            fixture.addFileToProject("project/notes.txt", "not assembly\n")
+            fixture.addFileToProject("project/LICENSE", "not assembly\n")
+            edit(helper.virtualFile, ".eqv NUMBER 7\n.include \"shared/value.inc\"\n.include \"shared/defs.s\"\n.globl helper\nhelper: addiu \$t0, \$zero, NUMBER\nprivateHelper: nop\njal entry\n")
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            Triple(main, helper, last)
+        }
+        val entry = main.virtualFile.toNioPath()
+        val helperPath = helper.virtualFile.toNioPath()
+        val roots = listOf(entry, helperPath, last.virtualFile.toNioPath())
+        val capture = captureBuildSources(entry, directory = true)
+        val absent = entry.resolveSibling("missing/main.asm")
+        assertEquals(listOf(absent), captureBuildSources(absent, directory = true).snapshot.entries())
+        assertEquals(roots, capture.snapshot.entries())
+        assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/defs.s")])
+        assertEquals(helperPath, capture.rootsBySource[entry.resolveSibling("shared/value.inc")])
+        assertEquals(".globl helper\nhelper: nop\n", Files.readString(helperPath))
+        val lifetime = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(lifetime)
+            val customType = withContext(Dispatchers.EDT) {
+                CodeInsightTestFixtureImpl.associateExtensionTemporarily(MipsFileType, "marsfixture", lifetime)
+                fixture.addFileToProject("project/excluded.marsfixture", "nop\n") as MipsFile
+            }
+            withContext(Dispatchers.EDT) {
+                val context = SimpleDataContext.builder()
+                    .add(CommonDataKeys.PROJECT, project).add(CommonDataKeys.VIRTUAL_FILE, main.virtualFile).build()
+                val action = ActionManager.getInstance().getAction("Mars.AssembleDirectory")
+                assertInstanceOf(MarsAssembleDirectoryAction::class.java, action)
+                val event = AnActionEvent.createEvent(action, context, null, ActionPlaces.UNKNOWN, ActionUiKind.NONE, null)
+                action.update(event)
+                assertTrue(event.presentation.isEnabledAndVisible)
+                action.actionPerformed(event)
+            }
+            var event = events.receive()
+            while (event !is FinishBuildEvent) event = events.receive()
+            assertInstanceOf(SuccessResult::class.java, event.result)
+            val analysis = project.service<MarsAnalysisService>()
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            val (fromMain, fromHelper, single) = readAction {
+                val element = requireNotNull(helper.findElementAt(helper.text.lastIndexOf("entry")))
+                assertEquals(main.virtualFile, analysis.labelTargets(helper, element, false).single().containingFile.virtualFile)
+                assertNull(analysis.selectedAssembly(customType))
+                val scratch = PsiFileFactory.getInstance(project).createFileFromText("scratch.asm", MipsFileType, "nop") as MipsFile
+                assertNull(analysis.selectedAssembly(scratch))
+                val nested = VirtualFileManager.getInstance().findFileByNioPath(entry.resolveSibling("shared/ignored.s"))!!
+                val nestedPsi = PsiManager.getInstance(project).findFile(nested) as MipsFile
+                assertNull(analysis.selectedAssembly(nestedPsi))
+                val shared = VirtualFileManager.getInstance().findFileByNioPath(entry.resolveSibling("shared/defs.s"))!!
+                val sharedPsi = PsiManager.getInstance(project).findFile(shared) as MipsFile
+                val number = requireNotNull(sharedPsi.findElementAt(sharedPsi.text.indexOf("NUMBER")))
+                assertEquals(helper.virtualFile, analysis.equivalenceTarget(sharedPsi, number)?.containingFile?.virtualFile)
+                val single = collectBackgroundAssemblySources(project, entry)
+                assertEquals(listOf(entry), single.snapshot.entries())
+                val fromMain = requireNotNull(collectEditorAssembly(main))
+                val fromHelper = requireNotNull(collectEditorAssembly(helper))
+                assertSame(fromMain.sources, fromHelper.sources)
+                assertEquals(roots, fromHelper.sources.snapshot.entries())
+                assertTrue(fromMain.validate(main) { _, document, stamp -> document.modificationStamp == stamp })
+                assertTrue(analysis.selectedAssembly(last)!!.directory)
+                Triple(fromMain, fromHelper, single)
+            }
+            val singleOutcome = analysis.backgroundAssembly.assemble(single, fromMain.structureStamp, MarsExecutionOptions())
+            assertTrue(singleOutcome.diagnostics.isEmpty())
+            val result = analysis.backgroundAssembly.assemble(fromHelper.sources, fromHelper.structureStamp, fromHelper.options)
+            val symbols = requireNotNull(result.symbols)
+            assertTrue(result.diagnostics.isEmpty())
+            assertTrue(symbols.hasCurrentDirectory())
+            analysis.publishBackgroundSymbols(symbols)
+            assertEquals(listOf("privateHelper"), symbols.matchingNames(helperPath, "private"))
+            assertTrue(symbols.matchingNames(entry, "private").isEmpty())
+            assertEquals(listOf("helper"), symbols.matchingNames(entry, "help"))
+            val created = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("project/beta.s", "beta: nop\n") as MipsFile
+            }
+            readAction {
+                assertFalse(fromMain.validate(main) { _, _, _ -> true })
+                assertFalse(symbols.hasCurrentDirectory())
+                val element = requireNotNull(helper.findElementAt(helper.text.lastIndexOf("entry")))
+                assertTrue(analysis.labelTargets(helper, element, false).isEmpty())
+                analysis.publishBackgroundSymbols(requireNotNull(singleOutcome.symbols))
+                val entryLabel = requireNotNull(main.findElementAt(main.text.lastIndexOf("entry")))
+                assertTrue(analysis.labelCompletionNames(main, entryLabel, "helper").isEmpty())
+                assertTrue(analysis.selectedAssembly(created)!!.directory)
+                assertEquals(listOf(entry, helperPath, created.virtualFile.toNioPath(), last.virtualFile.toNioPath()),
+                    collectEditorAssembly(created)!!.sources.snapshot.entries())
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
 
     @Test
     fun `an included file uses earlier definitions in the selected entry even after a failed build`() = timeoutRunBlocking<Unit> {

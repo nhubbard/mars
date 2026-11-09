@@ -137,6 +137,38 @@ class MarsDebugPlatformTest {
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
 
     @Test
+    fun `directory Debug stops in a sibling source and resolves its own data symbols`() = timeoutRunBlocking<Unit> {
+        val (main, sibling) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("directory/main.asm", """
+                jal sibling
+                nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile
+            val sibling = fixture.addFileToProject("directory/library.s", """
+                .data
+                siblingValue: .word 23
+                .text
+                .globl sibling
+                sibling: lw ${'$'}t0, siblingValue
+                jr ${'$'}ra
+                nop
+            """.trimIndent()).virtualFile
+            addBreakpoint(sibling, 4)
+            main to sibling
+        }
+        withDebug(main, { assembleDirectory = true }) { debug ->
+            debug.assertPausedAt(sibling, 4)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000017", evaluate(debug.session, frame, "word(siblingValue)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `the interactive sort example parses and runs in the native debugger`() = timeoutRunBlocking<Unit> {
         val (entry, macros) = withContext(Dispatchers.EDT) {
             fun source(name: String) = fixture.addFileToProject(name,

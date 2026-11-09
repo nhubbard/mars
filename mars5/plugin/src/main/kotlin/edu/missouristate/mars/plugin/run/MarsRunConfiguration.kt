@@ -45,6 +45,7 @@ internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "mess
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var delayedBranching: Boolean by property(false)
+    var assembleDirectory: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
     var captureBitmap: Boolean by property(false)
     var captureReferences: Boolean by property(false)
@@ -93,6 +94,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var delayedBranching = false
+        private var assembleDirectory = false
         private var selfModifyingCode = false
         private var captureBitmap = false
         private var captureReferences = false
@@ -104,6 +106,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private lateinit var sourceField: JTextField
         private val form = panel {
             row(runMessages.getMessage("run.source")) { sourceField = textField().bindText(::source).component }
+            row { checkBox(runMessages.getMessage("run.assemble.directory")).bindSelected(::assembleDirectory) }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
             row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
@@ -119,6 +122,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
             delayedBranching = configuration.options.delayedBranching
+            assembleDirectory = configuration.options.assembleDirectory
             selfModifyingCode = configuration.options.selfModifyingCode
             captureBitmap = configuration.options.captureBitmap
             captureReferences = configuration.options.captureReferences
@@ -133,6 +137,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             form.apply()
             configuration.options.sourcePath = source.trim()
             configuration.options.delayedBranching = delayedBranching
+            configuration.options.assembleDirectory = assembleDirectory
             configuration.options.selfModifyingCode = selfModifyingCode
             configuration.options.captureBitmap = captureBitmap
             configuration.options.captureReferences = captureReferences
@@ -155,6 +160,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             environment, entry, MarsExecutionOptions(options.delayedBranching, options.selfModifyingCode),
             memoryDumps(entry) { ExecutionException(it) }, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
+            options.assembleDirectory,
         )
     }
 }
@@ -168,15 +174,16 @@ internal class MarsRunState(
     private val connectKeyboardDisplay: Boolean,
     private val connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
+    private val assembleDirectory: Boolean,
 ) :
     CommandLineState(environment) {
     override fun startProcess() =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext) -> StopEvent) =
         service().createProcess(entry, options, memoryDumps, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute)
+            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, assembleDirectory, execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }
