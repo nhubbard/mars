@@ -78,9 +78,7 @@ public class SymbolTable {
     if (getSymbol(label) != null) {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "label \"" + label + "\" already defined"));
     } else {
       Symbol s = new Symbol(label, address, kind, origin, macroPrivate);

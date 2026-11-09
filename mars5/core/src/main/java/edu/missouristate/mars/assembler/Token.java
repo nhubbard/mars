@@ -46,6 +46,7 @@ public class Token {
   private final int sourcePos;
   private final int sourceEndPos;
   private int originalStartPos;
+  private Token diagnosticOrigin;
   // original program and line will differ from the above if token was defined in an included file
   private MIPSprogram originalMIPSprogram;
   private int originalSourceLine;
@@ -132,6 +133,7 @@ public class Token {
         sourceEndPos - sourcePos);
     copy.setOriginal(originalMIPSprogram, originalSourceLine);
     copy.originalStartPos = originalStartPos;
+    copy.diagnosticOrigin = diagnosticOrigin;
     return copy;
   }
 
@@ -196,5 +198,16 @@ public class Token {
 
   void setOriginalStartPos(int column) {
     originalStartPos = column;
+  }
+
+  /** Returns the written token that supplied this token during macro expansion. */
+  public Token getDiagnosticOrigin() {
+    return diagnosticOrigin == null ? this : diagnosticOrigin;
+  }
+
+  void setDiagnosticOrigin(Token origin) {
+    if (origin != null) {
+      diagnosticOrigin = origin.getDiagnosticOrigin();
+    }
   }
 }

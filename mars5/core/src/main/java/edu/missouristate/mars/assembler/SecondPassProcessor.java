@@ -70,9 +70,7 @@ final class SecondPassProcessor {
         Token token = statement.getOriginalTokenList().get(0);
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "Invalid address for text segment: " + error.getAddress()));
       }
     }

@@ -105,11 +105,7 @@ final class Parser {
       int counter = macroPool.getNextCounter();
       if (macroPool.pushOnCallStack(token)) {
         pass.errors.add(
-            new ErrorMessage(
-                pass.fileCurrentlyBeingAssembled,
-                tokens.get(0).getSourceLine(),
-                0,
-                "Detected a macro expansion loop (recursive reference). "));
+            new ErrorMessage(token, "Detected a macro expansion loop (recursive reference). "));
       } else {
         //                for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
         //                   String substituted = macro.getSubstitutedLine(i, tokens, counter,
@@ -134,12 +130,19 @@ final class Parser {
         var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();
+          if (pass.errors.errorLimitExceeded()) {
+            break;
+          }
+          int errorCount = pass.errors.errorCount();
           var expanded = macro.expandLine(i, tokens, counter, renamedLabels, pass.errors);
           String substituted = expanded.text();
           TokenList tokenList2 =
               pass.fileCurrentlyBeingAssembled
                   .getTokenizer()
-                  .tokenizeLine(i, substituted, pass.errors, true, pass.checkCancellation);
+                  .tokenizeMacroLine(i, expanded, pass.errors, pass.checkCancellation);
+          if (pass.errors.errorCount() > errorCount) {
+            continue;
+          }
 
           // If token list getProcessedLine() is not empty, then .eqv was performed and it contains
           // the modified source.
@@ -186,9 +189,7 @@ final class Parser {
       pass.errors.add(
           new ErrorMessage(
               ErrorMessage.WARNING,
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "MARS does not recognize the " + token.getValue() + " directive.  Ignored."));
       return null;
     }
@@ -231,9 +232,7 @@ final class Parser {
       if (inst instanceof ExtendedInstruction && !extendedAssemblerEnabled) {
         pass.errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "Extended (pseudo) instruction or format not permitted.  See Settings."));
       }
       if (OperandFormat.tokenOperandMatch(

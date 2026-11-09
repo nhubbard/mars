@@ -314,19 +314,32 @@ public class Tokenizer {
    */
   public TokenList tokenizeLine(
       int lineNum, String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes) {
-    return tokenizeLine(lineNum, theLine, callerErrorList, doEqvSubstitutes, () -> {});
+    return tokenizeLine(lineNum, theLine, callerErrorList, doEqvSubstitutes, () -> {}, null);
   }
 
-  TokenList tokenizeLine(
+  private TokenList tokenizeLine(
       int lineNum, String theLine, ErrorList callerErrorList, boolean doEqvSubstitutes,
-      Runnable checkCancellation) {
+      Runnable checkCancellation, Macro.ExpandedLine expansion) {
     ErrorList saveList = this.errors;
     this.errors = callerErrorList;
     try {
-      return tokenizeLine(sourceMIPSprogram, lineNum, theLine, doEqvSubstitutes, checkCancellation);
+      return tokenizeLine(sourceMIPSprogram, lineNum, theLine, doEqvSubstitutes, checkCancellation,
+          expansion);
     } finally {
       this.errors = saveList;
     }
+  }
+
+  TokenList tokenizeMacroLine(
+      int lineNum, Macro.ExpandedLine expansion, ErrorList callerErrorList,
+      Runnable checkCancellation) {
+    var tokens = tokenizeLine(lineNum, expansion.text(), callerErrorList, true, checkCancellation,
+        expansion);
+    for (int i = 0; i < tokens.size(); i++) {
+      Token token = tokens.get(i);
+      token.setDiagnosticOrigin(expansion.originAt(token.getOriginalStartPos()));
+    }
+    return tokens;
   }
 
   /** Reads a physical .eqv definition, or returns null if it does not validly define the name. */
@@ -433,7 +446,7 @@ public class Tokenizer {
       List<SourceEdit> edits) {
     this.errors = errors;
     TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
-    return processEqv(null, 1, line, tokens, replacements, checkCancellation, edits);
+    return processEqv(null, 1, line, tokens, replacements, checkCancellation, edits, null);
   }
 
   /**
@@ -455,10 +468,17 @@ public class Tokenizer {
   private TokenList tokenizeLine(
       MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes,
       Runnable checkCancellation) {
+    return tokenizeLine(program, lineNum, theLine, doEqvSubstitutes, checkCancellation, null);
+  }
+
+  private TokenList tokenizeLine(
+      MIPSprogram program, int lineNum, String theLine, boolean doEqvSubstitutes,
+      Runnable checkCancellation, Macro.ExpandedLine expansion) {
     TokenList result = scanLine(program, lineNum, theLine, checkCancellation);
-    reportLexicalErrors(program, lineNum, theLine, result);
+    reportLexicalErrors(program, lineNum, theLine, result, null, expansion);
     if (doEqvSubstitutes && !theLine.isEmpty()) {
-      return processEqv(program, lineNum, theLine, result, equivalents::get, checkCancellation, null);
+      return processEqv(
+          program, lineNum, theLine, result, equivalents::get, checkCancellation, null, expansion);
     }
     return result;
   }
@@ -660,8 +680,10 @@ public class Tokenizer {
   // directive, including a new .eqv definition.
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
-      Function<String, String> replacements, Runnable checkCancellation, List<SourceEdit> edits) {
-    EquivalenceUse use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, List.of());
+      Function<String, String> replacements, Runnable checkCancellation, List<SourceEdit> edits,
+      Macro.ExpandedLine expansion) {
+    EquivalenceUse use = nextEquivalenceUse(
+        program, lineNum, theLine, tokens, replacements, List.of(), expansion);
     if (use == null) {
       return tokens;
     }
@@ -689,9 +711,9 @@ public class Tokenizer {
       }
       if (!active.add(symbol)) {
         var chain = new StringJoiner(" -> ");
-        path.forEach(expansion -> chain.add(expansion.symbol()));
-        errors.add(new ErrorMessage(
-            program, lineNum, originalColumn, "Circular .eqv expansion " + chain.add(symbol)));
+        path.forEach(step -> chain.add(step.symbol()));
+        addLineError(program, lineNum, originalColumn,
+            "Circular .eqv expansion " + chain.add(symbol), expansion);
         tokens.setProcessedLine(originalLine);
         break;
       }
@@ -701,14 +723,14 @@ public class Tokenizer {
       theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = scanLine(program, lineNum, theLine, checkCancellation);
-      use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, edits);
+      use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, edits, expansion);
     } while (use != null);
     for (int i = 0; i < tokens.size(); i++) {
       checkCancellation.run();
       Token token = tokens.get(i);
       token.setOriginalStartPos(originalColumn(token, edits));
     }
-    reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, originalTokens);
+    reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, originalTokens, expansion);
     return tokens;
   }
 
@@ -722,9 +744,10 @@ public class Tokenizer {
       String line,
       TokenList tokens,
       Function<String, String> replacements,
-      List<SourceEdit> edits) {
+      List<SourceEdit> edits,
+      Macro.ExpandedLine expansion) {
     tokens.setProcessedLine(line);
-    if (recordEquivalence(program, lineNum, line, tokens, edits)) {
+    if (recordEquivalence(program, lineNum, line, tokens, edits, expansion)) {
       return null;
     }
     for (int i = 0; i < tokens.size(); i++) {
@@ -744,7 +767,8 @@ public class Tokenizer {
   }
 
   private boolean recordEquivalence(
-      MIPSprogram program, int lineNum, String line, TokenList tokens, List<SourceEdit> edits) {
+      MIPSprogram program, int lineNum, String line, TokenList tokens, List<SourceEdit> edits,
+      Macro.ExpandedLine expansion) {
     if (tokens.size() < 3) {
       return false;
     }
@@ -757,21 +781,21 @@ public class Tokenizer {
     }
     int last = tokens.size() - (tokens.get(tokens.size() - 1).getType() == TokenTypes.COMMENT ? 2 : 1);
     if (last < directive + 2) {
-      errors.add(new ErrorMessage(
-          program, lineNum, originalColumn(directiveToken, edits), "Too few operands for .eqv directive"));
+      addLineError(program, lineNum, originalColumn(directiveToken, edits),
+          "Too few operands for .eqv directive", expansion);
       return true;
     }
     Token name = tokens.get(directive + 1);
     if (name.getType() != TokenTypes.IDENTIFIER) {
-      errors.add(new ErrorMessage(
-          program, lineNum, originalColumn(directiveToken, edits), "Malformed .eqv directive"));
+      addLineError(program, lineNum, originalColumn(directiveToken, edits),
+          "Malformed .eqv directive", expansion);
       return true;
     }
     String symbol = name.getValue();
     for (int i = directive + 2; i <= last; i++) {
       if (tokens.get(i).getValue().equals(symbol)) {
-        errors.add(new ErrorMessage(program, lineNum, originalColumn(directiveToken, edits),
-            "Cannot substitute " + symbol + " for itself in .eqv directive"));
+        addLineError(program, lineNum, originalColumn(directiveToken, edits),
+            "Cannot substitute " + symbol + " for itself in .eqv directive", expansion);
         return true;
       }
     }
@@ -780,8 +804,8 @@ public class Tokenizer {
     String expression = line.substring(start, end);
     String previous = equivalents.putIfAbsent(symbol, expression);
     if (previous != null && !previous.equals(expression)) {
-      errors.add(new ErrorMessage(program, lineNum, originalColumn(name, edits),
-          "\"" + symbol + "\" is already defined"));
+      addLineError(program, lineNum, originalColumn(name, edits),
+          "\"" + symbol + "\" is already defined", expansion);
     }
     return true;
   }
@@ -819,11 +843,12 @@ public class Tokenizer {
 
   private void reportLexicalErrors(
       MIPSprogram program, int line, String source, TokenList tokens) {
-    reportLexicalErrors(program, line, source, tokens, null);
+    reportLexicalErrors(program, line, source, tokens, null, null);
   }
 
   private void reportLexicalErrors(
-      MIPSprogram program, int line, String source, TokenList tokens, TokenList originalTokens) {
+      MIPSprogram program, int line, String source, TokenList tokens, TokenList originalTokens,
+      Macro.ExpandedLine expansion) {
     int originalIndex = 0;
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
@@ -843,13 +868,21 @@ public class Tokenizer {
             }
           }
         }
-        errors.add(new ErrorMessage(program, line, column,
-            source + "\nInvalid language element: " + token.getValue()));
+        addLineError(program, line, column,
+            source + "\nInvalid language element: " + token.getValue(), expansion);
         if (errors.errorLimitExceeded()) {
           return;
         }
       }
     }
+  }
+
+  private void addLineError(
+      MIPSprogram program, int line, int column, String message, Macro.ExpandedLine expansion) {
+    Token origin = expansion == null ? null : expansion.originAt(column);
+    errors.add(origin == null
+        ? new ErrorMessage(program, line, column, message)
+        : new ErrorMessage(origin, message));
   }
 
   /** Decodes one MARS character literal, or returns -1 for an invalid spelling. */

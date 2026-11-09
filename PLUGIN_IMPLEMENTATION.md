@@ -674,6 +674,13 @@ diagnostic for text supplied by an equivalence points to the alias use, and an
 operand written after that alias keeps its own column. The Build fixture
 checks navigation to an invalid operand in an unsaved include.
 
+Macro expansion carries the written token alongside each substitution. A
+forwarded argument keeps its original call site through nested expansion,
+including an equivalence used as the argument. A token from the macro body
+keeps its definition file and column, even when retokenizing the expansion
+resolves a later equivalence. The Build action and editor use these same
+assembler locations.
+
 Core fixtures cover a 6,000-link chain, repeated aliases inside one replacement,
 and cycles in included source after an earlier alias changes the line length.
 An IntelliJ fixture exercises the same cycle in an unsaved include through the

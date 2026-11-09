@@ -867,6 +867,47 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `build opens the argument forwarded through nested macros in an unsaved include`() = timeoutRunBlocking<Unit> {
+        val disposable = Disposer.newDisposable()
+        try {
+            val events = recordBuildEvents(disposable)
+            val call = "outer (BAD)"
+            val mainText = ".include \"macros.s\"\n.eqv BAD \$s29\n$call\n"
+            val main = withContext(Dispatchers.EDT) {
+                val main = fixture.addFileToProject("main.asm", mainText).virtualFile
+                val include = fixture.addFileToProject("macros.s", "nop\n").virtualFile
+                edit(include, """
+                    .macro inner (%argument)
+                        lwc1 ${'$'}f0, -4(%argument)
+                    .end_macro
+                    .macro outer (%forwarded)
+                        inner (%forwarded)
+                    .end_macro
+                """.trimIndent())
+                main
+            }
+            invokeAction(main)
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val error = assertInstanceOf(FileMessageEvent::class.java, events.receive())
+            assertEquals(start.id, error.parentId)
+            assertTrue(error.message.contains("operand is of incorrect type"), error.message)
+            assertEquals(main.toNioPath(), error.filePosition.path)
+            assertEquals(2, error.filePosition.startLine)
+            assertEquals(call.indexOf("BAD"), error.filePosition.startColumn)
+            readAction {
+                val link = assertInstanceOf(OpenFileDescriptor::class.java, error.getNavigatable(project))
+                assertEquals(main, link.file)
+                assertEquals(mainText.lastIndexOf("BAD"), link.offset)
+            }
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertEquals(start.id, finish.id)
+            assertInstanceOf(FailureResult::class.java, finish.result)
+        } finally {
+            Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
     fun `circular equivalences keep valid editor syntax and link a build error to the original use`() = timeoutRunBlocking<Unit> {
         val disposable = Disposer.newDisposable()
         try {

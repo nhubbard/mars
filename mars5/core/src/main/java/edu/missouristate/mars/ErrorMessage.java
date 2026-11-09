@@ -1,6 +1,7 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.assembler.SourceLine;
+import edu.missouristate.mars.assembler.Token;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -66,6 +67,21 @@ public class ErrorMessage {
    */
   public ErrorMessage(MIPSprogram sourceMIPSprogram, int line, int position, String message) {
     this(ERROR, sourceMIPSprogram, line, position, message);
+  }
+
+  /** Creates an assembler diagnostic at the written source of an expanded token. */
+  public ErrorMessage(Token token, String message) {
+    this(ERROR, token, message);
+  }
+
+  /** Creates an assembler warning or error at the written source of an expanded token. */
+  public ErrorMessage(boolean isWarning, Token token, String message) {
+    this(isWarning, message, token.getDiagnosticOrigin());
+  }
+
+  private ErrorMessage(boolean isWarning, String message, Token origin) {
+    this(isWarning, origin.getSourceMIPSprogram(), origin.getSourceLine(),
+        origin.getOriginalStartPos(), message);
   }
 
   /**

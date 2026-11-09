@@ -195,9 +195,7 @@ public class OperandFormat {
   private static void generateMessage(Token token, String mess, ErrorList errors) {
     errors.add(
         new ErrorMessage(
-            token.getSourceMIPSprogram(),
-            token.getSourceLine(),
-            token.getOriginalStartPos(),
+            token,
             "\"" + token.getValue() + "\": " + mess));
   }
 }

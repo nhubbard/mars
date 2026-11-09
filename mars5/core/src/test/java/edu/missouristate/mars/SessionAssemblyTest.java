@@ -833,6 +833,45 @@ class SessionAssemblyTest {
     }
   }
 
+  static Stream<Arguments> macroDiagnosticCases() {
+    return Stream.of(
+        Arguments.of("lwc1 $f0, -4(%argument)", "outer (BAD)", true, "BAD",
+            "operand is of incorrect type"),
+        Arguments.of("lwc1 %argument, ADDRESS invalid)", "outer ($f0)", false, "invalid",
+            "operand is of incorrect type"),
+        Arguments.of("beq $zero, $zero, %argument", "outer (nop)", true, "nop",
+            "Symbol \"nop\" not found"),
+        Arguments.of("beq $zero, $zero, LATER", "outer (0)", false, "LATER",
+            "Symbol \"missing\" not found"),
+        Arguments.of("li $t0, CYCLE", "outer (0)", false, "CYCLE",
+            "Circular .eqv expansion CYCLE -> NEXT -> CYCLE"),
+        Arguments.of("MAKE EXISTING 2", "outer (0)", false, "EXISTING",
+            "is already defined"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("macroDiagnosticCases")
+  void nestedMacroErrorsPointToTheWrittenArgumentOrBody(
+      String body, String call, boolean inCaller, String target, String message) {
+    var main = directory.resolve("main.s");
+    var include = directory.resolve("macros.s");
+    var snapshot = new AssemblySourceSnapshot(List.of(main), Map.of(
+        main, ".include \"macros.s\"\n.eqv LATER missing\n.eqv CYCLE NEXT\n.eqv NEXT CYCLE\n"
+            + ".eqv MAKE .eqv\n.eqv EXISTING 1\n" + call + "\n",
+        include, ".eqv BAD $s29\n.eqv ADDRESS -4(\n.macro inner (%argument)\n"
+            + body + "\n.end_macro\n.macro outer (%forwarded)\n"
+            + "inner (%forwarded)\n.end_macro\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).singleElement().satisfies(error -> {
+        assertThat(error.message()).contains(message);
+        assertThat(error.file()).isEqualTo(inCaller ? main : include);
+        assertThat(error.line()).isEqualTo(inCaller ? 7 : 4);
+        assertThat(error.column()).isEqualTo((inCaller ? call : body).indexOf(target) + 1);
+      });
+    }
+  }
+
   @Test
   void equivalenceLexicalErrorsAreReportedOnceAtTheirWrittenTokensOrAliases() {
     String source = ".byte FIRST, SECOND, OUTER, 'ab', 'ab'";

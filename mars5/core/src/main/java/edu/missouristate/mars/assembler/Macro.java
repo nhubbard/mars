@@ -6,7 +6,9 @@ import edu.missouristate.mars.MIPSprogram;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.TreeMap;
 
 /*
 Copyright (c) 2013-2014.
@@ -148,17 +150,26 @@ public class Macro {
     return expandLine(line, args, counter, Set.of(), errors).text();
   }
 
-  record ExpandedLine(String text, Set<String> renamedLabels) {}
+  record ExpandedLine(String text, Set<String> renamedLabels, NavigableMap<Integer, Token> origins) {
+    Token originAt(int column) {
+      var entry = origins.ceilingEntry(text.length() - column + 1);
+      return entry == null ? null : entry.getValue();
+    }
+  }
 
   ExpandedLine expandLine(
       int line, TokenList args, long counter, Set<String> privateArguments, ErrorList errors) {
     TokenList tokens = program.getTokenList().get(line - 1);
     var source = new StringBuilder(tokens.getProcessedLine());
     HashSet<String> renamedLabels = null;
+    var origins = new TreeMap<Integer, Token>();
 
-    // Replace from right to left so earlier token offsets stay valid.
+    // Replace from right to left so earlier offsets stay valid. Record token starts
+    // as distances from the end because the remaining replacements are all to the left.
     for (int i = tokens.size() - 1; i >= 0; i--) {
       Token token = tokens.get(i);
+      Token origin = token;
+      int start = token.getStartPos() - 1;
       String substitute;
       boolean renamed;
       if (tokenIsMacroParameter(token.getValue(), true)) {
@@ -171,17 +182,17 @@ public class Macro {
         }
         substitute = token.getValue();
         if (repl != -1) {
-          substitute = args.get(repl + 1).toString();
+          origin = args.get(repl + 1);
+          substitute = origin.toString();
         } else {
-          errors.add(
-              new ErrorMessage(
-                  program, token.getSourceLine(), token.getOriginalStartPos(), "Unknown macro parameter"));
+          errors.add(new ErrorMessage(token, "Unknown macro parameter"));
         }
         renamed = repl != -1 && privateArguments.contains(substitute);
       } else if (tokenIsMacroLabel(token.getValue())) {
         substitute = token.getValue() + "_M" + counter;
         renamed = true;
       } else {
+        origins.put(source.length() - start, origin);
         continue;
       }
       if (renamed) {
@@ -190,9 +201,10 @@ public class Macro {
         }
         renamedLabels.add(substitute);
       }
-      source.replace(token.getStartPos() - 1, token.getEndPos() - 1, substitute);
+      source.replace(start, token.getEndPos() - 1, substitute);
+      origins.put(source.length() - start, origin);
     }
-    return new ExpandedLine(source.toString(), renamedLabels == null ? Set.of() : renamedLabels);
+    return new ExpandedLine(source.toString(), renamedLabels == null ? Set.of() : renamedLabels, origins);
   }
 
   /** returns true if <code>value</code> is name of a label defined in this macro's body. */

@@ -256,9 +256,7 @@ final class FirstPassProcessor {
     if (direct == null) {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + token.getValue() + "\" directive is invalid or not implemented in MARS"));
     } else if (direct == Directives.EQV) {
       /* EQV added by DPS 11 July 2012 */
@@ -267,27 +265,21 @@ final class FirstPassProcessor {
       if (tokens.size() < 2) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" directive requires at least one argument."));
         return;
       }
       if (tokens.get(1).getType() != TokenTypes.IDENTIFIER) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                tokens.get(1).getOriginalStartPos(),
+                tokens.get(1),
                 "Invalid Macro name \"" + tokens.get(1).getValue() + "\""));
         return;
       }
       if (inMacroSegment) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "Nested macros are not allowed"));
         return;
       }
@@ -302,9 +294,7 @@ final class FirstPassProcessor {
         if (!Macro.tokenIsMacroParameter(arg.getValue(), true)) {
           errors.add(
               new ErrorMessage(
-                  arg.getSourceMIPSprogram(),
-                  arg.getSourceLine(),
-                  arg.getOriginalStartPos(),
+                  arg,
                   "Invalid macro argument '" + arg.getValue() + "'"));
           return;
         }
@@ -314,18 +304,14 @@ final class FirstPassProcessor {
       if (tokens.size() > 1) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "invalid text after .END_MACRO"));
         return;
       }
       if (!inMacroSegment) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 ".END_MACRO without .MACRO"));
         return;
       }
@@ -368,9 +354,7 @@ final class FirstPassProcessor {
         if (tokens.size() != 2) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + token.getValue() + "\" requires one operand"));
           return;
         }
@@ -378,9 +362,7 @@ final class FirstPassProcessor {
             || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + token.getValue() + "\" requires a non-negative integer"));
           return;
         }
@@ -397,9 +379,7 @@ final class FirstPassProcessor {
         if (tokens.size() != 2) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + token.getValue() + "\" requires one operand"));
           return;
         }
@@ -407,9 +387,7 @@ final class FirstPassProcessor {
             || Binary.stringToInt(tokens.get(1).getValue()) < 0) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + token.getValue() + "\" requires a non-negative integer"));
           return;
         }
@@ -420,9 +398,7 @@ final class FirstPassProcessor {
       if (tokens.size() != 3) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" directive requires two operands (label and size)."));
         return;
       }
@@ -430,9 +406,7 @@ final class FirstPassProcessor {
           || Binary.stringToInt(tokens.get(2).getValue()) < 0) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" requires a non-negative integer size"));
         return;
       }
@@ -449,17 +423,13 @@ final class FirstPassProcessor {
       errors.add(
           new ErrorMessage(
               ErrorMessage.WARNING,
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "MARS currently ignores the .set directive."));
     } else if (direct == Directives.GLOBL) {
       if (tokens.size() < 2) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" directive requires at least one argument."));
         return;
       }
@@ -472,9 +442,7 @@ final class FirstPassProcessor {
         if (label.getType() != TokenTypes.IDENTIFIER) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + token.getValue() + "\" directive argument must be label."));
           return;
         }
@@ -483,9 +451,7 @@ final class FirstPassProcessor {
     } else {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + token.getValue() + "\" directive recognized but not yet implemented."));
     }
   } // executeDirective()
@@ -503,17 +469,13 @@ final class FirstPassProcessor {
       if (symtabEntry == null) {
         errors.add(
             new ErrorMessage(
-                fileCurrentlyBeingAssembled,
-                label.getSourceLine(),
-                label.getOriginalStartPos(),
+                label,
                 "\"" + label.getValue() + "\" declared global label but not defined."));
       } else {
         if (context.symbols().getAddress(label.getValue()) != SymbolTable.NOT_FOUND) {
           errors.add(
               new ErrorMessage(
-                  fileCurrentlyBeingAssembled,
-                  label.getSourceLine(),
-                  label.getOriginalStartPos(),
+                  label,
                   "\"" + label.getValue() + "\" already defined as global in a different file."));
         } else {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
@@ -554,16 +516,12 @@ final class FirstPassProcessor {
       if (token.getSourceMIPSprogram().getLocalMacroPool().matchesAnyMacroName(token.getValue())) {
         this.errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "forward reference or invalid parameters for macro \"" + token.getValue() + "\""));
       } else {
         this.errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" is not a recognized operator"));
       }
       return null;
@@ -572,9 +530,7 @@ final class FirstPassProcessor {
     if (inst == null) { // This should NEVER happen...
       this.errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "Internal Assembler error: \""
                   + token.getValue()
                   + "\" tokenized OPERATOR then not recognized"));
@@ -620,9 +576,7 @@ final class FirstPassProcessor {
           || !TokenTypes.isIntegerTokenType(repetitionsToken.getType())) {
         errors.add(
             new ErrorMessage(
-                fileCurrentlyBeingAssembled,
-                valueToken.getSourceLine(),
-                valueToken.getOriginalStartPos(),
+                valueToken,
                 "malformed expression"));
         return;
       }
@@ -630,9 +584,7 @@ final class FirstPassProcessor {
       if (repetitions <= 0) {
         errors.add(
             new ErrorMessage(
-                fileCurrentlyBeingAssembled,
-                repetitionsToken.getSourceLine(),
-                repetitionsToken.getOriginalStartPos(),
+                repetitionsToken,
                 "repetition factor must be positive"));
         return;
       }
@@ -709,9 +661,7 @@ final class FirstPassProcessor {
         errors.add(
             new ErrorMessage(
                 ErrorMessage.WARNING,
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\""
                     + token.getValue()
                     + "\" is out-of-range for a signed value and possibly truncated"));
@@ -735,9 +685,7 @@ final class FirstPassProcessor {
         } catch (AddressErrorException e) {
           errors.add(
               new ErrorMessage(
-                  token.getSourceMIPSprogram(),
-                  token.getSourceLine(),
-                  token.getOriginalStartPos(),
+                  token,
                   "\"" + this.textAddress.get() + "\" is not a valid text segment address"));
           return;
         }
@@ -762,9 +710,7 @@ final class FirstPassProcessor {
       else {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\""
                     + token.getValue()
                     + "\" label as directive operand not permitted in text segment"));
@@ -773,9 +719,7 @@ final class FirstPassProcessor {
     else {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + token.getValue() + "\" is not a valid integer constant or label"));
     }
   } // storeInteger
@@ -794,27 +738,21 @@ final class FirstPassProcessor {
       } catch (NumberFormatException nfe) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" is not a valid floating point constant"));
         return;
       }
       if (DataTypes.outOfRange(directive, value)) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" is an out-of-range value"));
         return;
       }
     } else {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + token.getValue() + "\" is not a valid floating point constant"));
       return;
     }
@@ -846,16 +784,12 @@ final class FirstPassProcessor {
       if (token.getType() != TokenTypes.QUOTED_STRING) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "\"" + token.getValue() + "\" is not a valid character string"));
       } else if (!token.hasClosingDoubleQuote()) {
         errors.add(
             new ErrorMessage(
-                token.getSourceMIPSprogram(),
-                token.getSourceLine(),
-                token.getOriginalStartPos(),
+                token,
                 "Unterminated string literal"));
       } else {
         String quote = token.getValue();
@@ -904,9 +838,7 @@ final class FirstPassProcessor {
           } catch (AddressErrorException e) {
             errors.add(
                 new ErrorMessage(
-                    token.getSourceMIPSprogram(),
-                    token.getSourceLine(),
-                    token.getOriginalStartPos(),
+                    token,
                     "\"" + this.dataAddress.get() + "\" is not a valid data segment address"));
           }
           this.dataAddress.increment(DataTypes.CHAR_SIZE);
@@ -917,9 +849,7 @@ final class FirstPassProcessor {
           } catch (AddressErrorException e) {
             errors.add(
                 new ErrorMessage(
-                    token.getSourceMIPSprogram(),
-                    token.getSourceLine(),
-                    token.getOriginalStartPos(),
+                    token,
                     "\"" + this.dataAddress.get() + "\" is not a valid data segment address"));
           }
           this.dataAddress.increment(DataTypes.CHAR_SIZE);
@@ -934,9 +864,7 @@ final class FirstPassProcessor {
     if (!this.inDataSegment) {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + token.getValue() + "\" directive cannot appear in text segment"));
       return false;
     } else {
@@ -957,9 +885,7 @@ final class FirstPassProcessor {
     } catch (AddressErrorException e) {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + this.dataAddress.get() + "\" is not a valid data segment address"));
       return this.dataAddress.get();
     }
@@ -983,9 +909,7 @@ final class FirstPassProcessor {
     } catch (AddressErrorException e) {
       errors.add(
           new ErrorMessage(
-              token.getSourceMIPSprogram(),
-              token.getSourceLine(),
-              token.getOriginalStartPos(),
+              token,
               "\"" + this.dataAddress.get() + "\" is not a valid data segment address"));
       return;
     }
@@ -1138,9 +1062,7 @@ final class FirstPassProcessor {
         entry = dataSegmentForwardReference;
         errors.add(
             new ErrorMessage(
-                entry.token.getSourceMIPSprogram(),
-                entry.token.getSourceLine(),
-                entry.token.getOriginalStartPos(),
+                entry.token,
                 "Symbol \"" + entry.token.getValue() + "\" not found in symbol table."));
       }
     }
