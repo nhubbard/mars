@@ -612,6 +612,12 @@ integer, character, and floating-point lists and continuation lines, then checks
 the machine encoding of an instruction with an adjacent signed immediate. The
 reference index rebuilds against the revised PSI boundaries.
 
+Macro invocation and `.eqv` replacement nodes use the same signed-token rule
+before expansion. For example, `emit(,-2,7)` preserves `-2` as one argument,
+and `emit -7` preserves the separate `-` and `7` tokens that MARS sees after
+the macro name. An equivalence's original text is still available for the
+assembler to tokenize again in the replacement's destination context.
+
 Assembler and PSI fixtures cover leading, repeated, trailing, and standalone
 commas in directives, macro signatures and invocations, instruction operands,
 and labels. The declaration and reference indexes rebuild with the updated

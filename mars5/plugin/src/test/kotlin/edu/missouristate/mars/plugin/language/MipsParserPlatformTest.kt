@@ -161,6 +161,8 @@ class MipsParserPlatformTest {
             Triple("emit", "((,7)", listOf("(", "(", "7", ")")),
             Triple("emit", "(nop,7)", listOf("(", "nop", "7", ")")),
             Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", "7", ")")),
+            Triple("emit", "(,-2,7)", listOf("(", "-2", "7", ")")),
+            Triple("emit", " -7", listOf("-", "7")),
         )
         for ((name, arguments, tokens) in calls) {
             val call = name + arguments
@@ -175,6 +177,29 @@ class MipsParserPlatformTest {
                     .filter { it.elementType == MipsTypes.psi("INVOCATION_TOKEN") }.map { it.text }
                 assertEquals(tokens, actualTokens)
             }
+        }
+    }
+
+    @Test
+    fun `equivalence replacement PSI preserves signed token boundaries before expansion`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv VALUES 1-2+3
+            .eqv SINGLE -7
+            .data
+            .word VALUES
+            .word SINGLE
+            .text
+            nop
+        """.trimIndent()
+        assertAssembles(directory, source, 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        assertEquals(listOf(1, -2, 3, -7), (0..3).map { memory.getWordNoNotify(memory.dataBaseAddress + it * 4) })
+        readAction {
+            val file = assertParses(source)
+            val replacements = descendants(file.node, "EQUIVALENCE").map { declaration ->
+                descendants(declaration, "REPLACEMENT").map { it.text }.toList()
+            }.toList()
+            assertEquals(listOf(listOf("1", "-2", "+3"), listOf("-", "7")), replacements)
         }
     }
 
