@@ -18,19 +18,32 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     private var memory: MemoryState? = null
     private val observer = Consumer<MemoryAccessNotice>(::record)
     private var connected = connectAtLaunch
+    private var hasConnected = connectAtLaunch
     private var right = 0
     private var left = 0
     private var key: Int? = null
+    private var appliedKey: Int? = null
     private var keyChanged = false
     private var keyOutputDirty = false
     private var row = 0
     private var timerRemaining = 0
+    private var checkpoint: RewindState? = null
+    private var restoreCheckpoint: Runnable? = null
+
+    private data class RewindState(
+        val right: Int, val left: Int, val key: Int?, val row: Int, val timerRemaining: Int,
+        val output: Int?, val pendingInterrupts: Int,
+    )
 
     @Synchronized
-    fun observe(source: MemoryState): AutoCloseable {
-        memory = source
+    fun observe(session: MarsContext): AutoCloseable {
+        memory = session.memory
         updateObserver()
-        return AutoCloseable { detach() }
+        val history = session.backStepper.addInstructionCheckpoint { capture(session) }
+        return AutoCloseable {
+            history.close()
+            detach()
+        }
     }
 
     @Synchronized
@@ -39,7 +52,9 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     @Synchronized
     fun setConnected(value: Boolean) {
         connected = value && memory != null
-        if (!connected) {
+        if (connected) {
+            hasConnected = true
+        } else {
             clearControls()
             keyChanged = false
             keyOutputDirty = false
@@ -72,25 +87,27 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     fun instructionCompleted(session: MarsContext) {
         if (!connected) return
         var interrupts = 0
+        if (keyChanged) {
+            keyChanged = false
+            appliedKey = key
+            if (appliedKey != null && row and 0xf0 != 0) interrupts = keyboardInterrupt
+        }
         if (keyOutputDirty) {
             keyOutputDirty = false
             writeKey(session.memory)
-        }
-        if (keyChanged) {
-            keyChanged = false
-            if (key != null && row and 0xf0 != 0) interrupts = keyboardInterrupt
         }
         if (timerRemaining > 0 && --timerRemaining == 0) {
             timerRemaining = timerPeriod
             interrupts = interrupts or timerInterrupt
         }
         if (interrupts != 0 && session.coprocessor0.getRegister(STATUS).valueNoNotify and 2 == 0) {
-            session.requestExternalInterrupt(interrupts)
+            session.setDeviceInterrupts(interrupts, interrupts)
         }
     }
 
     private fun clearControls() {
         key = null
+        appliedKey = null
         row = 0
         timerRemaining = 0
     }
@@ -105,6 +122,8 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     private fun detach() {
         setConnected(false)
         memory = null
+        checkpoint = null
+        restoreCheckpoint = null
     }
 
     @Synchronized
@@ -130,11 +149,44 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
     }
 
     private fun writeKey(source: MemoryState) {
-        val code = key?.let {
+        val code = appliedKey?.let {
             val rowBit = 1 shl (it / 4)
             if (row and 0xf == rowBit) rowBit or (1 shl (4 + it % 4)) else 0
         } ?: 0
         source.setByte(source.memoryMapBaseAddress + keyOffset, code)
+    }
+
+    @Synchronized
+    private fun capture(session: MarsContext): Runnable {
+        // A device that has never connected can reuse the initial, inactive checkpoint.
+        if (!hasConnected) restoreCheckpoint?.let { return it }
+        val source = session.memory
+        val address = source.memoryMapBaseAddress + keyOffset
+        val output = if (connected) source.getWordNoNotify(address) and 0xff else null
+        val state = RewindState(right, left, appliedKey, row, timerRemaining, output,
+            session.pendingDeviceInterrupts() and interruptMask)
+        if (state != checkpoint) {
+            checkpoint = state
+            restoreCheckpoint = Runnable { restore(session, address, state) }
+        }
+        return restoreCheckpoint!!
+    }
+
+    @Synchronized
+    private fun restore(session: MarsContext, address: Int, state: RewindState) {
+        right = state.right
+        left = state.left
+        key = state.key
+        appliedKey = state.key
+        row = state.row
+        timerRemaining = state.timerRemaining
+        keyChanged = false
+        keyOutputDirty = false
+        val source = session.memory
+        state.output?.let { output ->
+            if (source.getWordNoNotify(address) and 0xff != output) source.setByte(address, output)
+        }
+        session.setDeviceInterrupts(interruptMask, state.pendingInterrupts)
     }
 
     private companion object {
@@ -144,5 +196,6 @@ internal class DigitalLabDevice(private val connectAtLaunch: Boolean = false) {
         // The core shifts exception codes left by two for Coprocessor 0 Cause.
         const val timerInterrupt = 0x100
         const val keyboardInterrupt = 0x200
+        const val interruptMask = timerInterrupt or keyboardInterrupt
     }
 }

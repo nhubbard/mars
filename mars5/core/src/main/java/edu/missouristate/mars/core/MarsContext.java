@@ -93,6 +93,7 @@ public final class MarsContext implements AutoCloseable {
   public final SyscallRegistry syscalls = new SyscallRegistry();
 
   private final AtomicInteger interrupt = new AtomicInteger();
+  private final AtomicInteger deviceInterrupts = new AtomicInteger();
 
   /** Requests an interrupt to be handled at the next instruction boundary. */
   public void requestExternalInterrupt(int cause) {
@@ -100,7 +101,17 @@ public final class MarsContext implements AutoCloseable {
   }
 
   int takeExternalInterrupt() {
-    return interrupt.getAndSet(0);
+    return interrupt.getAndSet(0) | deviceInterrupts.getAndSet(0);
+  }
+
+  /** Returns the pending interrupt causes produced by simulated devices. */
+  public int pendingDeviceInterrupts() {
+    return deviceInterrupts.get();
+  }
+
+  /** Updates only the specified interrupt causes, preserving other devices' pending bits. */
+  public void setDeviceInterrupts(int mask, int causes) {
+    deviceInterrupts.getAndUpdate(pending -> (pending & ~mask) | (causes & mask));
   }
 
   private volatile MIPSprogram program;
@@ -300,6 +311,7 @@ public final class MarsContext implements AutoCloseable {
     registerFile.reset();
     delayedBranch.clear();
     interrupt.set(0);
+    deviceInterrupts.set(0);
   }
 
   /**
@@ -374,6 +386,7 @@ public final class MarsContext implements AutoCloseable {
     coprocessor1.resetRegisters();
     delayedBranch.clear();
     interrupt.set(0);
+    deviceInterrupts.set(0);
   }
 
   /** Releases default I/O files. Custom program environments are owned by their callers. */

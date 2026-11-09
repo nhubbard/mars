@@ -4,6 +4,8 @@ import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -72,9 +74,11 @@ public class BackStepper {
   private int framePc;
   private ProgramStatement frameStatement;
   private DelayedBranchState.Snapshot frameBranch;
+  private Runnable frameRestore;
   private boolean frameDiscarded;
   private boolean frameInDelaySlot;
   private final BackstepStack backSteps;
+  private final CopyOnWriteArrayList<Supplier<Runnable>> checkpoints = new CopyOnWriteArrayList<>();
 
   // One can argue using java.util.Stack, given its clumsy implementation.
   // A homegrown linked implementation will be more streamlined, but
@@ -107,6 +111,15 @@ public class BackStepper {
     backSteps = new BackstepStack(capacity);
   }
 
+  /**
+   * Captures an attached device's undo action before each recorded instruction. The action runs
+   * after the CPU and memory have been restored. Returning null skips that instruction.
+   */
+  public AutoCloseable addInstructionCheckpoint(Supplier<Runnable> capture) {
+    checkpoints.add(Objects.requireNonNull(capture));
+    return () -> checkpoints.remove(capture);
+  }
+
   /** Starts one instruction's undo group before the program counter is incremented. */
   public boolean beginInstruction(int pc, ProgramStatement statement) {
     if (activeFrame != 0) {
@@ -116,10 +129,22 @@ public class BackStepper {
       return false;
     }
     Objects.requireNonNull(statement);
+    Runnable restore = null;
+    for (var checkpoint : checkpoints) {
+      var next = checkpoint.get();
+      if (next != null) {
+        var previous = restore;
+        restore = previous == null ? next : () -> {
+          previous.run();
+          next.run();
+        };
+      }
+    }
     activeFrame = ++nextFrame;
     framePc = pc;
     frameStatement = statement;
     frameBranch = delayedBranch.snapshot();
+    frameRestore = restore;
     frameInDelaySlot = delayedBranch.isTriggered();
     frameDiscarded = false;
     return true;
@@ -140,6 +165,7 @@ public class BackStepper {
       activeFrame = 0;
       frameStatement = null;
       frameBranch = null;
+      frameRestore = null;
       frameDiscarded = false;
     }
   }
@@ -232,10 +258,15 @@ public class BackStepper {
     ProgramStatement statement = first.ps;
     long frame = first.frame;
     DelayedBranchState.Snapshot branch = first.branch;
+    Runnable restore = null;
     engaged = false;
     try {
       do {
         BackStep step = backSteps.pop();
+        if (step.restore != null) {
+          restore = step.restore;
+          step.restore = null;
+        }
         if (step.pc != NOT_PC_VALUE) {
           registerFile.setProgramCounter(step.pc);
         }
@@ -260,6 +291,9 @@ public class BackStepper {
               : backSteps.peek().frame == 0 && statement == backSteps.peek().ps));
       if (branch != null) {
         delayedBranch.restore(branch);
+      }
+      if (restore != null) {
+        restore.run();
       }
     } catch (AddressErrorException error) {
       throw new IllegalStateException("Cannot restore memory while back-stepping", error);
@@ -434,6 +468,7 @@ public class BackStepper {
   private class BackStep {
     private long frame;
     private DelayedBranchState.Snapshot branch;
+    private Runnable restore;
     private int action; // what do do MEMORY_RESTORE_WORD, etc
     private int pc; // program counter value when original step occurred
     private ProgramStatement ps; // statement whose action is being "undone" here
@@ -450,6 +485,9 @@ public class BackStepper {
       pc = programCounter;
       frame = activeFrame;
       branch = frameBranch;
+      // The first action is popped last. Keep the checkpoint on that action without adding a slot.
+      restore = frameRestore;
+      frameRestore = null;
       if (frame != 0) {
         pc = framePc;
         ps = frameStatement;
@@ -507,6 +545,7 @@ public class BackStepper {
       for (BackStep step : stack) {
         step.ps = null;
         step.branch = null;
+        step.restore = null;
         step.frame = 0;
       }
     }
@@ -528,6 +567,7 @@ public class BackStepper {
           return;
         }
         do {
+          stack[(top - size + 1 + capacity) % capacity].restore = null;
           size--;
         } while (size > 0
             && oldestFrame != 0

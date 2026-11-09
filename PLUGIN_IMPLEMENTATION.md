@@ -1155,7 +1155,10 @@ The keypad scans the row written at `0x12` and places its row and column code at
 Keypad and counter interrupts retain their original Cause bits and respect
 Coprocessor 0's exception level. Keypad writes happen at instruction boundaries,
 including when resuming or stepping from a debugger pause. Reset clears the
-displays, key, and timer. Backstep preserves the device state and external input.
+displays, key, and timer. Backstep restores the display, applied key, timer,
+keypad port, and pending device interrupt bits from the same instruction frame
+as the CPU. A queued key press is discarded on rewind, so stepping forward
+again requires fresh input.
 
 ## Next slices
 

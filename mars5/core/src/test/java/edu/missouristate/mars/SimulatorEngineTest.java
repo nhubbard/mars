@@ -7,6 +7,7 @@ import edu.missouristate.mars.api.StepEvent.BranchOutcome;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.Exceptions;
 import java.nio.file.*;
 import java.util.*;
@@ -49,6 +50,48 @@ class SimulatorEngineTest {
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(engine.runAsync(0, null).get(5, TimeUnit.SECONDS).reason())
           .isEqualTo(StopEvent.Reason.NORMAL_EXIT);
+    }
+  }
+
+  @Test
+  void deviceCheckpointsShareTheInstructionFrameAndExpireWithIt() throws Exception {
+    try (var session = load("nop\n")) {
+      int pc = session.registerFile.getPC();
+      var statement = session.memory.getStatementNoNotify(pc);
+      var history = new BackStepper(session.memory, session.registerFile, session.coprocessor0,
+          session.coprocessor1, session.delayedBranch, 1);
+      var restored = new ArrayList<Integer>();
+      var value = new AtomicInteger();
+      try (var first = history.addInstructionCheckpoint(() -> {
+             int previous = value.get();
+             return () -> {
+               assertThat(session.registerFile.getPC()).isEqualTo(pc);
+               restored.add(previous);
+             };
+           });
+           var skipped = history.addInstructionCheckpoint(() -> null);
+           var second = history.addInstructionCheckpoint(() -> () -> restored.add(-1))) {
+        history.beginInstruction(pc, statement);
+        history.endInstruction();
+        value.set(7);
+        history.beginInstruction(pc, statement);
+        history.endInstruction();
+        session.registerFile.setProgramCounter(pc + 4);
+        history.backStep();
+        assertThat(history.canBackstep()).isFalse();
+        assertThat(restored).containsExactly(7, -1);
+
+        history.beginInstruction(pc, statement);
+        history.addRegisterFileRestore(8, 0);
+        history.addRegisterFileRestore(9, 0);
+        history.endInstruction();
+        assertThat(history.canBackstep()).isFalse();
+        assertThat(restored).containsExactly(7, -1);
+      }
+      history.beginInstruction(pc, statement);
+      history.endInstruction();
+      history.backStep();
+      assertThat(restored).containsExactly(7, -1);
     }
   }
 

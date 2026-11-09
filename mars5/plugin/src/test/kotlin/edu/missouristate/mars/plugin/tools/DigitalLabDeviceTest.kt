@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.tools
 
 import edu.missouristate.mars.api.StopEvent
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.mips.hardware.AccessOrigin.duringExecution
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.CAUSE
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
@@ -13,6 +14,7 @@ import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -27,7 +29,7 @@ class DigitalLabDeviceTest {
             val lab = DigitalLabDevice()
             lab.setConnected(true)
             assertFalse(lab.snapshot().available)
-            lab.observe(memory).use {
+            lab.observe(session).use {
                 assertEquals(0, memory.countObservers())
                 lab.setConnected(true)
                 assertEquals(1, memory.countObservers())
@@ -70,8 +72,8 @@ class DigitalLabDeviceTest {
                 val other = DigitalLabDevice(true)
                 lab.toggleKey(6)
                 assertNull(lab.snapshot().key)
-                lab.observe(memory).use {
-                    other.observe(second.memory).use {
+                lab.observe(first).use {
+                    other.observe(second).use {
                         lab.releaseView()
                         assertTrue(lab.snapshot().connected)
                         duringExecution<Unit, Exception> { memory.setByte(start + 2, 1) }
@@ -105,7 +107,7 @@ class DigitalLabDeviceTest {
                 val memory = session.memory
                 val start = memory.memoryMapBaseAddress + 0x10
                 val lab = DigitalLabDevice(true)
-                lab.observe(memory).use {
+                lab.observe(session).use {
                     if (masked) session.coprocessor0.getRegister(STATUS).setValue(2)
                     duringExecution<Unit, Exception> { memory.setHalf(start + 2, 0x0181) }
                     repeat(29) { lab.instructionCompleted(session) }
@@ -123,6 +125,68 @@ class DigitalLabDeviceTest {
     }
 
     @Test
+    fun `backstep restores the timer and only this device's pending interrupts`(@TempDir directory: Path) {
+        val path = directory.resolve("timer.asm").also { it.writeText("nop\n".repeat(31)) }
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val program = session.assemble(listOf(path))
+            val memory = session.memory
+            val timer = memory.memoryMapBaseAddress + 0x13
+            val lab = DigitalLabDevice(true)
+            lab.observe(session).use {
+                duringExecution<Unit, Exception> { memory.setByte(timer, 1) }
+                fun step() {
+                    program.executeSessionInstruction()
+                    lab.instructionCompleted(session)
+                }
+                repeat(30) { step() }
+                assertEquals(30, lab.snapshot().timerRemaining)
+                assertEquals(0x100, session.pendingDeviceInterrupts())
+
+                session.setDeviceInterrupts(0x40, 0x40)
+                session.backStepper.backStep()
+                assertEquals(1, lab.snapshot().timerRemaining)
+                assertEquals(0x40, session.pendingDeviceInterrupts())
+                session.setDeviceInterrupts(0x40, 0)
+                step()
+                assertThrows(ProcessingException::class.java) { program.executeSessionInstruction() }
+                assertEquals(0, session.pendingDeviceInterrupts())
+                assertEquals(0x400, session.coprocessor0.getRegister(CAUSE).valueNoNotify)
+                session.backStepper.backStep()
+                assertEquals(0x100, session.pendingDeviceInterrupts())
+                assertEquals(0, session.coprocessor0.getRegister(CAUSE).valueNoNotify)
+            }
+        }
+    }
+
+    @Test
+    fun `backstep across connection restores the old display and leaves unrelated port data alone`(@TempDir directory: Path) {
+        val path = directory.resolve("display.asm").also {
+            it.writeText("lui \$t0, 0xffff\naddiu \$t1, \$zero, 0x3f\nsb \$t1, 0x10(\$t0)\nnop\n")
+        }
+        MarsSessionService.createMarsComponent().context().use { session ->
+            val program = session.assemble(listOf(path))
+            val memory = session.memory
+            val output = memory.memoryMapBaseAddress + 0x14
+            val lab = DigitalLabDevice()
+            lab.observe(session).use {
+                program.executeSessionInstruction()
+                lab.setConnected(true)
+                program.executeSessionInstruction()
+                program.executeSessionInstruction()
+                lab.instructionCompleted(session)
+                assertEquals(0x3f, lab.snapshot().right)
+                session.backStepper.backStep()
+                assertEquals(0, lab.snapshot().right)
+                session.backStepper.backStep()
+                memory.setByte(output, 0xab)
+                session.backStepper.backStep()
+                assertEquals(0xab, memory.getByte(output))
+                assertTrue(lab.snapshot().connected)
+            }
+        }
+    }
+
+    @Test
     fun `a disconnected device ignores an in-flight notice from the previous observer list`() {
         MarsSessionService.createMarsComponent().context().use { session ->
             val memory = session.memory
@@ -130,7 +194,7 @@ class DigitalLabDeviceTest {
             val lab = DigitalLabDevice(true)
             val disconnect = Consumer<MemoryAccessNotice> { lab.setConnected(false) }
             memory.addObserver(disconnect, start)
-            lab.observe(memory).use {
+            lab.observe(session).use {
                 duringExecution<Unit, Exception> { memory.setByte(start, 0xff) }
                 assertEquals(0, lab.snapshot().right)
                 assertEquals(1, memory.countObservers())

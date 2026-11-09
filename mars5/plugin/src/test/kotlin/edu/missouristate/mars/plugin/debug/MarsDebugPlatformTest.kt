@@ -1007,7 +1007,7 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `Digital Lab keypad input reaches the machine between debug steps`() = timeoutRunBlocking<Unit> {
+    fun `Digital Lab keypad input reaches the machine and backstep restores the previous latch`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("digital-lab-debug.asm", """
                 lui ${'$'}t0, 0xffff
@@ -1037,6 +1037,26 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x00000042", evaluate(debug.session, frame, "\$t2"))
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 3)
+            assertEquals(6, process.digitalLab.snapshot().key)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = toolbarAction(debug.session, "Backstep Source Statement")
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 2)
+            assertNull(process.digitalLab.snapshot().key)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "byte(0xffff0014)"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 3)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000000", evaluate(debug.session, frame, "byte(0xffff0014)"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())

@@ -185,7 +185,7 @@ internal class MarsProcessHandler(
                             bitmapDisplay.observe(session.memory).use {
                                 memoryReferences.observe(session.memory).use {
                                     dataCache.observe(session.memory).use {
-                                        digitalLab.observe(session.memory).use { execute(session) }
+                                        digitalLab.observe(session).use { execute(session) }
                                     }
                                 }
                             }
