@@ -336,6 +336,22 @@ keep their full spelling. The core fixture checks the resulting data and the
 expanded source text. The IDE fixture checks the literal's PSI and the emitted
 instruction.
 
+## Macro substitution positions
+
+Macro expansion uses the token spans from the equivalence-processed body and
+replaces parameters and local labels from right to left. A quoted string or
+comment can contain the same spelling as a parameter or label without becoming
+a substitution. Parameters introduced by an equivalence can be substituted too.
+
+The core fixture checks repeated and overlapping parameter names, quoted text,
+and a local label passed to a nested macro. The IDE fixture parses the original
+macro and checks the resulting data values and string bytes.
+
+The clean IntelliJ 2026.3 launch passed 1,290 tests, including 83 plugin tests,
+and authored plugin code covered all 690 lines and 424 branch outcomes.
+The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
+distribution ZIP matched the launched plugin by SHA-256.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

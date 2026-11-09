@@ -157,6 +157,27 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `macro parameters remain distinct from quoted text and longer names`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv DATAARG %ab
+            .macro emit (%a, %ab, %text)
+              .word DATAARG, %a, %ab
+              .asciiz "%text", %text
+            .end_macro
+            .data
+            emit(7, 11, "A")
+            .text
+            nop
+        """.trimIndent()
+        assertAssembles(directory, source, 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        val start = memory.dataBaseAddress
+        assertEquals(listOf(11, 7, 11), (0..2).map { memory.getWordNoNotify(start + it * 4) })
+        assertEquals("%text\u0000A\u0000".map(Char::code), (12..19).map { memory.getByte(start + it) })
+        readAction { assertParses(source) }
+    }
+
+    @Test
     fun `macro parameter can supply an operation during expansion`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .macro emit (%ignored,%value)

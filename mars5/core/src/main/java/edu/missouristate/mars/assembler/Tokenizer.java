@@ -559,10 +559,10 @@ public class Tokenizer {
   private record EquivalenceExpansion(String symbol, int suffixLength) {}
 
   private Token nextEquivalenceUse(MIPSprogram program, int lineNum, String line, TokenList tokens) {
+    tokens.setProcessedLine(line);
     if (recordEquivalence(program, lineNum, line, tokens)) {
       return null;
     }
-    tokens.setProcessedLine(line);
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
       if (token.getType() == TokenTypes.IDENTIFIER && equivalents.containsKey(token.getValue())) {

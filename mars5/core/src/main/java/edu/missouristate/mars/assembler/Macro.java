@@ -144,10 +144,12 @@ public class Macro {
    */
   public String getSubstitutedLine(int line, TokenList args, long counter, ErrorList errors) {
     TokenList tokens = program.getTokenList().get(line - 1);
-    String s = program.getSourceLine(line);
+    var source = new StringBuilder(tokens.getProcessedLine());
 
+    // Replace from right to left so earlier token offsets stay valid.
     for (int i = tokens.size() - 1; i >= 0; i--) {
       Token token = tokens.get(i);
+      String substitute;
       if (tokenIsMacroParameter(token.getValue(), true)) {
         int repl = -1;
         for (int j = 0; j < this.args.size(); j++) {
@@ -156,7 +158,7 @@ public class Macro {
             break;
           }
         }
-        String substitute = token.getValue();
+        substitute = token.getValue();
         if (repl != -1) {
           substitute = args.get(repl + 1).toString();
         } else {
@@ -164,39 +166,19 @@ public class Macro {
               new ErrorMessage(
                   program, token.getSourceLine(), token.getStartPos(), "Unknown macro parameter"));
         }
-        s = replaceToken(s, token, substitute);
       } else if (tokenIsMacroLabel(token.getValue())) {
-        String substitute = token.getValue() + "_M" + counter;
-        s = replaceToken(s, token, substitute);
+        substitute = token.getValue() + "_M" + counter;
+      } else {
+        continue;
       }
+      source.replace(token.getStartPos() - 1, token.getEndPos() - 1, substitute);
     }
-    return s;
+    return source.toString();
   }
 
   /** returns true if <code>value</code> is name of a label defined in this macro's body. */
   private boolean tokenIsMacroLabel(String value) {
     return (Collections.binarySearch(labels, value) >= 0);
-  }
-
-  /**
-   * replaces token <code>tokenToBeReplaced</code> which is occured in <code>source</code> with
-   * <code>substitute</code>.
-   */
-  // Initially the position of the substitute was based on token position but that proved
-  // problematic
-  // in that the source string does not always match the token list from which the token comes. The
-  // token list has already had .eqv equivalences applied whereas the source may not.  This is
-  // because
-  // the source comes from a macro definition?  That has proven to be a tough question to answer.
-  // DPS 12-feb-2013
-  private String replaceToken(String source, Token tokenToBeReplaced, String substitute) {
-    String stringToBeReplaced = tokenToBeReplaced.getValue();
-    int pos = source.indexOf(stringToBeReplaced);
-    return (pos < 0)
-        ? source
-        : source.substring(0, pos)
-            + substitute
-            + source.substring(pos + stringToBeReplaced.length());
   }
 
   /**

@@ -393,6 +393,56 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void macroSubstitutionRewritesOnlyTheParsedTokenSpans() throws Exception {
+    var main = directory.resolve("main.s");
+    var source = """
+        .eqv DATAARG %ab
+        .macro words (%a, %ab)
+          .word DATAARG, %a
+          .word %ab, %a, %a
+        .end_macro
+        .macro emit (%text)
+          .asciiz "%text", %text
+        .end_macro
+        .macro embed (%text, %address)
+          .asciiz %text
+          .word %address
+        .end_macro
+        .macro outer
+          tag: .word 1
+          embed("tag", tag)
+        .end_macro
+        .data
+        words(7, 11)
+        emit("A")
+        outer()
+        .text
+        nop
+        """;
+    var snapshot = new AssemblySourceSnapshot(List.of(main), Map.of(main, source));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      assertThat(result.succeeded()).isTrue();
+      int base = session.memory.dataBaseAddress;
+      int[] words = {11, 7, 11, 7, 7};
+      for (int i = 0; i < words.length; i++) {
+        assertThat(session.memory.getWordNoNotify(base + i * 4)).isEqualTo(words[i]);
+      }
+      String emitted = "%text\0A\0";
+      for (int i = 0; i < emitted.length(); i++) {
+        assertThat(session.memory.getByte(base + 20 + i)).isEqualTo(emitted.charAt(i));
+      }
+      assertThat(session.memory.getWordNoNotify(base + 28)).isEqualTo(1);
+      assertThat(session.memory.getByte(base + 32)).isEqualTo('t');
+      assertThat(session.memory.getByte(base + 33)).isEqualTo('a');
+      assertThat(session.memory.getByte(base + 34)).isEqualTo('g');
+      assertThat(session.memory.getByte(base + 35)).isZero();
+      assertThat(session.memory.getWordNoNotify(base + 36)).isEqualTo(base + 28);
+    }
+  }
+
+  @Test
   void cancellationAtAnySnapshotCheckpointPropagatesAndReleasesTheSession() throws Exception {
     var main = directory.resolve("main.s");
     var definitions = directory.resolve("defs.s");
