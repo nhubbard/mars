@@ -4,6 +4,7 @@ import com.intellij.lang.ASTNode
 import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
@@ -454,6 +455,21 @@ class MipsParserPlatformTest {
             lexer.advance()
             assertNull(lexer.tokenType)
             assertSame(TokenType.WHITE_SPACE, MipsTypes.converter.convert(SyntaxTokenTypes.WHITE_SPACE))
+        }
+    }
+
+    @Test
+    fun `basic and pseudo instruction mnemonics use the IDE keyword color`() {
+        val highlighter = MipsSyntaxHighlighter()
+        val lexer = highlighter.highlightingLexer
+        for (mnemonic in listOf("addiu", "LI", "c.eq.s")) {
+            lexer.start(mnemonic)
+            assertSame(MipsTypes.psi("MNEMONIC"), lexer.tokenType)
+            assertArrayEquals(
+                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
+                highlighter.getTokenHighlights(lexer.tokenType!!),
+                mnemonic,
+            )
         }
     }
 
