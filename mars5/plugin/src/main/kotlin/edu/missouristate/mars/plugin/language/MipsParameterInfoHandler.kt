@@ -5,21 +5,26 @@ import com.intellij.lang.parameterInfo.ParameterInfoContext
 import com.intellij.lang.parameterInfo.ParameterInfoHandler
 import com.intellij.lang.parameterInfo.ParameterInfoUIContext
 import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
+import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 
 internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instruction>, DumbAware {
     override fun findElementForParameterInfo(context: CreateParameterInfoContext): PsiElement? {
-        val instruction = findInstruction(context) ?: return null
-        context.itemsToShow = InstructionDefaults.get().matchOperator(instruction.firstChild.text)
+        val instruction = findOperation(context) ?: return null
+        val tokens = parameterTokens(instruction, context) ?: return null
+        context.itemsToShow = InstructionDefaults.get().matchOperator(tokens[0].value)
             .distinctBy { it.exampleFormat }.toTypedArray()
         return instruction
     }
@@ -28,19 +33,35 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instr
         context.showHint(element, element.textOffset, this)
     }
 
-    override fun findElementForUpdatingParameterInfo(context: UpdateParameterInfoContext): PsiElement? = findInstruction(context)
+    override fun findElementForUpdatingParameterInfo(context: UpdateParameterInfoContext): PsiElement? {
+        val instruction = findOperation(context) ?: return null
+        val tokens = parameterTokens(instruction, context) ?: return null
+        // The IDE keeps the original rows while updating a popup. An edit to an alias can change them.
+        val shown = context.objectsToView.first() as Instruction
+        return instruction.takeIf { shown.name.equals(tokens[0].value, ignoreCase = true) }
+    }
 
     // Unlike Java calls, a MIPS instruction can use whitespace alone to separate operands.
     override fun isWhitespaceSensitive(): Boolean = true
 
     override fun updateParameterInfo(parameterOwner: PsiElement, context: UpdateParameterInfoContext) {
-        val text = context.editor.document.immutableCharSequence
-        val prefix = text.subSequence(parameterOwner.textOffset, context.offset).toString()
-        val tokens = Tokenizer().tokenizeLine(1, prefix, ErrorList(), false)
+        val tokens = parameterTokens(parameterOwner, context) ?: return
         val count = tokens.size()
         val last = tokens[count - 1]
-        val atNextToken = count == 1 || last.endPos - 1 < prefix.length || last.type in operandPrefixes
+        val atNextToken = count == 1 || last.endPos - 1 < tokens.processedLine.length ||
+            last.type in operandPrefixes || context.offset == parameterOwner.firstChild.textRange.endOffset
         context.setCurrentParameter(if (atNextToken) count - 1 else count - 2)
+    }
+
+    private fun parameterTokens(owner: PsiElement, context: ParameterInfoContext): TokenList? {
+        val text = context.editor.document.immutableCharSequence
+        val prefix = text.subSequence(owner.textOffset, context.offset).toString()
+        if (owner.node.elementType == instructionType) {
+            return Tokenizer().tokenizeLine(1, prefix, ErrorList(), false).also { it.processedLine = prefix }
+        }
+        val file = context.file as MipsFile
+        return file.project.service<MarsAnalysisService>()
+            .expandedInstructionAlias(file, owner.firstChild, prefix, allowIncompleteOperand = true)
     }
 
     override fun updateUI(instruction: Instruction, context: ParameterInfoUIContext) {
@@ -53,7 +74,7 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instr
         )
     }
 
-    private fun findInstruction(context: ParameterInfoContext): PsiElement? {
+    private fun findOperation(context: ParameterInfoContext): PsiElement? {
         val document = context.editor.document
         val offset = context.offset
         val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
@@ -62,13 +83,14 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, Instr
         val statement = PsiTreeUtil.findFirstParent(context.file.findElementAt(first), true) {
             PsiUtilCore.getElementType(it) == statementType
         } ?: return null
-        val owner = statement.node.findChildByType(instructionType)?.psi ?: return null
+        val owner = statement.node.findChildByType(operationTypes)?.psi ?: return null
         return owner.takeIf { offset >= it.firstChild.textRange.endOffset }
     }
 
     private companion object {
         val statementType = MipsTypes.psi("STATEMENT")
         val instructionType = MipsTypes.psi("INSTRUCTION")
+        val operationTypes = TokenSet.create(instructionType, MipsTypes.psi("OPERATION_CANDIDATE"))
         val commentType = MipsTypes.psi("COMMENT")
         val operandPrefixes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
     }

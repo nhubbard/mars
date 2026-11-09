@@ -129,11 +129,14 @@ The native Parameter Info action lists distinct basic and pseudo-instruction for
 Java catalog at an instruction's operands. It uses the core token spans to highlight the
 current operand token, including a base register inside parentheses. The popup follows
 whitespace-separated operands, repeated commas, signs, and incomplete address syntax.
-IntelliJ owns the popup and caret updates. The handler uses local syntax and metadata and
-performs no index query.
+For an instruction supplied by an equivalence, the handler uses the include-ordered source
+cache and highlights the next operand after any tokens supplied by the alias. IntelliJ owns
+the popup and caret updates. When an edit changes the expanded mnemonic, the popup rejects
+its old instruction forms.
 
 Jupiter fixtures invoke the registered editor action and inspect the rendered popup for
-overloaded instructions, missing operands, and positions outside instruction operands.
+overloaded instructions, missing operands, aliases that supply address punctuation, and
+positions outside instruction operands. An update fixture covers unsaved include edits.
 
 ## Quick Documentation
 

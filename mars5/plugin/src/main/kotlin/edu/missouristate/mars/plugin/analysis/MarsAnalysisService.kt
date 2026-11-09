@@ -217,19 +217,25 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return matchingMacro(prefix, tokens)
     }
 
-    internal fun expandedInstructionAlias(root: MipsFile, head: PsiElement, source: String): TokenList? {
+    internal fun expandedInstructionAlias(
+        root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
+    ): TokenList? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
         if (prefix.equivalence(head.text) == null) return null
-        return expandedOperation(prefix, source)?.takeIf { it[0].type == TokenTypes.OPERATOR }
+        return expandedOperation(prefix, source, allowIncompleteOperand)?.takeIf { it[0].type == TokenTypes.OPERATOR }
     }
 
-    private fun expandedOperation(prefix: MipsSourceTimeline.Prefix, source: String): TokenList? {
+    private fun expandedOperation(
+        prefix: MipsSourceTimeline.Prefix, source: String, allowIncompleteOperand: Boolean = false,
+    ): TokenList? {
         val errors = ErrorList()
         val tokens = Tokenizer.tokenizeWithEquivalences(
             source, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
-        if (errors.errorsOccurred()) return null
+        // On a circular expansion the tokenizer restores the original source, so the token spans
+        // cannot be used to highlight an operand. Other errors can be unfinished operand tokens.
+        if (errors.errorsOccurred() && (!allowIncompleteOperand || tokens.processedLine == source)) return null
         tokens.discardTrailingComment()
         if (tokens.beginsWithLabel()) {
             tokens.remove(0)
