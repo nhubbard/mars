@@ -11,6 +11,8 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.index.resolveIndexedMipsInclude
+import edu.missouristate.mars.plugin.language.references.dotSegments
 import java.nio.file.Path
 
 internal fun inferredMipsAssemblyEntry(file: MipsFile): Path? =
@@ -37,7 +39,15 @@ internal fun mipsAssemblyRoots(project: Project, selected: VirtualFile): List<Vi
         // index directly so an edit in another file can introduce a new parent.
         val includers = buildSet {
             manager.processIncludingFiles(context) { include ->
-                if (include.first.fileType == MipsFileType) add(include.first)
+                val candidate = include.first
+                val info = include.second
+                if (candidate.fileType == MipsFileType) {
+                    // IntelliJ retries unresolved provider results with its generic path rules.
+                    // Recheck dot segments before admitting such an edge to MARS's graph.
+                    if (info.path.split('/').none { it in dotSegments } ||
+                        resolveIndexedMipsInclude(info, psi.findFile(candidate)!!)?.virtualFile == file
+                    ) add(candidate)
+                }
                 true
             }
         }

@@ -28,11 +28,14 @@ class MipsIncludeProvider : FileIncludeProvider() {
 
     override fun getIncludeInfos(content: FileContent): Array<FileIncludeInfo> = collectMipsIncludes(content.contentAsText)
 
-    override fun resolveIncludedFile(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? {
-        if (info.offset < 0) return null
-        val literal = context.findElementAt(info.offset) as? MipsStringLiteral ?: return null
-        return MipsFileReferenceSet(info.path, literal).resolve()
-    }
+    override fun resolveIncludedFile(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? =
+        resolveIndexedMipsInclude(info, context)
+}
+
+internal fun resolveIndexedMipsInclude(info: FileIncludeInfo, context: PsiFile): PsiFileSystemItem? {
+    if (info.offset < 0) return null
+    val literal = context.findElementAt(info.offset) as? MipsStringLiteral ?: return null
+    return MipsFileReferenceSet(info.path, literal).resolve()
 }
 
 internal fun collectMipsIncludes(text: CharSequence): Array<FileIncludeInfo> {

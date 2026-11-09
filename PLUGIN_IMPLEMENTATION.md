@@ -396,6 +396,12 @@ source directory. Absolute paths use the filesystem root, including when a nativ
 reference. The PSI cache stores path text by offset; it does not cache resolved targets. A reference
 to a missing file resolves after the target is created, even without an edit to the source.
 
+Include navigation and document capture require a directory at each dot segment.
+They follow directory symlinks before applying a parent segment and stay at the
+filesystem root when it has no parent. MARS rechecks dot-segment edges from the
+shared index because IntelliJ can fall back to a generic resolver after an
+unresolved path.
+
 Eight new Jupiter editor fixtures cover the navigation, completion, refactoring, raw path, missing
 target, and quote preservation contracts. The shared-index absolute path test has no relative alias
 that could conceal a failed absolute lookup. All 1,254 tests passed in the clean launch and authored

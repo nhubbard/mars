@@ -1,14 +1,18 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VFileProperty
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
@@ -20,8 +24,13 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
+import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.assembleIn
+import edu.missouristate.mars.plugin.analysis.captureAssemblySources
+import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import edu.missouristate.mars.plugin.language.references.resolveMipsDotSegment
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
@@ -101,26 +110,94 @@ class MipsFileReferencesPlatformTest {
     }
 
     @Test
-    fun `native include navigation does not substitute a lexical parent when the symlink target has no VFS parent`(
+    fun `include navigation and assembly stay at the root when following a symlink and parent segment`(
         @TempDir outsideProject: Path,
     ) = timeoutRunBlocking<Unit> {
-        val psi = withContext(Dispatchers.EDT) {
-            val path = Files.writeString(outsideProject.resolve("main.asm"), ".include \"shortcut/../value.s\"\n")
-            Files.writeString(outsideProject.resolve("value.s"), "nop\n")
+        val (psi, target) = withContext(Dispatchers.EDT) {
+            val directory = Files.createDirectory(outsideProject.resolve("actual"))
+            val included = Files.writeString(directory.resolve("value.s"), ".eqv COUNT 7\n")
+            val fromRoot = outsideProject.root.relativize(included)
+            val path = Files.writeString(
+                outsideProject.resolve("main.asm"),
+                ".include \"shortcut/../../$fromRoot\"\naddiu \$t0, \$zero, COUNT\n",
+            )
             val link = Files.createSymbolicLink(outsideProject.resolve("shortcut"), outsideProject.root)
             val manager = VirtualFileManager.getInstance()
             checkNotNull(manager.refreshAndFindFileByNioPath(link))
             val source = checkNotNull(manager.refreshAndFindFileByNioPath(path))
             fixture.configureFromExistingVirtualFile(source)
-            fixture.file
+            fixture.file to checkNotNull(manager.refreshAndFindFileByNioPath(included))
         }
         readAction {
             val literal = PsiTreeUtil.findChildOfType(psi, MipsStringLiteral::class.java)!!
             val references = literal.references
             assertNotNull(references.first().resolve())
-            assertNull(references[1].resolve())
-            assertNull(references.last().resolve())
+            for (index in 1..2) {
+                val parent = assertInstanceOf(PsiDirectory::class.java, references[index].resolve())
+                assertEquals(outsideProject.root, parent.virtualFile.toNioPath())
+            }
+            assertEquals(target, references.last().resolve()?.containingFile?.virtualFile)
         }
+        val path = psi.virtualFile.toNioPath()
+        val component = MarsSessionService.createMarsComponent()
+        val disk = MarsSessionService.createMarsComponent().context().use { session ->
+            session.assemble(listOf(path)).machineList.single().binaryStatement
+        }
+        component.context().use { session ->
+            val capture = captureAssemblySources(listOf(path), null)
+            assertEquals(setOf(path, target.toNioPath()), capture.revisions.keys)
+            val result = capture.assembleIn(component)
+            assertTrue(result.succeeded(), result.errors().toString())
+            assertEquals(0x24080007, disk)
+            assertEquals(disk, session.program.machineList.single().binaryStatement)
+        }
+    }
+
+    @Test
+    fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking<Unit> {
+        val decoy = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("value.s", "nop\n")
+            fixture.addFileToProject("decoy.s", "nop\n") as MipsFile
+        }
+        for ((index, request) in listOf("value.s/../decoy.s", "value.s/.").withIndex()) {
+            val file = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("bad-$index.asm", ".include \"$request\"\n")
+            }
+            readAction {
+                val literal = PsiTreeUtil.findChildOfType(file, MipsStringLiteral::class.java)!!
+                assertNull(literal.references.last().resolve(), request)
+            }
+            val entry = file.virtualFile.toNioPath()
+            val capture = captureAssemblySources(listOf(entry), null)
+            assertEquals(setOf(entry), capture.revisions.keys)
+            val component = MarsSessionService.createMarsComponent()
+            val disk = MarsSessionService.createMarsComponent().let { disk ->
+                disk.context().use { disk.assembler().assemble(listOf(entry)).errors().single() }
+            }
+            component.context().use {
+                val error = capture.assembleIn(component).errors().single()
+                assertEquals(entry, error.file())
+                assertEquals(1, error.line())
+                assertTrue(error.message().contains(request))
+                assertEquals(disk, error)
+            }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction { assertEquals(decoy.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+        val valid = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("valid.asm", ".include \"./decoy.s\"\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction { assertEquals(valid.virtualFile.toNioPath(), inferredMipsAssemblyEntry(decoy)) }
+    }
+
+    @Test
+    fun `an unresolved directory symlink has no usable parent segment`() {
+        val unresolved = object : MockVirtualFile(true, "shortcut") {
+            override fun `is`(property: VFileProperty) = property == VFileProperty.SYMLINK
+            override fun getCanonicalFile(): VirtualFile? = null
+        }
+        assertNull(unresolved.resolveMipsDotSegment(".."))
     }
 
     @Test

@@ -14,6 +14,7 @@ import edu.missouristate.mars.api.AssemblyResult
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.di.MarsComponent
+import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Map.copyOf as copyOfMap
@@ -83,8 +84,7 @@ internal fun collectAssemblySources(
             val include = tokenizer.findIncludePath(lines.next()) ?: continue
             try {
                 val request = path.resolveSibling(include)
-                // The VFS must see '..' before normalization because it may follow a symlink.
-                val target = files.findFileByNioPath(request) ?: continue
+                val target = files.findMipsIncludeFile(request) ?: continue
                 val resolved = target.toNioPath().toAbsolutePath().normalize()
                 resolvedIncludes[request] = resolved
                 enter(resolved)

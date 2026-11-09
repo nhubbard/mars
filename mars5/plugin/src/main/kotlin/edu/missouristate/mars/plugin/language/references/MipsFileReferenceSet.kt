@@ -2,7 +2,6 @@ package edu.missouristate.mars.plugin.language.references
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
-import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiElementResolveResult
@@ -54,9 +53,9 @@ class MipsFileReferenceSet(path: String, literal: MipsStringLiteral) : FileRefer
                 text: String, context: PsiFileSystemItem, result: MutableCollection<in ResolveResult>,
                 caseSensitive: Boolean,
             ) {
-                if (text == ".." && context.virtualFile.`is`(VFileProperty.SYMLINK)) {
-                    val parent = context.virtualFile.findFileByRelativePath("..")?.let(context.manager::findDirectory)
-                    if (parent != null) result.add(PsiElementResolveResult(parent))
+                if (text in dotSegments) {
+                    val directory = context.virtualFile.resolveMipsDotSegment(text)?.let(context.manager::findDirectory)
+                    if (directory != null) result.add(PsiElementResolveResult(directory))
                 } else {
                     super.innerResolveInContext(text, context, result, caseSensitive)
                 }
