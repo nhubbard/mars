@@ -55,6 +55,51 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `register completion follows the operand format and register bank`() = timeoutRunBlocking<Unit> {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            fun registers(source: String): Set<String> {
+                fixture.configureByText("registers.asm", "$source\n")
+                return fixture.completeBasic().orEmpty().map { it.lookupString }.filter { it.startsWith('$') }.toSet()
+            }
+
+            val integer = registers("entry: ADD <caret>")
+            assertEquals(64, integer.size)
+            assertTrue(integer.containsAll(listOf("\$t0", "\$zero", "\$0", "\$31")))
+            assertEquals(integer, registers("lw \$t0, 4(<caret>)"))
+            assertEquals(integer, registers("lw \$t0,, -4(<caret>"))
+            assertEquals(integer, registers("lw \$t0, (<caret>)"))
+            assertEquals(integer, registers("lw \$t0, address+4(<caret>)"))
+            assertEquals(integer, registers("div \$t0 \$t1 <caret>"))
+            assertEquals(integer, registers("mtc0 <caret>, \$12"))
+
+            val floating = (0..31).map { "\$f$it" }.toSet()
+            assertEquals(floating, registers("add.s \$f0, <caret>"))
+            assertEquals(floating, registers("mtc1 \$t0, <caret>"))
+
+            val system = setOf("\$8", "\$12", "\$13", "\$14")
+            assertEquals(system, registers("mfc0 \$t0, <caret>"))
+            assertEquals(system, registers("mtc0 \$t0, <caret>"))
+
+            for (source in listOf("lw \$t0, address <caret>", "sll \$t0, \$t1, <caret>", "nop <caret>", "emit <caret>")) {
+                assertTrue(registers(source).isEmpty(), source)
+            }
+        }
+    }
+
+    @Test
+    fun `register insertion replaces the complete token and preserves the address punctuation`() = timeoutRunBlocking<Unit> {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("registers.asm", "lw \$t0, 4(\$t<caret>8)\n")
+            val item = fixture.completeBasic().orEmpty().single { it.lookupString == "\$t2" }
+            fixture.lookup.setCurrentItem(item)
+            fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
+            assertEquals("lw \$t0, 4(\$t2)\n", fixture.file.text)
+        }
+    }
+
+    @Test
     fun `catalog heads do not complete in comments strings operands or declaration names`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

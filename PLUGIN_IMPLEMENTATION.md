@@ -87,6 +87,20 @@ per request because IntelliJ attaches editor and project state to them. Native J
 exercise suggestions and insertion after labels and inside macros, and verify that the catalog
 stays out of operands, declarations, strings and comments.
 
+## Instruction register completion
+
+Register completion uses the instruction PSI and the core's tokenized operand formats.
+The assembler tokenizer counts the tokens before the caret, including address parentheses,
+and handles whitespace, optional commas and signed offsets. Candidate formats must agree
+with the address punctuation already typed. Completion offers canonical integer names and
+numbers, floating-point registers, or the implemented CP0 register numbers for the second
+operand of `mfc0` and `mtc0`. The spelling lists come from the Java register banks.
+
+Native fixtures cover basic and pseudo formats, omitted and symbolic address offsets,
+CP0 and CP1 transfers, non-register operands, and replacement inside a register token.
+The contributor uses local source text and catalog metadata, so it needs no project index
+or live assembler session to produce these candidates.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.

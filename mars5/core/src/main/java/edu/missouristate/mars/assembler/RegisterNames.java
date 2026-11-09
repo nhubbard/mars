@@ -1,6 +1,12 @@
 package edu.missouristate.mars.assembler;
 
-import edu.missouristate.mars.mips.hardware.*;
+import edu.missouristate.mars.mips.hardware.Coprocessor0State;
+import edu.missouristate.mars.mips.hardware.Coprocessor1State;
+import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.Register;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
 
 /** Register-name metadata; banks are private and are never mutated or exposed. */
 public final class RegisterNames {
@@ -20,5 +26,22 @@ public final class RegisterNames {
 
   public static Register floating(String name) {
     return FLOAT.getRegister(name);
+  }
+
+  /** Canonical symbolic and decimal spellings for the general-purpose registers. */
+  public static List<String> integerSpellings() {
+    return Arrays.stream(INTEGER.getRegisters())
+        .flatMap(register -> Stream.of(register.getName(), "$" + register.getNumber()))
+        .toList();
+  }
+
+  /** Canonical assembler spellings for the floating-point registers. */
+  public static List<String> floatingSpellings() {
+    return Arrays.stream(FLOAT.getRegisters()).map(Register::getName).toList();
+  }
+
+  /** Numeric assembler spellings for implemented Coprocessor 0 registers. */
+  public static List<String> coprocessor0Spellings() {
+    return Arrays.stream(CP0.getRegisters()).map(register -> "$" + register.getNumber()).toList();
   }
 }
