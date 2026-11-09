@@ -49,8 +49,10 @@ import com.intellij.xdebugger.XDebuggerUtil
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.evaluation.EvaluationMode
+import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
+import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.impl.actions.XDebuggerActions
 import com.intellij.xdebugger.impl.ui.tree.XDebuggerTree
 import com.intellij.xdebugger.impl.ui.tree.nodes.XStackFrameNode
@@ -323,7 +325,7 @@ class MarsDebugPlatformTest {
     fun `native Variables tree renders coherent CPU and coprocessor values from each suspension`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("registers.s", """
-                addiu ${'$'}t0, ${'$'}zero, -2
+                initial: addiu ${'$'}t0, ${'$'}zero, -2
                 addiu ${'$'}t1, ${'$'}zero, 3
                 mult ${'$'}t0, ${'$'}t1
                 lui ${'$'}t2, 0x3ff8
@@ -331,7 +333,8 @@ class MarsDebugPlatformTest {
                 c.eq.s ${'$'}f0, ${'$'}f0
                 addiu ${'$'}t3, ${'$'}zero, 0x1234
                 mtc0 ${'$'}t3, ${'$'}14
-                nop
+                stop: nop
+                .globl stop
             """.trimIndent()).virtualFile.also {
                 addBreakpoint(it, 0)
                 addBreakpoint(it, 8)
@@ -361,9 +364,63 @@ class MarsDebugPlatformTest {
                 assertEquals("0x00000001", current["FCC"])
                 assertEquals("1.9375 (0x3ff80000)", current["\$f1"])
                 assertEquals("1.5 (0x3ff8000000000000)", current["\$f0/\$f1"])
+                assertFalse(requireNotNull(second.evaluator).isCodeFragmentEvaluationSupported)
+                assertEquals("0x00000000", evaluate(debug.session, first, "\$t0"))
+                val expressions = mapOf(
+                    "\$t0" to "0xfffffffe",
+                    "\$8" to "0xfffffffe",
+                    "pc" to "0x00400020",
+                    "hi" to "0xffffffff",
+                    "lo" to "0xfffffffa",
+                    "cp0.\$14" to "0x00001234",
+                    "FCC" to "0x00000001",
+                    "\$f1" to "1.9375 (0x3ff80000)",
+                    "initial" to "0x00400000",
+                    "stop" to "0x00400020",
+                    " 'A' " to "0x00000041",
+                    "(+0x10 - (2 + 3))" to "0x0000000b",
+                    "1 - 2 - 3" to "0xfffffffc",
+                    "0xffffffff + 2" to "0x00000001",
+                    "(\$t1 + 0.5) - 1" to "2.5",
+                    "\$f1 + 1" to "2.9375",
+                    "-1.5" to "-1.5",
+                )
+                for ((expression, expected) in expressions) {
+                    assertEquals(expected, evaluate(debug.session, second, expression), expression)
+                }
+                for (expression in listOf("", "1".repeat(1025), "1\n2", "1\r2", "1,2", "1+", "\"text\"",
+                    "\$t0(\$t1)", "1 + unknown", "unknown + 1", "-unknown", "syscall", "\$t0 = 3")) {
+                    assertEquals("Enter a register, label, number, or an expression using + and -.",
+                        evaluate(debug.session, second, expression), expression)
+                }
+                assertEquals("0xfffffffe", evaluate(debug.session, second, "\$t0"))
                 debug.session.resume()
             }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    private suspend fun evaluate(session: XDebugSession, frame: XStackFrame, expression: String): String {
+        val tree = XDebuggerTree(
+            project, session.debugProcess.editorsProvider, frame.sourcePosition, XDebuggerActions.VARIABLES_TREE_POPUP_GROUP, null,
+        )
+        try {
+            val evaluated = CompletableDeferred<Any>()
+            requireNotNull(frame.evaluator).evaluate(expression, object : XEvaluationCallback {
+                override fun evaluated(result: XValue) { evaluated.complete(result) }
+                override fun errorOccurred(errorMessage: String) { evaluated.complete(errorMessage) }
+            }, frame.sourcePosition)
+            return when (val result = evaluated.await()) {
+                is String -> result
+                else -> {
+                    val node = XValueNodeImpl(tree, null, expression, result as XValue)
+                    tree.setRoot(node, false)
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) { assertTrue(node.isComputed) }
+                    requireNotNull(node.rawValue)
+                }
+            }
+        } finally {
+            Disposer.dispose(tree)
         }
     }
 

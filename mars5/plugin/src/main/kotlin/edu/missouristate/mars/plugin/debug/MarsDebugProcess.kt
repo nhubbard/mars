@@ -30,6 +30,7 @@ import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.AddressErrorException
@@ -39,6 +40,7 @@ import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
+import java.nio.file.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -240,20 +242,25 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     private fun suspendContext(machine: MarsContext): MarsSuspendContext = machine.claimStoppedSession().use {
+        val pc = machine.registerFile.programCounterRegister.valueNoNotify
+        val statement = try {
+            machine.memory.getStatementNoNotify(pc)
+        } catch (_: AddressErrorException) {
+            null
+        }
+        val program = machine.program
+        val symbols = program.symbolMap()
+        val scope = statement?.sourceMIPSprogram ?: program
+        val localSymbols = symbols.locals().getValue(Path.of(scope.filename).toAbsolutePath().normalize())
         MarsSuspendContext(
-            MarsStackFrame(sourcePosition(machine), machine), machine.backStepper.canBackstep(),
+            MarsStackFrame(sourcePosition(statement?.instructionOrigin), machine, session.project, localSymbols, symbols.globals()),
+            machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             ++suspensionNumber,
         )
     }
 
-    private fun sourcePosition(machine: MarsContext): XSourcePosition? {
-        val origin = try {
-            val pc = machine.registerFile.programCounterRegister.valueNoNotify
-            machine.memory.getStatementNoNotify(pc)?.instructionOrigin
-        } catch (_: AddressErrorException) {
-            null
-        }
+    private fun sourcePosition(origin: Origin?): XSourcePosition? {
         if (origin == null) return null
         val location = origin.location()
         val file = LocalFileSystem.getInstance().findFileByNioFile(location.file())

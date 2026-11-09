@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.debug
 
+import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XCompositeNode
 import com.intellij.xdebugger.frame.XNamedValue
@@ -8,6 +9,7 @@ import com.intellij.xdebugger.frame.XValueChildrenList
 import com.intellij.xdebugger.frame.XValueGroup
 import com.intellij.xdebugger.frame.XValueNode
 import com.intellij.xdebugger.frame.XValuePlace
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
@@ -16,7 +18,14 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 
 /** Captures the registers while the simulation is suspended. The UI only reads the captured values. */
-internal class MarsStackFrame(private val position: XSourcePosition?, machine: MarsContext) : XStackFrame() {
+internal class MarsStackFrame(
+    private val position: XSourcePosition?,
+    machine: MarsContext,
+    project: Project,
+    localSymbols: Map<String, Definition>,
+    globalSymbols: Map<String, Definition>,
+) : XStackFrame() {
+    private val evaluator = MarsExpressionEvaluator(project, machine, localSymbols, globalSymbols)
     private val registerGroups = XValueChildrenList().apply {
         val cpu = machine.registerFile
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
@@ -48,6 +57,7 @@ internal class MarsStackFrame(private val position: XSourcePosition?, machine: M
     }
 
     override fun getSourcePosition() = position
+    override fun getEvaluator() = evaluator
     override fun getEqualityObject(): Any = MarsStackFrame::class.java
     override fun computeChildren(node: XCompositeNode) = node.addChildren(registerGroups, true)
 }
@@ -65,7 +75,7 @@ private class RegisterGroup(key: String, private val values: XValueChildrenList,
     }
 }
 
-private class RegisterValue(name: String, private val format: () -> String) : XNamedValue(name) {
+internal class RegisterValue(name: String, private val format: () -> String) : XNamedValue(name) {
     override fun computePresentation(node: XValueNode, place: XValuePlace) =
         node.setPresentation(null, null, format(), false)
 }

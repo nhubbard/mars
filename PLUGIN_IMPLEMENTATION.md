@@ -771,6 +771,20 @@ after execution advances. It checks the program counter, multiply result,
 exception PC, floating-point condition flags, and paired floating-point
 values against the machine state at each suspension.
 
+## Read-only debugger expressions
+
+Evaluate Expression and Watches use the selected frame's captured registers and
+assembled symbols. Expressions accept CPU register names and numbers, `pc`, `hi`,
+`lo`, Coprocessor 0 numbers such as `cp0.$14`, floating-point registers, and `FCC`.
+Local labels use the active instruction's assembly entry, then global labels.
+The existing assembly expression parser handles numeric and character literals,
+parentheses, and unary or binary `+` and `-`. Integer arithmetic wraps to 32 bits
+and displays hexadecimal. Floating-point arithmetic displays a decimal result.
+
+Evaluation operates on the paused frame's snapshot. The evaluator excludes code
+fragments and assignments. Memory expressions and breakpoint conditions are
+separate debugger work.
+
 ## Instruction backstep
 
 The native Debug toolbar offers **Backstep Instruction** while the paused
