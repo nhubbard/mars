@@ -57,7 +57,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun labelTargets(root: MipsFile, position: PsiElement): List<MipsDeclaration> {
         val name = position.text
         val activeMacro = macroOffset(position)
-        if (activeMacro != -1 && Macro.tokenIsMacroParameter(name, true)) return emptyList()
         val local = ArrayList<MipsDeclaration>()
         val outer = ArrayList<MipsDeclaration>()
         for (scope in labelScopes(root, activeMacro)) {
@@ -78,10 +77,34 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val offset = position.textOffset
         val tokens = macroLineTokens(position)
         val arity = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
+        var target: MipsDeclaration? = null
+        val open = visitMacroPrefix(root, offset) { definition ->
+            if (definition.arity == arity && definition.declaration.name == name) target = definition.declaration
+        }
+        if (open != null || target == null) return null
+        // An equivalence can insert or remove argument tokens. Leave that call to build-context binding.
+        for (index in 1 until tokens.size()) {
+            val token = tokens[index]
+            if (token.type == TokenTypes.IDENTIFIER &&
+                equivalenceTarget(root, token.value, offset + token.startPos - 1) != null) return null
+        }
+        return target
+    }
+
+    /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
+    internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {
+        if (DumbService.isDumb(project)) return null
+        val macro = visitMacroPrefix(root, position.textOffset) {} ?: return null
+        val name = position.text
+        // The assembler uses the first exact match when a parameter name is repeated.
+        val parameter = macro.parameters.firstOrNull { it.value == name } ?: return emptyList()
+        return listOfNotNull(macro.declaration.containingFile.findElementAt(macro.offset + parameter.startPos - 1))
+    }
+
+    private fun visitMacroPrefix(root: MipsFile, offset: Int, onClosed: (MipsMacroEvent.Begin) -> Unit): MipsMacroEvent.Begin? {
         val visited = hashSetOf(root.viewProvider.virtualFile)
         val pending = ArrayDeque(listOf(mipsMacroEvents(root).asSequence().takeWhile { it.offset < offset }.iterator()))
         var open: MipsMacroEvent.Begin? = null
-        var target: MipsDeclaration? = null
         while (pending.isNotEmpty()) {
             ProgressManager.checkCanceled()
             val events = pending.last()
@@ -92,7 +115,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             when (val event = events.next()) {
                 is MipsMacroEvent.Begin -> open = open ?: event
                 is MipsMacroEvent.End -> {
-                    if (open?.arity == arity && open.declaration.name == name) target = open.declaration
+                    open?.let(onClosed)
                     open = null
                 }
                 is MipsMacroEvent.Include -> {
@@ -103,14 +126,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                 }
             }
         }
-        if (open != null || target == null) return null
-        // An equivalence can insert or remove argument tokens. Leave that call to build-context binding.
-        for (index in 1 until tokens.size()) {
-            val token = tokens[index]
-            if (token.type == TokenTypes.IDENTIFIER &&
-                equivalenceTarget(root, token.value, offset + token.startPos - 1) != null) return null
-        }
-        return target
+        return open
     }
 
     /** Finds the first physical .eqv in the expanded prefix of the current entry. */

@@ -91,7 +91,7 @@ class MipsLabelReferencesPlatformTest {
         configure("target: nop\nb tar<caret>get\n.eqv target somewhere\n")
         readAction { assertEquals(0, referenceAtCaret()?.resolve()?.textOffset) }
         configure("\$target: nop\n.macro emit (\$target)\nb \$tar<caret>get\n.end_macro\n")
-        readAction { assertNull((referenceAtCaret() as PsiPolyVariantReference).resolve()) }
+        readAction { assertEquals(fixture.file.text.indexOf("\$target", startIndex = 1), referenceAtCaret()?.resolve()?.textOffset) }
     }
 
     private suspend fun configure(source: String) {

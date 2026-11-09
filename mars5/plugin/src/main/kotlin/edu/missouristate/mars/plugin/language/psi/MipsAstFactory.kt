@@ -14,6 +14,8 @@ class MipsAstFactory : ASTFactory() {
     }
 
     private companion object {
-        val symbolTokens = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
+        val symbolTokens = TokenSet.create(
+            MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("PARAMETER"),
+        )
     }
 }

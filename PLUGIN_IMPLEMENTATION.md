@@ -181,6 +181,19 @@ expands, and argument equivalences can change the token count. Both require buil
 binding. IDE fixtures exercise redefinitions, arity, case, incomplete definitions, raw call
 arguments, nested includes, and the indexing guard.
 
+## Go to Declaration for macro parameters
+
+The same include-ordered boundary traversal finds the active macro for `%name` and SPIM
+`$name` uses. The cached header keeps the assembler's exact formal parameter tokens,
+so navigation selects the first matching spelling and opens its precise source offset.
+Parameter uses are distinct from header declarations and quoted or commented text.
+An undeclared SPIM parameter in an active macro does not bind to an outer label.
+
+The current file is the entry for this query, including a header supplied by an earlier
+include. Resolving a body edited directly in a separate included file still needs selection
+of the containing build context. Fixtures cover both parameter spellings, duplicate names,
+address and operation uses, include boundaries, case, and indexing mode.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.

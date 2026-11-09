@@ -8,6 +8,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -20,8 +21,9 @@ import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
 internal sealed interface MipsMacroEvent {
     val offset: Int
 
-    data class Begin(val declaration: MipsDeclaration, val arity: Int) : MipsMacroEvent {
+    data class Begin(val declaration: MipsDeclaration, val parameters: List<Token>) : MipsMacroEvent {
         override val offset = declaration.textOffset
+        val arity: Int get() = parameters.size
     }
 
     data class End(override val offset: Int) : MipsMacroEvent
@@ -40,7 +42,7 @@ internal fun mipsMacroEvents(file: MipsFile): List<MipsMacroEvent> = CachedValue
         for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in macroEventTypes }) {
             ProgressManager.checkCanceled()
             when (element) {
-                is MipsDeclaration -> macroArity(element)?.let { add(MipsMacroEvent.Begin(element, it)) }
+                is MipsDeclaration -> macroParameters(element)?.let { add(MipsMacroEvent.Begin(element, it)) }
                 is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsMacroEvent.Include(element, it)) }
                 else -> if (isMacroEnd(element)) add(MipsMacroEvent.End(element.textOffset))
             }
@@ -60,12 +62,12 @@ internal fun macroLineTokens(element: PsiElement, fromLineStart: Boolean = false
     return tokens
 }
 
-private fun macroArity(declaration: MipsDeclaration): Int? {
+private fun macroParameters(declaration: MipsDeclaration): List<Token>? {
     val tokens = macroLineTokens(declaration)
     if (tokens[0].type != TokenTypes.IDENTIFIER) return null
     val arguments = (1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
-    return arguments.size.takeIf { arguments.all { argument -> Macro.tokenIsMacroParameter(argument.value, true) } }
+    return arguments.takeIf { it.all { argument -> Macro.tokenIsMacroParameter(argument.value, true) } }
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

@@ -9,6 +9,7 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.MipsFile
@@ -17,12 +18,13 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
     override fun getReference(): PsiReference? {
-        if (!TokenTypes.isValidIdentifier(text)) return null
+        val identifier = TokenTypes.isValidIdentifier(text)
         val context = PsiUtilCore.getElementType(parent)
-        val label = context == referenceExpression && MipsInstructionOperand.at(this)?.acceptsLabel == true
-        val equivalence = elementType != mnemonic && context in equivalenceContexts
-        if (!label && !equivalence) return null
-        return SymbolReference(this, label, equivalence, context == operationCandidate)
+        val parameter = elementType in parameterTypes && context in parameterContexts && Macro.tokenIsMacroParameter(text, true)
+        val label = identifier && context == referenceExpression && MipsInstructionOperand.at(this)?.acceptsLabel == true
+        val equivalence = identifier && elementType != mnemonic && context in equivalenceContexts
+        if (!label && !equivalence && !parameter) return null
+        return SymbolReference(this, label, equivalence, parameter, context == operationCandidate)
     }
 
     override fun getReferences(): Array<PsiReference> = listOfNotNull(reference).toTypedArray()
@@ -31,6 +33,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         element: MipsSymbolToken,
         private val label: Boolean,
         private val equivalence: Boolean,
+        private val parameter: Boolean,
         private val macroCall: Boolean,
     ) :
         PsiPolyVariantReferenceBase<MipsSymbolToken>(element, TextRange.from(0, element.textLength), true) {
@@ -40,6 +43,10 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             if (equivalence) {
                 val target = analysis.equivalenceTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
+            }
+            if (parameter) {
+                val targets = analysis.macroParameterTargets(file, element)
+                if (targets != null) return targets.map(::PsiElementResolveResult).toTypedArray()
             }
             if (macroCall) {
                 val target = analysis.macroTarget(file, element)
@@ -57,5 +64,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
             referenceExpression, MipsTypes.psi("OPERAND_FRAGMENT"), MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"),
             operationCandidate, MipsTypes.psi("INVOCATION_TOKEN"),
         )
+        val parameterTypes = TokenSet.create(MipsTypes.psi("PARAMETER"), MipsTypes.psi("DOLLAR_WORD"))
+        val parameterContexts = TokenSet.orSet(equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT")))
     }
 }
