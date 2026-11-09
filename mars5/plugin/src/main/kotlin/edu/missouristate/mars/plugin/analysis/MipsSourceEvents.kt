@@ -162,9 +162,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
             when (element) {
                 is MipsDeclaration -> when (element.kind) {
                     SymbolKind.MACRO -> add(MipsSourceEvent.Header(element))
-                    SymbolKind.LABEL -> if (element.parent.node.findChildByType(labelType) === element.node) {
-                        add(MipsSourceEvent.LabelDeclaration(element))
-                    }
+                    SymbolKind.LABEL -> add(MipsSourceEvent.LabelDeclaration(element))
                     SymbolKind.CONSTANT -> {
                         val name = element.name ?: continue
                         val replacement = Tokenizer.readEquivalenceReplacement(sourceLine(element, fromLineStart = true), name)

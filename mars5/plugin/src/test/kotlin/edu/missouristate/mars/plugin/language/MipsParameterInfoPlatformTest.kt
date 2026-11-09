@@ -128,6 +128,8 @@ class MipsParameterInfoPlatformTest {
             assertEquals(second, info(definition + "emit (+, 7<caret>)"))
             assertEquals(second, info(definition + "emit ( <caret>7"))
             assertEquals(second, info(definition + "emit -7<caret>"))
+            assertEquals(first, info(definition + "entry: emit:<caret> 7"))
+            assertEquals(second, info(definition + "entry: emit: <caret>7"))
             assertEquals(second, info(definition + "emit (+, <caret>bad%"))
             assertEquals("emit (%ignored, \$value)", info(definition + ".eqv CLOSE )\nemit (+, 7 C<caret>LOSE"))
             assertNull(info(definition + "emit (+, 7)<caret>"))

@@ -43,7 +43,8 @@
   ]
 }
 file ::= (NEWLINE | statement)*
-statement ::= (include_line | label+ body? | body) {recoverWhile=line_recover}
+// The assembler consumes one leading label; a later colon can be a macro argument.
+statement ::= (include_line | label body? | body) {recoverWhile=line_recover}
 // The assembler replaces the physical line before interpreting labels, macros, or operands.
 include_line ::= before_include_target* include_target assembly_token*
 private before_include_target ::= !include_target assembly_token
@@ -52,12 +53,12 @@ private body ::= macro_definition | non_macro_body
 private non_macro_body ::= macro_end | malformed_macro_end | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
 private line_recover ::= !NEWLINE
 // A macro argument can supply the name of a label at expansion time.
-label ::= (name | PARAMETER) COLON
+label ::= (WORD | MNEMONIC | DOLLAR_WORD | PARAMETER) COLON
 private name ::= WORD | MNEMONIC | DIRECTIVE | SET | DOLLAR_WORD | REGISTER
 // Include expansion can supply either macro boundary from a different file.
 macro_definition ::= MACRO macro_signature (NEWLINE (NEWLINE | macro_statement)* macro_end? | <<eof>>) {pin=1}
 private macro_statement ::= !macro_end macro_body_statement
-macro_body_statement ::= (include_line | label+ macro_body? | macro_body) {elementType=statement recoverWhile=line_recover}
+macro_body_statement ::= (include_line | label macro_body? | macro_body) {elementType=statement recoverWhile=line_recover}
 private macro_body ::= macro_header | non_macro_body
 // Keep the signature for include-aware binding without opening a nested PSI body.
 macro_header ::= MACRO macro_signature?

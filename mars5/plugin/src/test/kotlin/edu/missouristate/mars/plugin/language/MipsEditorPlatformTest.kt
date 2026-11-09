@@ -174,6 +174,7 @@ class MipsEditorPlatformTest {
                 .text
                 .globl main
                 main: CALL (COUNT)
+                colons: CALL:
                 MARKER paint (COUNT)
                 addiu ${'$'}t0, ${'$'}t0, 1
                 bgtz ${'$'}t0, next
@@ -208,6 +209,8 @@ class MipsEditorPlatformTest {
             assertColor("j missing", labelColor, "missing")
             assertColor(".macro local", macroColor, "local")
             assertColor("CALL (COUNT)", macroColor)
+            assertColor("colons: CALL:", labelColor, "colons")
+            assertColor("colons: CALL:", macroColor, "CALL")
             assertColor("paint (COUNT)", macroColor)
             assertColor("paint (${'$'}parameter)", macroColor)
             assertColor("local (5)", macroColor)

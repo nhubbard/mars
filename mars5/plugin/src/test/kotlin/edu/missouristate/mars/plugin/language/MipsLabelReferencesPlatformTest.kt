@@ -249,7 +249,7 @@ class MipsLabelReferencesPlatformTest {
             val file = fixture.file as MipsFile
             val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
             val names = file.project.service<MarsAnalysisService>().labelCompletionNames(file, position, "")
-            assertEquals(setOf("physical", "invalid", "cycleA", "first", "second"), names)
+            assertEquals(setOf("physical", "invalid", "cycleA", "first"), names)
         }
     }
 

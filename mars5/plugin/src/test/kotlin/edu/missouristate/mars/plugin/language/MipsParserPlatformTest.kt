@@ -166,6 +166,7 @@ class MipsParserPlatformTest {
             Triple("emit", "(\"ignored\",7)", listOf("(", "\"ignored\"", "7", ")")),
             Triple("emit", "(,-2,7)", listOf("(", "-2", "7", ")")),
             Triple("emit", " -7", listOf("-", "7")),
+            Triple("emit", ": 7", listOf(":", "7")),
         )
         for ((name, arguments, tokens) in calls) {
             val call = name + arguments
@@ -173,6 +174,7 @@ class MipsParserPlatformTest {
             assertAssembles(directory, source)
             readAction {
                 val file = assertParses(source)
+                assertEquals(listOf("entry:"), descendants(file.node, "LABEL").map { it.text }.toList())
                 val candidate = file.children
                     .mapNotNull { it.node.findChildByType(MipsTypes.psi("OPERATION_CANDIDATE")) }.single()
                 assertEquals(call, candidate.text)
@@ -182,6 +184,28 @@ class MipsParserPlatformTest {
             }
         }
     }
+
+    @Test
+    fun `only the leading label is consumed before a raw macro call inside another macro`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .macro emit (%ignored, %value)
+                    addiu ${'$'}t0, ${'$'}zero, %value
+                .end_macro
+                .macro outer
+                    local: emit: 7
+                .end_macro
+                outer
+            """.trimIndent()
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                val outer = descendants(file.node, "MACRO_DEFINITION").last()
+                assertEquals("local:", descendants(outer, "LABEL").single().text)
+                assertEquals("emit: 7", descendants(outer, "OPERATION_CANDIDATE").single().text)
+                assertEquals(listOf(":", "7"), descendants(outer, "INVOCATION_TOKEN").map { it.text }.toList())
+            }
+        }
 
     @Test
     fun `equivalence replacement PSI preserves signed token boundaries before expansion`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
@@ -368,8 +392,11 @@ class MipsParserPlatformTest {
             val openers = listOf(
                 ".macro inner (%other)" to emptyList(),
                 ".macro" to emptyList(),
+                ".macro .word" to emptyList(),
+                ".macro .set" to emptyList(),
+                ".macro \$t0" to emptyList(),
                 "nested_label: .macro inner" to listOf("nested_label:"),
-                "first_label: nested_label: .macro inner" to listOf("first_label:", "nested_label:"),
+                "first_label: nested_label: .macro inner" to listOf("first_label:"),
             )
             for ((opener, labels) in openers) {
                 val file = assertParses(source.replace(".macro inner (%other)", opener))
@@ -824,7 +851,7 @@ class MipsParserPlatformTest {
     @Test
     fun `ignored set payloads retain assembler tokens without operand errors`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val context = project.get().service<MarsSessionService>().context
-        for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".eqv OPTION .set\nOPTION ), :")) {
+        for (directive in listOf(".SeT ), :, (, +", ".set", ".set noat", ".set: nop", ".eqv OPTION .set\nOPTION ), :")) {
             val source = "$directive # ignored by the assembler\nentry: nop\n"
             val path = directory.resolve("set.asm").also { it.writeText(source) }
             val program = context.assemble(listOf(path), null, true, false)
@@ -832,7 +859,11 @@ class MipsParserPlatformTest {
             val warning = program.assemblyDiagnostics.errorMessages.single()
             assertTrue(warning.isWarning)
             assertTrue(warning.message.contains("ignores the .set directive"))
-            readAction { assertParses(source) }
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf("entry:"), descendants(file.node, "LABEL").map { it.text }.toList())
+                assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+            }
         }
         // Lexical coloring and tolerant name parsing are also preserved for the specialized token.
         readAction {

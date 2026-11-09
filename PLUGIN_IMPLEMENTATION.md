@@ -485,6 +485,13 @@ The rebuilt distribution passed its ZIP integrity check. Visual editor acceptanc
 
 ## Raw macro arguments
 
+The grammar consumes one leading label per physical statement, as the Java
+assembler does. For example, `entry: emit: 7` retains `entry` as the label
+and exposes `emit` as a macro call with a colon and a number as its arguments.
+The same rule applies inside macro bodies. Known directives and registers do
+not produce label declarations, so a colon after `.set` remains part of the
+ignored directive payload. The declaration and reference indexes rebuild.
+
 The source lexer keeps a malformed assembler candidate together. A spelling
 such as `bad%name` cannot become a declaration, and `fake/.include` cannot
 introduce an include edge. Percent-prefixed macro formals still accept the

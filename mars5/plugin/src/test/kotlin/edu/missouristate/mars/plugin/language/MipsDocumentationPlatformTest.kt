@@ -153,6 +153,7 @@ class MipsDocumentationPlatformTest {
         val include = ".include \"macros.s\"\n"
         val one = documentation("${include}em<caret>it(7)").orEmpty()
         assertTrue("emit(%value)" in one && "Emit &lt;one&gt; &amp; advance" in one, one)
+        assertEquals(one, documentation("${include}entry: em<caret>it:"))
         val two = documentation("${include}CA<caret>LL(7, 8)").orEmpty()
         assertTrue("emit(%left, %right)" in two && "Emit both" in two, two)
         readAction {

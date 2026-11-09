@@ -25,7 +25,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 20
+    override fun getVersion(): Int = 21
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE

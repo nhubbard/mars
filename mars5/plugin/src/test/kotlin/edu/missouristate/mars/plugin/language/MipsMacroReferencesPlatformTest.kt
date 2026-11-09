@@ -38,6 +38,7 @@ class MipsMacroReferencesPlatformTest {
         val newer = ".macro emit ((%replacement))\nnop\n.end_macro\n"
         val definitions = first + second + newer
         assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it(,,+,,) # one token\n")?.offset)
+        assertEquals(definitions.lastIndexOf("emit"), target("${definitions}entry: em<caret>it: # colon is an argument\n")?.offset)
         assertEquals(first.indexOf("emit"), target("${definitions}em<caret>it()\n")?.offset)
         assertEquals(first.length + second.indexOf("emit"), target("$first${second}em<caret>it \$t0\n$newer")?.offset)
         assertNull(target("${definitions}Em<caret>it(1)\n"))

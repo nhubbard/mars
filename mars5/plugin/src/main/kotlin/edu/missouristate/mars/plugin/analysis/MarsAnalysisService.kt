@@ -248,11 +248,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroInvocation(root: MipsFile, head: PsiElement, source: String): MacroInvocation? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
-        val tokens = expandedOperation(prefix, source, allowIncompleteOperand = true)
+        val tokens = expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand = true)
             ?.takeUnless(TokenList::isEmpty) ?: return null
         val definitions = prefix.macroOverloads(tokens[0].value)
         if (definitions.isEmpty()) return null
-        val fullTokens = expandedOperation(prefix, sourceLine(head), allowIncompleteOperand = true)
+        val fullTokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true), allowIncompleteOperand = true)
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
@@ -306,7 +306,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         root: MipsFile, head: PsiElement, source: String, allowIncompleteOperand: Boolean = false,
     ): TokenList? {
         val prefix = leadingEquivalencePrefix(root, head) ?: return null
-        return expandedOperation(prefix, source, allowIncompleteOperand)?.takeUnless(TokenList::isEmpty)
+        return expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand)
+            ?.takeUnless(TokenList::isEmpty)
     }
 
     /** An equivalence can put the mnemonic at the head itself or after a generated label. */
@@ -326,7 +327,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun expandedOperationSite(
         root: MipsFile, head: PsiElement, prefix: MipsSourceTimeline.Prefix,
     ): OperationSite? {
-        val source = sourceLine(head)
+        val start = sourceLineStart(head)
+        val source = sourceLine(head, fromLineStart = true)
         val expansion = Tokenizer.tokenizeMappedLine(
             source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
@@ -334,7 +336,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (tokens.isEmpty) return null
         val operation = tokens[0]
         val type = effectiveOperationType(operation, prefix) ?: return null
-        val offset = head.textOffset + expansion.originalOffset(operation.startPos - 1)
+        val offset = start + expansion.originalOffset(operation.startPos - 1)
         return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
     }
 
@@ -419,6 +421,16 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // cannot be used to highlight an operand. Other errors can be unfinished operand tokens.
         if (errors.errorsOccurred() && (!allowIncompleteOperand || tokens.processedLine == source)) return null
         return tokens.operationTokens()
+    }
+
+    // Tokenize the written label too, so operationTokens removes the same label as assembly.
+    private fun writtenOperationPrefix(head: PsiElement, suffix: String): String {
+        val text = head.containingFile.viewProvider.contents
+        val start = sourceLineStart(text, head.textOffset)
+        return buildString {
+            append(text, start, head.textOffset)
+            append(suffix)
+        }
     }
 
     private fun TokenList.operationTokens(): TokenList {
