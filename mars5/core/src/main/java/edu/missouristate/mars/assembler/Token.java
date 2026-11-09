@@ -172,7 +172,7 @@ public class Token {
   }
 
   /** Returns the one-based exclusive end of this token's original spelling on its source line. */
-  int getEndPos() {
+  public int getEndPos() {
     return sourceEndPos;
   }
 }

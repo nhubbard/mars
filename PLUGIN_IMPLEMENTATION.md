@@ -116,6 +116,18 @@ the MARS file type require build-context binding. Fixtures exercise nested and c
 an unrelated export, an unresolved include, unsaved label edits, macro-local visibility,
 indexing mode and Tab replacement of dotted names.
 
+## Instruction Parameter Info
+
+The native Parameter Info action lists distinct basic and pseudo-instruction forms from the
+Java catalog at an instruction's operands. It uses the core token spans to highlight the
+current operand token, including a base register inside parentheses. The popup follows
+whitespace-separated operands, repeated commas, signs, and incomplete address syntax.
+IntelliJ owns the popup and caret updates. The handler uses local syntax and metadata and
+performs no index query.
+
+Jupiter fixtures invoke the registered editor action and inspect the rendered popup for
+overloaded instructions, missing operands, and positions outside instruction operands.
+
 ## Native declaration index
 
 `MipsDeclarationIndex` follows the reference checkout's `EditorConfigIdentifierIndex` pattern.

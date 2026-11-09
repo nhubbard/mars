@@ -15,6 +15,7 @@
     <fileType name="MARS MIPS" language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFileType" fieldName="INSTANCE" extensions="asm;s"/>
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
+    <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
     <lang.parserDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParserDefinition"/>
     <lang.ast.factory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsAstFactory"/>
     <lang.elementManipulator forClass="edu.missouristate.mars.plugin.language.psi.MipsStringLiteral" implementationClass="edu.missouristate.mars.plugin.language.psi.MipsStringManipulator"/>
