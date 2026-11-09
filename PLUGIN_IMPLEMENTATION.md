@@ -89,6 +89,16 @@ Authored plugin code retains 100% line and branch coverage.
 The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
 plugin without a plugin error. The visual acceptance limit above still applies.
 
+## Native Structure view
+
+IntelliJ's Structure view and File Structure popup list written labels, macros,
+`.eqv` constants, and `.extern` declarations in source order. Written labels inside
+a macro appear below its header, including in an unfinished macro. The outline
+reads the current file's PSI and uses IntelliJ smart pointers for navigation, so
+it works with unsaved edits and during indexing. It shows declarations present
+in the current file's syntax. Include expansion and generated symbols are handled
+by the separate source analysis and navigation features.
+
 ## Mnemonic and directive completion
 
 IntelliJ's basic completion uses the generated parser's statement-head PSI and the Java core's
