@@ -14,7 +14,7 @@ public class InstrJalr2 extends BasicInstruction {
         (statement, context) -> {
           int[] operands = statement.getOperands();
           InstrHelpers.processReturnAddress(context, 31);
-          InstrHelpers.processJump(context, context.registerFile.getValue(operands[0]));
+          context.jump(context.registerFile.getValue(operands[0]));
         });
   }
 }

@@ -12,9 +12,7 @@ public class InstrJ extends BasicInstruction {
         "000010 ffffffffffffffffffffffffff",
         (statement, context) -> {
           int[] operands = statement.getOperands();
-          InstrHelpers.processJump(
-              context,
-              ((context.registerFile.getProgramCounter() & 0xF0000000) | (operands[0] << 2)));
+          context.jump((context.registerFile.getProgramCounter() & 0xF0000000) | (operands[0] << 2));
         });
   }
 }

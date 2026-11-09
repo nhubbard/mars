@@ -165,8 +165,32 @@ class SimulatorEngineTest {
       var events = new ArrayList<>();
       engine.addListener(listener(events));
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
-      assertThat(((StepEvent) events.getFirst()).transfer()).isNull();
+      assertThat(((StepEvent) events.getFirst()).transfer()).isEqualTo(new StepEvent.Jump(0));
       assertThat(session.registerFile.getValue(0)).isZero();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void nonLinkingJumpReportsArrivalAndUndoRestoresTheDelayedTransfer(boolean delayed)
+      throws Exception {
+    try (var session = load(".text\nj target\nnop\ntarget: nop\n")) {
+      session.settings.setDelayedBranchingEnabled(delayed);
+      var engine = session.simulator();
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      int target = session.registerFile.getPC() + 8;
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      var transfer = new StepEvent.Jump(target);
+      if (delayed) {
+        assertThat(((StepEvent) events.getFirst()).transfer()).isNull();
+        engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      }
+      assertThat(((StepEvent) events.get(events.size() - 2)).transfer()).isEqualTo(transfer);
+      assertThat(session.registerFile.getPC()).isEqualTo(target);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(((StepEvent) events.get(events.size() - 2)).transfer()).isEqualTo(transfer);
     }
   }
 

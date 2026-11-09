@@ -18,14 +18,6 @@ class InstrHelpers {
     }
   }
 
-  static void processJump(InstructionContext context, int targetAddress) {
-    if (context.settings().isDelayedBranchingEnabled()) {
-      context.delayedBranch.register(targetAddress);
-    } else {
-      context.setProgramCounter(targetAddress);
-    }
-  }
-
   static void processReturnAddress(InstructionContext context, int register) {
     context.link(
         register,

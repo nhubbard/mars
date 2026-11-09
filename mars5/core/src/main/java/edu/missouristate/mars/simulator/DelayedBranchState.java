@@ -68,12 +68,13 @@ public final class DelayedBranchState {
 
   private int state = CLEARED;
   private int branchTargetAddress = 0;
+  private boolean jump;
 
   /** Immutable pending-branch state retained by an instruction's undo group. */
-  public record Snapshot(int state, int targetAddress) {}
+  public record Snapshot(int state, int targetAddress, boolean jump) {}
 
   public Snapshot snapshot() {
-    return new Snapshot(state, branchTargetAddress);
+    return new Snapshot(state, branchTargetAddress, jump);
   }
 
   public void restore(Snapshot snapshot) {
@@ -83,6 +84,7 @@ public final class DelayedBranchState {
     }
     state = snapshot.state();
     branchTargetAddress = state == CLEARED ? 0 : snapshot.targetAddress();
+    jump = state != CLEARED && snapshot.jump();
   }
 
   /**
@@ -96,10 +98,15 @@ public final class DelayedBranchState {
    * @param targetAddress The address to branch to after executing the next instruction
    */
   public void register(int targetAddress) {
+    register(targetAddress, false);
+  }
+
+  public void register(int targetAddress, boolean jump) {
     // About as clean as a switch statement can be!
     switch (state) {
       case CLEARED:
         branchTargetAddress = targetAddress;
+        this.jump = jump;
       case REGISTERED:
       case TRIGGERED:
         state = REGISTERED;
@@ -133,6 +140,12 @@ public final class DelayedBranchState {
   public void clear() {
     state = CLEARED;
     branchTargetAddress = 0;
+    jump = false;
+  }
+
+  /** Whether completing the pending transfer should report a non-linking jump. */
+  public boolean isJump() {
+    return jump;
   }
 
   /**

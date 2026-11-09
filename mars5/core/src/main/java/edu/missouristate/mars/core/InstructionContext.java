@@ -97,6 +97,19 @@ public final class InstructionContext {
     return lastTransfer;
   }
 
+  /** Executes or schedules an unconditional jump. Linking instructions already report a call. */
+  public void jump(int target) {
+    boolean withoutLink = lastTransfer == null;
+    if (settings().isDelayedBranchingEnabled()) {
+      delayedBranch.register(target, withoutLink);
+    } else {
+      setProgramCounter(target);
+      if (withoutLink) {
+        lastTransfer = new StepEvent.Jump(target);
+      }
+    }
+  }
+
   public void returnFromException() {
     setProgramCounter(coprocessor0.getValue(Coprocessor0State.EPC));
     lastTransfer = StepEvent.ExceptionReturn.INSTANCE;
@@ -295,7 +308,11 @@ public final class InstructionContext {
   /** Completes a branch-delay cycle using this session's delayed-branch state. */
   public void completeInstruction() {
     if (delayedBranch.isTriggered()) {
-      setProgramCounter(delayedBranch.getBranchTargetAddress());
+      int target = delayedBranch.getBranchTargetAddress();
+      setProgramCounter(target);
+      if (delayedBranch.isJump() && lastTransfer == null) {
+        lastTransfer = new StepEvent.Jump(target);
+      }
       delayedBranch.clear();
     } else if (delayedBranch.isRegistered()) {
       delayedBranch.trigger();

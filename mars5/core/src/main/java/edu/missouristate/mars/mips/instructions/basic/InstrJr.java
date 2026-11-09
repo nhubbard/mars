@@ -12,7 +12,7 @@ public class InstrJr extends BasicInstruction {
         "000000 fffff 00000 00000 00000 001000",
         (statement, context) -> {
           int[] operands = statement.getOperands();
-          InstrHelpers.processJump(context, context.registerFile.getValue(operands[0]));
+          context.jump(context.registerFile.getValue(operands[0]));
         });
   }
 }

@@ -14,9 +14,7 @@ public class InstrJal extends BasicInstruction {
         (statement, context) -> {
           int[] operands = statement.getOperands();
           InstrHelpers.processReturnAddress(context, 31);
-          InstrHelpers.processJump(
-              context,
-              (context.registerFile.getProgramCounter() & 0xF0000000) | (operands[0] << 2));
+          context.jump((context.registerFile.getProgramCounter() & 0xF0000000) | (operands[0] << 2));
         });
   }
 }
