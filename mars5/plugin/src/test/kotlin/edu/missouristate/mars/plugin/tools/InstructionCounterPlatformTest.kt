@@ -25,8 +25,14 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.api.StepEvent
+import edu.missouristate.mars.mips.hardware.AccessNotice.READ
+import edu.missouristate.mars.mips.hardware.AccessNotice.WRITE
+import edu.missouristate.mars.mips.hardware.AccessOrigin
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunService
+import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Placement
+import edu.missouristate.mars.plugin.tools.DataCacheSimulator.Replacement
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Base
 import edu.missouristate.mars.plugin.tools.xray.XRayCanvas
 import edu.missouristate.mars.plugin.tools.xray.XRayDiagram
@@ -67,7 +73,7 @@ class InstructionCounterPlatformTest {
             MarsToolsWindowFactory().createToolWindowContent(project, window)
             val contents = window.contentManager.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
-                "Memory Reference Visualization", "MIPS X-Ray"),
+                "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator"),
                 contents.map { it.displayName })
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
@@ -81,6 +87,10 @@ class InstructionCounterPlatformTest {
         }
         val (panel, statistics, branches, bitmap, references) = panels
         val xray = panels[5]
+        val cache = panels[6]
+        val cacheSelector = withContext(Dispatchers.EDT) {
+            UIUtil.findComponentsOfType(cache, JComboBox::class.java).single { it.itemCount == 0 }
+        }
         val selector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JComboBox::class.java).single() }
         val statsSelector = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(statistics, JComboBox::class.java).single() }
         val branchSelector = withContext(Dispatchers.EDT) {
@@ -108,6 +118,7 @@ class InstructionCounterPlatformTest {
                     assertEquals(entries, branchSelector.itemCount)
                     assertEquals(entries, bitmapSelector.itemCount)
                     assertEquals(entries, referenceSelector.itemCount)
+                    assertEquals(entries, cacheSelector.itemCount)
                     assertTrue(count in labels(), labels().toString())
                 }
             }
@@ -179,6 +190,8 @@ class InstructionCounterPlatformTest {
                 assertFalse(button("Apply and Reset", branches).isEnabled)
                 assertFalse(button("Apply and Clear", bitmap).isEnabled)
                 assertFalse(button("Play animation", xray).isEnabled)
+                assertFalse(button("Apply and Reset", cache).isEnabled)
+                assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 assertEquals("Static data", baseLabel())
                 assertEquals(null, tooltip(references, 10, 10))
                 val unrelated = RunContentDescriptor(null, null, JPanel(), "Unrelated").apply {
@@ -196,6 +209,13 @@ class InstructionCounterPlatformTest {
             val second = launch(debug, 2, "nop\nnop\n")
             waitFor(2, "1 (100%)")
             withContext(Dispatchers.EDT) {
+                val cacheLogging = UIUtil.findComponentsOfType(cache, JBCheckBox::class.java).single()
+                assertEquals(1, cacheSelector.selectedIndex)
+                cacheLogging.doClick()
+                cacheSelector.selectedIndex = 0
+                assertFalse(cacheLogging.isSelected)
+                cacheSelector.selectedIndex = 1
+                assertTrue(cacheLogging.isSelected)
                 assertEquals(1, selector.selectedIndex)
                 selector.selectedIndex = 0
             }
@@ -318,6 +338,59 @@ class InstructionCounterPlatformTest {
                 captureGrids = true,
             )
             waitFor(1, "5 (100%)")
+            val dataCache = (bitmapRun.getUserData(RunContentDescriptor.DESCRIPTOR_KEY)!!.processHandler as MarsProcessHandler).dataCache
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    val status = UIUtil.findComponentsOfType(cache, JBLabel::class.java).map { it.text }
+                    assertTrue("128 bytes   |   Accesses 2   |   Hits 1   |   Misses 1" in status, status.toString())
+                    assertTrue("50%" in status)
+                    assertEquals(50, UIUtil.findComponentsOfType(cache, JProgressBar::class.java).single().value)
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                val combos = UIUtil.findComponentsOfType(cache, JComboBox::class.java)
+                val placement = combos.single { it.selectedItem is Placement }
+                val replacement = combos.single { it.selectedItem is Replacement }
+                combos.filter { it.itemCount == 12 }.forEach { it.selectedItem = 2 }
+                placement.selectedItem = Placement.FULL
+                replacement.selectedItem = Replacement.RANDOM
+                button("Apply and Reset", cache).doClick()
+                assertEquals(DataCacheSimulator.Options(2, 2, Placement.FULL, 2, Replacement.RANDOM), dataCache.snapshot().options)
+                val logToggle = UIUtil.findComponentsOfType(cache, JBCheckBox::class.java).single()
+                logToggle.doClick()
+                assertTrue(dataCache.snapshot().logging)
+                AccessOrigin.duringExecution<Unit, RuntimeException> {
+                    dataCache.record(MemoryAccessNotice(WRITE, 0x10010000, 0))
+                    dataCache.record(MemoryAccessNotice(READ, 0x10010004, 0))
+                    dataCache.record(MemoryAccessNotice(WRITE, 0x10010008, 0))
+                    dataCache.record(MemoryAccessNotice(READ, 0x10010010, 0))
+                }
+                button("Disconnect", cache).doClick()
+                assertFalse(dataCache.snapshot().connected)
+                val table = UIUtil.findComponentsOfType(cache, JBTable::class.java).single()
+                assertEquals(listOf("Block", "Set", "Tag", "Last access", "Last result"),
+                    (0 until table.columnCount).map(table::getColumnName))
+                assertEquals(2, table.rowCount)
+                assertEquals(listOf("0", "0", "0x02002000", "2", "Hit"),
+                    (0 until table.columnCount).map { table.getValueAt(0, it) })
+                assertEquals("Miss", table.getValueAt(1, 4))
+                val log = UIUtil.findComponentsOfType(cache, JBTextArea::class.java).single()
+                assertTrue(log.text.contains("Write 0x10010000 · tag 0x02002000 · set 0 · block 0 · Miss, filled empty block"))
+                assertTrue(log.text.contains("Read 0x10010004 · tag 0x02002000 · set 0 · block 0 · Hit"))
+                assertTrue(log.text.contains("Read 0x10010010 · tag 0x02002002 · set 0 · block 1 · Miss, replaced tag 0x02002001"))
+                val beforeReplacementChange = dataCache.snapshot()
+                replacement.selectedItem = Replacement.LRU
+                assertEquals(beforeReplacementChange.copy(options = beforeReplacementChange.options.copy(replacement = Replacement.LRU)),
+                    dataCache.snapshot())
+                button("Reset", cache).doClick()
+                assertEquals(listOf("0", "0", "", "", "Empty"),
+                    (0 until table.columnCount).map { table.getValueAt(0, it) })
+                assertEquals("", log.text)
+                button("Connect", cache).doClick()
+                logToggle.doClick()
+                assertTrue(dataCache.snapshot().connected)
+                assertFalse(dataCache.snapshot().logging)
+            }
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
                     assertEquals("0x10010000 (Static data)", baseLabel())

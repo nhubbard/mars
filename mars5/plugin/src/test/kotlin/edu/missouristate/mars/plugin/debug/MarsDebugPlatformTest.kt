@@ -1012,6 +1012,9 @@ class MarsDebugPlatformTest {
             val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
             val display = process.bitmapDisplay
             assertNull(display.snapshot().frame.image)
+            val cache = process.dataCache
+            cache.setLogging(true)
+            assertEquals(0L, cache.snapshot().accesses)
             val before = withContext(Dispatchers.EDT) {
                 val frame = requireNotNull(debug.session.currentStackFrame)
                 val expected = mapOf(
@@ -1047,6 +1050,9 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(source, 7)
             assertEquals(0xff667788.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
+            val store = cache.snapshot().recent.single()
+            assertTrue(store.write)
+            assertEquals(0x10010000, store.address)
             withContext(Dispatchers.EDT) {
                 val after = requireNotNull(debug.session.currentStackFrame)
                 assertEquals("0x55667788", evaluate(debug.session, after, "word(buffer)"))
@@ -1057,6 +1063,7 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(source, 6)
             assertEquals(0xff223344.toInt(), display.snapshot().frame.image!!.getRGB(0, 0))
+            assertEquals(listOf(store), cache.snapshot().recent)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x11223344", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "word(buffer)"))
                 debug.session.resume()

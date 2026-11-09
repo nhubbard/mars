@@ -24,6 +24,7 @@ import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.build.memoryExportMessages
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay
 import edu.missouristate.mars.plugin.tools.BranchHistoryTable
+import edu.missouristate.mars.plugin.tools.DataCacheSimulator
 import edu.missouristate.mars.plugin.tools.InstructionCounter
 import edu.missouristate.mars.plugin.tools.InstructionStatistics
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
@@ -73,6 +74,7 @@ internal class MarsProcessHandler(
     val instructionCounter = InstructionCounter()
     val instructionStatistics = InstructionStatistics()
     val branchHistory = BranchHistoryTable()
+    val dataCache = DataCacheSimulator()
     val xray = XRayTrace()
     val bitmapDisplay = MemoryGridDisplay(captureBitmap)
     val memoryReferences = MemoryGridDisplay(captureReferences, MemoryGridDisplay.Mode.REFERENCES)
@@ -168,7 +170,9 @@ internal class MarsProcessHandler(
                             }
                         })
                         val stop = bitmapDisplay.observe(session.memory).use {
-                            memoryReferences.observe(session.memory).use { execute(session) }
+                            memoryReferences.observe(session.memory).use {
+                                dataCache.observe(session.memory).use { execute(session) }
+                            }
                         }
                         if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, sources)
                         when (stop.reason()) {

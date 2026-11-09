@@ -51,6 +51,8 @@ internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
         addTab(Mode.REFERENCES.nameKey, references.component, references)
         val xray = XRayView(project)
         addTab("xray.name", xray.component, xray)
+        val cache = DataCacheView(project)
+        addTab("cache.name", cache.component, cache)
     }
 }
 

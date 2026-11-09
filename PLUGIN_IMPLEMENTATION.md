@@ -1057,6 +1057,24 @@ resumes it, and Reset clears the selected execution's counts. Backstepping keeps
 the accumulated counts. Executing an instruction again adds another event.
 The panel refreshes only while visible and reads a consistent snapshot.
 
+## Data Cache Simulator
+
+The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack
+reads and writes per Run or Debug execution. Fetches from the text segment,
+assembly, debugger inspection, and backstep do not count. Fetches from data
+memory in self-modifying code mode count as data reads. Re-executed instructions
+produce new observations. The tab keeps the totals while the Run or Debug tab
+remains available and updates only while visible.
+
+The default cache uses eight direct-mapped blocks of four words. The controls
+also support fully associative and N-way layouts, least-recently-used or seeded
+random replacement, and the original power-of-two size choices. Changing
+replacement policy preserves the current cache. Applying a new layout clears
+the cache. Reset clears counts, block contents, and the
+access log and restarts the random sequence. The table shows each block's tag
+and last result. The optional log retains the most recent 128 accesses while
+the totals include all observations.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building
