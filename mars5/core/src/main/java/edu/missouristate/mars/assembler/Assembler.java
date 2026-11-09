@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.core.*;
 import java.util.*;
 
@@ -8,6 +9,7 @@ import java.util.*;
 public final class Assembler {
   private final AssemblyContext context;
   private ErrorList errors;
+  private InstructionSourceMap sourceMap = InstructionSourceMap.EMPTY;
 
   public Assembler(MarsContext session) {
     this(new AssemblyContext(session));
@@ -19,6 +21,10 @@ public final class Assembler {
 
   public ErrorList getErrorList() {
     return errors;
+  }
+
+  public InstructionSourceMap getSourceMap() {
+    return sourceMap;
   }
 
   public ArrayList<ProgramStatement> assemble(MIPSprogram program, boolean extended)
@@ -46,6 +52,7 @@ public final class Assembler {
       ArrayList<MIPSprogram> programs, boolean extended, boolean warnings, Runnable checkCancellation)
       throws ProcessingException {
     try (var lease = context.session().claimStoppedSession()) {
+      sourceMap = InstructionSourceMap.EMPTY;
       var first = new FirstPassProcessor(context, checkCancellation);
       try {
         errors = first.process(programs, extended, warnings);
@@ -53,7 +60,10 @@ public final class Assembler {
         errors = failure.errors();
         throw failure;
       }
-      return new SecondPassProcessor(context, checkCancellation).process(programs, errors, warnings);
+      var result =
+          new SecondPassProcessor(context, checkCancellation).process(programs, errors, warnings);
+      sourceMap = result.sourceMap();
+      return result.instructions();
     }
   }
 }

@@ -150,8 +150,7 @@ final class FirstPassProcessor {
         statements =
             parser.parseLine(
                 tokenList.get(i),
-                sourceLineList.get(i).getSource(),
-                sourceLineList.get(i).getLineNumber(),
+                sourceLineList.get(i),
                 extendedAssemblerEnabled);
         if (statements != null) {
           parsedList.addAll(statements);

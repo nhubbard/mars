@@ -8,4 +8,9 @@ public interface Program {
 
   /** Returns the number of assembled instructions in the text segment. */
   int instructionCount();
+
+  /** Returns source locations for the original assembled image. */
+  default InstructionSourceMap sourceMap() {
+    return InstructionSourceMap.EMPTY;
+  }
 }

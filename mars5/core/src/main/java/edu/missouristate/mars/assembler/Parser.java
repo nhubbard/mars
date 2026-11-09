@@ -2,8 +2,11 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 /*
@@ -43,7 +46,15 @@ final class Parser {
   }
 
   ArrayList<ProgramStatement> parseLine(
-      TokenList tokenList, String source, int sourceLineNumber, boolean extendedAssemblerEnabled) {
+      TokenList tokenList, SourceLine physicalLine, boolean extendedAssemblerEnabled) {
+    return parseLine(
+        tokenList, physicalLine.getSource(), physicalLine.getLineNumber(),
+        extendedAssemblerEnabled, physicalLine, null);
+  }
+
+  private ArrayList<ProgramStatement> parseLine(
+      TokenList tokenList, String source, int sourceLineNumber, boolean extendedAssemblerEnabled,
+      SourceLine physicalLine, Origin caller) {
 
     ArrayList<ProgramStatement> ret = new ArrayList<>();
 
@@ -120,6 +131,8 @@ final class Parser {
         //                   if (statements != null)
         //                      ret.addAll(statements);
         //                }
+        var invocation = origin(physicalLine, caller);
+        var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();
           String substituted = macro.getSubstitutedLine(i, tokens, counter, pass.errors);
@@ -145,7 +158,9 @@ final class Parser {
                       + "> "
                       + substituted.trim(),
                   sourceLineNumber,
-                  extendedAssemblerEnabled);
+                  extendedAssemblerEnabled,
+                  physicalLines.get(i - 1),
+                  invocation);
           if (statements != null) {
             ret.addAll(statements);
           }
@@ -230,7 +245,8 @@ final class Parser {
                 tokens,
                 inst,
                 pass.textAddress.get(),
-                sourceLineNumber);
+                sourceLineNumber,
+                origin(physicalLine, caller));
         // instruction length is 4 for all basic instruction, varies for extended instruction
         // Modified to permit use of compact expansion if address fits
         // in 15 bits. DPS 4-Aug-2009
@@ -249,6 +265,10 @@ final class Parser {
       }
     }
     return null;
+  }
+
+  private static Origin origin(SourceLine line, Origin caller) {
+    return new Origin(new Location(Path.of(line.getFilename()), line.getLineNumber()), caller);
   }
 
   private TokenList stripComment(TokenList tokenList) {

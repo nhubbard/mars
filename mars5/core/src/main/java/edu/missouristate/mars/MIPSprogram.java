@@ -1,6 +1,7 @@
 package edu.missouristate.mars;
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
+import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.api.Program;
 import edu.missouristate.mars.api.StopEvent;
 import edu.missouristate.mars.api.SyscallEnvironment;
@@ -52,6 +53,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * @version August 2003
  */
 public class MIPSprogram implements Program {
+  private InstructionSourceMap sourceMap = InstructionSourceMap.EMPTY;
   private final AssemblyContext assemblyContext;
   private final AssemblySourceSnapshot sourceSnapshot;
   private SyscallEnvironment syscallEnvironment;
@@ -419,6 +421,7 @@ public class MIPSprogram implements Program {
     this.machineList =
         asm.assemble(MIPSprogramsToAssemble, extendedAssemblerEnabled, warningsAreErrors,
             checkCancellation);
+    sourceMap = asm.getSourceMap();
     checkCancellation.run();
     this.backStepper = assemblyContext.session().backStepper;
     sessionExecution = null;
@@ -493,6 +496,11 @@ public class MIPSprogram implements Program {
   @Override
   public int instructionCount() {
     return machineList == null ? 0 : machineList.size();
+  }
+
+  @Override
+  public InstructionSourceMap sourceMap() {
+    return sourceMap;
   }
 
   /** Result of one session instruction; a null stop reason means execution can continue. */

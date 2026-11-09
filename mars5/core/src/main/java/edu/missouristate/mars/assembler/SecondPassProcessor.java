@@ -1,14 +1,23 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.InstructionSourceMap;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.instructions.BasicInstruction;
 import edu.missouristate.mars.util.NumberDisplayBase;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
 
 /** Resolves operands, expands pseudos, emits machine words and verifies text-address uniqueness. */
 final class SecondPassProcessor {
+  record Result(ArrayList<ProgramStatement> instructions, InstructionSourceMap sourceMap) {}
+
   private final AssemblyContext context;
   private final Runnable checkCancellation;
 
@@ -17,7 +26,7 @@ final class SecondPassProcessor {
     this.checkCancellation = checkCancellation;
   }
 
-  ArrayList<ProgramStatement> process(
+  Result process(
       ArrayList<MIPSprogram> programs, ErrorList errors, boolean warningsAreErrors)
       throws ProcessingException {
     var machine = new ArrayList<ProgramStatement>();
@@ -39,14 +48,24 @@ final class SecondPassProcessor {
         }
       }
     }
+    var origins = new HashMap<Integer, Origin>();
+    var breakpoints = new HashMap<Location, List<Integer>>();
+    var seen = Collections.newSetFromMap(new IdentityHashMap<Origin, Boolean>());
     for (var statement : machine) {
       checkCancellation.run();
       if (errors.errorLimitExceeded()) {
         break;
       }
       statement.buildMachineStatementFromBasicStatement(errors);
+      int address = statement.getAddress();
+      Origin origin = statement.getInstructionOrigin();
+      origins.put(address, origin);
+      // Record the first emitted address for each occurrence before sorting by address.
+      for (Origin site = origin; site != null && seen.add(site); site = site.caller()) {
+        breakpoints.computeIfAbsent(site.location(), ignored -> new ArrayList<>()).add(address);
+      }
       try {
-        context.memory().setStatement(statement.getAddress(), statement);
+        context.memory().setStatement(address, statement);
       } catch (AddressErrorException error) {
         Token token = statement.getOriginalTokenList().get(0);
         errors.add(
@@ -65,7 +84,7 @@ final class SecondPassProcessor {
     if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
     }
-    return machine;
+    return new Result(machine, new InstructionSourceMap(origins, breakpoints));
   }
 
   private void catchDuplicateAddresses(ArrayList<ProgramStatement> instructions, ErrorList errors) {

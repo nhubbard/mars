@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
 import edu.missouristate.mars.assembler.Assembler;
 import edu.missouristate.mars.assembler.SymbolTable;
@@ -230,6 +232,8 @@ class SessionAssemblyTest {
       var program = session.getProgram();
       assertThat(result.program()).isSameAs(program);
       assertThat(program.getFilename()).isEqualTo(main.toString());
+      assertThat(program.sourceMap().breakpoints())
+          .containsKeys(new Location(handler, 2), new Location(library, 3));
       assertThat(program.getSourceLineList())
           .anySatisfy(line -> assertThat(line.getFilename()).isEqualTo(inner.toString()));
       var output = new RecordingEnvironment();
@@ -241,6 +245,106 @@ class SessionAssemblyTest {
     assertThat(Files.readString(inner)).isEqualTo(".eqv VALUE 99\n");
     assertThat(main).doesNotExist();
     assertThat(handler).doesNotExist();
+  }
+
+  @Test
+  void sourceMapBindsNestedIncludesMacroInvocationsAndPseudoInstructions() throws Exception {
+    var main = directory.resolve("main.s");
+    var outer = directory.resolve("outer.s");
+    var definitions = directory.resolve("definitions.s");
+    var calls = directory.resolve("calls.s");
+    var plain = directory.resolve("plain.s");
+    var snapshot = new AssemblySourceSnapshot(
+        List.of(main),
+        Map.of(main, """
+                .include "outer.s"
+                .text
+                .include "calls.s"
+                outer
+                .include "plain.s"
+                nop
+                """,
+            outer, ".include \"definitions.s\"\n",
+            definitions, """
+                .macro inner (%reg)
+                  li %reg, 0x12345678
+                  nop
+                .end_macro
+                .macro outer
+                  inner ($t0)
+                  nop
+                .end_macro
+                """,
+            calls, "# A call in an included file.\nouter\n",
+            plain, "addiu $t0, $zero, 1\n"));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(snapshot, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      var map = result.program().sourceMap();
+      int pc = session.memory.textBaseAddress;
+      var includedCall = new Origin(new Location(calls, 2), null);
+      var innerCall = new Origin(new Location(definitions, 6), includedCall);
+      assertThat(map.origins()).hasSize(10);
+      assertThat(map.origins().get(pc)).isEqualTo(new Origin(new Location(definitions, 2), innerCall));
+      assertThat(map.origins().get(pc + 4)).isSameAs(map.origins().get(pc));
+      assertThat(map.origins().get(pc + 8)).isEqualTo(new Origin(new Location(definitions, 3), innerCall));
+      assertThat(map.origins().get(pc + 12)).isEqualTo(new Origin(new Location(definitions, 7), includedCall));
+      assertThat(map.origins().get(pc + 16).caller().caller())
+          .isEqualTo(new Origin(new Location(main, 4), null));
+      assertThat(map.origins().get(pc + 32)).isEqualTo(new Origin(new Location(plain, 1), null));
+      assertThat(map.origins().get(pc + 36)).isEqualTo(new Origin(new Location(main, 6), null));
+      assertThat(map.breakpoints()).containsExactlyInAnyOrderEntriesOf(Map.of(
+          new Location(definitions, 2), List.of(pc, pc + 16),
+          new Location(definitions, 3), List.of(pc + 8, pc + 24),
+          new Location(definitions, 6), List.of(pc, pc + 16),
+          new Location(definitions, 7), List.of(pc + 12, pc + 28),
+          new Location(calls, 2), List.of(pc),
+          new Location(main, 4), List.of(pc + 16),
+          new Location(plain, 1), List.of(pc + 32),
+          new Location(main, 6), List.of(pc + 36)));
+      assertThatThrownBy(() -> map.origins().clear()).isInstanceOf(UnsupportedOperationException.class);
+      assertThatThrownBy(() -> map.breakpoints().get(new Location(calls, 2)).clear())
+          .isInstanceOf(UnsupportedOperationException.class);
+    }
+  }
+
+  @Test
+  void macroInvocationBreakpointUsesFirstEmittedAddressEvenWhenTextAddressesAreReordered()
+      throws Exception {
+    var file = source("reordered.s", """
+        .macro emit
+          .text 0x00400020
+          nop
+          .text 0x00400000
+          nop
+        .end_macro
+        emit
+        """);
+    try (var session = session("Default")) {
+      var program = session.assemble(List.of(file));
+      var map = program.sourceMap();
+      assertThat(program.getMachineList()).extracting(ProgramStatement::getAddress)
+          .containsExactly(0x00400000, 0x00400020);
+      assertThat(map.breakpoints().get(new Location(file, 7))).containsExactly(0x00400020);
+      assertThat(map.origins().get(0x00400000)).isEqualTo(
+          new Origin(new Location(file, 5), new Origin(new Location(file, 7), null)));
+    }
+  }
+
+  @Test
+  void aRuntimeTextWriteHasNoSourceOriginInLiveMemory() throws Exception {
+    var file = source("modified.s", ".text\naddiu $t0, $zero, 1\n");
+    try (var session = session("Default")) {
+      var program = session.assemble(List.of(file));
+      int pc = session.memory.textBaseAddress;
+      var original = program.sourceMap().origins().get(pc);
+      assertThat(original).isEqualTo(new Origin(new Location(file, 2), null));
+      assertThat(session.memory.getStatementNoNotify(pc).getInstructionOrigin()).isSameAs(original);
+      session.settings.setSelfModifyingCodeEnabled(true);
+      session.memory.setWord(pc, 0);
+      assertThat(session.memory.getStatementNoNotify(pc).getInstructionOrigin()).isNull();
+      assertThat(program.sourceMap().origins().get(pc)).isSameAs(original);
+    }
   }
 
   @Test

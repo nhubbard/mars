@@ -49,7 +49,8 @@ final class PseudoInstructionExpander {
               tokens,
               basic,
               address,
-              statement.getSourceLine());
+              statement.getSourceLine(),
+              statement.getInstructionOrigin());
       generated.buildBasicStatementFromBasicInstruction(errors);
       result.add(generated);
       address += Instruction.INSTRUCTION_LENGTH;

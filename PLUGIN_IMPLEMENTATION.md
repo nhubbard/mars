@@ -451,6 +451,23 @@ changed breakpoint is observed on the running worker, and Stop wins over a
 concurrent breakpoint match. The native XDebugger session and source breakpoint
 binding will consume this boundary in later slices.
 
+## Source map for debugging
+
+The assembled program exposes an immutable map from each machine address to
+its physical source line and macro call chain. The assembler retains file and
+line information from include expansion and shares the same origin across the
+machine instructions of a pseudo-op. Line breakpoint lookup returns the first
+emitted address of each occurrence, including repeated macro expansions and
+calls nested inside another macro. It uses emission order when a directive
+changes the order of text addresses.
+
+Core fixtures assemble captured files with nested includes, macros, a pseudo-op,
+and separate entry and handler files. They verify the forward and reverse
+lookups and confirm that a runtime text write leaves the newly decoded
+instruction without an origin. The map describes the assembled image. The
+native debugger will use live instruction metadata when presenting a current
+execution position.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

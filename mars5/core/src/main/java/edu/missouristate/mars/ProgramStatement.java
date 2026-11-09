@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.assembler.*;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.core.SimulationSettings;
@@ -53,6 +54,7 @@ public class ProgramStatement {
   private int numOperands;
   private final Instruction instruction;
   private final int textAddress;
+  private final Origin instructionOrigin;
   private int sourceLine;
   private int binaryStatement;
   private final boolean altered;
@@ -81,6 +83,20 @@ public class ProgramStatement {
       Instruction inst,
       int textAddress,
       int sourceLine) {
+    this(
+        sourceMIPSprogram, source, origTokenList, strippedTokenList, inst, textAddress, sourceLine,
+        null);
+  }
+
+  public ProgramStatement(
+      MIPSprogram sourceMIPSprogram,
+      String source,
+      TokenList origTokenList,
+      TokenList strippedTokenList,
+      Instruction inst,
+      int textAddress,
+      int sourceLine,
+      Origin instructionOrigin) {
     this.sourceMIPSprogram = sourceMIPSprogram;
     this.displaySettings =
         sourceMIPSprogram == null ? null : sourceMIPSprogram.assemblyContext().session().settings;
@@ -92,6 +108,7 @@ public class ProgramStatement {
     this.instruction = inst;
     this.textAddress = textAddress;
     this.sourceLine = sourceLine;
+    this.instructionOrigin = instructionOrigin;
     this.basicAssemblyStatement = null;
     this.basicStatementList = new BasicStatementList();
     this.machineStatement = null;
@@ -126,6 +143,7 @@ public class ProgramStatement {
       SimulationSettings displaySettings) {
     this.displaySettings = displaySettings;
     this.sourceMIPSprogram = null;
+    this.instructionOrigin = null;
     this.binaryStatement = binaryStatement;
     this.textAddress = textAddress;
     this.originalTokenList = this.strippedTokenList = null;
@@ -547,6 +565,11 @@ public class ProgramStatement {
    */
   public int getSourceLine() {
     return sourceLine;
+  }
+
+  /** Physical source and macro provenance, or null for an instruction decoded from memory. */
+  public Origin getInstructionOrigin() {
+    return instructionOrigin;
   }
 
   /**
