@@ -88,6 +88,7 @@ public final class Coprocessor1State {
   // The 8 condition flags will be stored in bits 0-7 for flags 0-7.
   private final Register condition = new Register("cf", 32, 0);
   private static final int numConditionFlags = 8;
+  public static final int CONDITION_FLAG_MASK = (1 << numConditionFlags) - 1;
 
   private final EventEmitter<RegisterAccessNotice> registerEvents = new EventEmitter<>();
 
@@ -459,6 +460,12 @@ public final class Coprocessor1State {
   /** Reads the condition flags for inspection without emitting an access event. */
   public int getConditionFlagsNoNotify() {
     return condition.getValueNoNotify();
+  }
+
+  /** Replaces the eight implemented condition flags in a single write. */
+  public void setConditionFlagBits(int bits) {
+    condition.setValue(
+        (condition.getValueNoNotify() & ~CONDITION_FLAG_MASK) | (bits & CONDITION_FLAG_MASK));
   }
 
   /** Clear all condition flags (0-7). */

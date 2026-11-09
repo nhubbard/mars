@@ -12,11 +12,15 @@ import com.intellij.xdebugger.frame.XValueNode
 import com.intellij.xdebugger.frame.XValuePlace
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.Register
 import edu.missouristate.mars.plugin.debug.RegisterBank.COPROCESSOR_0
 import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
+import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_DOUBLE
+import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_FLAGS
+import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_SINGLE
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.util.Binary
 import kotlinx.coroutines.channels.SendChannel
@@ -61,23 +65,32 @@ internal class MarsStackFrame(
         val fpu = machine.coprocessor1
         val registers = fpu.registers.map { it.name to it.valueNoNotify }
         addTopGroup(RegisterGroup("debug.registers.cp1", XValueChildrenList().apply {
-            add(hexValue("FCC", fpu.conditionFlagsNoNotify))
-            for ((name, bits) in registers) {
-                add(RegisterValue(name) { "${Float.fromBits(bits)} (${Binary.intToHexString(bits)})" })
+            add(editableWord(FPU_FLAGS, "FCC", fpu.conditionFlagsNoNotify and CONDITION_FLAG_MASK, 0))
+            for ((number, entry) in registers.withIndex()) {
+                val (name, bits) = entry
+                val hex = Binary.intToHexString(bits)
+                add(editableValue(FPU_SINGLE, number, name, hex) { "${Float.fromBits(bits)} ($hex)" })
             }
             val pairs = XValueChildrenList()
-            for ((lowRegister, highRegister) in registers.chunked(2)) {
+            for ((index, pair) in registers.chunked(2).withIndex()) {
+                val (lowRegister, highRegister) = pair
                 val (lowName, low) = lowRegister
                 val (highName, high) = highRegister
                 val bits = Binary.twoIntsToLong(high, low)
-                pairs.add(RegisterValue("$lowName/$highName") { "${Double.fromBits(bits)} (${Binary.longToHexString(bits)})" })
+                val hex = Binary.longToHexString(bits)
+                pairs.add(editableValue(FPU_DOUBLE, index * 2, "$lowName/$highName", hex) { "${Double.fromBits(bits)} ($hex)" })
             }
             addBottomGroup(RegisterGroup("debug.registers.double", pairs))
         }))
     }
 
-    private fun editableWord(bank: RegisterBank, name: String, bits: Int, number: Int) =
-        RegisterValue(name, RegisterModifier(bank, number, bits, registerEdits, isCurrent)) { Binary.intToHexString(bits) }
+    private fun editableWord(bank: RegisterBank, name: String, bits: Int, number: Int): RegisterValue {
+        val hex = Binary.intToHexString(bits)
+        return editableValue(bank, number, name, hex) { hex }
+    }
+
+    private fun editableValue(bank: RegisterBank, number: Int, name: String, initial: String, format: () -> String) =
+        RegisterValue(name, RegisterModifier(bank, number, initial, registerEdits, isCurrent), format)
 
     override fun getSourcePosition() = position
     override fun getEvaluator() = snapshot.evaluator
@@ -85,8 +98,10 @@ internal class MarsStackFrame(
     override fun computeChildren(node: XCompositeNode) = node.addChildren(snapshot.groups, true)
 }
 
-private fun hexRegister(register: Register) = hexValue(register.name, register.valueNoNotify)
-private fun hexValue(name: String, bits: Int) = RegisterValue(name) { Binary.intToHexString(bits) }
+private fun hexRegister(register: Register): RegisterValue {
+    val bits = register.valueNoNotify
+    return RegisterValue(register.name) { Binary.intToHexString(bits) }
+}
 
 private class RegisterGroup(key: String, private val values: XValueChildrenList, private val initiallyExpanded: Boolean = false) :
     XValueGroup(runMessages.getMessage(key)) {

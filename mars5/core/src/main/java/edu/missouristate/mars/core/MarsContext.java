@@ -1,5 +1,7 @@
 package edu.missouristate.mars.core;
 
+import static edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK;
+
 import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
@@ -10,14 +12,17 @@ import edu.missouristate.mars.assembler.SymbolTable;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.Coprocessor1State;
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile;
+import edu.missouristate.mars.mips.hardware.InvalidRegisterAccessException;
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations;
 import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.mips.hardware.Register;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import edu.missouristate.mars.mips.instructions.SyscallRegistry;
 import edu.missouristate.mars.mips.instructions.syscalls.RandomStreams;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.DelayedBranchState;
 import edu.missouristate.mars.simulator.SimulatorEngine;
+import edu.missouristate.mars.util.Binary;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -166,6 +171,50 @@ public final class MarsContext implements AutoCloseable {
     if (register == null) {
       throw new IllegalArgumentException("Coprocessor 0 register is not implemented: " + number);
     }
+    return editRegister(register, bits);
+  }
+
+  /** Changes one Coprocessor 1 word and establishes a new backstep baseline. */
+  public boolean editCoprocessor1Register(int number, int bits) {
+    var registers = coprocessor1.getRegisters();
+    return editRegister(registers[Objects.checkIndex(number, registers.length)], bits);
+  }
+
+  /** Changes a Coprocessor 1 double pair under a single stopped-session lease. */
+  public boolean editCoprocessor1Pair(int number, long bits) throws InvalidRegisterAccessException {
+    var registers = coprocessor1.getRegisters();
+    if (number < 0 || number >= registers.length - 1 || number % 2 != 0) {
+      throw new IllegalArgumentException("Coprocessor 1 register pair is not implemented: " + number);
+    }
+    try (var lease = claimStoppedSession()) {
+      long current =
+          Binary.twoIntsToLong(
+              registers[number + 1].getValueNoNotify(), registers[number].getValueNoNotify());
+      if (current == bits) {
+        return false;
+      }
+      backStepper.clear();
+      coprocessor1.setRegisterPairToLong(number, bits);
+      return true;
+    }
+  }
+
+  /** Changes the eight Coprocessor 1 condition flags and establishes a new backstep baseline. */
+  public boolean editCoprocessor1ConditionFlags(int bits) {
+    if ((bits & ~CONDITION_FLAG_MASK) != 0) {
+      throw new IllegalArgumentException("Coprocessor 1 condition flags must fit in eight bits");
+    }
+    try (var lease = claimStoppedSession()) {
+      if ((coprocessor1.getConditionFlagsNoNotify() & CONDITION_FLAG_MASK) == bits) {
+        return false;
+      }
+      backStepper.clear();
+      coprocessor1.setConditionFlagBits(bits);
+      return true;
+    }
+  }
+
+  private boolean editRegister(Register register, int bits) {
     try (var lease = claimStoppedSession()) {
       if (register.getValueNoNotify() == bits) {
         return false;

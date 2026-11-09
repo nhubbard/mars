@@ -327,20 +327,9 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     private suspend fun editRegister(machine: MarsContext, context: MarsSuspendContext, request: RegisterEditRequest) {
-        val result = context.frame.evaluator.evaluateStopped(request.expression, machine.memory).getOrElse { error ->
+        val changed = request.apply(machine, context.frame.evaluator).getOrElse { error ->
             withContext(Dispatchers.EDT) { request.callback.errorOccurred(error.message!!) }
             return
-        }
-        val bits = result.wordBits
-        if (bits == null) {
-            withContext(Dispatchers.EDT) {
-                request.callback.errorOccurred(runMessages.getMessage("debug.register.edit.word"))
-            }
-            return
-        }
-        val changed = when (request.bank) {
-            RegisterBank.CPU -> machine.editIntegerRegister(request.register, bits)
-            RegisterBank.COPROCESSOR_0 -> machine.editCoprocessor0Register(request.register, bits)
         }
         if (changed) {
             machine.claimStoppedSession().use { context.refresh(machine) }

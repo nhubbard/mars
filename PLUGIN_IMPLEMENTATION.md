@@ -842,7 +842,7 @@ after execution advances. It checks the program counter, multiply result,
 exception PC, floating-point condition flags, and paired floating-point
 values against the machine state at each suspension.
 
-### Editing CPU and Coprocessor 0 registers
+### Editing registers
 
 **Set Value** is available on the writable general-purpose registers and on
 `hi` and `lo` in the Integer registers group. It is also available on the four
@@ -851,6 +851,12 @@ The editor accepts any debugger expression that produces a 32-bit integer,
 including a memory read. The worker evaluates the expression at the current
 pause, writes the register under the core's stopped-session lease, and refreshes
 the frame's registers, watches, and stack-pointer address.
+
+In the Coprocessor 1 group, **Set Value** accepts numeric literals or debugger
+expressions for single registers and double pairs. A standalone `0x` literal
+writes the exact 32-bit or 64-bit pattern, including signed zero and NaN payloads.
+Each editor opens with the current raw bits. The FCC entry accepts an integer
+expression from 0 through 255 to set all eight flags together.
 
 A changed value starts a new backstep baseline. Invalid expressions and assignments
 of the existing value preserve history. Each pause owns its edit queue, so a

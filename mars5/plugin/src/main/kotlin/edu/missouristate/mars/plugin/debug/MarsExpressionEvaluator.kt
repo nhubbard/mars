@@ -17,6 +17,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -56,7 +57,7 @@ internal class MarsExpressionEvaluator(
             val bits = register.valueNoNotify
             put(register.name, Real(Float.fromBits(bits).toDouble(), bits))
         }
-        put("FCC", Word(fpu.conditionFlagsNoNotify))
+        put("FCC", Word(fpu.conditionFlagsNoNotify and CONDITION_FLAG_MASK))
     }
 
     override fun isCodeFragmentEvaluationSupported() = false
@@ -173,6 +174,7 @@ internal class MarsExpressionEvaluator(
     sealed interface Scalar {
         val number: Double
         val wordBits: Int? get() = (this as? Word)?.bits
+        val singleBits: Int get() = (this as? Real)?.bits ?: number.toFloat().toRawBits()
         fun negated(): Scalar
         fun display(): String
 

@@ -1021,10 +1021,75 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `native FPU edits keep single registers pairs and condition flags coherent`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("edit-cp1.s", """
+                addiu ${'$'}t0, ${'$'}zero, 7
+                mfc1 ${'$'}t1, ${'$'}f31
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 1)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                val edits = inspectRegisterNodes(debug.session, frame) { nodes ->
+                    nodes.associate { requireNotNull(it.name) to it.valueContainer.modifier }
+                }
+                val f0 = requireNotNull(edits.getValue("\$f0"))
+                val f1 = requireNotNull(edits.getValue("\$f1"))
+                val f2 = requireNotNull(edits.getValue("\$f2"))
+                val pair = requireNotNull(edits.getValue("\$f30/\$f31"))
+                val flags = requireNotNull(edits.getValue("FCC"))
+                assertEquals("0x00000000", f0.initialValueEditorText)
+                assertEquals("0x0000000000000000", pair.initialValueEditorText)
+                assertNull(editValue(pair, pair.initialValueEditorText!!))
+                assertEquals("Enter a hexadecimal bit pattern that fits in 32 bits.", editValue(f0, "0x100000000"))
+                assertEquals("Enter a hexadecimal bit pattern that fits in 64 bits.", editValue(pair, "0x10000000000000000"))
+                assertEquals("Enter a condition flag mask between 0 and 255.", editValue(flags, "256"))
+                assertEquals("Enter a condition flag mask between 0 and 255.", editValue(flags, "-1"))
+                assertEquals("The memory address is invalid, unaligned, or unavailable.", editValue(f0, "word(0)"))
+                assertTrue(backstepAction(debug.session).second.presentation.isEnabled)
+
+                assertNull(editValue(f0, "0x7fc00123"))
+                assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                assertNull(editValue(f1, "\$f0"))
+                assertEquals("NaN (0x7fc00123)", evaluate(debug.session, frame, "\$f1"))
+                assertNull(editValue(f0, "-0.0"))
+                assertNull(editValue(f2, "\$t0"))
+                assertEquals("7.0 (0x40e00000)", evaluate(debug.session, frame, "\$f2"))
+                assertNull(editValue(f2, "\$t0 + 0.5"))
+                assertNull(editValue(pair, "0Xfff8000000000123"))
+                var values = registerValues(debug.session, frame)
+                assertEquals("-0.0 (0x80000000)", values["\$f0"])
+                assertEquals("7.5 (0x40f00000)", values["\$f2"])
+                assertEquals("NaN (0xfff8000000000123)", values["\$f30/\$f31"])
+                assertTrue(values.getValue("\$f30").endsWith("(0x00000123)"))
+                assertEquals("NaN (0xfff80000)", values["\$f31"])
+                assertNull(editValue(pair, "-2.5"))
+                assertEquals("-2.5 (0xc004000000000000)", registerValues(debug.session, frame)["\$f30/\$f31"])
+                assertNull(editValue(pair, "\$f2 + 0.25"))
+                assertNull(editValue(flags, "FCC | 0x81"))
+                values = registerValues(debug.session, frame)
+                assertEquals("7.75 (0x401f000000000000)", values["\$f30/\$f31"])
+                assertEquals("0x00000081", values["FCC"])
+                assertEquals("0x00000081", evaluate(debug.session, frame, "FCC"))
+                debug.session.stepInto()
+            }
+            debug.assertPausedAt(source, 2)
+            withContext(Dispatchers.EDT) {
+                assertEquals("0x401f0000", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t1"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val requests = registerEditRequests()
-            val modifier = RegisterModifier(RegisterBank.CPU, 8, 0, requests) { true }
+            val modifier = RegisterModifier(RegisterBank.CPU, 8, "0x00000000", requests) { true }
             val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
             val errors = mutableListOf<String>()
             repeat(17) {

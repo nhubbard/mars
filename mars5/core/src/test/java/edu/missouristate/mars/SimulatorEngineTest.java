@@ -91,6 +91,41 @@ class SimulatorEngineTest {
   }
 
   @Test
+  void stoppedCoprocessor1EditsPreserveRawBitsAndBecomeTheReverseBaseline() throws Exception {
+    try (var session =
+        load(".text\nnop\nmov.d $f30,$f2\nc.eq.d 7,$f0,$f2\nnop\n")) {
+      var engine = session.simulator();
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.editCoprocessor1Register(2, 0)).isFalse();
+      assertThat(session.editCoprocessor1Pair(30, 0)).isFalse();
+      assertThat(session.editCoprocessor1ConditionFlags(0)).isFalse();
+      assertThatThrownBy(() -> session.editCoprocessor1Register(32, 1))
+          .isInstanceOf(IndexOutOfBoundsException.class);
+      assertThatThrownBy(() -> session.editCoprocessor1Pair(31, 1))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> session.editCoprocessor1ConditionFlags(256))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThat(session.backStepper.canBackstep()).isTrue();
+
+      long editedPair = 0xfff8000000000123L;
+      assertThat(session.editCoprocessor1Register(2, 0x80000000)).isTrue();
+      assertThat(session.editCoprocessor1Pair(30, editedPair)).isTrue();
+      assertThat(session.editCoprocessor1ConditionFlags(0x81)).isTrue();
+      assertThat(session.backStepper.canBackstep()).isFalse();
+      assertThat(session.coprocessor1.getRegisters()[30].getValueNoNotify()).isEqualTo(0x123);
+      assertThat(session.coprocessor1.getRegisters()[31].getValueNoNotify()).isEqualTo(0xfff80000);
+      engine.runAsync(2, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.coprocessor1.getLongFromRegisterPair(30)).isEqualTo(0x80000000L);
+      assertThat(session.coprocessor1.getConditionFlagsNoNotify()).isEqualTo(1);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(session.coprocessor1.getConditionFlagsNoNotify()).isEqualTo(0x81);
+      assertThat(session.coprocessor1.getLongFromRegisterPair(30)).isEqualTo(editedPair);
+      assertThat(session.backStepper.canBackstep()).isFalse();
+    }
+  }
+
+  @Test
   void reverseSourceStepUndoesOneLoopIterationAndKeepsTheOtherHistory() throws Exception {
     try (var session = load(".text\nloop: b loop\n")) {
       var engine = session.simulator();
@@ -240,6 +275,12 @@ class SimulatorEngineTest {
         assertThatThrownBy(() -> session.editIntegerRegister(8, 42))
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.editCoprocessor0Register(Coprocessor0State.EPC, 42))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editCoprocessor1Register(0, 42))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editCoprocessor1Pair(0, 42))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editCoprocessor1ConditionFlags(1))
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.setMemoryConfiguration("Default"))
             .isInstanceOf(IllegalStateException.class);
