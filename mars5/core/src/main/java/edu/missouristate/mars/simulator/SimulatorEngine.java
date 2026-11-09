@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
+import java.util.function.IntPredicate;
 
 /**
  * One session's asynchronous execution controller. Instructions, undo and callbacks run on a single
@@ -70,7 +71,24 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
   }
 
   /** Completes after the stop callbacks; nonpositive limits mean unlimited execution. */
-  public synchronized CompletableFuture<StopEvent> runAsync(long maximumSteps, int[] breakpoints) {
+  public CompletableFuture<StopEvent> runAsync(long maximumSteps, int[] breakpoints) {
+    int[] points = breakpoints == null ? new int[0] : breakpoints.clone();
+    Arrays.sort(points);
+    return startAsync(maximumSteps, points, null);
+  }
+
+  /**
+   * Checks the supplied predicate on the simulator worker before each instruction, including the
+   * first one. A match suspends execution at that PC without executing the instruction. A debugger
+   * resuming at a hit can have its predicate ignore that PC on the first check. Nonpositive step
+   * limits mean unlimited execution. The future completes after the stop callbacks.
+   */
+  public CompletableFuture<StopEvent> runUntilAsync(long maximumSteps, IntPredicate shouldBreak) {
+    return startAsync(maximumSteps, null, Objects.requireNonNull(shouldBreak));
+  }
+
+  private synchronized CompletableFuture<StopEvent> startAsync(
+      long maximumSteps, int[] points, IntPredicate shouldBreak) {
     if (closed || session.isClosing()) {
       throw new IllegalStateException("Simulator is closed");
     }
@@ -89,12 +107,10 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     if (state == SimulatorState.STOPPED) {
       throw new IllegalStateException("Program has stopped");
     }
-    int[] points = breakpoints == null ? new int[0] : breakpoints.clone();
-    Arrays.sort(points);
     request = Request.NONE;
     state = SimulatorState.RUNNING;
     var completion = new CompletableFuture<StopEvent>();
-    executor.execute(() -> execute(current, maximumSteps, points, completion));
+    executor.execute(() -> execute(current, maximumSteps, points, shouldBreak, completion));
     return completion;
   }
 
@@ -102,6 +118,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
       MIPSprogram current,
       long maximumSteps,
       int[] points,
+      IntPredicate shouldBreak,
       CompletableFuture<StopEvent> completion) {
     worker = Thread.currentThread();
     StopEvent.Reason reason;
@@ -117,6 +134,16 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
           reason = request == Request.STOP ? StopEvent.Reason.STOP_REQUEST : StopEvent.Reason.PAUSE;
           break;
         }
+        if (shouldBreak != null) {
+          boolean hit = shouldBreak.test(session.registerFile.getPC());
+          if (request != Request.NONE) {
+            continue;
+          }
+          if (hit) {
+            reason = StopEvent.Reason.BREAKPOINT;
+            break;
+          }
+        }
         var result = current.executeSessionInstruction();
         if (result.executed()) {
           steps++;
@@ -131,7 +158,8 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
         if (request != Request.NONE) {
           continue;
         }
-        if (Arrays.binarySearch(points, session.registerFile.getPC()) >= 0) {
+        // The array-based API skips the initial PC so the desktop can resume from a breakpoint.
+        if (points != null && Arrays.binarySearch(points, session.registerFile.getPC()) >= 0) {
           reason = StopEvent.Reason.BREAKPOINT;
           break;
         }

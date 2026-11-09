@@ -437,6 +437,20 @@ original bytes. Existing CLI sessions use the JVM's default encoding. Another
 fixture waits for the simulator to enter a blocking read, then verifies that
 Stop completes without a runtime diagnostic.
 
+## Simulator boundary for native breakpoints
+
+The debugger can supply an address predicate to `SimulatorEngine.runUntilAsync`.
+The simulator evaluates it on the execution worker before each instruction,
+including the entry instruction. Breakpoint decisions can reflect changes made
+while the program is running. A stop or pause requested during a predicate
+check takes precedence over a breakpoint match. The existing desktop address
+array still skips its initial PC when resuming.
+
+Core fixtures verify that an entry breakpoint leaves registers untouched, a
+changed breakpoint is observed on the running worker, and Stop wins over a
+concurrent breakpoint match. The native XDebugger session and source breakpoint
+binding will consume this boundary in later slices.
+
 ## Next slices
 
 Continue checking parser edge cases against the Java assembler while building

@@ -9,6 +9,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -42,6 +43,61 @@ class SimulatorEngineTest {
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(engine.runAsync(0, null).get(5, TimeUnit.SECONDS).reason())
           .isEqualTo(StopEvent.Reason.NORMAL_EXIT);
+    }
+  }
+
+  @Test
+  void workerBreakpointCanStopBeforeEntryAndReevaluateAChangedAddressOnResume() throws Exception {
+    try (var session = load(".text\naddiu $t0,$zero,7\naddiu $t0,$t0,2\nnop\n")) {
+      var engine = session.simulator();
+      int entry = session.registerFile.getPC();
+      var breakpoint = new AtomicInteger(entry);
+      var events = new ArrayList<>();
+      engine.addListener(listener(events));
+      assertThat(engine.runUntilAsync(0, pc -> pc == breakpoint.get()).get(5, TimeUnit.SECONDS))
+          .isEqualTo(new StopEvent(StopEvent.Reason.BREAKPOINT, 0));
+      assertThat(events).containsExactly(new StopEvent(StopEvent.Reason.BREAKPOINT, 0));
+      assertThat(session.registerFile.getPC()).isEqualTo(entry);
+      assertThat(session.registerFile.getValue(8)).isZero();
+
+      var checkedEntry = new CountDownLatch(1);
+      var release = new CountDownLatch(1);
+      var resumed = engine.runUntilAsync(0, pc -> {
+        if (pc == entry) {
+          checkedEntry.countDown();
+          try {
+            if (!release.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("release timeout");
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+          }
+        }
+        return pc == breakpoint.get();
+      });
+      try {
+        assertThat(checkedEntry.await(5, TimeUnit.SECONDS)).isTrue();
+        breakpoint.set(entry + 4);
+      } finally {
+        release.countDown();
+      }
+      assertThat(resumed.get(5, TimeUnit.SECONDS).reason()).isEqualTo(StopEvent.Reason.BREAKPOINT);
+      assertThat(session.registerFile.getPC()).isEqualTo(entry + 4);
+      assertThat(session.registerFile.getValue(8)).isEqualTo(7);
+      assertThat(events.get(1)).isInstanceOf(StepEvent.class);
+      assertThat(events.get(2)).isEqualTo(new StopEvent(StopEvent.Reason.BREAKPOINT, 0));
+    }
+  }
+
+  @Test
+  void stoppingWhileTheWorkerChecksABreakpointWinsWithoutExecutingTheInstruction() throws Exception {
+    try (var session = load(".text\naddiu $t0,$zero,7\n")) {
+      var engine = session.simulator();
+      var result = engine.runUntilAsync(0, pc -> {
+        engine.stop();
+        return true;
+      });
+      assertThat(result.get(5, TimeUnit.SECONDS).reason()).isEqualTo(StopEvent.Reason.STOP_REQUEST);
+      assertThat(session.registerFile.getValue(8)).isZero();
     }
   }
 
