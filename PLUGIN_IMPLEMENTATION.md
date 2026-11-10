@@ -316,25 +316,29 @@ Shared includes, ambiguous formals, indirect equivalence uses, and conflicts
 stop the operation. The final write also checks that IntelliJ found every
 reference in the macro scope.
 
-## Rename local labels
+## Rename labels
 
-Use IntelliJ's **Refactor → Rename** on a written local label or a reference to it.
-The dialog verifies the current single-entry assembly and assembles the proposed edits
-in an isolated session. It checks the resolved symbol bindings, emitted instructions,
+Use IntelliJ's **Refactor → Rename** on a written local or exported label or a reference to it.
+The dialog verifies the selected single-file, directory, or ordered project assembly and
+assembles the proposed edits in an isolated session. It checks each entry's local symbol
+table, the shared global table, the resolved symbol bindings, emitted instructions,
 initial memory, and entry address before applying the edit. The source revisions and
 previewed reference ranges are checked again in IntelliJ's undoable write command.
 Instruction and data operands and forwarded macro arguments can participate when each
 reference maps to its own written token. Rename can edit verified usage ranges in plain-text
 includes, including when those includes lead to more MARS sources. It preserves the file
 association. The refactoring gets current assembly results itself, including when highlighting
-has yet to run or an unsaved edit moved a reference. Comments, string literals,
-and independent assembly entries retain their existing text.
+has yet to run or an unsaved edit moved a reference. An exported label's `.globl`
+operand, definition, and references in other entries are renamed together. A separate
+same-named local label and its references keep their existing text, as do comments,
+string literals, and independent assembly entries.
 
-Rename currently starts at a written local declaration in a MARS file and requires a
-resolved include graph with exclusive ownership of each edited file. It checks other
-indexed entries using the assembler's include traversal, which covers edges through
-plain text. Exported and generated labels, indirect equivalence uses, and mixed assembly
-entry scopes remain outside this verified edit path.
+Rename currently starts at a written declaration in a MARS file and requires a resolved
+include graph with exclusive ownership of each edited file by the selected assembly.
+It checks other indexed entries using the assembler's include traversal, including edges
+through plain text. A declaration compiled into multiple local symbol tables, two paths
+to the same edited file, a generated label, an indirect equivalence use, or an active
+exception handler still stops the operation.
 
 ## Go to Declaration for equivalences
 

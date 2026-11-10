@@ -10,6 +10,7 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.openapi.util.Segment
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
@@ -31,8 +32,11 @@ import com.intellij.util.ProcessingContext
 import com.intellij.util.containers.MultiMap
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -160,16 +164,108 @@ class MipsLabelRenamePlatformTest {
     }
 
     @Test
-    fun `rename rejects indirect exported conflicting and behavior-changing edits`() = timeoutRunBlocking<Unit> {
+    fun `native rename preserves a same-name local when renaming a project export`() = timeoutRunBlocking<Unit> {
+        val application = ".text\njal target # target\n"
+        val library = ".text\n.globl target\ntarget: jr \$ra\n"
+        val data = ".data\n.word target\n"
+        val shadow = "target: nop\nj target\n"
+        val files = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("entry.asm", application)
+            val provider = fixture.addFileToProject("library.s", library)
+            val table = fixture.addFileToProject("table.s", data)
+            val local = fixture.addFileToProject("shadow.s", shadow)
+            val files = listOf(entry, provider, table, local)
+            fixture.configureFromExistingVirtualFile(provider.virtualFile)
+            project.service<MarsAssemblySettings>().changeSources(files.map { it.virtualFile.path })
+            files
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = label(files[1])
+            assertEquals(setOf("entry.asm", "library.s", "table.s"), usages(target).map { it.virtualFile!!.name }.toSet())
+            RenameProcessor(project, target, "updated", false, false).run()
+            val docs = PsiDocumentManager.getInstance(project)
+            docs.commitAllDocuments()
+            assertEquals(listOf(application.replace("jal target", "jal updated"), library.replace("target", "updated"),
+                data.replace("target", "updated"), shadow), files.map { it.text })
+            val dialog = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).selectedEditor)
+                docs.commitAllDocuments()
+                assertEquals(listOf(application, library, data, shadow), files.map { it.text })
+            } finally {
+                TestDialogManager.setTestDialog(dialog)
+            }
+        }
+    }
+
+    @Test
+    fun `native rename resolves the export from a directory assembly`() = timeoutRunBlocking<Unit> {
+        val (entry, provider) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("entry.asm", "jal target\n")
+            val provider = fixture.addFileToProject("library.s", ".globl target\ntarget: jr \$ra\n")
+            project.service<MarsAnalysisService>().beginSymbolBuild(
+                MarsSourceSet(entry.virtualFile.toNioPath(), MarsAssemblyMode.DIRECTORY),
+                project.service<MarsAssemblySettings>().executionOptions,
+            )
+            entry to provider
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            RenameProcessor(project, label(provider), "updated", false, false).run()
+            assertEquals("jal updated\n", entry.text)
+            assertEquals(".globl updated\nupdated: jr \$ra\n", provider.text)
+        }
+    }
+
+    @Test
+    fun `rename rejects a declaration shared by multiple local symbol tables`() = timeoutRunBlocking<Unit> {
+        val shared = withContext(Dispatchers.EDT) {
+            val shared = fixture.addFileToProject("shared.s", "target: nop\n")
+            val first = fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
+            val second = fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
+            project.service<MarsAssemblySettings>().changeSources(listOf(first.virtualFile.path, second.virtualFile.path))
+            shared
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(shared)
+            assertTrue(conflicts(target, "updated", usages(target)).contains("written label"))
+            assertEquals("target: nop\n", shared.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses to edit a source assembled under two physical aliases`() = timeoutRunBlocking<Unit> {
+        val library = withContext(Dispatchers.EDT) {
+            val library = fixture.addFileToProject("library.s", "target: nop\nj target\n")
+            val original = library.virtualFile.toNioPath()
+            val alias = Files.createSymbolicLink(original.resolveSibling("alias.s"), original)
+            val linked = VirtualFileManager.getInstance().refreshAndFindFileByNioPath(alias)!!
+            project.service<MarsAssemblySettings>().changeSources(listOf(library.virtualFile.path, linked.path))
+            library
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(library)
+            val usages = usages(target)
+            assertEquals("library.s", usages.single().virtualFile!!.name)
+            assertTrue(conflicts(target, "updated", usages).contains("unshared includes"))
+            assertEquals("target: nop\nj target\n", library.text)
+        }
+    }
+
+    @Test
+    fun `rename rejects indirect generated conflicting and behavior-changing edits`() = timeoutRunBlocking<Unit> {
         val cases = listOf(
             Triple("target: nop\n", "main", "ordinary MARS identifier"),
             Triple("target: nop\n", "nop", "ordinary MARS identifier"),
             Triple("target: nop\n", "", "ordinary MARS identifier"),
             Triple("target: nop\n", "two words", "ordinary MARS identifier"),
-            Triple("main: nop\n", "next", "written local label"),
-            Triple("target: nop\n.globl target\n", "next", "written local label"),
-            Triple(".macro unused (%label)\n%label: nop\n.end_macro\n", "next", "written local label"),
-            Triple(".macro unused\ntarget: nop\n.end_macro\ntarget: nop\n", "next", "written local label"),
+            Triple("main: nop\n", "next", "written label"),
+            Triple(".macro unused (%label)\n%label: nop\n.end_macro\n", "next", "written label"),
+            Triple(".macro unused\ntarget: nop\n.end_macro\ntarget: nop\n", "next", "written label"),
+            Triple(".macro unused\ntarget: nop\n.end_macro\n.macro define (%name)\n%name: nop\n.end_macro\ndefine(target)\n", "next", "written label"),
             Triple("target: nop\n.eqv NAME target\n", "next", "ambiguous"),
             Triple("target: nop\nnext: nop\n", "next", "already occurs"),
             Triple("target: nop\nj missing\n", "next", "could not assemble"),
@@ -198,7 +294,7 @@ class MipsLabelRenamePlatformTest {
             assertFalse(processor.isInplaceRenameSupported)
             assertTrue(validator.isInputValid("valid.name", target, ProcessingContext()))
             assertTrue(usages(target).isEmpty())
-            assertTrue(conflicts(target, "next", emptyList()).contains("written local label"))
+            assertTrue(conflicts(target, "next", emptyList()).contains("written label"))
         }
     }
 
@@ -226,12 +322,12 @@ class MipsLabelRenamePlatformTest {
         }
         val settings = project.service<MarsAssemblySettings>()
         withContext(Dispatchers.EDT) { settings.changeSources(listOf(independent.virtualFile.path)) }
-        readAction { assertTrue(conflicts(label(independent), "next", emptyList()).contains("one assembly entry")) }
+        readAction { assertEquals("", conflicts(label(independent), "next", emptyList())) }
         withContext(Dispatchers.EDT) {
             settings.changeSources(emptyList())
             settings.changeExceptionHandler(handler.virtualFile.path)
         }
-        readAction { assertTrue(conflicts(label(independent), "next", emptyList()).contains("one assembly entry")) }
+        readAction { assertTrue(conflicts(label(independent), "next", emptyList()).contains("no exception handler")) }
     }
 
     @Test
