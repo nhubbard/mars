@@ -78,7 +78,12 @@ kotlin {
   compilerOptions { allWarningsAsErrors.set(true) }
 }
 
-tasks.test { useJUnitPlatform { includeEngines("junit-jupiter") } }
+tasks.test {
+  useJUnitPlatform { includeEngines("junit-jupiter") }
+  // The 263 platform spells this property "descovery". Its project discovery worker can outlive
+  // fixture teardown while macOS enumerates mounts. The test fixtures do not use IDE discovery.
+  systemProperty("jetbrains.ide.builtin.descovery.enabled", false)
+}
 
 tasks.processResources {
   from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
