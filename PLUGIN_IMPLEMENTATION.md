@@ -1368,6 +1368,19 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## Project memory layout
+
+Under **Settings → Build, Execution, Deployment → MARS Assembly**, set
+**Memory layout** to **Default**, **Compact, data at address 0**, or
+**Compact, text at address 0**. The choice controls assembly addresses,
+editor diagnostics and instruction expansion, and new Run and Debug
+sessions. Changing it invalidates incompatible assembly images. A session
+that is already running or paused keeps the layout captured at launch.
+
+The compact layouts use the exception vector at `0x00004180`. Debugger
+memory shortcuts and memory exports use the selected layout's addresses.
+Scavenger Hunt uses its original fixed addresses and requires **Default**.
+
 ## Assemble when opened
 
 Enable **Assemble MIPS sources when opened** in **Settings → Build,

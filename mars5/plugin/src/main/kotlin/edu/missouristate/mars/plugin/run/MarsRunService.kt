@@ -288,16 +288,19 @@ internal class MarsProcessHandler(
     }
     private suspend fun executeWithWorldDevices(session: MarsContext, sources: CapturedAssemblySources): StopEvent {
         val (bot, hunt) = synchronized(this) {
-            val device = ScavengerHuntDevice(session, connectScavengerHunt).also { scavengerHunt = it }
-            marsBot.observe(session) to device
+            val hunt = if (ScavengerHuntDevice.supports(session.memory)) ScavengerHuntDevice(session, connectScavengerHunt) else null
+            scavengerHunt = hunt
+            marsBot.observe(session) to hunt
         }
         return bot.use {
             try {
                 execute(session, sources)
             } finally {
                 synchronized(this) {
-                    hunt.close()
-                    finishedHunt = hunt.snapshot()
+                    finishedHunt = hunt?.let {
+                        it.close()
+                        it.snapshot()
+                    }
                     scavengerHunt = null
                 }
             }

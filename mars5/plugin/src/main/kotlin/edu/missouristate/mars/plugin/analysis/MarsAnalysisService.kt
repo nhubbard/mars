@@ -134,6 +134,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return copy(options = options.copy(
             allowPseudoInstructions = defaults.allowPseudoInstructions,
             warningsAreErrors = defaults.warningsAreErrors,
+            memoryLayout = defaults.memoryLayout,
         ))
     }
 

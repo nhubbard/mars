@@ -40,7 +40,7 @@ import com.intellij.ui.layout.not
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
-import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -104,14 +104,17 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         }
     }
 
-    private fun checkDeviceConflict(invalid: (String) -> Exception) {
+    private fun checkDevices(layout: MarsMemoryLayout, invalid: (String) -> Exception) {
         if (options.connectMarsBot && options.connectScavengerHunt) {
             throw invalid(runMessages.getMessage("run.connect.deviceConflict"))
+        }
+        if (options.connectScavengerHunt && layout != MarsMemoryLayout.DEFAULT) {
+            throw invalid(runMessages.getMessage("run.connect.scavengerHunt.layout"))
         }
     }
 
     override fun checkConfiguration() {
-        checkDeviceConflict { RuntimeConfigurationError(it) }
+        checkDevices(project.service<MarsAssemblySettings>().memoryLayout) { RuntimeConfigurationError(it) }
         val sources = resolveSourceSet { RuntimeConfigurationError(it) }
         memoryDumps(sources.entry) { RuntimeConfigurationError(it) }
     }
@@ -223,10 +226,10 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
         val sources = resolveSourceSet { ExecutionException(it) }
-        checkDeviceConflict { ExecutionException(it) }
-        val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
         val defaults = project.service<MarsAssemblySettings>().executionOptions
-        val executionOptions = MarsExecutionOptions(
+        checkDevices(defaults.memoryLayout) { ExecutionException(it) }
+        val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
+        val executionOptions = defaults.copy(
             delayedBranching = options.delayedBranching,
             selfModifyingCode = options.selfModifyingCode,
             allowPseudoInstructions = options.allowPseudoInstructions.resolve(defaults.allowPseudoInstructions),

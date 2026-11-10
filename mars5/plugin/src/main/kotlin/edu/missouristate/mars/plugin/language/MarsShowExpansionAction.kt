@@ -94,7 +94,7 @@ internal suspend fun EditorAssemblyCapture.expansionAt(file: MipsFile, line: Int
     val component = MarsSessionService.createMarsComponent()
     val cancellation = currentCoroutineContext()
     val rows = component.context().use { session ->
-        options.applyTo(session.settings)
+        options.applyForAssembly(session)
         val result = sources.assembleIn(component)
         result.program()?.instructionsAt(Location(source, line), cancellation::ensureActive)
     }

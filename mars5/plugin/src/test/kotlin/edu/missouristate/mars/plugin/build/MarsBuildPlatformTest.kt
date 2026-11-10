@@ -72,6 +72,7 @@ import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.assembleIn
@@ -86,6 +87,7 @@ import java.awt.Component
 import java.nio.file.Files
 import java.util.HexFormat
 import javax.swing.JCheckBox
+import javax.swing.JComboBox
 import javax.swing.JList
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -548,6 +550,70 @@ class MarsBuildPlatformTest {
             readAction { assertNull(analysis.selectedAssembly(main)) }
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `project memory layout persists and invalidates cached images and editor diagnostics`() = timeoutRunBlocking<Unit> {
+        val (main, fixed) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("layout.asm", ".data\nvalue: .word 42\n.text\nstart: nop\n")
+            val fixed = fixture.addFileToProject("compact-only.asm", ".text 0x3000\nfixed: nop\n") as MipsFile
+            main.virtualFile to fixed
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val settings = project.service<MarsAssemblySettings>()
+        val build = project.service<MarsBuildService>()
+        val sources = MarsSourceSet(main.toNioPath())
+        val annotator = MipsAssemblyAnnotator()
+        suspend fun analyzeFixed() = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(fixed)) })
+        suspend fun prepare() = requireNotNull(build.prepare(sources, settings.executionOptions, false))
+        val original = prepare()
+        assertSame(original.image, prepare().image)
+        val oldDiagnostic = analyzeFixed()
+        assertTrue(oldDiagnostic.diagnostics.any { it.message().contains("Invalid address") })
+        assertTrue(readAction { annotator.acceptResult(fixed, oldDiagnostic).isNotEmpty() })
+
+        withContext(Dispatchers.EDT) {
+            settings.loadState(settings.getState().copy(memoryLayout = "unsupported"))
+            assertEquals(MarsMemoryLayout.DEFAULT, settings.memoryLayout)
+            val page = MarsAssemblyConfigurable(project)
+            try {
+                val panel = page.createComponent()
+                page.reset()
+                val layout = UIUtil.findComponentsOfType(panel, JComboBox::class.java).single()
+                assertEquals(MarsMemoryLayout.DEFAULT, layout.selectedItem)
+                layout.selectedItem = MarsMemoryLayout.DATA_AT_ZERO
+                page.apply()
+                assertEquals(MarsMemoryLayout.DATA_AT_ZERO, settings.memoryLayout)
+                settings.changeMemoryLayout(MarsMemoryLayout.DATA_AT_ZERO)
+                val persisted = XmlSerializer.serialize(settings.getState())
+                settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                assertEquals("CompactDataAtZero", settings.getState().memoryLayout)
+            } finally {
+                page.disposeUIResources()
+            }
+        }
+        val compact = prepare()
+        assertNotSame(original.image, compact.image)
+        assertSame(compact.image, prepare().image)
+        assertTrue(readAction { annotator.acceptResult(fixed, oldDiagnostic).isEmpty() })
+        val compactAnalysis = analyzeFixed()
+        assertTrue(compactAnalysis.diagnostics.isEmpty())
+        assertEquals(0x3000, requireNotNull(compactAnalysis.symbols).localSymbols.getValue("fixed").address())
+        assertTrue(build.assemble(fixed.virtualFile.toNioPath()))
+
+        withContext(Dispatchers.EDT) { settings.changeMemoryLayout(MarsMemoryLayout.TEXT_AT_ZERO) }
+        val textAtZero = prepare()
+        assertNotSame(compact.image, textAtZero.image)
+        MarsSessionService.createMarsComponent().context().use { session ->
+            session.loadAssemblyImage(original.image) {}
+            assertEquals(0x00400000, session.memory.textBaseAddress)
+            session.loadAssemblyImage(compact.image) {}
+            assertEquals(0x3000, session.registerFile.programCounter)
+            assertEquals(42, session.memory.getWord(0))
+            session.loadAssemblyImage(textAtZero.image) {}
+            assertEquals(0, session.registerFile.programCounter)
+            assertEquals(42, session.memory.getWord(0x2000))
         }
     }
 

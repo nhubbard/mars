@@ -91,8 +91,10 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
+import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -1828,6 +1830,34 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { afterDisposal() }
             withContext(Dispatchers.EDT) { debug.session.stop() }
             assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["CompactDataAtZero", "CompactTextAtZero"])
+    fun `Debug keeps the captured compact memory layout when project settings change`(identifier: String) = timeoutRunBlocking<Unit> {
+        val settings = project.service<MarsAssemblySettings>()
+        val layout = MemoryConfigurations.createConfiguration(identifier)
+        val file = withContext(Dispatchers.EDT) {
+            settings.changeMemoryLayout(MarsMemoryLayout.fromIdentifier(identifier))
+            fixture.addFileToProject("compact.asm", ".data\nvalue: .word 42\n.text\nnop\nnop\n").virtualFile
+                .also { addBreakpoint(it, 4) }
+        }
+        withDebug(file, beforeLaunch = identifier == "CompactDataAtZero") { debug ->
+            debug.assertPausedAt(file, 4)
+            withContext(Dispatchers.EDT) {
+                settings.changeMemoryLayout(MarsMemoryLayout.DEFAULT)
+                val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                assertEquals(layout.textBaseAddress.toLong(), context.memoryRegions.getValue(MemoryRegion.TEXT))
+                assertEquals(layout.dataBaseAddress.toLong(), context.memoryRegions.getValue(MemoryRegion.DATA))
+                assertEquals(layout.memoryMapBaseAddress.toLong(), context.memoryRegions.getValue(MemoryRegion.MMIO))
+                assertEquals(layout.textBaseAddress.toLong() + 4, context.memoryRegions.getValue(MemoryRegion.PC))
+                assertEquals(layout.stackPointer.toLong(), context.memoryRegions.getValue(MemoryRegion.STACK))
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x0000002a", evaluate(debug.session, frame, "word(value)"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
         }
     }
 

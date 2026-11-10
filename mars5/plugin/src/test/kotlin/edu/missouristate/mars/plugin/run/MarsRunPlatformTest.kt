@@ -60,6 +60,7 @@ import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
@@ -559,6 +560,25 @@ class MarsRunPlatformTest {
             assertEquals(listOf(1, 1), players.take(2).map { it.visitedMask.countOneBits() })
         } finally {
             Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `Scavenger Hunt requires the default project memory layout`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val settings = project.getService(MarsAssemblySettings::class.java)
+            val source = fixture.addFileToProject("entry.s", "nop\n")
+            val config = type.createTemplateConfiguration(project)
+            config.options.sourcePath = source.virtualFile.path
+            config.options.connectScavengerHunt = true
+            config.checkConfiguration()
+            settings.changeMemoryLayout(MarsMemoryLayout.DATA_AT_ZERO)
+            val expected = "Scavenger Hunt requires the Default memory layout."
+            assertEquals(expected, assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }.messageHtml.toString())
+            val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+            assertEquals(expected, assertThrows<ExecutionException> { config.getState(executor, environment) }.message)
+            config.options.connectScavengerHunt = false
+            config.checkConfiguration()
         }
     }
 

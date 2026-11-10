@@ -28,7 +28,7 @@ internal class BackgroundAssemblyMemo {
         synchronized(outcomes) { outcomes.get(key) }?.let { return it }
         val component = MarsSessionService.createMarsComponent()
         val result = component.context().use { session ->
-            options.applyTo(session.settings)
+            options.applyForAssembly(session)
             sources.assembleIn(component, ProgressManager::checkCanceled)
         }
         val symbols = result.program()?.let {

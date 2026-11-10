@@ -20,11 +20,16 @@ import com.intellij.ui.CollectionListModel
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.JBList
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.MutableProperty
+import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.toNullableProperty
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.MarsExecutionOptions
+import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.projectFilePath
 import com.intellij.util.xmlb.annotations.XCollection
@@ -42,14 +47,20 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var assembleOnOpen: Boolean = false,
         @JvmField var allowPseudoInstructions: Boolean = true,
         @JvmField var warningsAreErrors: Boolean = false,
+        @JvmField var memoryLayout: String = MarsMemoryLayout.DEFAULT.identifier,
     )
 
     val sourceChanges = SimpleModificationTracker()
     val exceptionHandler get() = projectFilePath(project, getState().exceptionHandler)
     val assembleBeforeJvmCompile get() = getState().assembleBeforeJvmCompile
     val assembleOnOpen get() = getState().assembleOnOpen
+    val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val executionOptions get() = getState().let {
-        MarsExecutionOptions(allowPseudoInstructions = it.allowPseudoInstructions, warningsAreErrors = it.warningsAreErrors)
+        MarsExecutionOptions(
+            allowPseudoInstructions = it.allowPseudoInstructions,
+            warningsAreErrors = it.warningsAreErrors,
+            memoryLayout = MarsMemoryLayout.fromIdentifier(it.memoryLayout),
+        )
     }
     val projectSources: List<Path> get() = getState().sources.mapNotNull { projectFilePath(project, it) }.distinct()
     fun projectSourceSet(): MarsSourceSet? = projectSources.takeIf { it.isNotEmpty() }
@@ -80,6 +91,11 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeJvmCompile(value: Boolean) {
         updateState { it.copy(assembleBeforeJvmCompile = value) }
+    }
+
+    fun changeMemoryLayout(layout: MarsMemoryLayout) {
+        if (getState().memoryLayout == layout.identifier) return
+        change { it.copy(memoryLayout = layout.identifier) }
     }
 
     fun changeAssemblerOptions(allowPseudoInstructions: Boolean, warningsAreErrors: Boolean) {
@@ -158,6 +174,11 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
                 pseudo.isSelected != options.allowPseudoInstructions || warnings.isSelected != options.warningsAreErrors
             }
             onApply { settings.changeAssemblerOptions(pseudo.isSelected, warnings.isSelected) }
+        }
+        row(messages.getMessage("build.settings.memory")) {
+            val layout = MutableProperty({ settings.memoryLayout }, settings::changeMemoryLayout)
+            val renderer = textListCellRenderer<MarsMemoryLayout>("") { messages.getMessage(it.messageKey) }
+            comboBox(MarsMemoryLayout.entries, renderer).bindItem(layout.toNullableProperty(MarsMemoryLayout.DEFAULT))
         }
         val chooser = FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
             .withTitle(messages.getMessage("build.settings.handler.browse"))
