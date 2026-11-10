@@ -905,6 +905,15 @@ Syscall 32 waits for the requested number of milliseconds on the simulator
 worker. Stopping an IntelliJ Run or Debug launch cancels that wait, even
 when the program requested a long sleep.
 
+### MIDI playback
+
+Syscall 31 starts a tone and continues execution. Syscall 33 waits for
+the end of the tone. Both use the Java Sound device available to the IDE
+and keep MARS's pitch, duration, instrument, and volume defaults. Stop
+interrupts a synchronous tone, and closing the launch stops its remaining
+asynchronous tones. Device failures appear in the launch's error stream
+and the program can continue.
+
 ## Simulator boundary for native breakpoints
 
 The debugger can supply an address predicate to `SimulatorEngine.runUntilAsync`.

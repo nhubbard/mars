@@ -1,9 +1,11 @@
 package edu.missouristate.mars.mips.instructions.syscalls;
 
+import edu.missouristate.mars.mips.instructions.syscalls.ToneGenerator.SequencerSource;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import javax.sound.midi.*;
 
 /*
@@ -59,6 +61,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public final class ToneGenerator implements AutoCloseable {
 
+  @FunctionalInterface
+  interface SequencerSource {
+    Sequencer create() throws MidiUnavailableException;
+  }
+
   /** The default pitch value for the tone: 60 / middle C. */
   public static final byte DEFAULT_PITCH = 60;
 
@@ -71,9 +78,24 @@ public final class ToneGenerator implements AutoCloseable {
   /** The default volume of the tone: 100 (of 127). */
   public static final byte DEFAULT_VOLUME = 100;
 
+  private final SequencerSource sequencers;
+  private final Consumer<Exception> reportFailure;
   private ExecutorService threadPool;
 
-  private synchronized ExecutorService pool() {
+  public ToneGenerator() {
+    this(failure -> System.err.println("MARS MIDI playback failed. " + failure));
+  }
+
+  public ToneGenerator(Consumer<Exception> reportFailure) {
+    this(MidiSystem::getSequencer, reportFailure);
+  }
+
+  ToneGenerator(SequencerSource sequencers, Consumer<Exception> reportFailure) {
+    this.sequencers = sequencers;
+    this.reportFailure = reportFailure;
+  }
+
+  private ExecutorService pool() {
     if (threadPool == null) {
       threadPool =
           Executors.newCachedThreadPool(
@@ -106,8 +128,8 @@ public final class ToneGenerator implements AutoCloseable {
    * @param volume the desired volume of the initial attack of the Tone (MIDI velocity) represented
    *     by a positive byte value (0-127).
    */
-  public void generateTone(byte pitch, int duration, byte instrument, byte volume) {
-    Runnable tone = new Tone(pitch, duration, instrument, volume);
+  public synchronized void generateTone(byte pitch, int duration, byte instrument, byte volume) {
+    Runnable tone = new Tone(pitch, duration, instrument, volume, sequencers, reportFailure);
     pool().execute(tone);
   }
 
@@ -125,7 +147,7 @@ public final class ToneGenerator implements AutoCloseable {
    *     by a positive byte value (0-127).
    */
   public void generateToneSynchronously(byte pitch, int duration, byte instrument, byte volume) {
-    Runnable tone = new Tone(pitch, duration, instrument, volume);
+    Runnable tone = new Tone(pitch, duration, instrument, volume, sequencers, reportFailure);
     tone.run();
   }
 }
@@ -146,6 +168,8 @@ class Tone implements Runnable {
   private final int duration;
   private final byte instrument;
   private final byte volume;
+  private final SequencerSource sequencers;
+  private final Consumer<Exception> reportFailure;
 
   /**
    * Instantiates a new Tone object, initializing the tone's pitch, duration, instrument (patch),
@@ -161,11 +185,15 @@ class Tone implements Runnable {
    * @param volume a positive byte value (0-127) which represents the volume of the initial attack
    *     of the note (MIDI velocity). 127 being loud, and 0 being silent.
    */
-  public Tone(byte pitch, int duration, byte instrument, byte volume) {
+  Tone(
+      byte pitch, int duration, byte instrument, byte volume,
+      SequencerSource sequencers, Consumer<Exception> reportFailure) {
     this.pitch = pitch;
     this.duration = duration;
     this.instrument = instrument;
     this.volume = volume;
+    this.sequencers = sequencers;
+    this.reportFailure = reportFailure;
   }
 
   /** Plays the tone. */
@@ -191,18 +219,25 @@ class Tone implements Runnable {
 
   private static final Lock openLock = new ReentrantLock();
 
-  private void playTone() {
-
+  private Sequencer openSequencer() throws MidiUnavailableException, InterruptedException {
+    openLock.lockInterruptibly();
     try {
-      Sequencer player;
-      openLock.lock();
+      var player = sequencers.create();
       try {
-        player = MidiSystem.getSequencer();
         player.open();
-      } finally {
-        openLock.unlock();
+        return player;
+      } catch (MidiUnavailableException | RuntimeException failure) {
+        player.close();
+        throw failure;
       }
+    } finally {
+      openLock.unlock();
+    }
+  }
 
+  private void playTone() {
+    try (var player = openSequencer()) {
+      if (Thread.currentThread().isInterrupted()) return;
       Sequence seq = new Sequence(Sequence.PPQ, 1);
       player.setTempoInMPQ(TEMPO);
       Track t = seq.createTrack();
@@ -236,15 +271,11 @@ class Tone implements Runnable {
 
       player.start();
 
-      try {
-        eot.awaitEndOfTrack();
-      } catch (InterruptedException ignored) {
-      } finally {
-        player.close();
-      }
-
-    } catch (MidiUnavailableException | InvalidMidiDataException mue) {
-      mue.printStackTrace();
+      eot.awaitEndOfTrack();
+    } catch (InterruptedException ignored) {
+      // The launch stopped while waiting to open the device or while playing the tone.
+    } catch (MidiUnavailableException | InvalidMidiDataException | RuntimeException failure) {
+      if (!Thread.currentThread().isInterrupted()) reportFailure.accept(failure);
     }
   }
 }

@@ -26,15 +26,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 
 internal class MarsIdeSyscallEnvironment(
     private val project: Project,
     private val sourceName: String,
     private val execution: Job,
-    io: SyscallEnvironment,
+    private val io: SyscallEnvironment,
     private val clear: () -> Unit,
 ) : SyscallEnvironment by io {
+    override fun playTone(pitch: Int, duration: Int, instrument: Int, volume: Int, synchronous: Boolean) {
+        if (synchronous) {
+            runBlocking(execution) {
+                runInterruptible { io.playTone(pitch, duration, instrument, volume, true) }
+            }
+        } else {
+            io.playTone(pitch, duration, instrument, volume, false)
+        }
+    }
+
     override fun sleepMillis(milliseconds: Int) {
         require(milliseconds >= 0) { "timeout value is negative" }
         runBlocking(execution) { delay(milliseconds.toLong()) }

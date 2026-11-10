@@ -19,7 +19,7 @@ import java.util.Objects;
  * the console streams. Call only while the session is stopped or from its execution thread.
  */
 public final class SessionSyscallEnvironment implements SyscallEnvironment, AutoCloseable {
-  private final ToneGenerator tones = new ToneGenerator();
+  private final ToneGenerator tones;
 
   @Override
   public void playTone(int pitch, int duration, int instrument, int volume, boolean synchronous) {
@@ -64,6 +64,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
     this.inputDecoder = inputCharset.newDecoder().onMalformedInput(REPLACE).onUnmappableCharacter(REPLACE);
     this.output = Objects.requireNonNull(output);
     this.error = Objects.requireNonNull(error);
+    this.tones = new ToneGenerator(failure -> this.error.println("MARS MIDI playback failed. " + failure));
     this.workingDirectory = Objects.requireNonNull(workingDirectory);
   }
 
@@ -248,7 +249,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
     }
   }
 
-  /** Releases this environment's open files; the environment can subsequently be reused. */
+  /** Stops asynchronous tones and closes open files. The environment can subsequently be reused. */
   public void close() {
     tones.close();
     for (int fd = 3; fd < files.length; fd++) {
