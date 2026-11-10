@@ -181,11 +181,16 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             labels.isCloseable = false
             labels.setDisposer(symbols)
             ui.addContent(labels, 4, PlaceInGrid.center, false)
+            service<MarsDebuggerDisplaySettings>().addValueListener(labels) {
+                if (session.isSuspended) session.rebuildViews()
+            }
         }
     }
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
-        settings.add(MarsHexAddressesAction(service<MarsDebuggerDisplaySettings>()))
+        val display = service<MarsDebuggerDisplaySettings>()
+        settings.add(MarsHexAddressesAction(display))
+        settings.add(MarsHexValuesAction(display))
         topToolbar.add(MarsRunSpeedAction(handler))
         topToolbar.add(state.resetAction(handler))
         topToolbar.add(object : DumbAwareAction(

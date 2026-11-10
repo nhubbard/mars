@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.debug
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.frame.XCompositeNode
@@ -15,7 +16,6 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.HI_REGISTER
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.LO_REGISTER
-import edu.missouristate.mars.mips.hardware.Register
 import edu.missouristate.mars.plugin.debug.RegisterBank.COPROCESSOR_0
 import edu.missouristate.mars.plugin.debug.RegisterBank.CPU
 import edu.missouristate.mars.plugin.debug.RegisterBank.FPU_DOUBLE
@@ -37,6 +37,7 @@ internal class MarsStackFrame(
     private val isCurrent: () -> Boolean,
 ) : XStackFrame() {
     private data class Snapshot(val evaluator: MarsExpressionEvaluator, val groups: XValueChildrenList)
+    private val display = service<MarsDebuggerDisplaySettings>()
     @Volatile private var position = position
     @Volatile private var snapshot = capture(machine)
 
@@ -53,9 +54,11 @@ internal class MarsStackFrame(
     private fun registerGroups(machine: MarsContext) = XValueChildrenList().apply {
         val cpu = machine.registerFile
         addTopGroup(RegisterGroup("debug.registers.cpu", XValueChildrenList().apply {
-            add(hexRegister(cpu.programCounterRegister))
+            val pc = cpu.programCounterRegister.valueNoNotify
+            add(RegisterValue(cpu.programCounterRegister.name) { display.formatUnsignedValue(pc) })
             cpu.registers.forEach {
-                add(if (it.number == 0) hexRegister(it) else editableWord(CPU, it.name, it.valueNoNotify, it.number))
+                val bits = it.valueNoNotify
+                add(if (it.number == 0) RegisterValue(it.name) { display.formatValue(bits) } else editableWord(CPU, it.name, bits, it.number))
             }
             add(editableWord(CPU, "hi", cpu.getValueNoNotify(HI_REGISTER), HI_REGISTER))
             add(editableWord(CPU, "lo", cpu.getValueNoNotify(LO_REGISTER), LO_REGISTER))
@@ -71,7 +74,7 @@ internal class MarsStackFrame(
             for ((number, entry) in registers.withIndex()) {
                 val (name, bits) = entry
                 val hex = Binary.intToHexString(bits)
-                add(editableValue(FPU_SINGLE, number, name, hex) { "${Float.fromBits(bits)} ($hex)" })
+                add(editableValue(FPU_SINGLE, number, name, { hex }) { formatFloating(Float.fromBits(bits).toString(), hex) })
             }
             val pairs = XValueChildrenList()
             for ((index, pair) in registers.chunked(2).withIndex()) {
@@ -80,29 +83,28 @@ internal class MarsStackFrame(
                 val (highName, high) = highRegister
                 val bits = Binary.twoIntsToLong(high, low)
                 val hex = Binary.longToHexString(bits)
-                pairs.add(editableValue(FPU_DOUBLE, index * 2, "$lowName/$highName", hex) { "${Double.fromBits(bits)} ($hex)" })
+                pairs.add(editableValue(FPU_DOUBLE, index * 2, "$lowName/$highName", { hex }) {
+                    formatFloating(Double.fromBits(bits).toString(), hex)
+                })
             }
             addBottomGroup(RegisterGroup("debug.registers.double", pairs))
         }))
     }
 
     private fun editableWord(bank: RegisterBank, name: String, bits: Int, number: Int): RegisterValue {
-        val hex = Binary.intToHexString(bits)
-        return editableValue(bank, number, name, hex) { hex }
+        val format = { display.formatValue(bits) }
+        return editableValue(bank, number, name, format, format)
     }
 
-    private fun editableValue(bank: RegisterBank, number: Int, name: String, initial: String, format: () -> String) =
+    private fun formatFloating(decimal: String, hex: String) = if (display.hexValues) "$decimal ($hex)" else decimal
+
+    private fun editableValue(bank: RegisterBank, number: Int, name: String, initial: () -> String, format: () -> String) =
         RegisterValue(name, RegisterModifier(bank, number, initial, machineEdits, isCurrent), format)
 
     override fun getSourcePosition() = position
     override fun getEvaluator() = snapshot.evaluator
     override fun getEqualityObject(): Any = MarsStackFrame::class.java
     override fun computeChildren(node: XCompositeNode) = node.addChildren(snapshot.groups, true)
-}
-
-private fun hexRegister(register: Register): RegisterValue {
-    val bits = register.valueNoNotify
-    return RegisterValue(register.name) { Binary.intToHexString(bits) }
 }
 
 private class RegisterGroup(key: String, private val values: XValueChildrenList, private val initiallyExpanded: Boolean = false) :

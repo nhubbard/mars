@@ -1808,7 +1808,7 @@ class MarsDebugPlatformTest {
     fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val requests = machineEditRequests()
-            val modifier = RegisterModifier(RegisterBank.CPU, 8, "0x00000000", requests) { true }
+            val modifier = RegisterModifier(RegisterBank.CPU, 8, { "0x00000000" }, requests) { true }
             val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
             val errors = mutableListOf<String>()
             repeat(17) {
@@ -2641,7 +2641,7 @@ class MarsDebugPlatformTest {
                     debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                     val settings = DefaultActionGroup()
                     debug.session.debugProcess.registerAdditionalActions(DefaultActionGroup(), DefaultActionGroup(), settings)
-                    val action = assertInstanceOf(MarsHexAddressesAction::class.java, settings.getChildren(ActionManager.getInstance()).single())
+                    val action = settings.getChildren(ActionManager.getInstance()).filterIsInstance<MarsHexAddressesAction>().single()
                     val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.POPUP, null)
                     assertEquals("Hexadecimal MARS Addresses", action.templatePresentation.text)
                     assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
@@ -2723,6 +2723,118 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     Disposer.dispose(lifetime)
                     service<MarsDebuggerDisplaySettings>().setHexAddresses(true)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `Debugger value display reformats captured register and memory words independently of addresses`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("display-values.asm", """
+                .data
+                words: .word -1, 0x80000000, 65, 0
+                .text
+                li ${'$'}t0, -2
+                li ${'$'}t1, -1
+                mtc0 ${'$'}t1, ${'$'}14
+                li ${'$'}t2, 0xbff80000
+                mtc1 ${'$'}t2, ${'$'}f1
+                li ${'$'}t3, 0x7fc01234
+                mtc1 ${'$'}t3, ${'$'}f2
+                c.eq.s ${'$'}f4, ${'$'}f4
+                checkpoint: nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 11) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 11)
+            val lifetime = Disposer.newDisposable()
+            val display = service<MarsDebuggerDisplaySettings>()
+            try {
+                val (panel, action, event) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsValueDisplayTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val settings = DefaultActionGroup()
+                    debug.session.debugProcess.registerAdditionalActions(DefaultActionGroup(), DefaultActionGroup(), settings)
+                    val action = settings.getChildren(ActionManager.getInstance()).filterIsInstance<MarsHexValuesAction>().single()
+                    val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.POPUP, null)
+                    assertEquals("Hexadecimal MARS Values", action.templatePresentation.text)
+                    assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                    assertTrue(action.isSelected(event))
+                    Triple(layout.findContent("MarsMipsMemory")!!.component, action, event)
+                }
+                val (table, field) = withContext(Dispatchers.EDT) {
+                    requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) to
+                        requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java))
+                }
+                assertMemory(table, "0x10010000", "ff ff ff ff 00 00 00 80")
+                val context = debug.session.suspendContext
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                withContext(Dispatchers.EDT) {
+                    val initial = registerValues(debug.session, frame)
+                    assertEquals("0xfffffffe", initial["\$t0"])
+                    assertEquals("NaN (0x7fc01234)", initial["\$f2"])
+                    assertEquals("-1.5 (0xbff8000000000000)", initial["\$f0/\$f1"])
+                    assertEquals("Words", table.getColumnName(3))
+                    assertEquals("0xffffffff  0x80000000  0x00000041  0x00000000", table.getValueAt(0, 3))
+
+                    action.actionPerformed(event)
+                    assertFalse(action.isSelected(event))
+                    assertTrue(display.hexAddresses)
+                    assertSame(context, debug.session.suspendContext)
+                    assertSame(frame, debug.session.currentStackFrame)
+                    assertEquals("0x10010000", field.text)
+                    assertEquals("-1  -2147483648  65  0", table.getValueAt(0, 3))
+                    assertEquals("ff ff ff ff 00 00 00 80 41 00 00 00 00 00 00 00", table.getValueAt(0, 1))
+                    assertEquals("........A.......", table.getValueAt(0, 2))
+                    assertEquals("4294967295", display.formatUnsignedValue(-1))
+                    val decimal = registerValues(debug.session, frame)
+                    assertEquals("-2", decimal["\$t0"])
+                    assertEquals("0", decimal["\$zero"])
+                    assertEquals(parseMemoryAddress(initial.getValue("pc")).toString(), decimal["pc"])
+                    assertEquals("-1", decimal["\$14 (epc)"])
+                    assertEquals("1", decimal["FCC"])
+                    assertEquals("NaN", decimal["\$f2"])
+                    assertEquals("-1.5", decimal["\$f0/\$f1"])
+                    inspectRegisterNodes(debug.session, frame) { values ->
+                        val modifiers = values.associate { it.name to it.valueContainer.modifier }
+                        assertEquals("-2", modifiers.getValue("\$t0")!!.initialValueEditorText)
+                        assertEquals("0x7fc01234", modifiers.getValue("\$f2")!!.initialValueEditorText)
+                    }
+                    assertEquals("0xfffffffe", evaluate(debug.session, frame, "\$t0"))
+                    val xml = XmlSerializer.serialize(display.getState())
+                    val loaded = XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java)
+                    assertFalse(loaded.hexValues)
+                    assertTrue(loaded.hexAddresses)
+                    val addressOnly = Element("state").addContent(
+                        Element("option").setAttribute("name", "hexAddresses").setAttribute("value", "false"),
+                    )
+                    val previous = XmlSerializer.deserialize(addressOnly, MarsDebuggerDisplaySettings.Settings::class.java)
+                    assertFalse(previous.hexAddresses)
+                    assertTrue(previous.hexValues)
+                    field.text = "0"
+                    field.postActionEvent()
+                }
+                assertMemory(table, "0x00000000", "-- -- -- --")
+                withContext(Dispatchers.EDT) {
+                    assertEquals("—  —  —  —", table.getValueAt(0, 3))
+                    field.text = "0x10010000"
+                    field.postActionEvent()
+                }
+                assertMemory(table, "0x10010000", "ff ff ff ff")
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                withContext(Dispatchers.EDT) {
+                    action.actionPerformed(event)
+                    assertTrue(action.isSelected(event))
+                    assertEquals("0xffffffff  0x80000000  0x00000041  0x00000000", table.getValueAt(0, 3))
+                }
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(lifetime)
+                    display.setHexValues(true)
                 }
             }
         }

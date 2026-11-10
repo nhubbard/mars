@@ -42,7 +42,7 @@ private const val ADDRESS_SPACE = 0x1_0000_0000L
 private const val LAST_ROW = ADDRESS_SPACE - BYTES_PER_ROW
 private val hex = HexFormat.of()
 
-internal data class MemoryRow(val address: Int, val bytes: String, val characters: String)
+internal data class MemoryRow(val address: Int, val bytes: String, val characters: String, val words: List<Int?>)
 
 internal enum class MemoryRegion(val label: String, val address: (MarsContext) -> Int) {
     PC("debug.memory.region.pc", { it.registerFile.programCounterRegister.valueNoNotify }),
@@ -72,6 +72,7 @@ internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
                 val byte = it ?: 0
                 if (byte in 0x20..0x7e) byte.toChar().toString() else "."
             },
+            words,
         )
     }
 }
@@ -94,13 +95,20 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         column("debug.memory.address") { display.formatAddress(it.address) },
         column("debug.memory.bytes", MemoryRow::bytes),
         column("debug.memory.ascii", MemoryRow::characters),
+        column("debug.memory.words") { row ->
+            row.words.joinToString("  ") { word -> word?.let(display::formatValue) ?: "—" }
+        },
     )
     private val table = JBTable(model).apply {
         font = Font(Font.MONOSPACED, font.style, font.size)
         val metrics = getFontMetrics(font)
         rowHeight = metrics.height + JBUI.scale(4)
         autoResizeMode = JTable.AUTO_RESIZE_OFF
-        for ((index, sample) in listOf("0x00000000", "00 ".repeat(BYTES_PER_ROW), ".".repeat(BYTES_PER_ROW)).withIndex()) {
+        val samples = listOf(
+            "0x00000000", "00 ".repeat(BYTES_PER_ROW), ".".repeat(BYTES_PER_ROW),
+            "-2147483648  ".repeat(BYTES_PER_ROW / Int.SIZE_BYTES),
+        )
+        for ((index, sample) in samples.withIndex()) {
             columnModel.getColumn(index).preferredWidth = metrics.stringWidth(sample) + JBUI.scale(16)
         }
     }

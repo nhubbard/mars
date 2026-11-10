@@ -1232,7 +1232,7 @@ Address** opens Disassembly for text labels and Memory for data and external
 labels. Both views read the paused machine, so their contents include runtime
 writes to the selected address.
 
-## Debugger address display
+## Debugger address and value display
 
 In **Debug → More → Debugger Settings**, clear **Hexadecimal MARS Addresses**
 to show addresses in unsigned decimal across Symbols, Memory, and
@@ -1241,6 +1241,14 @@ Symbol filtering uses the displayed format, and address sorting stays numeric.
 Memory accepts either input format and preserves unfinished edits when the
 preference changes. The switch reformats existing rows and paused or retained
 memory snapshots. Instruction encodings and raw memory bytes remain hexadecimal.
+
+Clear **Hexadecimal MARS Values** in the same menu to show signed decimal in
+Memory's **Words** column and in integer, CP0, and condition-flag registers.
+The PC uses unsigned decimal. Floating-point registers show their numeric
+value in both modes and include raw bits in hexadecimal mode. The floating-point
+editor starts with the raw pattern in both modes, including NaN payloads.
+The value preference is independent of the address setting and watch expression
+formatting. Memory still shows raw bytes and ASCII alongside the formatted words.
 
 ## Instruction Counter
 

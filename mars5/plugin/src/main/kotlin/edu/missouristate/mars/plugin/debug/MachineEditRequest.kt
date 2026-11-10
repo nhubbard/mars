@@ -103,11 +103,11 @@ internal fun SendChannel<MachineEditRequest>.submitEdit(request: MachineEditRequ
 internal class RegisterModifier(
     private val bank: RegisterBank,
     private val register: Int,
-    private val initialText: String,
+    private val initialText: () -> String,
     private val edits: SendChannel<MachineEditRequest>,
     private val isCurrent: () -> Boolean,
 ) : XValueModifier() {
-    override fun getInitialValueEditorText() = initialText
+    override fun getInitialValueEditorText() = initialText()
 
     override fun setValue(expression: XExpression, callback: XModificationCallback) {
         val request = RegisterEditRequest(bank, register, expression.expression, callback)
