@@ -224,6 +224,46 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    fun `symbol search uses the effective external reservation names`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .extern STORAGE SIZE
+            RESERVE generated 4
+            .extern literal 4
+            .extern REGISTER 4
+            SWITCH: .extern obsolete 4
+        """.trimIndent()
+        val body = withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("external-symbols.s", source)
+            fixture.addFileToProject("external-aliases.asm", """
+                .eqv STORAGE renamed
+                .eqv RESERVE .extern
+                .eqv SIZE 4
+                .eqv REGISTER ${'$'}t0
+                .eqv SWITCH .data
+                .include "external-symbols.s"
+            """.trimIndent())
+            body
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val scope = GlobalSearchScope.fileScope(current, body.virtualFile)
+        readAction {
+            val names = mutableSetOf<String>()
+            contributor.processNames(names::add, scope, null)
+            assertTrue(names.containsAll(setOf("renamed", "generated", "literal")))
+            for ((name, origin) in listOf("renamed" to "STORAGE", "generated" to "RESERVE")) {
+                val result = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+                assertEquals(body.virtualFile, result.file)
+                assertEquals(source.indexOf(origin), result.offset)
+            }
+            assertEquals(SymbolKind.EXTERNAL, (items("literal", scope).single() as MipsDeclaration).kind)
+            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$t0")) {
+                assertTrue(items(missing, scope).isEmpty(), missing)
+            }
+        }
+    }
+
+    @Test
     fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle-b.s", ".include \"cycle-a.asm\"\n")

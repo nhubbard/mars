@@ -125,6 +125,10 @@ It uses the expanded name and macro scope, and navigation still opens the
 written source. If an equivalence changes a written label into a directive,
 the outline omits that label and retains the equivalence declaration.
 
+External reservations use their expanded names in the outline as well.
+A reservation written inside a macro stays under that macro. Unexpanded
+macro reservations stay out of ordinary operand completion.
+
 ## Native macro folding
 
 IntelliJ collapses nonblank macro bodies in `.asm` and `.s` files. After indexing,
@@ -612,15 +616,16 @@ opens the name token. Duplicate declarations remain separate results, and each r
 shows a kind-specific icon and its source filename. The declaration index and navigation share the
 same PSI name extraction.
 
-For labels, macros, and equivalences supplied by `.eqv` expansion, Go to Symbol uses the same
-include-ordered source timeline as Structure View. The declaration index marks
+For labels, macros, equivalences, and external reservations supplied by `.eqv`
+expansion, Go to Symbol uses the same include-ordered source timeline as
+Structure View. The declaration index marks
 files containing `.eqv` or `.include` using a file-local key. Search follows
 those candidates to their assembly roots outside the index callback. Expanded
 declarations use their effective name and navigate to the source that supplied it.
 Search applies the result scope to that source, even if the equivalence lives
-outside the scope. A written label replaced by an expansion and a macro
-renamed by an expansion are filtered out under their old names. Generated
-equivalences follow the assembler's first-definition lookup order.
+outside the scope. A written label or external reservation replaced by an
+expansion and a macro renamed by an expansion are filtered out under their old
+names. Generated equivalences follow the assembler's first-definition lookup order.
 
 Jupiter IDE fixtures exercise the registered extension, exact and scoped search,
 duplicate declarations, incomplete declarations, stale offsets, early termination,

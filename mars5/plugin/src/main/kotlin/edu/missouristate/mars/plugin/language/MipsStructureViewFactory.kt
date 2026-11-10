@@ -45,13 +45,18 @@ private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
     override fun isSuitable(element: PsiElement?): Boolean {
         val dumb = DumbService.isDumb(file.project)
         if (element is MipsDeclaration) {
-            if (element.kind != SymbolKind.LABEL || dumb) return true
-            val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
-            return !timeline.replacesLabel(file, element.textOffset) || element in timeline.generatedLabelSites
+            if (dumb) return true
+            val timeline by lazy { file.project.service<MarsAnalysisService>().editorTimeline(file) }
+            return when (element.kind) {
+                SymbolKind.LABEL -> !timeline.replacesLabel(file, element.textOffset) || element in timeline.generatedLabelSites
+                SymbolKind.EXTERNAL -> !timeline.replacesExternal(file, element.textOffset) || element in timeline.expandedExternalsIn(file)
+                else -> true
+            }
         }
         if (element !is MipsSymbolToken || dumb) return false
         val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
-        return timeline.isGeneratedMacroName(file, element.textOffset) || element in timeline.generatedLabelSites
+        return timeline.isGeneratedMacroName(file, element.textOffset) || element in timeline.generatedLabelSites ||
+            element in timeline.expandedExternalsIn(file)
     }
 }
 
@@ -106,19 +111,28 @@ private class MipsStructureNode(
     private fun effectiveOutline(file: MipsFile): List<StructureViewTreeElement> {
         val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
         val macros = timeline.localMacros(file)
-        val written = writtenChildren(file).flatMap { listOf(it) + writtenChildren(it) }.filterNot {
-            it.kind == SymbolKind.LABEL && timeline.replacesLabel(file, it.textOffset)
+        val written = writtenChildren(file).flatMap { listOf(it) + writtenChildren(it) }.filterNot { declaration ->
+            when (declaration.kind) {
+                SymbolKind.LABEL -> timeline.replacesLabel(file, declaration.textOffset)
+                SymbolKind.EXTERNAL -> timeline.replacesExternal(file, declaration.textOffset)
+                else -> false
+            }
         }
         val groups = written.groupBy { declaration ->
             timeline.macroAt(file, declaration.textOffset)?.header?.takeIf { it in macros }
         }
         val labels = timeline.generatedLabelsIn(file).groupBy { it.macro?.header?.takeIf { header -> header in macros } }
-        fun labelNodes(header: PsiElement?) = labels[header].orEmpty().map { label ->
+        val externals = timeline.expandedExternalsIn(file).values.groupBy {
+            timeline.macroAt(file, it.offset)?.header?.takeIf { header -> header in macros }
+        }
+        fun declarationNodes(header: PsiElement?) = labels[header].orEmpty().map { label ->
             label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
+        } + externals[header].orEmpty().map { external ->
+            external.offset to MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
         }
         fun children(header: PsiElement): List<StructureViewTreeElement> {
             val declarations = groups[header].orEmpty().map { it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList()) }
-            return (declarations + labelNodes(header)).sortedBy { it.first }.map { it.second }
+            return (declarations + declarationNodes(header)).sortedBy { it.first }.map { it.second }
         }
         val writtenNodes = groups[null].orEmpty().map { declaration ->
             declaration.textOffset to MipsStructureNode(declaration, macros[declaration]?.name, children(declaration))
@@ -127,7 +141,7 @@ private class MipsStructureNode(
             val name = file.findElementAt(macro.nameOffset)!!
             macro.nameOffset to MipsStructureNode(name, macro.name, children(macro.header))
         }
-        return (writtenNodes + expandedNodes + labelNodes(null)).sortedBy { it.first }.map { it.second }
+        return (writtenNodes + expandedNodes + declarationNodes(null)).sortedBy { it.first }.map { it.second }
     }
 
     private fun writtenChildren(item: PsiElement): List<MipsDeclaration> {

@@ -141,16 +141,21 @@ internal sealed interface MipsSourceEvent {
     class ExternalDeclaration(private val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
 
-        fun bind(replacement: (String) -> String?): External? {
+        fun bind(replacement: (String) -> String?): BoundExternal? {
+            val directive = declaration.parent.firstChild
             val errors = ErrorList()
-            val tokens = Tokenizer.tokenizeWithEquivalences(
-                sourceLine(declaration.parent.firstChild), errors, replacement, ProgressManager::checkCanceled,
+            val expanded = Tokenizer.tokenizeMappedLine(
+                sourceLine(directive), errors, replacement, ProgressManager::checkCanceled,
             )
             if (errors.errorsOccurred()) return null
+            val tokens = expanded.tokens()
             tokens.discardTrailingComment()
-            return externalReservation(declaration, tokens, 0)
+            val replaced = offset - directive.textOffset in expanded.substitutionOffsets()
+            return BoundExternal(replaced, externalReservation(declaration, tokens, 0))
         }
     }
+
+    data class BoundExternal(val replaced: Boolean, val reservation: External?)
 
     data class External(val site: PsiElement, val name: String) : Effective {
         override val offset = site.textOffset

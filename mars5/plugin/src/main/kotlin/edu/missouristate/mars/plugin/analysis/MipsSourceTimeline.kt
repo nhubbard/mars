@@ -57,10 +57,17 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             continue
         }
         val physical = cursor.events.next()
-        if (physical.offset < cursor.ignoreBefore) continue
+        if (physical.offset < cursor.ignoreBefore) {
+            if (physical is MipsSourceEvent.ExternalDeclaration) cursor.locations.replacedExternals.add(physical.offset)
+            continue
+        }
         val event = when (physical) {
             is MipsSourceEvent.Header -> physical.bind(replacement) ?: continue
-            is MipsSourceEvent.ExternalDeclaration -> physical.bind(replacement) ?: continue
+            is MipsSourceEvent.ExternalDeclaration -> {
+                val expanded = physical.bind(replacement) ?: continue
+                if (expanded.replaced) cursor.locations.replacedExternals.add(physical.offset)
+                expanded.reservation ?: continue
+            }
             is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
             is MipsSourceEvent.LabelDeclaration -> {
                 val expanded = physical.bind(macro != null, replacement) ?: continue
@@ -113,7 +120,12 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
             }
             is MipsSourceEvent.Equivalence -> equivalences.putIfAbsent(event.name, IndexedEquivalence(index, event))
-            is MipsSourceEvent.External -> if (macro == null) externalStorage.putIfAbsent(event.name, event.site)
+            is MipsSourceEvent.External -> {
+                if (event.site !is MipsDeclaration || event.offset in cursor.locations.replacedExternals) {
+                    cursor.locations.expandedExternals[event.site] = event
+                }
+                if (macro == null) externalStorage.putIfAbsent(event.name, event.site)
+            }
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path)
                 if (included is MipsFile && included.viewProvider.virtualFile !in files) {
@@ -158,6 +170,12 @@ internal class MipsSourceTimeline(
     }
 
     fun generatedEquivalencesIn(file: MipsFile): List<MipsSourceEvent.Equivalence> = generatedEquivalencesByFile[file].orEmpty()
+
+    fun expandedExternalsIn(file: MipsFile): Map<PsiElement, MipsSourceEvent.External> =
+        files.getValue(file.viewProvider.virtualFile).expandedExternals
+
+    fun replacesExternal(file: MipsFile, offset: Int): Boolean =
+        offset in files.getValue(file.viewProvider.virtualFile).replacedExternals
 
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
@@ -256,6 +274,8 @@ internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
+    val replacedExternals = HashSet<Int>()
+    val expandedExternals = LinkedHashMap<PsiElement, MipsSourceEvent.External>()
     val macroClosingLines = HashSet<Int>()
     val localMacros = LinkedHashMap<PsiElement, Begin>()
     val generatedMacroNames = HashSet<Int>()

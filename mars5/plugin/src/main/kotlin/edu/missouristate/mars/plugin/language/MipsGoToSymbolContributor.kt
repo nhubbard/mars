@@ -63,6 +63,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             for (declaration in declarations) {
                 val replaced = when (declaration.kind) {
                     SymbolKind.LABEL -> timeline.replacesLabel(psi, declaration.textOffset)
+                    SymbolKind.EXTERNAL -> timeline.replacesExternal(psi, declaration.textOffset)
                     SymbolKind.MACRO -> timeline.localMacros(psi)[declaration]?.let { it.name != declaration.name } == true
                     else -> false
                 }
@@ -106,6 +107,9 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
         }
         for (equivalence in generatedEquivalencesIn(file)) {
             yield(ExpandedSymbol(equivalence.name, file, equivalence.site.textOffset, AllIcons.Nodes.Constant))
+        }
+        for (external in expandedExternalsIn(file).values) {
+            yield(ExpandedSymbol(external.name, file, external.offset, AllIcons.Nodes.Field))
         }
     }
 }

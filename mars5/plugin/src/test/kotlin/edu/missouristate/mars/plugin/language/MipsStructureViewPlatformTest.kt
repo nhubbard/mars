@@ -220,6 +220,58 @@ class MipsStructureViewPlatformTest {
     }
 
     @Test
+    fun `outline shows effective external names and groups macro reservations`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            RESERVE foreign 4
+            .end_macro
+            .extern STORAGE 4
+            RESERVE generated 4
+            .extern literal 4
+            .extern REGISTER 4
+            SWITCH: .extern obsolete 4
+            .macro emit
+                RESERVE local 4
+            .end_macro
+        """.trimIndent()
+        withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("extern-outline.s", source)
+            fixture.addFileToProject("extern-outline-entry.asm", """
+                .eqv RESERVE .extern
+                .eqv STORAGE renamed
+                .eqv REGISTER ${'$'}t0
+                .eqv SWITCH .data
+                .macro remote
+                .include "extern-outline.s"
+            """.trimIndent())
+            fixture.configureFromExistingVirtualFile(body.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
+            val model = builder.createStructureViewModel(fixture.editor)
+            try {
+                val nodes = model.root.children.map { it as StructureViewTreeElement }
+                assertEquals(listOf("foreign", "renamed", "generated", "literal", "emit"), nodes.map(::name))
+                assertEquals("local", nodes.last().children.single().presentation.presentableText)
+                for ((node, origin) in listOf(nodes[1] to "STORAGE", nodes[2] to "RESERVE generated", nodes[3] to "literal")) {
+                    assertNotNull(node.presentation.getIcon(false))
+                    assertTrue(node.canNavigateToSource())
+                    node.navigate(true)
+                    assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
+                    assertSame(node.value, model.currentEditorElement)
+                }
+                for (hidden in listOf("REGISTER", "obsolete")) {
+                    fixture.editor.caretModel.moveToOffset(source.indexOf(hidden))
+                    assertNull(model.currentEditorElement)
+                }
+            } finally {
+                Disposer.dispose(model)
+            }
+        }
+    }
+
+    @Test
     fun `open outline receives updates when the selected assembly changes without source edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val source = "OPEN emit\nbody: nop\nCLOSE\n"
