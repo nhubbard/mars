@@ -25,6 +25,7 @@ import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
@@ -56,7 +57,9 @@ import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.build.MemoryExportSelection
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.projectAbsolutePath
 import edu.missouristate.mars.plugin.projectFilePath
+import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JCheckBox
 import javax.swing.JTextField
@@ -75,6 +78,7 @@ internal enum class AssemblyOptionOverride(private val messageKey: String, priva
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var programArguments: String? by string()
+    var workingDirectory: String? by string()
     var instructionLimit: Int by property(0)
     var runSpeed: Float by property(0f)
     var delayedBranching: Boolean by property(false)
@@ -129,6 +133,13 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         return limit
     }
 
+    private fun workingDirectory(entry: Path, invalid: (String) -> Exception): Path {
+        val value = options.workingDirectory.orEmpty().trim()
+        if (value.isEmpty()) return entry.parent
+        return projectAbsolutePath(project, value)?.takeIf(Files::isDirectory)
+            ?: throw invalid(runMessages.getMessage("run.working.directory.invalid", value))
+    }
+
     private fun runSpeed(invalid: (String) -> Exception): Float {
         val speed = options.runSpeed
         if (speed !in runSpeeds) throw invalid(runMessages.getMessage("run.speed.invalid"))
@@ -149,6 +160,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val sources = resolveSourceSet { RuntimeConfigurationError(it) }
         memoryDumps(sources.entry) { RuntimeConfigurationError(it) }
         arguments { RuntimeConfigurationError(it) }
+        workingDirectory(sources.entry) { RuntimeConfigurationError(it) }
         instructionLimit { RuntimeConfigurationError(it) }
         runSpeed { RuntimeConfigurationError(it) }
     }
@@ -166,6 +178,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var programArguments = ""
+        private var workingDirectory = ""
         private var instructionLimit = 0
         private var runSpeed = 0f
         private var delayedBranching = false
@@ -205,6 +218,15 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                     .bind(RawCommandLineEditor::getText, RawCommandLineEditor::setText, ::programArguments.toMutableProperty())
                     .comment(runMessages.getMessage("run.arguments.help"))
             }
+            val directoryChooser = FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                .withTitle(runMessages.getMessage("run.working.directory.browse"))
+                .withEnvironmentRestricted(true)
+            row(runMessages.getMessage("run.working.directory")) {
+                textFieldWithBrowseButton(directoryChooser, project)
+                    .bindText(::workingDirectory)
+                    .align(AlignX.FILL)
+                    .comment(runMessages.getMessage("run.working.directory.help"))
+            }
             row(runMessages.getMessage("run.instruction.limit")) {
                 intTextField(0..Int.MAX_VALUE).bindIntText(::instructionLimit)
                     .validationOnApply {
@@ -241,6 +263,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
             programArguments = configuration.options.programArguments.orEmpty()
+            workingDirectory = configuration.options.workingDirectory.orEmpty()
             instructionLimit = configuration.options.instructionLimit
             runSpeed = configuration.options.runSpeed
             delayedBranching = configuration.options.delayedBranching
@@ -264,6 +287,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             form.apply()
             configuration.options.sourcePath = source.trim()
             configuration.options.programArguments = programArguments
+            configuration.options.workingDirectory = workingDirectory.trim()
             configuration.options.instructionLimit = instructionLimit
             configuration.options.runSpeed = runSpeed
             configuration.options.delayedBranching = delayedBranching
@@ -298,12 +322,13 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             warningsAreErrors = options.warningsAreErrors.resolve(defaults.warningsAreErrors),
         )
         val arguments = arguments { ExecutionException(it) }
+        val directory = workingDirectory(sources.entry) { ExecutionException(it) }
         val limit = instructionLimit { ExecutionException(it) }
         val speed = runSpeed { ExecutionException(it) }
         val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, launch, dumps, arguments, limit, speed, options.captureBitmap, options.captureReferences,
+            environment, launch, dumps, arguments, directory, limit, speed, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
@@ -313,6 +338,7 @@ internal class MarsRunState(
     private val environment: ExecutionEnvironment, private val launch: MarsLaunchAssembly,
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
+    private val workingDirectory: Path,
     private val instructionLimit: Int,
     private val runSpeed: Float,
     private val captureBitmap: Boolean,
@@ -332,13 +358,13 @@ internal class MarsRunState(
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, instructionLimit = instructionLimit, runSpeed = runSpeed)
+            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit, runSpeed = runSpeed)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, instructionLimit = instructionLimit, runSpeed = runSpeed, execute = execute)
+            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit, runSpeed = runSpeed, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

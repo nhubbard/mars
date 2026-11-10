@@ -102,13 +102,14 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectScavengerHunt: Boolean = false,
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
         arguments: List<String> = emptyList(),
+        workingDirectory: Path = entry.parent,
         instructionLimit: Int = 0,
         runSpeed: Float = 0f,
         execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, instructionLimit, runSpeed, captureBitmap, captureReferences,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, instructionLimit, runSpeed, captureBitmap, captureReferences,
             connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
@@ -118,6 +119,7 @@ internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val launch: MarsLaunchAssembly, private val input: Pipe,
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
+    private val workingDirectory: Path,
     private val instructionLimit: Int,
     initialRunSpeed: Float,
     captureBitmap: Boolean,
@@ -248,7 +250,7 @@ internal class MarsProcessHandler(
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
                     val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
-                    SessionSyscallEnvironment(session.memory, stdin, output, error, entry.parent, inputCharset).use { io ->
+                    SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset).use { io ->
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())

@@ -1857,6 +1857,38 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `Debug writes relative files in the configured working directory after resume`() = timeoutRunBlocking<Unit> {
+        val (file, output) = withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("debug-working-dir.asm", """
+                .data
+                filename: .asciiz "created.txt"
+                payload: .ascii "debug"
+                .text
+                la ${'$'}a0, filename
+                li ${'$'}a1, 1
+                li ${'$'}v0, 13
+                syscall
+                move ${'$'}a0, ${'$'}v0
+                la ${'$'}a1, payload
+                li ${'$'}a2, 5
+                li ${'$'}v0, 15
+                syscall
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 4) }
+            val marker = fixture.addFileToProject("debug-io/marker.txt", "").virtualFile
+            source to marker.toNioPath().resolveSibling("created.txt")
+        }
+        withDebug(file, { workingDirectory = "\$PROJECT_DIR\$/debug-io" }) { debug ->
+            debug.assertPausedAt(file, 4)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+            assertEquals("debug", Files.readString(output))
+            assertFalse(Files.exists(file.toNioPath().resolveSibling("created.txt")))
+        }
+    }
+
+    @Test
     fun `Debug exposes the launch speed and can change it while paused`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("debug-speed.asm", "nop\nli \$v0, 10\nsyscall\n")

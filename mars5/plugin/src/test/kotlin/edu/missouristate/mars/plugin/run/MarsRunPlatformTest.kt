@@ -44,6 +44,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.encoding.EncodingManager
@@ -263,6 +264,91 @@ class MarsRunPlatformTest {
             assertEquals(".eqv VALUE 1\n", Files.readString(include))
         } finally {
             Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `Run working directory resolves project macros for file syscalls and preserves source includes`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val default = Recording()
+        val custom = Recording()
+        try {
+            withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("launch/app.asm", """
+                    .include "length.inc"
+                    .data
+                    path: .asciiz "message.txt"
+                    buffer: .space LENGTH
+                    .text
+                    la ${'$'}a0, path
+                    li ${'$'}a1, 0
+                    li ${'$'}v0, 13
+                    syscall
+                    move ${'$'}s0, ${'$'}v0
+                    move ${'$'}a0, ${'$'}s0
+                    la ${'$'}a1, buffer
+                    li ${'$'}a2, LENGTH
+                    li ${'$'}v0, 14
+                    syscall
+                    move ${'$'}a2, ${'$'}v0
+                    li ${'$'}a0, 1
+                    li ${'$'}v0, 15
+                    syscall
+                    move ${'$'}a0, ${'$'}s0
+                    li ${'$'}v0, 16
+                    syscall
+                    li ${'$'}v0, 10
+                    syscall
+                """.trimIndent()).virtualFile
+                fixture.addFileToProject("launch/length.inc", ".eqv LENGTH 6\n")
+                fixture.addFileToProject("launch/message.txt", "source")
+                fixture.addFileToProject("runtime inputs/length.inc", ".eqv LENGTH 1\n")
+                fixture.addFileToProject("runtime inputs/message.txt", "custom")
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = source.path
+                val editor = config.configurationEditor
+                val macro = "\$PROJECT_DIR\$/runtime inputs"
+                try {
+                    editor.resetFrom(config)
+                    val field = UIUtil.findComponentsOfType(editor.component, TextFieldWithBrowseButton::class.java).single()
+                    assertEquals("", field.text)
+                    field.text = " $macro "
+                    editor.applyTo(config)
+                    editor.resetFrom(config)
+                    assertEquals(macro, field.text)
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                val xml = Element("configuration").also(config::writeExternal)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(macro, restored.options.workingDirectory)
+                restored.checkConfiguration()
+                for (bad in listOf("relative", "\$PROJECT_DIR\$/missing", "\$PROJECT_DIR\$/launch/message.txt")) {
+                    config.options.workingDirectory = bad
+                    assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                    val invalid = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    assertThrows<ExecutionException> { config.getState(executor, invalid) }
+                }
+                config.options.workingDirectory = source.toNioPath().root.toString()
+                config.checkConfiguration()
+                config.options.workingDirectory = null
+                val first = ExecutionEnvironmentBuilder.create(executor, config).build()
+                val second = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                val recordings = mapOf(first to default, second to custom)
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        recordings[env]?.let(handler::addProcessListener)
+                    }
+                })
+                first.runner.execute(first)
+                second.runner.execute(second)
+            }
+            assertEquals(0, default.exit.await())
+            assertEquals(0, custom.exit.await())
+            assertEquals("source", default.stdout.toString())
+            assertEquals("custom", custom.stdout.toString())
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
     }
 

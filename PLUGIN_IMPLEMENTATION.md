@@ -1387,6 +1387,14 @@ second and **Unlimited**, the default. The simulator updates a pending
 delay when the speed changes. Single-instruction stepping still pauses
 immediately after executing the instruction.
 
+## Working directory
+
+Set **Working directory** in a MIPS Run or Debug configuration to control
+where program file syscalls resolve relative paths. The directory must
+exist and may use project macros such as `$PROJECT_DIR$`. Leave the field
+blank to use the entry source's directory. Assembly `.include` paths still
+resolve from the source file that declares them.
+
 ## Program arguments
 
 Enter **Program arguments** in a MIPS Run or Debug configuration. IntelliJ's
