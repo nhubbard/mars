@@ -28,6 +28,7 @@ import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
@@ -67,8 +68,8 @@ internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
         val symbols = analysis.backgroundAssembly.assemble(capture.sources, capture.structureStamp, capture.options).symbols
             ?: return emptyList()
         val declaration = writtenToken(target, capture.source, documents.getValue(capture.source))
-        val subject = RenameSubject(target.kind, declaration, name)
-        return symbols.symbols.referenceSpellings(subject).mapNotNull { site ->
+        val subject = symbols.symbols.renameSubject(target.kind, declaration, name) ?: return emptyList()
+        return symbols.symbols.referenceSpellings(subject, declaration).mapNotNull { site ->
             ProgressManager.checkCanceled()
             analysis.assembledReference(target, site, searchScope)
         }
@@ -133,7 +134,7 @@ private data class RenameSubject(val kind: SymbolKind, val site: SourceToken, va
     fun matches(site: SourceToken, name: String) = this.site == site && this.name == name
 }
 
-private val renameableKinds = setOf(SymbolKind.LABEL, SymbolKind.MACRO)
+private val renameableKinds = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL, SymbolKind.MACRO)
 private val renameVerification = Key.create<Result<SymbolRenamePlan>>("mars.symbol.rename.verification")
 private val bundle = DynamicBundle(MipsSymbolRenameProcessor::class.java, "messages.MarsBundle")
 
@@ -142,7 +143,7 @@ private fun symbolRenameError(key: String) = IncorrectOperationException(bundle.
 private fun validSymbolName(name: String, kind: SymbolKind): Boolean = !reservedEntry(name, kind) && name.isNotEmpty() &&
     TokenTypes.isValidIdentifier(name) && TokenTypes.matchTokenType(name) == TokenTypes.IDENTIFIER
 
-private fun reservedEntry(name: String, kind: SymbolKind) = name == SymbolTable.getStartLabel() && kind == SymbolKind.LABEL
+private fun reservedEntry(name: String, kind: SymbolKind) = name == SymbolTable.getStartLabel() && kind != SymbolKind.MACRO
 
 private fun usageEdits(usages: List<UsageInfo>): Set<SymbolEdit> = usages.mapTo(HashSet()) { usage ->
     val file = usage.virtualFile ?: throw symbolRenameError("symbol.rename.unverified")
@@ -174,18 +175,18 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
         if (source !is MipsFile && source !is PsiPlainTextFile) throw symbolRenameError("symbol.rename.scope")
     }
     val declaration = writtenToken(target, capture.source, documents.getValue(capture.source))
-    val subject = RenameSubject(target.kind, declaration, oldName)
 
     val (before, beforeImage) = capture.assemble(sources)
+    val subject = before.renameSubject(target.kind, declaration, oldName) ?: throw symbolRenameError("symbol.rename.external")
     val macroDefinitions = before.macros().values.flatten().filter { it.name() == oldName }
     val written = if (subject.macro) {
         if (macroDefinitions.count { it.site() == declaration } != 1) throw symbolRenameError("symbol.rename.scope")
         null
     } else {
-        before.labelDefinitions(oldName).filter { it.definition.writtenToken() == declaration }.singleOrNull()
+        before.labelDefinitions(oldName).filter { it.definition.writtenToken() == subject.site }.singleOrNull()
             ?: throw symbolRenameError("symbol.rename.scope")
     }
-    val references = before.referenceSpellings(subject)
+    val references = before.referenceSpellings(subject, declaration)
     val expected = references.mapTo(HashSet()) { it.editIn(documents, oldName.length) }
     val sites = references + declaration
     val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(SymbolEdit::path, SymbolEdit::range)
@@ -268,7 +269,17 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<S
         PsiModificationTracker.getInstance(project).modificationCount)
 }
 
-private fun AssemblySymbolMap.referenceSpellings(subject: RenameSubject): Set<SourceToken> = buildSet {
+private fun AssemblySymbolMap.renameSubject(kind: SymbolKind, declaration: SourceToken, name: String): RenameSubject? {
+    if (kind != SymbolKind.EXTERNAL) return RenameSubject(kind, declaration, name)
+    val allocation = globals()[name]?.takeIf { it.kind() == Kind.EXTERNAL }?.writtenToken() ?: return null
+    val subject = RenameSubject(kind, allocation, name)
+    if (declaration != allocation && symbolUses()[declaration].orEmpty().none { subject.matches(it.definition(), it.name()) }) {
+        return null
+    }
+    return subject
+}
+
+private fun AssemblySymbolMap.referenceSpellings(subject: RenameSubject, declaration: SourceToken): Set<SourceToken> = buildSet {
     if (subject.macro) {
         for ((site, calls) in macroCalls()) {
             ProgressManager.checkCanceled()
@@ -280,6 +291,9 @@ private fun AssemblySymbolMap.referenceSpellings(subject: RenameSubject): Set<So
             for (binding in bindings) if (subject.matches(binding.definition(), binding.name())) add(binding.equivalenceSource() ?: site)
         }
     }
+    // Rename can start at a repeated .extern declaration. Preview the allocating declaration too.
+    add(subject.site)
+    remove(declaration)
 }
 
 private fun AssemblySymbolMap.hasRenamedMacros(

@@ -570,7 +570,7 @@ class SessionAssemblyTest {
                   RESERVE %name 4
                 .end_macro
                 """,
-            other, ".text\nprivateLabel: j exported_M0\n"));
+            other, ".text\nprivateLabel: j exported_M0\n.extern storage 64\n.extern nextCell 8\n"));
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
       assertThat(result.errors()).isEmpty();
@@ -585,7 +585,11 @@ class SessionAssemblyTest {
       assertThat(map.globals()).containsExactlyInAnyOrderEntriesOf(Map.of(
           "exported_M0", new Definition(text, Kind.TEXT, exported, false, 3),
           "storage", new Definition(session.memory.externBaseAddress, Kind.EXTERNAL, storage, false, 9),
-          "shared", new Definition(session.memory.externBaseAddress + 4, Kind.EXTERNAL, reserved, false, 11)));
+          "shared", new Definition(session.memory.externBaseAddress + 4, Kind.EXTERNAL, reserved, false, 11),
+          "nextCell", new Definition(session.memory.externBaseAddress + 8, Kind.EXTERNAL,
+              new Origin(new Location(other, 4), null), false, 9)));
+      assertThat(map.symbolUses().get(new SourceToken(new Location(other, 3), 9)))
+          .containsExactly(new SymbolUse(new SourceToken(new Location(main, 5), 9), "storage"));
       assertThat(map.locals().get(main)).containsExactlyInAnyOrderEntriesOf(Map.of(
           "word", new Definition(session.memory.dataBaseAddress + 4, Kind.DATA, new Origin(new Location(main, 4), null), false, 1),
           "privateLabel", new Definition(text + 4, Kind.TEXT, local, false, 3),

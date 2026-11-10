@@ -360,6 +360,21 @@ image and label bindings. A declaration shared between entries or a spelling tha
 affect another overload stops the operation. Occurrences in unexpanded macro bodies need
 a proven binding before they can participate.
 
+## Rename external storage
+
+Use IntelliJ's **Refactor → Rename** on a written `.extern` allocation, a repeated
+declaration of that allocation, or a reference to the allocated symbol. Rename follows
+the first declaration that allocated storage and updates the declarations and operands
+that bind to it. The preview includes the allocating declaration when Rename starts
+from a repeat. Declaration sizes, storage addresses, and references to same-named
+local labels stay intact. `.eqv` aliases keep their invocations and update the written
+replacement where it supplies the storage name.
+
+A `.extern` directive that resolves to an earlier exported label is treated as a
+reference when renaming that export. External Rename requires a written allocation
+and a binding in the selected assembly. Macro-generated allocations and unexpanded
+declarations still require additional source evidence.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

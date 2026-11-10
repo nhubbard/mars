@@ -274,7 +274,7 @@ class MipsSymbolRenamePlatformTest {
             val macro = macros(definitions).single()
             val references = usages(macro)
             assertEquals(2, references.size)
-            assertTrue(conflicts(macro, "updated", references).contains("written label or macro"))
+            assertTrue(conflicts(macro, "updated", references).contains("written declaration"))
         }
     }
 
@@ -287,6 +287,96 @@ class MipsSymbolRenamePlatformTest {
             val target = label(file)
             assertTrue(conflicts(target, "updated", usages(target)).contains("different symbol"))
             assertEquals(source, file.text)
+        }
+    }
+
+    @Test
+    fun `native rename from a repeated extern updates its allocation aliases and cross-file operands`() = timeoutRunBlocking<Unit> {
+        val application = ".include \"allocation.txt\"\n.include \"repeat.s\"\n.data\n.word \$buffer\n.text\nla \$t0, CELL\n"
+        val allocation = ".extern \$buffer 4\n.eqv CELL \$buffer # \$buffer\n"
+        val repeated = ".extern \$buffer 32\n.extern CELL 16\n"
+        val shadow = ".data\n\$buffer: .word 99\n.word \$buffer\n"
+        val files = withContext(Dispatchers.EDT) {
+            val storage = fixture.addFileToProject("allocation.txt", allocation)
+            val duplicate = fixture.addFileToProject("repeat.s", repeated)
+            val entry = fixture.addFileToProject("entry.asm", application)
+            val local = fixture.addFileToProject("shadow.s", shadow)
+            project.service<MarsAssemblySettings>().changeSources(listOf(entry, local).map { it.virtualFile.path })
+            fixture.configureFromExistingVirtualFile(duplicate.virtualFile)
+            listOf(entry, storage, duplicate, local)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = externals(files[2]).first()
+            val references = usages(target)
+            assertEquals(setOf("allocation.txt", "entry.asm"), references.map { it.virtualFile!!.name }.toSet())
+            assertEquals(3, references.size)
+            RenameProcessor(project, target, "storage.cell", false, false).run()
+            assertEquals(listOf(application.replace("\$buffer", "storage.cell"),
+                ".extern storage.cell 4\n.eqv CELL storage.cell # \$buffer\n", repeated.replace("\$buffer", "storage.cell"), shadow),
+                files.map { it.text })
+            assertTrue(fixture.psiManager.findFile(files[1].virtualFile) is PsiPlainTextFile)
+            val previous = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).selectedEditor)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                assertEquals(listOf(application, allocation, repeated, shadow), files.map { it.text })
+            } finally {
+                TestDialogManager.setTestDialog(previous)
+            }
+        }
+    }
+
+    @Test
+    fun `native rename from an allocating extern keeps repeated declarations tied to it`() = timeoutRunBlocking<Unit> {
+        val source = ".extern storage 4\n.extern storage 32\n.extern next_cell 4\nla \$t0, storage\nla \$t1, next_cell\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = externals(file).first()
+            assertEquals(2, usages(target).size)
+            RenameProcessor(project, target, "updated", false, false).run()
+            assertEquals(source.replace("storage", "updated"), file.text)
+        }
+    }
+
+    @Test
+    fun `rename treats an extern of a preceding export as a use of that export`() = timeoutRunBlocking<Unit> {
+        val export = ".data\n.globl storage\nstorage: .word 1\n"
+        val consumer = ".extern storage 4\n.text\nla \$t0, storage\n"
+        val (provider, user) = withContext(Dispatchers.EDT) {
+            val provider = fixture.addFileToProject("provider.s", export)
+            val user = fixture.addFileToProject("user.asm", consumer)
+            project.service<MarsAssemblySettings>().changeSources(listOf(provider, user).map { it.virtualFile.path })
+            provider to user
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val external = externals(user).single()
+            assertTrue(usages(external).isEmpty())
+            assertTrue(conflicts(external, "updated", emptyList()).contains("written external allocation"))
+            RenameProcessor(project, label(provider), "updated", false, false).run()
+            assertEquals(export.replace("storage", "updated"), provider.text)
+            assertEquals(consumer.replace("storage", "updated"), user.text)
+        }
+    }
+
+    @Test
+    fun `rename requires a realized written extern allocation`() = timeoutRunBlocking<Unit> {
+        val cases = listOf(
+            ".macro idle\n.extern storage 8\n.end_macro\nnop\n",
+            ".extern storage 4\n.macro idle\n.extern storage 8\n.end_macro\nnop\n",
+            ".macro reserve (%slot)\n.extern %slot 4\n.end_macro\nreserve (storage)\n.extern storage 8\nnop\n",
+        )
+        for (source in cases) {
+            val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            readAction {
+                val target = externals(file).last()
+                assertTrue(usages(target).isEmpty())
+                assertTrue(conflicts(target, "updated", emptyList()).contains("written external allocation"))
+                assertEquals(source, file.text)
+            }
         }
     }
 
@@ -357,7 +447,7 @@ class MipsSymbolRenamePlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
             val target = label(shared)
-            assertTrue(conflicts(target, "updated", usages(target)).contains("written label"))
+            assertTrue(conflicts(target, "updated", usages(target)).contains("written declaration"))
             assertEquals("target: nop\n", shared.text)
         }
     }
@@ -389,10 +479,10 @@ class MipsSymbolRenamePlatformTest {
             Triple("target: nop\n", "nop", "ordinary MARS identifier"),
             Triple("target: nop\n", "", "ordinary MARS identifier"),
             Triple("target: nop\n", "two words", "ordinary MARS identifier"),
-            Triple("main: nop\n", "next", "written label"),
-            Triple(".macro unused (%label)\n%label: nop\n.end_macro\n", "next", "written label"),
-            Triple(".macro unused\ntarget: nop\n.end_macro\ntarget: nop\n", "next", "written label"),
-            Triple(".macro unused\ntarget: nop\n.end_macro\n.macro define (%name)\n%name: nop\n.end_macro\ndefine(target)\n", "next", "written label"),
+            Triple("main: nop\n", "next", "written declaration"),
+            Triple(".macro unused (%label)\n%label: nop\n.end_macro\n", "next", "written declaration"),
+            Triple(".macro unused\ntarget: nop\n.end_macro\ntarget: nop\n", "next", "written declaration"),
+            Triple(".macro unused\ntarget: nop\n.end_macro\n.macro define (%name)\n%name: nop\n.end_macro\ndefine(target)\n", "next", "written declaration"),
             Triple("target: nop\n.eqv NAME target\n", "next", "ambiguous"),
             Triple("target: nop\nnext: nop\n", "next", "already occurs"),
             Triple("target: nop\nj missing\n", "next", "could not assemble"),
@@ -421,7 +511,7 @@ class MipsSymbolRenamePlatformTest {
             assertFalse(processor.isInplaceRenameSupported)
             assertTrue(validator.isInputValid("valid.name", target, ProcessingContext()))
             assertTrue(usages(target).isEmpty())
-            assertTrue(conflicts(target, "next", emptyList()).contains("written label"))
+            assertTrue(conflicts(target, "next", emptyList()).contains("written declaration"))
         }
     }
 
@@ -690,6 +780,9 @@ class MipsSymbolRenamePlatformTest {
 
     private fun macros(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
         .filter { it.kind == SymbolKind.MACRO }
+
+    private fun externals(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+        .filter { it.kind == SymbolKind.EXTERNAL }
 
     private fun usages(label: MipsDeclaration) =
         processor.findReferences(label, GlobalSearchScope.projectScope(project), false)

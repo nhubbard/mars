@@ -419,13 +419,16 @@ final class FirstPassProcessor {
         return;
       }
       int size = Binary.stringToInt(tokens.get(2).getValue());
-      // If label already in global symtab, do nothing. If not, add it right now.
-      if (context.symbols().getAddress(tokens.get(1).getValue()) == SymbolTable.NOT_FOUND) {
-        var name = tokens.get(1);
+      var name = tokens.get(1);
+      var existing = context.symbols().getSymbol(name.getValue());
+      if (existing == null || existing.getAddress() == SymbolTable.NOT_FOUND) {
         context.symbols().addSymbol(
             name, externAddress, Kind.EXTERNAL, Parser.origin(physicalLine, caller),
             renamedLabels.contains(name.getValue()), errors);
         this.externAddress += size;
+      } else {
+        // This declaration uses the existing allocation instead of reserving more storage.
+        symbolUses.record(name, existing);
       }
     } else if (direct == Directives.SET) {
       errors.add(
