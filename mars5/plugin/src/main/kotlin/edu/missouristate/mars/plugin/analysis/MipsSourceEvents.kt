@@ -30,23 +30,24 @@ internal sealed interface MipsSourceEvent {
 
     class Header(val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
-        private val tokens = macroLineTokens(declaration)
-        private val direct = macroSignature(declaration, tokens, 0, offset)
+        private val start = sourceLineStart(declaration)
+        private val tokens = macroLineTokens(declaration, fromLineStart = true)
+        private val operation = tokens.operationIndex(inMacro = false)
+        private val direct = macroSignature(declaration, tokens, operation, start, null)
 
-        fun bind(replacement: (String) -> String?): Begin? {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): Begin? {
             val needsExpansion = (0 until tokens.size()).any {
                 val token = tokens[it]
                 token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
             }
-            if (!needsExpansion) return direct
-            val directive = declaration.parent.firstChild
+            if (!needsExpansion) return if (inMacro && operation != 0) null else direct
             val expanded = Tokenizer.tokenizeMappedLine(
-                sourceLine(directive), ErrorList(), replacement, ProgressManager::checkCanceled,
+                sourceLine(declaration, fromLineStart = true), ErrorList(), replacement, ProgressManager::checkCanceled,
             )
             val tokens = expanded.tokens()
             if (!tokens.hasCompleteEquivalenceExpansion()) return null
             tokens.discardTrailingComment()
-            return macroSignature(declaration, tokens, 1, directive.textOffset, expanded)
+            return macroSignature(declaration, tokens, tokens.operationIndex(inMacro), start, expanded)
         }
     }
 
@@ -204,7 +205,7 @@ private fun expandedDirective(
     // A macro with a valid name can open a scope before its first rejected formal.
     if (hasErrors && directive != Directives.MACRO) return null
     return when (directive) {
-        Directives.MACRO -> macroSignature(head, tokens, operation + 1, start, expanded)
+        Directives.MACRO -> macroSignature(head, tokens, operation, start, expanded)
         Directives.END_MACRO -> {
             val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
             if (tokens.size() == operation + 1) MipsSourceEvent.End(offset) else MipsSourceEvent.RejectedEnd(offset)
@@ -286,9 +287,12 @@ internal fun TokenList.discardTrailingComment() {
 }
 
 private fun macroSignature(
-    header: PsiElement, tokens: TokenList, nameIndex: Int, start: Int, mapped: Tokenizer.MappedLine? = null,
+    header: PsiElement, tokens: TokenList, operation: Int, start: Int, mapped: Tokenizer.MappedLine?,
 ): MipsSourceEvent.Begin? {
-    if (nameIndex >= tokens.size() || tokens[nameIndex].type != TokenTypes.IDENTIFIER) return null
+    val nameIndex = operation + 1
+    if (nameIndex >= tokens.size() || !tokens[operation].value.equals(Directives.MACRO.getName(), ignoreCase = true) ||
+        tokens[nameIndex].type != TokenTypes.IDENTIFIER
+    ) return null
     fun originalOffset(token: Token): Int {
         val column = token.startPos - 1
         return start + (mapped?.originalOffset(column) ?: column)
@@ -298,7 +302,7 @@ private fun macroSignature(
     val parameters = arguments.takeWhile { it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true) }
     val invalid = arguments.getOrNull(parameters.size)
     val name = tokens[nameIndex]
-    val directive = if (nameIndex == 0) header.parent.firstChild.textOffset else originalOffset(tokens[nameIndex - 1])
+    val directive = originalOffset(tokens[operation])
     return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
         parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
         invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) })

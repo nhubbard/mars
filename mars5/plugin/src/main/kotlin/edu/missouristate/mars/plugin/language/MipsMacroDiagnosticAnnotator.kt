@@ -38,6 +38,7 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             if (!hasEntry) return
             val site = file.findElementAt(offset)!!
             val message = when (kind) {
+                Kind.NESTED_BEGIN -> "syntax.macro.nested"
                 Kind.TRAILING_TEXT -> "syntax.macro.end.trailing"
                 Kind.UNMATCHED_END -> "syntax.macro.end.unmatched"
                 Kind.MISSING_END -> "syntax.macro.end.missing"

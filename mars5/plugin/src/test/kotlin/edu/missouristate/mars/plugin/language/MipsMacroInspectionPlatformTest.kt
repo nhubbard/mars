@@ -12,6 +12,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection
@@ -283,6 +284,88 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `nested openers report their written tokens without replacing the outer macro`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv OPEN .macro
+                .eqv LABEL inside_alias
+                .eqv PREFIX generated:
+                .eqv BAD_NAME 7
+                .macro outer (%value)
+                .macro nested (%other)
+                OPEN expanded (%other)
+                inside: .macro labeled (%other)
+                LABEL: .macro alias_labeled (%other)
+                %value: .macro parameter_labeled (%other)
+                PREFIX .macro generated_labeled (%other)
+                OPEN BAD_NAME
+                li ${'$'}t0, %value
+                .end_macro
+            """.trimIndent()
+            val entry = directory.resolve("nested.asm").also { it.writeText(source) }
+            val project = projectFixture.get()
+            val context = project.service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertEquals(
+                listOf(nestedMacroMessage, nestedMacroMessage, "Invalid Macro name \"7\""),
+                failure.errors().errorMessages.map { it.message },
+            )
+            withContext(Dispatchers.EDT) { fixture.configureByText("nested.asm", "$source\nouter(7)\n") }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) {
+                assertEquals(listOf(".macro" to nestedMacroMessage, "OPEN" to nestedMacroMessage), errors())
+                readAction {
+                    val file = fixture.file as MipsFile
+                    assertEquals(setOf("outer"), project.service<MarsAnalysisService>().editorTimeline(file).macroNames)
+                    assertEquals("%value", file.findReferenceAt(source.lastIndexOf("%value") + 1)?.resolve()?.text)
+                    assertEquals("outer", (file.findReferenceAt(source.length + 1)?.resolve() as? MipsDeclaration)?.name)
+                }
+                WriteCommandAction.runWriteCommandAction(project) {
+                    fixture.editor.document.setText(
+                        source.substringBefore(".macro nested") + source.substringAfter("OPEN BAD_NAME\n") + "\nouter(7)\n",
+                    )
+                }
+                assertTrue(errors().isEmpty())
+            }
+        }
+
+    @Test
+    fun `a shared opener is nested only in the entry that opens a macro before including it`() = timeoutRunBlocking<Unit> {
+        val current = projectFixture.get()
+        val (standalone, nested) = withContext(Dispatchers.EDT) {
+            val inner = fixture.addFileToProject("inner.s", ".macro emit\nnop\n")
+            val standalone = fixture.addFileToProject("standalone.asm", ".include \"inner.s\"\n.end_macro\n")
+            val nested = fixture.addFileToProject("nested.asm", ".macro outer\n.include \"inner.s\"\n.end_macro\n")
+            fixture.configureFromExistingVirtualFile(inner.virtualFile)
+            standalone.virtualFile to nested.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val settings = current.service<MarsAssemblySettings>()
+            assertTrue(errors().isEmpty())
+            settings.changeSources(listOf(nested.path))
+            assertEquals(listOf(".macro" to nestedMacroMessage), errors())
+            settings.changeSources(listOf(standalone.path))
+            assertTrue(errors().isEmpty())
+        }
+    }
+
+    @Test
+    fun `a pending include can close the macro before a suspected nested opener`() = timeoutRunBlocking<Unit> {
+        val source = ".macro outer\n.include \"closer.s\"\n.macro next\nnop\n.end_macro\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) {
+            assertTrue(errors().none { it.second == nestedMacroMessage })
+            fixture.addFileToProject("closer.s", ".end_macro\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) { assertTrue(errors().isEmpty()) }
+    }
+
+    @Test
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv FORMS %kept, 7, 8
@@ -354,6 +437,7 @@ class MipsMacroInspectionPlatformTest {
     private val trailingCloseMessage = "Unexpected text after .end_macro"
     private val unmatchedEndMessage = ".end_macro without a matching .macro"
     private val missingEndMessage = "Missing .end_macro for this macro"
+    private val nestedMacroMessage = "Nested macros are not allowed"
 
     private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
         .filter { it.severity == HighlightSeverity.ERROR }

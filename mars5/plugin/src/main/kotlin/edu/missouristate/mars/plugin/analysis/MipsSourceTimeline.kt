@@ -65,7 +65,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             continue
         }
         val event = when (physical) {
-            is MipsSourceEvent.Header -> physical.bind(replacement) ?: continue
+            is MipsSourceEvent.Header -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> {
                 val expanded = physical.bind(replacement) ?: continue
                 if (expanded.replaced) cursor.locations.replacedExternals.add(physical.offset)
@@ -86,17 +86,21 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         cursor.locations.sites.add(SourceEventSite(event.offset, index))
         when (event) {
             is Begin -> {
+                if (macro != null) {
+                    if (!incompleteIncludes) {
+                        cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.directiveOffset, Kind.NESTED_BEGIN))
+                    }
+                    continue
+                }
                 macroNames.add(event.name)
-                if (macro == null) {
-                    macro = event
-                    cursor.locations.localMacros[event.header] = event
-                    if (event.header !is MipsDeclaration) {
-                        cursor.locations.generatedMacroNames.add(event.nameOffset)
-                        val parts = cursor.locations.generatedMacroParts
-                        if (event.nameOffset != event.directiveOffset) parts[event.nameOffset] = MacroPart.NAME
-                        for (formal in event.parameters) {
-                            if (formal.offset != event.directiveOffset) parts.putIfAbsent(formal.offset, MacroPart.PARAMETER)
-                        }
+                macro = event
+                cursor.locations.localMacros[event.header] = event
+                if (event.header !is MipsDeclaration) {
+                    cursor.locations.generatedMacroNames.add(event.nameOffset)
+                    val parts = cursor.locations.generatedMacroParts
+                    if (event.nameOffset != event.directiveOffset) parts[event.nameOffset] = MacroPart.NAME
+                    for (formal in event.parameters) {
+                        if (formal.offset != event.directiveOffset) parts.putIfAbsent(formal.offset, MacroPart.PARAMETER)
                     }
                 }
                 macroBoundaries[eventCount] = macro
@@ -311,7 +315,7 @@ internal enum class MacroPart { NAME, PARAMETER }
 internal data class MacroBody(val opening: PsiElement, val closingOffset: Int)
 
 internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
-    enum class Kind { TRAILING_TEXT, UNMATCHED_END, MISSING_END }
+    enum class Kind { NESTED_BEGIN, TRAILING_TEXT, UNMATCHED_END, MISSING_END }
 }
 
 internal class SourceFileEvents(val file: MipsFile) {
