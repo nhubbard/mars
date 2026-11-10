@@ -36,6 +36,8 @@ are future milestones; the starter currently establishes project session ownersh
 The CLI supports ordered sources, project-directory assembly, and program arguments after `--`.
 Run options include memory layouts, branch delay slots, self-modifying code, and step limits.
 Automated builds can set separate exit codes for assembly and simulation errors.
+Use `--dump REGION FORMAT FILE` to export `.text`, `.data`, or an inclusive word address range.
+The CLI lists the available formats in `--help`. Repeat `--dump` to write several files from one run.
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 

@@ -4,6 +4,8 @@ import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.di.DaggerMarsComponent;
+import edu.missouristate.mars.mips.dump.DumpFormat;
+import edu.missouristate.mars.mips.dump.DumpFormatLoader;
 import edu.missouristate.mars.simulator.ProgramArgumentList;
 import edu.missouristate.mars.util.FilenameFinder;
 import java.io.*;
@@ -37,6 +39,7 @@ public final class MarsCli {
           .setBareMachineEnabled(false);
       var files = new ArrayList<Path>();
       var programArguments = new ArrayList<String>();
+      var dumps = new ArrayList<CliMemoryDump>();
       String layout = "Default";
       int maximumSteps = 0;
       boolean assembleOnly = false;
@@ -60,6 +63,10 @@ public final class MarsCli {
           case "--no-pseudo", "np", "ne" -> session.settings.setExtendedAssemblerEnabled(false);
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "nc" -> {}
+          case "--dump", "dump" -> dumps.add(CliMemoryDump.parse(
+              requiredValue(arguments, ++i, "dump segment or address range"),
+              requiredValue(arguments, ++i, "dump format"),
+              requiredValue(arguments, ++i, "dump filename")));
           case "--memory", "mc" -> layout = requiredValue(arguments, ++i, "memory layout");
           case "--assembly-error-exit-code" ->
               assemblyErrorExitCode =
@@ -98,18 +105,24 @@ public final class MarsCli {
       session.setMemoryConfiguration(layout);
       var program = session.assemble(project ? projectSources(files) : files);
       error.print(program.getAssemblyDiagnostics().generateWarningReport());
-      if (assembleOnly) {
-        return 0;
-      }
-      new ProgramArgumentList(programArguments).storeProgramArguments(session);
-      try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
-        program.setSyscallEnvironment(io);
-        simulating = true;
-        if (!program.simulate(maximumSteps)) {
-          error.println("Execution reached the step limit.");
-          return 3;
+      try {
+        if (assembleOnly) {
+          return 0;
         }
-        return program.getExitCode();
+        new ProgramArgumentList(programArguments).storeProgramArguments(session);
+        try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
+          program.setSyscallEnvironment(io);
+          simulating = true;
+          if (!program.simulate(maximumSteps)) {
+            error.println("Execution reached the step limit.");
+            return 3;
+          }
+          return program.getExitCode();
+        }
+      } finally {
+        for (var dump : dumps) {
+          dump.write(session, error);
+        }
       }
     } catch (ProcessingException failure) {
       error.print(failure.errors().generateErrorAndWarningReport());
@@ -170,12 +183,15 @@ public final class MarsCli {
       --no-pseudo            Accept basic instructions only (np)
       --warnings-as-errors   Fail assembly on warnings (we)
       --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
+      --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)
+                             Formats: %s
       --max-steps COUNT      Bound execution and return code 3 at the limit
       COUNT                  Positional step limit (zero or negative means unlimited)
       --assembly-error-exit-code CODE     Override the assembly error status (aeCODE)
       --simulation-error-exit-code CODE   Override the simulation error status (seCODE)
       --help                 Show this help
     Exit codes: simulated exit code, 1 for assembly/runtime errors, 2 for invalid arguments.
-    """;
+    """.formatted(
+        String.join(", ", DumpFormatLoader.FORMATS.stream().map(DumpFormat::getCommandDescriptor).toList()));
   }
 }
