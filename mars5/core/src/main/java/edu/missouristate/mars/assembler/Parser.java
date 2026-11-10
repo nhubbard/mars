@@ -217,16 +217,7 @@ final class Parser {
     // the next, to sense the pass.context of this continuation line. That state information
     // is contained in this.dataDirective (the current data directive).
     //
-    if (pass.inDataSegment
-        && // 30-Dec-09 DPS Added data segment guard...
-        (tokenType == TokenTypes.PLUS
-            || // because invalid instructions were being caught...
-            tokenType == TokenTypes.MINUS
-            || // here and reported as a directive in text segment!
-            tokenType == TokenTypes.QUOTED_STRING
-            || tokenType == TokenTypes.IDENTIFIER
-            || TokenTypes.isIntegerTokenType(tokenType)
-            || TokenTypes.isFloatingTokenType(tokenType))) {
+    if (pass.inDataSegment && TokenTypes.startsDataContinuation(tokenType)) {
       pass.executeDirectiveContinuation(tokens);
       return null;
     }

@@ -278,6 +278,16 @@ public final class TokenTypes {
     return type == TokenTypes.REAL_NUMBER;
   }
 
+  /** Whether a token can start a continuation of the active data directive. */
+  public static boolean startsDataContinuation(TokenTypes type) {
+    return type == PLUS
+        || type == MINUS
+        || type == QUOTED_STRING
+        || type == IDENTIFIER
+        || isIntegerTokenType(type)
+        || isFloatingTokenType(type);
+  }
+
   // COD2, A-51:  "Identifiers are a sequence of alphanumeric characters,
   //               underbars (_), and dots (.) that do not begin with a number."
   // Ideally this would be in a separate Identifier class but I did not see an immediate

@@ -15,8 +15,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -252,6 +254,54 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertTrue(fixture.doHighlighting().none { it.description?.contains("missing") == true })
         }
         assertSame(program, session.program)
+    }
+
+    @Test
+    fun `syntax highlights follow the effective segment through includes and edits`() = timeoutRunBlocking<Unit> {
+        val source = "(\n)\n:\n\$sp)\nlabel::suffix\n"
+        val (entry, segment, body) = withContext(Dispatchers.EDT) {
+            val mode = fixture.addFileToProject("segment.txt", ".eqv SWITCH .data\nSWITCH\n")
+            val part = fixture.addFileToProject("body.s", source)
+            val main = fixture.addFileToProject("main.asm", ".include \"segment.txt\"\n.include \"body.s\"\n.text\nnop\n")
+            fixture.configureFromExistingVirtualFile(part.virtualFile)
+            Triple(main.virtualFile, mode.virtualFile, part.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors().isEmpty())
+            edit(segment, ".ktext\n")
+            assertTrue(errors().isNotEmpty())
+            edit(segment, ".kdata\n")
+            assertTrue(errors().isEmpty())
+            edit(body, "\$sp) @\n.word )\n+ )\n")
+            val invalid = errors()
+            assertTrue(invalid.any { it.startOffset < "\$sp) @\n".length })
+            assertTrue(invalid.any { it.startOffset in "\$sp) @\n".length until "\$sp) @\n.word )\n".length })
+            assertTrue(invalid.any { it.startOffset >= "\$sp) @\n.word )\n".length })
+        }
+    }
+
+    @Test
+    fun `data syntax suppression requires a known segment and a skipped operation`() = timeoutRunBlocking<Unit> {
+        val filter = MipsDataStatementErrorFilter()
+        withContext(Dispatchers.EDT) {
+            val source = ".data\n)\n# comment\n.macro spare\nnop\n.end_macro\n"
+            val file = fixture.configureByText("segments.asm", source) as MipsFile
+            val error = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)!!
+            val analysis = project.service<MarsAnalysisService>()
+            assertTrue(!filter.shouldHighlightErrorElement(error))
+            DumbModeTestUtils.runInDumbModeSynchronously(project) { assertTrue(filter.shouldHighlightErrorElement(error)) }
+            assertTrue(!analysis.ignoresDataStatement(file, file.findElementAt(source.indexOf('#'))!!))
+            assertTrue(!analysis.ignoresDataStatement(file, file.findElementAt(source.indexOf("nop"))!!))
+
+            val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
+            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!))
+            val java = fixture.configureByText("Broken.java", "class {")
+            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(java, PsiErrorElement::class.java)!!))
+        }
     }
 
     @Test

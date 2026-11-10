@@ -646,6 +646,18 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return editorPrefix(root, position.textOffset).hasIntegerDataList
     }
 
+    internal fun ignoresDataStatement(root: MipsFile, position: PsiElement): Boolean {
+        if (DumbService.isDumb(project)) return false
+        val timeline = editorTimeline(root)
+        if (timeline.hasIncompleteIncludes) return false
+        val prefix = timeline.prefix(root, sourceLineStart(position))
+        if (!prefix.inDataSegment || prefix.openMacro != null) return false
+        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true)) ?: return false
+        if (tokens.isEmpty) return false
+        val head = tokens[0].type
+        return head != TokenTypes.DIRECTIVE && !TokenTypes.startsDataContinuation(head)
+    }
+
     /** An ambiguous physical operation may be a data directive or a continuation after substitution. */
     internal fun isIntegerDataCandidate(root: MipsFile, head: PsiElement, macroHead: Boolean): Boolean {
         val prefix = editorPrefix(root, head.textOffset)

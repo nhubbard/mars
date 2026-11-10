@@ -450,6 +450,14 @@ only the map for the selected or uniquely inferred entry. The editor can reuse a
 map for completion while the current instruction operand is incomplete. Stale results and
 changes elsewhere in the captured source graph cannot supply names.
 
+IntelliJ retains recovery PSI for malformed statements so editing can continue on the next
+line. Its syntax error filter checks the segment in the live include timeline and applies the
+Java assembler's rule for which tokens can start a continued data list. A lexically valid
+line that the assembler skips in a data segment stays free of syntax highlights. The filter
+uses the effective head after label stripping and `.eqv` expansion. Directives, data-list
+operands, and malformed lexical tokens retain their diagnostics. Segment changes executed
+by a macro are evaluated by the separate background assembly pass.
+
 ## Go to Declaration for data labels and exports
 
 Native references navigate from `.globl` lists, integer data operands and their continued
