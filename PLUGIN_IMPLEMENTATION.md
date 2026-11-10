@@ -231,6 +231,18 @@ supplied by an alias. Go to Declaration on the alias itself follows its equivale
 Native fixtures cover basic and pseudo formats, omitted and symbolic address offsets,
 CP0 and CP1 transfers, aliased instructions, non-register operands, and register insertion.
 
+## Register usage highlighting
+
+Put the caret on a written register operand and choose **Highlight Usages in File**.
+The editor groups GPR aliases by register number, including `$t0`, `$8` and
+`$0x8`. Floating-point registers and the Coprocessor 0 operands of `mfc0` and
+`mtc0` have separate groups.
+
+The file-local PSI cache includes written instruction operands in macro bodies
+and recoverable lines such as unfinished memory operands. The cache updates on
+editor changes. Macro call arguments and operands supplied by `.eqv` expansion
+remain outside the written occurrence set.
+
 ## Instruction label completion
 
 The operand contributor also offers case-sensitive label names when a matching core format

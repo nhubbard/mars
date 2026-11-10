@@ -16,8 +16,6 @@ import com.intellij.util.ProcessingContext
 import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.Instruction
-import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
-import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.language.psi.macroParameterUseContexts
 
@@ -96,7 +94,6 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
             )
         }
         val systemRegisters by lazy { RegisterNames.coprocessor0Spellings() }
-        val systemTransfers: Set<Class<out Instruction>> = setOf(InstrMfc0::class.java, InstrMtc0::class.java)
 
         fun prefix(parameters: CompletionParameters): String {
             val position = parameters.position
@@ -105,8 +102,7 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
 
         fun registerCandidates(formats: List<Instruction>, index: Int): Set<String> = buildSet {
             for (instruction in formats) {
-                // The core tokenizes the second operand of a CP0 transfer as a numeric GPR.
-                if (index == 2 && instruction.javaClass in systemTransfers) {
+                if (index == COPROCESSOR0_REGISTER_INDEX && instruction.hasCoprocessor0Register) {
                     addAll(systemRegisters)
                 } else {
                     addAll(registerSpellings[instruction.tokenList[index].type].orEmpty())

@@ -9,6 +9,8 @@ import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.mips.instructions.basic.InstrMfc0
+import edu.missouristate.mars.mips.instructions.basic.InstrMtc0
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 
 private val instructionType = MipsTypes.psi("INSTRUCTION")
@@ -24,6 +26,10 @@ internal fun operationOwner(position: PsiElement): PsiElement? =
 internal fun operationOnLine(first: PsiElement?): PsiElement? =
     PsiTreeUtil.findFirstParent(first, true) { it.elementType == statementType }
         ?.node?.findChildByType(operationOwners)?.psi
+
+// The assembler tokenizes this operand like a GPR, although it addresses a separate bank.
+internal const val COPROCESSOR0_REGISTER_INDEX = 2
+internal val Instruction.hasCoprocessor0Register: Boolean get() = this is InstrMfc0 || this is InstrMtc0
 
 internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }

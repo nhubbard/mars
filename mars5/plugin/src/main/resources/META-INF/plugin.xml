@@ -47,6 +47,7 @@
     <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
     <codeInsight.lineMarkerProvider language="MARS_MIPS"
                                     implementationClass="edu.missouristate.mars.plugin.language.MipsTransferLineMarkerProvider"/>
+    <highlightUsagesHandlerFactory implementation="edu.missouristate.mars.plugin.language.MipsRegisterUsages"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
     <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
     <platform.backend.documentation.targetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>
