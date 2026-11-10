@@ -18,6 +18,8 @@ layers where the platform provides the required mechanism. Keep custom code focu
 Before designing a plugin mechanism, inspect the corresponding platform implementation and its current
 API contracts. Use the supported API even when an older bundled example still calls a deprecated overload.
 Explain a concrete platform gap before introducing a custom mechanism.
+Use public APIs in the packaged plugin. Experimental public APIs are acceptable on the pinned IDE
+target. Internal APIs are a release blocker for JetBrains Marketplace.
 Write new plugin code in Kotlin. Use Jupiter tests, preserve near-full meaningful branch coverage,
 and commit each tested implementation step. Before every sandbox launch, run the real Gradle tasks
 `clean cleanSandbox runIde`; do not add aliases. Never modify the IntelliJ reference checkout.

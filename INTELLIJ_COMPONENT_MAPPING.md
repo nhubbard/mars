@@ -835,7 +835,8 @@ Use a separate upgrade job for future IntelliJ releases. That job informs migrat
 
 Reject new project uses of deprecated/removal APIs, internal APIs, obsolete test frameworks and desktop dependencies.
 Use Plugin Verifier/API inspections in addition to Kotlin compiler warnings; Kotlin warnings alone do not enforce every API-status annotation.
-Experimental APIs require a documented, narrow exception and contract tests. Prefer public alternatives already identified in this plan.
+Public experimental APIs are acceptable on the pinned IDE target. Record their purpose and contract tests
+when reviewing the verifier report. Internal API usage blocks a JetBrains Marketplace release.
 Tests must not require the local IntelliJ source checkout or absolute paths from this author's machine.
 
 ## 11. Delivery sequence and release gates

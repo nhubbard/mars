@@ -14,9 +14,7 @@ import com.intellij.ide.wizard.runAfterOpened
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.service
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileEditorOpenMode
-import com.intellij.openapi.fileEditor.FileEditorOpenRequest
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.module.GeneralModuleType
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
@@ -24,6 +22,8 @@ import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.platform.ide.navigation.NavigationOptions
+import com.intellij.platform.ide.navigation.NavigationService
 import com.intellij.ui.dsl.builder.Panel
 import com.intellij.ui.dsl.builder.bindSelected
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -85,8 +85,8 @@ private fun fileUrl(path: Path) = VfsUtilCore.pathToUrl(path.invariantSeparators
 
 internal fun openStarterInEditor(project: Project, path: Path) {
     val entry = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) ?: return
-    FileEditorManager.getInstance(project).requestOpenFile(
-        entry, FileEditorOpenRequest.withFocus(true).withOpenMode(FileEditorOpenMode.DEFAULT),
+    NavigationService.getInstance(project).requestNavigate(
+        OpenFileDescriptor(project, entry), NavigationOptions.requestFocus(),
     )
 }
 

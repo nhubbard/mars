@@ -121,7 +121,8 @@ class MarsNewProjectWizardTest {
             }
             pollAssertionsAsync(5.seconds, 10.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    assertTrue(files.first() in FileEditorManager.getInstance(project).openFiles)
+                    val editors = FileEditorManager.getInstance(project)
+                    assertEquals(files.first(), editors.selectedTextEditor?.virtualFile)
                 }
             }
             openStarterInEditor(project, root.resolve("src/deleted.asm"))

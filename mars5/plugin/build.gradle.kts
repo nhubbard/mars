@@ -4,6 +4,9 @@ import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.GenerateParserTask
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES
 
 plugins {
   kotlin("jvm") version "2.4.21"
@@ -63,6 +66,7 @@ intellijPlatform {
   }
   pluginVerification {
     ides { current() }
+    failureLevel.set(listOf(COMPATIBILITY_PROBLEMS, INTERNAL_API_USAGES, OVERRIDE_ONLY_API_USAGES))
   }
 }
 

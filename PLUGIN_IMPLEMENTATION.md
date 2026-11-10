@@ -2164,10 +2164,24 @@ The initial macOS report from Verifier 1.411 found the archive compatible
 with IntelliJ IDEA build `IU-263.7307.200`. It reported four deprecated API
 findings for Kotlin-generated `ToolWindowFactory` default-method forwarders
 and 81 experimental API findings. The latter include build progress, queued
-editor refreshes, documentation, navigation, and project setup. Each API
-family still needs a release review. The report is generated in
+editor refreshes, documentation, navigation, and project setup. Moving the
+wizard's starter-file opening to `NavigationService` reduced the experimental
+findings to 73. The report is generated in
 `mars5/plugin/build/reports/pluginVerifier`.
+
+CI fails for internal API usage, binary compatibility problems, and misuse
+of override-only APIs. Public experimental APIs are acceptable on the pinned
+target and remain visible in the report. JetBrains Marketplace also verifies
+compatibility and internal API usage during its approval process.
+[Marketplace approval guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
 
 The Gradle project configuration check advises removing the upper build
 bound. The plugin intentionally uses `263.*` because IntelliJ 2026.3 is
 the approved compatibility target.
+
+### Reviewed API use in the 263 target
+
+| API | Scope and evidence |
+| --- | --- |
+| `DebouncedUpdates` and `UpdateQueue` | `MipsFoldingRefresh`, `MipsAssemblyInlayRefresh` and `MarsOpenAssembly` use the platform's recommended coroutine queue for distinct batches. It owns the delay and cancellation in the project service scope. `MipsEditorPlatformTest` exercises folding after assembly context and disk changes, `MipsAddressInlayPlatformTest` checks hint updates, and `MarsBuildPlatformTest` checks assembly on open. |
+| `runAfterOpened` | The project wizard uses the platform's post-commit hook so it receives the actual opened project, which may differ when IntelliJ attaches a project to a workspace. The callback uses the public `NavigationService` to open and focus the generated starter. `MarsNewProjectWizardTest` checks selection and Run or Debug for both starter layouts. |
