@@ -1201,6 +1201,12 @@ owning simulator's instruction set, without borrowing source locations from the
 assembled image. An unmapped row has no word and a misaligned PC shows its address
 without selecting an instruction.
 
+Drag or resize headers to customize the listing. Click **Address**, **Word**,
+**Instruction**, or **Source** to sort the current window. Address sorting is
+unsigned and works in either display format. IntelliJ remembers the column
+layout and sort for later debug sessions. Selection, source navigation, and
+address breakpoints follow the underlying instruction when the table is reordered.
+
 Inspecting a text symbol selects its instruction for the current suspension.
 The PC marker continues to identify the instruction that will execute next.
 **Follow PC** returns to it immediately, and a new suspension follows its own PC.

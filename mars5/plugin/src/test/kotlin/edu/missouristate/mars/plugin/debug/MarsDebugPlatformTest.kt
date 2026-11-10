@@ -17,6 +17,7 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.ui.RunnerLayoutUi
 import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
@@ -129,6 +130,7 @@ import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.tools.FloatingPointView
 import java.awt.event.ActionEvent
+import java.awt.event.MouseEvent
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -3088,6 +3090,96 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(include, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `Disassembly restores layout and sort without changing selected instruction actions`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("disassembly-layout.asm", "entry: nop\nnext: nop\nli \$v0, 10\nsyscall\n").virtualFile
+                .also { addBreakpoint(it, 0) }
+        }
+        val properties = PropertiesComponent.getInstance()
+        val keys = (listOf("sortColumn", "descending") + (0..6).flatMap { listOf("Order$it", "Width$it") })
+            .map { DISASSEMBLY_LAYOUT_PREFIX + it }
+        val original = keys.associateWith(properties::getValue)
+        try {
+            withDebug(source) { debug ->
+                debug.assertPausedAt(source, 0)
+                val lifetime = Disposer.newDisposable()
+                try {
+                    fun listing(id: String): JComponent {
+                        val layout = RunnerLayoutUi.Factory.getInstance(project).create(id, "Debug", "MIPS", lifetime)
+                        debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                        return requireNotNull(layout.findContent("MarsMipsDisassembly")).component
+                    }
+                    val panel = withContext(Dispatchers.EDT) { listing("MarsDisassemblyLayoutTest") }
+                    val table = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) }
+                    fun selectedAddress(listing: JBTable) = listing.getValueAt(listing.selectedRow, listing.convertColumnIndexToView(1))
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            assertTrue(table.selectedRow >= 0)
+                            assertEquals("0x00400000", selectedAddress(table))
+                        }
+                    }
+                    withContext(Dispatchers.EDT) {
+                        val header = table.tableHeader
+                        fun gesture(change: () -> Unit) {
+                            header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_PRESSED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
+                            change()
+                            header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_RELEASED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
+                        }
+                        gesture {}
+                        assertNull(properties.getValue(DISASSEMBLY_LAYOUT_PREFIX + "Order0"))
+                        gesture {
+                            table.columnModel.moveColumn(4, 0)
+                            table.columnModel.getColumn(0).width = 235
+                        }
+                        assertEquals("Source", table.getColumnName(0))
+                        assertEquals("4", properties.getValue(DISASSEMBLY_LAYOUT_PREFIX + "Order0"))
+                        assertEquals("235", properties.getValue(DISASSEMBLY_LAYOUT_PREFIX + "Width0"))
+                        table.rowSorter.sortKeys = emptyList()
+                        table.rowSorter.sortKeys = listOf(SortKey(1, SortOrder.DESCENDING))
+                        assertEquals("0x00400000", selectedAddress(table))
+                        assertEquals("0x0040002c", table.getValueAt(0, table.convertColumnIndexToView(1)))
+                        val row = (0 until table.rowCount).single { table.getValueAt(it, 0) == "disassembly-layout.asm:2" }
+                        table.setRowSelectionInterval(row, row)
+                        assertEquals("0x00400004", selectedAddress(table))
+                        UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Open Source" }.doClick(0)
+                        val toggle = UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Toggle Address Breakpoint" }
+                        toggle.doClick(0)
+                        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
+                        val point = debugger.breakpointManager.getBreakpoints(type).single()
+                        assertEquals(0x00400004, point.properties?.addressIn(source.toNioPath().toString()))
+                        toggle.doClick(0)
+                    }
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                            assertEquals(1, editor.caretModel.logicalPosition.line)
+                        }
+                    }
+                    val restored = withContext(Dispatchers.EDT) {
+                        requireNotNull(UIUtil.findComponentOfType(listing("MarsRestoredDisassemblyLayoutTest"), JBTable::class.java)).also {
+                            assertEquals("Source", it.getColumnName(0))
+                            assertEquals(235, it.columnModel.getColumn(0).preferredWidth)
+                            assertEquals(SortKey(1, SortOrder.DESCENDING), it.rowSorter.sortKeys.single())
+                        }
+                    }
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            assertTrue(restored.selectedRow >= 0)
+                            assertEquals("0x00400000", selectedAddress(restored))
+                        }
+                    }
+                    withContext(Dispatchers.EDT) { debug.session.resume() }
+                    assertEquals(0, debug.exit.await())
+                } finally {
+                    withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+                }
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { original.forEach(properties::setValue) }
         }
     }
 

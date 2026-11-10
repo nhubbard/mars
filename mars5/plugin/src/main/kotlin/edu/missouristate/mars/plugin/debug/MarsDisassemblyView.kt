@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.debug
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
@@ -9,7 +10,8 @@ import com.intellij.openapi.components.service
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.table.JBTable
+import com.intellij.ui.table.BaseTableView
+import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
@@ -27,12 +29,22 @@ import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
 import java.awt.Font
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JButton
 import javax.swing.Icon
+import javax.swing.JTable
 import javax.swing.ListSelectionModel
+import javax.swing.RowSorter.SortKey
+import javax.swing.SortOrder
+import javax.swing.event.RowSorterEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+internal const val DISASSEMBLY_LAYOUT_PREFIX = "mars.debug.disassembly.v1."
+private const val ADDRESS_COLUMN = 1
+private const val SOURCE_COLUMN = 4
 
 internal data class ExecutionMarkers(val nextIsDelaySlot: Boolean = false, val previous: ExecutedInstruction? = null) {
     companion object {
@@ -88,10 +100,10 @@ internal class MarsDisassemblyView(
     private var breakpoints = emptyMap<Int, AddressBreakpoint>()
     private val model = ListTableModel<DisassemblyRow>(
         column("debug.disassembly.pc") { if (it.current) "▶" else "" },
-        column("debug.disassembly.address") { display.formatAddress(it.address) },
-        column("debug.disassembly.word", DisassemblyRow::word),
-        column("debug.disassembly.instruction", DisassemblyRow::instruction),
-        column("debug.disassembly.source") { it.location?.let { site -> "${site.file().fileName}:${site.line()}" }.orEmpty() },
+        sortableColumn("debug.disassembly.address", { display.formatAddress(it.address) }, compareBy { it.address.toUInt() }),
+        sortableColumn("debug.disassembly.word", DisassemblyRow::word),
+        sortableColumn("debug.disassembly.instruction", DisassemblyRow::instruction),
+        sortableColumn("debug.disassembly.source", ::sourceLabel),
         object : ColumnInfo<DisassemblyRow, Icon>(runMessages.getMessage("debug.disassembly.breakpoint")) {
             override fun getColumnClass() = Icon::class.java
             override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
@@ -106,13 +118,21 @@ internal class MarsDisassemblyView(
             }.joinToString(" · ")
         },
     )
-    private val table = JBTable(model).apply {
+    private val table = TableView(model).apply {
         font = Font(Font.MONOSPACED, font.style, font.size)
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
-        columnModel.getColumn(0).maxWidth = getFontMetrics(font).stringWidth(" PC ")
-        columnModel.getColumn(3).preferredWidth = getFontMetrics(font).stringWidth("addiu $00, $00, 0x00000000")
-        columnModel.getColumn(6).preferredWidth =
-            getFontMetrics(font).stringWidth(runMessages.getMessage("debug.disassembly.previous.delay")) + JBUI.scale(16)
+        autoResizeMode = JTable.AUTO_RESIZE_OFF
+        val samples = listOf(
+            "▶", "0xffffffff", "0x00000000", "addiu $00, $00, 0x00000000", "program-name.s:1234", "",
+            runMessages.getMessage("debug.disassembly.previous.delay"),
+        )
+        val metrics = getFontMetrics(font)
+        for ((index, sample) in samples.withIndex()) {
+            val column = columnModel.getColumn(index)
+            val width = maxOf(metrics.stringWidth(sample), metrics.stringWidth(column.headerValue.toString()))
+            column.preferredWidth = width + JBUI.scale(16)
+        }
+        columnModel.getColumn(0).maxWidth = columnModel.getColumn(0).preferredWidth
     }
     private var target: Location? = null
     private var browsedAddress: Pair<Long, Long>? = null
@@ -134,6 +154,7 @@ internal class MarsDisassemblyView(
     }
 
     init {
+        restoreTableLayout()
         display.addListener(this) {
             updateStatus()
             table.repaint()
@@ -160,6 +181,34 @@ internal class MarsDisassemblyView(
         }, this)
         reloadBreakpoints()
         refresh()
+    }
+
+    private fun restoreTableLayout() {
+        val properties = PropertiesComponent.getInstance()
+        BaseTableView.restore(properties, DISASSEMBLY_LAYOUT_PREFIX, table)
+        val sorter = table.rowSorter
+        val column = properties.getInt(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", ADDRESS_COLUMN)
+            .coerceIn(ADDRESS_COLUMN, SOURCE_COLUMN)
+        val order = if (properties.getBoolean(DISASSEMBLY_LAYOUT_PREFIX + "descending")) SortOrder.DESCENDING else SortOrder.ASCENDING
+        sorter.sortKeys = listOf(SortKey(column, order))
+        sorter.addRowSorterListener { event ->
+            if (event.type != RowSorterEvent.Type.SORT_ORDER_CHANGED) return@addRowSorterListener
+            val key = sorter.sortKeys.firstOrNull() ?: SortKey(ADDRESS_COLUMN, SortOrder.ASCENDING)
+            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", key.column, ADDRESS_COLUMN)
+            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "descending", key.sortOrder == SortOrder.DESCENDING)
+        }
+        table.tableHeader.addMouseListener(object : MouseAdapter() {
+            private fun layout() = table.columnModel.columns.asSequence().map { it.modelIndex to it.width }.toList()
+            private var before = layout()
+
+            override fun mousePressed(event: MouseEvent) {
+                before = layout()
+            }
+
+            override fun mouseReleased(event: MouseEvent) {
+                if (before != layout()) BaseTableView.store(properties, DISASSEMBLY_LAYOUT_PREFIX, table)
+            }
+        })
     }
 
     fun showAddress(address: Int) {
@@ -204,10 +253,14 @@ internal class MarsDisassemblyView(
             withContext(Dispatchers.EDT) {
                 if (request == revision.get()) {
                     model.items = rows
-                    val selected = rows.indexOfFirst { it.address == center.toInt() }
-                    if (selected >= 0) {
-                        table.setRowSelectionInterval(selected, selected)
-                        table.scrollRectToVisible(table.getCellRect(selected, 0, true))
+                    val selected = rows.firstOrNull { it.address == center.toInt() }
+                    if (selected != null) {
+                        table.setSelection(listOf(selected))
+                        val visible = table.visibleRect
+                        val row = table.getCellRect(table.selectedRow, 0, true)
+                        row.x = visible.x
+                        row.width = visible.width
+                        table.scrollRectToVisible(row)
                     }
                 }
             }
@@ -227,7 +280,7 @@ internal class MarsDisassemblyView(
     }
 
     private fun updateSelection() {
-        val selected = model.items.getOrNull(table.selectedRow)
+        val selected = table.selectedObject
         toggleBreakpoint.isEnabled = selected != null
         target = selected?.location
         openSource.isEnabled = target != null
@@ -251,7 +304,7 @@ internal class MarsDisassemblyView(
     }
 
     private fun toggleSelectedBreakpoint() {
-        val address = model.items[table.selectedRow].address
+        val address = table.selectedObject!!.address
         WriteAction.run<RuntimeException> {
             val existing = breakpointManager.getBreakpoints(breakpointType).firstOrNull { it.properties?.addressIn(entry) == address }
             if (existing == null) breakpointManager.addBreakpoint(breakpointType, MarsAddressBreakpointProperties(entry, address))
@@ -268,4 +321,13 @@ internal class MarsDisassemblyView(
         object : ColumnInfo<DisassemblyRow, String>(runMessages.getMessage(key)) {
             override fun valueOf(item: DisassemblyRow) = value(item)
         }
+
+    private fun sortableColumn(
+        key: String, value: (DisassemblyRow) -> String, order: Comparator<DisassemblyRow> = compareBy(value),
+    ) = object : ColumnInfo<DisassemblyRow, String>(runMessages.getMessage(key)) {
+        override fun valueOf(item: DisassemblyRow) = value(item)
+        override fun getComparator() = order
+    }
+
+    private fun sourceLabel(row: DisassemblyRow) = row.location?.let { "${it.file().fileName}:${it.line()}" }.orEmpty()
 }
