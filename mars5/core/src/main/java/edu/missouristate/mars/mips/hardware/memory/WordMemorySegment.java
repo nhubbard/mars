@@ -1,5 +1,6 @@
 package edu.missouristate.mars.mips.hardware.memory;
 
+import java.util.Arrays;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -44,6 +45,19 @@ public final class WordMemorySegment {
 
     private Image(int[][] blocks) {
       this.blocks = blocks;
+    }
+
+    public boolean hasSameContents(Image other, Runnable checkCancellation) {
+      if (blocks.length != other.blocks.length) {
+        return false;
+      }
+      for (int i = 0; i < blocks.length; i++) {
+        checkCancellation.run();
+        if (!Arrays.equals(blocks[i], other.blocks[i])) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 

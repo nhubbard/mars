@@ -316,6 +316,21 @@ Shared includes, ambiguous formals, indirect equivalence uses, and conflicts
 stop the operation. The final write also checks that IntelliJ found every
 reference in the macro scope.
 
+## Rename local labels
+
+Use IntelliJ's **Refactor → Rename** on a written local label or a reference to it.
+The dialog verifies the current single-entry assembly and assembles the proposed edits
+in an isolated session. It checks the resolved symbol bindings, emitted instructions,
+initial memory, and entry address before applying the edit. The source revisions and
+previewed reference ranges are checked again in IntelliJ's undoable write command.
+Instruction and data operands and forwarded macro arguments can participate when each
+reference maps to its own written token. Comments, string literals, and independent
+assembly entries retain their existing text.
+
+Rename currently requires a resolved MARS include graph with exclusive ownership of
+each edited file. Exported and generated labels, indirect equivalence uses, plain-text
+includes, and mixed assembly entry scopes remain outside this verified edit path.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

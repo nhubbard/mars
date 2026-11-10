@@ -598,6 +598,25 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void assemblyImageComparisonSeparatesMachineChangesFromSourceNames() throws Exception {
+    var file = directory.resolve("compare.asm");
+    var source = ".data\noriginal: .word 42\n.text\naddiu $a0, $zero, 7\n";
+    try (var session = session("Default")) {
+      var assembler = new SessionAssembler(session);
+      var first = new AssemblySourceSnapshot(List.of(file), Map.of(file, source));
+      assertThat(assembler.assembleSnapshot(first, null, true, false).errors()).isEmpty();
+      var image = session.captureAssemblyImage(() -> {});
+      for (var changed : List.of(source.replace("original", "renamed"), source.replace("42", "43"),
+          source.replace(", 7", ", 8"), source + "nop\n")) {
+        var snapshot = new AssemblySourceSnapshot(List.of(file), Map.of(file, changed));
+        assertThat(assembler.assembleSnapshot(snapshot, null, true, false).errors()).isEmpty();
+        var next = session.captureAssemblyImage(() -> {});
+        assertThat(image.hasSameMachineImage(next, () -> {})).isEqualTo(changed.contains("renamed"));
+      }
+    }
+  }
+
+  @Test
   void symbolUsesKeepWrittenColumnsThroughMacroForwardingAndDataBackpatches() throws Exception {
     var main = directory.resolve("main.s");
     var other = directory.resolve("other.s");

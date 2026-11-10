@@ -227,6 +227,10 @@ public class ProgramStatement {
           .findFirst().orElseThrow();
       return new ProgramStatement(this, instruction, settings);
     }
+
+    public boolean hasSameMachineWord(Image other) {
+      return address == other.address && binary == other.binary;
+    }
   }
 
   private ProgramStatement(Image image, Instruction instruction, SimulationSettings settings) {

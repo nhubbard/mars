@@ -27,4 +27,18 @@ public final class AssemblyImage {
     this.sources = sources;
     this.symbols = symbols;
   }
+
+  /** Compares the executable output while allowing changes to source names and positions. */
+  public boolean hasSameMachineImage(AssemblyImage other, Runnable checkCancellation) {
+    if (entry != other.entry || !layout.equals(other.layout) || instructions.size() != other.instructions.size()) {
+      return false;
+    }
+    for (int i = 0; i < instructions.size(); i++) {
+      checkCancellation.run();
+      if (!instructions.get(i).hasSameMachineWord(other.instructions.get(i))) {
+        return false;
+      }
+    }
+    return data.hasSameContents(other.data, checkCancellation);
+  }
 }

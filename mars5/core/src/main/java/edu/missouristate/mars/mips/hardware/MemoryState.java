@@ -251,7 +251,15 @@ public class MemoryState {
   public record DataImage(
       boolean littleEndian, int heapAddress, WordMemorySegment.Image data,
       WordMemorySegment.Image kernelData, WordMemorySegment.Image stack,
-      WordMemorySegment.Image mmio) {}
+      WordMemorySegment.Image mmio) {
+    public boolean hasSameContents(DataImage other, Runnable checkCancellation) {
+      return littleEndian == other.littleEndian && heapAddress == other.heapAddress
+          && data.hasSameContents(other.data, checkCancellation)
+          && kernelData.hasSameContents(other.kernelData, checkCancellation)
+          && stack.hasSameContents(other.stack, checkCancellation)
+          && mmio.hasSameContents(other.mmio, checkCancellation);
+    }
+  }
 
   /** Returns a defensive snapshot of the configured address layout. */
   public MemoryConfiguration getConfiguration() {
