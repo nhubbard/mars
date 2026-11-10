@@ -10,6 +10,7 @@ import com.intellij.formatting.Spacing
 import com.intellij.lang.ASTNode
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
@@ -96,7 +97,12 @@ private class MipsBlock(
         val context = timeline.value ?: return null
         val file = anchor.containingFile as MipsFile
         val hasParenthesis = operation != null && child.textContains('(')
-        val prefix = context.prefix(file, sourceLineStart(anchor))
+        val start = sourceLineStart(anchor)
+        val prefix = context.prefix(file, start)
+        if (prefix.hasIncompleteIncludes) {
+            val end = CharArrayUtil.shiftForwardUntil(source, start, "\r\n")
+            return FormattingLine(null, false, null, listOf(TextRange(start, end)))
+        }
         val hasAlias = (hasParenthesis || context.hasQuotedEquivalence) && hasVisibleAlias(child, prefix)
         val projectOperands = hasFragment || hasParenthesis && hasAlias
         if (operation?.elementType != candidate && !projectOperands && !hasAlias &&

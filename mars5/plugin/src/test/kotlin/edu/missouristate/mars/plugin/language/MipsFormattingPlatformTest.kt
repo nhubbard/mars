@@ -58,7 +58,9 @@ class MipsFormattingPlatformTest {
             target :  nop
              j   target
         """.trimIndent()
+        val macros = ".macro emit (%reg, %value)\naddiu %reg, %reg, %value\n.end_macro\n"
         val formatted = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("macros.s", macros)
             fixture.configureByText("layout.asm", source)
             val first = reformat()
             assertEquals(first, reformat(), "formatting must be idempotent")
@@ -86,12 +88,12 @@ class MipsFormattingPlatformTest {
                 lw ${'$'}t1, OFFSET(${'$'}sp)
                 OP
                 local (${'$'}t0, 2)
-                emit( ${'$'}t0  ,  7 ) # invocation may also be a text substitution
+                emit(${'$'}t0, 7) # invocation may also be a text substitution
             target: nop
                 j target
         """.trimIndent()
         assertEquals(expected, formatted)
-        directory.resolve("macros.s").writeText(".macro emit (%reg, %value)\naddiu %reg, %reg, %value\n.end_macro\n")
+        directory.resolve("macros.s").writeText(macros)
         assertEquals(assemble(directory.resolve("before.asm"), source), assemble(directory.resolve("after.asm"), formatted))
     }
 
@@ -126,6 +128,41 @@ class MipsFormattingPlatformTest {
             assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
             assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
             assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)
+        }
+
+    @Test
+    fun `reformat preserves spacing when an ignored include can supply string data`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val definitions = ".eqv HEAD \"x\n"
+            val source = """
+                .data
+                prefix   :   .byte  7
+                .macro emit
+                inside   :   .asciiz   HEAD ,      "
+                .end_macro
+                .include "defs.inc~"
+                outside   :   .asciiz   HEAD ,   "
+                emit
+                .text
+                nop
+            """.trimIndent()
+            directory.resolve("defs.inc~").writeText(definitions)
+            val before = assemble(directory.resolve("ignored-before.asm"), source)
+            withContext(Dispatchers.EDT) {
+                fixture.tempDirFixture.createFile("defs.inc~", definitions)
+                val entry = fixture.addFileToProject("ignored.asm", source)
+                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+            val formatted = withContext(Dispatchers.EDT) {
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("ignored-after.asm"), formatted))
+            assertTrue("prefix: .byte 7" in formatted, formatted)
+            assertTrue("    inside: .asciiz HEAD ,      \"" in formatted, formatted)
+            assertTrue("outside   :   .asciiz   HEAD ,   \"" in formatted, formatted)
         }
 
     @Test

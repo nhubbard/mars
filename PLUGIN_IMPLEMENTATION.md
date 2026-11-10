@@ -199,7 +199,8 @@ macro body, which can use definitions later in the assembly source. On rows that
 can consume string data, it keeps spacing after identifiers that remain unresolved
 after both passes, since a preceding macro call can define them during assembly.
 During indexing, Reformat Code can adjust indentation but preserves spacing within
-lines until it can resolve the assembly context.
+lines until it can resolve the assembly context. An unresolved or ignored include
+likewise preserves spacing in the source that follows it in assembly order.
 
 ## Live templates
 
