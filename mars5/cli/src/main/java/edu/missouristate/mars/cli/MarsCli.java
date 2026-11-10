@@ -46,6 +46,7 @@ public final class MarsCli {
       int maximumSteps = 0;
       boolean assembleOnly = false;
       boolean project = false;
+      boolean tracePhases = false;
       for (int i = 0; i < arguments.length; i++) {
         String arg = arguments[i];
         switch (arg.toLowerCase(Locale.ROOT)) {
@@ -58,6 +59,11 @@ public final class MarsCli {
             i = arguments.length;
           }
           case "--assemble-only", "a" -> assembleOnly = true;
+          case "--trace-phases", "d" -> tracePhases = true;
+          case "ad", "da" -> {
+            assembleOnly = true;
+            tracePhases = true;
+          }
           case "--project", "p" -> project = true;
           case "--delayed-branching", "db" -> session.settings.setDelayedBranchingEnabled(true);
           case "--self-modifying-code", "smc" -> session.settings.setSelfModifyingCodeEnabled(true);
@@ -119,25 +125,38 @@ public final class MarsCli {
         return 2;
       }
       session.setMemoryConfiguration(layout);
-      var program = session.assemble(project ? projectSources(files) : files);
+      var sources = project ? projectSources(files) : files;
+      PrintStream trace = tracePhases ? reportOutput : null;
+      var program = trace == null
+          ? session.assemble(sources)
+          : session.assemble(sources, phase -> trace.println(switch (phase) {
+              case TOKENIZING -> "--------  TOKENIZING BEGINS  -----------";
+              case ASSEMBLING -> "--------  ASSEMBLY BEGINS  -----------";
+            }));
       error.print(program.getAssemblyDiagnostics().generateWarningReport());
       try {
-        if (assembleOnly) {
-          return 0;
-        }
-        new ProgramArgumentList(programArguments).storeProgramArguments(session);
-        try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
-          program.setSyscallEnvironment(io);
-          simulating = true;
-          boolean finished = report.countInstructions
-              ? program.simulate(maximumSteps, report::recordInstructionCount)
-              : program.simulate(maximumSteps);
-          if (!finished) {
-            error.println("Execution reached the step limit.");
-            return 3;
+        int status = 0;
+        if (!assembleOnly) {
+          new ProgramArgumentList(programArguments).storeProgramArguments(session);
+          try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
+            program.setSyscallEnvironment(io);
+            simulating = true;
+            if (trace != null) {
+              trace.println("--------  SIMULATION BEGINS  -----------");
+            }
+            boolean finished = report.countInstructions
+                ? program.simulate(maximumSteps, report::recordInstructionCount)
+                : program.simulate(maximumSteps);
+            status = finished ? program.getExitCode() : 3;
+            if (!finished) {
+              error.println("Execution reached the step limit.");
+            }
           }
-          return program.getExitCode();
         }
+        if (trace != null) {
+          trace.println("\n--------  ALL PROCESSING COMPLETE  -----------");
+        }
+        return status;
       } finally {
         if (simulating) {
           report.write(session, reportOutput);
@@ -198,6 +217,7 @@ public final class MarsCli {
     return """
     Usage: mars [options] source.s [more sources.s] [-- program arguments]
       --assemble-only       Assemble without running (a)
+      --trace-phases        Show tokenization, assembly, and simulation phases (d, ad, da)
       --project             Assemble sources beside the first file and any additional files (p)
       --delayed-branching    Enable branch delay slots (db)
       --self-modifying-code  Allow writes to text and execution from data (smc)
@@ -212,7 +232,8 @@ public final class MarsCli {
       hex | dec | ascii     Select the register and memory display format (default: hex)
       --brief               Omit register names and memory row addresses (b)
       --instruction-count   Report the number of completed instructions (ic)
-      --messages-to-stderr  Send reports to stderr (me)
+      --messages-to-stderr  Send reports and phase traces to stderr (me)
+      nc                    Keep banner output suppressed (the CLI default)
       --max-steps COUNT      Bound execution and return code 3 at the limit
       COUNT                  Positional step limit (zero or negative means unlimited)
       --assembly-error-exit-code CODE     Override the assembly error status (aeCODE)

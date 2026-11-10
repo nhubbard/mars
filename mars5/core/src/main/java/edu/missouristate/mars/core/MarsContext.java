@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -343,7 +344,23 @@ public final class MarsContext implements AutoCloseable {
   public MIPSprogram assemble(List<Path> sources, Path handler, boolean extended, boolean warnings)
       throws ProcessingException {
     try (var lease = claimStoppedSession()) {
-      return assembleStopped(sources, handler, extended, warnings, null, () -> {});
+      return assembleStopped(sources, handler, extended, warnings, null, () -> {}, null);
+    }
+  }
+
+  public enum AssemblyPhase {
+    TOKENIZING,
+    ASSEMBLING
+  }
+
+  /** Assembles disk sources and reports each phase before it starts on the calling thread. */
+  public MIPSprogram assemble(List<Path> sources, Consumer<AssemblyPhase> phaseStarted)
+      throws ProcessingException {
+    Objects.requireNonNull(phaseStarted);
+    try (var lease = claimStoppedSession()) {
+      return assembleStopped(
+          sources, null, settings.isExtendedAssemblerEnabled(), settings.isWarningsAreErrors(),
+          null, () -> {}, phaseStarted);
     }
   }
 
@@ -359,13 +376,14 @@ public final class MarsContext implements AutoCloseable {
       throws ProcessingException {
     Objects.requireNonNull(checkCancellation);
     try (var lease = claimStoppedSession()) {
-      return assembleStopped(snapshot.entries(), handler, extended, warnings, snapshot, checkCancellation);
+      return assembleStopped(
+          snapshot.entries(), handler, extended, warnings, snapshot, checkCancellation, null);
     }
   }
 
   private MIPSprogram assembleStopped(
       List<Path> sources, Path handler, boolean extended, boolean warnings,
-      AssemblySourceSnapshot snapshot, Runnable checkCancellation)
+      AssemblySourceSnapshot snapshot, Runnable checkCancellation, Consumer<AssemblyPhase> phaseStarted)
       throws ProcessingException {
     if (sources == null || sources.isEmpty()) {
       throw new IllegalArgumentException("At least one source file is required");
@@ -376,12 +394,18 @@ public final class MarsContext implements AutoCloseable {
       checkCancellation.run();
       filenames.add(source.toAbsolutePath().normalize().toString());
     }
+    if (phaseStarted != null) {
+      phaseStarted.accept(AssemblyPhase.TOKENIZING);
+    }
     var files =
         root.prepareFilesForAssembly(
             filenames,
             filenames.getFirst(),
             handler == null ? null : handler.toAbsolutePath().toString(),
             checkCancellation);
+    if (phaseStarted != null) {
+      phaseStarted.accept(AssemblyPhase.ASSEMBLING);
+    }
     root.assemble(files, extended, warnings, checkCancellation);
     return root;
   }

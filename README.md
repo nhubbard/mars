@@ -41,6 +41,8 @@ The CLI lists the available formats in `--help`. Repeat `--dump` to write severa
 Use `--register NAME` and `--memory-range M-N` to print the machine state after execution.
 The `hex`, `dec`, and `ascii` options select the format. `me` directs reports to stderr.
 Use `--instruction-count` (`ic`) to report completed instructions, including a normal exit syscall.
+Use `--trace-phases` (`d`) to see the tokenization, assembly, and simulation phases. `ad` and `da`
+trace an assembly-only invocation. Use `me` to keep trace output separate from program stdout.
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 

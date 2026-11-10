@@ -386,6 +386,51 @@ class MarsCliTest {
     assertEquals("", error.toString());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"ad", "da"})
+  void tracesOnlyAssemblyInCombinedLegacyMode(String flag) throws Exception {
+    var source = directory.resolve("trace.s");
+    Files.writeString(source, "li $v0,999\nsyscall\n");
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+
+    assertEquals(0, execute(new String[] {flag, source.toString()}, output, error));
+    assertEquals(List.of(
+        "--------  TOKENIZING BEGINS  -----------", "--------  ASSEMBLY BEGINS  -----------",
+        "", "--------  ALL PROCESSING COMPLETE  -----------"), output.toString().lines().toList());
+    assertEquals("", error.toString());
+  }
+
+  @Test
+  void tracesRealPhasesAndKeepsProgramOutputOnItsOwnStream() throws Exception {
+    var source = directory.resolve("trace.s");
+    Files.writeString(source, "li $a0,42\nli $v0,1\nsyscall\nli $v0,10\nsyscall\n");
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+
+    assertEquals(0, execute(new String[] {"--trace-phases", "me", source.toString()}, output, error));
+    assertEquals("42", output.toString());
+    assertEquals(List.of(
+        "--------  TOKENIZING BEGINS  -----------", "--------  ASSEMBLY BEGINS  -----------",
+        "--------  SIMULATION BEGINS  -----------", "", "--------  ALL PROCESSING COMPLETE  -----------"),
+        error.toString().lines().toList());
+    output.reset();
+    error.reset();
+
+    Files.writeString(source, "bogus\n");
+    assertEquals(19, execute(new String[] {"d", "ae19", source.toString()}, output, error));
+    assertEquals(List.of("--------  TOKENIZING BEGINS  -----------", "--------  ASSEMBLY BEGINS  -----------"),
+        output.toString().lines().toList());
+    assertTrue(error.toString().contains("bogus"));
+    output.reset();
+    error.reset();
+
+    Files.delete(source);
+    assertEquals(19, execute(new String[] {"d", "ae19", source.toString()}, output, error));
+    assertEquals(List.of("--------  TOKENIZING BEGINS  -----------"), output.toString().lines().toList());
+    assertTrue(error.toString().contains(source.getFileName().toString()));
+  }
+
   private static int execute(String[] args, ByteArrayOutputStream out, ByteArrayOutputStream err) {
     return MarsCli.execute(
         args, InputStream.nullInputStream(), new PrintStream(out), new PrintStream(err));
