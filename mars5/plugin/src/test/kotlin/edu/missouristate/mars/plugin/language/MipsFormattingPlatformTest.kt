@@ -155,6 +155,38 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
+    fun `reformat preserves strings opened by equivalences created during macro expansion`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv ALIAS HEAD
+                .data
+                .macro define (%directive, %name, %value)
+                %directive %name %value
+                .end_macro
+                define .eqv HEAD "x
+                .macro emit
+                .asciiz   HEAD ,      "
+                .asciiz   ALIAS ,   "
+                .end_macro
+                emit
+                .text
+                nop
+            """.trimIndent()
+            val before = assemble(directory.resolve("dynamic-quote-before.asm"), source)
+            val bytes = listOf("x ,      ", "x ,   ").flatMap { it.map(Char::code) + 0 }
+            assertEquals(bytes, before.second.take(bytes.size))
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("dynamic-quote.asm", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("dynamic-quote-after.asm"), formatted))
+            assertTrue("    .asciiz HEAD ,      \"" in formatted, formatted)
+            assertTrue("    .asciiz ALIAS ,   \"" in formatted, formatted)
+        }
+
+    @Test
     fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """
@@ -190,7 +222,7 @@ class MipsFormattingPlatformTest {
             assertEquals(before, assemble(directory.resolve("macro-quoted-after.asm"), formatted))
             assertTrue("    .asciiz %open ,      \"" in formatted, formatted)
             assertTrue("    .asciiz \$quote ,   \$quote" in formatted, formatted)
-            assertTrue("    append %open ,      tail" in formatted, formatted)
+            assertTrue("    append    %open ,      tail" in formatted, formatted)
         }
 
     @Test

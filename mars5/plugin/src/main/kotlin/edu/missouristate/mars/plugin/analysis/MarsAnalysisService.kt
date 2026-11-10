@@ -547,13 +547,21 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     add(TextRange(writtenStart, start + source.length))
                 }
             }
-            if (macro != null && timeline.hasQuotedEquivalence) {
+            if (macro != null) {
                 val expansionErrors = ErrorList()
                 val body = Tokenizer.tokenizeMappedLine(
                     tokens.processedLine, expansionErrors, timeline::macroExpansionReplacement, ProgressManager::checkCanceled,
                 )
                 if (!expansionErrors.errorsOccurred()) {
-                    addAll(quotedStringRanges(body.tokens()) { start + mapped.originalOffset(body.originalOffset(it)) })
+                    val bodyTokens = body.tokens().operationTokens()
+                    val writtenOffset: (Int) -> Int = { start + mapped.originalOffset(body.originalOffset(it)) }
+                    addAll(quotedStringRanges(bodyTokens, writtenOffset))
+                    // A preceding macro call can define a remaining identifier at assembly time.
+                    // Keep spacing from its written position when a row can consume string data.
+                    if (type != TokenTypes.OPERATOR) {
+                        val first = (0 until bodyTokens.size()).firstOrNull { bodyTokens[it].type == TokenTypes.IDENTIFIER }
+                        if (first != null) add(TextRange(writtenOffset(bodyTokens[first].startPos - 1), start + source.length))
+                    }
                 }
             }
         }
