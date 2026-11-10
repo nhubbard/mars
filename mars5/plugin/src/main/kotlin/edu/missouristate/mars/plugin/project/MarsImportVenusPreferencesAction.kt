@@ -2,6 +2,8 @@ package edu.missouristate.mars.plugin.project
 
 import com.intellij.DynamicBundle
 import com.intellij.application.options.CodeStyle
+import com.intellij.execution.RunManager
+import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -19,6 +21,10 @@ import com.intellij.psi.codeStyle.CodeStyleSettingsManager
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.run.MarsInputMode
+import edu.missouristate.mars.plugin.run.MarsRunConfiguration
+import edu.missouristate.mars.plugin.run.MarsRunOptions
+import edu.missouristate.mars.plugin.run.MarsRunType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.file.Files
@@ -29,6 +35,7 @@ import java.util.prefs.Preferences
 
 private val messages = DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
 private const val importedKey = "mars.venus.project.preferences.imported"
+private const val templateImportedKey = "mars.venus.run.template.imported"
 
 internal class MarsImportVenusPreferencesAction(
     private val preferences: () -> Preferences = Preferences::userRoot,
@@ -37,13 +44,13 @@ internal class MarsImportVenusPreferencesAction(
 
     override fun update(e: AnActionEvent) {
         val project = e.project
-        e.presentation.isEnabledAndVisible = project != null && !PropertiesComponent.getInstance(project).isTrueValue(importedKey)
+        e.presentation.isEnabledAndVisible = project != null && !PropertiesComponent.getInstance(project).isTrueValue(templateImportedKey)
     }
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         val properties = PropertiesComponent.getInstance(project)
-        if (properties.isTrueValue(importedKey)) return
+        if (properties.isTrueValue(templateImportedKey)) return
         val title = messages.getMessage("import.venus.title")
         val legacy = try {
             runWithModalProgressBlocking(ModalTaskOwner.project(project), title) {
@@ -57,9 +64,11 @@ internal class MarsImportVenusPreferencesAction(
             return
         }
         val assembly = project.service<MarsAssemblySettings>()
-        val previous = assembly.getState()
-        val previousTabSize = projectTabSize(project)
-        val preview = legacy.preview(project, previous, previousTabSize)
+        val factory = runConfigurationType<MarsRunType>()
+        val runManager = RunManager.getInstance(project)
+        fun templateOptions() = (runManager.getConfigurationTemplate(factory).configuration as MarsRunConfiguration).options
+        val previous = VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(templateOptions()))
+        val preview = legacy.preview(project, previous, includeProject = !properties.isTrueValue(importedKey))
         if (preview.changes.isEmpty()) {
             Messages.showInfoMessage(project, messages.getMessage("import.venus.empty"), title)
             return
@@ -70,33 +79,47 @@ internal class MarsImportVenusPreferencesAction(
             .yesText(messages.getMessage("import.venus.apply"))
             .ask(project)
         if (!confirmed) return
-        if (assembly.getState() != previous || projectTabSize(project) != previousTabSize) {
+        val template = templateOptions()
+        if (VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(template)) != previous) {
             Messages.showInfoMessage(project, messages.getMessage("import.venus.stale"), title)
             return
         }
 
-        if (preview.tabSize != previousTabSize) {
+        val updated = preview.settings
+        if (updated.tabSize != previous.tabSize) {
             val manager = CodeStyleSettingsManager.getInstance(project)
             val style = manager.cloneSettings(CodeStyle.getSettings(project))
-            style.getIndentOptions(MipsFileType).TAB_SIZE = preview.tabSize
+            style.getIndentOptions(MipsFileType).TAB_SIZE = updated.tabSize
             CodeStyle.setMainProjectSettings(project, style)
             manager.notifyCodeStyleSettingsChanged()
         }
-        assembly.applyImportedSettings(preview.assembly)
+        assembly.applyImportedSettings(updated.assembly)
+        template.assembleDirectory = updated.run.assembleDirectory
+        template.inputMode = updated.run.inputMode
         properties.setValue(importedKey, true)
+        properties.setValue(templateImportedKey, true)
     }
 
     private fun projectTabSize(project: Project): Int = CodeStyle.getSettings(project).getIndentOptions(MipsFileType).TAB_SIZE
 }
 
-private data class VenusImportPreview(
+private data class RunDefaults(val assembleDirectory: Boolean, val inputMode: MarsInputMode) {
+    constructor(options: MarsRunOptions) : this(options.assembleDirectory, options.inputMode)
+}
+
+private data class VenusImportSettings(
     val assembly: MarsAssemblySettings.Settings,
     val tabSize: Int,
+    val run: RunDefaults,
+)
+
+private data class VenusImportPreview(
+    val settings: VenusImportSettings,
     val changes: List<String>,
 )
 
 private class VenusPreferences(private val values: Map<String, String>, private val handler: Path?) {
-    fun preview(project: Project, assembly: MarsAssemblySettings.Settings, tabSize: Int): VenusImportPreview {
+    fun preview(project: Project, previous: VenusImportSettings, includeProject: Boolean): VenusImportPreview {
         val changes = mutableListOf<String>()
         fun change(label: String, before: String, after: String) {
             if (before != after) {
@@ -108,6 +131,27 @@ private class VenusPreferences(private val values: Map<String, String>, private 
             change(label, flagText(current), flagText(value))
             return value
         }
+        val updated = if (includeProject) {
+            val assembly = projectAssembly(project, previous.assembly, ::change, ::flag)
+            val tabSize = values["EditorTabSize"]?.toIntOrNull()?.takeIf { it in 1..32 } ?: previous.tabSize
+            change("import.venus.tab.width", previous.tabSize.toString(), tabSize.toString())
+            previous.copy(assembly = assembly, tabSize = tabSize)
+        } else previous
+        val run = previous.run
+        val assembleDirectory = flag("AssembleAll", "import.venus.run.directory", run.assembleDirectory)
+        val inputMode = values["PopupSyscallInput"].venusBoolean()?.let {
+            if (it) MarsInputMode.DIALOG else MarsInputMode.CONSOLE
+        } ?: run.inputMode
+        change("import.venus.run.input", run.inputMode.title, inputMode.title)
+        return VenusImportPreview(updated.copy(run = RunDefaults(assembleDirectory, inputMode)), changes)
+    }
+
+    private fun projectAssembly(
+        project: Project,
+        assembly: MarsAssemblySettings.Settings,
+        change: (String, String, String) -> Unit,
+        flag: (String, String, Boolean) -> Boolean,
+    ): MarsAssemblySettings.Settings {
         val oldLayout = MarsMemoryLayout.fromIdentifier(assembly.memoryLayout)
         val layout = MarsMemoryLayout.entries.firstOrNull { it.identifier == values["MemoryConfiguration"] }
             ?: oldLayout
@@ -122,7 +166,7 @@ private class VenusPreferences(private val values: Map<String, String>, private 
         val disabled = messages.getMessage("import.venus.disabled")
         change("import.venus.handler", macros.expandPath(assembly.exceptionHandler) ?: disabled, macros.expandPath(handlerSetting) ?: disabled)
 
-        val updated = assembly.copy(
+        return assembly.copy(
             allowPseudoInstructions = flag("ExtendedAssembler", "build.settings.pseudo", assembly.allowPseudoInstructions),
             bareMachine = flag("BareMachine", "run.bare.machine", assembly.bareMachine),
             assembleOnOpen = flag("AssembleOnOpen", "build.settings.open", assembly.assembleOnOpen),
@@ -133,9 +177,6 @@ private class VenusPreferences(private val values: Map<String, String>, private 
             memoryLayout = if (layout == oldLayout) assembly.memoryLayout else layout.identifier,
             exceptionHandler = handlerSetting,
         )
-        val newTabSize = values["EditorTabSize"]?.toIntOrNull()?.takeIf { it in 1..32 } ?: tabSize
-        change("import.venus.tab.width", tabSize.toString(), newTabSize.toString())
-        return VenusImportPreview(updated, newTabSize, changes)
     }
 }
 
@@ -146,6 +187,7 @@ private fun String?.venusBoolean(): Boolean? = this?.lowercase()?.toBooleanStric
 private val importKeys = listOf(
     "ExtendedAssembler", "BareMachine", "AssembleOnOpen", "DelayedBranching", "WarningsAreErrors", "StartAtMain",
     "SelfModifyingCode", "MemoryConfiguration", "LoadExceptionHandler", "ExceptionHandler", "EditorTabSize",
+    "AssembleAll", "PopupSyscallInput",
 )
 
 private fun readVenusPreferences(root: Preferences): VenusPreferences {

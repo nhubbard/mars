@@ -1,6 +1,12 @@
 package edu.missouristate.mars.plugin.project
 
 import com.intellij.application.options.CodeStyle
+import com.intellij.execution.PsiLocation
+import com.intellij.execution.RunManager
+import com.intellij.execution.actions.ConfigurationContext
+import com.intellij.execution.actions.RunConfigurationProducer
+import com.intellij.execution.configurations.runConfigurationType
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
@@ -22,6 +28,10 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.run.MarsInputMode
+import edu.missouristate.mars.plugin.run.MarsRunConfiguration
+import edu.missouristate.mars.plugin.run.MarsRunConfigurationProducer
+import edu.missouristate.mars.plugin.run.MarsRunType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -42,6 +52,9 @@ class MarsImportVenusPreferencesPlatformTest {
     private val project get() = projectFixture.get()
     private val settings get() = project.service<MarsAssemblySettings>()
     private val projectTabSize get() = CodeStyle.getSettings(project).getIndentOptions(MipsFileType).TAB_SIZE
+    private val runManager get() = RunManager.getInstance(project)
+    private val runType get() = runConfigurationType<MarsRunType>()
+    private val runTemplate get() = (runManager.getConfigurationTemplate(runType).configuration as MarsRunConfiguration).options
 
     @Test
     fun `registered action requires a project and never imports without confirmation`() = timeoutRunBlocking<Unit> {
@@ -139,6 +152,8 @@ class MarsImportVenusPreferencesPlatformTest {
             val handler = fixture.addFileToProject("handler.asm", "nop\n").virtualFile.toNioPath()
             settings.changeExceptionHandler(handler.toString())
             settings.changeDelayedBranching(true)
+            runTemplate.inputMode = MarsInputMode.DIALOG
+            runTemplate.assembleDirectory = true
             val root = MemoryPreferences()
             root.node("edu/missouristate/mars").put("EditorFontSize", "20")
             root.node("mars").apply {
@@ -146,6 +161,7 @@ class MarsImportVenusPreferencesPlatformTest {
                 put("DelayedBranching", "invalid")
                 put("EditorTabSize", "999")
                 put("MemoryConfiguration", "Unknown")
+                put("PopupSyscallInput", "invalid")
             }
             val action = MarsImportVenusPreferencesAction { root }
             val before = settings.getState()
@@ -156,6 +172,80 @@ class MarsImportVenusPreferencesPlatformTest {
             }) { action.actionPerformed(event(action)) }
             assertEquals(before.copy(exceptionHandler = null), settings.getState())
             assertEquals(tabSize, projectTabSize)
+            assertEquals(MarsInputMode.DIALOG, runTemplate.inputMode)
+            assertTrue(runTemplate.assembleDirectory)
+        }
+    }
+
+    @Test
+    fun `earlier imports can add run defaults and new configurations inherit them`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("main.asm", "nop\n")
+            val saved = runManager.createConfiguration("Existing", runType)
+            val existing = saved.configuration as MarsRunConfiguration
+            existing.options.sourcePath = source.virtualFile.path
+            runManager.addConfiguration(saved)
+            runTemplate.programArguments = "from template"
+            PropertiesComponent.getInstance(project).setValue("mars.venus.project.preferences.imported", true)
+            val tabSize = projectTabSize
+            val root = MemoryPreferences()
+            root.node("mars").apply {
+                putBoolean("AssembleAll", true)
+                putBoolean("PopupSyscallInput", true)
+                putBoolean("DelayedBranching", true)
+                putInt("EditorTabSize", 7)
+            }
+            val action = MarsImportVenusPreferencesAction { root }
+            assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
+            withDialog({ preview ->
+                assertTrue(preview.contains("Assemble source directory (new Run configurations)  Off → On"))
+                assertTrue(preview.contains("Standard input (new Run configurations)  Console → Dialogs"))
+                assertFalse(preview.contains("Enable delayed branching"))
+                assertFalse(preview.contains("MIPS tab width"))
+                Messages.OK
+            }) { action.actionPerformed(event(action)) }
+
+            assertTrue(runTemplate.assembleDirectory)
+            assertEquals(MarsInputMode.DIALOG, runTemplate.inputMode)
+            assertEquals("from template", runTemplate.programArguments)
+            assertFalse(existing.options.assembleDirectory)
+            assertEquals(MarsInputMode.CONSOLE, existing.options.inputMode)
+            assertFalse(settings.delayedBranching)
+            assertEquals(tabSize, projectTabSize)
+            assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
+
+            val producer = RunConfigurationProducer.getInstance(MarsRunConfigurationProducer::class.java)
+            val context = ConfigurationContext.createEmptyContextForLocation(PsiLocation.fromPsiElement(source))
+            val created = assertInstanceOf(MarsRunConfiguration::class.java, producer.createConfigurationFromContext(context)?.configuration)
+            assertTrue(created.options.assembleDirectory)
+            assertEquals(MarsInputMode.DIALOG, created.options.inputMode)
+            assertEquals(source.virtualFile.path, created.options.sourcePath)
+            assertEquals("from template", created.options.programArguments)
+        }
+    }
+
+    @Test
+    fun `explicit Venus off values restore single-file assembly and console input`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            runTemplate.assembleDirectory = true
+            runTemplate.inputMode = MarsInputMode.DIALOG
+            runTemplate.useProjectSources = true
+            val root = MemoryPreferences()
+            root.node("edu/missouristate/mars").apply {
+                putBoolean("AssembleAll", false)
+                putBoolean("PopupSyscallInput", false)
+                putBoolean("ProgramArguments", true)
+            }
+            val action = MarsImportVenusPreferencesAction { root }
+            withDialog({ preview ->
+                assertTrue(preview.contains("On → Off"))
+                assertTrue(preview.contains("Dialogs → Console"))
+                assertFalse(preview.contains("Program arguments"))
+                Messages.OK
+            }) { action.actionPerformed(event(action)) }
+            assertFalse(runTemplate.assembleDirectory)
+            assertEquals(MarsInputMode.CONSOLE, runTemplate.inputMode)
+            assertTrue(runTemplate.useProjectSources)
         }
     }
 
@@ -197,7 +287,7 @@ class MarsImportVenusPreferencesPlatformTest {
     }
 
     @Test
-    fun `confirmation stops when assembly settings or code style changed since the preview`() = timeoutRunBlocking<Unit> {
+    fun `confirmation stops when project defaults changed since the preview`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             CodeStyle.dropTemporarySettings(project)
             val root = MemoryPreferences()
@@ -211,6 +301,7 @@ class MarsImportVenusPreferencesPlatformTest {
                     style.getIndentOptions(MipsFileType).TAB_SIZE = 6
                     CodeStyle.setMainProjectSettings(project, style)
                 },
+                { runTemplate.inputMode = MarsInputMode.DIALOG },
             )) {
                 var dialogCount = 0
                 withDialog({ message ->

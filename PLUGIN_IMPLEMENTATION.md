@@ -2122,12 +2122,25 @@ turns the project handler off. Absent and invalid values preserve the current
 project settings.
 
 Changing the tab width uses a project code style based on the current scheme.
-MIPS files can override it through EditorConfig. Cancel keeps the action
-available. A confirmed import records completion in the local project workspace.
+MIPS files can override it through EditorConfig.
+
+Venus's directory-assembly and popup-input preferences update the project's
+MARS Run template. New configurations, including those created from the editor,
+inherit the imported values. Directory assembly applies to file-based launches.
+Saved launches retain their own input and source choices. Venus's program
+arguments preference controls panel visibility. IntelliJ exposes the arguments
+field in each Run configuration.
+
+Cancel keeps the action available. A confirmed import records completion in the
+local project workspace. Projects that completed the earlier project-settings
+import can preview and import their Run-template settings separately.
 
 The packaged IntelliJ 2026.3 smoke test opened and accepted the native preview
 with sample preferences. The project saved the imported assembly defaults, MIPS
-tab width, and the local completion marker.
+tab width, and the local completion marker. A subsequent upgrade replay opened
+that project, imported its launch defaults, and verified that a new MARS Run
+configuration inherited them. IntelliJ saved the template separately from the
+existing launch.
 
 ## New MIPS files and projects
 
