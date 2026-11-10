@@ -120,6 +120,11 @@ file's written PSI and still follows unsaved edits. Selecting another assembly
 entry refreshes the open Structure pane and folding from the same project
 notification, even when the shared source text stays the same.
 
+The indexed outline also shows labels supplied or renamed by an equivalence.
+It uses the expanded name and macro scope, and navigation still opens the
+written source. If an equivalence changes a written label into a directive,
+the outline omits that label and retains the equivalence declaration.
+
 ## Native macro folding
 
 IntelliJ collapses nonblank macro bodies in `.asm` and `.s` files. After indexing,

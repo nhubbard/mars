@@ -46,7 +46,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
     fun addLabel(name: String, site: PsiElement) {
         if (macro != null && Macro.tokenIsMacroParameter(name, true)) return
-        generatedLabels.getOrPut(name, ::ArrayList).add(GeneratedLabel(site, macro))
+        generatedLabels.getOrPut(name, ::ArrayList).add(GeneratedLabel(name, site, macro))
     }
     while (pending.isNotEmpty()) {
         ProgressManager.checkCanceled()
@@ -145,6 +145,12 @@ internal class MipsSourceTimeline(
     val generatedLabelSites: Set<PsiElement> by lazy {
         generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
     }
+
+    private val generatedLabelsByFile by lazy {
+        generatedLabels.values.flatten().groupBy { it.site.containingFile }
+    }
+
+    fun generatedLabelsIn(file: MipsFile): List<GeneratedLabel> = generatedLabelsByFile[file].orEmpty()
 
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
@@ -252,7 +258,7 @@ internal class SourceFileEvents(val file: MipsFile) {
 
 internal data class IndexedEquivalence(val index: Int, val definition: MipsSourceEvent.Equivalence)
 
-internal data class GeneratedLabel(val site: PsiElement, val macro: MipsSourceEvent.Begin?)
+internal data class GeneratedLabel(val name: String, val site: PsiElement, val macro: MipsSourceEvent.Begin?)
 
 private class SourceCursor(val locations: SourceFileEvents, val events: Iterator<MipsSourceEvent>) {
     var ignoreBefore = -1

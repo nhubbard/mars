@@ -97,7 +97,8 @@ class MipsStructureViewPlatformTest {
     fun `outline shows effective macro names and their local declarations in the including entry`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val source = """
-            externalLocal: nop
+            EXTERNAL: nop
+            ordinaryExternal: nop
             .end_macro
             entry: OPEN NAME (%reg)
                 local: nop
@@ -118,6 +119,7 @@ class MipsStructureViewPlatformTest {
                 .eqv NAME emit
                 .eqv WHOLE .macro whole
                 .eqv WRITTEN written
+                .eqv EXTERNAL externalLocal
                 .macro external
                 .include "macro-outline.s"
             """.trimIndent())
@@ -130,11 +132,11 @@ class MipsStructureViewPlatformTest {
             try {
                 val root = model.root
                 val nodes = root.children.map { it as StructureViewTreeElement }
-                assertEquals(listOf("externalLocal", "entry", "emit", "whole", "written", "outside"), nodes.map(::name))
-                assertEquals(listOf("local"), nodes[2].children.map { it.presentation.presentableText })
-                assertEquals(listOf("second"), nodes[3].children.map { it.presentation.presentableText })
-                assertEquals(listOf("third"), nodes[4].children.map { it.presentation.presentableText })
-                for ((node, spelling) in listOf(nodes[2] to "NAME", nodes[3] to "WHOLE")) {
+                assertEquals(listOf("externalLocal", "ordinaryExternal", "entry", "emit", "whole", "written", "outside"), nodes.map(::name))
+                assertEquals(listOf("local"), nodes[3].children.map { it.presentation.presentableText })
+                assertEquals(listOf("second"), nodes[4].children.map { it.presentation.presentableText })
+                assertEquals(listOf("third"), nodes[5].children.map { it.presentation.presentableText })
+                for ((node, spelling) in listOf(nodes[3] to "NAME", nodes[4] to "WHOLE")) {
                     assertNotNull(node.presentation.getIcon(false))
                     assertTrue(node.canNavigateToSource())
                     assertNotNull(withContext(Dispatchers.Default) { readAction { node.navigationRequest() } })
@@ -143,7 +145,7 @@ class MipsStructureViewPlatformTest {
                     assertSame(node.value, model.currentEditorElement)
                 }
                 DumbModeTestUtils.runInDumbModeSynchronously(current) {
-                    assertEquals(listOf("externalLocal", "entry", "local", "second", "WRITTEN", "outside"),
+                    assertEquals(listOf("EXTERNAL", "ordinaryExternal", "entry", "local", "second", "WRITTEN", "outside"),
                         root.children.map { it.presentation.presentableText })
                     assertNull(model.currentEditorElement)
                 }
@@ -154,6 +156,63 @@ class MipsStructureViewPlatformTest {
                 val onlyMacro = root.children.single()
                 assertEquals("whole", onlyMacro.presentation.presentableText)
                 assertEquals("second", onlyMacro.children.single().presentation.presentableText)
+            } finally {
+                Disposer.dispose(model)
+            }
+        }
+    }
+
+    @Test
+    fun `outline shows expanded labels in source order and omits labels replaced by directives`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .eqv OPEN .data
+            .eqv ORIGINAL renamed
+            .eqv PREFIX generated:
+            .eqv LOCAL privateLabel
+            OPEN: .ascii "ignored"
+            datum: .word 42
+            .text
+            ORIGINAL: nop
+            PREFIX nop
+            .macro emit
+                LOCAL: nop
+                ordinary: nop
+            .end_macro
+            emit
+        """.trimIndent()
+        withContext(Dispatchers.EDT) { fixture.configureByText("effective-labels.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
+            val model = builder.createStructureViewModel(fixture.editor)
+            try {
+                val nodes = model.root.children.map { it as StructureViewTreeElement }
+                assertEquals(listOf("OPEN", "ORIGINAL", "PREFIX", "LOCAL", "datum", "renamed", "generated", "emit"), nodes.map(::name))
+                fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN"))
+                assertSame(nodes.first().value, model.currentEditorElement)
+                val local = nodes.last().children.map { it as StructureViewTreeElement }
+                assertEquals(listOf("privateLabel", "ordinary"), local.map(::name))
+                for ((node, spelling) in listOf(nodes[5] to "ORIGINAL:", nodes[6] to "PREFIX nop", local.first() to "LOCAL:")) {
+                    assertNotNull(node.presentation.getIcon(false))
+                    assertTrue(node.canNavigateToSource())
+                    node.navigate(true)
+                    assertEquals(source.indexOf(spelling), fixture.editor.caretModel.offset)
+                    assertSame(node.value, model.currentEditorElement)
+                }
+                fixture.editor.caretModel.moveToOffset(source.indexOf("OPEN:"))
+                assertNull(model.currentEditorElement)
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    assertFalse(model.root.children.any { it.presentation.presentableText == "generated" })
+                    val open = model.root.children.filterIsInstance<StructureViewTreeElement>().filter { name(it) == "OPEN" }
+                    assertEquals(2, open.size)
+                    assertSame(open.last().value, model.currentEditorElement)
+                }
+                WriteCommandAction.runWriteCommandAction(current) {
+                    fixture.editor.document.setText(source.replace("ORIGINAL renamed", "ORIGINAL changed"))
+                }
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+                assertEquals("changed", model.root.children[5].presentation.presentableText)
             } finally {
                 Disposer.dispose(model)
             }

@@ -21,6 +21,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
+import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsSymbolToken
 import javax.swing.Icon
@@ -42,10 +43,15 @@ private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
     }
 
     override fun isSuitable(element: PsiElement?): Boolean {
-        if (element is MipsDeclaration) return true
-        if (element !is MipsSymbolToken || DumbService.isDumb(file.project)) return false
-        return file.project.service<MarsAnalysisService>().editorTimeline(file)
-            .isGeneratedMacroName(file, element.textOffset)
+        val dumb = DumbService.isDumb(file.project)
+        if (element is MipsDeclaration) {
+            if (element.kind != SymbolKind.LABEL || dumb) return true
+            val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
+            return !timeline.replacesLabel(file, element.textOffset) || element in timeline.generatedLabelSites
+        }
+        if (element !is MipsSymbolToken || dumb) return false
+        val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
+        return timeline.isGeneratedMacroName(file, element.textOffset) || element in timeline.generatedLabelSites
     }
 }
 
@@ -53,6 +59,7 @@ private class MipsStructureNode(
     item: PsiElement,
     private val expandedName: String? = null,
     private val effectiveChildren: List<StructureViewTreeElement>? = null,
+    private val expandedIcon: Icon = AllIcons.Nodes.Function,
 ) : StructureViewTreeElement, ItemPresentation {
     private val pointer = SmartPointerManager.createPointer(item)
     private val element get() = pointer.element
@@ -81,7 +88,7 @@ private class MipsStructureNode(
         val item = element ?: return null
         return when {
             item is MipsDeclaration -> item.presentation.getIcon(open)
-            expandedName != null -> AllIcons.Nodes.Function
+            expandedName != null -> expandedIcon
             else -> item.getIcon(0)
         }
     }
@@ -99,11 +106,20 @@ private class MipsStructureNode(
     private fun effectiveOutline(file: MipsFile): List<StructureViewTreeElement> {
         val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
         val macros = timeline.localMacros(file)
-        val written = writtenChildren(file).flatMap { listOf(it) + writtenChildren(it) }
+        val written = writtenChildren(file).flatMap { listOf(it) + writtenChildren(it) }.filterNot {
+            it.kind == SymbolKind.LABEL && timeline.replacesLabel(file, it.textOffset)
+        }
         val groups = written.groupBy { declaration ->
             timeline.macroAt(file, declaration.textOffset)?.header?.takeIf { it in macros }
         }
-        fun children(header: PsiElement) = groups[header].orEmpty().map { MipsStructureNode(it, effectiveChildren = emptyList()) }
+        val labels = timeline.generatedLabelsIn(file).groupBy { it.macro?.header?.takeIf { header -> header in macros } }
+        fun labelNodes(header: PsiElement?) = labels[header].orEmpty().map { label ->
+            label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
+        }
+        fun children(header: PsiElement): List<StructureViewTreeElement> {
+            val declarations = groups[header].orEmpty().map { it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList()) }
+            return (declarations + labelNodes(header)).sortedBy { it.first }.map { it.second }
+        }
         val writtenNodes = groups[null].orEmpty().map { declaration ->
             declaration.textOffset to MipsStructureNode(declaration, macros[declaration]?.name, children(declaration))
         }
@@ -111,7 +127,7 @@ private class MipsStructureNode(
             val name = file.findElementAt(macro.nameOffset)!!
             macro.nameOffset to MipsStructureNode(name, macro.name, children(macro.header))
         }
-        return (writtenNodes + expandedNodes).sortedBy { it.first }.map { it.second }
+        return (writtenNodes + expandedNodes + labelNodes(null)).sortedBy { it.first }.map { it.second }
     }
 
     private fun writtenChildren(item: PsiElement): List<MipsDeclaration> {
