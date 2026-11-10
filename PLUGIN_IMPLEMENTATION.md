@@ -1704,6 +1704,14 @@ Select a captured instruction to inspect its encoding and animate its datapath.
 **Clear trace** removes the selected execution's recorded instructions without
 changing the simulation or its capture setting.
 
+## Memory Reference Visualization
+
+In **MARS Tools → Memory Reference Visualization**, hover over a grid cell to
+see its address and access count. Tab to the grid and use the arrow keys, or
+click a cell, to keep its details below the grid as execution continues.
+The outlined cell and the grid's accessible description identify the same
+address and count. The address is the first word in that cell's range.
+
 ## Data Cache Simulator
 
 The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack

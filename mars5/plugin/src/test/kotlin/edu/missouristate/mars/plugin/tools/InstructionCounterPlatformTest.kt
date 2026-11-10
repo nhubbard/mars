@@ -41,6 +41,9 @@ import edu.missouristate.mars.plugin.tools.xray.XRayDiagram
 import edu.missouristate.mars.plugin.tools.xray.XRayUnit
 import java.awt.image.BufferedImage
 import java.awt.Color
+import java.awt.event.ActionEvent
+import java.awt.event.FocusEvent
+import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JComboBox
@@ -50,6 +53,7 @@ import javax.swing.JPanel
 import javax.swing.JProgressBar
 import javax.swing.JSpinner
 import javax.swing.JToggleButton
+import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -189,6 +193,19 @@ class InstructionCounterPlatformTest {
             fun xrayHistory() = xrayChoices().single { it.itemCount > 0 && it.getItemAt(0) is StepEvent }
             fun xrayDetails() = UIUtil.findComponentsOfType(xray, JBTextArea::class.java).single().text
             fun canvas(panel: JComponent) = UIUtil.findComponentsOfType(panel, MemoryGridCanvas::class.java).single()
+            fun referenceKey(key: Int) {
+                val grid = canvas(references)
+                grid.getActionForKeyStroke(KeyStroke.getKeyStroke(key, 0)).actionPerformed(ActionEvent(grid, 0, ""))
+            }
+            fun focusReferences() {
+                val grid = canvas(references)
+                val event = FocusEvent(grid, FocusEvent.FOCUS_GAINED)
+                grid.focusListeners.forEach { it.focusGained(event) }
+            }
+            fun assertInspection(text: String) {
+                assertEquals(text, canvas(references).accessibleContext.accessibleDescription)
+                assertTrue(UIUtil.findComponentsOfType(references, JBLabel::class.java).any { it.text == text })
+            }
             fun tooltip(panel: JComponent, x: Int, y: Int): String? {
                 val grid = canvas(panel)
                 grid.setSize(512, 512)
@@ -229,6 +246,11 @@ class InstructionCounterPlatformTest {
                 assertEquals(0, UIUtil.findComponentsOfType(cache, JBTable::class.java).single().rowCount)
                 assertEquals("Static data", baseLabel())
                 assertEquals(null, tooltip(references, 10, 10))
+                assertFalse(canvas(bitmap).isFocusable)
+                assertTrue(canvas(references).isFocusable)
+                referenceKey(KeyEvent.VK_RIGHT)
+                assertInspection("This cell has no mapped address.")
+                focusReferences()
                 assertFalse(floatRegister.isEnabled)
                 fun enter(columns: Int, text: String) = floatField(columns).apply {
                     this.text = text
@@ -504,9 +526,26 @@ class InstructionCounterPlatformTest {
                 val withGrid = renderBitmap(references)
                 assertTrue(withGrid.getRGB(0, 10) != withGrid.getRGB(10, 10))
                 boundaries.doClick()
+                focusReferences()
+                assertInspection("0x10010000 · 1 accesses")
+                referenceKey(KeyEvent.VK_LEFT)
+                referenceKey(KeyEvent.VK_UP)
+                assertInspection("0x10010000 · 1 accesses")
+                referenceKey(KeyEvent.VK_RIGHT)
+                assertInspection("0x10010004 · 1 accesses")
+                assertEquals(Color.WHITE.rgb, renderBitmap(references).getRGB(32, 10))
                 UIUtil.findComponentsOfType(references, JComboBox::class.java).single { it.itemCount == 12 }.selectedItem = 2
                 button("Apply and Clear", references).doClick()
                 assertEquals("0x10010008 · 0 accesses", tooltip(references, 33, 10))
+                assertInspection("0x10010008 · 0 accesses")
+                referenceKey(KeyEvent.VK_DOWN)
+                assertInspection("0x10010088 · 0 accesses")
+                val grid = canvas(references)
+                fun clickReference(x: Int) = grid.dispatchEvent(MouseEvent(grid, MouseEvent.MOUSE_CLICKED, 0, 0, x, 10, 1, false))
+                clickReference(-1)
+                assertInspection("0x10010088 · 0 accesses")
+                clickReference(10)
+                assertInspection("0x10010000 · 0 accesses")
                 baseChoice().selectedItem = Base.HEAP
                 button("Disconnect", bitmap).doClick()
                 button("Apply and Clear", bitmap).doClick()
@@ -517,6 +556,9 @@ class InstructionCounterPlatformTest {
                 assertTrue(checkNotNull(bitmapRun.manager).removeContent(bitmapRun, true))
             }
             waitFor(0, "0 (0%)")
+            withContext(Dispatchers.EDT) {
+                assertInspection("Focus the grid or click a cell to see its address and access count.")
+            }
 
             val branchRun = launch(run, 3, "beq \$zero, \$zero, next\nnext: bne \$zero, \$zero, next\n")
             waitFor(1, "2 (100%)")

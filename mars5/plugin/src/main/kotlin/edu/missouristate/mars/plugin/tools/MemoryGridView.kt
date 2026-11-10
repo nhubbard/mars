@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.ColorPanel
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
@@ -20,12 +21,18 @@ import edu.missouristate.mars.util.Binary
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.Point
 import java.awt.RenderingHints
 import java.awt.Rectangle
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
+import java.awt.event.KeyEvent
+import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JSpinner
+import javax.swing.KeyStroke
 import javax.swing.SpinnerNumberModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -52,7 +59,9 @@ internal class MemoryGridView(
     private val toggle = JButton()
     private val reset = JButton(toolsMessages.getMessage("counter.reset"))
     private val blank = Frame(mode.defaults(), null)
-    private val canvas = MemoryGridCanvas(blank, mode.nameKey, if (mode == Mode.REFERENCES) ::describeCell else null)
+    private val canvas = MemoryGridCanvas(
+        blank, mode.nameKey, if (mode == Mode.REFERENCES) ::describeCell else null, ::updateInspection,
+    )
     private var selected: MemoryGridDisplay? = null
     private val reference = if (mode == Mode.REFERENCES) ReferenceControls() else null
 
@@ -78,6 +87,7 @@ internal class MemoryGridView(
             cell(reset)
         }
         row { cell(canvas).align(Align.FILL).resizableColumn() }.resizableRow()
+        reference?.let { row { cell(it.inspection) } }
         row { comment(toolsMessages.getMessage(mode.helpKey)) }
     }
 
@@ -120,6 +130,7 @@ internal class MemoryGridView(
         if (selected !== current) {
             releaseSelection()
             selected = current
+            canvas.clearInspection()
         }
         val options = current?.snapshot()?.frame?.options ?: blank.options
         width.selectedItem = options.width
@@ -161,6 +172,10 @@ internal class MemoryGridView(
         toolsMessages.getMessage("references.cell", Binary.intToHexString(it.address), it.count.toString())
     }
 
+    private fun updateInspection(text: String) {
+        reference!!.inspection.text = text
+    }
+
     private inner class ReferenceControls {
         val words = ComboBox(MemoryGridDisplay.wordCounts.toTypedArray())
         val threshold = JSpinner(SpinnerNumberModel(0, 0, Int.MAX_VALUE, 1)).apply {
@@ -169,6 +184,7 @@ internal class MemoryGridView(
         val color = ColorPanel()
         val applyColor = JButton(toolsMessages.getMessage("references.applyColor"))
         val grid = JBCheckBox(toolsMessages.getMessage("references.grid"))
+        val inspection = JBLabel(toolsMessages.getMessage("references.inspect.hint"))
         val controls = listOf(words, threshold, color, applyColor, grid)
 
         init {
@@ -190,17 +206,68 @@ internal class MemoryGridView(
 
 internal class MemoryGridCanvas(
     private var frame: Frame, nameKey: String, private val cellDetails: ((Int) -> String?)?,
+    private val inspectionChanged: (String) -> Unit,
 ) : JPanel() {
     private var showGrid = false
+    private var inspected: Point? = null
 
     init {
         getAccessibleContext().accessibleName = toolsMessages.getMessage(nameKey)
-        if (cellDetails != null) toolTipText = ""
+        isFocusable = cellDetails != null
+        if (cellDetails != null) {
+            toolTipText = ""
+            getAccessibleContext().accessibleDescription = toolsMessages.getMessage("references.inspect.hint")
+            addFocusListener(object : FocusAdapter() {
+                override fun focusGained(event: FocusEvent) {
+                    if (inspected == null) inspect(Point())
+                }
+            })
+            addMouseListener(object : MouseAdapter() {
+                override fun mouseClicked(event: MouseEvent) {
+                    val cell = cellAt(event.point) ?: return
+                    requestFocusInWindow()
+                    inspect(cell)
+                }
+            })
+            bindArrow(KeyEvent.VK_LEFT, -1, 0)
+            bindArrow(KeyEvent.VK_RIGHT, 1, 0)
+            bindArrow(KeyEvent.VK_UP, 0, -1)
+            bindArrow(KeyEvent.VK_DOWN, 0, 1)
+        }
+    }
+
+    private fun bindArrow(key: Int, dx: Int, dy: Int) {
+        registerKeyboardAction({
+            val current = inspected ?: Point()
+            inspect(Point(current.x + dx, current.y + dy))
+        }, KeyStroke.getKeyStroke(key, 0), WHEN_FOCUSED)
+    }
+
+    private fun inspect(cell: Point) {
+        val column = cell.x.coerceIn(0, frame.options.columns - 1)
+        val row = cell.y.coerceIn(0, frame.options.rows - 1)
+        inspected = Point(column, row)
+        showInspection(cellDetails!!(row * frame.options.columns + column)
+            ?: toolsMessages.getMessage("references.inspect.unmapped"))
+        repaint()
+    }
+
+    fun clearInspection() {
+        if (inspected == null) return
+        inspected = null
+        showInspection(toolsMessages.getMessage("references.inspect.hint"))
+        repaint()
+    }
+
+    private fun showInspection(text: String) {
+        getAccessibleContext().accessibleDescription = text
+        inspectionChanged(text)
     }
 
     fun showFrame(value: Frame) {
         if (frame === value) return
         frame = value
+        inspected?.let(::inspect)
         repaint()
     }
 
@@ -211,11 +278,16 @@ internal class MemoryGridCanvas(
 
     override fun getToolTipText(event: MouseEvent): String? {
         val details = cellDetails ?: return null
+        val cell = cellAt(event.point) ?: return null
+        return details(cell.y * frame.options.columns + cell.x)
+    }
+
+    private fun cellAt(point: Point): Point? {
         val viewport = viewport()
-        if (!viewport.contains(event.point)) return null
-        val column = (event.x - viewport.x) * frame.options.columns / viewport.width
-        val row = (event.y - viewport.y) * frame.options.rows / viewport.height
-        return details(row * frame.options.columns + column)
+        if (!viewport.contains(point)) return null
+        val column = (point.x - viewport.x) * frame.options.columns / viewport.width
+        val row = (point.y - viewport.y) * frame.options.rows / viewport.height
+        return Point(column, row)
     }
 
     private fun viewport(): Rectangle {
@@ -237,9 +309,21 @@ internal class MemoryGridCanvas(
                 g.drawImage(it, viewport.x, viewport.y, viewport.width, viewport.height, null)
             }
             if (showGrid) drawGrid(g, viewport)
+            inspected?.let { drawInspection(g, viewport, it) }
         } finally {
             g.dispose()
         }
+    }
+
+    private fun drawInspection(g: Graphics2D, viewport: Rectangle, cell: Point) {
+        val x = cell.x * viewport.width / frame.options.columns
+        val y = cell.y * viewport.height / frame.options.rows
+        val width = (cell.x + 1) * viewport.width / frame.options.columns - x
+        val height = (cell.y + 1) * viewport.height / frame.options.rows - y
+        g.color = Color.WHITE
+        g.drawRect(viewport.x + x, viewport.y + y, width - 1, height - 1)
+        g.color = Color.BLACK
+        g.drawRect(viewport.x + x + 1, viewport.y + y + 1, width - 3, height - 3)
     }
 
     private fun drawGrid(g: Graphics2D, viewport: Rectangle) {
