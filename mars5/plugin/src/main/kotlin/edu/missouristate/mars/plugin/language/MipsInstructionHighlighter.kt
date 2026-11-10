@@ -71,13 +71,25 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         val analysis = file.project.service<MarsAnalysisService>()
         val head = element.operationHead
         val site = analysis.operationSite(file, head)
-        when (site?.type) {
-            TokenTypes.OPERATOR -> holder.color(site.range, instructionMnemonicColor)
-            TokenTypes.IDENTIFIER -> holder.color(site.range, macroColor)
-            TokenTypes.DIRECTIVE -> holder.color(site.range, DefaultLanguageHighlighterColors.KEYWORD)
-            else -> Unit
+        if (site != null) {
+            val color = when {
+                site.compositeEquivalence -> equivalenceColor
+                site.type == TokenTypes.OPERATOR -> instructionMnemonicColor
+                site.type == TokenTypes.IDENTIFIER -> macroColor
+                else -> DefaultLanguageHighlighterColors.KEYWORD
+            }
+            holder.color(site.range, color)
         }
-        if (site?.range != head.textRange && analysis.isGeneratedLabel(file, head)) holder.color(head.textRange, labelColor)
+        if (site?.range != head.textRange) {
+            val use = analysis.equivalenceUse(file, head)
+            val color = when {
+                use != null && use.type == null -> equivalenceColor
+                analysis.isGeneratedLabel(file, head) -> labelColor
+                use != null -> equivalenceColor
+                else -> return
+            }
+            holder.color(head.textRange, color)
+        }
     }
 
     private companion object {

@@ -59,7 +59,13 @@ punctuation, including `%!` and `%%`.
 
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
-An operation-head alias receives the mnemonic style when its expansion supplies an instruction.
+An operation-head alias receives the mnemonic style when its expansion supplies only the
+mnemonic. An alias that supplies a label name receives the label style in the declaration.
+At operations and generated macro headers, an alias that supplies several tokens uses
+the equivalence style for that span. Examples include a label and instruction together,
+or a macro name with its formals. When expansion moves the operation to a later written
+token, the operation highlighter supplies its color once, and that token still resolves
+to its equivalence definition.
 The mnemonic style is editable under **Editor → Color Scheme → MARS MIPS**.
 
 ### Build-tool detail

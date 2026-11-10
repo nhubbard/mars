@@ -54,11 +54,13 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     internal fun highlightingColor(): TextAttributesKey? {
         val file = containingFile as MipsFile
         val analysis = file.project.service<MarsAnalysisService>()
-        return when (analysis.generatedMacroPart(file, this)) {
+        val roleColor = when (analysis.generatedMacroPart(file, this)) {
             MacroPart.NAME -> macroColor
             MacroPart.PARAMETER -> macroParameterColor
-            null -> (reference as? SymbolReference)?.highlightingColor()
+            null -> return (reference as? SymbolReference)?.highlightingColor()
         }
+        val use = analysis.equivalenceUse(file, this)
+        return if (use != null && use.type == null) equivalenceColor else roleColor
     }
 
     private class SymbolReference(
@@ -96,15 +98,19 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         fun highlightingColor(): TextAttributesKey? {
             val file = element.containingFile as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()
-            if (equivalence && analysis.equivalenceTarget(file, element) != null) {
-                val type = analysis.editorTimeline(file).equivalenceUseType(file, element)
-                return when (type) {
+            val use = if (equivalence) analysis.equivalenceUse(file, element) else null
+            if (use != null) {
+                // The enclosing operation supplies the color when expansion moves its head onto this token.
+                if (aliasOperand && use.suppliesOperation) return null
+                return when (use.type) {
                     in numericTypes -> DefaultLanguageHighlighterColors.NUMBER
                     in registerTypes -> DefaultLanguageHighlighterColors.INSTANCE_FIELD
                     in punctuationTypes -> punctuationColor
                     TokenTypes.QUOTED_STRING -> DefaultLanguageHighlighterColors.STRING
                     TokenTypes.MACRO_PARAMETER -> macroParameterColor
-                    TokenTypes.IDENTIFIER, TokenTypes.OPERATOR -> operandColor(file, analysis) ?: equivalenceColor
+                    TokenTypes.IDENTIFIER, TokenTypes.OPERATOR -> if (analysis.isGeneratedLabel(file, element.parent)) {
+                        labelColor
+                    } else operandColor(file, analysis) ?: equivalenceColor
                     else -> equivalenceColor
                 }
             }

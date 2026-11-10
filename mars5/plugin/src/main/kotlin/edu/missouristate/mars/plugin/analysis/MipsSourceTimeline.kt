@@ -9,6 +9,7 @@ import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
+import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
@@ -152,7 +153,7 @@ internal class MipsSourceTimeline(
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
 ) {
-    private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, Map<Int, TokenTypes?>>()
+    private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
 
     val generatedLabelSites: Set<PsiElement> by lazy {
         generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
@@ -207,19 +208,16 @@ internal class MipsSourceTimeline(
 
     fun prefix(file: MipsFile, offset: Int): Prefix = Prefix(prefixEnd(file, offset))
 
-    /** A physical alias has one color only when its expansion supplies one token. */
-    fun equivalenceUseType(file: MipsFile, position: PsiElement): TokenTypes? {
-        val start = sourceLineStart(position)
-        return equivalenceUses(file, position, start)[position.textOffset - start]
-    }
-
-    fun equivalenceUseTarget(file: MipsFile, position: PsiElement): PsiElement? {
+    fun equivalenceUse(file: MipsFile, position: PsiElement): EquivalenceUse? {
         val start = sourceLineStart(position)
         val definition = prefix(file, start).equivalence(position.text) ?: return null
-        return definition.site.takeIf { position.textOffset - start in equivalenceUses(file, position, start) }
+        val offset = position.textOffset - start
+        val uses = equivalenceUses(file, position, start)
+        if (offset !in uses.types) return null
+        return EquivalenceUse(definition.site, uses.types[offset], offset == uses.operationOffset)
     }
 
-    private fun equivalenceUses(file: MipsFile, position: PsiElement, start: Int): Map<Int, TokenTypes?> =
+    private fun equivalenceUses(file: MipsFile, position: PsiElement, start: Int): LineEquivalenceUses =
         equivalenceUsesByLine.getOrPut(file to start) {
             val prefix = prefix(file, start)
             val errors = ErrorList()
@@ -228,10 +226,16 @@ internal class MipsSourceTimeline(
                 { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
             )
             val tokens = expansion.tokens()
+            tokens.discardTrailingComment()
+            val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
+            val operation = if (operationIndex < tokens.size()) tokens[operationIndex] else null
+            val operationOffset = if (operation != null && prefix.operationType(operation) != null) {
+                expansion.originalOffset(operation.startPos - 1)
+            } else -1
             val types = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
                 expansion.originalOffset(it.startPos - 1)
             }.mapValues { (_, tokens) -> tokens.singleOrNull()?.type }
-            expansion.substitutionOffsets().associateWith(types::get)
+            LineEquivalenceUses(expansion.substitutionOffsets().associateWith(types::get), operationOffset)
         }
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
@@ -247,6 +251,13 @@ internal class MipsSourceTimeline(
 
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition
+
+        fun operationType(operation: Token): TokenTypes? = when {
+            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+            macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
+            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
+            else -> null
+        }
 
         // Each history is keyed by the position after .end_macro, when that overload becomes visible.
         fun macroOverloads(name: String): Map<Int, Begin> = buildMap {
@@ -287,6 +298,11 @@ internal class SourceFileEvents(val file: MipsFile) {
 }
 
 internal data class IndexedEquivalence(val index: Int, val definition: MipsSourceEvent.Equivalence)
+
+/** A substituted token has no single type when it supplies several tokens or the expansion fails. */
+internal data class EquivalenceUse(val target: PsiElement, val type: TokenTypes?, val suppliesOperation: Boolean)
+
+private data class LineEquivalenceUses(val types: Map<Int, TokenTypes?>, val operationOffset: Int)
 
 internal data class GeneratedLabel(val name: String, val site: PsiElement, val macro: MipsSourceEvent.Begin?)
 

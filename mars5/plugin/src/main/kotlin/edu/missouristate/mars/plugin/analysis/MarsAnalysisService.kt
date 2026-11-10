@@ -27,7 +27,6 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
-import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
@@ -49,7 +48,9 @@ import kotlinx.coroutines.Deferred
 
 internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val macroOffset: Int)
 
-internal data class OperationSite(val name: String, val type: TokenTypes, val range: TextRange)
+internal data class OperationSite(
+    val name: String, val type: TokenTypes, val range: TextRange, val compositeEquivalence: Boolean = false,
+)
 
 internal enum class OperandParenthesis { ADDRESS, GROUP }
 
@@ -381,12 +382,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val expansion = Tokenizer.tokenizeMappedLine(
             source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
-        val tokens = expansion.tokens().operationTokens()
-        if (tokens.isEmpty) return null
-        val operation = tokens[0]
-        val type = effectiveOperationType(operation, prefix) ?: return null
-        val offset = start + expansion.originalOffset(operation.startPos - 1)
-        return OperationSite(operation.value, type, root.findElementAt(offset)!!.textRange)
+        val tokens = expansion.tokens()
+        tokens.discardTrailingComment()
+        val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
+        if (operationIndex == tokens.size()) return null
+        val operation = tokens[operationIndex]
+        val type = prefix.operationType(operation) ?: return null
+        val written = expansion.originalOffset(operation.startPos - 1)
+        val composite = (0 until tokens.size()).any {
+            it != operationIndex && expansion.originalOffset(tokens[it].startPos - 1) == written
+        }
+        return OperationSite(operation.value, type, root.findElementAt(start + written)!!.textRange, composite)
     }
 
     internal fun formattingLine(
@@ -402,7 +408,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
-        val type = if (tokens.isEmpty) null else effectiveOperationType(tokens[0], prefix)
+        val type = if (tokens.isEmpty) null else prefix.operationType(tokens[0])
         // Even a macro call can record an equivalence as a tokenizer side effect.
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
@@ -428,14 +434,6 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             (start + mapped.originalOffset(opening.startOffset)) to role
         }.toMap()
     }
-
-    private fun effectiveOperationType(operation: Token, prefix: MipsSourceTimeline.Prefix): TokenTypes? =
-        when {
-            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
-            prefix.macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
-            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
-            else -> null
-        }
 
     internal fun isGeneratedLabel(root: MipsFile, element: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
@@ -590,9 +588,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         exceptionHandler == handler && (sourceSet.mode != MarsAssemblyMode.PROJECT || sourceSet == settings.projectSourceSet())
 
     /** Finds the definition used by the assembler to substitute this token. */
-    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? {
+    internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? =
+        equivalenceUse(root, position)?.target
+
+    internal fun equivalenceUse(root: MipsFile, position: PsiElement): EquivalenceUse? {
         if (DumbService.isDumb(project)) return null
-        return editorTimeline(root).equivalenceUseTarget(root, position)
+        return editorTimeline(root).equivalenceUse(root, position)
     }
 
     private fun MipsDeclarationSite.isLiteralLabel(file: MipsFile, timeline: MipsSourceTimeline): Boolean =

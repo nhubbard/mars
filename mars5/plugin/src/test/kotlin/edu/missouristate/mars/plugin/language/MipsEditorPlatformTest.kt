@@ -4,6 +4,7 @@ import com.intellij.codeInsight.folding.CodeFoldingManager
 import com.intellij.codeInsight.highlighting.BraceMatchingUtil
 import com.intellij.lang.LanguageBraceMatching
 import com.intellij.lang.LanguageCommenters
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -131,8 +132,7 @@ class MipsEditorPlatformTest {
             val source = file.text
             val highlights = fixture.doHighlighting().filter { it.forcedTextAttributesKey == instructionMnemonicColor }
             val expected = listOf(
-                "BRANCH target" to "BRANCH", "addiu \$t0, \$zero, 7" to "addiu",
-                "BRANCH target\nBOTH" to "BRANCH", "BOTH \$t0, \$t0, 1" to "BOTH",
+                "addiu \$t0, \$zero, 7" to "addiu",
                 "syscall\nj COLON" to "syscall",
                 "nop\ntarget" to "nop", "nop\nLATE" to "nop",
             ).map { (context, mnemonic) ->
@@ -204,7 +204,7 @@ class MipsEditorPlatformTest {
             assertColor("table:", labelColor, "table")
             assertColor(".globl main", labelColor, "main")
             assertColor("main: CALL", labelColor, "main")
-            assertColor("MARKER paint", labelColor)
+            assertColor("MARKER paint", equivalenceColor)
             assertColor("bgtz ${'$'}t0, next", labelColor, "next")
             assertColor("j missing", labelColor, "missing")
             assertColor(".macro local", macroColor, "local")
@@ -264,11 +264,11 @@ class MipsEditorPlatformTest {
             }
             assertEquals(DefaultLanguageHighlighterColors.KEYWORD, color("OPEN NAME FORMALS", "OPEN"))
             assertEquals(macroColor, color("OPEN NAME FORMALS", "NAME"))
-            assertEquals(macroParameterColor, color("OPEN NAME FORMALS", "FORMALS"))
+            assertEquals(equivalenceColor, color("OPEN NAME FORMALS", "FORMALS"))
             assertEquals(macroColor, color("OPEN simple", "simple"))
             assertEquals(macroParameterColor, color("simple (%arg)", "%arg"))
-            assertEquals(macroColor, color("OPEN BOTH", "BOTH"))
-            assertEquals(DefaultLanguageHighlighterColors.KEYWORD, color("\nCOMPLETE\n", "COMPLETE"))
+            assertEquals(equivalenceColor, color("OPEN BOTH", "BOTH"))
+            assertEquals(equivalenceColor, color("\nCOMPLETE\n", "COMPLETE"))
             for (call in listOf("emit (", "simple (2)", "blended (3)", "whole (4)")) {
                 assertEquals(macroColor, color(call, call.substringBefore(' ')), call)
             }
@@ -350,6 +350,49 @@ class MipsEditorPlatformTest {
             assertNull(color("unknown (bare_argument)", "bare_argument"))
         }
     }
+
+    @Test
+    fun `alias invocations use a single effective role and preserve the alias color for composite or unknown expansions`() =
+        timeoutRunBlocking<Unit> {
+            val current = project.get()
+            val source = """
+                .eqv NAME actual
+                .eqv HEAD second
+                .eqv SEPARATOR :
+                .eqv ENTRY third:
+                .eqv BUNDLE fourth: li ${'$'}t0, 42
+                .eqv LOAD li ${'$'}t1, 42
+                .eqv OPCODE nop
+                .eqv UNRESOLVED unknown
+                NAME: OPCODE
+                HEAD SEPARATOR OPCODE
+                ENTRY OPCODE
+                BUNDLE
+                LOAD
+                UNRESOLVED
+            """.trimIndent()
+            withContext(Dispatchers.EDT) { fixture.configureByText("alias-roles.asm", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            withContext(Dispatchers.EDT) {
+                val highlights = fixture.doHighlighting()
+                fun assertColor(line: String, word: String, expected: TextAttributesKey) {
+                    val start = source.indexOf("\n$line") + 1 + line.indexOf(word)
+                    assertEquals(listOf(expected), highlights.filter {
+                        it.startOffset == start && it.endOffset == start + word.length &&
+                            it.severity == HighlightSeverity.INFORMATION && it.forcedTextAttributesKey != null
+                    }.map { it.forcedTextAttributesKey }, "$word in $line")
+                }
+                assertColor("NAME: OPCODE", "NAME", labelColor)
+                assertColor("HEAD SEPARATOR OPCODE", "HEAD", labelColor)
+                assertColor("HEAD SEPARATOR OPCODE", "SEPARATOR", punctuationColor)
+                for (line in listOf("NAME: OPCODE", "HEAD SEPARATOR OPCODE", "ENTRY OPCODE")) {
+                    assertColor(line, "OPCODE", instructionMnemonicColor)
+                }
+                for (line in listOf("ENTRY OPCODE", "BUNDLE", "LOAD", "UNRESOLVED")) {
+                    assertColor(line, line.substringBefore(' '), equivalenceColor)
+                }
+            }
+        }
 
     @Test
     fun `signed literals punctuation macro formals and equivalence replacements get visible styles`() = timeoutRunBlocking<Unit> {
