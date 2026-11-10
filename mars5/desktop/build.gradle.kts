@@ -32,6 +32,12 @@ tasks.processResources {
   from(rootProject.layout.projectDirectory.dir("shared/datapath"))
 }
 
+val cliArchive = project(":cli").tasks.named<Jar>("jar").flatMap { it.archiveFile }
+val desktopArchive = tasks.jar.flatMap { it.archiveFile }
+
 tasks.test {
   useJUnitPlatform()
+  inputs.files(cliArchive, desktopArchive).withPathSensitivity(PathSensitivity.NONE)
+  systemProperty("mars.cli.jar", cliArchive.get().asFile.absolutePath)
+  systemProperty("mars.desktop.jar", desktopArchive.get().asFile.absolutePath)
 }
