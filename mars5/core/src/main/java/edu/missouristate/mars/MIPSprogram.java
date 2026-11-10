@@ -5,6 +5,7 @@ import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap;
 import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.Program;
 import edu.missouristate.mars.api.StepEvent;
 import edu.missouristate.mars.api.StopEvent;
@@ -606,13 +607,34 @@ public class MIPSprogram implements Program {
       var origin = sourceMap.origins().get(address);
       for (var frame = origin; frame != null; frame = frame.caller()) {
         if (frame.location().equals(location)) {
-          instructions.add(new AssembledInstruction(
-              address, statement.getBinaryStatement(), statement.getPrintableBasicAssemblyStatement(), origin));
+          instructions.add(assembledInstruction(statement, origin));
           break;
         }
       }
     }
     return List.copyOf(instructions);
+  }
+
+  @Override
+  public List<AssembledInstruction> pseudoInstructions(Runnable checkCancellation) {
+    var addresses = sourceMap.pseudoAddresses();
+    if (addresses.isEmpty()) {
+      return List.of();
+    }
+    var instructions = new ArrayList<AssembledInstruction>(addresses.size());
+    for (var statement : machineList) {
+      checkCancellation.run();
+      int address = statement.getAddress();
+      if (addresses.contains(address)) {
+        instructions.add(assembledInstruction(statement, sourceMap.origins().get(address)));
+      }
+    }
+    return List.copyOf(instructions);
+  }
+
+  private static AssembledInstruction assembledInstruction(ProgramStatement statement, Origin origin) {
+    return new AssembledInstruction(statement.getAddress(), statement.getBinaryStatement(),
+        statement.getPrintableBasicAssemblyStatement(), origin);
   }
 
   @Override

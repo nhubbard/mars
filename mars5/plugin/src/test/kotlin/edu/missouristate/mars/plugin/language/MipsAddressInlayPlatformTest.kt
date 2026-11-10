@@ -2,9 +2,11 @@ package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.hints.declarative.DeclarativeInlayHintsSettings
 import com.intellij.codeInsight.hints.declarative.HintFormat
+import com.intellij.codeInsight.hints.declarative.InlayHintsProvider
 import com.intellij.codeInsight.hints.declarative.InlayPayload
 import com.intellij.codeInsight.hints.declarative.InlayPosition
 import com.intellij.codeInsight.hints.declarative.InlayTreeSink
+import com.intellij.codeInsight.hints.declarative.OwnBypassCollector
 import com.intellij.codeInsight.hints.declarative.PresentationTreeBuilder
 import com.intellij.codeInsight.hints.declarative.impl.DeclarativeInlayHintsPassFactory
 import com.intellij.codeInsight.hints.declarative.impl.inlayRenderer.DeclarativeInlayRenderer
@@ -13,6 +15,8 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -24,10 +28,13 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import java.awt.Point
+import java.awt.event.MouseEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -35,7 +42,7 @@ class MipsAddressInlayPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
-    private val refresh get() = project.service<MipsAddressHintRefresh>()
+    private val refresh get() = project.service<MipsAssemblyInlayRefresh>()
 
     @Test
     fun `native inline hints update after unsaved includes and assembly settings change`() = timeoutRunBlocking<Unit> {
@@ -117,21 +124,84 @@ class MipsAddressInlayPlatformTest {
         }
     }
 
-    private suspend fun assertHints(expected: List<String>) {
+    @Test
+    fun `native pseudo expansions follow unsaved aliases and outer macro calls`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "values.txt"
+            li ${'$'}t0, 1
+            COMMAND ${'$'}t1, VALUE
+            nop
+            .macro inner (%value)
+                li ${'$'}t2, %value
+                nop
+            .end_macro
+            .macro outer (%value)
+                inner (%value)
+            .end_macro
+            outer (VALUE)
+        """.trimIndent()
+        val (entry, values) = withContext(Dispatchers.EDT) {
+            val values = fixture.addFileToProject("values.txt", ".eqv COMMAND li\n.eqv VALUE 7\n")
+            val entry = fixture.addFileToProject("entry.asm", source)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            entry to values
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withEnabledHints(MIPS_EXPANSION_HINTS_ID) {
+            withContext(Dispatchers.EDT) {
+                assertNull(MipsExpansionInlayProvider().createCollector(values, fixture.editor))
+                assertNoPublishedHints(entry, MipsExpansionInlayProvider())
+            }
+            assertHints(List(3) { "1 instruction" }, MIPS_EXPANSION_HINTS_ID)
+            withContext(Dispatchers.EDT) {
+                val docs = PsiDocumentManager.getInstance(project)
+                val include = docs.getDocument(values)!!
+                WriteCommandAction.runWriteCommandAction(project) {
+                    include.setText(".eqv COMMAND li\n.eqv VALUE 0x12345678\n")
+                }
+                docs.commitDocument(include)
+                assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(include))
+                assertNoPublishedHints(entry, MipsExpansionInlayProvider())
+            }
+            assertHints(listOf("1 instruction", "2 instructions", "2 instructions"), MIPS_EXPANSION_HINTS_ID)
+            withContext(Dispatchers.EDT) {
+                val editor = fixture.editor
+                val expansions = editor.inlayModel.getAfterLineEndElementsInRange(
+                    0, editor.document.textLength, DeclarativeInlayRenderer::class.java,
+                ).filter { it.renderer.providerId == MIPS_EXPANSION_HINTS_ID }
+                assertEquals(listOf(1, 2, 11), expansions.map { editor.document.getLineNumber(it.offset) })
+                val renderer = expansions.last().renderer
+                val mouse = MouseEvent(editor.contentComponent, MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, false, MouseEvent.BUTTON1)
+                renderer.handleLeftClick(EditorMouseEvent(editor, mouse, editor.getMouseEventArea(mouse)), Point(10, 5), false)
+                val text = renderer.presentationList.getEntries().joinToString("") { (it as TextInlayPresentationEntry).text }
+                assertTrue(text.contains("lui ") && text.contains("ori ") && !text.contains("nop"), text)
+                project.service<MarsAssemblySettings>().changeAssemblerOptions(allowPseudoInstructions = false, warningsAreErrors = false)
+                assertNoPublishedHints(entry, MipsExpansionInlayProvider())
+            }
+            assertHints(emptyList(), MIPS_EXPANSION_HINTS_ID)
+        }
+    }
+
+    private suspend fun assertHints(expected: List<String>, providerId: String = MIPS_ADDRESS_HINTS_ID) {
         withContext(Dispatchers.EDT) { fixture.doHighlighting() }
         refresh.waitForRefresh()
         withContext(Dispatchers.EDT) {
             fixture.doHighlighting()
             val editor = fixture.editor
-            val hints = editor.inlayModel.getInlineElementsInRange(0, editor.document.textLength, DeclarativeInlayRenderer::class.java)
-                .filter { it.renderer.providerId == MIPS_ADDRESS_HINTS_ID }
+            val model = editor.inlayModel
+            val inlays = if (providerId == MIPS_EXPANSION_HINTS_ID) {
+                model.getAfterLineEndElementsInRange(0, editor.document.textLength, DeclarativeInlayRenderer::class.java)
+            } else {
+                model.getInlineElementsInRange(0, editor.document.textLength, DeclarativeInlayRenderer::class.java)
+            }
+            val hints = inlays.filter { it.renderer.providerId == providerId }
                 .map { inlay -> inlay.renderer.presentationList.getEntries().joinToString("") { (it as TextInlayPresentationEntry).text } }
             assertEquals(expected, hints)
         }
     }
 
-    private fun assertNoPublishedHints(file: PsiFile) {
-        val collector = MipsAddressInlayProvider().createCollector(file, fixture.editor)!!
+    private fun assertNoPublishedHints(file: PsiFile, provider: InlayHintsProvider = MipsAddressInlayProvider()) {
+        val collector = provider.createCollector(file, fixture.editor) as OwnBypassCollector
         collector.collectHintsForFile(file, object : InlayTreeSink {
             override fun addPresentation(
                 position: InlayPosition, payloads: List<InlayPayload>?, tooltip: String?, hintFormat: HintFormat,
@@ -142,11 +212,11 @@ class MipsAddressInlayPlatformTest {
         })
     }
 
-    private suspend fun withEnabledHints(action: suspend () -> Unit) {
+    private suspend fun withEnabledHints(providerId: String = MIPS_ADDRESS_HINTS_ID, action: suspend () -> Unit) {
         val settings = readAction { DeclarativeInlayHintsSettings.getInstance() }
         val previous = withContext(Dispatchers.EDT) {
-            val previous = settings.isProviderEnabled(MIPS_ADDRESS_HINTS_ID)
-            WriteCommandAction.runWriteCommandAction(project) { settings.setProviderEnabled(MIPS_ADDRESS_HINTS_ID, true) }
+            val previous = settings.isProviderEnabled(providerId)
+            WriteCommandAction.runWriteCommandAction(project) { settings.setProviderEnabled(providerId, true) }
             DeclarativeInlayHintsPassFactory.scheduleRecompute(fixture.editor, project)
             previous
         }
@@ -154,7 +224,7 @@ class MipsAddressInlayPlatformTest {
             action()
         } finally {
             withContext(Dispatchers.EDT) {
-                WriteCommandAction.runWriteCommandAction(project) { settings.setProviderEnabled(MIPS_ADDRESS_HINTS_ID, previous == true) }
+                WriteCommandAction.runWriteCommandAction(project) { settings.setProviderEnabled(providerId, previous == true) }
             }
         }
     }

@@ -22,6 +22,11 @@ public interface Program {
     return List.of();
   }
 
+  /** Returns the original basic instructions emitted by pseudo-instructions. */
+  default List<AssembledInstruction> pseudoInstructions(Runnable checkCancellation) {
+    return List.of();
+  }
+
   /** Returns the definitions for the original assembled image. */
   default AssemblySymbolMap symbolMap() {
     return AssemblySymbolMap.EMPTY;

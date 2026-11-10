@@ -57,6 +57,10 @@
                                          implementationClass="edu.missouristate.mars.plugin.language.MipsAddressInlayProvider"
                                          providerId="mars.mips.assembled.addresses" group="OTHER_GROUP" isEnabledByDefault="false"
                                          bundle="messages.MarsBundle" nameKey="inlay.address.name" descriptionKey="inlay.address.description"/>
+    <codeInsight.declarativeInlayProvider language="MARS_MIPS"
+                                         implementationClass="edu.missouristate.mars.plugin.language.MipsExpansionInlayProvider"
+                                         providerId="mars.mips.assembled.expansions" group="OTHER_GROUP" isEnabledByDefault="false"
+                                         bundle="messages.MarsBundle" nameKey="inlay.expansion.name" descriptionKey="inlay.expansion.description"/>
     <langCodeStyleSettingsProvider implementation="edu.missouristate.mars.plugin.language.format.MipsCodeStyleSettingsProvider"/>
     <lang.commenter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
     <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>

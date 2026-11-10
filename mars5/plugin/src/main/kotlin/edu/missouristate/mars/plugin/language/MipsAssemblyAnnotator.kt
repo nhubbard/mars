@@ -25,7 +25,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
     data class Result(val input: Input, val outcome: BackgroundAssemblyOutcome) {
         val diagnostics = outcome.diagnostics[input.capture.source].orEmpty()
         val symbols = outcome.symbols
-        val addresses = input.capture.addressHints(symbols)
+        val hints = input.capture.assemblyHints(outcome)
     }
 
     override fun collectInformation(psiFile: PsiFile): Input? {
@@ -50,7 +50,7 @@ internal class MipsAssemblyAnnotator : ExternalAnnotator<MipsAssemblyAnnotator.I
     internal fun acceptResult(file: MipsFile, result: Result): List<Pair<AssemblyError, TextRange>> {
         val diagnostics = validatedDiagnostics(file, result) ?: return emptyList()
         result.symbols?.let { file.project.service<MarsAnalysisService>().publishBackgroundSymbols(it) }
-        file.publishAddressHints(result.addresses)
+        file.publishAssemblyHints(result.hints)
         return diagnostics
     }
 

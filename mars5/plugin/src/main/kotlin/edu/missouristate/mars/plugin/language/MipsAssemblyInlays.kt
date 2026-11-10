@@ -1,7 +1,9 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.DynamicBundle
+import com.intellij.codeInsight.hints.declarative.CollapseState
 import com.intellij.codeInsight.hints.declarative.DeclarativeInlayHintsSettings
+import com.intellij.codeInsight.hints.declarative.EndOfLinePosition
 import com.intellij.codeInsight.hints.declarative.HintFormat
 import com.intellij.codeInsight.hints.declarative.InlayHintsProvider
 import com.intellij.codeInsight.hints.declarative.InlayTreeSink
@@ -24,6 +26,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.util.ui.update.DebouncedUpdates
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.analysis.AssemblySymbols
+import edu.missouristate.mars.plugin.analysis.BackgroundAssemblyOutcome
 import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
@@ -38,21 +41,23 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal const val MIPS_ADDRESS_HINTS_ID = "mars.mips.assembled.addresses"
+internal const val MIPS_EXPANSION_HINTS_ID = "mars.mips.assembled.expansions"
 
 internal class MipsAddressInlayProvider : InlayHintsProvider {
     override fun createCollector(file: PsiFile, editor: Editor): OwnBypassCollector? =
         AddressCollector.takeIf { file is MipsFile }
 }
 
+internal class MipsExpansionInlayProvider : InlayHintsProvider {
+    override fun createCollector(file: PsiFile, editor: Editor): OwnBypassCollector? =
+        ExpansionCollector.takeIf { file is MipsFile }
+}
+
 private object AddressCollector : OwnBypassCollector {
     override fun collectHintsForFile(file: PsiFile, sink: InlayTreeSink) {
         val mips = file as MipsFile
-        val snapshot = mips.getUserData(addressHints) ?: return
-        val documents = PsiDocumentManager.getInstance(file.project)
-        val document = documents.getDocument(mips)!!
-        if (!documents.isCommitted(document)) return
-        val capture = collectEditorAssembly(mips) ?: return
-        if (snapshot.version != capture.addressVersion()) return
+        val snapshot = mips.currentAssemblyHints() ?: return
+        val document = PsiDocumentManager.getInstance(file.project).getDocument(mips)!!
         for (hint in snapshot.addresses) {
             ProgressManager.checkCanceled()
             val offset = document.getLineStartOffset(hint.line - 1) + hint.column - 1
@@ -65,24 +70,59 @@ private object AddressCollector : OwnBypassCollector {
     }
 }
 
-private val bundle = DynamicBundle(MipsAddressInlayProvider::class.java, "messages.MarsBundle")
-private val addressHints = Key.create<MipsAddressHints>(MIPS_ADDRESS_HINTS_ID)
+private object ExpansionCollector : OwnBypassCollector {
+    override fun collectHintsForFile(file: PsiFile, sink: InlayTreeSink) {
+        val snapshot = (file as MipsFile).currentAssemblyHints() ?: return
+        for ((line, instructions) in snapshot.expansions) {
+            ProgressManager.checkCanceled()
+            val count = bundle.getMessage("inlay.expansion.count", instructions.size)
+            sink.addPresentation(EndOfLinePosition(line - 1), tooltip = bundle.getMessage("inlay.expansion.tooltip"),
+                hintFormat = HintFormat.default) {
+                collapsibleList(CollapseState.Collapsed,
+                    expandedState = {
+                        toggleButton { text(count) }
+                        text(instructions.joinToString(" · ", prefix = "  "))
+                    },
+                    collapsedState = { toggleButton { text(count) } },
+                )
+            }
+        }
+    }
+}
 
-internal data class MipsAddressHintVersion(
+private val bundle = DynamicBundle(MipsAddressInlayProvider::class.java, "messages.MarsBundle")
+private val assemblyHints = Key.create<MipsAssemblyHints>("mars.mips.assembled.inlays")
+
+internal data class MipsAssemblyHintVersion(
     val sources: MarsSourceSet, val handler: Path?, val options: MarsExecutionOptions,
     val documents: Map<Path, Long>, val structure: Long,
 )
 
 internal data class MipsWrittenAddress(val line: Int, val column: Int, val name: String, val address: Int)
 
-internal data class MipsAddressHints(val version: MipsAddressHintVersion, val addresses: List<MipsWrittenAddress>)
+internal data class MipsAssemblyHints(
+    val version: MipsAssemblyHintVersion,
+    val addresses: List<MipsWrittenAddress>,
+    val expansions: Map<Int, List<String>>,
+)
 
-private fun EditorAssemblyCapture.addressVersion() =
-    MipsAddressHintVersion(sources.sourceSet, sources.exceptionHandler, options, sources.revisions, structureStamp)
+private fun EditorAssemblyCapture.hintVersion() =
+    MipsAssemblyHintVersion(sources.sourceSet, sources.exceptionHandler, options, sources.revisions, structureStamp)
+
+private fun MipsFile.currentAssemblyHints(): MipsAssemblyHints? {
+    val snapshot = getUserData(assemblyHints) ?: return null
+    val documents = PsiDocumentManager.getInstance(project)
+    if (!documents.isCommitted(documents.getDocument(this)!!)) return null
+    val capture = collectEditorAssembly(this) ?: return null
+    return snapshot.takeIf { it.version == capture.hintVersion() }
+}
 
 /** Called in the detached assembly pass, before applying the result to PSI. */
-internal fun EditorAssemblyCapture.addressHints(symbols: AssemblySymbols?): MipsAddressHints {
-    val addresses = symbols?.let {
+internal fun EditorAssemblyCapture.assemblyHints(outcome: BackgroundAssemblyOutcome): MipsAssemblyHints =
+    MipsAssemblyHints(hintVersion(), writtenAddresses(outcome.symbols), outcome.pseudoExpansions[source].orEmpty())
+
+private fun EditorAssemblyCapture.writtenAddresses(symbols: AssemblySymbols?): List<MipsWrittenAddress> =
+    symbols?.let {
         (it.localSymbols(source).asSequence() + it.symbols.globals().asSequence()).mapNotNull { (name, definition) ->
             ProgressManager.checkCanceled()
             val origin = definition.origin()!!
@@ -90,20 +130,18 @@ internal fun EditorAssemblyCapture.addressHints(symbols: AssemblySymbols?): Mips
             MipsWrittenAddress(origin.location().line(), definition.column()!!, name, definition.address())
         }.toList()
     }.orEmpty()
-    return MipsAddressHints(addressVersion(), addresses)
-}
 
 /** Publish only after the annotator has checked the source revisions and assembly context. */
-internal fun MipsFile.publishAddressHints(snapshot: MipsAddressHints) {
-    val previous = getUserData(addressHints)
-    if (previous == snapshot || previous == null && snapshot.addresses.isEmpty()) return
-    putUserData(addressHints, snapshot)
-    project.service<MipsAddressHintRefresh>().changed(virtualFile)
+internal fun MipsFile.publishAssemblyHints(snapshot: MipsAssemblyHints) {
+    val previous = getUserData(assemblyHints)
+    if (previous == snapshot || previous == null && snapshot.addresses.isEmpty() && snapshot.expansions.isEmpty()) return
+    putUserData(assemblyHints, snapshot)
+    project.service<MipsAssemblyInlayRefresh>().changed(virtualFile)
 }
 
 @Service(Service.Level.PROJECT)
-internal class MipsAddressHintRefresh(project: Project, scope: CoroutineScope) {
-    private val refresh = DebouncedUpdates.forScope<VirtualFile?>(scope, "Refresh MARS address inlays", 100.milliseconds)
+internal class MipsAssemblyInlayRefresh(project: Project, scope: CoroutineScope) {
+    private val refresh = DebouncedUpdates.forScope<VirtualFile?>(scope, "Refresh MARS assembly inlays", 100.milliseconds)
         .withContext(Dispatchers.EDT)
         .runBatchedDistinct { files ->
             for (editor in FileEditorManager.getInstance(project).allEditors.filterIsInstance<TextEditor>()) {
@@ -119,7 +157,8 @@ internal class MipsAddressHintRefresh(project: Project, scope: CoroutineScope) {
 
     fun changed(file: VirtualFile?) {
         val enabled = runReadActionBlocking {
-            DeclarativeInlayHintsSettings.getInstance().isProviderEnabled(MIPS_ADDRESS_HINTS_ID) == true
+            val settings = DeclarativeInlayHintsSettings.getInstance()
+            settings.isProviderEnabled(MIPS_ADDRESS_HINTS_ID) == true || settings.isProviderEnabled(MIPS_EXPANSION_HINTS_ID) == true
         }
         if (enabled) refresh.queue(file)
     }

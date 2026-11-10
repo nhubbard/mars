@@ -407,6 +407,18 @@ when the assembly becomes invalid or an include has no unique selected assembly.
 Addresses from expanded macro bodies stay out of the editor hints. Each displayed
 address must match a written declaration by name and position.
 
+## Pseudo-instruction expansion inlays
+
+Enable **MARS pseudo-instruction expansions** in **Editor → Inlay Hints**.
+Click the instruction count at the end of a source line to see the basic
+instructions emitted there by MARS. The hints account for `.eqv` aliases and
+the active assembly settings. Pseudo-instructions inside nested macros appear
+on the outermost invocation line. Basic instructions written in the macro
+body are excluded from that count.
+
+Both inlay providers share the detached background assembly and its freshness
+checks. Each provider has an independent setting and starts disabled.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

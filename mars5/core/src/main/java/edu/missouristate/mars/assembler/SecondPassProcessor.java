@@ -11,6 +11,7 @@ import edu.missouristate.mars.util.NumberDisplayBase;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 
@@ -32,6 +33,7 @@ final class SecondPassProcessor {
       ArrayList<MIPSprogram> programs, ErrorList errors, boolean warningsAreErrors)
       throws ProcessingException {
     var machine = new ArrayList<ProgramStatement>();
+    var pseudoAddresses = new HashSet<Integer>();
     var expander = new PseudoInstructionExpander(context);
     for (var program : programs) {
       if (errors.errorLimitExceeded()) {
@@ -46,7 +48,12 @@ final class SecondPassProcessor {
         if (statement.getInstruction() instanceof BasicInstruction) {
           machine.add(statement);
         } else {
-          machine.addAll(expander.expand(statement, program, errors));
+          var expansion = expander.expand(statement, program, errors);
+          for (var generated : expansion) {
+            checkCancellation.run();
+            pseudoAddresses.add(generated.getAddress());
+            machine.add(generated);
+          }
         }
       }
     }
@@ -84,7 +91,7 @@ final class SecondPassProcessor {
     if (errors.errorsOccurred() || errors.warningsOccurred() && warningsAreErrors) {
       throw new ProcessingException(errors);
     }
-    return new Result(machine, new InstructionSourceMap(origins, breakpoints));
+    return new Result(machine, new InstructionSourceMap(origins, breakpoints, pseudoAddresses));
   }
 
   private void catchDuplicateAddresses(ArrayList<ProgramStatement> instructions, ErrorList errors) {

@@ -531,6 +531,12 @@ class SessionAssemblyTest {
       assertThat(expanded.getFirst().assembly()).startsWith("lui ");
       assertThat(expanded.getFirst().encoding()).isEqualTo(0x3c011234);
       assertThat(expanded.getFirst().origin()).isSameAs(map.origins().get(pc));
+      assertThat(map.pseudoAddresses()).containsExactlyInAnyOrder(pc, pc + 4, pc + 16, pc + 20);
+      assertThatThrownBy(() -> map.pseudoAddresses().clear()).isInstanceOf(UnsupportedOperationException.class);
+      assertThat(result.program().pseudoInstructions(() -> {})).containsExactly(
+          expanded.get(0), expanded.get(1),
+          result.program().instructionsAt(new Location(main, 4), () -> {}).get(0),
+          result.program().instructionsAt(new Location(main, 4), () -> {}).get(1));
       assertThat(result.program().instructionsAt(new Location(definitions, 2), () -> {})).hasSize(4);
       assertThat(result.program().instructionsAt(new Location(main, 1), () -> {})).isEmpty();
       assertThatThrownBy(() -> result.program().instructionsAt(new Location(calls, 2), () -> {
