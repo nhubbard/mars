@@ -9,6 +9,7 @@ import com.intellij.lang.documentation.DocumentationMarkup.DEFINITION_START
 import com.intellij.model.Pointer
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.platform.backend.documentation.DocumentationResult
 import com.intellij.platform.backend.documentation.DocumentationTarget
@@ -24,8 +25,6 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
-import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
-import edu.missouristate.mars.plugin.analysis.sourceLine
 import java.util.TreeMap
 
 internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, LookupElementDocumentationTargetProvider {
@@ -33,58 +32,86 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         if (file !is MipsFile) return emptyList()
         val adjusted = TargetElementUtil.adjustOffset(file, file.fileDocument, offset)
         val token = file.findElementAt(adjusted) ?: return emptyList()
-        return listOfNotNull(documentationAt(file, token))
+        return documentationAt(file, token)
     }
 
-    private fun documentationAt(file: MipsFile, token: PsiElement): DocumentationTarget? {
+    private fun documentationAt(file: MipsFile, token: PsiElement): List<DocumentationTarget> {
         val owner = token.parent
         val ownerType = PsiUtilCore.getElementType(owner)
         val candidate = operationOwner(token)
         if (candidate != null) {
             val analysis = file.project.service<MarsAnalysisService>()
-            val site = analysis.operationSite(file, candidate.operationHead) ?: return null
-            if (site.range.startOffset != token.textOffset) return null
+            val calls = analysis.nestedMacroCallsAt(file, token)
+            if (calls.isNotEmpty()) {
+                return calls.distinctBy { Triple(it.definition(), it.name(), it.parameters()) }.map { call ->
+                    val (source, offset) = analysis.macroDefinitionSource(call.definition())
+                    MacroDocumentation(token, source, offset, call.name(), call.parameters(), expanded = true)
+                }.sortedWith(compareBy({ it.source.viewProvider.virtualFile.path }, { it.nameOffset }, { it.signature }))
+            }
+            val site = analysis.operationSite(file, candidate.operationHead) ?: return emptyList()
+            if (site.range.startOffset != token.textOffset) return emptyList()
             if (site.type == TokenTypes.IDENTIFIER) {
-                val definition = site.macroDefinition ?: return null
-                return MacroDocumentation(token, definition)
+                val definition = site.macroDefinition ?: return emptyList()
+                return listOf(MacroDocumentation(
+                    token, definition.header.containingFile, definition.nameOffset,
+                    definition.name, definition.parameters.map { it.value }, expanded = false,
+                ))
             }
             // Includes are expanded before equivalences, so a generated .include cannot open a file.
             val operation = site.name
-            if (Directives.INCLUDE.name.equals(operation, ignoreCase = true)) return null
-            return MipsDocumentationCatalog[operation]
+            if (Directives.INCLUDE.name.equals(operation, ignoreCase = true)) return emptyList()
+            return listOfNotNull(MipsDocumentationCatalog[operation])
         }
         val keyword = when (PsiUtilCore.getElementType(token)) {
             includeType -> ownerType in includeOwners
             macroEndType -> ownerType in macroEndOwners
             else -> ownerType in headOwners && owner.firstChild == token
         }
-        return if (keyword) MipsDocumentationCatalog[token.text] else null
+        return if (keyword) listOfNotNull(MipsDocumentationCatalog[token.text]) else emptyList()
     }
 
     override fun documentationTarget(psiFile: PsiFile, element: LookupElement, offset: Int): DocumentationTarget? =
         element.`object` as? MipsCatalogEntry
 
-    private inner class MacroDocumentation(private val call: PsiElement, private val definition: Begin) : DocumentationTarget {
-        private val source = definition.header.containingFile
+    private inner class MacroDocumentation(
+        private val call: PsiElement,
+        val source: PsiFile,
+        val nameOffset: Int,
+        private val name: String,
+        parameters: List<String>,
+        private val expanded: Boolean,
+    ) : DocumentationTarget {
+        val signature = parameters.joinToString(prefix = "$name(", postfix = ")")
+        private val anchor get() = TextRange.from(nameOffset, 0)
 
         override fun createPointer(): Pointer<MacroDocumentation> {
             val pointer = SmartPointerManager.createPointer(call)
+            val definition = if (expanded) {
+                SmartPointerManager.getInstance(source.project).createSmartPsiFileRangePointer(source, anchor)
+            } else null
             return Pointer {
                 val token = pointer.element ?: return@Pointer null
-                documentationAt(token.containingFile as MipsFile, token) as? MacroDocumentation
+                val candidates = documentationAt(token.containingFile as MipsFile, token).filterIsInstance<MacroDocumentation>()
+                if (definition == null) candidates.singleOrNull()
+                else candidates.firstOrNull {
+                    it.source.viewProvider.virtualFile == definition.virtualFile && it.anchor == definition.range && it.signature == signature
+                }
             }
         }
 
-        override fun computePresentation(): TargetPresentation =
-            TargetPresentation.builder(definition.name).locationText(source.name).presentation()
+        override fun computePresentation(): TargetPresentation {
+            val location = if (expanded) "${source.name}:${source.fileDocument.getLineNumber(nameOffset) + 1}" else source.name
+            return TargetPresentation.builder(if (expanded) signature else name).locationText(location).presentation()
+        }
 
         override val navigatable: OpenFileDescriptor
-            get() = OpenFileDescriptor(source.project, source.viewProvider.virtualFile, definition.nameOffset)
+            get() = OpenFileDescriptor(source.project, source.viewProvider.virtualFile, nameOffset)
 
         override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
-            val signature = definition.parameters.joinToString(prefix = "${definition.name}(", postfix = ")") { it.value }
             append(DEFINITION_START).append(StringUtil.escapeXmlEntities(signature)).append(DEFINITION_END)
-            val comment = sourceLine(definition.header).substringAfter('#', "").trim()
+            val document = source.fileDocument
+            val end = document.getLineEndOffset(document.getLineNumber(nameOffset))
+            val comment = document.getText(TextRange(nameOffset, end)).substringAfter('#', "").trim()
             if (comment.isNotEmpty()) {
                 append(CONTENT_START).append(StringUtil.escapeXmlEntities(comment)).append(CONTENT_END)
             }

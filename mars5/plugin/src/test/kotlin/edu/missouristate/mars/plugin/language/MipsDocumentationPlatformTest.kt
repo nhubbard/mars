@@ -197,6 +197,62 @@ class MipsDocumentationPlatformTest {
         assertNull(computeDocumentationBlocking(pointer))
     }
 
+    @Test
+    fun `nested documentation shows each selected definition and restores its own source pointer`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro outer
+                inner(7)
+            .end_macro
+            .macro inner (%first) # First <definition>
+            .end_macro
+            outer
+            .include "plain.inc"
+            outer
+            .macro inner (%last) # Last definition
+            .end_macro
+            outer
+            nop
+        """.trimIndent()
+        val include = ".macro inner (%middle) # Included & empty\n.end_macro\n"
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("plain.inc", include)
+            val file = fixture.addFileToProject("nested-doc.asm", source)
+            fixture.configureFromExistingVirtualFile(file.virtualFile)
+            fixture.editor.caretModel.moveToOffset(source.indexOf("inner(7)") + 1)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val provider = IdeDocumentationTargetProvider.getInstance(current)
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        val pointers = readAction {
+            val targets = provider.documentationTargets(fixture.editor, fixture.file, fixture.editor.caretModel.offset)
+            assertEquals(listOf("inner(%first)", "inner(%last)", "inner(%middle)"), targets.map { it.computePresentation().presentableText })
+            assertEquals(listOf("nested-doc.asm:4", "nested-doc.asm:9", "plain.inc:1"), targets.map { it.computePresentation().locationText })
+            val offsets = targets.map { (it.navigatable as OpenFileDescriptor).offset }
+            assertEquals(listOf(source.indexOf("inner (%first)"), source.indexOf("inner (%last)"), include.indexOf("inner")), offsets)
+            targets.map { it.createPointer() }
+        }
+        assertTrue("First &lt;definition&gt;" in computeDocumentationBlocking(pointers[0])?.html.orEmpty())
+        assertTrue("Last definition" in computeDocumentationBlocking(pointers[1])?.html.orEmpty())
+        assertTrue("Included &amp; empty" in computeDocumentationBlocking(pointers[2])?.html.orEmpty())
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(current) {
+                val document = fixture.editor.document
+                val last = source.indexOf("%last")
+                document.replaceString(last, last + "%last".length, "%changed")
+                val first = source.indexOf("First <definition>")
+                document.replaceString(first, first + "First <definition>".length, "Updated comment")
+                document.insertString(source.indexOf(".macro inner (%first)"), "\n")
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertNull(pointers[0].dereference())
+        }
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        assertTrue("Updated comment" in computeDocumentationBlocking(pointers[0])?.html.orEmpty())
+        assertNull(computeDocumentationBlocking(pointers[1]))
+        assertTrue("Included &amp; empty" in computeDocumentationBlocking(pointers[2])?.html.orEmpty())
+    }
+
     private suspend fun documentation(source: String, filename: String = "doc.asm"): String? {
         withContext(Dispatchers.EDT) { fixture.configureByText(filename, source) }
         val current = project.get()
