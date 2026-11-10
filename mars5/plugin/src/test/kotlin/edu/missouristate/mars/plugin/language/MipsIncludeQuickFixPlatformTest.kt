@@ -1,18 +1,23 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import java.io.IOException
+import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -65,6 +70,52 @@ class MipsIncludeQuickFixPlatformTest {
                 fixture.launchAction(closeQuote)
                 fixture.checkResult(closed)
                 assertNull(fixture.getAvailableIntention(closeQuote))
+            }
+        }
+    }
+
+    @Test
+    fun `create include quick fix uses the directory the assembler resolves`() = timeoutRunBlocking<Unit> {
+        val name = "values # one.s"
+        val text = ".include \"shortcut/../$name\"\nnop\n"
+        val entry = withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("local/entry.asm", text).virtualFile
+            val child = fixture.tempDirFixture.findOrCreateDir("actual/nested")
+            val shortcut = Files.createSymbolicLink(source.toNioPath().resolveSibling("shortcut"), child.toNioPath())
+            checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(shortcut))
+            fixture.configureFromExistingVirtualFile(source)
+            fixture.editor.caretModel.moveToOffset(text.indexOf(name))
+            source
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            val fix = fixture.availableIntentions.single { it.text.contains(name) && it.text.startsWith("Create file") }
+            fixture.launchAction(fix)
+            val created = fixture.tempDirFixture.getFile("actual/$name")
+            assertEquals("", created?.contentsToByteArray()?.decodeToString())
+            assertNull(fixture.tempDirFixture.getFile("local/$name"))
+            fixture.configureFromExistingVirtualFile(entry)
+            fixture.checkResult(text)
+            assertTrue(fixture.doHighlighting().none { it.description?.startsWith("Error reading include file") == true })
+        }
+    }
+
+    @Test
+    fun `create include quick fix requires an existing parent directory`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.tempDirFixture.createFile("existing.s", "nop\n")
+            fixture.tempDirFixture.findOrCreateDir("directory")
+            for (path in listOf("missing/new.s", "existing.s/new.s", "directory", "bad\u0000name.s")) {
+                fixture.configureByText("entry.asm", ".include \"<caret>$path\"\n")
+                assertTrue(fixture.availableIntentions.none { it.text.startsWith("Create file") })
+            }
+            val readOnly = fixture.tempDirFixture.findOrCreateDir("read-only")
+            WriteAction.run<IOException> { readOnly.isWritable = false }
+            try {
+                fixture.configureByText("entry.asm", ".include \"read-only/<caret>new.s\"\n")
+                assertTrue(fixture.availableIntentions.none { it.text.startsWith("Create file") })
+            } finally {
+                WriteAction.run<IOException> { readOnly.isWritable = true }
             }
         }
     }
