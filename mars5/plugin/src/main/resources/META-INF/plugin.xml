@@ -1,8 +1,19 @@
-<idea-plugin>
+<idea-plugin url="https://github.com/nhubbard/mars">
   <id>edu.missouristate.mars</id>
   <name>MARS MIPS</name>
   <vendor>MARS contributors</vendor>
-  <description>MIPS assembly and simulation services backed by an independent session per project.</description>
+  <description><![CDATA[
+    <p>Edit, run, and debug MIPS assembly.</p>
+    <ul>
+      <li>Work with MARS directives, macros, pseudoinstructions, and include files using completion,
+      navigation, formatting, and inline diagnostics.</li>
+      <li>Assemble and run programs from IntelliJ with shared run configurations and a native console.</li>
+      <li>Debug with breakpoints, instruction stepping, backstep, and register and memory inspection.</li>
+      <li>Explore execution with the MARS Tools window, including the branch predictor, cache simulator,
+      MIPS X-Ray, and memory-mapped devices.</li>
+    </ul>
+    <p><a href="https://github.com/nhubbard/mars">Project source and documentation</a></p>
+  ]]></description>
   <resource-bundle>messages.MarsBundle</resource-bundle>
   <depends>com.intellij.modules.platform</depends>
   <depends optional="true" config-file="mars-java.xml">com.intellij.java</depends>

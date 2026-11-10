@@ -2186,6 +2186,13 @@ distributions. `verifyPluginNotices` compares the notice files with the ZIP
 contents and checks that the notice index covers every bundled third-party
 JAR. Both the regular checks and Plugin Verifier run this check.
 
+The plugin descriptor links to the project repository and describes the
+editing, Run, Debug, and educational tools available in IntelliJ. The
+packaged `META-INF/pluginIcon.svg` supplies the Plugins settings logo.
+The local `mars-plugin-metadata-playback` scenario unpacks the generated ZIP
+into a clean IntelliJ test instance, runs a MIPS program, and opens the
+installed plugin's details.
+
 ### Reviewed API use in the 263 target
 
 | API | Scope and evidence |
