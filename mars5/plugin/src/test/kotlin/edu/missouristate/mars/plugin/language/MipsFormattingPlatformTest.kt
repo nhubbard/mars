@@ -122,6 +122,45 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
+    fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .data
+                .macro append (%open)
+                .asciiz   %open ,      "
+                .end_macro
+                append "x
+                .macro append (%first, %second)
+                .byte 0
+                .end_macro
+                .macro duplicate (${'$'}quote)
+                .asciiz   ${'$'}quote ,   ${'$'}quote
+                .end_macro
+                duplicate "
+                .macro forward (%open)
+                append    %open ,      tail
+                .end_macro
+                forward "y
+                .text
+                nop
+            """.trimIndent()
+            val before = assemble(directory.resolve("macro-quoted-before.asm"), source)
+            val strings = listOf("x ,      ", " ,   ", "y ,      tail ,      ")
+            val expectedBytes = strings.flatMap { it.map(Char::code) + 0 }
+            assertEquals(expectedBytes, before.second.take(expectedBytes.size))
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("macro-quoted.asm", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("macro-quoted-after.asm"), formatted))
+            assertTrue("    .asciiz %open ,      \"" in formatted, formatted)
+            assertTrue("    .asciiz \$quote ,   \$quote" in formatted, formatted)
+            assertTrue("    append %open ,      tail" in formatted, formatted)
+        }
+
+    @Test
     fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv LOAD lw

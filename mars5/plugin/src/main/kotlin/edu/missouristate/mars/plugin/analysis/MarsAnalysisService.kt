@@ -70,7 +70,7 @@ internal data class FormattingLine(
     val atMargin: Boolean,
     // Null means the formatter has no complete expanded operand layout.
     val operandParentheses: Map<Int, OperandParenthesis>?,
-    val expandedStrings: List<TextRange>,
+    val verbatimOperandRanges: List<TextRange>,
 )
 
 internal data class MacroInvocation(
@@ -534,13 +534,24 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
         val openings = if (canFormatOperands && projectOperands) expandedOperandParentheses(mapped, source, start) else null
-        // An opening quote supplied by an alias can absorb written tokens and their whitespace.
-        val strings = (0 until tokens.size()).mapNotNull { index ->
-            val token = tokens[index]
-            if (token.type != TokenTypes.QUOTED_STRING) return@mapNotNull null
-            TextRange(start + mapped.originalOffset(token.startPos - 1), start + mapped.originalOffset(token.endPos - 1))
+        val formals = prefix.openMacro?.parametersByName.orEmpty()
+        val verbatim = buildList {
+            for (index in 0 until tokens.size()) {
+                val token = tokens[index]
+                val writtenStart = start + mapped.originalOffset(token.startPos - 1)
+                // A formal can absorb the rest of a row as a quoted argument, even when a
+                // later macro expansion supplies the closing quote. Instructions require typed operands.
+                if (type != TokenTypes.OPERATOR && token.value in formals) {
+                    add(TextRange(writtenStart, start + source.length))
+                    break
+                }
+                // An opening quote supplied by an alias can absorb written tokens and whitespace.
+                if (token.type == TokenTypes.QUOTED_STRING) {
+                    add(TextRange(writtenStart, start + mapped.originalOffset(token.endPos - 1)))
+                }
+            }
         }
-        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, strings)
+        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, verbatim)
     }
 
     private fun expandedOperandParentheses(
