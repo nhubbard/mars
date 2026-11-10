@@ -1,10 +1,13 @@
 package edu.missouristate.mars.cli;
 
+import edu.missouristate.mars.ApplicationInfo;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.api.SessionSyscallEnvironment;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.simulator.ProgramArgumentList;
+import edu.missouristate.mars.util.FilenameFinder;
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -19,11 +22,15 @@ public final class MarsCli {
   /** Executes one independent invocation without exiting the host process. */
   public static int execute(
       String[] arguments, InputStream input, PrintStream output, PrintStream error) {
+    int assemblyErrorExitCode = 1;
+    int simulationErrorExitCode = 1;
+    boolean simulating = false;
     try (var session =
         DaggerMarsComponent.builder().guiProxy(new HeadlessGuiProxy()).build().context()) {
       session
           .settings
           .setDelayedBranchingEnabled(false)
+          .setSelfModifyingCodeEnabled(false)
           .setStartAtMainEnabled(false)
           .setExtendedAssemblerEnabled(true)
           .setWarningsAreErrors(false)
@@ -33,9 +40,10 @@ public final class MarsCli {
       String layout = "Default";
       int maximumSteps = 0;
       boolean assembleOnly = false;
+      boolean project = false;
       for (int i = 0; i < arguments.length; i++) {
         String arg = arguments[i];
-        switch (arg) {
+        switch (arg.toLowerCase(Locale.ROOT)) {
           case "--help", "-h", "h" -> {
             output.print(usage());
             return 0;
@@ -45,31 +53,41 @@ public final class MarsCli {
             i = arguments.length;
           }
           case "--assemble-only", "a" -> assembleOnly = true;
+          case "--project", "p" -> project = true;
           case "--delayed-branching", "db" -> session.settings.setDelayedBranchingEnabled(true);
+          case "--self-modifying-code", "smc" -> session.settings.setSelfModifyingCodeEnabled(true);
           case "--start-at-main", "sm" -> session.settings.setStartAtMainEnabled(true);
-          case "--no-pseudo", "np" -> session.settings.setExtendedAssemblerEnabled(false);
+          case "--no-pseudo", "np", "ne" -> session.settings.setExtendedAssemblerEnabled(false);
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "nc" -> {}
-          case "--memory", "mc" -> {
-            if (++i >= arguments.length) {
-              throw new IllegalArgumentException("Missing memory layout");
-            }
-            layout = arguments[i];
-          }
+          case "--memory", "mc" -> layout = requiredValue(arguments, ++i, "memory layout");
+          case "--assembly-error-exit-code" ->
+              assemblyErrorExitCode =
+                  Integer.decode(requiredValue(arguments, ++i, "assembly error exit code"));
+          case "--simulation-error-exit-code" ->
+              simulationErrorExitCode =
+                  Integer.decode(requiredValue(arguments, ++i, "simulation error exit code"));
           case "--max-steps" -> {
-            if (++i >= arguments.length) {
-              throw new IllegalArgumentException("Missing step limit");
-            }
-            maximumSteps = Integer.parseInt(arguments[i]);
+            maximumSteps = Integer.parseInt(requiredValue(arguments, ++i, "step limit"));
             if (maximumSteps < 1) {
               throw new IllegalArgumentException("Step limit must be positive");
             }
           }
           default -> {
-            if (arg.startsWith("-")) {
+            Integer number = decode(arg);
+            Integer assemblyStatus = decodeSuffix(arg, "ae");
+            Integer simulationStatus = decodeSuffix(arg, "se");
+            if (assemblyStatus != null) {
+              assemblyErrorExitCode = assemblyStatus;
+            } else if (simulationStatus != null) {
+              simulationErrorExitCode = simulationStatus;
+            } else if (number != null && !Files.isRegularFile(Path.of(arg))) {
+              maximumSteps = number;
+            } else if (arg.startsWith("-")) {
               throw new IllegalArgumentException("Unknown option: " + arg);
+            } else {
+              files.add(Path.of(arg));
             }
-            files.add(Path.of(arg));
           }
         }
       }
@@ -78,7 +96,7 @@ public final class MarsCli {
         return 2;
       }
       session.setMemoryConfiguration(layout);
-      var program = session.assemble(files);
+      var program = session.assemble(project ? projectSources(files) : files);
       error.print(program.getAssemblyDiagnostics().generateWarningReport());
       if (assembleOnly) {
         return 0;
@@ -86,6 +104,7 @@ public final class MarsCli {
       new ProgramArgumentList(programArguments).storeProgramArguments(session);
       try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
         program.setSyscallEnvironment(io);
+        simulating = true;
         if (!program.simulate(maximumSteps)) {
           error.println("Execution reached the step limit.");
           return 3;
@@ -94,10 +113,49 @@ public final class MarsCli {
       }
     } catch (ProcessingException failure) {
       error.print(failure.errors().generateErrorAndWarningReport());
-      return 1;
+      return simulating ? simulationErrorExitCode : assemblyErrorExitCode;
     } catch (IllegalArgumentException | IllegalStateException failure) {
       error.println(failure.getMessage());
       return 2;
+    }
+  }
+
+  private static List<Path> projectSources(List<Path> files) {
+    Path lead = files.getFirst().toAbsolutePath().normalize();
+    Path directory = lead.getParent();
+    if (directory == null) {
+      throw new IllegalArgumentException("Project mode needs a lead source file");
+    }
+    var sources = new LinkedHashSet<Path>();
+    sources.add(lead);
+    for (String file :
+        FilenameFinder.getFilenameList(directory.toString(), ApplicationInfo.fileExtensions)) {
+      sources.add(Path.of(file).normalize());
+    }
+    for (Path file : files) {
+      sources.add(file.toAbsolutePath().normalize());
+    }
+    return List.copyOf(sources);
+  }
+
+  private static String requiredValue(String[] arguments, int index, String description) {
+    if (index == arguments.length) {
+      throw new IllegalArgumentException("Missing " + description);
+    }
+    return arguments[index];
+  }
+
+  private static Integer decodeSuffix(String text, String prefix) {
+    return text.regionMatches(true, 0, prefix, 0, prefix.length())
+        ? decode(text.substring(prefix.length()))
+        : null;
+  }
+
+  private static Integer decode(String text) {
+    try {
+      return Integer.decode(text);
+    } catch (NumberFormatException ignored) {
+      return null;
     }
   }
 
@@ -105,12 +163,17 @@ public final class MarsCli {
     return """
     Usage: mars [options] source.s [more sources.s] [-- program arguments]
       --assemble-only       Assemble without running (a)
+      --project             Assemble sources beside the first file and any additional files (p)
       --delayed-branching    Enable branch delay slots (db)
+      --self-modifying-code  Allow writes to text and execution from data (smc)
       --start-at-main        Start at the exported main label (sm)
       --no-pseudo            Accept basic instructions only (np)
       --warnings-as-errors   Fail assembly on warnings (we)
       --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
-      --max-steps COUNT      Bound execution; return code 3 if the limit is reached
+      --max-steps COUNT      Bound execution and return code 3 at the limit
+      COUNT                  Positional step limit (zero or negative means unlimited)
+      --assembly-error-exit-code CODE     Override the assembly error status (aeCODE)
+      --simulation-error-exit-code CODE   Override the simulation error status (seCODE)
       --help                 Show this help
     Exit codes: simulated exit code, 1 for assembly/runtime errors, 2 for invalid arguments.
     """;

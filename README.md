@@ -33,8 +33,9 @@ Gradle Plugin 2.20.0. It uses the IDE's Kotlin runtime. Its ZIP is produced in
 pass `-PlocalIdePath="/path/to/IntelliJ IDEA.app"`. Language support, consoles, and debugging
 are future milestones; the starter currently establishes project session ownership and disposal.
 
-The CLI supports multiple sources, program arguments after `--`, assembly-only mode, memory layouts,
-branch delay slots, start-at-main, pseudo-instruction policy, warnings-as-errors, and step limits.
+The CLI supports ordered sources, project-directory assembly, and program arguments after `--`.
+Run options include memory layouts, branch delay slots, self-modifying code, and step limits.
+Automated builds can set separate exit codes for assembly and simulation errors.
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 
