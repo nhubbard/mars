@@ -1834,6 +1834,28 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `Debug terminates at the instruction budget across a breakpoint and backstep`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("limited.asm", "loop: addiu \$t0, \$t0, 1\nj loop\n")
+                .virtualFile.also { addBreakpoint(it, 1) }
+        }
+        withDebug(file, { instructionLimit = 3 }) { debug ->
+            debug.assertPausedAt(file, 1)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(file, 1)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(1, debug.exit.await())
+            assertEquals(3L, process.instructionCounter.snapshot().total)
+        }
+    }
+
+    @Test
     fun `Debug sees the argument frame at the first instruction in compact memory`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             project.service<MarsAssemblySettings>().changeMemoryLayout(MarsMemoryLayout.TEXT_AT_ZERO)

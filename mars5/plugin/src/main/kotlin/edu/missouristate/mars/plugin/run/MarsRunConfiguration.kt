@@ -22,6 +22,7 @@ import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
@@ -30,6 +31,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
 import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindIntText
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
@@ -70,6 +72,7 @@ internal enum class AssemblyOptionOverride(private val messageKey: String, priva
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var programArguments: String? by string()
+    var instructionLimit: Int by property(0)
     var delayedBranching: Boolean by property(false)
     var allowPseudoInstructions by enum(AssemblyOptionOverride.PROJECT)
     var warningsAreErrors by enum(AssemblyOptionOverride.PROJECT)
@@ -116,6 +119,12 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         return ParametersListUtil.parse(arguments)
     }
 
+    private fun instructionLimit(invalid: (String) -> Exception): Int {
+        val limit = options.instructionLimit
+        if (limit < 0) throw invalid(runMessages.getMessage("run.instruction.limit.invalid"))
+        return limit
+    }
+
     private fun checkDevices(layout: MarsMemoryLayout, invalid: (String) -> Exception) {
         if (options.connectMarsBot && options.connectScavengerHunt) {
             throw invalid(runMessages.getMessage("run.connect.deviceConflict"))
@@ -130,6 +139,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val sources = resolveSourceSet { RuntimeConfigurationError(it) }
         memoryDumps(sources.entry) { RuntimeConfigurationError(it) }
         arguments { RuntimeConfigurationError(it) }
+        instructionLimit { RuntimeConfigurationError(it) }
     }
 
     private fun resolveSourceSet(invalid: (String) -> Exception): MarsSourceSet {
@@ -145,6 +155,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
     override fun getConfigurationEditor(): SettingsEditor<MarsRunConfiguration> = object : SettingsEditor<MarsRunConfiguration>() {
         private var source = ""
         private var programArguments = ""
+        private var instructionLimit = 0
         private var delayedBranching = false
         private var assembleDirectory = false
         private var allowPseudoInstructions = AssemblyOptionOverride.PROJECT
@@ -182,6 +193,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                     .bind(RawCommandLineEditor::getText, RawCommandLineEditor::setText, ::programArguments.toMutableProperty())
                     .comment(runMessages.getMessage("run.arguments.help"))
             }
+            row(runMessages.getMessage("run.instruction.limit")) {
+                intTextField(0..Int.MAX_VALUE).bindIntText(::instructionLimit)
+                    .validationOnApply {
+                        if ((it.text.toIntOrNull() ?: -1) < 0) error(runMessages.getMessage("run.instruction.limit.invalid"))
+                        else null
+                    }
+                    .comment(runMessages.getMessage("run.instruction.limit.help"))
+            }
             val overrideRenderer = textListCellRenderer<AssemblyOptionOverride>("") { it.title }
             row(runMessages.getMessage("run.assembly.pseudo")) {
                 comboBox(AssemblyOptionOverride.entries, overrideRenderer)
@@ -202,10 +221,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             row(runMessages.getMessage("run.export.title")) {
                 cell(dumps.component).align(AlignX.FILL).comment(runMessages.getMessage("run.export.help"))
             }
-        }
+        }.also { it.registerValidators(this) }
         override fun resetEditorFrom(configuration: MarsRunConfiguration) {
             source = configuration.options.sourcePath.orEmpty()
             programArguments = configuration.options.programArguments.orEmpty()
+            instructionLimit = configuration.options.instructionLimit
             delayedBranching = configuration.options.delayedBranching
             allowPseudoInstructions = configuration.options.allowPseudoInstructions
             warningsAreErrors = configuration.options.warningsAreErrors
@@ -222,9 +242,12 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             form.reset()
         }
         override fun applyEditorTo(configuration: MarsRunConfiguration) {
+            val invalid = form.validateAll().firstOrNull()
+            if (invalid != null) throw ConfigurationException(invalid.message)
             form.apply()
             configuration.options.sourcePath = source.trim()
             configuration.options.programArguments = programArguments
+            configuration.options.instructionLimit = instructionLimit
             configuration.options.delayedBranching = delayedBranching
             configuration.options.allowPseudoInstructions = allowPseudoInstructions
             configuration.options.warningsAreErrors = warningsAreErrors
@@ -257,10 +280,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             warningsAreErrors = options.warningsAreErrors.resolve(defaults.warningsAreErrors),
         )
         val arguments = arguments { ExecutionException(it) }
+        val limit = instructionLimit { ExecutionException(it) }
         val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, launch, dumps, arguments, options.captureBitmap, options.captureReferences,
+            environment, launch, dumps, arguments, limit, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
@@ -270,6 +294,7 @@ internal class MarsRunState(
     private val environment: ExecutionEnvironment, private val launch: MarsLaunchAssembly,
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
+    private val instructionLimit: Int,
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
     private val connectDigitalLab: Boolean,
@@ -283,12 +308,12 @@ internal class MarsRunState(
     override fun startProcess() =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
-            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments)
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments, instructionLimit = instructionLimit)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
-            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments, execute = execute)
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments, instructionLimit = instructionLimit, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

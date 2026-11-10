@@ -54,6 +54,42 @@ class SimulatorEngineTest {
   }
 
   @Test
+  void instructionBudgetSurvivesBreakpointsAndReverseExecution() throws Exception {
+    try (var session = load("loop: addiu $t0,$t0,1\nj loop\n")) {
+      var engine = session.simulator();
+      assertThatThrownBy(() -> engine.setInstructionLimit(-1))
+          .isInstanceOf(IllegalArgumentException.class);
+      engine.setInstructionLimit(3);
+      int entry = session.registerFile.getPC();
+      assertThat(engine.runAsync(1, null).get(5, TimeUnit.SECONDS).reason())
+          .isEqualTo(StopEvent.Reason.STEP_LIMIT);
+      assertThatThrownBy(() -> engine.setInstructionLimit(4))
+          .isInstanceOf(IllegalStateException.class);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(session.registerFile.getValue(8)).isZero();
+      assertThat(engine.runUntilAsync(0, pc -> pc == entry + 4).get(5, TimeUnit.SECONDS).reason())
+          .isEqualTo(StopEvent.Reason.BREAKPOINT);
+      assertThat(engine.runAsync(1, null).get(5, TimeUnit.SECONDS).reason())
+          .isEqualTo(StopEvent.Reason.INSTRUCTION_LIMIT);
+      assertThat(session.registerFile.getPC()).isEqualTo(entry);
+      assertThat(session.registerFile.getValue(8)).isEqualTo(1);
+      assertThat(engine.state()).isEqualTo(SimulatorState.STOPPED);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThatThrownBy(engine::run).isInstanceOf(IllegalStateException.class);
+    }
+  }
+
+  @Test
+  void naturalExitOnTheFinalAllowedInstructionRetainsItsExitStatus() throws Exception {
+    try (var session = load("addiu $v0,$zero,17\naddiu $a0,$zero,7\nsyscall\n")) {
+      var engine = session.simulator();
+      engine.setInstructionLimit(3);
+      assertThat(engine.runAsync(0, null).get(5, TimeUnit.SECONDS))
+          .isEqualTo(new StopEvent(StopEvent.Reason.NORMAL_EXIT, 7));
+    }
+  }
+
+  @Test
   void deviceCheckpointsShareTheInstructionFrameAndExpireWithIt() throws Exception {
     try (var session = load("nop\n")) {
       int pc = session.registerFile.getPC();

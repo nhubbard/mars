@@ -15,8 +15,10 @@ public record StopEvent(Reason reason, int exitCode) {
     PAUSE,
     /** A reverse instruction command completed. */
     BACKSTEP,
-    /** Maximum step limit was reached. */
+    /** One execution slice used its allotted steps and suspended. */
     STEP_LIMIT,
+    /** The program used its launch-wide instruction budget. */
+    INSTRUCTION_LIMIT,
     /** Program counter ran off the bottom of the text segment with no halt. */
     CLIFF_TERMINATION,
     /** A run-time exception occurred (also triggers {@code onError}). */

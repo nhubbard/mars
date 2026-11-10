@@ -102,11 +102,12 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectScavengerHunt: Boolean = false,
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
         arguments: List<String> = emptyList(),
+        instructionLimit: Int = 0,
         execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, captureBitmap, captureReferences,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, instructionLimit, captureBitmap, captureReferences,
             connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
@@ -116,6 +117,7 @@ internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val launch: MarsLaunchAssembly, private val input: Pipe,
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
+    private val instructionLimit: Int,
     captureBitmap: Boolean,
     captureReferences: Boolean,
     connectDigitalLab: Boolean,
@@ -246,6 +248,7 @@ internal class MarsProcessHandler(
                     SessionSyscallEnvironment(session.memory, stdin, output, error, entry.parent, inputCharset).use { io ->
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
+                        simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.addListener(object : SimulatorListener {
                             override fun onStep(event: StepEvent) {
                                 val word = event.instruction()
@@ -288,6 +291,11 @@ internal class MarsProcessHandler(
                         if (memoryDumps.isNotEmpty() && stop.reason() in dumpReasons) exportAfterRun(session, program.sources.snapshot.texts().keys + entry)
                         when (stop.reason()) {
                             StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION -> stop.exitCode()
+                            StopEvent.Reason.INSTRUCTION_LIMIT -> {
+                                notifyTextAvailable(runMessages.getMessage("run.instruction.limit.reached", instructionLimit) + "\n",
+                                    ProcessOutputTypes.STDERR)
+                                1
+                            }
                             else -> 1
                         }
                     }
@@ -342,7 +350,9 @@ internal class MarsProcessHandler(
 
 }
 
-private val dumpReasons = setOf(StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION, StopEvent.Reason.EXCEPTION)
+private val dumpReasons = setOf(
+    StopEvent.Reason.NORMAL_EXIT, StopEvent.Reason.CLIFF_TERMINATION, StopEvent.Reason.EXCEPTION, StopEvent.Reason.INSTRUCTION_LIMIT,
+)
 
 /** A descriptor write can split a UTF-8 code point across multiple flushes. */
 internal class ConsoleOutput(private val emit: (String) -> Unit) : ByteArrayOutputStream() {

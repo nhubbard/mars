@@ -31,6 +31,8 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
   private volatile Thread worker;
   private MIPSprogram program;
   private long stepCount;
+  private long instructionLimit;
+  private long instructionsRemaining;
 
   public SimulatorEngine(MarsContext session) {
     this.session = Objects.requireNonNull(session);
@@ -51,6 +53,21 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
   @Override
   public void step() {
     runAsync(1, null);
+  }
+
+  /** Sets the instruction budget for each program before this controller starts. Zero is unlimited. */
+  public synchronized void setInstructionLimit(long limit) {
+    if (limit < 0) {
+      throw new IllegalArgumentException("Instruction limit cannot be negative");
+    }
+    if (program != null) {
+      throw new IllegalStateException("Set the instruction limit before starting the simulator");
+    }
+    instructionLimit = limit;
+  }
+
+  private boolean instructionLimitReached() {
+    return instructionLimit > 0 && instructionsRemaining == 0;
   }
 
   private volatile java.util.function.DoubleSupplier runSpeed = () -> Double.POSITIVE_INFINITY;
@@ -103,9 +120,10 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     if (current != program) {
       program = current;
       stepCount = 0;
+      instructionsRemaining = instructionLimit;
       state = SimulatorState.IDLE;
     }
-    if (state == SimulatorState.STOPPED) {
+    if (state == SimulatorState.STOPPED || instructionLimitReached()) {
       throw new IllegalStateException("Program has stopped");
     }
     request = Request.NONE;
@@ -149,12 +167,19 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
         if (result.executed()) {
           steps++;
           stepCount++;
+          if (instructionLimit > 0) {
+            instructionsRemaining--;
+          }
           var event = new StepEvent(
               result.pc(), result.instruction(), stepCount, result.transfer(), result.branchOutcome());
           notifyListeners(listener -> listener.onStep(event));
         }
         if (result.stopReason() != null) {
           reason = result.stopReason();
+          break;
+        }
+        if (instructionLimitReached()) {
+          reason = StopEvent.Reason.INSTRUCTION_LIMIT;
           break;
         }
         if (request != Request.NONE) {
@@ -257,6 +282,7 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     if (program != current) {
       program = current;
       stepCount = 0;
+      instructionsRemaining = instructionLimit;
     }
     var completion = new CompletableFuture<Void>();
     request = Request.NONE;

@@ -1368,6 +1368,16 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## Instruction limit
+
+Set **Instruction limit** in a MIPS Run or Debug configuration. **0**
+allows unlimited execution. A positive value counts machine instructions
+across debugger stops, including instructions executed again after
+backstep. Reaching the limit terminates the launch with a console message
+and status 1, and any configured after-run dumps use the final state.
+A program that exits on its final allowed instruction keeps its own exit
+status.
+
 ## Program arguments
 
 Enter **Program arguments** in a MIPS Run or Debug configuration. IntelliJ's

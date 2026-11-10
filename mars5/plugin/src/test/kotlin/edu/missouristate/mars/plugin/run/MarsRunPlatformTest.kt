@@ -38,6 +38,7 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -258,6 +259,60 @@ class MarsRunPlatformTest {
             assertEquals(".eqv VALUE 1\n", Files.readString(include))
         } finally {
             Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `native Run persists validates and enforces an instruction budget`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val recording = Recording()
+        val started = CompletableDeferred<MarsProcessHandler>()
+        val dump = directory.resolve("limit.hex")
+        try {
+            withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("limit.asm", ".data\n.word 42\n.text\nloop: j loop\n").virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                val editor = config.configurationEditor
+                try {
+                    editor.resetFrom(config)
+                    val field = UIUtil.findComponentsOfType(editor.component, JTextField::class.java).single { it.text == "0" }
+                    field.text = "-1"
+                    assertThrows<ConfigurationException> { editor.applyTo(config) }
+                    field.text = "2147483648"
+                    assertThrows<ConfigurationException> { editor.applyTo(config) }
+                    field.text = "3"
+                    editor.applyTo(config)
+                    editor.resetFrom(config)
+                    assertEquals("3", field.text)
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                config.options.memoryDumps = arrayListOf(dumpState(dump, MemoryExportRegion.RANGE, 0x10010000, 0x10010000))
+                val xml = Element("configuration").also(config::writeExternal)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(3, restored.options.instructionLimit)
+                config.options.instructionLimit = -1
+                assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                val invalid = ExecutionEnvironmentBuilder.create(executor, config).build()
+                assertThrows<ExecutionException> { config.getState(executor, invalid) }
+
+                val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env !== environment) return
+                        handler.addProcessListener(recording)
+                        started.complete(assertInstanceOf(MarsProcessHandler::class.java, handler))
+                    }
+                })
+                environment.runner.execute(environment)
+            }
+            assertEquals(1, recording.exit.await())
+            assertEquals("Stopped after reaching the instruction limit of 3.\n", recording.stderr.toString())
+            assertEquals(3L, started.await().instructionCounter.snapshot().total)
+            assertEquals("0000002a", Files.readAllLines(dump).single())
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
     }
 
