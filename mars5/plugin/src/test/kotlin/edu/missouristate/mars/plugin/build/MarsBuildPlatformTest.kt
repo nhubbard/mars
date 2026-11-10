@@ -69,6 +69,7 @@ import com.intellij.testFramework.TestActionEvent
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
+import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
@@ -90,6 +91,8 @@ import java.nio.file.Files
 import java.util.HexFormat
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
+import javax.swing.JLabel
+import javax.swing.JTextField
 import javax.swing.JList
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +108,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.jdom.Element
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -715,6 +719,73 @@ class MarsBuildPlatformTest {
             assertTrue(basicOnly.diagnostics.none { it.isWarning })
             assertTrue(build().hasErrors())
             assertEquals(listOf(MessageEvent.Kind.ERROR, MessageEvent.Kind.ERROR), diagnostics().map { it.kind })
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `assembler error limit validates persists and refreshes Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("error-limit.asm", (0..7).joinToString("\n", postfix = "\n") { ".byte 'ab'" }) as MipsFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val settings = project.service<MarsAssemblySettings>()
+        val build = project.service<MarsBuildService>()
+        val annotator = MipsAssemblyAnnotator()
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        fun diagnostics() = buildList {
+            while (true) add(events.tryReceive().getOrNull() ?: break)
+        }.filterIsInstance<MessageEvent>().filter { it.kind == MessageEvent.Kind.ERROR }
+        suspend fun analyze() = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(file)) })
+        try {
+            assertFalse(build.assemble(file.virtualFile.toNioPath()))
+            assertEquals(8, diagnostics().size)
+            val before = analyze()
+            assertEquals(8, before.diagnostics.size)
+            withContext(Dispatchers.EDT) {
+                assertThrows(IllegalArgumentException::class.java) { settings.changeAssemblerErrorLimit(0) }
+                val configurable = MarsAssemblyConfigurable(project)
+                try {
+                    val panel = configurable.createComponent()
+                    configurable.reset()
+                    val label = UIUtil.findComponentsOfType(panel, JLabel::class.java).single { it.text?.startsWith("Assembler error limit") == true }
+                    val field = label.labelFor as JTextField
+                    assertEquals(ApplicationInfo.maximumErrorMessages.toString(), field.text)
+                    for (invalid in listOf("0", "-1", "word", "2147483648")) {
+                        field.text = invalid
+                        assertThrows(ConfigurationException::class.java) { configurable.apply() }
+                    }
+                    field.text = "2"
+                    configurable.apply()
+                    val stamp = settings.sourceChanges.modificationCount
+                    configurable.apply()
+                    settings.changeAssemblerErrorLimit(2)
+                    assertEquals(stamp, settings.sourceChanges.modificationCount)
+                    val persisted = XmlSerializer.serialize(settings.getState())
+                    settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                    assertEquals(2, settings.executionOptions.assemblerErrorLimit)
+                } finally {
+                    configurable.disposeUIResources()
+                }
+            }
+            readAction { assertTrue(annotator.acceptResult(file, before).isEmpty()) }
+            val limited = analyze()
+            assertEquals(2, limited.diagnostics.size)
+            assertFalse(build.assemble(file.virtualFile.toNioPath()))
+            val errors = diagnostics()
+            assertEquals(3, errors.size)
+            assertEquals(2, errors.filterIsInstance<FileMessageEvent>().size)
+            assertTrue(errors.any { it.message.contains("Error Limit of 2 exceeded") })
+            withContext(Dispatchers.EDT) { settings.changeAssemblerErrorLimit(4) }
+            assertEquals(4, analyze().diagnostics.size)
+            withContext(Dispatchers.EDT) {
+                settings.loadState(MarsAssemblySettings.Settings(assemblerErrorLimit = -1))
+                assertEquals(ApplicationInfo.maximumErrorMessages, settings.executionOptions.assemblerErrorLimit)
+                settings.loadState(XmlSerializer.deserialize(Element("state"), MarsAssemblySettings.Settings::class.java))
+                assertEquals(ApplicationInfo.maximumErrorMessages, settings.assemblerErrorLimit)
+            }
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }

@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin
 
+import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.core.SimulationSettings
 
@@ -21,6 +22,7 @@ internal data class MarsExecutionOptions(
     val warningsAreErrors: Boolean = false,
     val memoryLayout: MarsMemoryLayout = MarsMemoryLayout.DEFAULT,
     val bareMachine: Boolean = false,
+    val assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
 ) {
     fun applyForAssembly(session: MarsContext) {
         applyTo(session.settings)
@@ -35,5 +37,6 @@ internal data class MarsExecutionOptions(
         settings.setExtendedAssemblerEnabled(allowPseudoInstructions)
         settings.setWarningsAreErrors(warningsAreErrors)
         settings.setBareMachineEnabled(bareMachine)
+        settings.setAssemblerErrorLimit(assemblerErrorLimit)
     }
 }

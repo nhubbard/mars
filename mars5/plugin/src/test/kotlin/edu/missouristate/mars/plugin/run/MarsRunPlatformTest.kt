@@ -890,6 +890,29 @@ class MarsRunPlatformTest {
         assertEquals(0L, process.instructionCounter.snapshot().total)
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `Run and Debug resolve the current project assembler error limit`(debug: Boolean) = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("limit.asm", "nop\n").virtualFile
+            val settings = project.service<MarsAssemblySettings>()
+            val config = type.createTemplateConfiguration(project)
+            config.options.sourcePath = source.path
+            val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
+            for (limit in listOf(2, 4)) {
+                settings.changeAssemblerErrorLimit(limit)
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                assertInstanceOf(MarsRunState::class.java, config.getState(executor, environment))
+                val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
+                try {
+                    assertEquals(limit, launch.options.assemblerErrorLimit)
+                } finally {
+                    Disposer.dispose(launch)
+                }
+            }
+        }
+    }
+
     @Test
     fun `Run inherits project assembly policy and can override each option independently`() = timeoutRunBlocking<Unit> {
         val lifetime = Disposer.newDisposable()

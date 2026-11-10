@@ -2159,6 +2159,13 @@ where relevant. Bare-machine mode requires numeric integer registers in operands
 Pseudo-instructions have a separate setting and are allowed by default. Warnings
 are reported without failing the build by default.
 
+The project assembler error limit is a positive integer (default 200), shared by
+Build, editor diagnostics, Run, Debug, and Before Launch assembly. The assembler
+retains that many source errors and adds one summary when the limit is exceeded.
+Changing the limit invalidates cached assembly and diagnostics, including selections
+from earlier launches. The native settings field validates its range before applying;
+missing or nonpositive persisted values fall back to the core default.
+
 Each Run or Debug configuration can inherit or override all six settings
 independently. Before Launch and process startup use the same resolved options
 for that launch. Editor diagnostics use the project's assembly policy. Promoted

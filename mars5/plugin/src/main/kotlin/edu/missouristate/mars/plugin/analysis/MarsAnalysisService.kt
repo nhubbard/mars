@@ -156,6 +156,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             warningsAreErrors = defaults.warningsAreErrors,
             memoryLayout = defaults.memoryLayout,
             bareMachine = defaults.bareMachine,
+            assemblerErrorLimit = defaults.assemblerErrorLimit,
         ))
     }
 

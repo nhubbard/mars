@@ -22,11 +22,13 @@ import com.intellij.ui.components.JBList
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.MutableProperty
 import com.intellij.ui.dsl.builder.bindItem
+import com.intellij.ui.dsl.builder.bindIntText
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.toNullableProperty
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import edu.missouristate.mars.ApplicationInfo
 import edu.missouristate.mars.plugin.analysis.MipsAssemblyContextListener
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
@@ -52,6 +54,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var delayedBranching: Boolean = false,
         @JvmField var selfModifyingCode: Boolean = false,
         @JvmField var bareMachine: Boolean = false,
+        @JvmField var assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
     )
 
     val sourceChanges = SimpleModificationTracker()
@@ -63,6 +66,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     val selfModifyingCode get() = getState().selfModifyingCode
     val bareMachine get() = getState().bareMachine
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
+    val assemblerErrorLimit get() = getState().assemblerErrorLimit.takeIf { it > 0 } ?: ApplicationInfo.maximumErrorMessages
     val executionOptions get() = getState().let {
         MarsExecutionOptions(
             delayedBranching = it.delayedBranching,
@@ -71,6 +75,7 @@ internal class MarsAssemblySettings(private val project: Project) :
             warningsAreErrors = it.warningsAreErrors,
             memoryLayout = MarsMemoryLayout.fromIdentifier(it.memoryLayout),
             bareMachine = it.bareMachine,
+            assemblerErrorLimit = assemblerErrorLimit,
         )
     }
     val projectSources: List<Path> get() = getState().sources.mapNotNull { projectFilePath(project, it) }.distinct()
@@ -148,6 +153,11 @@ internal class MarsAssemblySettings(private val project: Project) :
         val current = executionOptions
         if (current.allowPseudoInstructions == allowPseudoInstructions && current.warningsAreErrors == warningsAreErrors) return
         change { it.copy(allowPseudoInstructions = allowPseudoInstructions, warningsAreErrors = warningsAreErrors) }
+    }
+
+    fun changeAssemblerErrorLimit(value: Int) {
+        require(value > 0) { "Assembler error limit must be positive" }
+        if (getState().assemblerErrorLimit != value) change { it.copy(assemblerErrorLimit = value) }
     }
 
     fun applyImportedSettings(settings: Settings) {
@@ -230,6 +240,15 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
             row {
                 checkBox(messages.getMessage("run.bare.machine"))
                     .bindSelected({ settings.bareMachine }, settings::changeBareMachine)
+            }
+            row(messages.getMessage("build.settings.error.limit")) {
+                intTextField(1..Int.MAX_VALUE)
+                    .bindIntText({ settings.assemblerErrorLimit }, settings::changeAssemblerErrorLimit)
+                    .comment(messages.getMessage("build.settings.error.limit.help"))
+                    .validationOnApply {
+                        val value = it.text.toIntOrNull()
+                        if (value == null || value <= 0) error(messages.getMessage("build.settings.error.limit.invalid")) else null
+                    }
             }
             onReset {
                 val options = settings.executionOptions
