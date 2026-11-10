@@ -2148,4 +2148,26 @@ reference keyboard inspection. The saved scenarios are
 `mars-terminal-geometry-playback`, `mars-tool-tabs-playback` and
 `mars-memory-grid-playback`. They supplement the in-tree fixtures.
 Cross-host and high-contrast presentation, fresh install and upgrade
-checks, and binary Plugin Verifier results remain release qualification work.
+checks, and review of binary Plugin Verifier findings remain release
+qualification work.
+
+## IntelliJ plugin release preflight
+
+Run the same checks as CI from `mars5`.
+
+```sh
+./gradlew :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin
+```
+
+Plugin Verifier uses the same IDE distribution as compilation and tests.
+The initial macOS report from Verifier 1.411 found the archive compatible
+with IntelliJ IDEA build `IU-263.7307.200`. It reported four deprecated API
+findings for Kotlin-generated `ToolWindowFactory` default-method forwarders
+and 81 experimental API findings. The latter include build progress, queued
+editor refreshes, documentation, navigation, and project setup. Each API
+family still needs a release review. The report is generated in
+`mars5/plugin/build/reports/pluginVerifier`.
+
+The Gradle project configuration check advises removing the upper build
+bound. The plugin intentionally uses `263.*` because IntelliJ 2026.3 is
+the approved compatibility target.

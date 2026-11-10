@@ -14,3 +14,5 @@ jobs:
           java-version: '25'
       - run: ./gradlew build :core:benchmarkClasses --no-daemon
       - run: java -jar cli/build/libs/cli-1.0-SNAPSHOT.jar --help
+      - name: Verify IntelliJ plugin
+        run: ./gradlew :plugin:verifyPluginStructure :plugin:verifyPluginProjectConfiguration :plugin:verifyPlugin --no-daemon

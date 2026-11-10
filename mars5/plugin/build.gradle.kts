@@ -37,6 +37,7 @@ dependencies {
     testBundledModule("intellij.platform.debugger.impl.ui")
     testBundledModule("intellij.platform.debugger.impl.shared")
     grammarKit("2023.3.4")
+    pluginVerifier("1.411")
     testFramework(TestFrameworkType.Platform)
     testFramework(TestFrameworkType.JUnit5)
     testFramework(TestFrameworkType.JUnit5CodeInsight)
@@ -59,6 +60,9 @@ intellijPlatform {
       sinceBuild.set("263")
       untilBuild.set("263.*")
     }
+  }
+  pluginVerification {
+    ides { current() }
   }
 }
 
