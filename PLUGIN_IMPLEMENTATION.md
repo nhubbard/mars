@@ -2099,3 +2099,53 @@ directory.
 These checks establish the implemented editor behavior against the pinned IntelliJ
 platform. Cross-host keyboard and hover interaction, install and upgrade checks, and
 the full feature-by-feature release checklist remain part of release qualification.
+
+## M6 educational-tool test ledger
+
+All 13 in-scope tools have Kotlin implementations and Jupiter evidence.
+The MARS Tools registration test checks the complete tab order, first-selection
+initialization, reuse, and disposal. Model fixtures use explicit memory and
+instruction events or real simulator sessions. Platform fixtures drive the
+same controls and process handlers as Run and Debug.
+
+| Mapping | Implementation in the plugin's `tools` package | Behavioral evidence and Jupiter fixture |
+| --- | --- | --- |
+| T01 Branch History Table | `BranchHistoryTable`, `BranchHistoryView` | `BranchHistoryTableTest` exercises one- and two-bit training, aliased addresses, sizing, connection and reset. `InstructionCounterPlatformTest` verifies the native table, current instruction and decision log. `MarsDebugPlatformTest` verifies a branch decision before its delay slot and no extra decision for the slot. |
+| T02 Bitmap Display | `MemoryGridDisplay`, `MemoryGridView` | `BitmapDisplayTest` verifies partial writes, reconnect, reconfiguration, stale events and address limits. `InstructionCounterPlatformTest` checks captured colors, viewport scaling and execution selection. `MarsDebugPlatformTest` exercises the display with a suspended execution. |
+| T03 Data Cache Simulator | `DataCacheSimulator`, `DataCacheView` | `DataCacheSimulatorTest` covers direct, set-associative and fully associative layouts, LRU and seeded random replacement, connection, and exclusion of inspection. `InstructionCounterPlatformTest` checks the block table, live statistics, log, configuration and reset. |
+| T04 Digital Lab Sim | `DigitalLabDevice`, `DigitalLabView` | `DigitalLabDeviceTest` covers display and keypad bytes, latch timing, shared interrupts, backstep and stale callbacks. `InstructionCounterPlatformTest` checks segment rendering, keypad controls and reset. `MarsDebugPlatformTest` drives the keypad and rewinds its state in native Debug. |
+| T05 Floating Point Representation | `FloatingPointRepresentation`, `FloatingPointView` | `FloatingPointRepresentationTest` covers binary32 conversion and classification, including negative zero, subnormals and NaN payloads. `InstructionCounterPlatformTest` exercises native entry fields and the selected FPR display. |
+| T06 Instruction Counter | `InstructionCounter`, counter panel in `MarsToolsWindowFactory.kt` | `InstructionCounterTest` checks event accounting, formats, empty totals and independent connection and reset state. `InstructionCounterPlatformTest` drives the native counts across two executions. |
+| T07 Instruction Statistics | `InstructionStatistics`, statistics panel in `MarsToolsWindowFactory.kt` | `InstructionStatisticsTest` checks decoded integer, memory, control-transfer and coprocessor categories. `InstructionCounterPlatformTest` verifies percentages, execution switching, disconnection and reset. |
+| T08 Introduction to Tools | `IntroToToolsProvider` | `MarsToolProviderPlatformTest` opens the provider's help and observes real instructions from only the selected execution. It checks that switching or removing the execution ends observation of the former selection. |
+| T09 Keyboard and Display Simulator | `KeyboardDisplayDevice`, `KeyboardDisplayView`, `MmioTerminalDisplay` | `KeyboardDisplayDeviceTest` covers ready bits, input, delay modes, interrupts, addressing, geometry and rewind. `KeyboardDisplayPlatformTest` drives the real input field and console editor. `MarsDebugPlatformTest` covers attachment before the first instruction and rewind. |
+| T10 MarsBot | `MarsBotWorld`, `MarsBotDevice`, `MarsBotView` | `MarsBotDeviceTest` covers deterministic ticks, port maps, bounds, pen trails, simultaneous sessions and rewind. `InstructionCounterPlatformTest` checks the native board and controls. `MarsDebugPlatformTest` verifies that position and trail rewind together. |
+| T11 Memory Reference Visualization | `MemoryGridDisplay`, `MemoryGridView` | `MemoryReferenceDisplayTest` covers CPU-only counting, word grouping and recoloring. `InstructionCounterPlatformTest` checks configuration, tooltip, scaling, keyboard and mouse selection, and matching visible and accessible details. |
+| T12 MIPS X-Ray | `xray.XRayDiagram`, `xray.XRayTrace`, `xray.XRayView` | `XRayDiagramTest` checks bundled geometry, signal routing and palettes. `XRayTraceTest` covers capture, rewind, clear, encoding and the animation clock. `InstructionCounterPlatformTest` checks the live tool, diagram hit targets, textual paths, animation controls and execution isolation. |
+| T13 Scavenger Hunt | `ScavengerHuntGame`, `ScavengerHuntDevice`, `ScavengerHuntView` | `ScavengerHuntGameTest` and `ScavengerHuntDeviceTest` cover authentication, energy, tasks, moves, per-player registers, reset and rewind. `ScavengerHuntPlatformTest` checks the scoreboard and attachment conflicts. `MarsDebugPlatformTest` verifies that reset and memory rewind together. |
+| T14 Screen Magnifier | Excluded by user decision | No IntelliJ implementation or test requirement. The desktop tool remains part of the reference application. |
+| T15 Tool registration and lifecycle | `MarsToolProvider`, `MarsToolExtensions`, `MarsToolsWindowFactory` | `MarsToolProviderPlatformTest` verifies provider registration, ordering, ID validation, failure reporting, cancellation retry and dynamic removal. `InstructionCounterPlatformTest` checks the built-in tabs and the terminal editor's lifetime. |
+| V08 Shared presentation and settings | Tool content and native UI controls, run configuration options | The tool fixtures exercise focus, scaled layout, native rendering and disposal. `MarsRunPlatformTest` checks persistence and defaults for launch-time capture and MMIO attachment options. Full theme, scaling and keyboard traversal checks on each release host remain open. |
+
+The panels use IntelliJ's `ToolWindowFactory`, `ContentFactory`,
+`ContentManagerListener`, `Disposer`, `RunContentManager`, UI DSL and
+visibility-scoped coroutines. The terminal uses the IntelliJ console editor.
+The debugger fixtures exercise device history through native XDebugger
+sessions. The in-tree test fixtures and expected behavior are in the plugin's
+`tools`, `run` and `debug` test packages and the shared core test resources.
+
+The full-suite report at `84c8428d` recorded 62 tests in the tool packages
+within 1,897 passing tests. The raw `jacocoTestReport.xml` in
+`mars5/plugin/build/reports/jacoco/test` recorded 2,673 covered lines and
+1,480 covered branches across the two tool packages, with zero misses
+and no coverage exceptions for those packages. Recreate it from `mars5`
+with `./gradlew :plugin:jacocoTestReport :plugin:check`.
+
+Clean IntelliJ 2026.3 macOS playback verified the branch decision log,
+X-Ray capture controls, terminal geometry, lazy tab lifecycle and memory
+reference keyboard inspection. The saved scenarios are
+`mars-branch-decision-playback`, `mars-xray-capture-playback`,
+`mars-terminal-geometry-playback`, `mars-tool-tabs-playback` and
+`mars-memory-grid-playback`. They supplement the in-tree fixtures.
+Cross-host and high-contrast presentation, fresh install and upgrade
+checks, and binary Plugin Verifier results remain release qualification work.
