@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -48,25 +48,27 @@ statement ::= (include_line | label body? | body) {recoverWhile=line_recover}
 // The assembler replaces the physical line before interpreting labels, macros, or operands.
 include_line ::= <<isIncludeLine>> include_token+
 private include_token ::= assembly_token | <<recoverBadIncludeToken>>
-private body ::= macro_definition | non_macro_body
+private body ::= macro_definition | macro_header | non_macro_body
 private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
 private line_recover ::= !NEWLINE
 // A macro argument can supply the name of a label at expansion time.
 label ::= (WORD | MNEMONIC | DOLLAR_WORD | PARAMETER) COLON
 private name ::= WORD | MNEMONIC | DIRECTIVE | SET | DOLLAR_WORD | REGISTER
 // Include expansion can supply either macro boundary from a different file.
-macro_definition ::= MACRO macro_signature (NEWLINE (NEWLINE | macro_statement)* macro_end? | <<eof>>) {pin=1}
+macro_definition ::= MACRO &macro_name macro_signature (NEWLINE (NEWLINE | macro_statement)* macro_end? | <<eof>>) {pin=2}
 private macro_statement ::= !macro_end macro_body_statement
 macro_body_statement ::= (include_line | label macro_body? | macro_body) {elementType=statement recoverWhile=line_recover}
 private macro_body ::= macro_header | non_macro_body
 // Keep the signature for include-aware binding without opening a nested PSI body.
-macro_header ::= MACRO macro_signature?
+macro_header ::= MACRO (&macro_name macro_signature | <<recoverInvalidMacroName>>)
 // MARS leaves the macro open if the closing directive has additional tokens.
 private macro_end ::= END_MACRO &line_end
 private malformed_macro_end ::= END_MACRO line_end {pin=1}
 private line_end ::= NEWLINE | <<eof>>
 // Recover a malformed parameter tail before parsing the body on the next line.
-macro_signature ::= name parameter_list? &line_end {pin=1 recoverWhile=line_recover}
+macro_signature ::= macro_name parameter_list? &line_end {pin=1 recoverWhile=line_recover}
+// Only identifiers can supply macro names or be replaced by an equivalence.
+private macro_name ::= WORD | DOLLAR_WORD
 // The assembler ignores parentheses anywhere in a macro declaration.
 parameter_list ::= (macro_parameter | LEFT_PAREN | RIGHT_PAREN)+
 // A physical identifier may expand to one or more formals or parentheses.

@@ -303,6 +303,13 @@ IDE fixtures exercise redefinitions, arity,
 case, incomplete definitions, raw call arguments, nested includes, and the indexing guard.
 An assembler-backed fixture compares the selected overload with the emitted instruction.
 
+Only a written identifier can start a physical macro block. The parser reports a missing
+or reserved name on the header and leaves later labels and definitions in their own
+scopes. An identifier can still supply a name through `.eqv` and is bound against the
+include-ordered context. The formatter can use the written scope when alias expansion
+fails to establish a semantic scope. With an accepted name, the parser keeps the block even if its
+formal list needs recovery, as the assembler opens the macro before checking its arguments.
+
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,
 including definitions from earlier includes. Calls use the expanded name and arity

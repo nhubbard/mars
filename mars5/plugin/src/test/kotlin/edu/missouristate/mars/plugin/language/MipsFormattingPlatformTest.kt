@@ -374,10 +374,19 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
-    fun `an invalid macro name retains physical indentation while editing`() = timeoutRunBlocking<Unit> {
+    fun `an invalid macro name leaves following labels at the margin`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.configureByText("invalid-macro.asm", ".macro nop\nlabel :    nop\n.end_macro\nnext: nop\n")
-            assertEquals(".macro nop\n    label: nop\n.end_macro\nnext: nop\n", reformat())
+            assertEquals(".macro nop\nlabel: nop\n.end_macro\nnext: nop\n", reformat())
+        }
+    }
+
+    @Test
+    fun `a header written with an alias preserves physical indentation when its expansion is rejected`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val header = ".eqv NAME nop\n.macro NAME\n"
+            fixture.configureByText("aliased-macro-name.asm", header + "label :    nop\n.end_macro\nnext: nop\n")
+            assertEquals(header + "    label: nop\n.end_macro\nnext: nop\n", reformat())
         }
     }
 

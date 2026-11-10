@@ -112,6 +112,21 @@ internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level
     return true
 }
 
+/** Report a rejected header and leave the following line in its original scope. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.tokenType.endsLine()) {
+        builder.error(syntaxMessages.getMessage("syntax.macro.name.missing"))
+    } else {
+        val marker = builder.mark()
+        builder.advanceLexer()
+        marker.error(syntaxMessages.getMessage("syntax.macro.name.invalid"))
+        while (!builder.tokenType.endsLine()) builder.advanceLexer()
+    }
+    return true
+}
+
 /** Retain the broken literal and keep parsing the other operands on the line. */
 @Suppress("UNUSED_PARAMETER")
 internal fun recoverCharacterLiteral(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {

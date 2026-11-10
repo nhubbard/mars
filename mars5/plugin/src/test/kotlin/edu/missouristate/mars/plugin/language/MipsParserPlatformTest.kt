@@ -447,6 +447,42 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `a rejected macro name keeps later labels and macro definitions in their own scopes`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val body = "outside: nop\n.macro emit (%value)\ninside: li \$t0, %value\n.end_macro\nemit(7)\n"
+            val names = listOf("nop", "\$t0", ".word", "17", "%name", "")
+            for (name in names) {
+                val header = if (name.isEmpty()) "entry: .MaCrO,, # waiting" else "entry: .MaCrO,, $name (%arg)"
+                val source = "$header\n$body"
+                val entry = directory.resolve("bad-header.asm").also { it.writeText(source) }
+                val context = project.get().service<MarsSessionService>().context
+                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+                val diagnostics = failure.errors().errorMessages.map { it.message }
+                val expected = if (name.isEmpty()) "\".MaCrO\" directive requires at least one argument." else "Invalid Macro name \"$name\""
+                assertEquals(listOf(expected), diagnostics, header)
+
+                readAction {
+                    val file = PsiFileFactory.getInstance(project.get()).createFileFromText("bad-header.asm", MipsFileType, source)
+                    assertEquals(source, file.node.text)
+                    val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
+                    assertEquals(name, error.text)
+                    assertEquals(
+                        if (name.isEmpty()) "Expected a macro name" else "Invalid MARS macro name",
+                        error.errorDescription,
+                    )
+                    val macro = descendants(file.node, "MACRO_DEFINITION").single()
+                    assertEquals(listOf("inside:"), descendants(macro, "LABEL").map { it.text }.toList())
+                    assertEquals(listOf("emit (%value)"), descendants(file.node, "MACRO_SIGNATURE").map { it.text }.toList())
+                    assertEquals(
+                        listOf("entry:", "outside:"),
+                        descendants(file.node, "LABEL").filter { it.startOffset < macro.startOffset }.map { it.text }.toList(),
+                    )
+                    assertEquals("emit(7)", descendants(file.node, "OPERATION_CANDIDATE").single().text)
+                }
+            }
+        }
+
+    @Test
     fun `malformed macro parameters preserve the header prefix and body scope`() = timeoutRunBlocking<Unit> {
         readAction {
             for (tail in listOf("7)", "@)", "%)", "\"oops\" .eqv PHANTOM 7")) {
@@ -510,7 +546,14 @@ class MipsParserPlatformTest {
                 "first_label: nested_label: .macro inner" to listOf("first_label:"),
             )
             for ((opener, labels) in openers) {
-                val file = assertParses(source.replace(".macro inner (%other)", opener))
+                val updated = source.replace(".macro inner (%other)", opener)
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("nested.asm", MipsFileType, updated)
+                val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.errorDescription }
+                assertEquals(when (opener) {
+                    ".macro" -> listOf("Expected a macro name")
+                    ".macro .word", ".macro .set", ".macro \$t0" -> listOf("Invalid MARS macro name")
+                    else -> emptyList()
+                }, errors, opener)
                 val outer = descendants(file.node, "MACRO_DEFINITION").single()
                 assertEquals(".end_macro", outer.lastChildNode.text)
                 assertEquals(labels + "inside:", descendants(outer, "LABEL").map { it.text }.toList())
