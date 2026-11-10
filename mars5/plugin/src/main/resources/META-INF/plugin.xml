@@ -122,6 +122,9 @@
     <action id="Mars.ImportVenusPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusPreferencesAction">
       <add-to-group group-id="FileMenu" anchor="last"/>
     </action>
+    <action id="Mars.ImportVenusEditorPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusEditorPreferencesAction">
+      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusPreferences"/>
+    </action>
     <action id="Mars.NewMipsFile" class="edu.missouristate.mars.plugin.project.MarsNewFileAction" icon="AllIcons.FileTypes.Custom">
       <add-to-group group-id="NewGroup"/>
     </action>

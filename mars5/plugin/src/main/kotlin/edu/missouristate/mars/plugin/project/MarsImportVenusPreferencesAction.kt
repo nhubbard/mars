@@ -33,7 +33,8 @@ import java.nio.file.Path
 import java.util.prefs.BackingStoreException
 import java.util.prefs.Preferences
 
-private val messages = DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
+internal val venusImportMessages = DynamicBundle(MarsImportVenusPreferencesAction::class.java, "messages.MarsBundle")
+private val messages get() = venusImportMessages
 private const val importedKey = "mars.venus.project.preferences.imported"
 private const val templateImportedKey = "mars.venus.run.template.imported"
 
@@ -52,17 +53,7 @@ internal class MarsImportVenusPreferencesAction(
         val properties = PropertiesComponent.getInstance(project)
         if (properties.isTrueValue(templateImportedKey)) return
         val title = messages.getMessage("import.venus.title")
-        val legacy = try {
-            runWithModalProgressBlocking(ModalTaskOwner.project(project), title) {
-                withContext(Dispatchers.IO) { readVenusPreferences(preferences()) }
-            }
-        } catch (_: BackingStoreException) {
-            Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
-            return
-        } catch (_: SecurityException) {
-            Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
-            return
-        }
+        val legacy = loadVenusPreferences(project, title) { readVenusPreferences(preferences()) } ?: return
         val assembly = project.service<MarsAssemblySettings>()
         val factory = runConfigurationType<MarsRunType>()
         val runManager = RunManager.getInstance(project)
@@ -73,12 +64,7 @@ internal class MarsImportVenusPreferencesAction(
             Messages.showInfoMessage(project, messages.getMessage("import.venus.empty"), title)
             return
         }
-        val text = messages.getMessage("import.venus.preview", preview.changes.joinToString("\n"))
-        val html = "<html>" + escapeXmlEntities(text).replace("\n", "<br>") + "</html>"
-        val confirmed = MessageDialogBuilder.okCancel(title, html)
-            .yesText(messages.getMessage("import.venus.apply"))
-            .ask(project)
-        if (!confirmed) return
+        if (!confirmVenusImport(project, title, messages.getMessage("import.venus.preview", preview.changes.joinToString("\n")))) return
         val template = templateOptions()
         if (VenusImportSettings(assembly.getState(), projectTabSize(project), RunDefaults(template)) != previous) {
             Messages.showInfoMessage(project, messages.getMessage("import.venus.stale"), title)
@@ -128,7 +114,7 @@ private class VenusPreferences(private val values: Map<String, String>, private 
         }
         fun flag(key: String, label: String, current: Boolean): Boolean {
             val value = values[key].venusBoolean() ?: current
-            change(label, flagText(current), flagText(value))
+            change(label, venusFlagText(current), venusFlagText(value))
             return value
         }
         val updated = if (includeProject) {
@@ -180,9 +166,24 @@ private class VenusPreferences(private val values: Map<String, String>, private 
     }
 }
 
-private fun flagText(value: Boolean) = messages.getMessage(if (value) "import.venus.enabled" else "import.venus.disabled")
+internal fun venusFlagText(value: Boolean) = messages.getMessage(if (value) "import.venus.enabled" else "import.venus.disabled")
 
-private fun String?.venusBoolean(): Boolean? = this?.lowercase()?.toBooleanStrictOrNull()
+internal fun String?.venusBoolean(): Boolean? = this?.lowercase()?.toBooleanStrictOrNull()
+
+internal fun <T : Any> loadVenusPreferences(project: Project, title: String, read: () -> T): T? = try {
+    runWithModalProgressBlocking(ModalTaskOwner.project(project), title) { withContext(Dispatchers.IO) { read() } }
+} catch (_: BackingStoreException) {
+    Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
+    null
+} catch (_: SecurityException) {
+    Messages.showErrorDialog(project, messages.getMessage("import.venus.read.error"), title)
+    null
+}
+
+internal fun confirmVenusImport(project: Project, title: String, text: String): Boolean {
+    val html = "<html>" + escapeXmlEntities(text).replace("\n", "<br>") + "</html>"
+    return MessageDialogBuilder.okCancel(title, html).yesText(messages.getMessage("import.venus.apply")).ask(project)
+}
 
 private val importKeys = listOf(
     "ExtendedAssembler", "BareMachine", "AssembleOnOpen", "DelayedBranching", "WarningsAreErrors", "StartAtMain",
@@ -191,16 +192,19 @@ private val importKeys = listOf(
 )
 
 private fun readVenusPreferences(root: Preferences): VenusPreferences {
-    val values = listOf("edu/missouristate/mars", "mars").firstNotNullOfOrNull { path ->
-        if (!root.nodeExists(path)) return@firstNotNullOfOrNull null
-        val node = root.node(path)
-        importKeys.mapNotNull { key -> node.get(key, null)?.let { key to it } }.toMap().takeIf { it.isNotEmpty() }
-    }.orEmpty()
+    val values = root.readSavedVenusPreferences(importKeys)
     val handler = if (values["LoadExceptionHandler"].venusBoolean() == true) {
         values["ExceptionHandler"]?.let(::existingHandler)
     } else null
     return VenusPreferences(values, handler)
 }
+
+internal fun Preferences.readSavedVenusPreferences(keys: List<String>): Map<String, String> =
+    listOf("edu/missouristate/mars", "mars").firstNotNullOfOrNull { path ->
+        if (!nodeExists(path)) return@firstNotNullOfOrNull null
+        val node = node(path)
+        keys.mapNotNull { key -> node.get(key, null)?.let { key to it } }.toMap().takeIf { it.isNotEmpty() }
+    }.orEmpty()
 
 private fun existingHandler(value: String): Path? = try {
     Path.of(value).normalize().takeIf { it.isAbsolute && Files.isRegularFile(it) }

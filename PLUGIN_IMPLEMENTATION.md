@@ -2142,6 +2142,23 @@ that project, imported its launch defaults, and verified that a new MARS Run
 configuration inherited them. IntelliJ saved the template separately from the
 existing launch.
 
+### Import IDE-wide editor preferences
+
+Use **File → Import Venus Editor Preferences** for the separate application-wide
+import. The preview shows before and after values for line numbers, caret
+blinking, and the default editor font family and size. Confirming updates the
+native IntelliJ settings for all projects and refreshes open editors. The
+imported font applies to schemes that use the default editor font.
+
+The importer recognizes zero as blinking off and validates positive intervals
+and font sizes against IntelliJ's supported ranges. The imported font family
+must be available on the host. The editor import has its own local completion
+marker. A project import and an editor import can be performed in either order.
+
+The packaged IntelliJ 2026.3 smoke test confirmed that an open MIPS editor
+adopted the imported line-number setting and default font. The IDE also saved
+the caret interval and completion marker in its local settings.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose

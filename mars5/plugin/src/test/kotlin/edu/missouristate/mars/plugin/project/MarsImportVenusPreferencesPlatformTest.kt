@@ -11,12 +11,18 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.colors.EditorFontCache
+import com.intellij.openapi.editor.colors.impl.AppEditorFontOptions
+import com.intellij.openapi.editor.colors.impl.FontPreferencesImpl
+import com.intellij.openapi.editor.ex.EditorSettingsExternalizable
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
@@ -340,8 +346,167 @@ class MarsImportVenusPreferencesPlatformTest {
         }
     }
 
+    @Test
+    fun `editor import previews IDE-wide changes and updates native editor defaults once`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withEditorDefaults { editor, fonts, properties ->
+                val registered = assertInstanceOf(
+                    MarsImportVenusEditorPreferencesAction::class.java, ActionManager.getInstance().getAction("Mars.ImportVenusEditorPreferences"),
+                )
+                assertEquals(ActionUpdateThread.BGT, registered.actionUpdateThread)
+                val unavailable = event(registered, DataContext.EMPTY_CONTEXT)
+                registered.update(unavailable)
+                assertFalse(unavailable.presentation.isEnabledAndVisible)
+                registered.actionPerformed(unavailable)
+                withDialog({ Messages.CANCEL }) { registered.actionPerformed(event(registered)) }
+
+                val root = MemoryPreferences()
+                root.node("mars").apply {
+                    putBoolean("EditorLineNumbersDisplayed", false)
+                    putInt("CaretBlinkRate", 700)
+                    put("EditorFontFamily", "sErIf")
+                    putInt("EditorFontSize", 17)
+                }
+                val action = MarsImportVenusEditorPreferencesAction { root }
+                withDialog({ preview ->
+                    assertTrue(preview.contains("IDE-wide defaults for all projects"))
+                    assertTrue(preview.contains("Line numbers  On → Off"))
+                    assertTrue(preview.contains("Every 500 ms → Every 700 ms"))
+                    assertTrue(preview.contains("Dialog → Serif"))
+                    assertTrue(preview.contains("12.0 → 17.0"))
+                    Messages.CANCEL
+                }) { action.actionPerformed(event(action)) }
+                assertTrue(editor.isLineNumbersShown)
+                assertEquals(500, editor.blinkPeriod)
+                assertEquals("Dialog", fonts.fontPreferences.fontFamily)
+
+                withDialog(TestDialog.OK) { action.actionPerformed(event(action)) }
+                assertFalse(editor.isLineNumbersShown)
+                assertTrue(editor.isBlinkCaret)
+                assertEquals(700, editor.blinkPeriod)
+                assertEquals("Serif", fonts.fontPreferences.fontFamily)
+                assertEquals(17f, fonts.fontPreferences.getSize2D("Serif"))
+                assertEquals(listOf("Serif", "Monospaced"), fonts.fontPreferences.realFontFamilies)
+                assertEquals(1.5f, fonts.fontPreferences.lineSpacing)
+                assertTrue(properties.isTrueValue("mars.venus.editor.preferences.imported"))
+                assertFalse(event(registered).also(registered::update).presentation.isEnabledAndVisible)
+                action.actionPerformed(event(action))
+            }
+        }
+    }
+
+    @Test
+    fun `editor import can disable blinking without replacing the stored interval or font family`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withEditorDefaults { editor, fonts, _ ->
+                val root = MemoryPreferences()
+                root.node("edu/missouristate/mars").apply {
+                    putInt("CaretBlinkRate", 0)
+                    putInt("EditorFontSize", 18)
+                    put("EditorFontFamily", "Venus Missing Typeface")
+                }
+                val action = MarsImportVenusEditorPreferencesAction { root }
+                withDialog({ preview ->
+                    assertTrue(preview.contains("Every 500 ms → Off"))
+                    assertFalse(preview.contains("font family"))
+                    Messages.OK
+                }) { action.actionPerformed(event(action)) }
+                assertFalse(editor.isBlinkCaret)
+                assertEquals(500, editor.blinkPeriod)
+                assertEquals("Dialog", fonts.fontPreferences.fontFamily)
+                assertEquals(18f, fonts.fontPreferences.getSize2D("Dialog"))
+                assertEquals("Regular", fonts.fontPreferences.regularSubFamily)
+            }
+        }
+    }
+
+    @Test
+    fun `invalid editor settings are ignored and the preview detects concurrent changes`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withEditorDefaults { editor, fonts, properties ->
+                val root = MemoryPreferences()
+                val venus = root.node("mars")
+                val action = MarsImportVenusEditorPreferencesAction { root }
+                for ((blink, size) in listOf("bad" to "bad", "9" to "0", "1501" to "999")) {
+                    venus.put("CaretBlinkRate", blink)
+                    venus.put("EditorFontSize", size)
+                    withDialog({ message ->
+                        assertTrue(message.contains("No saved Venus preferences differ"))
+                        Messages.OK
+                    }) { action.actionPerformed(event(action)) }
+                }
+                venus.putBoolean("EditorLineNumbersDisplayed", false)
+                for (edit in listOf(
+                    { editor.blinkPeriod = 600 },
+                    { properties.setValue("mars.venus.editor.preferences.imported", true) },
+                )) {
+                    var count = 0
+                    withDialog({ message ->
+                        if (count++ == 0) edit() else assertTrue(message.contains("IntelliJ editor settings changed"))
+                        Messages.OK
+                    }) { action.actionPerformed(event(action)) }
+                    assertEquals(2, count)
+                    assertTrue(editor.isLineNumbersShown)
+                    editor.blinkPeriod = 500
+                    properties.unsetValue("mars.venus.editor.preferences.imported")
+                }
+                withDialog(TestDialog.OK) { action.actionPerformed(event(action)) }
+                assertFalse(editor.isLineNumbersShown)
+                assertEquals(12f, fonts.fontPreferences.getSize2D("Dialog"))
+            }
+        }
+    }
+
+    @Test
+    fun `editor preference read failures leave the import available`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withEditorDefaults { _, _, _ ->
+                val action = MarsImportVenusEditorPreferencesAction { throw BackingStoreException("unavailable") }
+                withDialog({ message ->
+                    assertEquals("Could not read local Venus preferences.", message)
+                    Messages.OK
+                }) { action.actionPerformed(event(action)) }
+                assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
+            }
+        }
+    }
+
+    private fun withEditorDefaults(operation: (EditorSettingsExternalizable, AppEditorFontOptions, PropertiesComponent) -> Unit) {
+        val key = "mars.venus.editor.preferences.imported"
+        val properties = PropertiesComponent.getInstance()
+        val oldMarker = properties.getValue(key)
+        val editor = EditorSettingsExternalizable.getInstance()
+        val oldLines = editor.isLineNumbersShown
+        val oldBlink = editor.isBlinkCaret
+        val oldPeriod = editor.blinkPeriod
+        val fonts = AppEditorFontOptions.getInstance()
+        val oldFont = FontPreferencesImpl()
+        fonts.fontPreferences.copyTo(oldFont)
+        try {
+            properties.unsetValue(key)
+            editor.isLineNumbersShown = true
+            editor.isBlinkCaret = true
+            editor.blinkPeriod = 500
+            fonts.update(FontPreferencesImpl().apply {
+                register("Dialog", 12)
+                register("Monospaced", 12)
+                setRegularSubFamily("Regular")
+                lineSpacing = 1.5f
+            })
+            operation(editor, fonts, properties)
+        } finally {
+            properties.setValue(key, oldMarker)
+            editor.isLineNumbersShown = oldLines
+            editor.isBlinkCaret = oldBlink
+            editor.blinkPeriod = oldPeriod
+            fonts.update(oldFont)
+            EditorFontCache.getInstance().reset()
+            EditorFactory.getInstance().refreshAllEditors()
+        }
+    }
+
     private fun event(
-        action: MarsImportVenusPreferencesAction,
+        action: AnAction,
         data: DataContext = SimpleDataContext.getSimpleContext(CommonDataKeys.PROJECT, project),
     ) = AnActionEvent.createEvent(action, data, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
 
