@@ -26,10 +26,10 @@ import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.references.findMipsIncludeFile
+import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import java.nio.file.InvalidPathException
 import java.nio.file.Path
 import java.util.Map.copyOf as copyOfMap
-import java.util.Objects.requireNonNullElse
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -133,9 +133,8 @@ internal fun collectAssemblySources(
         val document = documents.getDocument(file)
         onDependency(document ?: file)
         if (document == null) return null
-        val parent: VirtualFile = file.parent
         // Directory aliases share an include location. A file symlink keeps its own name and directory.
-        val identity = requireNonNullElse<VirtualFile>(parent.canonicalFile, parent).toNioPath().resolve(file.name)
+        val identity = path.fileSystem.getPath(file.mipsIncludeDirectoryPath()!!).resolve(file.name)
         return SourceDocument(document.text, document.modificationStamp, identity).also { captured[path] = it }
     }
 

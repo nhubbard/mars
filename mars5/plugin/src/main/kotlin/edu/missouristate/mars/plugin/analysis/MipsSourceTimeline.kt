@@ -23,6 +23,7 @@ import edu.missouristate.mars.plugin.language.collectRegisterUsages
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
+import edu.missouristate.mars.plugin.language.references.mipsIncludeDirectoryPath
 import java.util.BitSet
 import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
@@ -32,7 +33,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
     var eventCount = 0
     val files = LinkedHashMap<VirtualFile, SourceFileEvents>()
-    val visited = HashSet<VirtualFile>()
+    val visited = hashSetOf(entry.originalFile.viewProvider.virtualFile.includeIdentity())
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
     val unindexedLabels = LinkedHashMap<String, MutableList<TimelineLabel>>()
@@ -42,7 +43,6 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
-        visited.add(file.originalFile.viewProvider.virtualFile)
         val locations = SourceFileEvents(file)
         files[file.viewProvider.virtualFile] = locations
         pending.addLast(SourceCursor(locations, mipsSourceEvents(file).iterator()))
@@ -162,7 +162,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path) as? PsiFile
-                if (included == null || included.fileType.isBinary || included.virtualFile in visited) {
+                if (included == null || included.fileType.isBinary || !visited.add(included.virtualFile.includeIdentity())) {
                     incompleteIncludes = true
                     continue
                 }
@@ -398,6 +398,8 @@ private class SourceCursor(val locations: SourceFileEvents, val events: Iterator
 }
 
 internal fun resolveMipsInclude(literal: MipsStringLiteral, path: String) = MipsFileReferenceSet(path, literal).resolve()
+
+private fun VirtualFile.includeIdentity() = mipsIncludeDirectoryPath() to name
 
 private fun includedSourceSyntax(source: PsiFile): MipsFile = CachedValuesManager.getCachedValue(source) {
     val file = PsiFileFactory.getInstance(source.project)

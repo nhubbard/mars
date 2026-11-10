@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -25,11 +26,13 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.plugin.language.index.MipsIncludeProvider
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.captureAssemblySources
 import edu.missouristate.mars.plugin.analysis.inferredMipsAssemblyEntry
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
 import edu.missouristate.mars.plugin.language.references.resolveMipsDotSegment
@@ -196,6 +199,62 @@ class MipsFileReferencesPlatformTest {
             assertEquals(disk, session.program.machineList.single().binaryStatement)
         }
     }
+
+    @Test
+    fun `include identity collapses directory aliases and keeps different file names`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val actual = Files.createDirectory(directory.resolve("actual"))
+            val original = Files.writeString(actual.resolve("value.s"), ".include \"neighbor.s\"\n")
+            val originalNeighbor = Files.writeString(actual.resolve("neighbor.s"), "addiu \$t0, \$zero, 7\n")
+            val aliasNeighbor = Files.writeString(directory.resolve("neighbor.s"), "addiu \$t0, \$zero, 9\n")
+            val folderAlias = Files.createSymbolicLink(directory.resolve("alias"), actual)
+            val fileAlias = Files.createSymbolicLink(directory.resolve("alternate.s"), original)
+            val duplicate = Files.writeString(directory.resolve("duplicate.asm"), """
+                .include "actual/value.s"
+                .include "alias/value.s"
+            """.trimIndent())
+            val distinct = Files.writeString(directory.resolve("distinct.asm"), """
+                .include "actual/value.s"
+                .include "alternate.s"
+            """.trimIndent())
+            val manager = VirtualFileManager.getInstance()
+            val (duplicatePsi, distinctPsi) = withContext(Dispatchers.EDT) {
+                listOf(original, originalNeighbor, aliasNeighbor, folderAlias.resolve("value.s"), fileAlias)
+                    .forEach { manager.refreshAndFindFileByNioPath(it) }
+                fun source(path: Path): MipsFile {
+                    fixture.configureFromExistingVirtualFile(checkNotNull(manager.refreshAndFindFileByNioPath(path)))
+                    return fixture.file as MipsFile
+                }
+                source(duplicate) to source(distinct)
+            }
+            val component = MarsSessionService.createMarsComponent()
+            component.context().use { session ->
+                val failure = assertThrows<ProcessingException> { session.assemble(listOf(duplicate)) }
+                assertTrue(failure.errors().errorMessages.single().message.contains("Recursive include"))
+                assertEquals(listOf(0x24080007, 0x24080009),
+                    session.assemble(listOf(distinct)).machineList.map { it.binaryStatement })
+            }
+            val capture = captureAssemblySources(listOf(duplicate), null)
+            assertEquals(capture.snapshot.includeIdentity(original), capture.snapshot.includeIdentity(folderAlias.resolve("value.s")),
+                capture.snapshot.includeIdentities().toString())
+            val capturedComponent = MarsSessionService.createMarsComponent()
+            capturedComponent.context().use {
+                val result = capture.assembleIn(capturedComponent)
+                assertTrue(result.errors().single().message().contains("Recursive include"))
+            }
+            readAction {
+                fun paths(file: MipsFile) = mipsSourceTimeline(file).sourceFiles().map { it.virtualFile.toNioPath() }.toList()
+                assertTrue(mipsSourceTimeline(duplicatePsi).hasIncompleteIncludes)
+                assertEquals(listOf(duplicate, original, originalNeighbor), paths(duplicatePsi))
+                assertTrue(!mipsSourceTimeline(distinctPsi).hasIncompleteIncludes)
+                assertEquals(listOf(distinct, original, originalNeighbor, fileAlias, aliasNeighbor), paths(distinctPsi))
+            }
+            withContext(Dispatchers.EDT) {
+                fixture.configureFromExistingVirtualFile(duplicatePsi.virtualFile)
+                val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+                assertTrue(errors.any { it.description?.contains("Recursive include") == true }, errors.toString())
+            }
+        }
 
     @Test
     fun `include dot segments cannot traverse a regular file`() = timeoutRunBlocking<Unit> {

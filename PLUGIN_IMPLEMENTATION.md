@@ -921,6 +921,17 @@ include marks the editor context incomplete.
 In a fresh IntelliJ test instance, selecting the containing entry through
 Build cleared two false syntax errors in the nested `.s` editor.
 
+The editor timeline and source capture identify an included file by its
+canonical parent path and file name. This matches the Java assembler's
+directory-alias rule. Including the same file through a directory symlink
+marks the context incomplete, so later macro diagnostics use the assembly
+failure. A file symlink with a different written name keeps its own
+relative-include location.
+The standalone IntelliJ replay built both cases and waited for highlighting
+to finish. The directory alias showed the recursive-include error without
+dependent macro diagnostics. The differently named file alias showed no
+errors.
+
 ## Whole-line include preprocessing
 
 The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the
