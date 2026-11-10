@@ -17,8 +17,10 @@ import edu.missouristate.mars.plugin.build.MarsSourceSet
 internal val launchAssemblyKey = Key.create<MarsLaunchAssembly>("MARS launch assembly")
 
 /** Shared by the original execution environment and the copy used by Before Launch. */
-internal class MarsLaunchAssembly(val sources: MarsSourceSet, val options: MarsExecutionOptions) : Disposable {
-    private var program: MarsAssembledProgram? = null
+internal class MarsLaunchAssembly(
+    val sources: MarsSourceSet, val options: MarsExecutionOptions, prepared: MarsAssembledProgram? = null,
+) : Disposable {
+    private var program = prepared
     private var disposed = false
 
     @Synchronized

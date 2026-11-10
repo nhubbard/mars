@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.run
 
 import com.intellij.DynamicBundle
+import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
 import com.intellij.execution.actions.ConfigurationContext
@@ -15,20 +16,27 @@ import com.intellij.execution.configurations.SimpleConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.runners.ExecutionEnvironmentBuilder
+import com.intellij.execution.runners.ExecutionUtil
 import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.runners.showRunContent
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RunnerSettings
 import com.intellij.execution.ui.ConsoleView
+import com.intellij.icons.AllIcons
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SettingsEditor
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.Ref
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -49,8 +57,10 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.execution.ParametersListUtil
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
+import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -65,6 +75,10 @@ import javax.swing.JCheckBox
 import javax.swing.JTextField
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
+
+private val resetLaunchKey = Key.create<MarsResetLaunch>("MARS reset launch")
+
+private class MarsResetLaunch(val parameters: MarsRunParameters, val program: MarsAssembledProgram)
 
 internal enum class ProjectOptionOverride(private val messageKey: String, private val override: Boolean?) {
     PROJECT("run.option.override.project", null),
@@ -336,6 +350,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         if (!TrustedProjects.isProjectTrusted(project)) {
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
+        environment.getUserData(resetLaunchKey)?.let { reset ->
+            // IntelliJ may reuse this environment for its ordinary Rerun action.
+            environment.putUserData(resetLaunchKey, null)
+            return MarsRunState(environment, reset.parameters, reset.program)
+        }
         val sources = resolveSourceSet { ExecutionException(it) }
         val settings = project.service<MarsAssemblySettings>()
         val defaults = settings.executionOptions
@@ -351,34 +370,42 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val directory = workingDirectory(sources.entry) { ExecutionException(it) }
         val limit = instructionLimit { ExecutionException(it) }
         val speed = runSpeed { ExecutionException(it) }
-        val launch = MarsLaunchAssembly(sources, executionOptions)
-        environment.putUserData(launchAssemblyKey, launch)
-        return MarsRunState(
-            environment, launch, dumps, arguments, directory, options.inputMode, limit, speed, options.startAtMain.resolve(settings.startAtMain),
+        val parameters = MarsRunParameters(
+            sources, executionOptions, dumps, arguments, directory, options.inputMode, limit, speed, options.startAtMain.resolve(settings.startAtMain),
             options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
+        return MarsRunState(environment, parameters)
     }
 }
 
+internal class MarsRunParameters(
+    val sources: MarsSourceSet,
+    val executionOptions: MarsExecutionOptions,
+    val memoryDumps: List<MemoryExportSelection>,
+    val arguments: List<String>,
+    val workingDirectory: Path,
+    val inputMode: MarsInputMode,
+    val instructionLimit: Int,
+    val runSpeed: Float,
+    val startAtMain: Boolean,
+    val captureBitmap: Boolean,
+    val captureReferences: Boolean,
+    val connectDigitalLab: Boolean,
+    val connectKeyboardDisplay: Boolean,
+    val connectMarsBot: Boolean,
+    val connectScavengerHunt: Boolean,
+)
+
 internal class MarsRunState(
-    private val environment: ExecutionEnvironment, private val launch: MarsLaunchAssembly,
-    private val memoryDumps: List<MemoryExportSelection>,
-    private val arguments: List<String>,
-    private val workingDirectory: Path,
-    private val inputMode: MarsInputMode,
-    private val instructionLimit: Int,
-    private val runSpeed: Float,
-    private val startAtMain: Boolean,
-    private val captureBitmap: Boolean,
-    private val captureReferences: Boolean,
-    private val connectDigitalLab: Boolean,
-    private val connectKeyboardDisplay: Boolean,
-    private val connectMarsBot: Boolean,
-    private val connectScavengerHunt: Boolean,
-) :
-    CommandLineState(environment) {
+    environment: ExecutionEnvironment, private val parameters: MarsRunParameters, prepared: MarsAssembledProgram? = null,
+) : CommandLineState(environment) {
+    private val launch = MarsLaunchAssembly(parameters.sources, parameters.executionOptions, prepared)
     val entry: Path get() = launch.sources.entry
+
+    init {
+        environment.putUserData(launchAssemblyKey, launch)
+    }
 
     override fun createActions(console: ConsoleView, processHandler: ProcessHandler, executor: Executor?): Array<AnAction> {
         val handler = processHandler as MarsProcessHandler
@@ -386,21 +413,35 @@ internal class MarsRunState(
         return arrayOf(MarsRunSpeedAction(handler))
     }
 
-    override fun startProcess() =
-        service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
-            captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
-            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, workingDirectory = workingDirectory, inputMode = inputMode, instructionLimit = instructionLimit,
-            runSpeed = runSpeed, startAtMain = startAtMain)
+    override fun startProcess() = createProcess { machine, _ -> runSlice(machine.simulator()) }
 
-    fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
-        service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
+    fun createProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) = with(parameters) {
+        environment.project.service<MarsRunService>().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
             arguments = arguments, workingDirectory = workingDirectory, inputMode = inputMode, instructionLimit = instructionLimit,
             runSpeed = runSpeed, startAtMain = startAtMain, execute = execute)
+    }
 
-    private fun service() = environment.project.getService(MarsRunService::class.java)
+    fun resetAction(handler: MarsProcessHandler): AnAction = object : DumbAwareAction(
+        runMessages.getMessage("run.reset"), runMessages.getMessage("run.reset.description"), AllIcons.General.Reset,
+    ) {
+        override fun getActionUpdateThread() = ActionUpdateThread.EDT
+
+        override fun update(event: AnActionEvent) {
+            event.presentation.isEnabled = handler.capturedProgram != null && ownsContent()
+        }
+
+        override fun actionPerformed(event: AnActionEvent) {
+            val program = handler.capturedProgram ?: return
+            if (!ownsContent()) return
+            val restart = ExecutionEnvironmentBuilder(environment).build()
+            restart.putUserData(resetLaunchKey, MarsResetLaunch(parameters, program))
+            ExecutionUtil.restart(restart)
+        }
+
+        private fun ownsContent() = environment.contentToReuse?.processHandler === handler
+    }
 }
 
 internal class MarsRunConfigurationProducer : LazyRunConfigurationProducer<MarsRunConfiguration>() {
@@ -431,6 +472,9 @@ internal class MarsRunRunner : GenericProgramRunner<RunnerSettings>() {
     override fun canRun(executorId: String, profile: RunProfile) =
         executorId == DefaultRunExecutor.EXECUTOR_ID && profile is MarsRunConfiguration
 
-    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment) =
-        showRunContent(state.execute(environment.executor, this), environment)
+    override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment) = with(state as MarsRunState) {
+        val result = execute(environment.executor, this@MarsRunRunner) as DefaultExecutionResult
+        result.setRestartActions(resetAction(result.processHandler as MarsProcessHandler))
+        showRunContent(result, environment)
+    }
 }

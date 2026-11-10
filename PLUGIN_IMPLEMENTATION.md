@@ -860,6 +860,22 @@ and authored plugin code covered all 815 lines and 480 branch outcomes.
 The IDE loaded MARS MIPS and opened the smoke project. All six JARs in the
 distribution ZIP matched the launched plugin by SHA-256.
 
+## Reset and reassemble
+
+**Reset MARS Program** in the Run or Debug toolbar restarts from the captured
+assembly image and launch settings. It can stop an active simulation, including
+one waiting for input, before starting the replacement. Registers, initialized
+memory, heap, symbols, delayed branches, random streams, descriptors, undo
+history, and educational tools belong to the fresh simulator session. Explicit
+random seeds in the assembly run again when the program reaches them.
+
+IntelliJ's **Rerun** action reassembles current project sources, including
+unsaved changes, and applies the current launch settings. When configured,
+**Assemble MIPS Sources** in Before Launch reports this build. Reset hands
+the captured image through the same launch pipeline without assembling again.
+IntelliJ still validates the run configuration and runs any other enabled
+Before Launch tasks.
+
 ## Interactive Run console
 
 The process handler now exposes standard input through IntelliJ's `ProcessHandler`

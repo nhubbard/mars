@@ -14,6 +14,7 @@ import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
+import com.intellij.execution.RunManager
 import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.impl.ExecutionManagerImpl
@@ -25,18 +26,21 @@ import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.configurations.UnknownConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
+import com.intellij.execution.runners.ExecutionUtil
 import com.intellij.execution.runners.ProgramRunner
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
@@ -63,6 +67,7 @@ import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
+import com.intellij.xdebugger.XDebuggerManager
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -105,6 +110,121 @@ class MarsRunPlatformTest {
     private val type get() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
     private val executor get() = DefaultRunExecutor.getRunExecutorInstance()
     private var runCount = 0
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `Reset restarts the captured image and Rerun assembles current sources and options`(debug: Boolean) = timeoutRunBlocking<Unit> {
+        val manager = ExecutionManager.getInstance(project) as ExecutionManagerImpl
+        val previous = manager.forceCompilationInTests
+        val lifetime = Disposer.newDisposable()
+        val starts = Channel<Triple<ExecutionEnvironment, MarsProcessHandler, Recording>>(Channel.UNLIMITED)
+        val builds = Channel<StartBuildEvent>(Channel.UNLIMITED)
+        val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
+        fun resetAction(env: ExecutionEnvironment) = requireNotNull(env.contentToReuse).let { descriptor ->
+            val actions = if (debug) {
+                val session = requireNotNull(XDebuggerManager.getInstance(project).getDebugSession(descriptor.executionConsole!!))
+                val toolbar = DefaultActionGroup()
+                session.debugProcess.registerAdditionalActions(DefaultActionGroup(), toolbar, DefaultActionGroup())
+                toolbar.getChildren(ActionManager.getInstance())
+            } else descriptor.restartActions
+            actions.single { it.templatePresentation.text == "Reset MARS Program" }
+        }
+        try {
+            val (config, data) = withContext(Dispatchers.EDT) {
+                manager.forceCompilationInTests = true
+                val data = fixture.addFileToProject("reset-data.s", ".data\nvalue: .word 7\n").virtualFile
+                val file = fixture.addFileToProject("reset.asm", """
+                    .include "reset-data.s"
+                    .text
+                    lw ${'$'}t0, 0(${'$'}a1)
+                    lbu ${'$'}a0, 0(${'$'}t0)
+                    li ${'$'}v0, 11
+                    syscall
+                    la ${'$'}t0, value
+                    lw ${'$'}a0, 0(${'$'}t0)
+                    sw ${'$'}zero, 0(${'$'}t0)
+                    li ${'$'}v0, 1
+                    syscall
+                    li ${'$'}v0, 5
+                    syscall
+                    li ${'$'}v0, 10
+                    syscall
+                """.trimIndent()).virtualFile
+                val settings = RunManager.getInstance(project).createConfiguration("Reset fixture", type)
+                val config = settings.configuration as MarsRunConfiguration
+                config.options.sourcePath = file.path
+                config.options.programArguments = "a"
+                config.beforeRunTasks = listOf(MarsBeforeLaunchTask().apply { isEnabled = true })
+                project.replaceService(BuildViewManager::class.java, object : BuildViewManager(project) {
+                    override fun onEvent(buildId: Any, event: BuildEvent) {
+                        if (event is StartBuildEvent) check(builds.trySend(event).isSuccess)
+                    }
+                }, lifetime)
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env.runProfile !== config) return
+                        val action = resetAction(env)
+                        val event = TestActionEvent.createTestEvent(action)
+                        action.update(event)
+                        assertFalse(event.presentation.isEnabled)
+                        action.actionPerformed(event)
+                        val recording = Recording()
+                        handler.addProcessListener(recording)
+                        check(starts.trySend(Triple(env, handler as MarsProcessHandler, recording)).isSuccess)
+                    }
+                })
+                val environment = ExecutionEnvironmentBuilder.create(executor, settings).build()
+                environment.runner.execute(environment)
+                config to data
+            }
+            val (original, first, firstOutput) = starts.receive()
+            builds.receive()
+            pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals("a7", firstOutput.stdout.toString()) }
+            val originalAction = withContext(Dispatchers.EDT) {
+                val action = resetAction(original)
+                val event = TestActionEvent.createTestEvent(action)
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(data))
+                WriteCommandAction.runWriteCommandAction(project) { document.setText(".data\nvalue: .word 8\n") }
+                config.options.programArguments = "b"
+                action.update(event)
+                assertTrue(event.presentation.isEnabled)
+                assertEquals(ActionUpdateThread.EDT, action.actionUpdateThread)
+                action.actionPerformed(event)
+                action
+            }
+            assertEquals(130, firstOutput.exit.await())
+            val (reset, second, resetOutput) = starts.receive()
+            pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals("a7", resetOutput.stdout.toString()) }
+            assertNotSame(first, second)
+            assertSame(first.capturedProgram, second.capturedProgram)
+            assertTrue(builds.tryReceive().isFailure)
+            withContext(Dispatchers.EDT) {
+                // Unit-test mode does not show or replace run content tabs.
+                Disposer.dispose(original)
+                val event = TestActionEvent.createTestEvent(originalAction)
+                originalAction.update(event)
+                assertFalse(event.presentation.isEnabled)
+                originalAction.actionPerformed(event)
+            }
+            second.processInput.write("1\n".toByteArray())
+            assertEquals(0, resetOutput.exit.await())
+
+            withContext(Dispatchers.EDT) { ExecutionUtil.restart(reset) }
+            val (_, third, rebuiltOutput) = starts.receive()
+            builds.receive()
+            pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals("b8", rebuiltOutput.stdout.toString()) }
+            assertNotSame(second.capturedProgram, third.capturedProgram)
+            third.processInput.write("1\n".toByteArray())
+            assertEquals(0, rebuiltOutput.exit.await())
+            assertEquals(second.instructionCounter.snapshot(), third.instructionCounter.snapshot())
+        } finally {
+            withContext(Dispatchers.EDT) {
+                manager.forceCompilationInTests = previous
+                manager.getRunningProcesses().filterIsInstance<MarsProcessHandler>().forEach { it.destroyProcess() }
+                Disposer.dispose(lifetime)
+            }
+        }
+    }
 
     @ParameterizedTest
     @ValueSource(strings = ["run", "assembly-error", "assembly-cancelled", "later-task-fails"])

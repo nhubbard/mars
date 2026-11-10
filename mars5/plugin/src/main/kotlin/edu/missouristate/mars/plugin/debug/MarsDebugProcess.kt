@@ -72,7 +72,7 @@ private enum class ReverseStep(val messageKey: String) {
     SOURCE("debug.backstep.source"),
 }
 
-internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : XDebugProcess(session) {
+internal class MarsDebugProcess(session: XDebugSession, private val state: MarsRunState) : XDebugProcess(session) {
     private data class Command(
         val steps: Long = 0,
         val target: Location? = null,
@@ -93,7 +93,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
     private var suspensionNumber = 0L
     @Volatile private lateinit var sources: MarsDebugSources
-    private val handler = state.debugProcess { machine, capture ->
+    private val handler = state.createProcess { machine, capture ->
         sources = MarsDebugSources(capture)
         debug(this, machine)
     }
@@ -144,6 +144,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
         topToolbar.add(MarsRunSpeedAction(handler))
+        topToolbar.add(state.resetAction(handler))
         topToolbar.add(object : DumbAwareAction(
             runMessages.getMessage("debug.step.instruction"),
             runMessages.getMessage("debug.step.instruction.description"),

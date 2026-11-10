@@ -29,6 +29,7 @@ import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
+import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -142,6 +143,8 @@ internal class MarsProcessHandler(
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
     @Volatile var runSpeed = initialRunSpeed
     @Volatile private var console: ConsoleView? = null
+    @Volatile var capturedProgram: MarsAssembledProgram? = null
+        private set
 
     fun bindConsole(view: ConsoleView) {
         console = view
@@ -267,6 +270,7 @@ internal class MarsProcessHandler(
                 notifyTextAvailable(runMessages.getMessage("run.arguments.stack") + "\n", ProcessOutputTypes.STDERR)
                 return 1
             }
+            capturedProgram = program
             val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
