@@ -16,7 +16,9 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
+import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.indexing.FindSymbolParameters
+import com.intellij.util.indexing.IdFilter
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import kotlinx.coroutines.Dispatchers
@@ -38,7 +40,7 @@ class MipsGoToSymbolPlatformTest {
 
     @Test
     fun `registered symbol search opens exact identifiers and retains all matching kinds`() = timeoutRunBlocking<Unit> {
-        val source = ".eqv shared 3\nshared: nop\n.macro shared\n.end_macro\n.eqv\n.eqv 7 8\nignored: .include \"other.asm\"\n"
+        val source = "shared: nop\n.macro shared\n.end_macro\nignored: .include \"other.asm\"\n.eqv shared 3\n.eqv\n.eqv 7 8\n"
         val (first, second) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.asm", source) to
                 fixture.addFileToProject("other.s", "shared: syscall\nMAIN: nop\n")
@@ -52,7 +54,7 @@ class MipsGoToSymbolPlatformTest {
 
             val firstScope = GlobalSearchScope.fileScope(project.get(), first.virtualFile)
             val firstItems = items("shared", firstScope).map { assertInstanceOf(MipsDeclaration::class.java, it) }
-            assertEquals(listOf(SymbolKind.CONSTANT, SymbolKind.LABEL, SymbolKind.MACRO), firstItems.map { it.kind })
+            assertEquals(listOf(SymbolKind.LABEL, SymbolKind.MACRO, SymbolKind.CONSTANT), firstItems.map { it.kind })
             assertEquals(4, items("shared", scope).size)
             assertEquals("MAIN", items("MAIN", GlobalSearchScope.fileScope(project.get(), second.virtualFile)).single().name)
             assertTrue(items("SHARED", scope).isEmpty())
@@ -79,7 +81,7 @@ class MipsGoToSymbolPlatformTest {
             val shortDirective = first.findElementAt(source.indexOf(".eqv\n"))!!
             assertEquals(MipsTypes.psi("DIRECTIVE_STATEMENT"), shortDirective.parent.node.elementType)
             assertThrows(IncorrectOperationException::class.java) { firstItems.first().setName("different") }
-            assertNull(MipsDeclaration.findAt(first, 0, "shared"))
+            assertNull(MipsDeclaration.findAt(first, source.indexOf(':'), "shared"))
             assertNull(MipsDeclaration.findAt(first, 5, "stale"))
             assertNull(MipsDeclaration.findAt(first, source.length, "shared"))
             assertNull(MipsDeclaration.findAt(first, source.indexOf("nop"), "shared"))
@@ -91,6 +93,98 @@ class MipsGoToSymbolPlatformTest {
                 false
             }, FindSymbolParameters.wrap("shared", scope))
             assertEquals(1, stopped.size)
+            val namesBeforeStop = mutableListOf<String>()
+            contributor.processNames({
+                namesBeforeStop.add(it)
+                false
+            }, scope, null)
+            assertEquals(1, namesBeforeStop.size)
+        }
+    }
+
+    @Test
+    fun `search resolves expanded labels in included files and removes rewritten declarations`() = timeoutRunBlocking<Unit> {
+        val source = "OPEN: .ascii \"ignored\"\n.text\nORIGINAL: nop\nPREFIX nop\n"
+        val (body, entry) = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("other-symbol.asm", "generated: nop\n")
+            val body = fixture.addFileToProject("symbol-body.s", source)
+            val entry = fixture.addFileToProject("symbol-entry.asm", """
+                .eqv OPEN .data
+                .eqv ORIGINAL renamed
+                .eqv PREFIX generated:
+                .include "symbol-body.s"
+            """.trimIndent())
+            body to entry
+        }
+        val current = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val bodyScope = GlobalSearchScope.fileScope(current, body.virtualFile)
+        readAction {
+            val names = mutableSetOf<String>()
+            contributor.processNames(names::add, bodyScope, null)
+            assertTrue(names.containsAll(setOf("renamed", "generated")))
+            val allNames = mutableListOf<String>()
+            contributor.processNames({
+                allNames.add(it)
+                true
+            }, GlobalSearchScope.projectScope(current), null)
+            assertEquals(1, allNames.count { it == "generated" })
+            assertTrue(allNames.none { it.startsWith("#") })
+            fun filteredNames(fileId: Int): Set<String> = buildSet {
+                val filter = object : IdFilter() {
+                    override fun containsFileId(id: Int) = id == fileId
+                }
+                contributor.processNames({
+                    add(it)
+                    true
+                }, bodyScope, filter)
+            }
+            assertTrue("renamed" !in filteredNames(FileBasedIndex.getFileId(entry.virtualFile)))
+            assertTrue("renamed" in filteredNames(FileBasedIndex.getFileId(body.virtualFile)))
+            contributor.processNames({ error("Empty scope produced $it") }, GlobalSearchScope.EMPTY_SCOPE, null)
+            assertTrue(items("OPEN", bodyScope).isEmpty())
+            assertTrue(items("ORIGINAL", bodyScope).isEmpty())
+            for ((name, spelling) in listOf("renamed" to "ORIGINAL:", "generated" to "PREFIX")) {
+                val item = items(name, bodyScope).single()
+                assertEquals(name, item.name)
+                assertEquals("symbol-body.s", item.presentation?.locationString)
+                assertTrue(item.canNavigateToSource())
+                val descriptor = assertInstanceOf(OpenFileDescriptor::class.java, item)
+                assertEquals(body.virtualFile, descriptor.file)
+                assertEquals(source.indexOf(spelling), descriptor.offset)
+                assertTrue(items(name, GlobalSearchScope.fileScope(current, entry.virtualFile)).isEmpty())
+            }
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.setText(".include \"symbol-body.s\"\n")
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        readAction {
+            assertTrue(items("renamed", bodyScope).isEmpty())
+            assertTrue(items("generated", bodyScope).isEmpty())
+            assertEquals("ORIGINAL", items("ORIGINAL", bodyScope).single().name)
+        }
+    }
+
+    @Test
+    fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("cycle-b.s", ".include \"cycle-a.asm\"\n")
+            fixture.addFileToProject("cycle-a.asm", ".eqv OLD recovered\n.include \"cycle-b.s\"\nOLD: nop\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        val scope = GlobalSearchScope.fileScope(project.get(), file.virtualFile)
+        readAction {
+            val results = mutableListOf<NavigationItem>()
+            contributor.processElementsWithName("recovered", {
+                results.add(it)
+                false
+            }, FindSymbolParameters.wrap("recovered", scope))
+            assertEquals("recovered", results.single().name)
+            assertTrue(items("OLD", scope).all { it is MipsDeclaration && it.kind == SymbolKind.CONSTANT })
         }
     }
 

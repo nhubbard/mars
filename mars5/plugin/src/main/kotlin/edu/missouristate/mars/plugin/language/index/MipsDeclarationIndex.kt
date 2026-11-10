@@ -3,6 +3,7 @@ package edu.missouristate.mars.plugin.language.index
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.indexing.DataIndexer
@@ -25,7 +26,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 22
+    override fun getVersion(): Int = 23
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -36,6 +37,7 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
         content.psiFile.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 ProgressManager.checkCanceled()
+                if (element.node.elementType in expansionSeeds) declarations.getOrPut(EXPANSION_SEED, ::ArrayList)
                 if (element is MipsDeclaration) {
                     val name = element.name
                     if (name != null) {
@@ -56,6 +58,8 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
 
     companion object {
         val NAME: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
+        internal const val EXPANSION_SEED = "#mars.expansion"
+        private val expansionSeeds = TokenSet.create(MipsTypes.psi("EQV"), MipsTypes.psi("INCLUDE"))
     }
 }
 
