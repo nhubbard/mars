@@ -5,6 +5,7 @@ import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -136,6 +137,20 @@ internal class MarsProcessHandler(
     private val entry = launch.sources.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
     @Volatile var runSpeed = initialRunSpeed
+    @Volatile private var console: ConsoleView? = null
+
+    fun bindConsole(view: ConsoleView) {
+        console = view
+        Disposer.register(view) { console = null }
+    }
+
+    private fun clearConsole() {
+        console?.let { view ->
+            // A console can receive output before its editor is initialized, especially in Debug.
+            view.component
+            view.clear()
+        }
+    }
 
     override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
         toolInstructions.addListener(listener, lifetime)
@@ -254,7 +269,9 @@ internal class MarsProcessHandler(
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
                     val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
                     SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset).use { io ->
-                        session.program.setSyscallEnvironment(MarsSyscallDialogs(project, entry.fileName.toString(), execution, io))
+                        session.program.setSyscallEnvironment(
+                            MarsIdeSyscallEnvironment(project, entry.fileName.toString(), execution, io, ::clearConsole),
+                        )
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.setRunSpeedSource { runSpeed.toDouble() }

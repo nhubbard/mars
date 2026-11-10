@@ -890,6 +890,14 @@ Each dialog belongs to the launch that opened it. Stopping Run or Debug,
 or closing the project, dismisses the dialog and releases the simulator.
 Standard console input still uses the Run or Debug console.
 
+### Clear screen
+
+Syscall 60 clears the IntelliJ console attached to the current Run or Debug
+launch, including earlier output queued for display. Output from subsequent
+instructions appears after the clear. Input already submitted to the
+program stays in its input stream. The native console may discard input
+still being edited when it clears the transcript.
+
 ## Simulator boundary for native breakpoints
 
 The debugger can supply an address predicate to `SimulatorEngine.runUntilAsync`.

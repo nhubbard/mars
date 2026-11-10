@@ -237,7 +237,7 @@ class MarsSyscallDialogsPlatformTest {
             }
             withContext(Dispatchers.Default) {
                 MarsSessionService.createMarsComponent().context().use { session ->
-                    val dialogs = MarsSyscallDialogs(project, "unused.asm", execution, session.syscallEnvironment)
+                    val dialogs = MarsIdeSyscallEnvironment(project, "unused.asm", execution, session.syscallEnvironment) {}
                     dialogs.showMessageDialog("Complete", "Simulation result", -1)
                 }
             }

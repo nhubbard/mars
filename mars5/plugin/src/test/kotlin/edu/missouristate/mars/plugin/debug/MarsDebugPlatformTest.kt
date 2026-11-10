@@ -2670,6 +2670,39 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `ClearScreen removes earlier output from the native Debug console`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("debug-clear.asm", """
+                .data
+                before: .asciiz "old debug output"
+                after: .asciiz "new debug output"
+                .text
+                la ${'$'}a0, before
+                li ${'$'}v0, 4
+                syscall
+                li ${'$'}v0, 60
+                syscall
+                la ${'$'}a0, after
+                li ${'$'}v0, 4
+                syscall
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 12) }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 12)
+            val console = withContext(Dispatchers.EDT) {
+                assertInstanceOf(ConsoleViewImpl::class.java, debug.session.consoleView)
+            }
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) { assertEquals("new debug output", console.editor!!.document.text) }
+            }
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `native logpoint continues and a disabled breakpoint can be enabled again`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             val file = fixture.addFileToProject("loop.s", "nop\nli \$v0, 1\nsyscall\nloop: b loop\nnop\n").virtualFile

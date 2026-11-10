@@ -27,13 +27,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
-internal class MarsSyscallDialogs(
+internal class MarsIdeSyscallEnvironment(
     private val project: Project,
     private val sourceName: String,
     private val execution: Job,
     io: SyscallEnvironment,
+    private val clear: () -> Unit,
 ) : SyscallEnvironment by io {
-    override fun showInputDialog(message: String): String? = awaitDialog {
+    override fun showInputDialog(message: String): String? = onEdt {
         val field = JBTextField(36)
         val dialog = MarsSyscallDialog(
             project, runMessages.getMessage("run.dialog.input", sourceName), message,
@@ -42,7 +43,7 @@ internal class MarsSyscallDialogs(
         if (dialog.showAndAwaitClose() == DialogWrapper.OK_EXIT_CODE) field.text else null
     }
 
-    override fun showConfirmDialog(message: String): Int = awaitDialog {
+    override fun showConfirmDialog(message: String): Int = onEdt {
         val dialog = MarsSyscallDialog(
             project, runMessages.getMessage("run.dialog.confirm", sourceName), message, Messages.getQuestionIcon(), MarsSyscallDialog.Kind.CONFIRM,
         )
@@ -53,7 +54,7 @@ internal class MarsSyscallDialogs(
         }
     }
 
-    override fun showMessageDialog(message: String, title: String?, messageType: Int) = awaitDialog {
+    override fun showMessageDialog(message: String, title: String?, messageType: Int) = onEdt {
         val icon = when (messageType) {
             JOptionPane.ERROR_MESSAGE -> Messages.getErrorIcon()
             JOptionPane.INFORMATION_MESSAGE -> Messages.getInformationIcon()
@@ -68,9 +69,10 @@ internal class MarsSyscallDialogs(
         Unit
     }
 
-    // The Java syscall is synchronous. The execution job owns the wait, and dialog disposal
-    // completes it. Modeless UI keeps Stop accessible while the simulator worker waits.
-    private fun <T> awaitDialog(block: suspend () -> T): T = runBlocking(execution) {
+    override fun clearConsole() = onEdt { clear() }
+
+    // Only the simulator worker waits. The execution job cancels pending UI work on Stop.
+    private fun <T> onEdt(block: suspend () -> T): T = runBlocking(execution) {
         withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { block() }
     }
 

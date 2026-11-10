@@ -363,8 +363,11 @@ internal class MarsRunState(
     CommandLineState(environment) {
     val entry: Path get() = launch.sources.entry
 
-    override fun createActions(console: ConsoleView?, processHandler: ProcessHandler, executor: Executor?): Array<AnAction> =
-        arrayOf(MarsRunSpeedAction(processHandler as MarsProcessHandler))
+    override fun createActions(console: ConsoleView, processHandler: ProcessHandler, executor: Executor?): Array<AnAction> {
+        val handler = processHandler as MarsProcessHandler
+        handler.bindConsole(console)
+        return arrayOf(MarsRunSpeedAction(handler))
+    }
 
     override fun startProcess() =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,

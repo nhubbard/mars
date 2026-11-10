@@ -1521,6 +1521,81 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `ClearScreen drops deferred output and preserves submitted input and other Run consoles`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val handlers = mutableListOf<MarsProcessHandler>()
+        try {
+            val (first, second) = withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("clear-screen.asm", """
+                    .data
+                    before: .asciiz "before clear"
+                    after: .asciiz "after clear "
+                    .text
+                    la ${'$'}a0, before
+                    li ${'$'}v0, 4
+                    syscall
+                    li ${'$'}v0, 5
+                    syscall
+                    li ${'$'}v0, 60
+                    syscall
+                    la ${'$'}a0, after
+                    li ${'$'}v0, 4
+                    syscall
+                    li ${'$'}v0, 5
+                    syscall
+                    move ${'$'}a0, ${'$'}v0
+                    li ${'$'}v0, 1
+                    syscall
+                    li ${'$'}v0, 10
+                    syscall
+                """.trimIndent()).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                fun start(showConsole: Boolean): Triple<MarsProcessHandler, ConsoleViewImpl, Recording> {
+                    val env = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    val result = config.getState(executor, env).execute(executor, env.runner)!!
+                    val handler = assertInstanceOf(MarsProcessHandler::class.java, result.processHandler).also(handlers::add)
+                    val console = assertInstanceOf(ConsoleViewImpl::class.java, result.executionConsole)
+                    Disposer.register(lifetime, console)
+                    if (showConsole) console.component
+                    val recording = Recording()
+                    handler.addProcessListener(recording)
+                    handler.startNotify()
+                    return Triple(handler, console, recording)
+                }
+                start(showConsole = false) to start(showConsole = true)
+            }
+            first.third.output.await()
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertNull(first.second.editor)
+                    assertTrue(first.second.hasDeferredOutput())
+                    assertEquals("before clear", second.second.editor!!.document.text)
+                }
+            }
+            val submitted = "11\n27\n".toByteArray(EncodingManager.getInstance().defaultCharset)
+            withContext(Dispatchers.IO) { first.first.processInput.write(submitted) }
+            assertEquals(0, first.third.exit.await())
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertEquals("after clear 27", first.second.editor!!.document.text)
+                    assertEquals("before clear", second.second.editor!!.document.text)
+                }
+            }
+            withContext(Dispatchers.EDT) { Disposer.dispose(second.second) }
+            withContext(Dispatchers.IO) { second.first.processInput.write(submitted) }
+            assertEquals(0, second.third.exit.await())
+            assertEquals("before clearafter clear 27", second.third.stdout.toString())
+            assertEquals("", second.third.stderr.toString())
+        } finally {
+            withContext(Dispatchers.EDT) {
+                handlers.forEach(ProcessHandler::destroyProcess)
+                Disposer.dispose(lifetime)
+            }
+        }
+    }
+
+    @Test
     fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking<Unit> {
         val (handler, recording) = run("li \$v0, 5\nsyscall\n")
         try {

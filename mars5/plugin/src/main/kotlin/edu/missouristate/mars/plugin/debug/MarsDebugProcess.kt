@@ -122,6 +122,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     override fun doGetProcessHandler() = handler
     override fun createConsole() = TextConsoleBuilderFactory.getInstance().createBuilder(session.project).console.also {
         it.attachToProcess(handler)
+        handler.bindConsole(it)
     }
 
     override fun getEditorsProvider(): XDebuggerEditorsProvider = MarsDebugEditors
