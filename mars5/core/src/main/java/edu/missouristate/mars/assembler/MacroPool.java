@@ -1,7 +1,9 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.MIPSprogram;
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition;
 import java.util.ArrayList;
+import java.util.List;
 
 /*
 Copyright (c) 2013.
@@ -144,6 +146,15 @@ public class MacroPool {
 
   public Macro getCurrent() {
     return current;
+  }
+
+  List<MacroDefinition> definitions(Runnable checkCancellation) {
+    var definitions = new ArrayList<MacroDefinition>(macroList.size());
+    for (var macro : macroList) {
+      checkCancellation.run();
+      definitions.add(new MacroDefinition(macro.definitionSite(), macro.getName(), macro.getArgs()));
+    }
+    return definitions;
   }
 
   public void setCurrent(Macro current) {

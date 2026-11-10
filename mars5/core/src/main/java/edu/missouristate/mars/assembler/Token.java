@@ -2,6 +2,8 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
+import java.nio.file.Path;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -207,6 +209,13 @@ public class Token {
   /** Returns the written token that supplied this token during macro expansion. */
   public Token getDiagnosticOrigin() {
     return diagnosticOrigin == null ? this : diagnosticOrigin;
+  }
+
+  SourceToken diagnosticSite() {
+    var written = getDiagnosticOrigin();
+    var location = new Location(
+        Path.of(written.getOriginalProgram().getFilename()), written.getOriginalSourceLine());
+    return new SourceToken(location, written.getOriginalStartPos());
   }
 
   void setDiagnosticOrigin(Token origin) {

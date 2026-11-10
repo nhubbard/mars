@@ -28,6 +28,8 @@ import com.intellij.util.indexing.FileBasedIndex
 import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.AssemblySymbolMap.SymbolUse
 import edu.missouristate.mars.api.InstructionSourceMap.Location
@@ -49,8 +51,8 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import java.nio.file.Path
 
-internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
-    override fun canProcessElement(element: PsiElement) = element is MipsDeclaration && element.kind == SymbolKind.LABEL
+internal class MipsSymbolRenameProcessor : RenamePsiElementProcessor() {
+    override fun canProcessElement(element: PsiElement) = element is MipsDeclaration && element.kind in renameableKinds
     override fun isInplaceRenameSupported() = false
     override fun getElementToSearchInStringsAndComments(element: PsiElement): PsiElement? = null
 
@@ -64,8 +66,9 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
         // A refactoring can run before external highlighting has published anything for this revision.
         val symbols = analysis.backgroundAssembly.assemble(capture.sources, capture.structureStamp, capture.options).symbols
             ?: return emptyList()
-        val declaration = writtenLabelToken(target, capture.source, documents.getValue(capture.source))
-        return symbols.symbols.labelSpellings(declaration, name).mapNotNull { site ->
+        val declaration = writtenToken(target, capture.source, documents.getValue(capture.source))
+        val subject = RenameSubject(target.kind, declaration, name)
+        return symbols.symbols.referenceSpellings(subject).mapNotNull { site ->
             ProgressManager.checkCanceled()
             analysis.assembledReference(target, site, searchScope)
         }
@@ -74,7 +77,7 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
     override fun findCollisions(element: PsiElement, newName: String, allRenames: Map<out PsiElement, String>, result: MutableList<UsageInfo>) {
         element.putUserData(renameVerification, null)
         val verification = try {
-            if (allRenames.size != 1) throw labelRenameError("label.rename.scope")
+            if (allRenames.size != 1) throw symbolRenameError("symbol.rename.scope")
             Result.success(verifyRename(element as MipsDeclaration, newName, usageEdits(result)))
         } catch (failure: IncorrectOperationException) {
             Result.failure(failure)
@@ -87,13 +90,13 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
     }
 
     override fun renameElement(element: PsiElement, newName: String, usages: Array<UsageInfo>, listener: RefactoringElementListener?) {
-        val plan = element.getUserData(renameVerification)?.getOrThrow() ?: throw labelRenameError("label.rename.unverified")
+        val plan = element.getUserData(renameVerification)?.getOrThrow() ?: throw symbolRenameError("symbol.rename.unverified")
         element.putUserData(renameVerification, null)
-        if (newName != plan.newName || usageEdits(usages.asList()) != plan.usages) throw labelRenameError("label.rename.unverified")
+        if (newName != plan.newName || usageEdits(usages.asList()) != plan.usages) throw symbolRenameError("symbol.rename.unverified")
         val file = element.containingFile as MipsFile
-        val documents = plan.capture.committedDocuments(file) ?: throw labelRenameError("label.rename.stale")
+        val documents = plan.capture.committedDocuments(file) ?: throw symbolRenameError("symbol.rename.stale")
         if (PsiModificationTracker.getInstance(element.project).modificationCount != plan.projectRevision) {
-            throw labelRenameError("label.rename.stale")
+            throw symbolRenameError("symbol.rename.stale")
         }
         val manager = PsiDocumentManager.getInstance(element.project)
         for ((path, edits) in plan.edits) {
@@ -108,34 +111,43 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
     }
 }
 
-internal class MipsLabelRenameInputValidator : RenameInputValidator {
+internal class MipsSymbolRenameInputValidator : RenameInputValidator {
     override fun getPattern() = PlatformPatterns.psiElement(MipsDeclaration::class.java)
-        .with(object : PatternCondition<MipsDeclaration>("label") {
-            override fun accepts(element: MipsDeclaration, context: ProcessingContext) = element.kind == SymbolKind.LABEL
+        .with(object : PatternCondition<MipsDeclaration>("renameable MARS declaration") {
+            override fun accepts(element: MipsDeclaration, context: ProcessingContext) = element.kind in renameableKinds
         })
 
-    override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) = validLabelName(newName)
+    override fun isInputValid(newName: String, element: PsiElement, context: ProcessingContext) =
+        validSymbolName(newName, (element as MipsDeclaration).kind)
 }
 
-private data class LabelEdit(val path: Path, val range: TextRange)
+private data class SymbolEdit(val path: Path, val range: TextRange)
 private data class LabelDefinition(val entry: Path?, val definition: Definition)
-private data class LabelRenamePlan(
-    val capture: EditorAssemblyCapture, val newName: String, val usages: Set<LabelEdit>,
+private data class SymbolRenamePlan(
+    val capture: EditorAssemblyCapture, val newName: String, val usages: Set<SymbolEdit>,
     val edits: Map<Path, List<TextRange>>, val newDeclaration: SourceToken, val projectRevision: Long,
 )
 
-private val renameVerification = Key.create<Result<LabelRenamePlan>>("mars.label.rename.verification")
-private val bundle = DynamicBundle(MipsLabelRenameProcessor::class.java, "messages.MarsBundle")
+private data class RenameSubject(val kind: SymbolKind, val site: SourceToken, val name: String) {
+    val macro get() = kind == SymbolKind.MACRO
+    fun matches(site: SourceToken, name: String) = this.site == site && this.name == name
+}
 
-private fun labelRenameError(key: String) = IncorrectOperationException(bundle.getMessage(key))
+private val renameableKinds = setOf(SymbolKind.LABEL, SymbolKind.MACRO)
+private val renameVerification = Key.create<Result<SymbolRenamePlan>>("mars.symbol.rename.verification")
+private val bundle = DynamicBundle(MipsSymbolRenameProcessor::class.java, "messages.MarsBundle")
 
-private fun validLabelName(name: String): Boolean = name != SymbolTable.getStartLabel() && name.isNotEmpty() &&
+private fun symbolRenameError(key: String) = IncorrectOperationException(bundle.getMessage(key))
+
+private fun validSymbolName(name: String, kind: SymbolKind): Boolean = !reservedEntry(name, kind) && name.isNotEmpty() &&
     TokenTypes.isValidIdentifier(name) && TokenTypes.matchTokenType(name) == TokenTypes.IDENTIFIER
 
-private fun usageEdits(usages: List<UsageInfo>): Set<LabelEdit> = usages.mapTo(HashSet()) { usage ->
-    val file = usage.virtualFile ?: throw labelRenameError("label.rename.unverified")
-    val range = usage.segment ?: throw labelRenameError("label.rename.unverified")
-    LabelEdit(file.toNioPath().toAbsolutePath().normalize(), TextRange(range.startOffset, range.endOffset))
+private fun reservedEntry(name: String, kind: SymbolKind) = name == SymbolTable.getStartLabel() && kind == SymbolKind.LABEL
+
+private fun usageEdits(usages: List<UsageInfo>): Set<SymbolEdit> = usages.mapTo(HashSet()) { usage ->
+    val file = usage.virtualFile ?: throw symbolRenameError("symbol.rename.unverified")
+    val range = usage.segment ?: throw symbolRenameError("symbol.rename.unverified")
+    SymbolEdit(file.toNioPath().toAbsolutePath().normalize(), TextRange(range.startOffset, range.endOffset))
 }
 
 private fun EditorAssemblyCapture.committedDocuments(file: MipsFile): Map<Path, Document>? = buildMap {
@@ -145,48 +157,55 @@ private fun EditorAssemblyCapture.committedDocuments(file: MipsFile): Map<Path, 
         }) return null
 }
 
-private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<LabelEdit>): LabelRenamePlan {
-    if (!validLabelName(newName)) throw labelRenameError("label.rename.invalid.name")
-    val oldName = target.name ?: throw labelRenameError("label.rename.scope")
-    if (oldName == SymbolTable.getStartLabel()) throw labelRenameError("label.rename.scope")
+private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<SymbolEdit>): SymbolRenamePlan {
+    if (!validSymbolName(newName, target.kind)) throw symbolRenameError("symbol.rename.invalid.name")
+    val oldName = target.name ?: throw symbolRenameError("symbol.rename.scope")
+    if (reservedEntry(oldName, target.kind)) throw symbolRenameError("symbol.rename.scope")
     val file = target.containingFile as MipsFile
     val project = file.project
-    val capture = collectEditorAssembly(file) ?: throw labelRenameError("label.rename.scope")
+    val capture = collectEditorAssembly(file) ?: throw symbolRenameError("symbol.rename.scope")
     val sources = capture.sources
-    val documents = capture.committedDocuments(file) ?: throw labelRenameError("label.rename.stale")
+    val documents = capture.committedDocuments(file) ?: throw symbolRenameError("symbol.rename.stale")
     val vfs = VirtualFileManager.getInstance()
     val psi = PsiManager.getInstance(project)
     val sourceFiles = documents.keys.associateWith { vfs.findFileByNioPath(it)!! }
     for (sourceFile in sourceFiles.values) {
         val source = psi.findFile(sourceFile)
-        if (source !is MipsFile && source !is PsiPlainTextFile) throw labelRenameError("label.rename.scope")
+        if (source !is MipsFile && source !is PsiPlainTextFile) throw symbolRenameError("symbol.rename.scope")
     }
-    val declaration = writtenLabelToken(target, capture.source, documents.getValue(capture.source))
+    val declaration = writtenToken(target, capture.source, documents.getValue(capture.source))
+    val subject = RenameSubject(target.kind, declaration, oldName)
 
     val (before, beforeImage) = capture.assemble(sources)
-    val written = before.labelDefinitions(oldName).filter { it.definition.writtenToken() == declaration }.singleOrNull()
-        ?: throw labelRenameError("label.rename.scope")
-    val references = before.labelSpellings(declaration, oldName)
+    val macroDefinitions = before.macros().values.flatten().filter { it.name() == oldName }
+    val written = if (subject.macro) {
+        if (macroDefinitions.count { it.site() == declaration } != 1) throw symbolRenameError("symbol.rename.scope")
+        null
+    } else {
+        before.labelDefinitions(oldName).filter { it.definition.writtenToken() == declaration }.singleOrNull()
+            ?: throw symbolRenameError("symbol.rename.scope")
+    }
+    val references = before.referenceSpellings(subject)
     val expected = references.mapTo(HashSet()) { it.editIn(documents, oldName.length) }
     val sites = references + declaration
-    val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(LabelEdit::path, LabelEdit::range)
+    val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(SymbolEdit::path, SymbolEdit::range)
     val editedFiles = edits.keys.map(sourceFiles::getValue)
     val editedPhysicalFiles = editedFiles.mapTo(HashSet()) { it.canonicalFile }
     sources.exceptionHandler?.let { handler ->
         // Capture the handler's include closure independently. An entry file may also be included by the handler.
         val handlerSources = collectBackgroundAssemblySources(project, MarsSourceSet(handler))
         if (handlerSources.revisions.keys.any { sourceFiles.getValue(it).canonicalFile in editedPhysicalFiles }) {
-            throw labelRenameError("label.rename.handler.shared")
+            throw symbolRenameError("symbol.rename.handler.shared")
         }
     }
-    if (usages != expected) throw labelRenameError("label.rename.usages")
+    if (usages != expected) throw symbolRenameError("symbol.rename.usages")
     val entryFiles = sources.snapshot.entries().mapTo(HashSet()) { vfs.findFileByNioPath(it)!! }
     for (source in editedFiles) {
         // A plain-text parent has no reverse index entry. The forward check below covers those edges.
-        if ((mipsAssemblyRoots(project, source) - source).any { it !in entryFiles }) throw labelRenameError("label.rename.scope")
+        if ((mipsAssemblyRoots(project, source) - source).any { it !in entryFiles }) throw symbolRenameError("symbol.rename.scope")
     }
     if (sourceFiles.values.count { it.canonicalFile in editedPhysicalFiles } != editedPhysicalFiles.size) {
-        throw labelRenameError("label.rename.scope")
+        throw symbolRenameError("symbol.rename.scope")
     }
     // Follow the assembler's include prepass from other indexed entries, including through plain text.
     val seeds = FileBasedIndex.getInstance().getContainingFiles(MipsDeclarationIndex.NAME, EXPANSION_SEED,
@@ -196,7 +215,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
         if (seed.toNioPath() in documents) continue
         val other = collectBackgroundAssemblySources(project, MarsSourceSet(seed.toNioPath()))
         if (other.revisions.keys.any { vfs.findFileByNioPath(it)!!.canonicalFile in editedPhysicalFiles }) {
-            throw labelRenameError("label.rename.scope")
+            throw symbolRenameError("symbol.rename.scope")
         }
     }
     val unrelated = buildSet {
@@ -205,8 +224,13 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
             ProgressManager.checkCanceled()
             for (binding in bindings) if (binding.name() == oldName) add(binding.equivalenceSource() ?: site)
         }
+        macroDefinitions.mapTo(this, MacroDefinition::site)
+        for ((site, calls) in before.macroCalls()) {
+            ProgressManager.checkCanceled()
+            for (call in calls) if (call.name() == oldName) add(call.spelling() ?: site)
+        }
         removeAll(sites)
-    }.map { it.editIn(documents, oldName.length) }.groupBy(LabelEdit::path, LabelEdit::range)
+    }.map { it.editIn(documents, oldName.length) }.groupBy(SymbolEdit::path, SymbolEdit::range)
     val texts = sources.snapshot.texts().mapValues { (path, text) ->
         val ranges = edits[path].orEmpty()
         verifySpellings(text, oldName, newName, ranges.toSet(), unrelated[path].orEmpty().toSet())
@@ -226,31 +250,57 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     }
     val expectedUses = before.symbolUses().mapKeys { shifted(it.key) }.mapValues { (_, bindings) ->
         bindings.mapTo(HashSet()) {
-            val name = if (it.binds(declaration, oldName)) newName else it.name()
+            val name = if (!subject.macro && subject.matches(it.definition(), it.name())) newName else it.name()
             SymbolUse(shifted(it.definition()), name, it.equivalenceSource()?.let(::shifted))
         }
     }
     val expectedLocals = before.locals().mapValues { (entry, definitions) ->
-        if (entry == written.entry) definitions.renamed(oldName, newName) else definitions.withoutColumns()
+        if (entry == written?.entry) definitions.renamed(oldName, newName) else definitions.withoutColumns()
     }
-    val expectedGlobals = if (written.entry == null) before.globals().renamed(oldName, newName) else before.globals().withoutColumns()
+    val expectedGlobals = if (written != null && written.entry == null) before.globals().renamed(oldName, newName)
+    else before.globals().withoutColumns()
     val expectedSymbols = Triple(expectedUses, expectedLocals, expectedGlobals)
     val actualSymbols = Triple(after.symbolUses(), after.locals().mapValues { it.value.withoutColumns() }, after.globals().withoutColumns())
     val sameImage = beforeImage.hasSameMachineImage(afterImage, ProgressManager::checkCanceled)
-    if (!(expectedSymbols == actualSymbols).and(sameImage)) throw labelRenameError("label.rename.changed")
-    return LabelRenamePlan(capture, newName, usages, edits, shifted(declaration),
+    val sameMacros = before.hasRenamedMacros(after, subject, newName, ::shifted)
+    if (!(expectedSymbols == actualSymbols).and(sameImage).and(sameMacros)) throw symbolRenameError("symbol.rename.changed")
+    return SymbolRenamePlan(capture, newName, usages, edits, shifted(declaration),
         PsiModificationTracker.getInstance(project).modificationCount)
 }
 
-private fun SymbolUse.binds(declaration: SourceToken, name: String) = definition() == declaration && name() == name
-
-private fun AssemblySymbolMap.labelSpellings(declaration: SourceToken, name: String): Set<SourceToken> = buildSet {
-    for ((site, bindings) in symbolUses()) {
-        ProgressManager.checkCanceled()
-        for (binding in bindings) {
-            if (binding.binds(declaration, name)) add(binding.equivalenceSource() ?: site)
+private fun AssemblySymbolMap.referenceSpellings(subject: RenameSubject): Set<SourceToken> = buildSet {
+    if (subject.macro) {
+        for ((site, calls) in macroCalls()) {
+            ProgressManager.checkCanceled()
+            for (call in calls) if (subject.matches(call.definition(), call.name())) add(call.spelling() ?: site)
+        }
+    } else {
+        for ((site, bindings) in symbolUses()) {
+            ProgressManager.checkCanceled()
+            for (binding in bindings) if (subject.matches(binding.definition(), binding.name())) add(binding.equivalenceSource() ?: site)
         }
     }
+}
+
+private fun AssemblySymbolMap.hasRenamedMacros(
+    after: AssemblySymbolMap, subject: RenameSubject, newName: String, shift: (SourceToken) -> SourceToken,
+): Boolean {
+    fun nameAt(site: SourceToken, name: String) = if (subject.macro && subject.matches(site, name)) newName else name
+    val definitions = macros().mapValues { (_, definitions) ->
+        definitions.map {
+            ProgressManager.checkCanceled()
+            MacroDefinition(shift(it.site()), nameAt(it.site(), it.name()), it.parameters())
+        }
+    }
+    val calls = macroCalls().mapKeys { shift(it.key) }.mapValues { (site, calls) ->
+        fun shiftedColumn(column: Int) = shift(SourceToken(site.location(), column)).column()
+        calls.mapTo(HashSet()) {
+            ProgressManager.checkCanceled()
+            MacroCall(shift(it.definition()), nameAt(it.definition(), it.name()), it.parameters(),
+                it.argumentColumns().map(::shiftedColumn), it.closingParenthesisColumn()?.let(::shiftedColumn), it.spelling()?.let(shift))
+        }
+    }
+    return (definitions == after.macros()).and(calls == after.macroCalls())
 }
 
 private fun AssemblySymbolMap.labelDefinitions(name: String): List<LabelDefinition> = buildList {
@@ -272,7 +322,7 @@ private fun Map<String, Definition>.withoutColumns() = mapValues { (_, definitio
     Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate())
 }
 
-private fun writtenLabelToken(target: MipsDeclaration, path: Path, document: Document): SourceToken {
+private fun writtenToken(target: MipsDeclaration, path: Path, document: Document): SourceToken {
     val offset = target.textOffset
     val line = document.getLineNumber(offset)
     return SourceToken(Location(path, line + 1), offset - document.getLineStartOffset(line) + 1)
@@ -281,14 +331,14 @@ private fun writtenLabelToken(target: MipsDeclaration, path: Path, document: Doc
 private fun SourceToken.offsetIn(document: Document) = document.getLineStartOffset(location().line() - 1) + column() - 1
 
 private fun SourceToken.editIn(documents: Map<Path, Document>, length: Int) =
-    LabelEdit(location().file(), TextRange.from(offsetIn(documents.getValue(location().file())), length))
+    SymbolEdit(location().file(), TextRange.from(offsetIn(documents.getValue(location().file())), length))
 
 private fun EditorAssemblyCapture.assemble(sources: CapturedAssemblySources) =
     MarsSessionService.createMarsComponent().let { component ->
         component.context().use { session ->
             options.applyForAssembly(session)
             val program = sources.assembleIn(component, ProgressManager::checkCanceled).program()
-                ?: throw labelRenameError("label.rename.assembly")
+                ?: throw symbolRenameError("symbol.rename.assembly")
             program.symbolMap() to session.captureAssemblyImage(ProgressManager::checkCanceled)
         }
     }
@@ -300,12 +350,12 @@ private fun verifySpellings(text: String, oldName: String, newName: String, expe
         ProgressManager.checkCanceled()
         val token = MipsScanner.next(text, offset)!!
         val spelling = text.substring(offset, token.end)
-        if (spelling == newName) throw labelRenameError("label.rename.name.conflict")
+        if (spelling == newName) throw symbolRenameError("symbol.rename.name.conflict")
         if (spelling == oldName) {
             val range = TextRange(offset, token.end)
             if (range !in unrelated) found.add(range)
         }
         offset = token.end
     }
-    if (found != expected) throw labelRenameError("label.rename.indirect")
+    if (found != expected) throw symbolRenameError("symbol.rename.indirect")
 }

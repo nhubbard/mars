@@ -134,8 +134,10 @@ final class Parser {
         var invocation = origin(physicalLine, caller);
         var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
         var call = new SourceToken(invocation.location(), token.writtenOrigin().getOriginalStartPos());
-        var header = physicalLines.get(macro.getFromLine() - 1);
-        var target = new SourceToken(origin(header, null).location(), macro.nameColumn);
+        var spelling = token.equivalenceSource();
+        if (spelling == null) {
+          spelling = token.diagnosticSite();
+        }
         var arguments = new ArrayList<Integer>(tokens.size() - 1);
         for (int i = 1; i < tokens.size(); i++) {
           arguments.add(tokens.get(i).writtenOrigin().getOriginalStartPos());
@@ -143,7 +145,8 @@ final class Parser {
         Integer closingColumn = closingParenthesis == null
             ? null : closingParenthesis.writtenOrigin().getOriginalStartPos();
         var occurrence = new MacroCall(
-            target, macro.getName(), macro.getArgs(), arguments, closingColumn);
+            macro.definitionSite(), macro.getName(), macro.getArgs(), arguments, closingColumn,
+            spelling.equals(call) ? null : spelling);
         pass.macroCalls.computeIfAbsent(call, ignored -> new HashSet<>()).add(occurrence);
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();

@@ -46,11 +46,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 @TestApplication
-class MipsLabelRenamePlatformTest {
+class MipsSymbolRenamePlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
-    private val processor = MipsLabelRenameProcessor()
+    private val processor = MipsSymbolRenameProcessor()
 
     @Test
     fun `native rename finds nested include references before highlighting and after unsaved edits`() = timeoutRunBlocking<Unit> {
@@ -133,7 +133,7 @@ class MipsLabelRenamePlatformTest {
         val target = readAction { label(entry) }
         val newName = "renamed.label"
         withContext(Dispatchers.EDT) {
-            assertTrue(RenamePsiElementProcessor.forElement(target) is MipsLabelRenameProcessor)
+            assertTrue(RenamePsiElementProcessor.forElement(target) is MipsSymbolRenameProcessor)
             val undo = UndoManager.getInstance(project)
             val editor = FileEditorManager.getInstance(project).selectedEditor
             val docs = PsiDocumentManager.getInstance(project)
@@ -160,6 +160,133 @@ class MipsLabelRenamePlatformTest {
             } finally {
                 TestDialogManager.setTestDialog(previous)
             }
+        }
+    }
+
+    @Test
+    fun `native rename follows a macro overload through nested calls and aliases`() = timeoutRunBlocking<Unit> {
+        val library = """
+            .macro emit
+                nop
+            .end_macro
+            .macro emit (%value)
+                li ${'$'}a0, %value
+            .end_macro
+            .macro invoke (%operation, %value)
+                %operation (%value)
+            .end_macro
+        """.trimIndent()
+        val source = """
+            .include "library.s"
+            .include "aliases.txt"
+            emit
+            emit (1)
+            invoke (ALIAS, 2)
+            .include "calls.txt"
+            emit: nop
+            j emit
+        """.trimIndent()
+        val aliases = ".eqv ALIAS emit # emit\n"
+        val calls = "emit (3) # emit\n"
+        val files = withContext(Dispatchers.EDT) {
+            val definitions = fixture.addFileToProject("library.s", library)
+            val aliasFile = fixture.addFileToProject("aliases.txt", aliases)
+            val callFile = fixture.addFileToProject("calls.txt", calls)
+            val entry = fixture.addFileToProject("entry.asm", source)
+            fixture.configureFromExistingVirtualFile(definitions.virtualFile)
+            listOf(definitions, aliasFile, callFile, entry)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = macros(files.first())[1]
+            assertEquals(setOf("entry.asm", "aliases.txt", "calls.txt"), usages(target).map { it.virtualFile!!.name }.toSet())
+            RenameProcessor(project, target, "write_value", false, false).run()
+            assertEquals(listOf(library.replace("emit (%value)", "write_value (%value)"),
+                aliases.replaceFirst("emit", "write_value"), calls.replaceFirst("emit", "write_value"),
+                source.replace("emit (1)", "write_value (1)")), files.map { it.text })
+            val previous = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).selectedEditor)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                assertEquals(listOf(library, aliases, calls, source), files.map { it.text })
+            } finally {
+                TestDialogManager.setTestDialog(previous)
+            }
+        }
+    }
+
+    @Test
+    fun `native rename can rename a committed macro without call sites`() = timeoutRunBlocking<Unit> {
+        val source = ".macro idle\nnop\n.end_macro\nnop\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val idle = macros(file).single()
+            val validator = MipsSymbolRenameInputValidator()
+            assertTrue(validator.pattern.accepts(idle))
+            assertTrue(validator.isInputValid("main", idle, ProcessingContext()))
+            assertFalse(validator.isInputValid("nop", idle, ProcessingContext()))
+            assertTrue(usages(idle).isEmpty())
+            RenameProcessor(project, idle, "main", false, false).run()
+            assertEquals(source.replace("idle", "main"), file.text)
+            RenameProcessor(project, macros(file).single(), "pause", false, false).run()
+            assertEquals(source.replace("idle", "pause"), file.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses a forwarded spelling shared by two macro overloads`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro emit
+                nop
+            .end_macro
+            .macro emit (%value)
+                li ${'$'}a0, %value
+            .end_macro
+            .macro both (%op)
+                %op
+                %op (1)
+            .end_macro
+            both (emit)
+        """.trimIndent()
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val macro = macros(file)[1]
+            val references = usages(macro)
+            assertEquals(source.lastIndexOf("emit"), references.single().segment!!.startOffset)
+            assertTrue(conflicts(macro, "updated", references).contains("could not assemble"))
+            assertEquals(source, file.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses macro declarations compiled into several assembly entries`() = timeoutRunBlocking<Unit> {
+        val definitions = withContext(Dispatchers.EDT) {
+            val library = fixture.addFileToProject("library.s", ".macro emit\nnop\n.end_macro\n")
+            val first = fixture.addFileToProject("first.asm", ".include \"library.s\"\nemit\n")
+            val second = fixture.addFileToProject("second.asm", ".include \"library.s\"\nemit\n")
+            project.service<MarsAssemblySettings>().changeSources(listOf(first, second).map { it.virtualFile.path })
+            library
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val macro = macros(definitions).single()
+            val references = usages(macro)
+            assertEquals(2, references.size)
+            assertTrue(conflicts(macro, "updated", references).contains("written label or macro"))
+        }
+    }
+
+    @Test
+    fun `label rename refuses to also rename an unrelated alias-defined macro`() = timeoutRunBlocking<Unit> {
+        val source = ".eqv ALIAS target\ntarget: nop\nj ALIAS\n.macro ALIAS\nnop\n.end_macro\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(file)
+            assertTrue(conflicts(target, "updated", usages(target)).contains("different symbol"))
+            assertEquals(source, file.text)
         }
     }
 
@@ -286,7 +413,7 @@ class MipsLabelRenamePlatformTest {
             val scratch = PsiFileFactory.getInstance(project).createFileFromText("scratch.asm", MipsFileType, "target: nop\n.eqv LIMIT 1")
             val target = label(scratch)
             val constant = PsiTreeUtil.findChildrenOfType(scratch, MipsDeclaration::class.java).last()
-            val validator = MipsLabelRenameInputValidator()
+            val validator = MipsSymbolRenameInputValidator()
             assertTrue(validator.pattern.accepts(target))
             assertFalse(processor.canProcessElement(scratch))
             assertFalse(processor.canProcessElement(constant))
@@ -560,6 +687,9 @@ class MipsLabelRenamePlatformTest {
 
     private fun label(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
         .first { it.kind == SymbolKind.LABEL }
+
+    private fun macros(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+        .filter { it.kind == SymbolKind.MACRO }
 
     private fun usages(label: MipsDeclaration) =
         processor.findReferences(label, GlobalSearchScope.projectScope(project), false)

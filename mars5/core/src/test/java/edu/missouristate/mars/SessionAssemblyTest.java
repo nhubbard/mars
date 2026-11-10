@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.AssemblySymbolMap.SymbolUse;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
@@ -652,6 +653,11 @@ class SessionAssemblyTest {
     try (var session = session("Default")) {
       var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
       assertThat(result.errors()).isEmpty();
+      assertThat(result.program().symbolMap().macros()).containsExactlyInAnyOrderEntriesOf(Map.of(
+          main, List.of(
+              new MacroDefinition(new SourceToken(new Location(macros, 2), 8), "inner", List.of("%label")),
+              new MacroDefinition(new SourceToken(new Location(macros, 5), 8), "branch", List.of("%label"))),
+          other, List.of()));
       var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target");
       var aliasedTarget = new SymbolUse(target.definition(), target.name(),
           new SourceToken(new Location(macros, 1), 11));

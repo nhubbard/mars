@@ -345,6 +345,21 @@ binding still stops the operation. When an exception handler is configured, Rena
 verifies the handler and its includes alongside the application. Edits to the handler's
 source files require a wider scope because those files are shared by other assemblies.
 
+## Rename macro declarations
+
+Use IntelliJ's **Refactor → Rename** on a written macro declaration or a reference to it.
+Rename targets the selected overload and uses the assembled call trace to find direct calls,
+nested calls, forwarded operation names, and `.eqv` replacements that supply a call.
+The edit preserves same-named overloads, labels, alias invocations, comments, and strings.
+The assembler also records declarations with no calls, so a macro with no unresolved
+occurrences can be renamed before it is used.
+
+The preview and write use the same assembly and source ownership checks as label Rename.
+Verification compares every macro definition and call binding alongside the emitted machine
+image and label bindings. A declaration shared between entries or a spelling that would
+affect another overload stops the operation. Occurrences in unexpanded macro bodies need
+a proven binding before they can participate.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

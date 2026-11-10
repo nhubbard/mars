@@ -3,6 +3,7 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.AssemblySymbolMap;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition;
 import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.core.*;
 import java.nio.file.Path;
@@ -73,13 +74,15 @@ public final class Assembler {
       var result =
           new SecondPassProcessor(context, checkCancellation, symbolUses).process(programs, errors, warnings);
       var locals = new HashMap<Path, Map<String, Definition>>();
+      var macros = new HashMap<Path, List<MacroDefinition>>();
       for (var program : programs) {
         checkCancellation.run();
         var entry = Path.of(program.getFilename()).toAbsolutePath().normalize();
         locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
+        macros.put(entry, program.getLocalMacroPool().definitions(checkCancellation));
       }
       symbolMap = new AssemblySymbolMap(
-          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings());
+          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(), macros);
       sourceMap = result.sourceMap();
       return result.instructions();
     }

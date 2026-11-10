@@ -3,6 +3,7 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.ErrorList;
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.MIPSprogram;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -116,6 +117,11 @@ public class Macro {
 
   public ArrayList<String> getArgs() {
     return args;
+  }
+
+  SourceToken definitionSite() {
+    var header = program.getSourceLineList().get(getFromLine() - 1);
+    return new SourceToken(Parser.origin(header, null).location(), nameColumn);
   }
 
   public void setArgs(ArrayList<String> args) {
