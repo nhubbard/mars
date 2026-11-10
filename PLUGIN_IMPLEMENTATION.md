@@ -1138,7 +1138,8 @@ already produced remains visible.
 
 ## Memory inspection
 
-The native Debug layout includes a Memory tab for the paused machine. Each
+The default Debug layout shows Memory and Disassembly as separate tabs. The
+Memory tab displays the paused machine. Each
 page shows addresses, hexadecimal bytes, and printable characters. The
 address field accepts unsigned decimal and hexadecimal values. Pages stop
 at the end of the 32-bit address space and show unavailable words with
@@ -1156,6 +1157,14 @@ Core tests cover code, stack, data, kernel memory, and memory-mapped I/O.
 IntelliJ fixtures check navigation, address validation, endian display,
 resume, store and backstep refresh, view disposal, and the updated PC and
 stack pointer after execution advances.
+
+**Edit Word** accepts a word-aligned address and a 32-bit integer debugger
+expression. The edit belongs to the pause that opened the dialog. A
+successful write refreshes Memory, Watches and Disassembly. A changed word
+starts a new backstep baseline, and an unchanged word preserves history.
+The core applies its existing segment permissions. With self-modifying
+code enabled, replacing the instruction at the current PC updates
+Disassembly and clears that instruction's assembled source position.
 
 ## Memory watchpoints
 

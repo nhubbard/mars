@@ -153,12 +153,12 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             val content = ui.createContent("MarsMipsMemory", view.component, runMessages.getMessage("debug.memory"), null, view.addressField)
             content.isCloseable = false
             content.setDisposer(view)
-            ui.addContent(content, 0, PlaceInGrid.right, true)
+            ui.addContent(content, 2, PlaceInGrid.center, false)
             val disassembly = MarsDisassemblyView(session, entry, ::sourcePosition)
             val listing = ui.createContent("MarsMipsDisassembly", disassembly.component, runMessages.getMessage("debug.disassembly"), null, disassembly.focus)
             listing.isCloseable = false
             listing.setDisposer(disassembly)
-            ui.addContent(listing, 0, PlaceInGrid.right, true)
+            ui.addContent(listing, 3, PlaceInGrid.center, false)
         }
     }
 
@@ -403,9 +403,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                     request.capture(machine)
                     null
                 }
-                context.registerEdits.onReceive { request ->
+                context.machineEdits.onReceive { request ->
                     // A selected edit completes before the worker can start another command.
-                    withContext(NonCancellable) { editRegister(machine, context, request) }
+                    withContext(NonCancellable) { editMachine(machine, context, request) }
                     null
                 }
             }
@@ -413,13 +413,17 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
     }
 
-    private suspend fun editRegister(machine: MarsContext, context: MarsSuspendContext, request: RegisterEditRequest) {
+    private suspend fun editMachine(machine: MarsContext, context: MarsSuspendContext, request: MachineEditRequest) {
         val changed = request.apply(machine, context.frame.evaluator).getOrElse { error ->
             withContext(Dispatchers.EDT) { request.callback.errorOccurred(error.message!!) }
             return
         }
         if (changed) {
-            machine.claimStoppedSession().use { context.refresh(machine) }
+            machine.claimStoppedSession().use {
+                val pc = machine.registerFile.getPC()
+                val origin = machine.memory.sourceStatement(pc)?.instructionOrigin
+                context.refresh(machine, sourcePosition(origin), origin?.let { SourceStep(pc, it) })
+            }
         }
         withContext(Dispatchers.EDT) { request.callback.valueModified() }
     }
@@ -437,7 +441,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             pause.command.cancel()
             context.inspectionRequests.cancel()
             context.watchRequests.cancel()
-            context.registerEdits.cancel()
+            context.machineEdits.cancel()
             context.memoryExports.cancel()
             coroutineContext.cancelChildren()
         }
@@ -455,13 +459,13 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val assemblyEntry = statement?.sourceFile?.ifEmpty { program.filename } ?: program.filename
         val localSymbols = symbols.locals().getValue(Path.of(assemblyEntry).toAbsolutePath().normalize())
         val watchRequests = watchMemoryRequests()
-        val registerEdits = registerEditRequests()
+        val machineEdits = machineEditRequests()
         val number = ++suspensionNumber
         val frame = MarsStackFrame(
-            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, registerEdits,
+            sourcePosition(origin), machine, session.project, localSymbols, symbols.globals(), watchRequests, machineEdits,
         ) {
             val current = session.suspendContext
-            current is MarsSuspendContext && current.registerEdits === registerEdits
+            current is MarsSuspendContext && current.machineEdits === machineEdits
         }
         MarsSuspendContext(
             frame,
@@ -469,7 +473,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             number,
             watchRequests,
-            registerEdits,
+            machineEdits,
             origin?.let { SourceStep(pc, it) },
             stepOutTarget,
             MarsExecutionStack(frame, callers, ::sourcePosition, frameScope),
@@ -503,8 +507,8 @@ internal class MarsSuspendContext(
     memoryRegions: Map<MemoryRegion, Long>,
     val number: Long,
     val watchRequests: Channel<WatchMemoryRequest>,
-    val registerEdits: Channel<RegisterEditRequest>,
-    val sourceStep: SourceStep?,
+    val machineEdits: Channel<MachineEditRequest>,
+    sourceStep: SourceStep?,
     val stepOutTarget: DebuggerCallStack.StepOutTarget?,
     private val stack: MarsExecutionStack,
 ) : XSuspendContext() {
@@ -513,8 +517,12 @@ internal class MarsSuspendContext(
     @Volatile var memoryRegions = memoryRegions
         private set
 
-    fun refresh(machine: MarsContext) {
-        frame.refresh(machine)
+    @Volatile var sourceStep = sourceStep
+        private set
+
+    fun refresh(machine: MarsContext, position: XSourcePosition?, step: SourceStep?) {
+        frame.refresh(machine, position)
+        sourceStep = step
         canBackstep = machine.backStepper.canBackstep()
         memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
     }

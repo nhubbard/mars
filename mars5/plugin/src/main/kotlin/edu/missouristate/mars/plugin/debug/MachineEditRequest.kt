@@ -4,6 +4,7 @@ import com.intellij.xdebugger.XExpression
 import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.AddressErrorException
 import edu.missouristate.mars.mips.hardware.Coprocessor1State.CONDITION_FLAG_MASK
 import edu.missouristate.mars.plugin.run.runMessages
 import kotlinx.coroutines.channels.Channel
@@ -11,15 +12,39 @@ import kotlinx.coroutines.channels.SendChannel
 
 internal enum class RegisterBank { CPU, COPROCESSOR_0, FPU_SINGLE, FPU_DOUBLE, FPU_FLAGS }
 
+internal interface MachineEditRequest {
+    val callback: XModificationCallback
+    suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean>
+    fun unavailable()
+}
+
+internal data class MemoryWordEditRequest(
+    val address: Int,
+    val expression: String,
+    override val callback: XModificationCallback,
+) : MachineEditRequest {
+    override fun unavailable() = callback.errorOccurred(runMessages.getMessage("debug.memory.edit.unavailable"))
+
+    override suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
+        val value = evaluator.evaluateStopped(expression, machine.memory).getOrElse { return Result.failure(it) }
+        val bits = value.wordBits ?: return Result.failure(IllegalArgumentException(runMessages.getMessage("debug.memory.edit.word")))
+        return try {
+            Result.success(machine.editMemoryWord(address, bits))
+        } catch (error: AddressErrorException) {
+            Result.failure(error)
+        }
+    }
+}
+
 internal data class RegisterEditRequest(
     val bank: RegisterBank,
     val register: Int,
     val expression: String,
-    val callback: XModificationCallback,
-) {
-    fun unavailable() = callback.errorOccurred(runMessages.getMessage("debug.register.edit.unavailable"))
+    override val callback: XModificationCallback,
+) : MachineEditRequest {
+    override fun unavailable() = callback.errorOccurred(runMessages.getMessage("debug.register.edit.unavailable"))
 
-    suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
+    override suspend fun apply(machine: MarsContext, evaluator: MarsExpressionEvaluator): Result<Boolean> {
         val bits = resolveBits(machine, evaluator).getOrElse { return Result.failure(it) }
         val changed = when (bank) {
             RegisterBank.CPU -> machine.editIntegerRegister(register, bits.toInt())
@@ -68,20 +93,24 @@ internal data class RegisterEditRequest(
     }
 }
 
-internal fun registerEditRequests(): Channel<RegisterEditRequest> =
-    Channel(16, onUndeliveredElement = RegisterEditRequest::unavailable)
+internal fun machineEditRequests(): Channel<MachineEditRequest> =
+    Channel(16, onUndeliveredElement = MachineEditRequest::unavailable)
+
+internal fun SendChannel<MachineEditRequest>.submitEdit(request: MachineEditRequest, isCurrent: Boolean = true) {
+    if (!isCurrent || trySend(request).isFailure) request.unavailable()
+}
 
 internal class RegisterModifier(
     private val bank: RegisterBank,
     private val register: Int,
     private val initialText: String,
-    private val edits: SendChannel<RegisterEditRequest>,
+    private val edits: SendChannel<MachineEditRequest>,
     private val isCurrent: () -> Boolean,
 ) : XValueModifier() {
     override fun getInitialValueEditorText() = initialText
 
     override fun setValue(expression: XExpression, callback: XModificationCallback) {
         val request = RegisterEditRequest(bank, register, expression.expression, callback)
-        if (!isCurrent() || edits.trySend(request).isFailure) request.unavailable()
+        edits.submitEdit(request, isCurrent())
     }
 }

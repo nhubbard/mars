@@ -581,6 +581,14 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(source, 0)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             assertNull(debug.nextPosition())
+            val pause = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+            val edited = CompletableDeferred<String?>()
+            pause.machineEdits.submitEdit(MemoryWordEditRequest(0x10010000, "42", object : XModificationCallback {
+                override fun valueModified() { edited.complete(null) }
+                override fun errorOccurred(errorMessage: String) { edited.complete(errorMessage) }
+            }))
+            assertNull(edited.await())
+            assertNull(pause.frame.sourcePosition)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             assertEquals(if (invalidAddress) 1 else 0, debug.exit.await())
         }
@@ -1789,7 +1797,7 @@ class MarsDebugPlatformTest {
     @Test
     fun `a full or expired register edit queue reports all undelivered requests`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
-            val requests = registerEditRequests()
+            val requests = machineEditRequests()
             val modifier = RegisterModifier(RegisterBank.CPU, 8, "0x00000000", requests) { true }
             val expression = XDebuggerUtil.getInstance().createExpression("1", null, null, EvaluationMode.EXPRESSION)
             val errors = mutableListOf<String>()
@@ -1871,6 +1879,159 @@ class MarsDebugPlatformTest {
         val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.TOOLBAR, null)
         action.update(event)
         return action to event
+    }
+
+    @Test
+    fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("memory-edit.s", """
+                .data
+                payload: .word 7
+                .text
+                li ${'$'}t0, 35
+                lw ${'$'}a0, payload
+                li ${'$'}v0, 1
+                syscall
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 4)
+                addBreakpoint(it, 5)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 4)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val (view, edits) = withContext(Dispatchers.EDT) {
+                    val view = MarsMemoryView(debug.session, source.toNioPath()).also { Disposer.register(lifetime, it) }
+                    val edits = Channel<Unit>(Channel.UNLIMITED)
+                    debug.session.addSessionListener(object : XDebugSessionListener {
+                        override fun settingsChanged() { check(edits.trySend(Unit).isSuccess) }
+                    }, lifetime)
+                    view to edits
+                }
+                val button = withContext(Dispatchers.EDT) {
+                    UIUtil.findComponentsOfType(view.component, JButton::class.java).single { it.text == "Edit Word…" }
+                }
+                val table = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(view.component, JBTable::class.java)) }
+                suspend fun assertStatus(text: String) = pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val labels = UIUtil.findComponentsOfType(view.component, JBLabel::class.java).map { it.text }
+                        assertTrue(labels.any { it.orEmpty().contains(text, ignoreCase = true) }, "Expected $text in $labels")
+                    }
+                }
+                suspend fun enter(address: String, expression: String) = withContext(Dispatchers.EDT) {
+                    interceptMemoryEdit { finishMemoryEdit(it, address, expression) }
+                    button.doClick()
+                }
+                assertMemory(table, "0x10010000", "07 00 00 00")
+                withContext(Dispatchers.EDT) {
+                    assertTrue(button.isEnabled)
+                    interceptMemoryEdit { dialog ->
+                        val (address, value) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+                        assertEquals("0x10010000", address.text)
+                        assertSame(value, dialog.getPreferredFocusedComponent())
+                        assertSame(value, dialog.performValidateAll().single().component)
+                        address.text = "0x10010001"
+                        assertTrue(dialog.performValidateAll().single().message.contains("word-aligned"))
+                        address.text = "0x100000000"
+                        assertSame(address, dialog.performValidateAll().single().component)
+                        dialog.doCancelAction()
+                    }
+                    button.doClick()
+                }
+                enter("0x10010000", "word(payload)")
+                edits.receive()
+                withContext(Dispatchers.EDT) { assertTrue(backstepAction(debug.session).second.presentation.isEnabled) }
+                enter("0x10010000", "1.5")
+                assertStatus("32-bit integer")
+                enter("0x10010000", "unknown")
+                assertStatus("Enter a valid MIPS debugger expression")
+                enter("0x20000000", "99")
+                assertStatus("address out of range")
+                withContext(Dispatchers.EDT) { assertTrue(backstepAction(debug.session).second.presentation.isEnabled) }
+
+                enter("268500992", "word(payload) + \$t0")
+                edits.receive()
+                assertMemory(table, "0x10010000", "2a 00 00 00")
+                withContext(Dispatchers.EDT) {
+                    assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "word(payload)"))
+                    assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                    interceptMemoryEdit {
+                        debug.session.resume()
+                        assertFalse(button.isEnabled)
+                        button.actionListeners.single().actionPerformed(ActionEvent(button, ActionEvent.ACTION_PERFORMED, "Edit Word"))
+                        finishMemoryEdit(it, "0x10010000", "99")
+                    }
+                    button.doClick()
+                }
+                debug.assertPausedAt(source, 5)
+                assertMemory(table, "0x10010000", "2a 00 00 00")
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                assertEquals("42", debug.stdout.toString())
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(lifetime)
+                    UiInterceptors.clear()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `editing executable memory refreshes disassembly and drops stale source for the paused instruction`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("edit-instruction.s", "li \$a0, 0\naddiu \$a0, \$a0, 2\nli \$v0, 1\nsyscall\n")
+                .virtualFile.also { addBreakpoint(it, 1) }
+        }
+        withDebug(source, configure = { selfModifyingCode = true }) { debug ->
+            debug.assertPausedAt(source, 1)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val listing = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MemoryPatch", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
+                    val edit = UIUtil.findComponentsOfType(memory, JButton::class.java).single { it.text == "Edit Word…" }
+                    interceptMemoryEdit { finishMemoryEdit(it, "0x00400004", "0x2404002a") }
+                    edit.doClick()
+                    val disassembly = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
+                    requireNotNull(UIUtil.findComponentOfType(disassembly, JBTable::class.java))
+                }
+                pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertNull(debug.session.topFramePosition)
+                        assertNull(assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext).sourceStep)
+                        val row = (0 until listing.rowCount).firstOrNull { listing.getValueAt(it, 1) == "0x00400004" }
+                        assertNotNull(row)
+                        requireNotNull(row)
+                        assertEquals("0x2404002a", listing.getValueAt(row, 2))
+                        assertEquals("", listing.getValueAt(row, 4))
+                    }
+                }
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                assertEquals("42", debug.stdout.toString())
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(lifetime)
+                    UiInterceptors.clear()
+                }
+            }
+        }
+    }
+
+    private fun interceptMemoryEdit(action: (MarsMemoryEditDialog) -> Unit) =
+        UiInterceptors.register(object : UiInterceptors.UiInterceptor<MarsMemoryEditDialog>(MarsMemoryEditDialog::class.java) {
+            override fun doIntercept(component: MarsMemoryEditDialog) = action(component)
+        })
+
+    private fun finishMemoryEdit(dialog: MarsMemoryEditDialog, address: String, expression: String) {
+        val (addressField, valueField) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+        addressField.text = address
+        valueField.text = expression
+        assertTrue(dialog.performValidateAll().isEmpty())
+        dialog.performOKAction()
     }
 
     @Test

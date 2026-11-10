@@ -239,6 +239,20 @@ public final class MarsContext implements AutoCloseable {
     }
   }
 
+  /** Writes an aligned word using the session's memory policy and starts a new undo baseline. */
+  public boolean editMemoryWord(int address, int bits) throws AddressErrorException {
+    try (var lease = claimStoppedSession()) {
+      boolean protectedText = memory.inKernelTextSegment(address)
+          || memory.inTextSegment(address) && !settings.isSelfModifyingCodeEnabled();
+      if (!protectedText && Objects.equals(memory.inspectWord(address), bits)) {
+        return false;
+      }
+      memory.setWord(address, bits);
+      backStepper.clear();
+      return true;
+    }
+  }
+
   /** Lifecycle cleanup waits for an instruction boundary before closing default resources. */
   public void releaseDefaultResources() {
     executionLock.lock();

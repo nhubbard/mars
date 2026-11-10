@@ -4,6 +4,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
@@ -16,6 +19,7 @@ import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
+import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.IntegerRegisterFile.STACK_POINTER_REGISTER
 import edu.missouristate.mars.mips.hardware.MemoryState
@@ -80,6 +84,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private val previous = JButton(runMessages.getMessage("debug.memory.previous"))
     private val next = JButton(runMessages.getMessage("debug.memory.next"))
     private val export = JButton(runMessages.getMessage("debug.memory.export"))
+    private val edit = JButton(runMessages.getMessage("debug.memory.edit"))
     private val regions = ComboBox(MemoryRegion.entries.toTypedArray()).apply {
         renderer = textListCellRenderer(runMessages.getMessage("debug.memory.region")) { runMessages.getMessage(it.label) }
         selectedItem = null
@@ -111,6 +116,9 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             cell(previous)
             cell(next)
             cell(regions)
+        }
+        row {
+            cell(edit)
             cell(export)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
@@ -123,6 +131,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         previous.addActionListener { move(-BYTES_PER_PAGE) }
         next.addActionListener { move(BYTES_PER_PAGE) }
         export.addActionListener { exportSuspension() }
+        edit.addActionListener { editSuspension() }
         regions.addItemListener { event ->
             if (event.stateChange == ItemEvent.SELECTED) {
                 regions.selectedItem = null
@@ -145,6 +154,28 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         project.service<MarsMemoryExportService>().exportCapturedInBackground(options, output) {
             suspension.captureForExport(options)
         }
+    }
+
+    private fun editSuspension() {
+        val suspension = session.suspendContext as? MarsSuspendContext ?: return
+        val dialog = MarsMemoryEditDialog(session.project, addressField.text)
+        dialog.show()
+        if (!dialog.isOK) return
+
+        val target = dialog.address
+        val request = MemoryWordEditRequest(target.toInt(), dialog.expression, object : XModificationCallback {
+            override fun valueModified() {
+                session.rebuildViews()
+                jumpTo(target)
+            }
+
+            override fun errorOccurred(errorMessage: String) {
+                UIUtil.invokeLaterIfNeeded {
+                    status.text = errorMessage
+                }
+            }
+        })
+        suspension.machineEdits.submitEdit(request, session.suspendContext === suspension)
     }
 
     private fun refreshOnEdt() = UIUtil.invokeLaterIfNeeded { refresh() }
@@ -177,6 +208,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         addressField.isEnabled = paused
         go.isEnabled = paused
         export.isEnabled = paused
+        edit.isEnabled = paused
         regions.isEnabled = paused
         if (context == null) {
             previous.isEnabled = false
@@ -214,4 +246,33 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         object : ColumnInfo<MemoryRow, String>(runMessages.getMessage(key)) {
             override fun valueOf(item: MemoryRow) = value(item)
         }
+}
+
+internal class MarsMemoryEditDialog(project: Project, initialAddress: String) : DialogWrapper(project) {
+    private val addressField = JBTextField(initialAddress, 16)
+    private val valueField = JBTextField(20)
+    val fields = panel {
+        row(runMessages.getMessage("debug.memory.address")) { cell(addressField) }
+        row(runMessages.getMessage("debug.memory.edit.value")) { cell(valueField) }
+    }
+
+    init {
+        title = runMessages.getMessage("debug.memory.edit.title")
+        init()
+    }
+
+    val address get() = parseMemoryAddress(addressField.text)!!
+    val expression get() = valueField.text
+
+    override fun createCenterPanel() = fields
+    override fun getPreferredFocusedComponent() = valueField
+
+    override fun doValidate(): ValidationInfo? {
+        val address = parseMemoryAddress(addressField.text)
+            ?: return ValidationInfo(runMessages.getMessage("debug.memory.invalid"), addressField)
+        if (!MemoryState.wordAligned(address.toInt())) {
+            return ValidationInfo(runMessages.getMessage("debug.memory.edit.alignment"), addressField)
+        }
+        return if (valueField.text.isBlank()) ValidationInfo(runMessages.getMessage("debug.memory.edit.word"), valueField) else null
+    }
 }

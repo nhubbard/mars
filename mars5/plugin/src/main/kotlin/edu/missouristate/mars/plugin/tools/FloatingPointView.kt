@@ -18,6 +18,7 @@ import edu.missouristate.mars.plugin.debug.MarsDebugProcess
 import edu.missouristate.mars.plugin.debug.MarsSuspendContext
 import edu.missouristate.mars.plugin.debug.RegisterBank
 import edu.missouristate.mars.plugin.debug.RegisterEditRequest
+import edu.missouristate.mars.plugin.debug.submitEdit
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.FloatingPointRepresentation.Kind
 import edu.missouristate.mars.util.Binary
@@ -150,7 +151,7 @@ internal class FloatingPointView(private val project: Project) : Disposable {
                 }
             }
         })
-        if (stopped.registerEdits.trySend(edit).isFailure) edit.unavailable()
+        stopped.machineEdits.submitEdit(edit)
     }
 
     private fun display(value: FloatingPointRepresentation) {

@@ -109,6 +109,7 @@ internal class MarsDisassemblyView(
         }, this)
         session.addSessionListener(object : XDebugSessionListener {
             override fun sessionPaused() = scheduleRefresh()
+            override fun settingsChanged() = scheduleRefresh()
             override fun sessionResumed() = scheduleRefresh()
             override fun sessionStopped() = scheduleRefresh()
             override fun breakpointsMuted(muted: Boolean) = onEdt(table::repaint)

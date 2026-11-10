@@ -27,19 +27,21 @@ import kotlinx.coroutines.channels.SendChannel
 
 /** Captures the registers while the simulation is suspended. The UI only reads the captured values. */
 internal class MarsStackFrame(
-    private val position: XSourcePosition?,
+    position: XSourcePosition?,
     machine: MarsContext,
     private val project: Project,
     private val localSymbols: Map<String, Definition>,
     private val globalSymbols: Map<String, Definition>,
     private val watchRequests: SendChannel<WatchMemoryRequest>,
-    private val registerEdits: SendChannel<RegisterEditRequest>,
+    private val machineEdits: SendChannel<MachineEditRequest>,
     private val isCurrent: () -> Boolean,
 ) : XStackFrame() {
     private data class Snapshot(val evaluator: MarsExpressionEvaluator, val groups: XValueChildrenList)
+    @Volatile private var position = position
     @Volatile private var snapshot = capture(machine)
 
-    fun refresh(machine: MarsContext) {
+    fun refresh(machine: MarsContext, position: XSourcePosition?) {
+        this.position = position
         snapshot = capture(machine)
     }
 
@@ -90,7 +92,7 @@ internal class MarsStackFrame(
     }
 
     private fun editableValue(bank: RegisterBank, number: Int, name: String, initial: String, format: () -> String) =
-        RegisterValue(name, RegisterModifier(bank, number, initial, registerEdits, isCurrent), format)
+        RegisterValue(name, RegisterModifier(bank, number, initial, machineEdits, isCurrent), format)
 
     override fun getSourcePosition() = position
     override fun getEvaluator() = snapshot.evaluator

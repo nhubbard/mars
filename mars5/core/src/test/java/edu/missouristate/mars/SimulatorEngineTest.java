@@ -6,6 +6,7 @@ import edu.missouristate.mars.api.*;
 import edu.missouristate.mars.api.StepEvent.BranchOutcome;
 import edu.missouristate.mars.core.MarsContext;
 import edu.missouristate.mars.core.SessionAssembler;
+import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.simulator.BackStepper;
 import edu.missouristate.mars.simulator.Exceptions;
@@ -170,6 +171,31 @@ class SimulatorEngineTest {
       engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
       engine.backstepAsync().get(5, TimeUnit.SECONDS);
       assertThat(session.registerFile.getValueNoNotify(8)).isEqualTo(42);
+    }
+  }
+
+  @Test
+  void stoppedMemoryEditStartsNewHistoryOnlyAfterAValidChange() throws Exception {
+    try (var session = load(".data\ncell: .word 7\n.text\nli $t0,9\nsw $t0,cell\nnop\n")) {
+      var engine = session.simulator();
+      var memory = session.memory;
+      int address = memory.dataBaseAddress;
+      engine.runAsync(1, null).get(5, TimeUnit.SECONDS);
+      assertThat(session.editMemoryWord(address, 7)).isFalse();
+      assertThatThrownBy(() -> session.editMemoryWord(address + 1, 8))
+          .isInstanceOf(AddressErrorException.class);
+      assertThatThrownBy(() -> session.editMemoryWord(0x20000000, 8))
+          .isInstanceOf(AddressErrorException.class);
+      int originalInstruction = memory.inspectWord(memory.textBaseAddress);
+      assertThatThrownBy(() -> session.editMemoryWord(memory.textBaseAddress, originalInstruction))
+          .isInstanceOf(AddressErrorException.class);
+      assertThat(session.backStepper.canBackstep()).isTrue();
+      assertThat(session.editMemoryWord(address, 42)).isTrue();
+      assertThat(session.backStepper.canBackstep()).isFalse();
+      engine.runAsync(2, null).get(5, TimeUnit.SECONDS);
+      assertThat(memory.inspectWord(address)).isEqualTo(9);
+      engine.backstepAsync().get(5, TimeUnit.SECONDS);
+      assertThat(memory.inspectWord(address)).isEqualTo(42);
     }
   }
 
@@ -452,6 +478,8 @@ class SimulatorEngineTest {
         assertThatThrownBy(engine::step).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(engine::backstep).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.editIntegerRegister(8, 42))
+            .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> session.editMemoryWord(session.memory.dataBaseAddress, 42))
             .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> session.editCoprocessor0Register(Coprocessor0State.EPC, 42))
             .isInstanceOf(IllegalStateException.class);
