@@ -1833,6 +1833,27 @@ class MarsDebugPlatformTest {
         }
     }
 
+    @Test
+    fun `Debug sees the argument frame at the first instruction in compact memory`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            project.service<MarsAssemblySettings>().changeMemoryLayout(MarsMemoryLayout.TEXT_AT_ZERO)
+            fixture.addFileToProject("argv.asm", "nop\n").virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file, { programArguments = "\"ab cd\" \"\"" }, beforeLaunch = true) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) {
+                val frame = requireNotNull(debug.session.currentStackFrame)
+                assertEquals("0x00000002", evaluate(debug.session, frame, "\$a0"))
+                assertEquals("0x00000002", evaluate(debug.session, frame, "word(\$sp)"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, "word(\$a1 + 8)"))
+                assertEquals("0x00000061", evaluate(debug.session, frame, "byte(word(\$a1))"))
+                assertEquals("0x00000000", evaluate(debug.session, frame, "byte(word(\$a1 + 4))"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(strings = ["CompactDataAtZero", "CompactTextAtZero"])
     fun `Debug keeps the captured compact memory layout when project settings change`(identifier: String) = timeoutRunBlocking<Unit> {

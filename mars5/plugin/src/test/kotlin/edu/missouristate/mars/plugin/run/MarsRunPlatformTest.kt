@@ -53,6 +53,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.testFramework.replaceService
+import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
@@ -258,6 +259,100 @@ class MarsRunPlatformTest {
         } finally {
             Disposer.dispose(disposable)
         }
+    }
+
+    @Test
+    fun `native Run preserves quoted empty and single-byte program arguments`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val first = Recording()
+        val second = Recording()
+        try {
+            withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("argv.asm", """
+                    move ${'$'}s0, ${'$'}a0
+                    move ${'$'}s1, ${'$'}a1
+                    li ${'$'}v0, 1
+                    syscall
+                    next:
+                        beqz ${'$'}s0, done
+                        li ${'$'}a0, 124
+                        li ${'$'}v0, 11
+                        syscall
+                        lw ${'$'}a0, 0(${'$'}s1)
+                        li ${'$'}v0, 4
+                        syscall
+                        addiu ${'$'}s1, ${'$'}s1, 4
+                        addiu ${'$'}s0, ${'$'}s0, -1
+                        j next
+                    done:
+                        li ${'$'}v0, 10
+                        syscall
+                """.trimIndent())
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = source.virtualFile.path
+                val raw = "\"two words\" \"\" \"escaped \\\"quote\\\"\" café"
+                val editor = config.configurationEditor
+                try {
+                    editor.resetFrom(config)
+                    val field = requireNotNull(UIUtil.findComponentOfType(editor.component, RawCommandLineEditor::class.java))
+                    assertEquals("", field.text)
+                    field.text = raw
+                    editor.applyTo(config)
+                    assertEquals(raw, config.options.programArguments)
+                    editor.resetFrom(config)
+                    assertEquals(raw, field.text)
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                val xml = Element("configuration").also(config::writeExternal)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(raw, restored.options.programArguments)
+                restored.checkConfiguration()
+                for (invalid in listOf("\u0000value", "💡")) {
+                    config.options.programArguments = invalid
+                    assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                    val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    assertEquals("Program arguments must use single-byte characters without NUL.",
+                        assertThrows<ExecutionException> { config.getState(executor, environment) }.message)
+                }
+                config.options.programArguments = "other"
+                restored.name = "First arguments"
+                config.name = "Second arguments"
+                val left = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                val right = ExecutionEnvironmentBuilder.create(executor, config).build()
+                val executions = mapOf(left to first, right to second)
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        executions[env]?.let(handler::addProcessListener)
+                    }
+                })
+                left.runner.execute(left)
+                right.runner.execute(right)
+            }
+            assertEquals(0, first.exit.await())
+            assertEquals("4|two words||escaped \"quote\"|café", first.stdout.toString())
+            assertEquals(0, second.exit.await())
+            assertEquals("1|other", second.stdout.toString())
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `oversized arguments fail before any compact program instruction runs`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("oversized.s", "nop\n").virtualFile
+        }
+        val options = MarsExecutionOptions(memoryLayout = MarsMemoryLayout.DATA_AT_ZERO)
+        val process = project.getService(MarsRunService::class.java).createProcess(
+            file.toNioPath(), options, emptyList(), arguments = listOf("x".repeat(5000)),
+        )
+        val recording = Recording()
+        process.addProcessListener(recording)
+        withContext(Dispatchers.EDT) { process.startNotify() }
+        assertEquals(1, recording.exit.await())
+        assertEquals("Program arguments exceed the stack space in this memory layout.\n", recording.stderr.toString())
+        assertEquals(0L, process.instructionCounter.snapshot().total)
     }
 
     @Test

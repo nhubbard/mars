@@ -44,6 +44,7 @@ import edu.missouristate.mars.plugin.tools.MarsToolExecution
 import edu.missouristate.mars.plugin.tools.MarsToolInstructionListener
 import edu.missouristate.mars.plugin.tools.ScavengerHuntDevice
 import edu.missouristate.mars.plugin.tools.xray.XRayTrace
+import edu.missouristate.mars.simulator.ProgramArgumentList
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -100,11 +101,12 @@ internal class MarsRunService(private val project: Project, private val scope: C
         connectMarsBot: Boolean = false,
         connectScavengerHunt: Boolean = false,
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
+        arguments: List<String> = emptyList(),
         execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, captureBitmap, captureReferences,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, captureBitmap, captureReferences,
             connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
@@ -113,6 +115,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
 internal class MarsProcessHandler(
     private val project: Project, scope: CoroutineScope, private val launch: MarsLaunchAssembly, private val input: Pipe,
     private val memoryDumps: List<MemoryExportSelection>,
+    private val arguments: List<String>,
     captureBitmap: Boolean,
     captureReferences: Boolean,
     connectDigitalLab: Boolean,
@@ -229,6 +232,12 @@ internal class MarsProcessHandler(
         return MarsSessionService.createMarsComponent().context().use { session ->
             launch.options.applyTo(session.settings)
             session.loadAssemblyImage(program.image, execution::ensureActive)
+            try {
+                ProgramArgumentList(arguments.toTypedArray()).storeProgramArguments(session, execution::ensureActive)
+            } catch (_: IllegalArgumentException) {
+                notifyTextAvailable(runMessages.getMessage("run.arguments.stack") + "\n", ProcessOutputTypes.STDERR)
+                return 1
+            }
             val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->

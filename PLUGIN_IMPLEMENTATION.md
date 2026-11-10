@@ -1368,6 +1368,20 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## Program arguments
+
+Enter **Program arguments** in a MIPS Run or Debug configuration. IntelliJ's
+argument editor accepts double quotes around a value with spaces, `""` for
+an empty argument, and `\"` for a literal double quote. MARS argument
+strings use nonzero single-byte characters (`U+0001`–`U+00FF`).
+
+At launch, the simulator puts the argument count in `$a0`, the address
+of the null-terminated pointer array in `$a1`, and the count at `$sp`.
+The initial stack is visible at the first debugger stop. Each execution
+gets its own arguments even when two configurations reuse the same
+assembly image. Arguments that exceed the selected layout's stack space
+stop the launch with a console error.
+
 ## Project memory layout
 
 Under **Settings → Build, Execution, Deployment → MARS Assembly**, set

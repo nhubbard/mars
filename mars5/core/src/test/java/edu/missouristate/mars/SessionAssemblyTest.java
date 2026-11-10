@@ -21,6 +21,7 @@ import edu.missouristate.mars.di.CoreModule;
 import edu.missouristate.mars.di.DaggerMarsComponent;
 import edu.missouristate.mars.mips.hardware.Coprocessor0State;
 import edu.missouristate.mars.mips.hardware.MemoryState;
+import edu.missouristate.mars.simulator.ProgramArgumentList;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -140,6 +141,39 @@ class SessionAssemblyTest {
       assertThat(first.memory.getWord(result)).isEqualTo(42);
       assertThat(first.registerFile.getProgramCounter()).isEqualTo(main);
       assertThat(first.backStepper.canBackstep()).isFalse();
+    }
+  }
+
+  @Test
+  void argumentSentinelDoesNotOverlapTheLastStringAtTheDefaultStackPointer() throws Exception {
+    try (var session = session("Default")) {
+      var memory = session.memory;
+      String argument = "x".repeat(memory.stackBaseAddress - memory.stackPointer - 1);
+      new ProgramArgumentList(new String[] {argument}).storeProgramArguments(session);
+      int stack = session.registerFile.getUserRegister("$sp").getValueNoNotify();
+      int argv = session.registerFile.getUserRegister("$a1").getValueNoNotify();
+      int string = memory.getWord(argv);
+      assertThat(stack).isLessThan(memory.stackPointer);
+      assertThat(memory.getWord(stack)).isEqualTo(1);
+      assertThat(memory.getWord(argv + 4)).isZero();
+      assertThat(memory.getByte(string)).isEqualTo((int) 'x');
+      assertThat(memory.getByte(string + argument.length() - 1)).isEqualTo((int) 'x');
+      assertThat(memory.getByte(string + argument.length())).isZero();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"CompactDataAtZero", "CompactTextAtZero"})
+  void oversizedArgumentFrameFailsBeforeWritingMemoryOrRegisters(String layout) throws Exception {
+    try (var session = session(layout)) {
+      var memory = session.memory;
+      memory.set(memory.stackBaseAddress, 0x5a, 1);
+      String argument = "x".repeat(memory.stackBaseAddress - memory.stackLimitAddress);
+      assertThatThrownBy(() -> new ProgramArgumentList(new String[] {argument}).storeProgramArguments(session))
+          .isInstanceOf(IllegalArgumentException.class).hasMessage("Program arguments exceed session stack memory");
+      assertThat(memory.getByte(memory.stackBaseAddress)).isEqualTo(0x5a);
+      assertThat(session.registerFile.getUserRegister("$sp").getValueNoNotify()).isEqualTo(memory.stackPointer);
+      assertThat(session.registerFile.getUserRegister("$a0").getValueNoNotify()).isZero();
     }
   }
 
