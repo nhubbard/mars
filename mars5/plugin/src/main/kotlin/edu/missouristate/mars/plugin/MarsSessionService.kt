@@ -3,8 +3,11 @@ package edu.missouristate.mars.plugin
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
+import edu.missouristate.mars.ApplicationInfo
+import edu.missouristate.mars.Settings
 import edu.missouristate.mars.api.MarsGuiProxy
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.di.CoreModule
 import edu.missouristate.mars.di.DaggerMarsComponent
 import edu.missouristate.mars.di.MarsComponent
 
@@ -32,7 +35,8 @@ class MarsSessionService : Disposable {
     }
 
     companion object {
-        internal fun createMarsComponent(): MarsComponent = DaggerMarsComponent.builder()
+        internal fun createMarsComponent(backstepLimit: Int = ApplicationInfo.maximumBacksteps): MarsComponent = DaggerMarsComponent.builder()
+            .coreModule(CoreModule(Settings(), backstepLimit))
             .guiProxy(ProjectFrontend())
             .build()
     }

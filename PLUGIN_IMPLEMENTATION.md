@@ -2166,6 +2166,11 @@ Changing the limit invalidates cached assembly and diagnostics, including select
 from earlier launches. The native settings field validates its range before applying;
 missing or nonpositive persisted values fall back to the core default.
 
+**Backstep history limit** sets the undo capacity for new executions. It defaults
+to the core's 2,000 entries. The settings page accepts 1 to 100,000 entries because
+the core allocates the history at session startup. A running session and its Reset
+action keep the capacity captured when launched. Rerun uses the current project value.
+
 Each Run or Debug configuration can inherit or override all six settings
 independently. Before Launch and process startup use the same resolved options
 for that launch. Editor diagnostics use the project's assembly policy. Promoted

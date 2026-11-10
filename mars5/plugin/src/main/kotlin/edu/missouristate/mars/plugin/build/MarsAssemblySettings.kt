@@ -38,6 +38,8 @@ import com.intellij.util.xmlb.annotations.XCollection
 import java.nio.file.Path
 import javax.swing.JCheckBox
 
+private const val MAX_BACKSTEP_LIMIT = 100_000
+
 @Service(Service.Level.PROJECT)
 @State(name = "MarsAssemblySettings", storages = [Storage("mars.xml")])
 internal class MarsAssemblySettings(private val project: Project) :
@@ -55,6 +57,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var selfModifyingCode: Boolean = false,
         @JvmField var bareMachine: Boolean = false,
         @JvmField var assemblerErrorLimit: Int = ApplicationInfo.maximumErrorMessages,
+        @JvmField var backstepLimit: Int = ApplicationInfo.maximumBacksteps,
     )
 
     val sourceChanges = SimpleModificationTracker()
@@ -67,6 +70,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     val bareMachine get() = getState().bareMachine
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val assemblerErrorLimit get() = getState().assemblerErrorLimit.takeIf { it > 0 } ?: ApplicationInfo.maximumErrorMessages
+    val backstepLimit get() = getState().backstepLimit.takeIf { it in 1..MAX_BACKSTEP_LIMIT } ?: ApplicationInfo.maximumBacksteps
     val executionOptions get() = getState().let {
         MarsExecutionOptions(
             delayedBranching = it.delayedBranching,
@@ -160,6 +164,11 @@ internal class MarsAssemblySettings(private val project: Project) :
         if (getState().assemblerErrorLimit != value) change { it.copy(assemblerErrorLimit = value) }
     }
 
+    fun changeBackstepLimit(value: Int) {
+        require(value in 1..MAX_BACKSTEP_LIMIT) { "Backstep history limit is outside the supported range" }
+        updateState { it.copy(backstepLimit = value) }
+    }
+
     fun applyImportedSettings(settings: Settings) {
         if (getState() != settings) change { settings }
     }
@@ -231,6 +240,17 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
         row {
             checkBox(messages.getMessage("run.self.modifying.code"))
                 .bindSelected({ settings.selfModifyingCode }, settings::changeSelfModifyingCode)
+        }
+        row(messages.getMessage("build.settings.backstep.limit")) {
+            intTextField(1..MAX_BACKSTEP_LIMIT)
+                .bindIntText({ settings.backstepLimit }, settings::changeBackstepLimit)
+                .comment(messages.getMessage("build.settings.backstep.limit.help"))
+                .validationOnApply {
+                    val value = it.text.toIntOrNull()
+                    if (value == null || value !in 1..MAX_BACKSTEP_LIMIT) {
+                        error(messages.getMessage("build.settings.backstep.limit.invalid", MAX_BACKSTEP_LIMIT))
+                    } else null
+                }
         }
         group(messages.getMessage("build.settings.policy")) {
             lateinit var pseudo: JCheckBox

@@ -1878,6 +1878,39 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `new Debug sessions honor the project backstep history limit`() = timeoutRunBlocking<Unit> {
+        val settings = project.service<MarsAssemblySettings>()
+        val source = withContext(Dispatchers.EDT) {
+            settings.changeBackstepLimit(2)
+            val text = "addiu \$t0, \$t0, 1\n".repeat(3) + "nop\n"
+            fixture.addFileToProject("backstep-limit.s", text).virtualFile.also { addBreakpoint(it, 3) }
+        }
+        suspend fun verifyHistory(expectedLines: IntProgression, changeLimitWhilePaused: Boolean) {
+            withDebug(source) { debug ->
+                debug.assertPausedAt(source, 3)
+                withContext(Dispatchers.EDT) {
+                    if (changeLimitWhilePaused) settings.changeBackstepLimit(4)
+                }
+                for (line in expectedLines) {
+                    withContext(Dispatchers.EDT) {
+                        val (action, event) = backstepAction(debug.session)
+                        assertTrue(event.presentation.isEnabled)
+                        action.actionPerformed(event)
+                    }
+                    debug.assertPausedAt(source, line)
+                }
+                withContext(Dispatchers.EDT) {
+                    assertFalse(backstepAction(debug.session).second.presentation.isEnabled)
+                    val values = registerValues(debug.session, requireNotNull(debug.session.currentStackFrame))
+                    assertEquals(if (expectedLines.last == 1) "0x00000001" else "0x00000000", values["\$t0"])
+                }
+            }
+        }
+        verifyHistory(2 downTo 1, changeLimitWhilePaused = true)
+        verifyHistory(2 downTo 0, changeLimitWhilePaused = false)
+    }
+
+    @Test
     fun `native toolbar backstep restores the preceding instruction and refreshes Variables`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("undo.s", "li \$a0, 7\nli \$v0, 1\nsyscall\nnop\n").virtualFile.also {
@@ -4304,7 +4337,7 @@ class MarsDebugPlatformTest {
                 project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                     override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
                         if (env !== environment) return
-                        val session = debugger.debugSessions.single()
+                        val session = debugger.debugSessions.single { it.debugProcess.processHandler === handler }
                         session.debugProcess.startPausing()
                         session.debugProcess.startStepOver(null)
                         session.debugProcess.startStepOut(null)

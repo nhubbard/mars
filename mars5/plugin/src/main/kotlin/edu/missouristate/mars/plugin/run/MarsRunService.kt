@@ -112,13 +112,14 @@ internal class MarsRunService(private val project: Project, private val scope: C
         instructionLimit: Int = 0,
         runSpeed: Float = 0f,
         startAtMain: Boolean = false,
+        backstepLimit: Int = project.service<MarsAssemblySettings>().backstepLimit,
         execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
             project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, inputMode, instructionLimit, runSpeed,
             startAtMain, captureBitmap, captureReferences, connectDigitalLab, connectKeyboardDisplay, connectMarsBot,
-            connectScavengerHunt, execute,
+            connectScavengerHunt, backstepLimit, execute,
         )
     }
 }
@@ -138,6 +139,7 @@ internal class MarsProcessHandler(
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
+    private val backstepLimit: Int,
     private val execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
     private val entry = launch.sources.entry
@@ -262,7 +264,7 @@ internal class MarsProcessHandler(
             notifyTextAvailable(runMessages.getMessage("run.assembly.failed") + "\n", ProcessOutputTypes.STDERR)
             return 1
         }
-        return MarsSessionService.createMarsComponent().context().use { session ->
+        return MarsSessionService.createMarsComponent(backstepLimit).context().use { session ->
             launch.options.applyTo(session.settings)
             session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
             try {

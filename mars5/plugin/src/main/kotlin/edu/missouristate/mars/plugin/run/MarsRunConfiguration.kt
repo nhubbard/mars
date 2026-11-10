@@ -411,6 +411,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             sources, executionOptions, dumps, arguments, directory, options.inputMode, limit, speed, options.startAtMain.resolve(settings.startAtMain),
             options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
+            settings.backstepLimit,
         )
         return MarsRunState(environment, parameters)
     }
@@ -432,6 +433,7 @@ internal class MarsRunParameters(
     val connectKeyboardDisplay: Boolean,
     val connectMarsBot: Boolean,
     val connectScavengerHunt: Boolean,
+    val backstepLimit: Int,
 )
 
 internal class MarsRunState(
@@ -457,7 +459,7 @@ internal class MarsRunState(
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
             arguments = arguments, workingDirectory = workingDirectory, inputMode = inputMode, instructionLimit = instructionLimit,
-            runSpeed = runSpeed, startAtMain = startAtMain, execute = execute)
+            runSpeed = runSpeed, startAtMain = startAtMain, backstepLimit = backstepLimit, execute = execute)
     }
 
     fun resetAction(handler: MarsProcessHandler): AnAction = object : DumbAwareAction(

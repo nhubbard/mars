@@ -725,6 +725,41 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `backstep limit validates and persists without invalidating assembly`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val settings = project.service<MarsAssemblySettings>()
+            for (invalid in listOf(0, 100_001)) {
+                assertThrows(IllegalArgumentException::class.java) { settings.changeBackstepLimit(invalid) }
+            }
+            val configurable = MarsAssemblyConfigurable(project)
+            try {
+                val panel = configurable.createComponent()
+                configurable.reset()
+                val label = UIUtil.findComponentsOfType(panel, JLabel::class.java).single { it.text?.startsWith("Backstep history limit") == true }
+                val field = label.labelFor as JTextField
+                assertEquals(ApplicationInfo.maximumBacksteps.toString(), field.text)
+                for (invalid in listOf("0", "100001", "word")) {
+                    field.text = invalid
+                    assertThrows(ConfigurationException::class.java) { configurable.apply() }
+                }
+                field.text = "2"
+                val stamp = settings.sourceChanges.modificationCount
+                configurable.apply()
+                assertEquals(stamp, settings.sourceChanges.modificationCount)
+                val persisted = XmlSerializer.serialize(settings.getState())
+                settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                assertEquals(2, settings.backstepLimit)
+                for (invalid in listOf(0, 100_001)) {
+                    settings.loadState(settings.getState().copy(backstepLimit = invalid))
+                    assertEquals(ApplicationInfo.maximumBacksteps, settings.backstepLimit)
+                }
+            } finally {
+                configurable.disposeUIResources()
+            }
+        }
+    }
+
+    @Test
     fun `assembler error limit validates persists and refreshes Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("error-limit.asm", (0..7).joinToString("\n", postfix = "\n") { ".byte 'ab'" }) as MipsFile
