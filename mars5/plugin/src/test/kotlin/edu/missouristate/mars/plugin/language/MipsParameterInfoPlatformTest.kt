@@ -8,6 +8,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext
@@ -197,6 +198,116 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `nested hints use the selected definitions and discard stale rows after an edit`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv CALL inner
+            .eqv ARG 1
+            .macro inner (%old, %ignored)
+            .end_macro
+            .macro dormant
+                CALL (1, 2)
+            .end_macro
+            .macro outer (%value)
+                CALL (ARG, -17)
+            .end_macro
+            .macro inner (%first, %second)
+            .end_macro
+            outer(7)
+            .macro inner (%left, %right)
+            .end_macro
+            outer(8)
+            nop
+        """.trimIndent()
+        val current = configureNested(source)
+        val dormant = source.indexOf("CALL (")
+        val call = source.lastIndexOf("CALL (")
+        withContext(Dispatchers.EDT) {
+            assertNull(hintAt(call + "CALL".length))
+            fixture.doHighlighting()
+            assertNull(hintAt(dormant + "CALL".length))
+            assertEquals("inner (<b>%first</b>, %second)\n-\ninner (<b>%left</b>, %right)", hintAt(call + "CALL".length))
+            assertEquals("inner (%first, <b>%second</b>)\n-\ninner (%left, <b>%right</b>)", hintAt(call + "CALL (ARG, -1".length))
+            assertEquals("inner (%first, <b>%second</b>)\n-\ninner (%left, <b>%right</b>)", hintAt(call + "CALL (ARG, ".length))
+            assertEquals("inner (%first, <b>%second</b>)\n-\ninner (%left, <b>%right</b>)", hintAt(call + "CALL (ARG,".length))
+            assertNull(hintAt(call + "CALL (ARG, -17)".length))
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.replaceString(source.indexOf("%right"), source.indexOf("%right") + "%right".length, "%fresh")
+            }
+            PsiDocumentManager.getInstance(current).commitDocument(fixture.editor.document)
+            assertNull(hintAt(call + "CALL (ARG, ".length))
+            fixture.doHighlighting()
+            assertEquals("inner (%first, <b>%second</b>)\n-\ninner (%left, <b>%fresh</b>)", hintAt(call + "CALL (ARG, ".length))
+        }
+    }
+
+    @Test
+    fun `nested hints use the realized operation and avoid guessing within a multi argument alias`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv ARGS 3, 4
+            .macro outer (%operation)
+                %operation (ARGS)
+            .end_macro
+            .macro emit (%first, %second)
+            .end_macro
+            outer(emit)
+            nop
+        """.trimIndent()
+        configureNested(source)
+        val call = source.indexOf("%operation (")
+        withContext(Dispatchers.EDT) {
+            fixture.doHighlighting()
+            assertEquals("emit (<b>%first</b>, %second)", hintAt(call + "%operation".length))
+            assertEquals("emit (%first, %second)", hintAt(call + "%operation (".length))
+            assertEquals("emit (%first, %second)", hintAt(call + "%operation (AR".length))
+            assertNull(hintAt(call + "%operation (ARGS)".length))
+        }
+    }
+
+    @Test
+    fun `a substituted label separator moves the nested hint to the actual call token`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro outer (%separator)
+                row %separator inner 7  # leave a caret position after the argument
+            .end_macro
+            .macro inner (%value)
+            .end_macro
+            outer(:)
+            nop
+        """.trimIndent()
+        configureNested(source)
+        val call = source.indexOf("row %separator")
+        withContext(Dispatchers.EDT) {
+            fixture.doHighlighting()
+            assertNull(hintAt(call + "row".length))
+            assertEquals("inner (<b>%value</b>)", hintAt(call + "row %separator inner".length))
+            assertEquals("inner (%value)", hintAt(call + "row %separator inner 7 ".length))
+        }
+    }
+
+    @Test
+    fun `a nested call can realize both wrapped and raw argument lists`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro outer (%operation, %first)
+                %operation %first 7 )
+            .end_macro
+            .macro wrapped (%value)
+            .end_macro
+            .macro raw (%sign, %number, %tail)
+            .end_macro
+            outer(wrapped, ()
+            outer(raw, +)
+            nop
+        """.trimIndent()
+        configureNested(source)
+        val call = source.indexOf("%operation %first 7")
+        withContext(Dispatchers.EDT) {
+            fixture.doHighlighting()
+            assertEquals("raw (%sign, %number, %tail)\n-\nwrapped (%value)", hintAt(call + "%operation %first ".length))
+            assertEquals("raw (%sign, %number, <b>%tail</b>)", hintAt(call + "%operation %first 7 )".length))
+        }
+    }
+
+    @Test
     fun `popup updates reject stale instruction forms after unsaved include edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
@@ -233,6 +344,19 @@ class MipsParameterInfoPlatformTest {
 
     private fun info(source: String): String? {
         fixture.configureByText("parameter-info.asm", "$source\n")
+        return fixture.parameterInfoAtCaret
+    }
+
+    private suspend fun configureNested(source: String) = project.get().also { current ->
+        withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("nested-info.asm", source)
+            fixture.configureFromExistingVirtualFile(file.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+    }
+
+    private fun hintAt(offset: Int): String? {
+        fixture.editor.caretModel.moveToOffset(offset)
         return fixture.parameterInfoAtCaret
     }
 }

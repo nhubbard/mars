@@ -25,6 +25,7 @@ import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
+import edu.missouristate.mars.api.AssemblySymbolMap.NestedMacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.Directives
@@ -70,6 +71,8 @@ internal data class FormattingLine(
 internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
 )
+
+internal data class NestedMacroInvocation(val calls: List<NestedMacroCall>, val argument: Int)
 
 internal data class MacroArityMismatch(val site: PsiElement, val name: String, val actual: Int, val expected: List<Int>)
 
@@ -290,14 +293,17 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val document = root.fileDocument
             val line = document.getLineNumber(offset)
             val column = offset - document.getLineStartOffset(line) + 1
-            val targets = snapshot.symbols.nestedMacroTargets()[SourceToken(Location(path, line + 1), column)] ?: return@fromAssemblySymbols null
-            val manager = PsiDocumentManager.getInstance(project)
-            val current = snapshot.revisions.validateSourceDocuments { _, source, revision ->
-                manager.isCommitted(source) && source.modificationStamp == revision
-            }
-            if (!current) return@fromAssemblySymbols null
-            targets.mapNotNull(::macroDeclarationAt)
+            val calls = snapshot.symbols.nestedMacroCalls()[SourceToken(Location(path, line + 1), column)] ?: return@fromAssemblySymbols null
+            if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null
+            calls.map(NestedMacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
         }.orEmpty()
+    }
+
+    private fun AssemblySymbols.hasCurrentMacroSources(): Boolean {
+        val manager = PsiDocumentManager.getInstance(project)
+        return revisions.validateSourceDocuments { _, source, revision ->
+            manager.isCommitted(source) && source.modificationStamp == revision
+        }
     }
 
     private fun macroDeclarationAt(target: SourceToken): PsiElement? {
@@ -323,12 +329,46 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun macroInvocation(root: MipsFile, head: PsiElement, source: String): MacroInvocation? {
         if (DumbService.isDumb(project)) return null
         val prefix = editorPrefix(root, head.textOffset)
+        if (prefix.openMacro != null) return null
         val tokens = expandedOperation(prefix, writtenOperationPrefix(head, source), allowIncompleteOperand = true)
             ?.takeUnless(TokenList::isEmpty) ?: return null
         val definitions = prefix.macroOverloads(tokens[0].value)
         if (definitions.isEmpty()) return null
         val fullTokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true), allowIncompleteOperand = true)
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
+    }
+
+    internal fun nestedMacroInvocation(root: MipsFile, head: PsiElement, caret: Int): NestedMacroInvocation? {
+        if (macroBodyPrefix(root, head)?.openMacro == null) return null
+        return fromAssemblySymbols(root) { snapshot, path ->
+            val document = root.fileDocument
+            val line = document.getLineNumber(head.textOffset)
+            val start = document.getLineStartOffset(line)
+            val column = caret - start + 1
+            val site = snapshot.nestedMacroSites[Location(path, line + 1)].orEmpty()
+                .filter { it.key.column() <= column }.maxByOrNull { it.key.column() }
+                ?: return@fromAssemblySymbols null
+            if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null
+            val previous = root.findElementAt(caret - 1).elementType
+            val afterSeparator = previous == TokenType.WHITE_SPACE || previous == MipsTypes.psi("COMMA")
+            val active = site.value.filter { call ->
+                call.closingParenthesisColumn()?.let {
+                    caret < root.findElementAt(start + it - 1)!!.textRange.endOffset
+                } ?: true
+            }
+            val arguments = active.map { call ->
+                val columns = call.argumentColumns()
+                val index = columns.indexOfLast { it <= column }
+                when {
+                    index < 0 -> 0
+                    // The editor can split a signed literal into several leaves.
+                    column > columns[index] && afterSeparator -> index + 1
+                    columns.getOrNull(index - 1) == columns[index] -> -1
+                    else -> index
+                }
+            }
+            NestedMacroInvocation(active, arguments.distinct().singleOrNull() ?: -1)
+        }
     }
 
     internal fun macroArityMismatch(root: MipsFile, timeline: MipsSourceTimeline, head: PsiElement): MacroArityMismatch? {

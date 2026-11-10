@@ -56,6 +56,10 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val file = context.file as MipsFile
         val analysis = file.project.service<MarsAnalysisService>()
         val head = owner.operationHead
+        analysis.nestedMacroInvocation(file, head, context.offset)?.let { invocation ->
+            val rows = invocation.calls.map { macroRow(it.name(), it.parameters()) }.distinct().sortedBy(MipsParameterRow::text)
+            return Hint(rows, invocation.argument).takeIf { rows.isNotEmpty() }
+        }
         val instruction = analysis.editorInstructionTokens(file, head, prefix, allowIncompleteOperand = true)
         if (instruction != null) return instructionHint(instruction, context.offset == head.textRange.endOffset)
         return analysis.macroInvocation(file, head, prefix)?.let(::macroHint)
@@ -85,17 +89,19 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
             (wrapped || parameters.none { it.size + 1 == fullCount })
         val count = tokens.size() - if (openingWrapper) 2 else 1
         val index = if (count == 0 || last.endPos - 1 < tokens.processedLine.length) count else count - 1
-        val rows = parameters.map { arguments ->
-            val text = StringBuilder(tokens[0].value).append(" (")
-            val ranges = arguments.mapIndexed { index, argument ->
-                if (index > 0) text.append(", ")
-                val start = text.length
-                text.append(argument)
-                TextRange(start, text.length)
-            }
-            MipsParameterRow(text.append(')').toString(), ranges)
-        }
+        val rows = parameters.map { macroRow(tokens[0].value, it) }
         return Hint(rows, index)
+    }
+
+    private fun macroRow(name: String, arguments: List<String>): MipsParameterRow {
+        val text = StringBuilder(name).append(" (")
+        val ranges = arguments.mapIndexed { index, argument ->
+            if (index > 0) text.append(", ")
+            val start = text.length
+            text.append(argument)
+            TextRange(start, text.length)
+        }
+        return MipsParameterRow(text.append(')').toString(), ranges)
     }
 
     override fun updateUI(row: MipsParameterRow, context: ParameterInfoUIContext) {

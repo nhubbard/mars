@@ -2,6 +2,7 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.api.AssemblySymbolMap.NestedMacroCall;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
@@ -91,8 +92,10 @@ final class Parser {
 
     // SPIM-style macro calling:
     TokenList parenFreeTokens = tokens;
+    Token closingParenthesis = null;
     if (Macro.hasCallParentheses(tokens)) {
       parenFreeTokens = (TokenList) tokens.clone();
+      closingParenthesis = tokens.get(tokens.size() - 1);
       parenFreeTokens.remove(tokens.size() - 1);
       parenFreeTokens.remove(1);
     }
@@ -134,7 +137,15 @@ final class Parser {
           var call = new SourceToken(invocation.location(), token.writtenOrigin().getOriginalStartPos());
           var header = physicalLines.get(macro.getFromLine() - 1);
           var target = new SourceToken(origin(header, null).location(), macro.nameColumn);
-          pass.nestedMacroTargets.computeIfAbsent(call, ignored -> new HashSet<>()).add(target);
+          var arguments = new ArrayList<Integer>(tokens.size() - 1);
+          for (int i = 1; i < tokens.size(); i++) {
+            arguments.add(tokens.get(i).writtenOrigin().getOriginalStartPos());
+          }
+          Integer closingColumn = closingParenthesis == null
+              ? null : closingParenthesis.writtenOrigin().getOriginalStartPos();
+          var occurrence = new NestedMacroCall(
+              target, macro.getName(), macro.getArgs(), arguments, closingColumn);
+          pass.nestedMacroCalls.computeIfAbsent(call, ignored -> new HashSet<>()).add(occurrence);
         }
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();

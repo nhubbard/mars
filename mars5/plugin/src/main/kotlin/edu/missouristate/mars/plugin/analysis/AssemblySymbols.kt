@@ -25,6 +25,7 @@ internal class AssemblySymbols(
     val sourceSet: MarsSourceSet = MarsSourceSet(entry),
 ) {
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
+    val nestedMacroSites = symbols.nestedMacroCalls().entries.groupBy { it.key.location() }
     val localSymbols get() = localSymbols(entry)
 
     fun rootFor(source: Path): Path = rootsBySource.getValue(source)

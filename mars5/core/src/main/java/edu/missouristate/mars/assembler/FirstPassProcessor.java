@@ -6,6 +6,7 @@ import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.AssemblySymbolMap.NestedMacroCall;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.core.AssemblyContext;
@@ -49,7 +50,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 final class FirstPassProcessor {
   final AssemblyContext context;
   final Runnable checkCancellation;
-  final Map<SourceToken, Set<SourceToken>> nestedMacroTargets = new HashMap<>();
+  final Map<SourceToken, Set<NestedMacroCall>> nestedMacroCalls = new HashMap<>();
 
   FirstPassProcessor(AssemblyContext context, Runnable checkCancellation) {
     this.context = context;

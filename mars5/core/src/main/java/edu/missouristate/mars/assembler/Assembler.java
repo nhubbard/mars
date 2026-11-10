@@ -78,7 +78,7 @@ public final class Assembler {
         locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
       }
       symbolMap = new AssemblySymbolMap(
-          locals, definitions(context.symbols(), checkCancellation), first.nestedMacroTargets);
+          locals, definitions(context.symbols(), checkCancellation), first.nestedMacroCalls);
       sourceMap = result.sourceMap();
       return result.instructions();
     }
