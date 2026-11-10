@@ -185,7 +185,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             val refreshVariables = {
                 if (session.isSuspended) session.rebuildViews()
             }
-            service<MarsDebuggerDisplaySettings>().addValueListener(labels, refreshVariables)
+            service<MarsDebuggerDisplaySettings>().addVariablesListener(labels, refreshVariables)
             onMachineHighlightSchemeChange(labels, refreshVariables)
         }
     }
@@ -194,6 +194,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val display = service<MarsDebuggerDisplaySettings>()
         settings.add(MarsHexAddressesAction(display))
         settings.add(MarsHexValuesAction(display))
+        settings.add(MarsHighlightMemoryWritesAction(display))
+        settings.add(MarsHighlightRegisterWritesAction(display))
         topToolbar.add(MarsRunSpeedAction(handler))
         topToolbar.add(state.resetAction(handler))
         topToolbar.add(object : DumbAwareAction(

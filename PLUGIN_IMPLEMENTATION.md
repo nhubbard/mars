@@ -2203,6 +2203,22 @@ The packaged IntelliJ 2026.3 smoke test imported the order at a breakpoint,
 verified the open table's order, Source width, and selected instruction, and
 confirmed that IntelliJ saved the preference.
 
+The Debug settings menu has separate **Highlight MARS Memory Writes** and
+**Highlight MARS Register Writes** switches. Both default to on and persist
+across MARS projects. They update the open Memory and Variables views at the
+current suspension. Memory's **Last Write** button and address remain
+available with highlighting off. Re-enabling either switch uses the recorded
+writes from the same suspension.
+
+The debugger preference import also previews Venus's saved switches. It tracks
+their import separately from numbers, sorting, and column order, so earlier
+imports can pick up this category on its own.
+
+In a fresh packaged IntelliJ 2026.3 session, importing both switches removed
+the styles from the open Memory and Variables views. Each switch restored
+its own style at the same suspension. Last Write stayed available, and
+IntelliJ saved both switches in its debugger settings.
+
 ### Import Venus machine highlight styles
 
 **File → Import Venus Machine Highlight Styles** previews saved foreground

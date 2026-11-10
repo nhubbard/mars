@@ -20,8 +20,12 @@ import java.util.prefs.Preferences
 private const val numbersImportedKey = "mars.venus.debugger.numbers.imported"
 private const val symbolsImportedKey = "mars.venus.debugger.symbols.imported"
 private const val layoutImportedKey = "mars.venus.debugger.disassembly.imported"
+private const val highlightsImportedKey = "mars.venus.debugger.highlights.imported"
 private val messages get() = venusImportMessages
-private val debuggerKeys = listOf("DisplayAddressesInHex", "DisplayValuesInHex", "LabelSortState", "TextColumnOrder")
+private val debuggerKeys = listOf(
+    "DisplayAddressesInHex", "DisplayValuesInHex", "LabelSortState", "TextColumnOrder",
+    "DataSegmentHighlighting", "RegistersHighlighting",
+)
 
 internal class MarsImportVenusDebuggerPreferencesAction(
     private val preferences: () -> Preferences = Preferences::userRoot,
@@ -34,6 +38,7 @@ internal class MarsImportVenusDebuggerPreferencesAction(
         e.presentation.isEnabledAndVisible = project != null && (
             !applicationProperties.isTrueValue(numbersImportedKey) ||
                 !applicationProperties.isTrueValue(layoutImportedKey) ||
+                !applicationProperties.isTrueValue(highlightsImportedKey) ||
                 !PropertiesComponent.getInstance(project).isTrueValue(symbolsImportedKey)
             )
     }
@@ -45,7 +50,8 @@ internal class MarsImportVenusDebuggerPreferencesAction(
         val numbersImported = applicationProperties.isTrueValue(numbersImportedKey)
         val symbolsImported = projectProperties.isTrueValue(symbolsImportedKey)
         val layoutImported = applicationProperties.isTrueValue(layoutImportedKey)
-        if (numbersImported && symbolsImported && layoutImported) return
+        val highlightsImported = applicationProperties.isTrueValue(highlightsImportedKey)
+        if (numbersImported && symbolsImported && layoutImported && highlightsImported) return
         val title = messages.getMessage("import.venus.debug.title")
         val values = loadVenusPreferences(project, title) { preferences().readSavedVenusPreferences(debuggerKeys) } ?: return
 
@@ -53,10 +59,14 @@ internal class MarsImportVenusDebuggerPreferencesAction(
         val previousDisplay = display.getState()
         val previousSort = projectProperties.symbolSort()
         val previousOrder = applicationProperties.importedDisassemblyOrder()
-        val updatedDisplay = if (!numbersImported) previousDisplay.copy(
+        val updatedNumbers = if (!numbersImported) previousDisplay.copy(
             hexAddresses = values["DisplayAddressesInHex"].venusBoolean() ?: previousDisplay.hexAddresses,
             hexValues = values["DisplayValuesInHex"].venusBoolean() ?: previousDisplay.hexValues,
         ) else previousDisplay
+        val updatedDisplay = if (!highlightsImported) updatedNumbers.copy(
+            highlightMemoryWrites = values["DataSegmentHighlighting"].venusBoolean() ?: previousDisplay.highlightMemoryWrites,
+            highlightRegisterWrites = values["RegistersHighlighting"].venusBoolean() ?: previousDisplay.highlightRegisterWrites,
+        ) else updatedNumbers
         val updatedSort = if (!symbolsImported) venusSymbolSort(values["LabelSortState"]) ?: previousSort else previousSort
         val updatedOrder = if (layoutImported) null else venusDisassemblyOrder(values["TextColumnOrder"]).takeUnless { it == previousOrder }
         val changes = buildList {
@@ -65,6 +75,8 @@ internal class MarsImportVenusDebuggerPreferencesAction(
             }
             change("import.venus.debug.addresses", numberFormat(previousDisplay.hexAddresses), numberFormat(updatedDisplay.hexAddresses))
             change("import.venus.debug.values", numberFormat(previousDisplay.hexValues), numberFormat(updatedDisplay.hexValues))
+            change("import.venus.debug.highlight.memory", venusFlagText(previousDisplay.highlightMemoryWrites), venusFlagText(updatedDisplay.highlightMemoryWrites))
+            change("import.venus.debug.highlight.registers", venusFlagText(previousDisplay.highlightRegisterWrites), venusFlagText(updatedDisplay.highlightRegisterWrites))
             change("import.venus.debug.symbols", sortDescription(previousSort), sortDescription(updatedSort))
             updatedOrder?.let { order ->
                 add(messages.getMessage("import.venus.debug.layout", order.joinToString(" → ", transform = MarsDisassemblyColumn::title)))
@@ -79,15 +91,15 @@ internal class MarsImportVenusDebuggerPreferencesAction(
             applicationProperties.isTrueValue(numbersImportedKey) != numbersImported ||
             projectProperties.isTrueValue(symbolsImportedKey) != symbolsImported ||
             applicationProperties.isTrueValue(layoutImportedKey) != layoutImported ||
+            applicationProperties.isTrueValue(highlightsImportedKey) != highlightsImported ||
             applicationProperties.importedDisassemblyOrder() != previousOrder
         ) {
             Messages.showInfoMessage(project, messages.getMessage("import.venus.debug.stale"), title)
             return
         }
-        if (updatedDisplay != previousDisplay) {
-            display.applyImportedSettings(updatedDisplay)
-            applicationProperties.setValue(numbersImportedKey, true)
-        }
+        if (updatedDisplay != previousDisplay) display.applyImportedSettings(updatedDisplay)
+        if (updatedNumbers != previousDisplay) applicationProperties.setValue(numbersImportedKey, true)
+        if (updatedDisplay != updatedNumbers) applicationProperties.setValue(highlightsImportedKey, true)
         if (updatedSort != previousSort) {
             importSymbolSort(project, updatedSort)
             projectProperties.setValue(symbolsImportedKey, true)

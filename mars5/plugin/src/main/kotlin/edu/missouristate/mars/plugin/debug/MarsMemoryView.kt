@@ -293,7 +293,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         override fun customizeCellRenderer(table: JTable, value: Any?, selected: Boolean, hasFocus: Boolean, row: Int, column: Int) {
             val text = value as String
             val write = displayedWrite
-            if (write == null) {
+            if (write == null || !display.highlightMemoryWrites) {
                 append(text)
                 return
             }

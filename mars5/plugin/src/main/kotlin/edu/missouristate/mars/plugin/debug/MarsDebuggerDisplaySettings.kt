@@ -24,11 +24,15 @@ internal class MarsDebuggerDisplaySettings :
     data class Settings(
         @JvmField var hexAddresses: Boolean = true,
         @JvmField var hexValues: Boolean = true,
+        @JvmField var highlightMemoryWrites: Boolean = true,
+        @JvmField var highlightRegisterWrites: Boolean = true,
     )
 
     private val bus get() = ApplicationManager.getApplication().messageBus
     val hexAddresses get() = getState().hexAddresses
     val hexValues get() = getState().hexValues
+    val highlightMemoryWrites get() = getState().highlightMemoryWrites
+    val highlightRegisterWrites get() = getState().highlightRegisterWrites
 
     fun formatAddress(address: Int) = formatUnsignedInteger(address, getBase(hexAddresses))
     fun formatValue(bits: Int) = formatNumber(bits, getBase(hexValues))
@@ -41,6 +45,16 @@ internal class MarsDebuggerDisplaySettings :
 
     fun setHexValues(selected: Boolean) {
         updateState { it.copy(hexValues = selected) }
+        notifyViews()
+    }
+
+    fun setHighlightMemoryWrites(selected: Boolean) {
+        updateState { it.copy(highlightMemoryWrites = selected) }
+        notifyViews()
+    }
+
+    fun setHighlightRegisterWrites(selected: Boolean) {
+        updateState { it.copy(highlightRegisterWrites = selected) }
         notifyViews()
     }
 
@@ -60,14 +74,14 @@ internal class MarsDebuggerDisplaySettings :
         })
     }
 
-    fun addValueListener(lifetime: Disposable, update: () -> Unit) {
-        var previous = hexValues
+    fun addVariablesListener(lifetime: Disposable, update: () -> Unit) {
+        var previous = getState()
         addListener(lifetime) {
-            val current = hexValues
-            if (previous != current) {
-                previous = current
-                update()
-            }
+            val current = getState()
+            val changed = previous.hexValues != current.hexValues ||
+                previous.highlightRegisterWrites != current.highlightRegisterWrites
+            previous = current
+            if (changed) update()
         }
     }
 
@@ -96,4 +110,18 @@ internal class MarsHexValuesAction(private val display: MarsDebuggerDisplaySetti
     override fun getActionUpdateThread() = ActionUpdateThread.BGT
     override fun isSelected(e: AnActionEvent) = display.hexValues
     override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHexValues(state)
+}
+
+internal class MarsHighlightMemoryWritesAction(private val display: MarsDebuggerDisplaySettings) :
+    DumbAwareToggleAction(runMessages.getMessage("debug.settings.highlight.memory")) {
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+    override fun isSelected(e: AnActionEvent) = display.highlightMemoryWrites
+    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHighlightMemoryWrites(state)
+}
+
+internal class MarsHighlightRegisterWritesAction(private val display: MarsDebuggerDisplaySettings) :
+    DumbAwareToggleAction(runMessages.getMessage("debug.settings.highlight.registers")) {
+    override fun getActionUpdateThread() = ActionUpdateThread.BGT
+    override fun isSelected(e: AnActionEvent) = display.highlightRegisterWrites
+    override fun setSelected(e: AnActionEvent, state: Boolean) = display.setHighlightRegisterWrites(state)
 }

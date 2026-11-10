@@ -140,7 +140,7 @@ internal class RegisterValue(
 
     override fun computePresentation(node: XValueNode, place: XValuePlace) {
         val value = format()
-        if (!written) {
+        if (!written || !service<MarsDebuggerDisplaySettings>().highlightRegisterWrites) {
             node.setPresentation(null, null, value, false)
             return
         }

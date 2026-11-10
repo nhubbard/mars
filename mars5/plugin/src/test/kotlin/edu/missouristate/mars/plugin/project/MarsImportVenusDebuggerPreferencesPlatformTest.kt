@@ -52,6 +52,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     private val numberMarker = "mars.venus.debugger.numbers.imported"
     private val sortMarker = "mars.venus.debugger.symbols.imported"
     private val layoutMarker = "mars.venus.debugger.disassembly.imported"
+    private val highlightsMarker = "mars.venus.debugger.highlights.imported"
     private val importedOrderKey = DISASSEMBLY_LAYOUT_PREFIX + "importedOrder"
 
     @Test
@@ -71,6 +72,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     putBoolean("DisplayValuesInHex", false)
                     put("LabelSortState", "3")
                     put("TextColumnOrder", "4 2 0 3 1")
+                    putBoolean("DataSegmentHighlighting", false)
+                    putBoolean("RegistersHighlighting", false)
                 }
                 val action = MarsImportVenusDebuggerPreferencesAction { root }
                 val view = MarsSymbolsView(project, MutableStateFlow(null))
@@ -88,10 +91,14 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                         assertTrue(preview.contains("Value format (all MARS projects)  Hexadecimal → Decimal"))
                         assertTrue(preview.contains("Symbols sorting (this project)  Label ascending → Address descending"))
                         assertTrue(preview.contains("Source → Word → Breakpoint → Instruction → Address"))
+                        assertTrue(preview.contains("Memory write highlighting (all MARS projects)  On → Off"))
+                        assertTrue(preview.contains("Register write highlighting (all MARS projects)  On → Off"))
                         Messages.CANCEL
                     }) { action.actionPerformed(event(action)) }
                     assertEquals(listOf(SortKey(0, SortOrder.ASCENDING)), view.focus.rowSorter.sortKeys)
                     assertEquals(0, displayChanges)
+                    assertTrue(display.highlightMemoryWrites)
+                    assertTrue(display.highlightRegisterWrites)
 
                     withDialog(TestDialog.OK) { action.actionPerformed(event(action)) }
                     assertEquals(listOf(SortKey(1, SortOrder.DESCENDING)), view.focus.rowSorter.sortKeys)
@@ -102,6 +109,9 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     assertTrue(appProperties.isTrueValue(numberMarker))
                     assertTrue(projectProperties.isTrueValue(sortMarker))
                     assertTrue(appProperties.isTrueValue(layoutMarker))
+                    assertTrue(appProperties.isTrueValue(highlightsMarker))
+                    assertFalse(display.highlightMemoryWrites)
+                    assertFalse(display.highlightRegisterWrites)
                     assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
                     action.actionPerformed(event(action))
                 } finally {
@@ -116,6 +126,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         withContext(Dispatchers.EDT) {
             withDefaults {
                 appProperties.setValue(numberMarker, true)
+                appProperties.setValue(highlightsMarker, true)
                 projectProperties.setValue(sortMarker, true)
                 val root = MemoryPreferences()
                 val saved = root.node("mars")
@@ -150,6 +161,41 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         }
     }
 
+    @Test
+    fun `earlier debugger imports can add write highlighting independently`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withDefaults {
+                appProperties.setValue(numberMarker, true)
+                appProperties.setValue(layoutMarker, true)
+                projectProperties.setValue(sortMarker, true)
+                val root = MemoryPreferences()
+                val saved = root.node("mars")
+                saved.put("DataSegmentHighlighting", "invalid")
+                saved.putBoolean("DisplayValuesInHex", false)
+                val action = MarsImportVenusDebuggerPreferencesAction { root }
+                assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
+                withDialog({ info ->
+                    assertTrue(info.contains("No saved Venus debugger preferences differ"))
+                    Messages.OK
+                }) { action.actionPerformed(event(action)) }
+                assertFalse(appProperties.isTrueValue(highlightsMarker))
+
+                saved.putBoolean("RegistersHighlighting", false)
+                withDialog({ preview ->
+                    assertTrue(preview.contains("Register write highlighting (all MARS projects)  On → Off"))
+                    assertFalse(preview.contains("Memory write highlighting"))
+                    assertFalse(preview.contains("Value format"))
+                    Messages.OK
+                }) { action.actionPerformed(event(action)) }
+                assertTrue(display.hexValues)
+                assertTrue(display.highlightMemoryWrites)
+                assertFalse(display.highlightRegisterWrites)
+                assertTrue(appProperties.isTrueValue(highlightsMarker))
+                assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
+            }
+        }
+    }
+
     @ParameterizedTest
     @CsvSource(
         "0, ADDRESS, false", "1, ADDRESS, true", "2, ADDRESS, false", "3, ADDRESS, true",
@@ -161,6 +207,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                 withDefaults {
                     appProperties.setValue(numberMarker, true)
                     appProperties.setValue(layoutMarker, true)
+                    appProperties.setValue(highlightsMarker, true)
                     projectProperties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.KIND, false))
                     val root = MemoryPreferences()
                     root.node("edu/missouristate/mars").apply {
@@ -229,6 +276,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     { appProperties.setValue(numberMarker, true) },
                     { projectProperties.setValue(sortMarker, true) },
                     { appProperties.setValue(layoutMarker, true) },
+                    { appProperties.setValue(highlightsMarker, true) },
                     { appProperties.setValue(importedOrderKey, "4 3 2 1 0") },
                 )) {
                     var count = 0
@@ -249,6 +297,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         val oldNumbers = appProperties.getValue(numberMarker)
         val oldSortMarker = projectProperties.getValue(sortMarker)
         val oldLayoutMarker = appProperties.getValue(layoutMarker)
+        val oldHighlightsMarker = appProperties.getValue(highlightsMarker)
         val oldImportedOrder = appProperties.getValue(importedOrderKey)
         val oldSort = projectProperties.symbolSort()
         val oldDisplay = display.getState()
@@ -259,6 +308,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
             appProperties.setValue(numberMarker, oldNumbers)
             projectProperties.setValue(sortMarker, oldSortMarker)
             appProperties.setValue(layoutMarker, oldLayoutMarker)
+            appProperties.setValue(highlightsMarker, oldHighlightsMarker)
             appProperties.setValue(importedOrderKey, oldImportedOrder)
             projectProperties.storeSymbolSort(oldSort)
             display.loadState(oldDisplay)
@@ -269,6 +319,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         appProperties.unsetValue(numberMarker)
         projectProperties.unsetValue(sortMarker)
         appProperties.unsetValue(layoutMarker)
+        appProperties.unsetValue(highlightsMarker)
         appProperties.unsetValue(importedOrderKey)
         projectProperties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.NAME, false))
         display.loadState(MarsDebuggerDisplaySettings.Settings())

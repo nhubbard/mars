@@ -29,6 +29,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.WriteAction
@@ -115,7 +116,6 @@ import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
-import edu.missouristate.mars.plugin.build.MarsOpenAssembly
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportCapture
@@ -1935,6 +1935,16 @@ class MarsDebugPlatformTest {
         return action to event
     }
 
+    private fun highlightAction(session: XDebugSession, text: String): Pair<ToggleAction, AnActionEvent> {
+        val settings = DefaultActionGroup()
+        session.debugProcess.registerAdditionalActions(DefaultActionGroup(), DefaultActionGroup(), settings)
+        val action = settings.getChildren(ActionManager.getInstance()).filterIsInstance<ToggleAction>()
+            .single { it.templatePresentation.text == text }
+        val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.POPUP, null)
+        assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+        return action to event
+    }
+
     @Test
     fun `Debug Memory edits the selected pause and rejects a dialog completed after resume`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
@@ -2303,6 +2313,25 @@ class MarsDebugPlatformTest {
                 assertWrite(null)
                 resumeTo(6)
                 assertWrite("Last write at 0x10010000 (4 bytes)", listOf("34", "12", "00", "00"), listOf("0x00001234"))
+                val (highlight, event) = withContext(Dispatchers.EDT) {
+                    highlightAction(debug.session, "Highlight MARS Memory Writes")
+                }
+                val suspension = debug.session.suspendContext
+                withContext(Dispatchers.EDT) {
+                    assertTrue(highlight.isSelected(event))
+                    highlight.actionPerformed(event)
+                    assertFalse(highlight.isSelected(event))
+                    assertTrue(display.highlightRegisterWrites)
+                    assertSame(suspension, debug.session.suspendContext)
+                    val saved = XmlSerializer.serialize(display.getState())
+                    assertFalse(XmlSerializer.deserialize(saved, MarsDebuggerDisplaySettings.Settings::class.java).highlightMemoryWrites)
+                }
+                assertWrite("Last write at 0x10010000 (4 bytes)")
+                withContext(Dispatchers.EDT) {
+                    highlight.actionPerformed(event)
+                    assertTrue(highlight.isSelected(event))
+                }
+                assertWrite("Last write at 0x10010000 (4 bytes)", listOf("34", "12", "00", "00"), listOf("0x00001234"))
                 withContext(Dispatchers.EDT) {
                     val foreground = Color(0x164b67)
                     val background = Color(0xd1e5ff)
@@ -2362,6 +2391,7 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     Disposer.dispose(lifetime)
                     display.setHexAddresses(true)
+                    display.setHighlightMemoryWrites(true)
                 }
             }
         }
@@ -2530,8 +2560,9 @@ class MarsDebugPlatformTest {
                 project.service<MarsAssemblySettings>().changeAssembleOnOpen(true)
                 FileEditorManager.getInstance(project).openFile(other.virtualFile, FileEditorOpenRequest.withFocus(false))
             }
-            project.service<MarsOpenAssembly>().awaitPending()
-            readAction { assertEquals(other.virtualFile.toNioPath(), analysis.selectedAssembly(other)?.entry) }
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                readAction { assertEquals(other.virtualFile.toNioPath(), analysis.selectedAssembly(other)?.entry) }
+            }
             withContext(Dispatchers.EDT) {
                 assertSame(suspension, debug.session.suspendContext)
                 assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
@@ -3442,6 +3473,30 @@ class MarsDebugPlatformTest {
             }
             debug.assertPausedAt(source, 3)
             assertHighlighted("hi", "lo")
+            val display = service<MarsDebuggerDisplaySettings>()
+            try {
+                val (action, event) = withContext(Dispatchers.EDT) {
+                    highlightAction(debug.session, "Highlight MARS Register Writes")
+                }
+                val suspension = debug.session.suspendContext
+                withContext(Dispatchers.EDT) {
+                    assertTrue(action.isSelected(event))
+                    action.actionPerformed(event)
+                    assertFalse(action.isSelected(event))
+                    assertTrue(display.highlightMemoryWrites)
+                    assertSame(suspension, debug.session.suspendContext)
+                    val saved = XmlSerializer.serialize(display.getState())
+                    assertFalse(XmlSerializer.deserialize(saved, MarsDebuggerDisplaySettings.Settings::class.java).highlightRegisterWrites)
+                }
+                assertHighlighted()
+                withContext(Dispatchers.EDT) {
+                    action.actionPerformed(event)
+                    assertTrue(action.isSelected(event))
+                }
+                assertHighlighted("hi", "lo")
+            } finally {
+                withContext(Dispatchers.EDT) { display.setHighlightRegisterWrites(true) }
+            }
             withContext(Dispatchers.EDT) { debug.session.resume() }
             debug.assertPausedAt(source, 6)
             assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f1", "\$f0/\$f1")
