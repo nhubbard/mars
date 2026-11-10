@@ -39,6 +39,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
@@ -57,6 +58,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.pollAssertionsAsync
 import com.intellij.ui.UiInterceptors
 import com.intellij.ui.ComponentUtil
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
@@ -86,6 +88,9 @@ import com.intellij.xdebugger.impl.ui.tree.nodes.XValueContainerNode
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueGroupNodeImpl
 import com.intellij.xdebugger.impl.ui.tree.nodes.XValueNodeImpl
 import edu.missouristate.mars.api.AssemblySourceSnapshot
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.mips.dump.DumpFormat
@@ -134,6 +139,8 @@ import javax.swing.JComboBox
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JTextField
+import javax.swing.RowSorter.SortKey
+import javax.swing.SortOrder
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
@@ -141,6 +148,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -2346,6 +2354,204 @@ class MarsDebugPlatformTest {
             assertEquals(0, debug.exit.await())
         }
     }
+
+    @Test
+    fun `Debug Symbols lists the loaded labels and navigates to their original source`() = timeoutRunBlocking<Unit> {
+        val includedText = """
+            .extern externalSlot, 4
+            .data
+            .globl payload
+            payload: .word 42
+            .kdata
+            kernelSlot: .word 0
+            .text
+            .macro emit
+            inner: nop
+            .end_macro
+        """.trimIndent() + "\n"
+        val (entry, include, unrelated) = withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("symbols-body.s", includedText).virtualFile
+            val file = fixture.addFileToProject("symbols.asm", """
+                .include "symbols-body.s"
+                localEntry: nop
+                emit
+                nop
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 1) }
+            Triple(file, body, fixture.addFileToProject("symbols-unrelated.s", "nop\n").virtualFile)
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, 1)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val layout = withContext(Dispatchers.EDT) {
+                    RunnerLayoutUi.Factory.getInstance(project).create("MarsSymbolsTest", "Debug", "MIPS", lifetime).also {
+                        debug.session.debugProcess.createTabLayouter().registerAdditionalContent(it)
+                    }
+                }
+                val (table, search, status) = withContext(Dispatchers.EDT) {
+                    val content = requireNotNull(layout.findContent("MarsMipsSymbols"))
+                    assertEquals("Symbols", content.displayName)
+                    assertFalse(content.isCloseable)
+                    Triple(
+                        requireNotNull(UIUtil.findComponentOfType(content.component, JBTable::class.java)),
+                        requireNotNull(UIUtil.findComponentOfType(content.component, SearchTextField::class.java)),
+                        UIUtil.findComponentsOfType(content.component, JBLabel::class.java).single { it.text.contains("image") },
+                    )
+                }
+                val button = withContext(Dispatchers.EDT) {
+                    UIUtil.findComponentsOfType(layout.findContent("MarsMipsSymbols")!!.component, JButton::class.java)
+                        .single { it.text == "Open Source" }
+                }
+                fun row(name: String) = (0 until table.rowCount).first { table.getValueAt(it, 0) == name }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertEquals("Symbols from the loaded image", status.text)
+                        assertEquals(5, table.rowCount)
+                        assertEquals("0x10010000", table.getValueAt(row("payload"), 1))
+                        assertEquals("Data", table.getValueAt(row("payload"), 2))
+                        assertEquals("Global", table.getValueAt(row("payload"), 3))
+                        assertEquals("", table.getValueAt(row("payload"), 4))
+                        assertTrue(table.getValueAt(row("payload"), 5).toString().endsWith("symbols-body.s:4"))
+                        assertEquals("External", table.getValueAt(row("externalSlot"), 2))
+                        assertEquals("Text", table.getValueAt(row("localEntry"), 2))
+                        assertEquals("Local", table.getValueAt(row("localEntry"), 3))
+                        assertTrue(table.getValueAt(row("localEntry"), 4).toString().endsWith("symbols.asm"))
+                        val macro = (0 until table.rowCount).single { table.getValueAt(it, 0).toString().startsWith("inner") }
+                        assertEquals("Macro Expansion", table.getValueAt(macro, 3))
+                        assertTrue(table.getValueAt(macro, 5).toString().endsWith("symbols-body.s:9"))
+                        assertFalse(button.isEnabled)
+                        table.rowSorter.toggleSortOrder(1)
+                        assertEquals("localEntry", table.getValueAt(0, 0))
+                        assertEquals("kernelSlot", table.getValueAt(table.rowCount - 1, 0))
+                        table.rowSorter.toggleSortOrder(1)
+                        assertEquals("kernelSlot", table.getValueAt(0, 0))
+                        search.text = "10010000"
+                        assertEquals(1, table.rowCount)
+                        search.text = "SYMBOLS-BODY.S:4"
+                        assertEquals(1, table.rowCount)
+                        assertEquals("payload", table.getValueAt(0, 0))
+                        table.setRowSelectionInterval(0, 0)
+                        assertTrue(button.isEnabled)
+                        button.doClick(0)
+                    }
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                        assertEquals(include, FileDocumentManager.getInstance().getFile(editor.document))
+                        assertEquals(3, editor.caretModel.logicalPosition.line)
+                    }
+                }
+                val bodyDocument = withContext(Dispatchers.EDT) {
+                    val documents = FileDocumentManager.getInstance()
+                    val body = requireNotNull(documents.getDocument(include))
+                    val other = requireNotNull(documents.getDocument(unrelated))
+                    val detached = EditorFactory.getInstance().createDocument("original")
+                    val formattingCopy = LightVirtualFile("symbols-body.s", MipsFileType, includedText)
+                    val copy = requireNotNull(documents.getDocument(formattingCopy))
+                    assertEquals(formattingCopy, documents.getFile(copy))
+                    WriteAction.run<RuntimeException> {
+                        detached.setText("edited")
+                        copy.setText("# formatting copy\n" + includedText)
+                        other.setText("nop\nnop\n")
+                        body.setText("# edit\n" + includedText)
+                    }
+                    body
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(status.text.startsWith("Source has changed"))
+                        assertEquals("payload", table.getValueAt(0, 0))
+                        button.doClick(0)
+                    }
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val editor = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                        val captured = requireNotNull(FileDocumentManager.getInstance().getFile(editor.document))
+                        assertEquals("symbols-body.s (assembled snapshot)", captured.name)
+                        assertFalse(captured.isWritable)
+                        assertEquals(includedText, editor.document.text)
+                        assertEquals(3, editor.caretModel.logicalPosition.line)
+                        WriteAction.run<RuntimeException> { bodyDocument.setText(includedText) }
+                    }
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) { assertEquals("Symbols from the loaded image", status.text) }
+                }
+                withContext(Dispatchers.EDT) {
+                    val second = RunnerLayoutUi.Factory.getInstance(project).create("MarsSymbolsSortTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(second)
+                    val secondTable = requireNotNull(UIUtil.findComponentOfType(second.findContent("MarsMipsSymbols")!!.component, JBTable::class.java))
+                    assertEquals(1, secondTable.rowSorter.sortKeys.single().column)
+                    assertEquals(SortOrder.DESCENDING, secondTable.rowSorter.sortKeys.single().sortOrder)
+                    search.text = ""
+                    WriteAction.run<RuntimeException> { include.delete(this) }
+                    debug.session.resume()
+                }
+                assertEquals(0, debug.exit.await())
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(status.text.startsWith("Source has changed"))
+                        assertEquals(5, table.rowCount)
+                        table.rowSorter.sortKeys = emptyList()
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun `Symbols distinguishes identical names by assembly unit and handles unavailable definitions`(defaultProject: Boolean, @TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val first = Files.writeString(Files.createDirectory(directory.resolve("first")).resolve("same.s"), "nop\n").toRealPath()
+            val second = Files.writeString(Files.createDirectory(directory.resolve("second")).resolve("same.s"), "nop\n").toRealPath()
+            val files = withContext(Dispatchers.EDT) {
+                listOf(first, second).associateWith { requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(it)) }
+            }
+            val sources = MarsExecutionSources(CapturedAssemblySources(
+                AssemblySourceSnapshot(listOf(first, second), mapOf(first to "nop\n", second to "nop\n")), null,
+                files.mapValues { it.value.modificationStamp }, mapOf(first to first, second to second),
+            ))
+            val locals = mapOf(
+                first to mapOf("duplicate" to Definition(4, Kind.TEXT, Origin(Location(first, 1), null))),
+                second to mapOf("duplicate" to Definition(8, Kind.TEXT, null)),
+            )
+            val image = MutableStateFlow<LoadedSymbols?>(null)
+            val view = withContext(Dispatchers.EDT) {
+                MarsSymbolsView(if (defaultProject) ProjectManager.getInstance().defaultProject else project, image)
+            }
+            try {
+                withContext(Dispatchers.EDT) {
+                    assertEquals(0, view.focus.rowCount)
+                    assertEquals("Waiting for an assembled image…", UIUtil.findComponentsOfType(view.component, JBLabel::class.java)
+                        .single { it.text.contains("image") }.text)
+                    val detached = EditorFactory.getInstance().createDocument("before")
+                    WriteAction.run<RuntimeException> { detached.setText("after") }
+                    image.value = LoadedSymbols(AssemblySymbolMap(locals, emptyMap()), sources)
+                }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val table = view.focus
+                        assertEquals(2, table.rowCount)
+                        table.rowSorter.sortKeys = listOf(SortKey(1, SortOrder.ASCENDING))
+                        assertEquals("duplicate", table.getValueAt(0, 0))
+                        assertEquals("duplicate", table.getValueAt(1, 0))
+                        assertEquals(first.toString(), table.getValueAt(0, 4))
+                        assertEquals(second.toString(), table.getValueAt(1, 4))
+                        assertEquals("", table.getValueAt(1, 5))
+                        table.setRowSelectionInterval(1, 1)
+                        assertFalse(UIUtil.findComponentsOfType(view.component, JButton::class.java)
+                            .single { it.text == "Open Source" }.isEnabled)
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(view) }
+            }
+        }
 
     @Test
     fun `captured positions recognize unopened files and reject a snapshot from another image`(@TempDir directory: Path) =

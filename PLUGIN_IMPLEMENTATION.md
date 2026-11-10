@@ -1209,6 +1209,22 @@ source position. It uses the same worker predicate and expression evaluator as
 line breakpoints. When a logpoint and a suspending breakpoint share an address,
 the debugger processes the logpoint before suspending.
 
+## Assembled symbols
+
+The **Symbols** tab shows the loaded program's global, local, and macro expansion
+labels, including external allocations. It lists each final address and the
+physical source definition. Local rows also identify their assembly unit so the
+same name in separate units remains distinguishable. Click a column to sort.
+Address sorting uses unsigned 32-bit order, and the project remembers the
+selected column and direction. The filter searches the displayed columns.
+
+**Open Source** navigates to the definition in the live source if it still
+matches the loaded image. Edits and VFS changes refresh the stale-source indicator
+in the background. Navigation opens the original, read-only source snapshot when
+the definition's file has changed or disappeared. Symbols stay available while the
+Debug tab remains open, including after the process exits. Address navigation
+from Symbols into Memory and Disassembly is tracked under V04–V06.
+
 ## Instruction Counter
 
 Open **View → Tool Windows → MARS Tools** and select a Run or Debug execution.

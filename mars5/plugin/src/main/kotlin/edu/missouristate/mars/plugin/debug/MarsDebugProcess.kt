@@ -64,6 +64,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
@@ -112,8 +113,10 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     }
     private var suspensionNumber = 0L
     @Volatile private lateinit var sources: MarsExecutionSources
+    private val loadedSymbols = MutableStateFlow<LoadedSymbols?>(null)
     private val handler = state.createProcess { machine, executionSources ->
         sources = executionSources
+        loadedSymbols.value = LoadedSymbols(machine.program.symbolMap(), executionSources)
         debug(this, machine)
     }
 
@@ -159,6 +162,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             listing.isCloseable = false
             listing.setDisposer(disassembly)
             ui.addContent(listing, 3, PlaceInGrid.center, false)
+            val symbols = MarsSymbolsView(session.project, loadedSymbols)
+            val labels = ui.createContent("MarsMipsSymbols", symbols.component, runMessages.getMessage("debug.symbols"), null, symbols.focus)
+            labels.isCloseable = false
+            labels.setDisposer(symbols)
+            ui.addContent(labels, 4, PlaceInGrid.center, false)
         }
     }
 

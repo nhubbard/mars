@@ -28,6 +28,14 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
     private val snapshots = ConcurrentHashMap<Path, CapturedFile>()
     private val texts = capture.snapshot.texts()
 
+    fun contains(file: VirtualFile): Boolean = pathOf(file)?.let(texts::containsKey) == true
+
+    /** Checks live source identity under a read action without loading uncached documents. */
+    fun isCurrent(): Boolean = texts.all { (path, text) ->
+        val file = LocalFileSystem.getInstance().findFileByNioFile(path)
+        file != null && matches(file, path, text)
+    }
+
     fun position(location: Location): XSourcePosition {
         val position = XDebuggerUtil.getInstance().createPosition(fileAt(location.file()), location.line() - 1)!!
         return object : XSourcePositionWrapper(position) {
@@ -49,12 +57,14 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         val path = if (file is CapturedFile) {
             file.pathInImage.takeIf { snapshots[it] === file }
         } else {
-            file.fileSystem.getNioPath(file)?.toAbsolutePath()?.normalize()?.takeIf { path ->
+            pathOf(file)?.takeIf { path ->
                 texts[path]?.let { text -> matches(file, path, text) } == true
             }
         }
         return path?.let { Location(it, line + 1) }
     }
+
+    private fun pathOf(file: VirtualFile) = file.fileSystem.getNioPath(file)?.let { it.toAbsolutePath().normalize() }
 
     private fun fileAt(path: Path): VirtualFile {
         val text = texts.getValue(path)
