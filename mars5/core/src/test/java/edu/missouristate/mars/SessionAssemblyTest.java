@@ -700,6 +700,8 @@ class SessionAssemblyTest {
     assertThat(tokenizer.findIncludePath(bareQuote)).isNull();
     assertThat(tokenizer.findIncludePath(partialPath)).isNull();
     assertThat(tokenizer.findIncludePath(completePath)).isEqualTo("part.s");
+    assertThat(tokenizer.findInclude(completePath))
+        .isEqualTo(new Tokenizer.IncludePath("part.s", completePath.indexOf('"'), completePath.indexOf('.')));
 
     try (var session = session("Default")) {
       var assembler = new SessionAssembler(session);

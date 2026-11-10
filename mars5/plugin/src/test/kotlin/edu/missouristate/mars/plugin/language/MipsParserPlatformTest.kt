@@ -405,19 +405,26 @@ class MipsParserPlatformTest {
             val factory = PsiFileFactory.getInstance(project.get())
             val cases = mapOf(
                 "discarded: @ .include \"part.s\" 0xG" to listOf("@", "0xG"),
-                "'abcde.include \"part.s\"" to listOf("'abcde.include"),
+                "'abcde.include \"part.s\"" to listOf("'abcde"),
+                "'a#xx .include \"part.s\"" to listOf("'a", "#xx "),
+                "'a,xxx.include \"part.s\"" to listOf("'a", "xxx"),
+                "'a\"xx .include \"part.s\"" to listOf("'a", "\"xx "),
             )
             for ((line, expectedErrors) in cases) {
                 val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
                 assertEquals(line, descendants(file.node, "INCLUDE_LINE").single().text)
                 assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
                 assertEquals(expectedErrors, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+                assertEquals(".include", descendants(file.node, "INCLUDE").single().text)
+                assertEquals("\"part.s\"", descendants(file.node, "STRING").single().text)
             }
             for (line in listOf("'a .include \"hidden.s\"", ".include \"unfinished")) {
                 val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
                 assertTrue(descendants(file.node, "INCLUDE_LINE").none(), line)
                 assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
             }
+            val misleadingStrings = "\".include\" \".include\" .include \"part.s\""
+            assertEquals(misleadingStrings, descendants(assertParses(misleadingStrings).node, "INCLUDE_LINE").single().text)
         }
     }
 
@@ -990,7 +997,9 @@ class MipsParserPlatformTest {
                     highlighter.getTokenHighlights(MipsTypes.psi("UNCLOSED_STRING")),
                 )
                 val debugger = MipsLexer(debuggerExpression = true)
-                debugger.start("\"incomplete")
+                debugger.start(" \"incomplete")
+                debugger.advance()
+                assertEquals(0, debugger.getState())
                 assertEquals(MipsTypes.syntax.getValue("BAD_CHARACTER"), debugger.getTokenType())
             }
         }

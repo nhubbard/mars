@@ -16,7 +16,7 @@ internal class MipsFindUsagesProvider : FindUsagesProvider {
     override fun getWordsScanner(): DefaultWordsScanner = object : DefaultWordsScanner(
         UsageLexer(), identifiers, comments, literals, TokenSet.EMPTY, wholeWords,
     ) {
-        override fun getVersion() = 3
+        override fun getVersion() = 4
     }
 
     override fun canFindUsagesFor(psiElement: PsiElement) = (psiElement as? MipsDeclaration)?.name != null

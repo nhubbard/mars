@@ -153,7 +153,8 @@ public class Tokenizer {
       String line = frame.lines().next();
       int lineNumber = frame.lines().nextIndex();
       TokenList candidates = scanPossibleInclude(program, lineNumber, line, checkCancellation);
-      Token include = firstIncludePath(candidates);
+      int includeIndex = firstIncludePathIndex(candidates);
+      Token include = includeIndex < 0 ? null : candidates.get(includeIndex);
       String filename = quotedIncludePath(include);
       if (filename == null) {
         if (include != null) {
@@ -212,32 +213,38 @@ public class Tokenizer {
     return include == null ? null : include.path();
   }
 
-  /** Finds the include and the zero-based offset of its opening quote in a physical line. */
+  /** Finds the include and the zero-based offsets of its directive and opening quote. */
   public IncludePath findInclude(String sourceLine) {
     var candidates = scanPossibleInclude(sourceMIPSprogram, 1, sourceLine, () -> {});
-    var token = firstIncludePath(candidates);
+    int includeIndex = firstIncludePathIndex(candidates);
+    if (includeIndex < 0) {
+      return null;
+    }
+    Token token = candidates.get(includeIndex);
     String path = quotedIncludePath(token);
-    return path == null ? null : new IncludePath(path, token.getStartPos() - 1);
+    return path == null
+        ? null
+        : new IncludePath(path, token.getStartPos() - 1, candidates.get(includeIndex - 1).getStartPos() - 1);
   }
 
-  public record IncludePath(String path, int offset) {}
+  public record IncludePath(String path, int offset, int directiveOffset) {}
 
   private TokenList scanPossibleInclude(
       MIPSprogram program, int lineNumber, String line, Runnable checkCancellation) {
     return line.indexOf('.') < 0 ? null : scanLine(program, lineNumber, line, checkCancellation);
   }
 
-  private static Token firstIncludePath(TokenList tokens) {
+  private static int firstIncludePathIndex(TokenList tokens) {
     if (tokens == null) {
-      return null;
+      return -1;
     }
     for (int i = 1; i < tokens.size(); i++) {
       if (tokens.get(i - 1).getValue().equalsIgnoreCase(Directives.INCLUDE.getName())
           && tokens.get(i).getType() == TokenTypes.QUOTED_STRING) {
-        return tokens.get(i);
+        return i;
       }
     }
-    return null;
+    return -1;
   }
 
   private static String quotedIncludePath(Token path) {

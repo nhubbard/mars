@@ -5,6 +5,7 @@ import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VFileProperty
 import com.intellij.openapi.vfs.VirtualFile
@@ -13,6 +14,7 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiDirectory
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.impl.include.FileIncludeInfo
 import com.intellij.psi.impl.include.FileIncludeManager
@@ -78,6 +80,46 @@ class MipsFileReferencesPlatformTest {
             assertEquals(listOf("parts", "target.asm"), strings[0].references.map { it.canonicalText })
         }
     }
+
+    @Test
+    fun `include paths hidden by a malformed character recover references and update highlighting after edits`() =
+        timeoutRunBlocking<Unit> {
+            val source = "'a#xx .include,, \"part.s\"\nli \$t0, COUNT\n"
+            val target = withContext(Dispatchers.EDT) {
+                val included = fixture.addFileToProject("part.s", ".eqv COUNT 42\n")
+                val entry = fixture.addFileToProject("main.asm", source)
+                fixture.configureFromExistingVirtualFile(entry.virtualFile)
+                included
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+            withContext(Dispatchers.EDT) {
+                val editor = fixture.editor as EditorEx
+                val directive = source.indexOf(".include")
+                val path = source.indexOf("part.s")
+                val closingQuote = source.lastIndexOf('"')
+                fun tokenType(offset: Int) = editor.highlighter.createIterator(offset).tokenType
+                fun assertReferences() {
+                    assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
+                    assertEquals(MipsTypes.psi("STRING"), tokenType(path))
+                    editor.caretModel.moveToOffset(path + 1)
+                    assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve())
+                    editor.caretModel.moveToOffset(editor.document.text.lastIndexOf("COUNT") + 1)
+                    assertEquals(target, fixture.getReferenceAtCaretPosition()?.resolve()?.containingFile)
+                }
+                assertReferences()
+                WriteCommandAction.runWriteCommandAction(project.get()) {
+                    editor.document.deleteString(closingQuote, closingQuote + 1)
+                }
+                PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+                assertEquals(MipsTypes.psi("COMMENT"), tokenType(directive))
+                assertEquals(MipsTypes.psi("COMMENT"), tokenType(path))
+                WriteCommandAction.runWriteCommandAction(project.get()) {
+                    editor.document.insertString(closingQuote, "\"")
+                }
+                PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
+                assertReferences()
+            }
+        }
 
     @Test
     fun `native file references preserve raw spaces question marks unicode and repeated separators`() = timeoutRunBlocking<Unit> {

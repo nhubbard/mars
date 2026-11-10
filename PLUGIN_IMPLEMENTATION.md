@@ -574,9 +574,14 @@ a quoted path, and a macro body inserted in place of a closing line. The declara
 to drop labels and constants from replaced lines. The parser and include index use the same core
 path lookup even when the editor and assembler recover from a malformed character literal
 differently. A valid include retains its path and reports invalid tokens as syntax errors.
-When a malformed character literal exposes a comment to the editor lexer, the include index
-still records the assembler's path. Editor navigation and source analysis require a visible
-string token to follow that path.
+If the editor lexer produces a token that covers the assembler's include directive, it
+keeps the preceding fragment as an error and resumes at the directive. The path becomes
+an ordinary string PSI token, so file references and include-ordered analysis follow it.
+The lexer gives IntelliJ physical line restart points so edits to the closing quote also
+refresh the preceding tokens. A live editor fixture verifies both the highlighting and
+the references to the included file and its equivalence across those edits.
+The clean IntelliJ 2026.3 launch exercised Go to Declaration for both references and ran
+the corrected program. All 1,781 tests and both parser coverage gates passed.
 
 The follow-up clean launch passed all 1,780 tests and both parser coverage gates. In IntelliJ
 2026.3, Go to Declaration opened the included file despite two syntax errors on its line.
