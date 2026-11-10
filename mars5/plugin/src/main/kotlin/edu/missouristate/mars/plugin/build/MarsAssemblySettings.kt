@@ -150,6 +150,10 @@ internal class MarsAssemblySettings(private val project: Project) :
         change { it.copy(allowPseudoInstructions = allowPseudoInstructions, warningsAreErrors = warningsAreErrors) }
     }
 
+    fun applyImportedSettings(settings: Settings) {
+        if (getState() != settings) change { settings }
+    }
+
     private fun change(transform: (Settings) -> Settings) {
         runWriteAction {
             updateState(transform)

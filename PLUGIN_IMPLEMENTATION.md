@@ -2106,6 +2106,29 @@ The packaged IntelliJ 2026.3 smoke test reopened a project with the older shared
 Run configuration, hit its conditional breakpoint in `console.s`, and confirmed
 the expected console output after Resume.
 
+## Import Venus preferences
+
+In an open project, choose **File → Import Venus Preferences**. IntelliJ previews
+the current and proposed values before applying anything. It reads explicitly
+saved values from the local Venus preference store. It prefers the MARS 5
+preferences when they contain a supported key and otherwise checks the classic
+MARS preferences. The importer writes only to the selected IntelliJ project.
+
+The preview covers pseudo-instruction support, bare-machine operands, assemble
+on open, delayed branching, warnings as errors, start at main, self-modifying
+code, memory layout, the exception handler, and MIPS tab width. An imported
+handler must point to an existing absolute file path. A saved disabled handler
+turns the project handler off. Absent and invalid values preserve the current
+project settings.
+
+Changing the tab width uses a project code style based on the current scheme.
+MIPS files can override it through EditorConfig. Cancel keeps the action
+available. A confirmed import records completion in the local project workspace.
+
+The packaged IntelliJ 2026.3 smoke test opened and accepted the native preview
+with sample preferences. The project saved the imported assembly defaults, MIPS
+tab width, and the local completion marker.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose
