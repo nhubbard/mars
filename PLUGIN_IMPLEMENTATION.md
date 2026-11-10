@@ -911,6 +911,16 @@ In a fresh packaged IntelliJ session, the editor reported zero errors for
 the included body and the alias-defined macro. It still marked an invalid
 `@` operand in a third file.
 
+MARS follows explicitly included text through files IntelliJ assigns to
+another language. It parses a contextual copy and keeps navigation ranges
+in the original file. For example, a `.java` include can open a macro and
+include a nested `.s` body. When the containing entry is selected, the
+nested editor uses that macro scope. The include keeps its IntelliJ file
+type, and the MARS index still indexes MIPS files. A binary or ignored
+include marks the editor context incomplete.
+In a fresh IntelliJ test instance, selecting the containing entry through
+Build cleared two false syntax errors in the nested `.s` editor.
+
 ## Whole-line include preprocessing
 
 The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the

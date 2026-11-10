@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
+import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -362,19 +363,70 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `a captured source outside the selected PSI timeline keeps its local syntax context`() = timeoutRunBlocking<Unit> {
-        val (entry, leaf) = withContext(Dispatchers.EDT) {
-            val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.java\"\n")
-            fixture.addFileToProject("bridge.java", ".include \"leaf.s\"\n")
-            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
-            main.virtualFile.toNioPath() to leaf
+    fun `text includes with another file type supply live macro scope and navigation`() = timeoutRunBlocking<Unit> {
+        val bridgeText = "destination: nop\n.macro outer\n.include \"leaf.s\"\n"
+        val (entry, bridge, leaf) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.s", ".include \"bridge.java\"\n.end_macro\nj destination\n") as MipsFile
+            val bridge = fixture.addFileToProject("bridge.java", bridgeText)
+            val leaf = fixture.addFileToProject("leaf.s", "4 : )\n.word )\n") as MipsFile
+            fixture.configureFromExistingVirtualFile(leaf.virtualFile)
+            Triple(main, bridge, leaf)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        assertTrue(project.service<MarsBuildService>().assemble(entry))
+        val analysis = project.service<MarsAnalysisService>()
+        suspend fun target() = readAction {
+            val reference = requireNotNull(entry.findElementAt(entry.text.indexOf("destination")))
+            val target = analysis.labelTargets(entry, reference, false).single()
+            target.containingFile.virtualFile to target.textOffset
+        }
         readAction {
-            val analysis = project.service<MarsAnalysisService>()
-            assertEquals(entry, analysis.selectedAssembly(leaf)?.entry)
+            assertSame(JavaFileType.INSTANCE, bridge.fileType)
+            assertTrue(analysis.editorTimeline(entry).includes(leaf))
+        }
+        assertEquals(bridge.virtualFile to 0, target())
+        val entryPath = entry.virtualFile.toNioPath()
+        assertTrue(project.service<MarsBuildService>().assemble(entryPath))
+        readAction {
+            assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
+            assertEquals("outer", analysis.editorTimeline(leaf).macroAt(leaf, 0)?.name)
+        }
+        withContext(Dispatchers.EDT) {
+            fun hasErrors() = fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR }
+            assertTrue(!hasErrors())
+            edit(bridge.virtualFile, "# moved\n" + bridgeText.replace(".macro outer\n", ""))
+            assertTrue(hasErrors())
+        }
+        assertEquals(bridge.virtualFile to "# moved\n".length, target())
+    }
+
+    @Test
+    fun `ignored and binary includes preserve incomplete editor context`() = timeoutRunBlocking<Unit> {
+        val (entry, ignored, leaf) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.inc~\"\n") as MipsFile
+            val ignored = fixture.tempDirFixture.createFile("bridge.inc~", ".include \"leaf.s\"\n")
+            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
+            Triple(main, ignored, leaf)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val entryPath = entry.virtualFile.toNioPath()
+        assertTrue(project.service<MarsBuildService>().assemble(entryPath))
+        val analysis = project.service<MarsAnalysisService>()
+        readAction {
+            assertNull(PsiManager.getInstance(project).findFile(ignored))
+            assertEquals(entryPath, analysis.selectedAssembly(leaf)?.entry)
             assertEquals(setOf("inner"), analysis.editorTimeline(leaf).macroNames)
+        }
+
+        val binary = withContext(Dispatchers.EDT) {
+            val binary = fixture.tempDirFixture.createFile("opaque.zip", ".macro wrong\n.end_macro\n")
+            edit(entry.virtualFile, ".include \"opaque.zip\"\nnop\n")
+            binary
+        }
+        readAction {
+            assertTrue(PsiManager.getInstance(project).findFile(binary)!!.fileType.isBinary)
+            val timeline = analysis.editorTimeline(entry)
+            assertTrue(timeline.hasIncompleteIncludes)
+            assertTrue(timeline.macroNames.isEmpty())
         }
     }
 

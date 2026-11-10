@@ -18,7 +18,6 @@ import com.intellij.platform.backend.documentation.LookupElementDocumentationTar
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
@@ -57,7 +56,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
                 val source = definition.header.containingFile.originalFile
                 return listOf(MacroDocumentation(
                     token, source, definition.nameOffset,
-                    definition.name, definition.parameters.map { it.value }, expanded = source is PsiPlainTextFile,
+                    definition.name, definition.parameters.map { it.value }, expanded = source !is MipsFile,
                 ))
             }
             // Includes are expanded before equivalences, so a generated .include cannot open a file.

@@ -90,16 +90,16 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
         }
         return sequence {
             val typedFiles = HashSet<MipsFile>()
-            val plainSymbols = HashSet<ContextualSymbol>()
+            val unindexedSymbols = HashSet<ContextualSymbol>()
             for (root in roots) {
                 val timeline = mipsSourceTimeline(psi.findFile(root) as MipsFile)
                 for (file in timeline.sourceFiles()) {
                     ProgressManager.checkCanceled()
                     if (typedFiles.add(file) && inScope(file)) yieldAll(analysis.editorTimeline(file).expandedSymbolsIn(file))
                 }
-                for (file in timeline.plainIncludeFiles()) {
+                for (file in timeline.unindexedIncludeFiles()) {
                     ProgressManager.checkCanceled()
-                    if (inScope(file)) yieldAll(timeline.plainSymbolsIn(file).filter(plainSymbols::add))
+                    if (inScope(file)) yieldAll(timeline.unindexedSymbolsIn(file).filter(unindexedSymbols::add))
                 }
             }
         }
@@ -113,7 +113,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             else -> false
         }
 
-    private fun MipsSourceTimeline.plainSymbolsIn(file: MipsFile): Sequence<ContextualSymbol> = sequence {
+    private fun MipsSourceTimeline.unindexedSymbolsIn(file: MipsFile): Sequence<ContextualSymbol> = sequence {
         val declarations = CachedValuesManager.getCachedValue(file) {
             val written = buildList {
                 for (element in SyntaxTraverser.psiTraverser(file)) {

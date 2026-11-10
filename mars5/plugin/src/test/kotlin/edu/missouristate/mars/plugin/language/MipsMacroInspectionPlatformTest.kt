@@ -203,14 +203,14 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
-    fun `a foreign file type leaves the editor timeline incomplete`() = timeoutRunBlocking<Unit> {
+    fun `an included text file with another file type preserves later macro diagnostics`() = timeoutRunBlocking<Unit> {
         val source = ".include \"foreign.xml\"\n.eqv STOP .end_macro\n.macro emit\nSTOP extra\n.end_macro\n"
         withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("foreign.xml", "<root/>\n")
+            fixture.addFileToProject("foreign.xml", "# MARS text in a file with an XML extension\n")
             fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
-        withContext(Dispatchers.EDT) { assertTrue(errors().none { it.second == trailingCloseMessage }) }
+        withContext(Dispatchers.EDT) { assertEquals(listOf("STOP" to trailingCloseMessage), errors()) }
     }
 
     @Test
