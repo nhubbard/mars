@@ -707,6 +707,11 @@ literal in the prefix occupies one position. Go to Declaration opens the
 written directive or the alias that supplied it. Formatting keeps the
 replacement text intact.
 
+Navigation and contextual coloring share the assembler's written substitution
+offsets. When expansion introduces a new `.eqv` definition, the alias that
+supplied the directive remains a reference. The stored replacement text
+acquires its own alias references only when it is expanded at a later use.
+
 A physical `.eqv` line with fewer than three assembler tokens parses as a
 directive without a declaration. A leading label or trailing comment still
 counts toward that minimum. If an active alias supplies both

@@ -589,10 +589,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun AssemblySymbols.isCurrent(handler: Path?): Boolean =
         exceptionHandler == handler && (sourceSet.mode != MarsAssemblyMode.PROJECT || sourceSet == settings.projectSourceSet())
 
-    /** Finds the first effective .eqv before the reference in the selected entry. */
+    /** Finds the definition used by the assembler to substitute this token. */
     internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? {
         if (DumbService.isDumb(project)) return null
-        return editorPrefix(root, sourceLineStart(position)).equivalence(position.text)?.site
+        return editorTimeline(root).equivalenceUseTarget(root, position)
     }
 
     private fun MipsDeclarationSite.isLiteralLabel(file: MipsFile, timeline: MipsSourceTimeline): Boolean =

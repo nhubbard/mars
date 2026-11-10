@@ -386,6 +386,15 @@ public class Tokenizer {
       return expanded;
     }
 
+    /** Returns zero-based written offsets at which an equivalence was substituted. */
+    public Set<Integer> substitutionOffsets() {
+      var offsets = new HashSet<Integer>();
+      for (SourceEdit edit : edits) {
+        offsets.add(edit.originalStart());
+      }
+      return Set.copyOf(offsets);
+    }
+
     /** Returns the written offset of the directive that introduced the definition, or -1. */
     public int equivalenceDirectiveOffset() {
       if (expanded.definition() == null) {
@@ -412,7 +421,7 @@ public class Tokenizer {
     return offset;
   }
 
-  private record SourceEdit(int start, int removedLength, int insertedLength) {}
+  private record SourceEdit(int start, int removedLength, int insertedLength, int originalStart) {}
 
   /** An equivalence recorded while processing a detached line. */
   public record EquivalenceDefinition(String name, String replacement) {}
@@ -727,7 +736,7 @@ public class Tokenizer {
       }
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
-      edits.add(new SourceEdit(start, end - start, use.replacement().length()));
+      edits.add(new SourceEdit(start, end - start, use.replacement().length(), originalColumn - 1));
       theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = scanLine(program, lineNum, theLine, checkCancellation);

@@ -183,6 +183,36 @@ class MipsEquivalenceReferencesPlatformTest {
         }
 
     @Test
+    fun `references follow actual substitutions when a line defines an equivalence`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val definitions = ".eqv VALUE 7\n.eqv MAKE .eqv\n"
+            val macro = ".macro discard (%first, %directive, %name, %value)\n.end_macro\n"
+            for (line in listOf("MAKE RESULT VALUE", "discard VALUE .eqv RESULT VALUE")) {
+                val before = definitions + macro
+                val use = "addiu \$t0, \$zero, RESULT\n"
+                val source = "$before$line\n$use"
+                val entry = directory.resolve("definition.asm").also { it.writeText(source) }
+                val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+                assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+                for (value in Regex("VALUE").findAll(line)) {
+                    val atValue = line.replaceRange(value.range.first, value.range.first, "<caret>")
+                    assertNull(target("$before$atValue\n$use"), atValue)
+                }
+                val result = target("$before$line\n" + use.replace("RESULT", "RES<caret>ULT"))
+                assertEquals(if (line.startsWith("MAKE")) "MAKE" else ".eqv", result?.name)
+            }
+            val usageSource = "${definitions}MAKE RESULT VALUE\nli \$t0, VALUE\n"
+            assertEquals("MAKE", target(usageSource.replace("MAKE RESULT", "MA<caret>KE RESULT"))?.name)
+            readAction {
+                val definition = fixture.file.findElementAt(usageSource.indexOf("VALUE"))!!.parent as MipsDeclaration
+                val usages = fixture.findUsages(definition).map { it.reference!!.element.textOffset }
+                assertEquals(listOf(usageSource.lastIndexOf("VALUE")), usages)
+            }
+            val cycle = ".eqv FIRST SECOND\n.eqv SECOND FIRST\nli \$t0, F<caret>IRST\n"
+            assertEquals("FIRST", target(cycle)?.name)
+        }
+
+    @Test
     fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         val source = ".eqv DEFINE .eqv\n.include \"late.s\"\nli \$t0, CO<caret>UNT\n"

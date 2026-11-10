@@ -137,7 +137,7 @@ internal class MipsSourceTimeline(
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
 ) {
-    private val equivalenceUseTypes = ConcurrentHashMap<Pair<MipsFile, Int>, Map<Int, TokenTypes?>>()
+    private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, Map<Int, TokenTypes?>>()
 
     val generatedLabelSites: Set<PsiElement> by lazy {
         generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
@@ -173,7 +173,17 @@ internal class MipsSourceTimeline(
     /** A physical alias has one color only when its expansion supplies one token. */
     fun equivalenceUseType(file: MipsFile, position: PsiElement): TokenTypes? {
         val start = sourceLineStart(position)
-        return equivalenceUseTypes.getOrPut(file to start) {
+        return equivalenceUses(file, position, start)[position.textOffset - start]
+    }
+
+    fun equivalenceUseTarget(file: MipsFile, position: PsiElement): PsiElement? {
+        val start = sourceLineStart(position)
+        val definition = prefix(file, start).equivalence(position.text) ?: return null
+        return definition.site.takeIf { position.textOffset - start in equivalenceUses(file, position, start) }
+    }
+
+    private fun equivalenceUses(file: MipsFile, position: PsiElement, start: Int): Map<Int, TokenTypes?> =
+        equivalenceUsesByLine.getOrPut(file to start) {
             val prefix = prefix(file, start)
             val errors = ErrorList()
             val expansion = Tokenizer.tokenizeMappedLine(
@@ -181,11 +191,11 @@ internal class MipsSourceTimeline(
                 { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
             )
             val tokens = expansion.tokens()
-            if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
+            val types = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
                 expansion.originalOffset(it.startPos - 1)
             }.mapValues { (_, tokens) -> tokens.singleOrNull()?.type }
-        }[position.textOffset - start]
-    }
+            expansion.substitutionOffsets().associateWith(types::get)
+        }
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
         val locations = files.getValue(file.viewProvider.virtualFile)

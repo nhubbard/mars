@@ -932,6 +932,8 @@ class SessionAssemblyTest {
 
     assertThat(errors.errorsOccurred()).isFalse();
     assertThat(mapped.expanded().definition()).isNull();
+    assertThat(mapped.substitutionOffsets())
+        .containsExactlyInAnyOrder(0, source.indexOf("OP"), source.indexOf("COUNT"));
     var tokens = IntStream.range(0, mapped.tokens().size()).mapToObj(mapped.tokens()::get).toList();
     assertThat(tokens).extracting(token -> token.getValue())
         .containsExactly("entry", ":", "addiu", "$t0", "$zero", "7");
@@ -946,13 +948,14 @@ class SessionAssemblyTest {
   @Test
   void mappedExpansionRetainsNewEquivalenceDefinitions() {
     var errors = new ErrorList();
-    var replacements = Map.of("DEFINE", ".eqv");
+    var replacements = Map.of("DEFINE", ".eqv", "BASE", "7");
     var mapped = Tokenizer.tokenizeMappedLine(
-        "DEFINE PAIR 7,   9", errors, replacements::get, () -> {});
+        "DEFINE PAIR BASE,   9", errors, replacements::get, () -> {});
 
     assertThat(errors.errorsOccurred()).isFalse();
     assertThat(mapped.expanded().definition())
-        .isEqualTo(new Tokenizer.EquivalenceDefinition("PAIR", "7,   9"));
+        .isEqualTo(new Tokenizer.EquivalenceDefinition("PAIR", "BASE,   9"));
+    assertThat(mapped.substitutionOffsets()).containsExactly(0);
     assertThat(mapped.originalOffset(mapped.tokens().get(0).getStartPos() - 1)).isZero();
   }
 
