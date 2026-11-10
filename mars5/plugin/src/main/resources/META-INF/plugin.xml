@@ -66,6 +66,7 @@
     <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameInputValidator"/>
     <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameProcessor"/>
     <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsSymbolRenameInputValidator"/>
+    <refactoring.elementListenerProvider implementation="edu.missouristate.mars.plugin.build.MarsSourceRefactoringListener"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
     <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>

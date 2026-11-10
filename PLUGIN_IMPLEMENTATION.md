@@ -1770,6 +1770,13 @@ is the entry file, it assembles once as the entry.
 
 ## Ordered project sources
 
+IntelliJ's **Refactor → Rename** and **Move** also update configured MARS input
+paths. The ordered source list, exception handler, Run configuration source, and
+explicit working directory follow the file or directory to its new path. Source
+order and project-relative path variables are preserved. Undo and Redo update the
+paths in the same command as the filesystem change and preserve unrelated edits to
+the settings.
+
 Use **Settings → Build, Execution, Deployment → MARS Assembly → Project
 sources** to choose and reorder source files from across the project. The
 first file is the entry. Choose **Build → Assemble MIPS Project** or enable

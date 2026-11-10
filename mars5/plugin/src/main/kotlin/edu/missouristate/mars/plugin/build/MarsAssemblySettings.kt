@@ -68,6 +68,25 @@ internal class MarsAssemblySettings(private val project: Project) :
     fun projectSourceSet(): MarsSourceSet? = projectSources.takeIf { it.isNotEmpty() }
         ?.let { MarsSourceSet(it, MarsAssemblyMode.PROJECT) }
 
+    internal data class SourcePaths(val sources: List<String>, val handler: String?)
+
+    internal val sourcePaths get() = getState().let { SourcePaths(it.sources, it.exceptionHandler) }
+
+    internal fun replaceSourcePaths(from: SourcePaths, to: SourcePaths) {
+        val current = sourcePaths
+        val sources = if (current.sources == from.sources) {
+            to.sources
+        } else {
+            // Undo can run after the user added, removed, or reordered other project inputs.
+            val candidates = from.sources.zip(to.sources).groupBy({ it.first }, { it.second })
+            current.sources.map { candidates[it].orEmpty().distinct().singleOrNull() ?: it }
+        }
+        val handler = if (current.handler == from.handler) to.handler else current.handler
+        if (sources != current.sources || handler != current.handler) {
+            change { it.copy(sources = sources, exceptionHandler = handler) }
+        }
+    }
+
     override fun loadState(state: Settings) {
         super.loadState(state)
         sourceChanges.incModificationCount()
