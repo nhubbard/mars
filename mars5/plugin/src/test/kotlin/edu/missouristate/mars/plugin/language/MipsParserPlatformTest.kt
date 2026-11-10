@@ -231,6 +231,38 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `signed limits assemble in macro arguments and equivalence replacements`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv WORDS 1,-0x080000000
+            .data
+            .word WORDS
+            .macro emit (%value)
+              .word %value
+            .end_macro
+            .macro emit (%ignored,%value)
+              .word %value
+            .end_macro
+            emit(-0x00080000000)
+            emit -0xffffffff
+            .text
+            nop
+        """.trimIndent()
+        assertAssembles(directory, source, 0)
+        val memory = project.get().service<MarsSessionService>().context.memory
+        assertEquals(listOf(1, Int.MIN_VALUE, Int.MIN_VALUE, -1), (0..3).map {
+            memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES)
+        })
+        readAction {
+            val file = assertParses(source)
+            assertEquals(listOf("1", "-0x080000000"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
+            val arguments = descendants(file.node, "OPERATION_CANDIDATE")
+                .filter { it.text.startsWith("emit") }
+                .map { call -> descendants(call, "INVOCATION_TOKEN").map { it.text }.toList() }.toList()
+            assertEquals(listOf(listOf("(", "-0x00080000000", ")"), listOf("-", "0xffffffff")), arguments)
+        }
+    }
+
+    @Test
     fun `macro parameters remain distinct from quoted text and longer names`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv DATAARG %ab

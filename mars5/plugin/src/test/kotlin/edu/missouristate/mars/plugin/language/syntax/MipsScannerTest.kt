@@ -149,6 +149,31 @@ class MipsScannerTest {
     }
 
     @Test
+    fun `assembly number validity uses the sign only where the assembler attaches it`() {
+        val minimum = "0x080000000"
+        val unsignedWord = "0xffffffff"
+        val cases = listOf(
+            "-$minimum" to MipsTokenKind.NUMBER,
+            "head -$minimum" to MipsTokenKind.BAD_CHARACTER,
+            "head, ( -$minimum" to MipsTokenKind.NUMBER,
+            "head\n-$minimum" to MipsTokenKind.NUMBER,
+            ".word +$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
+            ".word -$unsignedWord" to MipsTokenKind.BAD_CHARACTER,
+            "head, +$unsignedWord" to MipsTokenKind.NUMBER,
+            "head, -$unsignedWord" to MipsTokenKind.NUMBER,
+            ".word - $unsignedWord" to MipsTokenKind.NUMBER,
+        )
+        for ((source, kind) in cases) {
+            val magnitude = MipsScanner.scan(source).last()
+            assertEquals(kind, magnitude.kind, source)
+            assertEquals(magnitude, MipsScanner.next(source, magnitude.start), source)
+            val line = source.substringAfterLast('\n')
+            val tokens = Tokenizer().tokenizeLine(1, line, ErrorList(), false)
+            assertEquals(kind == MipsTokenKind.BAD_CHARACTER, tokens[tokens.size() - 1].type == TokenTypes.ERROR, source)
+        }
+    }
+
+    @Test
     fun `assembly recovery leaves debugger token boundaries unchanged`() {
         assertEquals(MipsToken(MipsTokenKind.WORD, 0, 8),
             MipsScanner.next("bad%name", 0, debuggerExpression = true))

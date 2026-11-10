@@ -432,6 +432,36 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `formatting preserves signed limits and separate macro sign arguments`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv WORDS 1,   -0x080000000
+            .data
+            .word WORDS
+            .macro emit (%value)
+            .word   %value
+            .end_macro
+            .macro emit (%ignored,%value)
+            .word   %value
+            .end_macro
+            emit( -0x00080000000 )
+            emit   -0xffffffff
+            .text
+            nop
+        """.trimIndent()
+        val formatted = withContext(Dispatchers.EDT) {
+            fixture.configureByText("signed-limits.asm", source)
+            val result = reformat()
+            assertEquals(result, reformat())
+            result
+        }
+        assertTrue(".eqv WORDS 1,   -0x080000000" in formatted)
+        assertTrue(Regex("""emit\([ \t]*-0x00080000000[ \t]*\)""").containsMatchIn(formatted), formatted)
+        assertTrue(Regex("""emit[ \t]+-0xffffffff""").containsMatchIn(formatted), formatted)
+        assertEquals(assemble(directory.resolve("signed-before.asm"), source),
+            assemble(directory.resolve("signed-after.asm"), formatted))
+    }
+
+    @Test
     fun `formatting preserves unjoined signs and can recover around broken syntax`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             val source = """

@@ -47,6 +47,12 @@ characters that the assembler accepts inside a floating-point token stay
 with that token, including at its leading edge. Debugger expressions retain
 their separate lexical rules.
 
+The editor keeps the sign as a separately styled token and validates the
+whole numeric spelling when MARS attaches the sign. This includes a
+zero-padded signed hexadecimal minimum in a macro argument or `.eqv`
+replacement. After an identifier, a sign remains a separate assembler
+token even when adjacent to the digits. Formatting preserves both cases.
+
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
 An operation-head alias receives the mnemonic style when its expansion supplies an instruction.

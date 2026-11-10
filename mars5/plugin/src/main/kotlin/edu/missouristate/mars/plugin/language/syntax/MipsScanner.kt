@@ -1,5 +1,6 @@
 package edu.missouristate.mars.plugin.language.syntax
 
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.util.Binary
 
@@ -154,7 +155,7 @@ object MipsScanner {
                     } else {
                         MipsTokenKind.DIRECTIVE
                     }
-                    numeric -> if (debuggerExpression || isAssemblyNumber(source.subSequence(start, position).toString())) {
+                    numeric -> if (debuggerExpression || isAssemblyNumber(source, start, position)) {
                         MipsTokenKind.NUMBER
                     } else {
                         MipsTokenKind.BAD_CHARACTER
@@ -174,6 +175,23 @@ object MipsScanner {
     // Double.parseDouble can accept them at either end of a floating-point value.
     private fun Char.isSpace(debuggerExpression: Boolean): Boolean =
         if (debuggerExpression) isWhitespace() && this !in "\r\n" else this in " \t"
+
+    private fun isAssemblyNumber(source: CharSequence, start: Int, end: Int): Boolean {
+        val magnitude = source.subSequence(start, end).toString()
+        val withoutSign = isAssemblyNumber(magnitude)
+        val sign = start - 1
+        if (sign < 0 || source[sign] !in "+-") return withoutSign
+        val withSign = isAssemblyNumber(source[sign] + magnitude)
+        if (withSign == withoutSign) return withoutSign
+
+        // The editor emits signs separately. Only ask the assembler for context when
+        // attaching the sign changes validity, as with a zero-padded signed hex limit.
+        var lineStart = sign
+        while (lineStart > 0 && source[lineStart - 1] !in "\r\n") lineStart--
+        val prefix = source.subSequence(lineStart, sign).toString()
+        val preceding = Tokenizer().tokenizeLine(null, 1, prefix, false)
+        return if (preceding.isEmpty || preceding[preceding.size() - 1].type != TokenTypes.IDENTIFIER) withSign else withoutSign
+    }
 
     private fun isAssemblyNumber(text: String): Boolean {
         try {
