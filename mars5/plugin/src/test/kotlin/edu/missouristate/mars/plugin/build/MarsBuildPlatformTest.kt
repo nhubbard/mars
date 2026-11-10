@@ -1347,9 +1347,8 @@ class MarsBuildPlatformTest {
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), missingRevision, program.symbolMap())
         readAction { assertNull(target(entry)) }
 
-        val plain = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("macro.txt", include.text).virtualFile
-        }
+        val plainText = "# include left as plain text\n" + include.text.replace("\n%entry:", "\n\t%entry:")
+        val plain = withContext(Dispatchers.EDT) { fixture.addFileToProject("macro.txt", plainText).virtualFile }
         val plainPath = plain.toNioPath()
         withContext(Dispatchers.EDT) {
             val file = entry.virtualFile
@@ -1361,7 +1360,35 @@ class MarsBuildPlatformTest {
         val plainProgram = plainComponent.context().use { plainCapture.assembleIn(plainComponent).program() }
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), plainCapture, plainProgram.symbolMap())
         assertEquals(plainPath, plainProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
-        readAction { assertNull(target(entry)) }
+        val plainDeclaration = readAction {
+            target(entry)!!.also {
+                assertEquals(plain, it.containingFile.virtualFile)
+                assertEquals("%entry", it.text)
+                assertEquals(plainText.lastIndexOf("%entry"), it.textOffset)
+            }
+        }
+        withContext(Dispatchers.EDT) {
+            edit(plain, "# changed\n$plainText")
+            assertFalse(plainDeclaration.isValid)
+            assertNull(target(entry))
+            WriteCommandAction.runWriteCommandAction(project) { plain.delete(this) }
+            assertFalse(plainDeclaration.isValid)
+        }
+        val ignored = withContext(Dispatchers.EDT) {
+            val file = fixture.tempDirFixture.createFile("macro.txt~", plainText)
+            edit(entry.virtualFile, capture.snapshot.texts().getValue(path).replace("macro.s", file.name))
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+            file
+        }
+        val ignoredCapture = captureAssemblySources(listOf(path), null)
+        val ignoredComponent = MarsSessionService.createMarsComponent()
+        val ignoredProgram = ignoredComponent.context().use { ignoredCapture.assembleIn(ignoredComponent).program() }
+        analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), ignoredCapture, ignoredProgram.symbolMap())
+        readAction {
+            assertEquals(ignored.toNioPath(), ignoredProgram.symbolMap().locals()[path]?.get("generated")?.origin()?.location()?.file())
+            assertNull(PsiManager.getInstance(project).findFile(ignored))
+            assertNull(target(entry))
+        }
 
         val changedText = "# still uncommitted\n" + capture.snapshot.texts().getValue(includePath)
         val changed = AssemblySourceSnapshot(listOf(path), capture.snapshot.texts() + (includePath to changedText))

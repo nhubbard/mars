@@ -312,6 +312,13 @@ include cycles, an include appearing after lookup, and unsaved edits.
 
 ## Go to Declaration for macro calls
 
+An up-to-date assembly can also supply a declaration in an include that
+IntelliJ treats as plain text. Go to Declaration opens the written macro
+name or assembled symbol operand at its original offset. A platform light
+PSI element supplies the range to the existing reference and navigation APIs.
+The destination expires when its source changes, and the include keeps its
+file type.
+
 Direct macro calls resolve by case-sensitive name and token argument count. The plugin uses
 the Java tokenizer and shares the assembler's rule for removing one outer pair of call
 parentheses. Navigation selects the latest matching definition that closed before the call.

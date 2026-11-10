@@ -211,12 +211,15 @@ class MipsDocumentationPlatformTest {
             .macro inner (%last) # Last definition
             .end_macro
             outer
+            .include "ignored.inc~"
+            outer
             nop
         """.trimIndent()
         val include = ".macro inner (%middle) # Included & empty\n.end_macro\n"
         val current = project.get()
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("plain.inc", include)
+            fixture.tempDirFixture.createFile("ignored.inc~", ".macro inner (%ignored)\n.end_macro\n")
             val file = fixture.addFileToProject("nested-doc.asm", source)
             fixture.configureFromExistingVirtualFile(file.virtualFile)
             fixture.editor.caretModel.moveToOffset(source.indexOf("inner(7)") + 1)

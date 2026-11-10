@@ -23,7 +23,7 @@ internal class MipsMacroReferencesSearcher : QueryExecutorBase<PsiReference, Sea
         val scope = queryParameters.effectiveSearchScope
         for (site in analysis.assembledMacroUsages(target)) {
             ProgressManager.checkCanceled()
-            val (file, offset) = analysis.sourceTokenPosition(site)
+            val (file, offset) = analysis.sourceTokenPosition(site) ?: continue
             val leaf = file.findElementAt(offset)!!
             if (!PsiSearchScopeUtil.isInScope(scope, leaf)) continue
             val end = if (file is MipsFile) leaf.textRange.endOffset

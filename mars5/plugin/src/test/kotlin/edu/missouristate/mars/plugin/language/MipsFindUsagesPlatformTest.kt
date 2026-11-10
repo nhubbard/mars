@@ -204,12 +204,13 @@ class MipsFindUsagesPlatformTest {
             CALL(5)
             nop
         """.trimIndent()
-        val right = ".include \"defs.s\"\n.macro outer (%operation)\n.include \"body.inc\"\n.end_macro\nouter(inner)\nnop"
+        val right = ".include \"defs.s\"\n.macro outer (%operation)\n.include \"body.inc\"\n.include \"body.inc~\"\n.end_macro\nouter(inner)\nnop"
         val body = "# expanded body\n%operation(4)\n"
         val current = project.get()
         val (definitions, entryFiles) = withContext(Dispatchers.EDT) {
             val defs = fixture.addFileToProject("defs.s", ".macro inner (%value)\n.end_macro\n.macro alternative (%value)\n.end_macro\n")
             fixture.addFileToProject("body.inc", body)
+            fixture.tempDirFixture.createFile("body.inc~", "%operation(5)\n")
             defs to listOf(
                 fixture.addFileToProject("left.asm", left), fixture.addFileToProject("right.asm", right),
                 fixture.addFileToProject("unrelated.asm", "nop\n"),

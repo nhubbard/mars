@@ -17,6 +17,7 @@ import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
+import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.nio.file.Path
 import kotlin.io.path.writeText
@@ -247,7 +248,10 @@ class MipsMacroReferencesPlatformTest {
             val file = fixture.file as MipsFile
             val use = file.findElementAt(fixture.editor.caretModel.offset)!!
             val analysis = current.service<MarsAnalysisService>()
-            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertTrue(analysis.macroTargets(file, use).isEmpty()) }
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertTrue(analysis.macroTargets(file, use).isEmpty())
+                assertTrue(analysis.nestedMacroCallsAt(file, use).isEmpty())
+            }
             assertEquals(7, analysis.macroTargets(file, use).single().textOffset)
         }
     }
@@ -266,7 +270,9 @@ class MipsMacroReferencesPlatformTest {
     fun `navigation reports each realized nested macro definition including empty expansions`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv NEW .macro inner
-            .include "extra.inc"
+            .macro external
+            .end_macro
+            .include "extra.txt"
             .macro outer
                 body: inner
                 external
@@ -279,12 +285,18 @@ class MipsMacroReferencesPlatformTest {
             .end_macro
             outer
             nop
+            external
+            .include "hidden.inc~"
+            unavailable
         """.trimIndent()
         val current = project.get()
-        withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("extra.inc", ".macro external\n.end_macro\n")
+        val plainText = "# ordinary text file\n\t.macro external\n.end_macro\n"
+        val plain = withContext(Dispatchers.EDT) {
+            val include = fixture.addFileToProject("extra.txt", plainText)
+            fixture.tempDirFixture.createFile("hidden.inc~", ".macro unavailable\n.end_macro\n")
             val file = fixture.addFileToProject("expanded-calls.asm", source)
             fixture.configureFromExistingVirtualFile(file.virtualFile)
+            include.virtualFile
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val useOffset = source.indexOf("body: inner") + "body: ".length
@@ -295,8 +307,17 @@ class MipsMacroReferencesPlatformTest {
             assertTrue(reference.multiResolve(false).isEmpty())
             fixture.doHighlighting()
             assertEquals(targets, reference.multiResolve(false).map { it.element!!.textOffset }.toSet())
-            val external = file.findReferenceAt(source.indexOf("external")) as PsiPolyVariantReference
-            assertTrue(external.multiResolve(false).isEmpty())
+            val external = file.findReferenceAt(source.indexOf("    external") + "    ".length) as PsiPolyVariantReference
+            val declaration = external.resolve() as MipsIncludedDeclaration
+            assertEquals(plain, declaration.containingFile.virtualFile)
+            assertEquals("external", declaration.presentation.presentableText)
+            assertEquals(plain.name, declaration.presentation.locationString)
+            assertEquals(plainText.indexOf("external"), declaration.textRange.startOffset)
+            assertEquals("external", declaration.textRange.substring(plainText))
+            val topLevelOffset = source.lastIndexOf("external")
+            assertEquals(declaration, file.findReferenceAt(topLevelOffset)?.resolve())
+            assertEquals(declaration, GotoDeclarationAction.findTargetElement(current, fixture.editor, topLevelOffset))
+            assertNull(file.findReferenceAt(source.indexOf("unavailable"))!!.resolve())
             val instruction = file.findElementAt(source.indexOf("nop"))!!
             assertTrue(current.service<MarsAnalysisService>().macroTargets(file as MipsFile, instruction).isEmpty())
             WriteCommandAction.runWriteCommandAction(current) {

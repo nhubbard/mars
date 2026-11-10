@@ -47,6 +47,7 @@ import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import edu.missouristate.mars.plugin.language.psi.equivalenceDefinitionParameterContexts
 import java.nio.file.Path
@@ -262,11 +263,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val document = target ?: return null
         val manager = PsiDocumentManager.getInstance(project)
         if (!manager.isCommitted(document)) return null
-        val file = manager.getPsiFile(document) as? MipsFile ?: return null
+        val file = manager.getPsiFile(document) ?: return null
         val start = document.getLineStartOffset(location.line() - 1)
         val offset = definition.column()?.let { start + it - 1 }
             ?: CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
-        return file.findElementAt(offset)
+        return if (file is MipsFile) file.findElementAt(offset) else MipsIncludedDeclaration.at(file, offset)
     }
 
     private fun builtLabelNames(root: MipsFile, offset: Int, prefix: String): List<String> =
@@ -286,15 +287,20 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val owner = operationOwner(position) ?: return emptyList()
         val site = operationSite(root, owner.operationHead)
         val definition = site?.macroDefinition?.takeIf { site.range.startOffset == position.textOffset }
-        if (definition != null) {
-            val header = definition.header
-            return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
+        if (definition == null || editorTimeline(root).hasIncompleteIncludes) {
+            val calls = assembledMacroCallsAt(root, position)
+            if (calls.isNotEmpty()) return calls.map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
         }
-        return nestedMacroCallsAt(root, position).map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
+        val header = definition?.header ?: return emptyList()
+        return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
     }
 
     internal fun nestedMacroCallsAt(root: MipsFile, position: PsiElement): Set<MacroCall> {
         if (macroBodyPrefix(root, position)?.openMacro == null) return emptySet()
+        return assembledMacroCallsAt(root, position)
+    }
+
+    private fun assembledMacroCallsAt(root: MipsFile, position: PsiElement): Set<MacroCall> {
         return fromAssemblySymbols(root) { snapshot, path ->
             val calls = snapshot.symbols.macroCalls()[sourceTokenAt(root, path, position.textOffset)]
                 ?: return@fromAssemblySymbols null
@@ -333,18 +339,18 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun macroDeclarationAt(target: SourceToken): PsiElement? {
-        val (file, offset) = sourceTokenPosition(target)
-        if (file !is MipsFile) return null
+        val (file, offset) = sourceTokenPosition(target) ?: return null
+        if (file !is MipsFile) return MipsIncludedDeclaration.at(file, offset)
         val token = file.findElementAt(offset)!!
         val declaration = token.parent
         return if (declaration.elementType == MipsTypes.psi("MACRO_SIGNATURE")) declaration else token
     }
 
-    internal fun sourceTokenPosition(target: SourceToken): Pair<PsiFile, Int> {
+    internal fun sourceTokenPosition(target: SourceToken): Pair<PsiFile, Int>? {
         val location = target.location()
         // The source snapshot has already validated each physical file and its committed document.
         val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
-        val file = PsiManager.getInstance(project).findFile(source)!!
+        val file = PsiManager.getInstance(project).findFile(source) ?: return null
         val line = location.line() - 1
         return file to (file.fileDocument.getLineStartOffset(line) + target.column() - 1)
     }
