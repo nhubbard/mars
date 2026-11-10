@@ -723,7 +723,7 @@ acceptance remains open.
 
 ## Go to Symbol
 
-IntelliJ's `gotoSymbolContributor` exposes MARS labels, macros, and equivalences in
+IntelliJ's `gotoSymbolContributor` exposes MARS labels, macros, equivalences, and external reservations in
 Go to Symbol. It uses the declaration index for names and exact offsets, then checks
 each offset against the current named PSI before returning it. Native PSI navigation
 opens the name token. Duplicate declarations remain separate results, and each result
@@ -740,6 +740,12 @@ Search applies the result scope to that source, even if the equivalence lives
 outside the scope. A written label or external reservation replaced by an
 expansion and a macro renamed by an expansion are filtered out under their old
 names. Generated equivalences follow the assembler's first-definition lookup order.
+
+Plain-text includes contribute their written and expanded declarations through the same
+entry timelines. Only files reached from MARS include roots are examined. Results use
+the original file and offset and honor the requested search scope and file ID filter.
+The same declaration reached through several entries appears once. Different effective
+names at a shared location remain searchable when entries supply different substitutions.
 
 Jupiter IDE fixtures exercise the registered extension, exact and scoped search,
 duplicate declarations, incomplete declarations, stale offsets, early termination,

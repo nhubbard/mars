@@ -241,6 +241,9 @@ internal class MipsSourceTimeline(
     fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().filterNot(SourceFileEvents::isPlainInclude)
         .map(SourceFileEvents::file)
 
+    fun plainIncludeFiles(): Sequence<MipsFile> = files.values.asSequence().filter(SourceFileEvents::isPlainInclude)
+        .map(SourceFileEvents::file)
+
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
     fun macroAt(file: MipsFile, offset: Int): Begin? = openMacro(prefixEnd(file, offset))

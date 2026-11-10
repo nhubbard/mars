@@ -9,8 +9,12 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
+import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.Processor
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.indexing.FindSymbolParameters
@@ -34,7 +38,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             name == EXPANSION_SEED || processor.process(name.also(written::add))
         }, scope, filter)
         if (complete) {
-            expandedSymbols(project, scope, filter).map(ExpandedSymbol::name)
+            contextualSymbols(project, scope, filter).map(ContextualSymbol::name)
                 .filter(written::add).all(processor::process)
         }
     }
@@ -61,62 +65,96 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
                 MipsDeclaration.findAt(psi, it.offset, name)
             }
             for (declaration in declarations) {
-                val replaced = when (declaration.kind) {
-                    SymbolKind.LABEL -> timeline.replacesLabel(psi, declaration.textOffset)
-                    SymbolKind.EXTERNAL -> timeline.replacesExternal(psi, declaration.textOffset)
-                    SymbolKind.MACRO -> timeline.localMacros(psi)[declaration]?.let { it.name != declaration.name } == true
-                    else -> false
-                }
-                if (replaced) continue
+                if (timeline.replacesDeclaration(psi, declaration)) continue
                 if (!processor.process(declaration)) return
             }
         }
-        expandedSymbols(project, parameters.searchScope, parameters.idFilter).filter { it.name == name }
-            .all { processor.process(ExpandedSymbolItem(it)) }
+        contextualSymbols(project, parameters.searchScope, parameters.idFilter).filter { it.name == name }
+            .all { processor.process(ContextualSymbolItem(it)) }
     }
 
-    private fun expandedSymbols(project: Project, scope: GlobalSearchScope, filter: IdFilter?): Sequence<ExpandedSymbol> {
+    private fun contextualSymbols(project: Project, scope: GlobalSearchScope, filter: IdFilter?): Sequence<ContextualSymbol> {
         val psi = PsiManager.getInstance(project)
         val analysis = project.service<MarsAnalysisService>()
         // A declaration can be supplied by an alias defined outside the requested result scope.
         val seeds = FileBasedIndex.getInstance().getContainingFiles(
             MipsDeclarationIndex.NAME, EXPANSION_SEED, GlobalSearchScope.allScope(project),
         )
-        return seeds.asSequence().flatMap { seed ->
+        val roots = seeds.asSequence().flatMap { seed ->
             ProgressManager.checkCanceled()
             mipsAssemblyRoots(psi.findFile(seed) as MipsFile).ifEmpty { listOf(seed) }
-        }.distinct().flatMap { root ->
-            mipsSourceTimeline(psi.findFile(root) as MipsFile).sourceFiles()
-        }.distinct().filter { file ->
-            val source = file.viewProvider.virtualFile
-            scope.contains(source) && filter?.containsFileId(FileBasedIndex.getFileId(source)) != false
-        }.flatMap { file ->
-            ProgressManager.checkCanceled()
-            analysis.editorTimeline(file).expandedSymbolsIn(file)
+        }.distinct()
+        fun inScope(file: MipsFile): Boolean {
+            val source = file.originalFile.viewProvider.virtualFile
+            return scope.contains(source) && filter?.containsFileId(FileBasedIndex.getFileId(source)) != false
+        }
+        return sequence {
+            val typedFiles = HashSet<MipsFile>()
+            val plainSymbols = HashSet<ContextualSymbol>()
+            for (root in roots) {
+                val timeline = mipsSourceTimeline(psi.findFile(root) as MipsFile)
+                for (file in timeline.sourceFiles()) {
+                    ProgressManager.checkCanceled()
+                    if (typedFiles.add(file) && inScope(file)) yieldAll(analysis.editorTimeline(file).expandedSymbolsIn(file))
+                }
+                for (file in timeline.plainIncludeFiles()) {
+                    ProgressManager.checkCanceled()
+                    if (inScope(file)) yieldAll(timeline.plainSymbolsIn(file).filter(plainSymbols::add))
+                }
+            }
         }
     }
 
-    private fun MipsSourceTimeline.expandedSymbolsIn(file: MipsFile): Sequence<ExpandedSymbol> = sequence {
+    private fun MipsSourceTimeline.replacesDeclaration(file: MipsFile, declaration: MipsDeclaration): Boolean =
+        when (declaration.kind) {
+            SymbolKind.LABEL -> replacesLabel(file, declaration.textOffset)
+            SymbolKind.EXTERNAL -> replacesExternal(file, declaration.textOffset)
+            SymbolKind.MACRO -> localMacros(file)[declaration]?.let { it.name != declaration.name } == true
+            else -> false
+        }
+
+    private fun MipsSourceTimeline.plainSymbolsIn(file: MipsFile): Sequence<ContextualSymbol> = sequence {
+        val declarations = CachedValuesManager.getCachedValue(file) {
+            val written = buildList {
+                for (element in SyntaxTraverser.psiTraverser(file)) {
+                    ProgressManager.checkCanceled()
+                    if (element is MipsDeclaration) add(element)
+                }
+            }
+            CachedValueProvider.Result.create(written, file)
+        }
+        val source = file.originalFile
+        for (declaration in declarations) {
+            ProgressManager.checkCanceled()
+            val name = declaration.name ?: continue
+            if (replacesDeclaration(file, declaration)) continue
+            yield(ContextualSymbol(name, source, declaration.textOffset, declaration.presentation.getIcon(false)))
+        }
+        yieldAll(expandedSymbolsIn(file))
+    }
+
+    private fun MipsSourceTimeline.expandedSymbolsIn(file: MipsFile): Sequence<ContextualSymbol> = sequence {
+        val source = file.originalFile
         for (label in generatedLabelsIn(file)) {
-            yield(ExpandedSymbol(label.name, file, label.site.textOffset, AllIcons.Nodes.Bookmark))
+            yield(ContextualSymbol(label.name, source, label.site.textOffset, AllIcons.Nodes.Bookmark))
         }
         for (macro in localMacros(file).values) {
             if (macro.name != (macro.header as? MipsDeclaration)?.name) {
-                yield(ExpandedSymbol(macro.name, file, macro.nameOffset, AllIcons.Nodes.Function))
+                yield(ContextualSymbol(macro.name, source, macro.nameOffset, AllIcons.Nodes.Function))
             }
         }
         for (equivalence in generatedEquivalencesIn(file).values) {
-            yield(ExpandedSymbol(equivalence.name, file, equivalence.site.textOffset, AllIcons.Nodes.Constant))
+            yield(ContextualSymbol(equivalence.name, source, equivalence.site.textOffset, AllIcons.Nodes.Constant))
         }
         for (external in expandedExternalsIn(file).values) {
-            yield(ExpandedSymbol(external.name, file, external.offset, AllIcons.Nodes.Field))
+            yield(ContextualSymbol(external.name, source, external.offset, AllIcons.Nodes.Field))
         }
     }
 }
 
-private data class ExpandedSymbol(val name: String, val file: MipsFile, val offset: Int, val icon: Icon)
+private data class ContextualSymbol(val name: String, val file: PsiFile, val offset: Int, val icon: Icon?)
 
-private class ExpandedSymbolItem(symbol: ExpandedSymbol) :
+private class ContextualSymbolItem(symbol: ContextualSymbol) :
     OpenFileDescriptor(symbol.file.project, symbol.file.viewProvider.virtualFile, symbol.offset), NavigationItem {
     private val symbolName = symbol.name
     private val symbolIcon = symbol.icon

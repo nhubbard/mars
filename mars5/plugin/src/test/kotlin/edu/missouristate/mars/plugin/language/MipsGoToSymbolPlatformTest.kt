@@ -287,6 +287,89 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    fun `search discovers scoped declarations in plain includes across assembly roots`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            # Plain include
+              sharedLabel: nop
+            repeatedLabel: nop
+            repeatedLabel: nop
+            WRITTEN_LABEL: nop
+            .macro plainMacro
+            .end_macro
+            .macro WRITTEN_MACRO
+            .end_macro
+            .eqv plainConstant 7
+            DEFINE expandedConstant 8
+            .eqv 7 9
+            .extern plainStorage 4
+            .extern WRITTEN_STORAGE 4
+        """.trimIndent()
+        val (body, first, unrelated) = withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("parts/declarations.txt", source)
+            fixture.addFileToProject("parts/wrapper.txt", ".include \"declarations.txt\"\n")
+            val first = fixture.addFileToProject("first.asm", """
+                .eqv WRITTEN_LABEL firstLabel
+                .eqv WRITTEN_MACRO expandedMacro
+                .eqv WRITTEN_STORAGE expandedStorage
+                .eqv DEFINE .eqv
+                .include "parts/wrapper.txt"
+            """.trimIndent())
+            fixture.addFileToProject("second.asm", first.text.replace("firstLabel", "secondLabel"))
+            Triple(body, first, fixture.addFileToProject("unrelated.txt", "unrelatedLabel: nop\n"))
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val bodyScope = GlobalSearchScope.fileScope(current, body.virtualFile)
+        val projectScope = GlobalSearchScope.projectScope(current)
+        val expected = mapOf(
+            "sharedLabel" to "sharedLabel", "firstLabel" to "WRITTEN_LABEL", "secondLabel" to "WRITTEN_LABEL",
+            "plainMacro" to "plainMacro", "expandedMacro" to "WRITTEN_MACRO",
+            "plainConstant" to "plainConstant", "expandedConstant" to "DEFINE",
+            "plainStorage" to "plainStorage", "expandedStorage" to "WRITTEN_STORAGE",
+        )
+        readAction {
+            val names = mutableListOf<String>()
+            contributor.processNames({ names.add(it) }, bodyScope, null)
+            assertTrue(names.containsAll(expected.keys + "repeatedLabel"))
+            assertEquals(names.toSet().size, names.size)
+            for ((name, spelling) in expected) {
+                val descriptor = assertInstanceOf(OpenFileDescriptor::class.java, items(name, bodyScope).single())
+                assertEquals(body.virtualFile, descriptor.file)
+                assertEquals(source.indexOf(spelling), descriptor.offset, name)
+                val item = descriptor as NavigationItem
+                assertEquals(name, item.name)
+                assertEquals("declarations.txt", item.presentation?.locationString)
+                assertNotNull(item.presentation?.getIcon(false))
+                assertTrue(item.canNavigateToSource())
+            }
+            assertEquals(2, items("repeatedLabel", bodyScope).size)
+            assertTrue(items("WRITTEN_LABEL", bodyScope).isEmpty())
+            assertTrue(items("unrelatedLabel", projectScope).isEmpty())
+            assertTrue(items("sharedLabel", GlobalSearchScope.fileScope(current, first.virtualFile)).isEmpty())
+            fun filteredNames(fileId: Int): Set<String> = buildSet {
+                val filter = object : IdFilter() {
+                    override fun containsFileId(id: Int) = id == fileId
+                }
+                contributor.processNames({ add(it); true }, bodyScope, filter)
+            }
+            assertTrue(filteredNames(FileBasedIndex.getFileId(unrelated.virtualFile)).intersect(expected.keys).isEmpty())
+            assertTrue(filteredNames(FileBasedIndex.getFileId(body.virtualFile)).containsAll(expected.keys))
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(body.virtualFile)
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.setText("\n" + source.replace("sharedLabel", "updatedLabel"))
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        readAction {
+            assertTrue(items("sharedLabel", bodyScope).isEmpty())
+            val updated = assertInstanceOf(OpenFileDescriptor::class.java, items("updatedLabel", bodyScope).single())
+            assertEquals(source.indexOf("sharedLabel") + 1, updated.offset)
+        }
+    }
+
+    @Test
     fun `search uses edited identifiers and removes deleted files`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("changing.asm", "before: nop\n") }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
