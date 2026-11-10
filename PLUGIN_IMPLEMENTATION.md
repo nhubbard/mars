@@ -45,6 +45,11 @@ expansion. IntelliJ still preserves structured operands wherever the full parse 
 continues to report malformed lexical tokens, such as invalid character literals. The parser
 uses the platform's syntax markers to discard errors from the speculative structured parse.
 
+When an include is unresolved or its path is unfinished, the editor keeps the known
+macro scope for source preceding that include, including rows in earlier included files.
+Lexical errors remain visible, and later rows retain their syntax diagnostics until the
+include is resolved.
+
 The assembly lexer uses the core's integer conversion and the assembler's
 floating-point syntax for digit-leading candidates. Malformed candidates
 such as `0xG` retain their entire span and recover at the next statement.

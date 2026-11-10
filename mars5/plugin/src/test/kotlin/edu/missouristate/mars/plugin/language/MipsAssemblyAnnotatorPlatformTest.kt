@@ -324,6 +324,41 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `incomplete includes only invalidate macro syntax context after the include`() = timeoutRunBlocking<Unit> {
+        val (entry, body) = withContext(Dispatchers.EDT) {
+            val header = fixture.addFileToProject("entry.asm", """
+                .eqv OPEN .macro dormant
+                OPEN
+                .include "body.s"
+                .end_macro
+                nop
+            """.trimIndent())
+            val source = fixture.addFileToProject("body.s", ".word )\n.word )\n")
+            fixture.configureFromExistingVirtualFile(source.virtualFile)
+            header.virtualFile to source.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors().isEmpty())
+            for (include in listOf(".include \"missing.s\"", ".include \"unfinished")) {
+                val first = ".word )\n.word @\n"
+                val afterInclude = first.length + include.length + 1
+                edit(body, first + include + "\n.word )\n")
+                val highlights = errors()
+                assertTrue(highlights.none { it.startOffset < ".word )\n".length }, highlights.toString())
+                assertTrue(highlights.any { it.startOffset in ".word )\n".length until first.length }, highlights.toString())
+                if (!include.endsWith('"')) {
+                    assertTrue(highlights.any { it.startOffset in first.length until afterInclude }, highlights.toString())
+                }
+                assertTrue(highlights.any { it.startOffset >= afterInclude }, highlights.toString())
+            }
+        }
+    }
+
+    @Test
     fun `shared macro body diagnostics follow the selected entry and its current includes`() = timeoutRunBlocking<Unit> {
         val withoutBody = ".macro dormant\n.end_macro\nnop\n"
         val withBody = withoutBody.replace(".end_macro", ".include \"shared.s\"\n.end_macro")
@@ -478,6 +513,8 @@ class MipsAssemblyAnnotatorPlatformTest {
 
             val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
             assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!))
+            val laterMissing = fixture.configureByText("later.asm", ".text\n)\n.include \"later-missing.s\"\n")
+            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(laterMissing, PsiErrorElement::class.java)!!))
             val scratch = PsiFileFactory.getInstance(project).createFileFromText("detached.asm", MipsFileType, ".data\n)\n")
             assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(scratch, PsiErrorElement::class.java)!!))
             val java = fixture.configureByText("Broken.java", "class {")

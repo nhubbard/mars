@@ -50,7 +50,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
 
     enter(entry)
     var macro: Begin? = null
-    var incompleteIncludes = false
+    var firstIncompleteInclude = Int.MAX_VALUE
     var unindexedIncludes = false
     var inData = false
     var dataList = Directives.WORD
@@ -73,10 +73,6 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             continue
         }
         val event = when (physical) {
-            is MipsSourceEvent.UnterminatedInclude -> {
-                incompleteIncludes = true
-                continue
-            }
             is MipsSourceEvent.Header -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> {
                 val expanded = physical.bind(macro != null, replacement)
@@ -107,7 +103,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         when (event) {
             is Begin -> {
                 if (macro != null) {
-                    if (!incompleteIncludes) {
+                    if (firstIncompleteInclude == Int.MAX_VALUE) {
                         cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.directiveOffset, Kind.NESTED_BEGIN))
                     }
                     continue
@@ -129,7 +125,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 val lineStart = sourceLineStart(cursor.locations.file.viewProvider.contents, event.offset)
                 cursor.locations.macroClosingLines.add(lineStart)
                 val definition = macro
-                if (definition == null && !incompleteIncludes) {
+                if (definition == null && firstIncompleteInclude == Int.MAX_VALUE) {
                     cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, Kind.UNMATCHED_END))
                 }
                 if (definition != null && definition.header.containingFile === cursor.locations.file) {
@@ -143,7 +139,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macro = null
                 macroBoundaries[eventCount] = null
             }
-            is MipsSourceEvent.RejectedMacro -> if (!incompleteIncludes) {
+            is MipsSourceEvent.RejectedMacro -> if (firstIncompleteInclude == Int.MAX_VALUE) {
                 cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, event.kind))
             }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
@@ -160,10 +156,11 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 }
                 if (macro == null) externalStorage.putIfAbsent(event.name, event.site)
             }
+            is MipsSourceEvent.UnterminatedInclude -> firstIncompleteInclude = minOf(firstIncompleteInclude, index)
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path) as? PsiFile
                 if (included == null || included.fileType.isBinary || !visited.add(included.virtualFile.includeIdentity())) {
-                    incompleteIncludes = true
+                    firstIncompleteInclude = minOf(firstIncompleteInclude, index)
                     continue
                 }
                 val syntax = if (included is MipsFile) included else {
@@ -177,13 +174,13 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
     }
     val unclosed = macro
-    if (unclosed != null && !incompleteIncludes) {
+    if (unclosed != null && firstIncompleteInclude == Int.MAX_VALUE) {
         val openingFile = unclosed.header.containingFile.viewProvider.virtualFile
         files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
         MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
-            macroNames, closedMacros, incompleteIncludes, unindexedIncludes),
+            macroNames, closedMacros, firstIncompleteInclude, unindexedIncludes),
         dependencies,
     )
 }
@@ -197,9 +194,11 @@ internal class MipsSourceTimeline(
     private val macroBoundaries: TreeMap<Int, Begin?>,
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
-    val hasIncompleteIncludes: Boolean,
+    private val firstIncompleteInclude: Int,
     val hasUnindexedIncludes: Boolean,
 ) {
+    val hasIncompleteIncludes: Boolean get() = firstIncompleteInclude != Int.MAX_VALUE
+
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
     private val registerUsagesByFile = ConcurrentHashMap<MipsFile, Map<Int, List<TextRange>>>()
 
@@ -315,6 +314,7 @@ internal class MipsSourceTimeline(
     }
 
     inner class Prefix(private val end: Int) {
+        val hasIncompleteIncludes: Boolean get() = end > firstIncompleteInclude
         val hasIntegerDataList: Boolean get() = integerDataPrefixes[end]
         val openMacro: Begin? get() = openMacro(end)
 

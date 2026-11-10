@@ -663,8 +663,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     internal fun defersContextDependentError(root: MipsFile, position: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
         val timeline = editorTimeline(root)
-        if (timeline.hasIncompleteIncludes) return false
         val prefix = timeline.prefix(root, sourceLineStart(position))
+        if (prefix.hasIncompleteIncludes) return false
         val tokens = expandedTokens(prefix, sourceLine(position, fromLineStart = true), allowIncompleteOperand = false)
             ?: return false
         val inMacro = prefix.openMacro != null
@@ -676,7 +676,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val directive = Directives.matchDirective(head.value)
             return directive != Directives.MACRO && directive != Directives.END_MACRO
         }
-        // Only assembly can decide if an expanded macro switched segments before this line.
+        // This fallback needs a complete assembly to report errors in the effective segment.
+        if (timeline.hasIncompleteIncludes) return false
         return head.type != TokenTypes.DIRECTIVE && !TokenTypes.startsDataContinuation(head.type) && collectEditorAssembly(root) != null
     }
 

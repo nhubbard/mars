@@ -146,7 +146,7 @@ internal sealed interface MipsSourceEvent {
         override val offset = literal.textOffset
     }
 
-    data class UnterminatedInclude(override val offset: Int) : MipsSourceEvent
+    data class UnterminatedInclude(override val offset: Int) : Effective
 
     data class DataDirective(override val offset: Int, val directive: Directives) : Effective
 
