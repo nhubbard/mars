@@ -309,6 +309,10 @@ scopes. An identifier can still supply a name through `.eqv` and is bound agains
 include-ordered context. The formatter can use the written scope when alias expansion
 fails to establish a semantic scope. With an accepted name, the parser keeps the block even if its
 formal list needs recovery, as the assembler opens the macro before checking its arguments.
+The parser marks the first token rejected by the written formal list and retains the accepted
+prefix. When expansion rejects a formal, the editor marks the token or alias that supplied it.
+The expansion check uses the selected or uniquely inferred entry so a shared header can have
+different valid formals in different assemblies.
 
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,

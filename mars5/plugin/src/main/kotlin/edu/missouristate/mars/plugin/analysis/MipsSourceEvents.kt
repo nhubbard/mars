@@ -116,9 +116,11 @@ internal sealed interface MipsSourceEvent {
     data class Begin(
         val header: PsiElement, val name: String, val nameOffset: Int, val directiveOffset: Int,
         val parameters: List<MacroFormal>,
-        val arity: Int?, // A malformed signature still opens a scope for its accepted parameters.
+        val invalidFormal: MacroFormal?,
     ) : Effective {
         override val offset = header.textOffset
+        // A malformed signature still opens a scope for its accepted parameters.
+        val arity: Int? get() = parameters.size.takeIf { invalidFormal == null }
         val parametersByName: Map<String, MacroFormal> by lazy {
             buildMap { for (parameter in parameters) putIfAbsent(parameter.value, parameter) }
         }
@@ -280,11 +282,12 @@ private fun macroSignature(
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
     val parameters = arguments.takeWhile { Macro.tokenIsMacroParameter(it.value, true) }
-    val arity = arguments.size.takeIf { it == parameters.size }
+    val invalid = arguments.getOrNull(parameters.size)
     val name = tokens[nameIndex]
     val directive = if (nameIndex == 0) start else originalOffset(tokens[nameIndex - 1])
     return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
-        parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) }, arity)
+        parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
+        invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) })
 }
 
 private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1

@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -66,7 +66,7 @@ private macro_end ::= END_MACRO &line_end
 private malformed_macro_end ::= END_MACRO line_end {pin=1}
 private line_end ::= NEWLINE | <<eof>>
 // Recover a malformed parameter tail before parsing the body on the next line.
-macro_signature ::= macro_name parameter_list? &line_end {pin=1 recoverWhile=line_recover}
+macro_signature ::= macro_name parameter_list? (&line_end | <<recoverInvalidMacroFormal>>) {pin=1}
 // Only identifiers can supply macro names or be replaced by an equivalence.
 private macro_name ::= WORD | DOLLAR_WORD
 // The assembler ignores parentheses anywhere in a macro declaration.

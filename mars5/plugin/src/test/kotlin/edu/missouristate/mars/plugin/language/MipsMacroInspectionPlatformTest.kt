@@ -10,6 +10,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection
 import kotlinx.coroutines.Dispatchers
@@ -102,6 +103,69 @@ class MipsMacroInspectionPlatformTest {
             )
         }
     }
+
+    @Test
+    fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv FORMS %kept, 7, 8
+            .macro emit (FORMS)
+                li ${'$'}t0, %kept
+            .end_macro
+            .macro literal (%first, 9)
+                nop
+            .end_macro
+            .eqv OPEN .macro
+            OPEN generated (ordinary)
+                nop
+            .end_macro
+        """.trimIndent()
+        withContext(Dispatchers.EDT) { fixture.configureByText("bad-formals.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) {
+            assertEquals(
+                listOf(
+                    "FORMS" to "Invalid MARS macro parameter '7'",
+                    "9" to "Invalid MARS macro parameter",
+                    "ordinary" to "Invalid MARS macro parameter 'ordinary'",
+                ),
+                formalErrors(),
+            )
+            val use = source.indexOf("%kept", source.indexOf("li"))
+            assertEquals("FORMS", fixture.file.findReferenceAt(use + 1)?.resolve()?.text)
+            WriteCommandAction.runWriteCommandAction(fixture.project) {
+                fixture.editor.document.setText(
+                    source.replace("7, 8", "%second, %third").replace("9)", "%second)").replace("(ordinary)", "(%ordinary)"),
+                )
+            }
+            assertTrue(formalErrors().isEmpty())
+        }
+    }
+
+    @Test
+    fun `a shared macro header waits for an entry before diagnosing its expanded formal`() = timeoutRunBlocking<Unit> {
+        val current = projectFixture.get()
+        val (valid, invalid) = withContext(Dispatchers.EDT) {
+            val first = fixture.addFileToProject("valid.asm", ".eqv FORM %value\n.include \"shared.s\"\n")
+            val second = fixture.addFileToProject("invalid.asm", ".eqv FORM 17\n.include \"shared.s\"\n")
+            val shared = fixture.addFileToProject("shared.s", ".macro emit (FORM)\nnop\n.end_macro\n")
+            fixture.configureFromExistingVirtualFile(shared.virtualFile)
+            first.virtualFile to second.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            assertTrue(formalErrors().isEmpty())
+            val settings = current.service<MarsAssemblySettings>()
+            settings.changeSources(listOf(invalid.path))
+            assertEquals(listOf("FORM" to "Invalid MARS macro parameter '17'"), formalErrors())
+            settings.changeSources(listOf(valid.path))
+            assertTrue(formalErrors().isEmpty())
+        }
+    }
+
+    private fun formalErrors(): List<Pair<String, String>> = fixture.doHighlighting()
+        .filter { it.severity == HighlightSeverity.ERROR }
+        .sortedBy { it.startOffset }
+        .map { fixture.file.text.substring(it.startOffset, it.endOffset) to it.description.orEmpty() }
 
     @Test
     fun `included body uses the enclosing macro from the inferred and selected assembly entry`() = timeoutRunBlocking<Unit> {

@@ -119,12 +119,23 @@ internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, leve
     if (builder.tokenType.endsLine()) {
         builder.error(syntaxMessages.getMessage("syntax.macro.name.missing"))
     } else {
-        val marker = builder.mark()
-        builder.advanceLexer()
-        marker.error(syntaxMessages.getMessage("syntax.macro.name.invalid"))
-        while (!builder.tokenType.endsLine()) builder.advanceLexer()
+        builder.rejectMacroToken("syntax.macro.name.invalid")
     }
     return true
+}
+
+/** The rejected formal ends parameter collection, but the valid name still opens the body. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverInvalidMacroFormal(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    runtime.syntaxBuilder.rejectMacroToken("syntax.macro.formal.invalid")
+    return true
+}
+
+private fun SyntaxTreeBuilder.rejectMacroToken(messageKey: String) {
+    val marker = mark()
+    advanceLexer()
+    marker.error(syntaxMessages.getMessage(messageKey))
+    while (!tokenType.endsLine()) advanceLexer()
 }
 
 /** Retain the broken literal and keep parsing the other operands on the line. */

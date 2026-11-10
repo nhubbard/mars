@@ -485,7 +485,8 @@ class MipsParserPlatformTest {
     @Test
     fun `malformed macro parameters preserve the header prefix and body scope`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (tail in listOf("7)", "@)", "%)", "\"oops\" .eqv PHANTOM 7")) {
+            val rejected = mapOf("7)" to "7", "@)" to "@", "%)" to "%", "\"oops\" .eqv PHANTOM 7" to "\"oops\"")
+            for ((tail, badToken) in rejected) {
                 val source = ".macro emit (%value, $tail\nbody: li \$t0, %value\n.end_macro\nemit(7)\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("macro.asm", MipsFileType, source)
                 assertEquals(source, file.node.text)
@@ -494,8 +495,9 @@ class MipsParserPlatformTest {
                 assertEquals(listOf("%value"), descendants(macro, "MACRO_PARAMETER").map { it.text }.toList())
                 assertEquals(".end_macro", macro.lastChildNode.text)
                 assertTrue(descendants(file.node, "EQUIVALENCE").none())
-                val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
-                assertTrue(errors.isNotEmpty() && errors.all { it.textOffset < source.indexOf("body:") }, tail)
+                val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
+                assertEquals(badToken, error.text, tail)
+                assertEquals("Invalid MARS macro parameter", error.errorDescription, tail)
                 assertEquals(listOf("emit(7)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
             }
         }
