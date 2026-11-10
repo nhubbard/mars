@@ -54,6 +54,7 @@ import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.nio.file.Path
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -83,7 +84,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val stepOut: DebuggerCallStack.StepOutTarget? = null,
     )
 
-    private val commands = Channel<Command>(Channel.CONFLATED)
+    private class Suspension(val context: MarsSuspendContext) {
+        val command = CompletableDeferred<Command>()
+    }
+
+    @Volatile private var suspension: Suspension? = null
     @Volatile private var simulator: SimulatorEngine? = null
     private val bindings = Any()
     private val entryPath = state.entry.normalize()
@@ -154,9 +159,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             override fun getActionUpdateThread() = ActionUpdateThread.BGT
             override fun update(event: AnActionEvent) { event.presentation.isEnabled = session.isSuspended }
             override fun actionPerformed(event: AnActionEvent) {
-                if (!session.isSuspended) return
+                val pause = pendingSuspension(session.suspendContext) ?: return
+                pause.command.complete(Command(steps = 1))
                 session.sessionResumed()
-                commands.trySend(Command(steps = 1))
             }
         })
         for (step in ReverseStep.entries) {
@@ -168,9 +173,10 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 override fun getActionUpdateThread() = ActionUpdateThread.BGT
                 override fun update(event: AnActionEvent) { event.presentation.isEnabled = canBackstep() }
                 override fun actionPerformed(event: AnActionEvent) {
-                    if (!canBackstep()) return
+                    val pause = pendingSuspension(session.suspendContext) ?: return
+                    if (!pause.context.canBackstep) return
+                    pause.command.complete(Command(backstep = step))
                     session.sessionResumed()
-                    commands.trySend(Command(backstep = step))
                 }
             })
         }
@@ -178,31 +184,41 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
 
     private fun canBackstep() = (session.suspendContext as? MarsSuspendContext)?.canBackstep == true
 
+    // IntelliJ clears its current context before invoking native resume and step callbacks.
+    private fun pendingSuspension(context: XSuspendContext?): Suspension? =
+        suspension?.takeIf { it.context === context && it.command.isActive }
+
     override fun stop() = handler.destroyProcess()
-    override fun resume(context: XSuspendContext?) { commands.trySend(Command()) }
+    override fun resume(context: XSuspendContext?) {
+        val pause = pendingSuspension(context) ?: return
+        pause.command.complete(Command())
+    }
     override fun startPausing() { simulator?.pause() }
     override fun startStepInto(context: XSuspendContext?) {
-        val sourceStep = (context as? MarsSuspendContext)?.sourceStep
-        commands.trySend(Command(steps = if (sourceStep == null) 1 else SOURCE_STEP_LIMIT, sourceStep = sourceStep))
+        val pause = pendingSuspension(context) ?: return
+        val sourceStep = pause.context.sourceStep
+        pause.command.complete(Command(steps = if (sourceStep == null) 1 else SOURCE_STEP_LIMIT, sourceStep = sourceStep))
     }
     override fun startStepOver(context: XSuspendContext?) {
-        val stopped = context as? MarsSuspendContext ?: return
-        commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOver = StepOver(stopped.sourceStep)))
+        val pause = pendingSuspension(context) ?: return
+        pause.command.complete(Command(steps = CALL_STEP_LIMIT, stepOver = StepOver(pause.context.sourceStep)))
     }
     override fun startStepOut(context: XSuspendContext?) {
-        val target = (context as? MarsSuspendContext)?.stepOutTarget
-        if (target == null) rejectCommand("debug.step.out.unavailable", context)
-        else commands.trySend(Command(steps = CALL_STEP_LIMIT, stepOut = target))
+        val pause = pendingSuspension(context) ?: return
+        val target = pause.context.stepOutTarget
+        if (target == null) rejectCommand("debug.step.out.unavailable", pause.context)
+        else pause.command.complete(Command(steps = CALL_STEP_LIMIT, stepOut = target))
     }
     override fun runToPosition(position: XSourcePosition, context: XSuspendContext?) {
+        val pause = pendingSuspension(context) ?: return
         val target = sources.location(position.file, position.line)
-        if (target == null) rejectCommand("debug.source.not.in.image", context)
-        else commands.trySend(Command(target = target))
+        if (target == null) rejectCommand("debug.source.not.in.image", pause.context)
+        else pause.command.complete(Command(target = target))
     }
 
-    private fun rejectCommand(message: String, context: XSuspendContext?) {
+    private fun rejectCommand(message: String, context: MarsSuspendContext) {
         session.reportError(runMessages.getMessage(message))
-        context?.let(session::positionReached)
+        session.positionReached(context)
     }
 
     private fun updateBindings() {
@@ -243,9 +259,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 val backstep = command.backstep
                 if (backstep != null) {
                     process.backstepSlice(engine, wholeSource = backstep == ReverseStep.SOURCE)
-                    withSuspension(machine, calls) { context ->
-                        withContext(Dispatchers.EDT) { session.positionReached(context) }
-                        command = awaitCommand(context, machine)
+                    withSuspension(machine, calls) { pause ->
+                        withContext(Dispatchers.EDT) { session.positionReached(pause.context) }
+                        command = awaitCommand(pause, machine)
                     }
                     continue
                 }
@@ -255,12 +271,12 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 var hits = emptyList<XBreakpoint<*>>()
                 var stepOrTargetReached = false
                 if (target != null && targets.isEmpty()) {
-                    withSuspension(machine, calls) { context ->
+                    withSuspension(machine, calls) { pause ->
                         withContext(Dispatchers.EDT) {
                             session.reportError(runMessages.getMessage("debug.breakpoint.no.code"))
-                            session.positionReached(context)
+                            session.positionReached(pause.context)
                         }
-                        command = awaitCommand(context, machine)
+                        command = awaitCommand(pause, machine)
                     }
                     continue
                 }
@@ -289,7 +305,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 val reason: StopEvent.Reason = event.reason()
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
-                        withSuspension(machine, calls) { context ->
+                        withSuspension(machine, calls) { pause ->
+                            val context = pause.context
                             val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
                                 hits.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
                                     .any { handleBreakpoint(it, context, machine.memory) }
@@ -297,7 +314,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                             if (!breakpointSuspended && positionReached) {
                                 withContext(Dispatchers.EDT) { session.positionReached(context) }
                             }
-                            if (breakpointSuspended || positionReached) command = awaitCommand(context, machine)
+                            if (breakpointSuspended || positionReached) command = awaitCommand(pause, machine)
                         }
                         skipFirst = true
                     }
@@ -307,7 +324,6 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         } finally {
             engine.removeListener(calls)
             simulator = null
-            commands.cancel()
         }
     }
 
@@ -330,10 +346,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         }
     }
 
-    private suspend fun awaitCommand(context: MarsSuspendContext, machine: MarsContext): Command {
+    private suspend fun awaitCommand(pause: Suspension, machine: MarsContext): Command {
+        val context = pause.context
         while (true) {
             val command = select<Command?> {
-                commands.onReceive { it }
+                pause.command.onAwait { it }
                 context.inspectionRequests.onReceive { inspect ->
                     inspect(machine.memory)
                     null
@@ -368,12 +385,16 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     }
 
     private suspend fun withSuspension(
-        machine: MarsContext, calls: DebuggerCallStack, action: suspend (MarsSuspendContext) -> Unit,
+        machine: MarsContext, calls: DebuggerCallStack, action: suspend (Suspension) -> Unit,
     ) = coroutineScope {
         val context = suspendContext(machine, calls.stepOutTarget(), calls.callers(), this)
+        val pause = Suspension(context)
+        suspension = pause
         try {
-            action(context)
+            action(pause)
         } finally {
+            suspension = null
+            pause.command.cancel()
             context.inspectionRequests.cancel()
             context.watchRequests.cancel()
             context.registerEdits.cancel()

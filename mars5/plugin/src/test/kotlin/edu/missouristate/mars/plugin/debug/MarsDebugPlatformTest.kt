@@ -468,6 +468,63 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `late debugger commands cannot replace an accepted step or advance a later suspension`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("late-commands.asm", "nop\nnop\nnop\n").virtualFile.also {
+                addBreakpoint(it, 0)
+                addBreakpoint(it, 2)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 0)
+            val session = debug.session
+            val process = session.debugProcess
+            val first = assertInstanceOf(MarsSuspendContext::class.java, session.suspendContext)
+            val inspecting = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            first.inspectionRequests.send {
+                inspecting.complete(Unit)
+                release.await()
+            }
+            val target = requireNotNull(XDebuggerUtil.getInstance().createPosition(source, 2))
+            try {
+                inspecting.await()
+                withContext(Dispatchers.EDT) {
+                    session.stepInto()
+                    process.startStepOut(first)
+                    process.resume(first)
+                    session.resume()
+                    val (action, event) = backstepAction(session)
+                    assertFalse(event.presentation.isEnabled)
+                    action.actionPerformed(event)
+                    assertFalse(session.isSuspended)
+                }
+            } finally {
+                release.complete(Unit)
+            }
+            debug.assertPausedAt(source, 1)
+            val second = assertInstanceOf(MarsSuspendContext::class.java, session.suspendContext)
+            withContext(Dispatchers.EDT) {
+                process.resume(first)
+                process.startStepInto(first)
+                process.startStepOver(first)
+                process.startStepOut(first)
+                process.runToPosition(target, first)
+                assertSame(second, session.suspendContext)
+            }
+            // The worker selects commands before inspections, so this acknowledgement requires
+            // the later pause to have rejected every callback above.
+            val verified = CompletableDeferred<Unit>()
+            second.inspectionRequests.send { verified.complete(Unit) }
+            verified.await()
+            withContext(Dispatchers.EDT) { session.resume() }
+            debug.assertPausedAt(source, 2)
+            withContext(Dispatchers.EDT) { session.resume() }
+            assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
     fun `source steps group pseudo instructions and distinguish consecutive macro expansions`() = timeoutRunBlocking<Unit> {
         val (entry, macros) = withContext(Dispatchers.EDT) {
             val macro = fixture.addFileToProject("step-macros.s", ".macro load (%value)\nli \$t1, %value\n.end_macro\n").virtualFile
@@ -499,8 +556,8 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {
                 assertEquals("0x12345678", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
-                debug.session.sessionResumed()
-                debug.session.debugProcess.startStepInto(null)
+                val (action, event) = toolbarAction(debug.session, "Step Instruction")
+                action.actionPerformed(event)
             }
             debug.assertPausedAt(macros, 1)
             withContext(Dispatchers.EDT) {

@@ -1016,6 +1016,10 @@ Step Into, Step Over, Step Out, Step Instruction, and Run to Cursor are wired. T
 enablement, muting, dependencies, and non-suspending logpoints. Breakpoint
 conditions and log expressions share the evaluator described below.
 
+Each pause accepts one command to advance or rewind the simulator. A delayed
+or repeated callback from an earlier pause cannot replace an accepted command
+or affect a later pause. Pause and Stop can still interrupt a running launch.
+
 Step Out uses the simulator's observed link writes and completed jumps to saved
 return addresses across pauses. Recursive calls have distinct frames even when
 their return addresses match. A breakpoint or exception handler can interrupt
