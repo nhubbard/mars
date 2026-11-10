@@ -231,8 +231,14 @@ On a resolved macro call, Quick Documentation shows the selected overload's expa
 formal parameters and the comment on its opening line. The popup identifies the source
 file and can navigate to the written macro name, including when an equivalence supplied
 the signature. Its smart pointer rebinds the call after an edit and drops the target if
-the invocation no longer matches. Parameter Info continues to show the available
-overloads while a call is being typed.
+the invocation no longer matches. Parameter Info uses the available live MARS
+signatures while a call is being typed.
+
+For a call resolved by a current assembly, both popups can use a signature
+declared in a plain-text include. If that include redefines a visible macro,
+the popups use the overload chosen by the assembler. Parameter Info highlights
+the active argument using the written token positions. Editing the include
+invalidates the assembled signature until the next successful assembly.
 
 Jupiter fixtures use IntelliJ's documentation service to resolve source and lookup targets,
 render their content, and verify that comments, strings, labels and unrelated lookup items

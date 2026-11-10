@@ -5,6 +5,7 @@ import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.platform.backend.documentation.impl.computeDocumentationBlocking
@@ -195,6 +196,46 @@ class MipsDocumentationPlatformTest {
         assertNull(computeDocumentationBlocking(pointer))
         edit("emit()", "")
         assertNull(computeDocumentationBlocking(pointer))
+    }
+
+    @Test
+    fun `direct documentation follows an overload redefined in a plain include`() = timeoutRunBlocking<Unit> {
+        val source = ".macro emit (%written)\n.end_macro\n.include \"signature.txt\"\nemit(7)\nnop\n"
+        val included = "# plain text\n.macro emit (%actual) # <from include>\n.end_macro\n"
+        val current = project.get()
+        val include = withContext(Dispatchers.EDT) {
+            val include = fixture.addFileToProject("signature.txt", included)
+            val file = fixture.addFileToProject("direct-included-doc.asm", source)
+            fixture.configureFromExistingVirtualFile(file.virtualFile)
+            fixture.editor.caretModel.moveToOffset(source.indexOf("emit(7)") + 1)
+            include
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val provider = IdeDocumentationTargetProvider.getInstance(current)
+        fun target() = provider.documentationTargets(fixture.editor, fixture.file, fixture.editor.caretModel.offset).single()
+        readAction { assertEquals("emit", target().computePresentation().presentableText) }
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        val pointer = readAction {
+            val target = target()
+            assertEquals("emit(%actual)", target.computePresentation().presentableText)
+            assertEquals("signature.txt:2", target.computePresentation().locationText)
+            val destination = target.navigatable as OpenFileDescriptor
+            assertEquals(include.virtualFile, destination.file)
+            assertEquals(included.indexOf("emit"), destination.offset)
+            target.createPointer()
+        }
+        assertTrue("&lt;from include&gt;" in computeDocumentationBlocking(pointer)?.html.orEmpty())
+        withContext(Dispatchers.EDT) {
+            val document = FileDocumentManager.getInstance().getDocument(include.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.setText(included.replace("%actual", "%updated")) }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertNull(pointer.dereference())
+            fixture.doHighlighting()
+        }
+        readAction {
+            assertNull(pointer.dereference())
+            assertEquals("emit(%updated)", target().computePresentation().presentableText)
+        }
     }
 
     @Test

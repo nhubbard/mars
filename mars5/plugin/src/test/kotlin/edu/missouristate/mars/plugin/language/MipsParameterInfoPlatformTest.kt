@@ -198,6 +198,39 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `direct hints use realized signatures and argument positions from plain includes`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro emit (%written, %obsolete)
+            .end_macro
+            .include "signature.txt"
+            emit(7, -27)
+            extra 4
+            nop
+        """.trimIndent()
+        val definitions = ".macro emit (%first, %second)\n.end_macro\n.macro extra (%only)\n.end_macro\n"
+        val include = withContext(Dispatchers.EDT) { fixture.addFileToProject("signature.txt", definitions) }
+        val current = configureNested(source)
+        val call = source.indexOf("emit(7")
+        val extra = source.indexOf("extra 4")
+        withContext(Dispatchers.EDT) {
+            assertEquals("emit (%written, <b>%obsolete</b>)", hintAt(call + "emit(7, ".length))
+            assertNull(hintAt(extra + "extra ".length))
+            fixture.doHighlighting()
+            assertEquals("emit (<b>%first</b>, %second)", hintAt(call + "emit(".length))
+            assertEquals("emit (%first, <b>%second</b>)", hintAt(call + "emit(7, -2".length))
+            assertNull(hintAt(call + "emit(7, -27)".length))
+            assertEquals("extra (<b>%only</b>)", hintAt(extra + "extra ".length))
+
+            val document = FileDocumentManager.getInstance().getDocument(include.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.setText(definitions.replace("%only", "%updated")) }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertNull(hintAt(extra + "extra ".length))
+            fixture.doHighlighting()
+            assertEquals("extra (<b>%updated</b>)", hintAt(extra + "extra ".length))
+        }
+    }
+
+    @Test
     fun `nested hints use the selected definitions and discard stale rows after an edit`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv CALL inner

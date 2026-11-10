@@ -75,7 +75,7 @@ internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
 )
 
-internal data class NestedMacroInvocation(val calls: List<MacroCall>, val argument: Int)
+internal data class AssembledMacroInvocation(val calls: List<MacroCall>, val argument: Int)
 
 internal data class MacroArityMismatch(val site: PsiElement, val name: String, val actual: Int, val expected: List<Int>)
 
@@ -287,20 +287,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val owner = operationOwner(position) ?: return emptyList()
         val site = operationSite(root, owner.operationHead)
         val definition = site?.macroDefinition?.takeIf { site.range.startOffset == position.textOffset }
-        if (definition == null || editorTimeline(root).hasIncompleteIncludes) {
-            val calls = assembledMacroCallsAt(root, position)
-            if (calls.isNotEmpty()) return calls.map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
-        }
+        val calls = assembledMacroCallsAt(root, position, hasLiveDefinition = definition != null)
+        if (calls.isNotEmpty()) return calls.map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
         val header = definition?.header ?: return emptyList()
         return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
     }
 
-    internal fun nestedMacroCallsAt(root: MipsFile, position: PsiElement): Set<MacroCall> {
-        if (macroBodyPrefix(root, position)?.openMacro == null) return emptySet()
-        return assembledMacroCallsAt(root, position)
-    }
-
-    private fun assembledMacroCallsAt(root: MipsFile, position: PsiElement): Set<MacroCall> {
+    internal fun assembledMacroCallsAt(root: MipsFile, position: PsiElement, hasLiveDefinition: Boolean): Set<MacroCall> {
+        if (hasLiveDefinition && !editorTimeline(root).hasIncompleteIncludes) return emptySet()
         return fromAssemblySymbols(root) { snapshot, path ->
             val calls = snapshot.symbols.macroCalls()[sourceTokenAt(root, path, position.textOffset)]
                 ?: return@fromAssemblySymbols null
@@ -376,8 +370,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return MacroInvocation(tokens, fullTokens, definitions.values.map { definition -> definition.parameters.map { it.value } })
     }
 
-    internal fun nestedMacroInvocation(root: MipsFile, head: PsiElement, caret: Int): NestedMacroInvocation? {
-        if (macroBodyPrefix(root, head)?.openMacro == null) return null
+    internal fun assembledMacroInvocation(root: MipsFile, head: PsiElement, caret: Int): AssembledMacroInvocation? {
+        if (DumbService.isDumb(project)) return null
+        val timeline = editorTimeline(root)
+        if (!timeline.hasIncompleteIncludes && timeline.macroAt(root, sourceLineStart(head)) == null) return null
         return fromAssemblySymbols(root) { snapshot, path ->
             val document = root.fileDocument
             val line = document.getLineNumber(head.textOffset)
@@ -405,7 +401,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     else -> index
                 }
             }
-            NestedMacroInvocation(active, arguments.distinct().singleOrNull() ?: -1)
+            AssembledMacroInvocation(active, arguments.distinct().singleOrNull() ?: -1)
         }
     }
 

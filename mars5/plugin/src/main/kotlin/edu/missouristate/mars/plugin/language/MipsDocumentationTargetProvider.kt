@@ -41,17 +41,18 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
         val candidate = operationOwner(token)
         if (candidate != null) {
             val analysis = file.project.service<MarsAnalysisService>()
-            val calls = analysis.nestedMacroCallsAt(file, token)
+            val site = analysis.operationSite(file, candidate.operationHead)?.takeIf { it.range.startOffset == token.textOffset }
+            val definition = site?.macroDefinition
+            val calls = analysis.assembledMacroCallsAt(file, token, hasLiveDefinition = definition != null)
             if (calls.isNotEmpty()) {
                 return calls.distinctBy { Triple(it.definition(), it.name(), it.parameters()) }.mapNotNull { call ->
                     val (source, offset) = analysis.sourceTokenPosition(call.definition()) ?: return@mapNotNull null
                     MacroDocumentation(token, source, offset, call.name(), call.parameters(), expanded = true)
                 }.sortedWith(compareBy({ it.source.viewProvider.virtualFile.path }, { it.nameOffset }, { it.signature }))
             }
-            val site = analysis.operationSite(file, candidate.operationHead) ?: return emptyList()
-            if (site.range.startOffset != token.textOffset) return emptyList()
+            if (site == null) return emptyList()
             if (site.type == TokenTypes.IDENTIFIER) {
-                val definition = site.macroDefinition ?: return emptyList()
+                if (definition == null) return emptyList()
                 return listOf(MacroDocumentation(
                     token, definition.header.containingFile, definition.nameOffset,
                     definition.name, definition.parameters.map { it.value }, expanded = false,

@@ -56,7 +56,7 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val file = context.file as MipsFile
         val analysis = file.project.service<MarsAnalysisService>()
         val head = owner.operationHead
-        analysis.nestedMacroInvocation(file, head, context.offset)?.let { invocation ->
+        analysis.assembledMacroInvocation(file, head, context.offset)?.let { invocation ->
             val rows = invocation.calls.map { macroRow(it.name(), it.parameters()) }.distinct().sortedBy(MipsParameterRow::text)
             return Hint(rows, invocation.argument).takeIf { rows.isNotEmpty() }
         }
