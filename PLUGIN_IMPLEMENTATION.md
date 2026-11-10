@@ -442,6 +442,14 @@ operands. Segment and list changes caused by executing a macro require expansion
 
 ## External storage declarations
 
+Within a macro, both percent and SPIM operands of `.extern` are treated as
+references to the corresponding formal. The generated parser keeps the same
+operand node for both spellings, so Rename can switch between them and preserve
+the PSI shape. A parameterized operand is absent from the written symbol list.
+The assembler creates storage under the supplied argument when the macro runs
+during assembly. An equivalence that supplies the operand keeps its own
+navigation target while adopting the effective macro parameter color.
+
 The generated parser preserves the complete `.extern` payload and exposes addressable names
 as native declarations. The source cache binds the first valid reservation for each name in
 include order. Navigation and completion share that cache, including when an included editor

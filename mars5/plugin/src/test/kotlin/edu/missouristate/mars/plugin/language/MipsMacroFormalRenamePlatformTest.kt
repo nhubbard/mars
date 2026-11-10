@@ -14,6 +14,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.IncorrectOperationException
@@ -47,7 +48,7 @@ class MipsMacroFormalRenamePlatformTest {
             .data
             .asciiz "%value"
         """.trimIndent()
-        val bodyText = "li REG, %value # leave %value in the comment\n"
+        val bodyText = "li REG, %value # leave %value in the comment\n.extern %value 4\n"
         val (root, body) = withContext(Dispatchers.EDT) {
             val body = fixture.addFileToProject("body.s", bodyText)
             val root = fixture.addFileToProject("rename.asm", rootText)
@@ -82,8 +83,9 @@ class MipsMacroFormalRenamePlatformTest {
             }
             RenameProcessor(current, target, newName, false, false).run()
             val renamedRoot = rootText.replaceFirst("(%value)", "($newName)").replaceFirst("\$a1, %value", "\$a1, $newName")
-            val renamedBody = bodyText.replaceFirst("%value", newName)
+            val renamedBody = bodyText.replaceFirst("%value", newName).replace(".extern %value", ".extern $newName")
             assertSources(renamedRoot, renamedBody)
+            PsiTestUtil.checkFileStructure(body)
 
             val editor = FileEditorManager.getInstance(current).selectedEditor
             val undo = UndoManager.getInstance(current)
@@ -112,7 +114,6 @@ class MipsMacroFormalRenamePlatformTest {
             Triple(".macro emit (%arg)\nli \$a0, %arg-2\n.end_macro", "\$spare", "conflicts"),
             Triple(".eqv VALUE %arg\n.macro emit (%arg)\nli \$a0, VALUE\n.end_macro", "%next", "supplied through an equivalence"),
             Triple(".macro emit (\$arg)\n.eqv EXPORTED \$arg\n.end_macro", "%next", "supplied through an equivalence"),
-            Triple(".macro emit (\$arg)\n.extern \$arg 4\n.end_macro", "%next", "cannot be rewritten"),
             Triple(".macro emit (%arg)\nli \$a0, @\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\n.include \"absent.s\"\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\nnop", "%next", "closed macro"),
@@ -128,6 +129,14 @@ class MipsMacroFormalRenamePlatformTest {
                 }
                 assertEquals(source, file.text)
             }
+        }
+        val nested = withContext(Dispatchers.EDT) {
+            fixture.configureByText("rename-nested.asm", ".macro emit (%arg)\n.macro nested (%arg)\n.end_macro\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+            val problem = assertThrows(IncorrectOperationException::class.java) { formals(nested).first().checkSetName("%next") }
+            assertTrue(problem.message!!.contains("cannot be rewritten"))
         }
     }
 

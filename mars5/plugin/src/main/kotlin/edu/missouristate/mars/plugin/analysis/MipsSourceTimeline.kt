@@ -71,7 +71,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.Header -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> {
-                val expanded = physical.bind(replacement) ?: continue
+                val expanded = physical.bind(macro != null, replacement)
                 if (expanded.replaced) cursor.locations.replacedExternals.add(physical.offset)
                 expanded.reservation ?: continue
             }

@@ -13,6 +13,7 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.nio.file.Path
@@ -59,6 +60,63 @@ class MipsExternalReferencesPlatformTest {
         assertEquals(8, target(".extern nop 4\nla \$t0, n<caret>op\n")?.offset)
         val renamed = ".eqv STORAGE shared\n.extern STORAGE 4\nla \$t0, sha<caret>red\n"
         assertEquals(renamed.lastIndexOf("STORAGE"), target(renamed)?.offset)
+    }
+
+    @Test
+    fun `external operands bind macro formals and keep storage names out of the outline until expansion`(
+        @TempDir directory: Path,
+    ) = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv RESERVE .extern
+            .eqv NAME ${'$'}slot
+            .macro reserve (${'$'}slot, %other)
+              .extern ${'$'}slot 4
+              .extern %other 4
+              .extern NAME 4
+              RESERVE ${'$'}slot 4
+            .end_macro
+            reserve(payload, second)
+            .extern ${'$'}standalone 4
+            .extern %unaddressable 4
+            .data
+            .word payload, second
+        """.trimIndent()
+        val project = project.get()
+        val entry = directory.resolve("extern.asm").also { it.writeText(source) }
+        val context = project.service<MarsSessionService>().context
+        context.assemble(listOf(entry), null, true, false)
+        val memory = context.memory
+        assertEquals(memory.externBaseAddress, context.symbolTable.getAddress("payload"))
+        assertEquals(memory.externBaseAddress + 4, context.symbolTable.getAddress("second"))
+        assertEquals(memory.externBaseAddress, memory.getWordNoNotify(memory.dataBaseAddress))
+        assertEquals(memory.externBaseAddress + 4, memory.getWordNoNotify(memory.dataBaseAddress + 4))
+
+        configure(source)
+        val slot = source.indexOf(".extern \$slot") + ".extern ".length
+        val other = source.indexOf(".extern %other") + ".extern ".length
+        val alias = source.indexOf(".extern NAME") + ".extern ".length
+        readAction {
+            val file = fixture.file as MipsFile
+            assertTrue(PsiTreeUtil.collectElementsOfType(file, PsiErrorElement::class.java).isEmpty())
+            val expected = mapOf(slot to source.indexOf("(\$slot") + 1, other to source.indexOf("%other"), alias to source.indexOf("NAME"))
+            for ((use, declaration) in expected) {
+                assertEquals(declaration, file.findReferenceAt(use)?.resolve()?.textOffset)
+            }
+            val timeline = project.service<MarsAnalysisService>().editorTimeline(file)
+            assertTrue(timeline.replacesExternal(file, slot))
+            assertTrue(timeline.replacesExternal(file, other))
+            assertTrue(timeline.replacesExternal(file, alias))
+            assertTrue(timeline.expandedExternalsIn(file).isEmpty())
+            assertEquals(setOf("\$standalone"), timeline.externalStorage.keys)
+        }
+        withContext(Dispatchers.EDT) {
+            val highlights = fixture.doHighlighting()
+            for ((offset, length) in mapOf(slot to 5, other to 6, alias to 4)) {
+                assertEquals(listOf(macroParameterColor), highlights
+                    .filter { it.startOffset == offset && it.endOffset == offset + length }
+                    .mapNotNull { it.forcedTextAttributesKey })
+            }
+        }
     }
 
     @Test

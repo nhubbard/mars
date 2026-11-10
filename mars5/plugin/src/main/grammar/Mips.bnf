@@ -84,9 +84,9 @@ ignored_set ::= SET assembly_token* {elementType=directive_statement}
 // Only the first token can supply the address, including through .eqv expansion.
 segment_switch ::= SEGMENT segment_address_symbol? assembly_token* {elementType=directive_statement}
 segment_address_symbol ::= WORD | DOLLAR_WORD
-// The assembler can reserve storage under any token spelling. Only addressable names get named PSI.
+// Retain the same operand node when renaming a macro formal between SPIM and percent spellings.
 external_statement ::= EXTERN external_name? raw_operand* {elementType=directive_statement}
-external_name ::= WORD | DOLLAR_WORD | MNEMONIC
+external_name ::= WORD | DOLLAR_WORD | MNEMONIC | PARAMETER
 private raw_operand ::= reference_expr | assembly_token
 // Directive-specific semantic checks use the canonical Java assembler catalog.
 directive_statement ::= (DIRECTIVE | INCLUDE) operand_line? {pin=1}

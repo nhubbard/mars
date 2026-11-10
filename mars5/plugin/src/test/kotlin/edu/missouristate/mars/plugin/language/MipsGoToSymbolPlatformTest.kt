@@ -232,6 +232,10 @@ class MipsGoToSymbolPlatformTest {
             .extern literal 4
             .extern REGISTER 4
             SWITCH: .extern obsolete 4
+            .macro reserve (${'$'}slot, ${'$'}broken)
+              .extern ${'$'}slot 4
+              .extern ${'$'}broken @
+            .end_macro
         """.trimIndent()
         val body = withContext(Dispatchers.EDT) {
             val body = fixture.addFileToProject("external-symbols.s", source)
@@ -257,7 +261,7 @@ class MipsGoToSymbolPlatformTest {
                 assertEquals(source.indexOf(origin), result.offset)
             }
             assertEquals(SymbolKind.EXTERNAL, (items("literal", scope).single() as MipsDeclaration).kind)
-            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$t0")) {
+            for (missing in listOf("STORAGE", "REGISTER", "obsolete", "\$t0", "\$slot", "\$broken")) {
                 assertTrue(items(missing, scope).isEmpty(), missing)
             }
         }

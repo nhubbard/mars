@@ -157,17 +157,18 @@ internal sealed interface MipsSourceEvent {
     class ExternalDeclaration(private val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
 
-        fun bind(replacement: (String) -> String?): BoundExternal? {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): BoundExternal {
             val directive = declaration.parent.firstChild
+            val parameter = inMacro && Macro.tokenIsMacroParameter(declaration.nameIdentifier!!.text, true)
             val errors = ErrorList()
             val expanded = Tokenizer.tokenizeMappedLine(
                 sourceLine(directive), errors, replacement, ProgressManager::checkCanceled,
             )
-            if (errors.errorsOccurred()) return null
+            if (errors.errorsOccurred()) return BoundExternal(parameter, null)
             val tokens = expanded.tokens()
             tokens.discardTrailingComment()
-            val replaced = offset - directive.textOffset in expanded.substitutionOffsets()
-            return BoundExternal(replaced, externalReservation(declaration, tokens, 0))
+            val replaced = parameter || offset - directive.textOffset in expanded.substitutionOffsets()
+            return BoundExternal(replaced, externalReservation(declaration, tokens, 0, inMacro))
         }
     }
 
@@ -220,7 +221,7 @@ private fun expandedDirective(
             if (tokens.size() == operation + 1) MipsSourceEvent.End(offset)
             else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
         }
-        Directives.EXTERN -> externalReservation(head, tokens, operation)
+        Directives.EXTERN -> externalReservation(head, tokens, operation, inMacro)
         in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
         else -> null
     }
@@ -347,11 +348,12 @@ private fun writtenRejectedMacroHeader(element: PsiElement): MipsSourceEvent? {
     return MipsSourceEvent.LabeledMacro(issue, tokens[0].value)
 }
 
-private fun externalReservation(site: PsiElement, tokens: TokenList, operation: Int): MipsSourceEvent.External? {
+private fun externalReservation(site: PsiElement, tokens: TokenList, operation: Int, inMacro: Boolean): MipsSourceEvent.External? {
     if (tokens.size() != operation + 3) return null
     val size = tokens[operation + 2]
     if (!TokenTypes.isIntegerTokenType(size.type) || Binary.stringToInt(size.value) < 0) return null
     val name = tokens[operation + 1]
     if (name.type != TokenTypes.IDENTIFIER && name.type != TokenTypes.OPERATOR) return null
+    if (inMacro && Macro.tokenIsMacroParameter(name.value, true)) return null
     return MipsSourceEvent.External(site, name.value)
 }

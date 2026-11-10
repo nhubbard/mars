@@ -14,8 +14,8 @@ import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.MipsTypes
 
 internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapperPsiElement(node), PsiNameIdentifierOwner {
-    override fun getNameIdentifier() = node.findChildByType(NAMES)?.psi
-    override fun getName() = nameIdentifier?.text
+    override fun getNameIdentifier() = node.findChildByType(if (kind == SymbolKind.EXTERNAL) EXTERNAL_NAMES else NAMES)?.psi
+    override fun getName() = nameIdentifier?.takeUnless { it.node.elementType == PARAMETER }?.text
     override fun getTextOffset() = nameIdentifier?.textOffset ?: super.getTextOffset()
 
     override fun getPresentation() = PresentationData(
@@ -32,10 +32,12 @@ internal class MipsDeclaration(node: ASTNode, val kind: SymbolKind) : ASTWrapper
 
     companion object {
         private val bundle = DynamicBundle(MipsDeclaration::class.java, "messages.MarsBundle")
+        private val PARAMETER = MipsTypes.psi("PARAMETER")
         private val NAMES = TokenSet.create(
             MipsTypes.psi("WORD"), MipsTypes.psi("MNEMONIC"), MipsTypes.psi("DIRECTIVE"),
             MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("REGISTER"), MipsTypes.psi("SET"),
         )
+        private val EXTERNAL_NAMES = TokenSet.orSet(NAMES, TokenSet.create(PARAMETER))
 
         // An indexed offset may outlive the PSI it described. Verify the current identifier.
         fun findAt(file: PsiFile?, offset: Int, name: String): MipsDeclaration? {

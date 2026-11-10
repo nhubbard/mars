@@ -41,11 +41,11 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         when {
             element is MipsDeclaration -> {
                 val identifier = element.nameIdentifier ?: return
-                if (element.kind == SymbolKind.LABEL && (identifier as MipsSymbolToken).highlightingColor() != null) return
+                if (element.kind in contextualDeclarations && (identifier as MipsSymbolToken).highlightingColor() != null) return
                 if (element.kind == SymbolKind.CONSTANT && identifier.elementType == dollarWord &&
                     (identifier as MipsSymbolToken).highlightingColor() != null
                 ) return
-                holder.color(identifier.textRange, element.kind.color)
+                if (element.name != null) holder.color(identifier.textRange, element.kind.color)
             }
             element.elementType in operationOwners -> highlightOperation(element, holder)
             element.elementType == macroParameter -> holder.color(element.textRange, macroParameterColor)
@@ -99,6 +99,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
     }
 
     private companion object {
+        val contextualDeclarations = setOf(SymbolKind.LABEL, SymbolKind.EXTERNAL)
         val macroParameter = MipsTypes.psi("MACRO_PARAMETER")
         val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
         val addition = MipsTypes.psi("ADD_EXPR")
