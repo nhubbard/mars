@@ -166,6 +166,10 @@ public class Macro {
       return entry == null ? null : entry.getValue();
     }
 
+    TokenOrigin tokenOriginStartingAt(int column) {
+      return origins.get(text.length() - column + 1);
+    }
+
     Token originAt(int column) {
       var origin = tokenOriginAt(column);
       return origin == null ? null : origin.diagnostic();

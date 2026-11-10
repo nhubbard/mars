@@ -384,6 +384,12 @@ For example, renaming `BASE` updates the replacement in `.eqv VIA BASE` when `VI
 expands through `BASE`. The `VIA` name, its invocations, and the effective replacement
 value stay intact.
 
+When a macro builds a replacement from body literals and forwarded arguments, the
+assembler retains the written position of each provable token. Rename can edit a
+literal in the macro body or an argument at the call without changing the generated
+alias's name. A synthesized name, such as a macro-private name with a generated suffix,
+can still prevent Rename when there is no corresponding written token.
+
 The assembler records equivalence bindings per entry, including substitutions in
 ignored directives. Rename checks that every definition and substitution has the
 expected binding after the edit, even when the generated instructions are identical.

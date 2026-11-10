@@ -456,9 +456,24 @@ public class Tokenizer {
   }
 
   private record SourceEdit(
-      int start, int removedLength, int insertedLength, int originalStart, SourceToken source) {}
+      int start, int removedLength, int originalStart, EquivalenceReplacement replacement) {
+    int insertedLength() {
+      return replacement.text().length();
+    }
+  }
 
-  private record EquivalenceReplacement(String text, SourceToken source, SourceToken definition) {}
+  private record ReplacementSpelling(int end, SourceToken source) {}
+
+  private record EquivalenceReplacement(
+      String text, SourceToken source, SourceToken definition, Map<Integer, ReplacementSpelling> spellings) {
+    SourceToken spelling(int start, int end) {
+      if (source != null) {
+        return new SourceToken(source.location(), source.column() + start);
+      }
+      var token = spellings.get(start);
+      return token != null && token.end() == end ? token.source() : null;
+    }
+  }
 
   Set<EquivalenceOccurrence> equivalenceOccurrences() {
     return equivalenceOccurrences;
@@ -506,7 +521,7 @@ public class Tokenizer {
     TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
     return processEqv(null, 1, line, tokens, name -> {
       var text = replacements.apply(name);
-      return text == null ? null : new EquivalenceReplacement(text, null, null);
+      return text == null ? null : new EquivalenceReplacement(text, null, null, Map.of());
     }, checkCancellation, edits, null);
   }
 
@@ -789,8 +804,7 @@ public class Tokenizer {
         var spelling = spellingSource(edits, start, end, location, expansion);
         equivalenceOccurrences.add(new EquivalenceOccurrence(site, spelling, definition, symbol, false));
       }
-      edits.add(new SourceEdit(start, end - start, replacement.text().length(), originalColumn - 1,
-          replacement.source()));
+      edits.add(new SourceEdit(start, end - start, originalColumn - 1, replacement));
       theLine = theLine.substring(0, start) + replacement.text() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = scanLine(program, lineNum, theLine, checkCancellation);
@@ -849,18 +863,26 @@ public class Tokenizer {
         start += delta;
         end += delta;
       } else if (end > edit.start()) {
-        var source = edit.source();
-        if (source == null || start < edit.start() || end > replacementEnd) {
+        if (start < edit.start() || end > replacementEnd) {
           return null;
         }
-        return new SourceToken(source.location(), source.column() + start - edit.start());
+        return edit.replacement().spelling(start - edit.start(), end - edit.start());
       }
     }
     if (expansion != null) {
-      var origin = expansion.tokenOriginAt(start + 1);
+      var origin = expansion.tokenOriginStartingAt(start + 1);
       if (origin != null) {
         var token = origin.diagnostic();
-        return token.equivalenceSource() == null ? token.diagnosticSite() : token.equivalenceSource();
+        var value = token.getValue();
+        if (value.length() == end - start && expansion.text().startsWith(value, start)) {
+          var aliasSpelling = token.equivalenceSource();
+          if (aliasSpelling != null) {
+            return aliasSpelling;
+          }
+          if (value.equals(token.getDiagnosticOrigin().getValue())) {
+            return token.diagnosticSite();
+          }
+        }
       }
       return null;
     }
@@ -926,7 +948,21 @@ public class Tokenizer {
     var location = physicalLocation(program, lineNum);
     var site = location == null ? null : equivalenceSite(name, edits, location, expansion);
     var source = spellingSource(edits, start, end, expansion == null ? location : null, null);
-    var replacement = new EquivalenceReplacement(expression, source, site);
+    Map<Integer, ReplacementSpelling> spellings = Map.of();
+    if (source == null && location != null) {
+      // Macro parameters may supply separate tokens in the same replacement.
+      spellings = new HashMap<>();
+      for (int i = directive + 2; i <= last; i++) {
+        var token = tokens.get(i);
+        int tokenStart = token.getStartPos() - 1;
+        int tokenEnd = token.getEndPos() - 1;
+        var spelling = spellingSource(edits, tokenStart, tokenEnd, location, expansion);
+        if (spelling != null) {
+          spellings.put(tokenStart - start, new ReplacementSpelling(tokenEnd - start, spelling));
+        }
+      }
+    }
+    var replacement = new EquivalenceReplacement(expression, source, site, spellings);
     var previous = equivalents.putIfAbsent(symbol, replacement);
     if (previous != null && !previous.text().equals(expression)) {
       addLineError(program, lineNum, originalColumn(name, edits),

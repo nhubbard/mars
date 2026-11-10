@@ -388,33 +388,61 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
-    fun `rename refuses unproven macro-produced equivalence spellings`() = timeoutRunBlocking<Unit> {
+    fun `native rename follows separate tokens in a macro-produced replacement`() = timeoutRunBlocking<Unit> {
         val source = """
             BASE: nop
             j BASE
             other: nop
             .eqv DEFINE .eqv
-            .macro define (%directive)
-                %directive CHAIN BASE
+            .macro define (%directive, %destination)
+                %directive PAIR BASE, %destination
             .end_macro
             .macro consume
-                li ${'$'}a0, CHAIN
+                .word PAIR
             .end_macro
             .eqv BASE 42
-            define DEFINE
+            define DEFINE, other
+            .data
             consume
         """.trimIndent()
         val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
-        readAction {
+        withContext(Dispatchers.EDT) {
             val target = constants(file).last()
+            val offset = source.indexOf("BASE, %destination")
+            assertEquals(offset, usages(target).single().segment!!.startOffset)
+            RenameProcessor(project, target, "VALUE", false, false).run()
+            val renamed = source.replace(".eqv BASE 42", ".eqv VALUE 42").replace("PAIR BASE", "PAIR VALUE")
+            assertEquals(renamed, file.text)
+
+            val other = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).single { it.name == "other" }
+            assertEquals(renamed.lastIndexOf("other"), usages(other).single().segment!!.startOffset)
+            RenameProcessor(project, other, "destination", false, false).run()
+            assertEquals(renamed.replace("other", "destination"), file.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses an alias whose use is a synthesized hygienic name`() = timeoutRunBlocking<Unit> {
+        val source = """
+            BASE_M0: nop
+            j BASE_M0
+            .macro emit
+                BASE: nop
+                j BASE
+            .end_macro
+            .eqv BASE_M0 branch_label
+            emit
+        """.trimIndent()
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = constants(file).single()
             assertTrue(usages(target).isEmpty())
             val conflict = conflicts(target, "VALUE", emptyList())
             assertTrue(conflict.contains("traceable spellings"), conflict)
             val label = label(file)
-            assertTrue(conflicts(label, "VALUE", usages(label)).contains("ambiguous"))
-            val other = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).single { it.name == "other" }
-            assertEquals("", conflicts(other, "unrelated", usages(other)))
+            assertEquals("", conflicts(label, "unrelated", usages(label)))
             assertEquals(source, file.text)
         }
     }
