@@ -7,20 +7,16 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.DumbAware
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.elementType
-import com.intellij.util.text.CharArrayUtil
-import edu.missouristate.mars.plugin.language.syntax.inspectMipsInclude
+import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 
 /** The include prepass examines the physical line before resolving symbols or choosing a build entry. */
 internal class MipsUnterminatedIncludeAnnotator : Annotator, DumbAware {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         if (element.elementType != unclosedString) return
-        val range = element.textRange
-        val source = element.containingFile.viewProvider.contents
-        val start = CharArrayUtil.shiftBackwardUntil(source, range.startOffset - 1, "\r\n") + 1
-        val include = inspectMipsInclude(source, start, range.endOffset) ?: return
-        if (start + include.offset() != range.startOffset) return
+        if (element.textOffset !in mipsIncludeSites(element.containingFile).unterminated) return
 
-        holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.include.unterminated")).range(range).create()
+        holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.include.unterminated"))
+            .range(element.textRange).create()
     }
 
     private companion object {

@@ -21,7 +21,7 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationOwners
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
-import edu.missouristate.mars.plugin.language.psi.mipsIncludePaths
+import edu.missouristate.mars.plugin.language.psi.mipsIncludeSites
 import edu.missouristate.mars.util.Binary
 
 internal sealed interface MipsSourceEvent {
@@ -143,6 +143,8 @@ internal sealed interface MipsSourceEvent {
         override val offset = literal.textOffset
     }
 
+    data class UnterminatedInclude(override val offset: Int) : MipsSourceEvent
+
     data class DataDirective(override val offset: Int, val directive: Directives) : Effective
 
     data class Equivalence(val site: PsiElement, val name: String, val replacement: String) : Effective {
@@ -222,8 +224,10 @@ private fun expandedDirective(
 
 /** Physical source events that affect macro boundaries or the current data list. */
 internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedValuesManager.getCachedValue(file) {
-    val paths = mipsIncludePaths(file)
+    val includes = mipsIncludeSites(file)
     val events = buildList {
+        // The prepass sees these before any syntax on the same physical line.
+        includes.unterminated.values.forEach { add(MipsSourceEvent.UnterminatedInclude(it)) }
         for (element in SyntaxTraverser.psiTraverser(file).filterTypes { it in sourceEventTypes || it in operationOwners }) {
             ProgressManager.checkCanceled()
             when (element) {
@@ -238,7 +242,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                     }
                     SymbolKind.EXTERNAL -> add(MipsSourceEvent.ExternalDeclaration(element))
                 }
-                is MipsStringLiteral -> paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
+                is MipsStringLiteral -> includes.paths[element.textOffset]?.let { add(MipsSourceEvent.Include(element, it)) }
                 else -> when (element.node.elementType) {
                     in operationOwners, dataContinuation -> add(MipsSourceEvent.OperationCandidate(element))
                     directiveStatement -> {
@@ -251,7 +255,8 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
             }
         }
     }
-    CachedValueProvider.Result.create(events, file)
+    val ordered = if (includes.unterminated.isEmpty()) events else events.sortedBy(MipsSourceEvent::offset)
+    CachedValueProvider.Result.create(ordered, file)
 }
 
 internal fun macroLineTokens(element: PsiElement, fromLineStart: Boolean = false): TokenList {

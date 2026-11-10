@@ -65,6 +65,10 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             continue
         }
         val event = when (physical) {
+            is MipsSourceEvent.UnterminatedInclude -> {
+                incompleteIncludes = true
+                continue
+            }
             is MipsSourceEvent.Header -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> {
                 val expanded = physical.bind(replacement) ?: continue

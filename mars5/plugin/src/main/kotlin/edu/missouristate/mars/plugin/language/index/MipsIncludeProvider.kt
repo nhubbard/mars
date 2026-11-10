@@ -10,6 +10,7 @@ import com.intellij.psi.impl.include.FileIncludeProvider
 import com.intellij.util.Consumer
 import com.intellij.util.indexing.FileContent
 import com.intellij.util.indexing.IndexedFile
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -36,16 +37,20 @@ internal fun resolveIndexedMipsInclude(info: FileIncludeInfo, context: PsiFile):
 
 internal fun collectMipsIncludes(text: CharSequence): Array<FileIncludeInfo> {
     val includes = ArrayList<FileIncludeInfo>()
+    forEachMipsInclude(text) { start, include ->
+        val path = include.path()
+        if (path != null) includes.add(FileIncludeInfo(path, start + include.offset()))
+    }
+    return includes.toTypedArray()
+}
+
+internal fun forEachMipsInclude(text: CharSequence, visit: (Int, Tokenizer.IncludePath) -> Unit) {
     val lines = LineTokenizer(text)
     while (!lines.atEnd()) {
         ProgressManager.checkCanceled()
         val start = lines.offset
         val include = inspectMipsInclude(text, start, start + lines.length)
-        val path = include?.path()
-        if (path != null) {
-            includes.add(FileIncludeInfo(path, start + include.offset()))
-        }
+        if (include != null) visit(start, include)
         lines.advance()
     }
-    return includes.toTypedArray()
 }

@@ -7,6 +7,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
@@ -284,6 +285,60 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `an unterminated include takes precedence over macro errors on its line and later lines`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv OPEN .macro
+            .end_macro
+            OPEN .include "start.s
+            .end_macro
+            .macro second
+            .include "finish.s
+        """.trimIndent()
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("start.s", ".macro first\n")
+            fixture.addFileToProject("finish.s", ".end_macro\n")
+            fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertEquals(
+                listOf(".end_macro" to unmatchedEndMessage, "\"start.s" to unterminatedIncludeMessage, "\"finish.s" to unterminatedIncludeMessage),
+                errors(),
+            )
+            WriteCommandAction.runWriteCommandAction(project) {
+                fixture.editor.document.setText(source.replace("start.s", "start.s\"").replace("finish.s", "finish.s\""))
+            }
+            assertEquals(listOf(".end_macro" to unmatchedEndMessage), errors())
+            WriteCommandAction.runWriteCommandAction(project) {
+                fixture.editor.document.setText(".macro second\n.set \"unfinished operand\n")
+            }
+            assertEquals(listOf(".macro" to missingEndMessage), errors())
+        }
+    }
+
+    @Test
+    fun `an unterminated include in a dependency suppresses later macro errors in the entry`() = timeoutRunBlocking<Unit> {
+        val project = projectFixture.get()
+        val dependency = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("ordinary.s", "nop\n")
+            val dependency = fixture.addFileToProject("dependency.s", ".include \"ordinary.s")
+            val entry = fixture.addFileToProject("entry.asm", ".macro outer\n.include \"dependency.s\"\n.macro inner\n.end_macro\n")
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            dependency
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertTrue(errors().isEmpty())
+            val documents = PsiDocumentManager.getInstance(project)
+            val document = documents.getDocument(dependency)!!
+            WriteCommandAction.runWriteCommandAction(project) { document.insertString(document.textLength, "\"") }
+            documents.commitDocument(document)
+            assertEquals(listOf(".macro" to nestedMacroMessage), errors())
+        }
+    }
+
+    @Test
     fun `nested openers report their written tokens without replacing the outer macro`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """
@@ -513,6 +568,7 @@ class MipsMacroInspectionPlatformTest {
     private val missingEndMessage = "Missing .end_macro for this macro"
     private val nestedMacroMessage = "Nested macros are not allowed"
     private val invalidNameMessage = "Invalid MARS macro name"
+    private val unterminatedIncludeMessage = "Unterminated .include path"
 
     private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
         .filter { it.severity == HighlightSeverity.ERROR }
