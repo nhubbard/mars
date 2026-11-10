@@ -963,6 +963,9 @@ when the open file belongs to multiple possible entries. It uses the same physic
 operand and quote offsets as the assembler. IntelliJ runs this check during indexing.
 Its standard external annotation pass waits for the local error to clear. Closing the
 quote removes the error and makes the path eligible for references and include traversal.
+The same local check highlights missing files, invalid paths, and directories
+used as include operands. It resolves local paths through the build capture’s VFS
+lookup, so files excluded from the editor index can still be valid includes.
 A clean IntelliJ 2026.3 launch verified this in a file shared by two entries. Go to
 Declaration opened the completed path, and Run printed the value from the included
 file. All 1,782 tests and both parser coverage gates passed.

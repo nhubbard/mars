@@ -23,6 +23,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.api.AssemblyError
@@ -689,6 +690,40 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `physical missing includes are highlighted even with ambiguous entry and syntax errors`() = timeoutRunBlocking<Unit> {
+        val shared = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("first.asm", ".include \"shared.s\"\n")
+            fixture.addFileToProject("second.asm", ".include \"shared.s\"\n")
+            fixture.tempDirFixture.createFile("ignored.inc~", "nop\n")
+            fixture.tempDirFixture.findOrCreateDir("directory")
+            val source = """
+                .include "missing.s"
+                .include "directory"
+                .include "ignored.inc~"
+                .word @
+            """.trimIndent()
+            fixture.addFileToProject("shared.s", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertNull(annotator.collectInformation(fixture.file))
+            fun pathErrors() = fixture.doHighlighting().filter { it.description?.startsWith("Error reading include file") == true }
+                .map { fixture.file.text.substring(it.startOffset, it.endOffset) }.toSet()
+            assertEquals(setOf("\"missing.s\"", "\"directory\""), pathErrors())
+            fixture.addFileToProject("missing.s", "nop\n")
+            assertEquals(setOf("\"directory\""), pathErrors())
+            edit(shared, ".include \"missing.s\"\n.include \"ignored.inc~\"\n")
+            assertTrue(pathErrors().isEmpty())
+            val invalid = "\"bad\u0000name\""
+            edit(shared, ".include $invalid\n")
+            assertEquals(setOf(invalid), pathErrors())
+            val detached = LightVirtualFile("detached.asm", MipsFileType, ".include \"missing.s\"\n")
+            fixture.configureFromExistingVirtualFile(detached)
+            assertTrue(pathErrors().isEmpty())
+        }
+    }
+
+    @Test
     fun `analysis follows unique or selected entries and rejects obsolete include results`() = timeoutRunBlocking<Unit> {
         val (main, other, dependency) = withContext(Dispatchers.EDT) {
             val first = fixture.addFileToProject("first.s", ".include \"dependency.s\"\n.include \"part.s\"\n").virtualFile
@@ -769,8 +804,8 @@ class MipsAssemblyAnnotatorPlatformTest {
                 fixture.configureFromExistingVirtualFile(file)
                 assertNull(annotator.collectInformation(fixture.file))
                 val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-                val error = errors.single()
-                assertEquals("Recursive .include cycle through $target", error.description)
+                val error = errors.single { it.description == "Recursive .include cycle through $target" }
+                assertEquals(if (file == first) 2 else 1, errors.size)
                 assertEquals("\"$target\"", fixture.file.text.substring(error.startOffset, error.endOffset))
             }
         }
@@ -788,7 +823,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         withContext(Dispatchers.EDT) {
             val errors = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
-            assertEquals("Recursive .include cycle through b.s", errors.single().description)
+            assertEquals(setOf("Recursive .include cycle through b.s", "Error reading include file missing.s"), errors.map { it.description }.toSet())
         }
 
         project.service<MarsBuildService>().assemble(first.toNioPath())
