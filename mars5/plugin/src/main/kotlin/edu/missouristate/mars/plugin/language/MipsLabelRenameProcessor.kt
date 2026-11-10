@@ -11,6 +11,7 @@ import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.refactoring.listeners.RefactoringElementListener
@@ -34,10 +35,11 @@ import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.analysis.assembleIn
+import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
 import edu.missouristate.mars.plugin.analysis.collectEditorAssembly
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
-import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex.Companion.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -136,8 +138,8 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val vfs = VirtualFileManager.getInstance()
     val psi = PsiManager.getInstance(project)
     for (path in documents.keys) {
-        val source = vfs.findFileByNioPath(path)!!
-        if (psi.findFile(source) !is MipsFile) throw labelRenameError("label.rename.scope")
+        val source = psi.findFile(vfs.findFileByNioPath(path)!!)
+        if (source !is MipsFile && source !is PsiPlainTextFile) throw labelRenameError("label.rename.scope")
     }
     val document = documents.getValue(capture.source)
     val line = document.getLineNumber(target.textOffset)
@@ -156,18 +158,22 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val sites = references + declaration
     val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(LabelEdit::path, LabelEdit::range)
     val entryFile = vfs.findFileByNioPath(entry)!!
-    for (path in edits.keys) {
-        val included = psi.findFile(vfs.findFileByNioPath(path)!!) as MipsFile
-        if (mipsAssemblyRoots(included) != listOf(entryFile)) throw labelRenameError("label.rename.scope")
+    val editedFiles = edits.keys.map { vfs.findFileByNioPath(it)!! }
+    for (source in editedFiles) {
+        // A plain-text parent has no reverse index entry. The forward check below covers those edges.
+        if ((mipsAssemblyRoots(project, source) - source).any { it != entryFile }) throw labelRenameError("label.rename.scope")
     }
-    // Reverse include indexes stop at plain text. Check the indexed assembly seeds forward as well.
+    val editedPhysicalFiles = editedFiles.mapTo(HashSet()) { it.canonicalFile }
+    // Follow the assembler's include prepass from other indexed entries, including through plain text.
     val seeds = FileBasedIndex.getInstance().getContainingFiles(MipsDeclarationIndex.NAME, EXPANSION_SEED,
         GlobalSearchScope.projectScope(project))
     for (seed in seeds) {
         ProgressManager.checkCanceled()
         if (seed.toNioPath() in documents) continue
-        val other = mipsSourceTimeline(psi.findFile(seed) as MipsFile)
-        if (other.sourceFiles().any { it.virtualFile.toNioPath() in edits }) throw labelRenameError("label.rename.scope")
+        val other = collectBackgroundAssemblySources(project, MarsSourceSet(seed.toNioPath()))
+        if (other.revisions.keys.any { vfs.findFileByNioPath(it)!!.canonicalFile in editedPhysicalFiles }) {
+            throw labelRenameError("label.rename.scope")
+        }
     }
     val texts = sources.snapshot.texts().mapValues { (path, text) ->
         val ranges = edits[path].orEmpty()

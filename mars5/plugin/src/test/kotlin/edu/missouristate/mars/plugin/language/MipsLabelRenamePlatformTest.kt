@@ -16,6 +16,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
@@ -44,6 +45,51 @@ class MipsLabelRenamePlatformTest {
     private val fixture by codeInsightFixture(projectFixture)
     private val project get() = projectFixture.get()
     private val processor = MipsLabelRenameProcessor()
+
+    @Test
+    fun `native rename edits precise ranges in nested plain-text includes and their typed children`() = timeoutRunBlocking<Unit> {
+        val source = ".data\ntarget: .word 42\n.text\n.include \"lib/wrapper.txt\"\n"
+        val plainText = ".data\n.word target, target # target\n.asciiz \"target\"\n.text\n.include \"tail.s\"\n"
+        val tailText = "lw \$a0, target # target\n"
+        val (entry, plain, tail) = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("lib/wrapper.txt", ".include \"operands.txt\"\n")
+            val plain = fixture.addFileToProject("lib/operands.txt", plainText)
+            val tail = fixture.addFileToProject("lib/tail.s", tailText)
+            val entry = fixture.addFileToProject("entry.asm", source).also {
+                fixture.configureFromExistingVirtualFile(it.virtualFile)
+            }
+            Triple(entry, plain, tail)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val target = readAction { label(entry) }
+        withContext(Dispatchers.EDT) {
+            fixture.doHighlighting()
+            val docs = PsiDocumentManager.getInstance(project)
+            val document = docs.getDocument(plain)!!
+            val heading = "# unsaved heading\n"
+            WriteCommandAction.runWriteCommandAction(project) { document.insertString(0, heading) }
+            docs.commitDocument(document)
+            fixture.doHighlighting()
+            val editor = FileEditorManager.getInstance(project).selectedEditor
+            val undo = UndoManager.getInstance(project)
+            RenameProcessor(project, target, "updated", false, false).run()
+            docs.commitAllDocuments()
+            assertEquals(source.replace("target:", "updated:"), entry.text)
+            assertEquals(heading + plainText.replace("target, target", "updated, updated"), plain.text)
+            assertEquals(tailText.replaceFirst("target", "updated"), tail.text)
+            assertTrue(fixture.psiManager.findFile(plain.virtualFile) is PsiPlainTextFile)
+            val dialog = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                undo.undo(editor)
+                docs.commitAllDocuments()
+                assertEquals(source, entry.text)
+                assertEquals(heading + plainText, plain.text)
+                assertEquals(tailText, tail.text)
+            } finally {
+                TestDialogManager.setTestDialog(dialog)
+            }
+        }
+    }
 
     @Test
     fun `native rename verifies instruction data and forwarded uses across includes and supports undo`() = timeoutRunBlocking<Unit> {
@@ -149,10 +195,10 @@ class MipsLabelRenamePlatformTest {
     }
 
     @Test
-    fun `rename requires an exclusive typed assembly graph`() = timeoutRunBlocking<Unit> {
-        val (plain, shared, hidden, independent, handler) = withContext(Dispatchers.EDT) {
-            fixture.addFileToProject("body.txt", "nop\n")
-            val plain = fixture.addFileToProject("plain.asm", ".include \"body.txt\"\ntarget: nop\n")
+    fun `rename requires an exclusive assembly graph with supported file types`() = timeoutRunBlocking<Unit> {
+        val (foreign, shared, hidden, independent, handler) = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("body.xml", "nop\n")
+            val foreign = fixture.addFileToProject("foreign.asm", ".include \"body.xml\"\ntarget: nop\n")
             val shared = fixture.addFileToProject("shared.s", "target: nop\n")
             fixture.addFileToProject("owner.asm", ".include \"shared.s\"\n")
             fixture.addFileToProject("other.asm", ".include \"shared.s\"\n")
@@ -161,13 +207,13 @@ class MipsLabelRenamePlatformTest {
             fixture.addFileToProject("hidden-owner.asm", ".include \"bridge.txt\"\n")
             val independent = fixture.addFileToProject("independent.asm", "target: nop\n")
             val handler = fixture.addFileToProject("handler.asm", ".ktext\nnop\n")
-            listOf(plain, shared, hidden, independent, handler)
+            listOf(foreign, shared, hidden, independent, handler)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
-            for (file in listOf(plain, shared, hidden)) {
+            for (file in listOf(foreign, shared, hidden)) {
                 val target = label(file)
-                assertTrue(conflicts(target, "next", usages(target)).contains("unshared MARS includes"), file.name)
+                assertTrue(conflicts(target, "next", usages(target)).contains("unshared includes"), file.name)
             }
         }
         val settings = project.service<MarsAssemblySettings>()
@@ -191,7 +237,27 @@ class MipsLabelRenamePlatformTest {
         readAction {
             val target = label(entry)
             val usage = UsageInfo(shared.findElementAt(2)!!)
-            assertTrue(conflicts(target, "next", listOf(usage)).contains("unshared MARS includes"))
+            assertTrue(conflicts(target, "next", listOf(usage)).contains("unshared includes"))
+        }
+    }
+
+    @Test
+    fun `rename rejects a plain-text usage shared through another plain include`() = timeoutRunBlocking<Unit> {
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("bridge.txt", ".include \"shared.txt\"\n")
+            fixture.addFileToProject("shared.txt", "j target\n")
+            fixture.addFileToProject("other.asm", "target: nop\n.include \"bridge.txt\"\n")
+            fixture.addFileToProject("entry.asm", "target: nop\n.include \"bridge.txt\"\n").also {
+                fixture.configureFromExistingVirtualFile(it.virtualFile)
+            }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        readAction {
+            val target = label(entry)
+            val sites = usages(target)
+            assertEquals("shared.txt", sites.single().virtualFile?.name)
+            assertTrue(conflicts(target, "next", sites).contains("unshared includes"))
         }
     }
 

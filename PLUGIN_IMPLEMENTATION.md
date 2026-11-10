@@ -324,12 +324,16 @@ in an isolated session. It checks the resolved symbol bindings, emitted instruct
 initial memory, and entry address before applying the edit. The source revisions and
 previewed reference ranges are checked again in IntelliJ's undoable write command.
 Instruction and data operands and forwarded macro arguments can participate when each
-reference maps to its own written token. Comments, string literals, and independent
-assembly entries retain their existing text.
+reference maps to its own written token. Rename can edit verified usage ranges in plain-text
+includes, including when those includes lead to more MARS sources. It preserves the file
+association and uses the ranges from current assembly results. Comments, string literals,
+and independent assembly entries retain their existing text.
 
-Rename currently requires a resolved MARS include graph with exclusive ownership of
-each edited file. Exported and generated labels, indirect equivalence uses, plain-text
-includes, and mixed assembly entry scopes remain outside this verified edit path.
+Rename currently starts at a written local declaration in a MARS file and requires a
+resolved include graph with exclusive ownership of each edited file. It checks other
+indexed entries using the assembler's include traversal, which covers edges through
+plain text. Exported and generated labels, indirect equivalence uses, and mixed assembly
+entry scopes remain outside this verified edit path.
 
 ## Go to Declaration for equivalences
 
