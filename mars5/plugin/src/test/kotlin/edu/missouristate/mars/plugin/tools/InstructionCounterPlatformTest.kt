@@ -603,11 +603,15 @@ class InstructionCounterPlatformTest {
                     try { board.paint(graphics) } finally { graphics.dispose() }
                 }
             }
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertFalse(button("Connect", marsBot).isEnabled)
+                    assertFalse(button("Reset", marsBot).isEnabled)
+                    assertEquals("Select a MIPS execution to see its robot.", robotBoard().accessibleContext.accessibleDescription)
+                    assertFalse(robotClock().isEnabled)
+                }
+            }
             withContext(Dispatchers.EDT) {
-                assertFalse(button("Connect", marsBot).isEnabled)
-                assertFalse(button("Reset", marsBot).isEnabled)
-                assertEquals("Select a MIPS execution to see its robot.", robotBoard().accessibleContext.accessibleDescription)
-                assertFalse(robotClock().isEnabled)
                 marsBot.setSize(JBUI.scale(330), JBUI.scale(460))
                 marsBot.doLayout()
                 val setRate = button("Set rate", marsBot)
