@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 
 /*
 Copyright (c) 2003-2008,  Pete Sanderson and Kenneth Vollmar
@@ -47,6 +48,7 @@ public class Token {
   private final int sourceEndPos;
   private int originalStartPos;
   private Token diagnosticOrigin;
+  private SourceToken equivalenceSource;
   // original program and line will differ from the above if token was defined in an included file
   private MIPSprogram originalMIPSprogram;
   private int originalSourceLine;
@@ -135,6 +137,7 @@ public class Token {
     copy.originalStartPos = originalStartPos;
     copy.diagnosticOrigin = diagnosticOrigin;
     copy.expansionSource = expansionSource;
+    copy.equivalenceSource = equivalenceSource;
     return copy;
   }
 
@@ -220,5 +223,13 @@ public class Token {
 
   void setExpansionSource(Token source) {
     expansionSource = source;
+  }
+
+  SourceToken equivalenceSource() {
+    return equivalenceSource;
+  }
+
+  void setEquivalenceSource(SourceToken source) {
+    equivalenceSource = source;
   }
 }

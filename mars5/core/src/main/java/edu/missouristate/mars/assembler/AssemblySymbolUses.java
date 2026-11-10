@@ -27,6 +27,6 @@ final class AssemblySymbolUses {
     var site = new SourceToken(location, written.getOriginalStartPos());
     var definition = new SourceToken(target.origin().location(), target.column());
     bindings.computeIfAbsent(site, ignored -> new HashSet<>())
-        .add(new SymbolUse(definition, target.getName()));
+        .add(new SymbolUse(definition, target.getName(), operand.equivalenceSource()));
   }
 }

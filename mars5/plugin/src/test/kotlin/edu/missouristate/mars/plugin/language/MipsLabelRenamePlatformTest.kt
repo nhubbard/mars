@@ -299,6 +299,89 @@ class MipsLabelRenamePlatformTest {
     }
 
     @Test
+    fun `native rename edits the written replacement for chained equivalences and forwarded arguments`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "aliases.txt"
+            .data
+            target: .word 42
+            .word DEST, DEST, target
+            .text
+            .macro load (%address)
+                lw ${'$'}t0, %address
+            .end_macro
+            load (THROUGH)
+            LOAD
+        """.trimIndent()
+        val aliases = ".eqv DECLARE .eqv DEST target # target\nDECLARE\n.eqv THROUGH DEST\n.eqv LOAD lw \$a0, THROUGH\n"
+        val (entry, aliasFile) = withContext(Dispatchers.EDT) {
+            val aliasFile = fixture.addFileToProject("aliases.txt", aliases)
+            val entry = fixture.addFileToProject("entry.asm", source)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            entry to aliasFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = label(entry)
+            val sites = usages(target)
+            assertEquals(setOf("entry.asm", "aliases.txt"), sites.map { it.virtualFile!!.name }.toSet())
+            assertEquals(2, sites.size)
+            RenameProcessor(project, target, "updated.label", false, false).run()
+            assertEquals(source.replace("target", "updated.label"), entry.text)
+            assertEquals(aliases.replaceFirst("target", "updated.label"), aliasFile.text)
+            assertTrue(fixture.psiManager.findFile(aliasFile.virtualFile) is PsiPlainTextFile)
+            val previous = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).selectedEditor)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                assertEquals(source, entry.text)
+                assertEquals(aliases, aliasFile.text)
+            } finally {
+                TestDialogManager.setTestDialog(previous)
+            }
+        }
+    }
+
+    @Test
+    fun `rename refuses an equivalence replacement that also binds a different label`() = timeoutRunBlocking<Unit> {
+        val export = ".globl target\ntarget: nop\n"
+        val entry = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliases.txt", ".eqv DEST target\n")
+            val provider = fixture.addFileToProject("provider.s", export)
+            val user = fixture.addFileToProject("user.asm", ".include \"aliases.txt\"\nj DEST\n")
+            val shadow = fixture.addFileToProject("shadow.s", ".include \"aliases.txt\"\ntarget: nop\nj DEST\n")
+            project.service<MarsAssemblySettings>().changeSources(listOf(provider, user, shadow).map { it.virtualFile.path })
+            provider
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(entry)
+            val sites = usages(target)
+            assertEquals(setOf("provider.s", "aliases.txt"), sites.map { it.virtualFile!!.name }.toSet())
+            assertTrue(conflicts(target, "updated", sites).contains("different symbol"))
+            assertEquals(export, entry.text)
+        }
+    }
+
+    @Test
+    fun `rename distinguishes labels with different names at one written location`() = timeoutRunBlocking<Unit> {
+        val (shared, direct) = withContext(Dispatchers.EDT) {
+            val shared = fixture.addFileToProject("shared.s", "target: nop\n")
+            val direct = fixture.addFileToProject("direct.asm", ".include \"shared.s\"\nj target\n")
+            val indirect = fixture.addFileToProject("indirect.asm", ".eqv target shadow\n.include \"shared.s\"\nj shadow\n")
+            project.service<MarsAssemblySettings>().changeSources(listOf(direct, indirect).map { it.virtualFile.path })
+            shared to direct
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(shared)
+            val sites = usages(target)
+            assertEquals(direct.virtualFile, sites.single().virtualFile)
+            assertTrue(conflicts(target, "updated", sites).contains("ambiguous"))
+            assertEquals("target: nop\n", shared.text)
+        }
+    }
+
+    @Test
     fun `native rename verifies application edits with a configured exception handler`() = timeoutRunBlocking<Unit> {
         val application = ".text\nj target\ntarget: teq \$zero, \$zero\n"
         val exceptionCode = ".ktext 0x80000180\ntarget: nop\nj target\n"

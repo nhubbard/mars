@@ -56,6 +56,7 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
 
     override fun findReferences(element: PsiElement, searchScope: SearchScope, searchInCommentsAndStrings: Boolean): Collection<PsiReference> {
         val target = element as MipsDeclaration
+        val name = target.name ?: return emptyList()
         val file = target.containingFile as MipsFile
         val capture = collectEditorAssembly(file) ?: return emptyList()
         val documents = capture.committedDocuments(file) ?: return emptyList()
@@ -64,7 +65,7 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
         val symbols = analysis.backgroundAssembly.assemble(capture.sources, capture.structureStamp, capture.options).symbols
             ?: return emptyList()
         val declaration = writtenLabelToken(target, capture.source, documents.getValue(capture.source))
-        return symbols.assembledLabelUsages[declaration].orEmpty().mapNotNull { site ->
+        return symbols.symbols.labelSpellings(declaration, name).mapNotNull { site ->
             ProgressManager.checkCanceled()
             analysis.assembledReference(target, site, searchScope)
         }
@@ -165,8 +166,7 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val (before, beforeImage) = capture.assemble(sources)
     val written = before.labelDefinitions(oldName).filter { it.definition.writtenToken() == declaration }.singleOrNull()
         ?: throw labelRenameError("label.rename.scope")
-    val binding = SymbolUse(declaration, oldName)
-    val references = before.symbolUses().filterValues { binding in it }.keys
+    val references = before.labelSpellings(declaration, oldName)
     val expected = references.mapTo(HashSet()) { it.editIn(documents, oldName.length) }
     val sites = references + declaration
     val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(LabelEdit::path, LabelEdit::range)
@@ -201,7 +201,10 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     }
     val unrelated = buildSet {
         before.labelDefinitions(oldName).mapNotNullTo(this) { it.definition.writtenToken() }
-        addAll(before.symbolUses().filterValues { bindings -> bindings.any { it.name() == oldName } }.keys)
+        for ((site, bindings) in before.symbolUses()) {
+            ProgressManager.checkCanceled()
+            for (binding in bindings) if (binding.name() == oldName) add(binding.equivalenceSource() ?: site)
+        }
         removeAll(sites)
     }.map { it.editIn(documents, oldName.length) }.groupBy(LabelEdit::path, LabelEdit::range)
     val texts = sources.snapshot.texts().mapValues { (path, text) ->
@@ -222,7 +225,10 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
         return SourceToken(site.location(), site.column() + earlier * (newName.length - oldName.length))
     }
     val expectedUses = before.symbolUses().mapKeys { shifted(it.key) }.mapValues { (_, bindings) ->
-        bindings.mapTo(HashSet()) { SymbolUse(shifted(it.definition()), if (it == binding) newName else it.name()) }
+        bindings.mapTo(HashSet()) {
+            val name = if (it.binds(declaration, oldName)) newName else it.name()
+            SymbolUse(shifted(it.definition()), name, it.equivalenceSource()?.let(::shifted))
+        }
     }
     val expectedLocals = before.locals().mapValues { (entry, definitions) ->
         if (entry == written.entry) definitions.renamed(oldName, newName) else definitions.withoutColumns()
@@ -234,6 +240,17 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     if (!(expectedSymbols == actualSymbols).and(sameImage)) throw labelRenameError("label.rename.changed")
     return LabelRenamePlan(capture, newName, usages, edits, shifted(declaration),
         PsiModificationTracker.getInstance(project).modificationCount)
+}
+
+private fun SymbolUse.binds(declaration: SourceToken, name: String) = definition() == declaration && name() == name
+
+private fun AssemblySymbolMap.labelSpellings(declaration: SourceToken, name: String): Set<SourceToken> = buildSet {
+    for ((site, bindings) in symbolUses()) {
+        ProgressManager.checkCanceled()
+        for (binding in bindings) {
+            if (binding.binds(declaration, name)) add(binding.equivalenceSource() ?: site)
+        }
+    }
 }
 
 private fun AssemblySymbolMap.labelDefinitions(name: String): List<LabelDefinition> = buildList {

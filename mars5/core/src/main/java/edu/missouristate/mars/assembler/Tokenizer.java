@@ -1,6 +1,8 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
+import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.mips.instructions.InstructionDefaults;
 import edu.missouristate.mars.mips.instructions.InstructionSet;
 import java.io.*;
@@ -57,7 +59,7 @@ public class Tokenizer {
   private final InstructionSet instructions;
   private ErrorList errors;
   private MIPSprogram sourceMIPSprogram;
-  private final Map<String, String> equivalents = new HashMap<>();
+  private final Map<String, EquivalenceReplacement> equivalents = new HashMap<>();
   // Single-character escape spellings and their corresponding values.
   private static final String escapedCharacters = "'\"\\ntbrf0";
   private static final int[] escapedCharactersValues = {'\'', '"', '\\', '\n', '\t', '\b', '\r', '\f', 0};
@@ -362,6 +364,9 @@ public class Tokenizer {
       if (origin != null) {
         token.setDiagnosticOrigin(origin.diagnostic());
         token.setExpansionSource(origin.written());
+        if (token.equivalenceSource() == null) {
+          token.setEquivalenceSource(origin.diagnostic().equivalenceSource());
+        }
       }
     }
     return tokens;
@@ -371,7 +376,8 @@ public class Tokenizer {
   public static String readEquivalenceReplacement(String line, String name) {
     var tokenizer = new Tokenizer();
     tokenizer.tokenizeLine(1, line);
-    return tokenizer.errors.errorsOccurred() ? null : tokenizer.equivalents.get(name);
+    var replacement = tokenizer.equivalents.get(name);
+    return tokenizer.errors.errorsOccurred() || replacement == null ? null : replacement.text();
   }
 
   /** Tokenizes a detached line. The replacement lookup returns null for an undefined name. */
@@ -446,7 +452,10 @@ public class Tokenizer {
     return offset;
   }
 
-  private record SourceEdit(int start, int removedLength, int insertedLength, int originalStart) {}
+  private record SourceEdit(
+      int start, int removedLength, int insertedLength, int originalStart, SourceToken source) {}
+
+  private record EquivalenceReplacement(String text, SourceToken source) {}
 
   /** An equivalence recorded while processing a detached line. */
   public record EquivalenceDefinition(String name, String replacement) {}
@@ -475,7 +484,7 @@ public class Tokenizer {
     if (definitions.hasNext() && !errors.errorsOccurred()) {
       var definition = definitions.next();
       return new ExpandedLine(
-          tokens, new EquivalenceDefinition(definition.getKey(), definition.getValue()));
+          tokens, new EquivalenceDefinition(definition.getKey(), definition.getValue().text()));
     }
     return new ExpandedLine(tokens, null);
   }
@@ -488,7 +497,10 @@ public class Tokenizer {
       List<SourceEdit> edits) {
     this.errors = errors;
     TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
-    return processEqv(null, 1, line, tokens, replacements, checkCancellation, edits, null);
+    return processEqv(null, 1, line, tokens, name -> {
+      var text = replacements.apply(name);
+      return text == null ? null : new EquivalenceReplacement(text, null);
+    }, checkCancellation, edits, null);
   }
 
   /**
@@ -722,7 +734,7 @@ public class Tokenizer {
   // directive, including a new .eqv definition.
   private TokenList processEqv(
       MIPSprogram program, int lineNum, String theLine, TokenList tokens,
-      Function<String, String> replacements, Runnable checkCancellation, List<SourceEdit> edits,
+      Function<String, EquivalenceReplacement> replacements, Runnable checkCancellation, List<SourceEdit> edits,
       Macro.ExpandedLine expansion) {
     EquivalenceUse use = nextEquivalenceUse(
         program, lineNum, theLine, tokens, replacements, List.of(), expansion);
@@ -762,8 +774,10 @@ public class Tokenizer {
       }
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
-      edits.add(new SourceEdit(start, end - start, use.replacement().length(), originalColumn - 1));
-      theLine = theLine.substring(0, start) + use.replacement() + theLine.substring(end);
+      var replacement = use.replacement();
+      edits.add(new SourceEdit(start, end - start, replacement.text().length(), originalColumn - 1,
+          replacement.source()));
+      theLine = theLine.substring(0, start) + replacement.text() + theLine.substring(end);
       program = sourceMIPSprogram;
       tokens = scanLine(program, lineNum, theLine, checkCancellation);
       use = nextEquivalenceUse(program, lineNum, theLine, tokens, replacements, edits, expansion);
@@ -772,6 +786,7 @@ public class Tokenizer {
       checkCancellation.run();
       Token token = tokens.get(i);
       token.setOriginalStartPos(originalColumn(token, edits));
+      token.setEquivalenceSource(spellingSource(edits, token.getStartPos() - 1, token.getEndPos() - 1, null));
     }
     reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, originalTokens, expansion);
     return tokens;
@@ -779,14 +794,14 @@ public class Tokenizer {
 
   private record EquivalenceExpansion(String symbol, int suffixLength) {}
 
-  private record EquivalenceUse(Token token, String replacement) {}
+  private record EquivalenceUse(Token token, EquivalenceReplacement replacement) {}
 
   private EquivalenceUse nextEquivalenceUse(
       MIPSprogram program,
       int lineNum,
       String line,
       TokenList tokens,
-      Function<String, String> replacements,
+      Function<String, EquivalenceReplacement> replacements,
       List<SourceEdit> edits,
       Macro.ExpandedLine expansion) {
     tokens.setProcessedLine(line);
@@ -796,7 +811,7 @@ public class Tokenizer {
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
       if (token.getType() == TokenTypes.IDENTIFIER) {
-        String replacement = replacements.apply(token.getValue());
+        var replacement = replacements.apply(token.getValue());
         if (replacement != null) {
           return new EquivalenceUse(token, replacement);
         }
@@ -807,6 +822,26 @@ public class Tokenizer {
 
   private static int originalColumn(Token token, List<SourceEdit> edits) {
     return originalOffset(edits, token.getStartPos() - 1) + 1;
+  }
+
+  /** A contiguous range can inherit a spelling from a replacement or the original physical line. */
+  private static SourceToken spellingSource(List<SourceEdit> edits, int start, int end, Location physicalLine) {
+    for (int i = edits.size() - 1; i >= 0; i--) {
+      var edit = edits.get(i);
+      int replacementEnd = edit.start() + edit.insertedLength();
+      if (start >= replacementEnd) {
+        int delta = edit.removedLength() - edit.insertedLength();
+        start += delta;
+        end += delta;
+      } else if (end > edit.start()) {
+        var source = edit.source();
+        if (source == null || start < edit.start() || end > replacementEnd) {
+          return null;
+        }
+        return new SourceToken(source.location(), source.column() + start - edit.start());
+      }
+    }
+    return physicalLine == null ? null : new SourceToken(physicalLine, start + 1);
   }
 
   private static int equivalenceDirectiveIndex(TokenList tokens) {
@@ -849,8 +884,15 @@ public class Tokenizer {
     int start = tokens.get(directive + 2).getStartPos() - 1;
     int end = tokens.get(last).getEndPos() - 1;
     String expression = line.substring(start, end);
-    String previous = equivalents.putIfAbsent(symbol, expression);
-    if (previous != null && !previous.equals(expression)) {
+    Location location = null;
+    var lines = program == null ? null : program.getSourceLineList();
+    if (expansion == null && lines != null && lineNum > 0 && lineNum <= lines.size()) {
+      var source = lines.get(lineNum - 1);
+      location = new Location(Path.of(source.getFilename()), source.getLineNumber());
+    }
+    var replacement = new EquivalenceReplacement(expression, spellingSource(edits, start, end, location));
+    var previous = equivalents.putIfAbsent(symbol, replacement);
+    if (previous != null && !previous.text().equals(expression)) {
       addLineError(program, lineNum, originalColumn(name, edits),
           "\"" + symbol + "\" is already defined", expansion);
     }

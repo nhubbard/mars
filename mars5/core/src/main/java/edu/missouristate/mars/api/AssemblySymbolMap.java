@@ -43,8 +43,12 @@ public record AssemblySymbolMap(
   /** A token at a one-based column in physical source, before macro and equivalence expansion. */
   public record SourceToken(Location location, int column) {}
 
-  /** One realized label binding at a written operand, macro argument, or export. */
-  public record SymbolUse(SourceToken definition, String name) {}
+  /** A label binding and, for an expanded .eqv, the written replacement that supplied it. */
+  public record SymbolUse(SourceToken definition, String name, SourceToken equivalenceSource) {
+    public SymbolUse(SourceToken definition, String name) {
+      this(definition, name, null);
+    }
+  }
 
   /** One realized call shape at a written site. Columns are one-based in that site's source line. */
   public record MacroCall(

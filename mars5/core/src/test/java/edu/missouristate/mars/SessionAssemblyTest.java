@@ -624,7 +624,7 @@ class SessionAssemblyTest {
     var sources = new AssemblySourceSnapshot(List.of(main, other), Map.of(
         main, """
             .include "macros.txt"
-            .eqv TARGET target
+            .eqv TARGET BASE
             .data
             first: .word target
             .text
@@ -635,9 +635,13 @@ class SessionAssemblyTest {
             .word local
             .word future
             future: .word 0
+            .word TARGET, TARGET
+            .text
+            branch (TARGET)
             """,
         other, ".text\ntarget: nop\n.globl target\n",
         macros, """
+            .eqv BASE target
             .macro inner (%label)
               j %label
             .end_macro
@@ -649,15 +653,20 @@ class SessionAssemblyTest {
       var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
       assertThat(result.errors()).isEmpty();
       var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target");
+      var aliasedTarget = new SymbolUse(target.definition(), target.name(),
+          new SourceToken(new Location(macros, 1), 11));
       var local = new SymbolUse(new SourceToken(new Location(main, 8), 1), "local");
       var future = new SymbolUse(new SourceToken(new Location(main, 12), 1), "future");
       var uses = result.program().symbolMap().symbolUses();
       assertThat(uses).containsExactlyInAnyOrderEntriesOf(Map.of(
           new SourceToken(new Location(main, 4), 14), Set.of(target),
           new SourceToken(new Location(main, 6), 9), Set.of(target),
-          new SourceToken(new Location(main, 7), 3), Set.of(target),
+          new SourceToken(new Location(main, 7), 3), Set.of(aliasedTarget),
           new SourceToken(new Location(main, 10), 7), Set.of(local),
           new SourceToken(new Location(main, 11), 7), Set.of(future),
+          new SourceToken(new Location(main, 13), 7), Set.of(aliasedTarget),
+          new SourceToken(new Location(main, 13), 15), Set.of(aliasedTarget),
+          new SourceToken(new Location(main, 15), 9), Set.of(aliasedTarget),
           new SourceToken(new Location(other, 3), 8), Set.of(target)));
       assertThatThrownBy(() -> uses.get(new SourceToken(new Location(main, 4), 14)).clear())
           .isInstanceOf(UnsupportedOperationException.class);

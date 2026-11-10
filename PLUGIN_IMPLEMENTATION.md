@@ -328,7 +328,10 @@ Instruction and data operands and forwarded macro arguments can participate when
 reference maps to its own written token. Rename can edit verified usage ranges in plain-text
 includes, including when those includes lead to more MARS sources. It preserves the file
 association. The refactoring gets current assembly results itself, including when highlighting
-has yet to run or an unsaved edit moved a reference. An exported label's `.globl`
+has yet to run or an unsaved edit moved a reference. For a realized `.eqv` use,
+Rename follows the assembler's expansion back to the written replacement token. It preserves
+the alias and its invocation, including through chained aliases and forwarded macro arguments.
+Find Usages continues to show where the alias was invoked. An exported label's `.globl`
 operand, definition, and references in other entries are renamed together. A separate
 same-named local label and its references keep their existing text, as do comments,
 string literals, and independent assembly entries.
@@ -337,10 +340,10 @@ Rename currently starts at a written declaration in a MARS file and requires a r
 include graph with exclusive ownership of each edited file by the selected assembly.
 It checks other indexed entries using the assembler's include traversal, including edges
 through plain text. A declaration compiled into multiple local symbol tables, two paths
-to the same edited file, a generated label, or an indirect equivalence use still stops the
-operation. When an exception handler is configured, Rename verifies the handler and its
-includes alongside the application. Edits to the handler's source files require a wider
-scope because those files are shared by other assemblies.
+to the same edited file, a generated label, or a replacement with no proven written
+binding still stops the operation. When an exception handler is configured, Rename
+verifies the handler and its includes alongside the application. Edits to the handler's
+source files require a wider scope because those files are shared by other assemblies.
 
 ## Go to Declaration for equivalences
 
