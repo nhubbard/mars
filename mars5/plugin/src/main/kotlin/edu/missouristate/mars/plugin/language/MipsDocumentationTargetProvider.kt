@@ -148,6 +148,7 @@ internal class MipsCatalogEntry(
             append(DEFINITION_START).append(StringUtil.escapeXmlEntities(example)).append(DEFINITION_END)
             append(CONTENT_START).append(StringUtil.escapeXmlEntities(description)).append(CONTENT_END)
         }
+        if (name == "syscall") append(MipsSyscallDocumentation.html)
     })
 }
 

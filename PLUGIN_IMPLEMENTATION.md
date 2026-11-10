@@ -325,6 +325,11 @@ Jupiter fixtures use IntelliJ's documentation service to resolve source and look
 render their content, and verify that comments, strings, labels and unrelated lookup items
 stay outside the catalog provider.
 
+Quick Documentation on `syscall` shows the service number in `$v0`, argument registers,
+result registers, and effects for each service. The same offline catalog appears for an
+operation alias and in completion documentation. The registry parity test checks the
+numbers and names against the Java engine, including MARS service 60 (`ClearScreen`).
+
 ## Go to Declaration for instruction labels
 
 Native polyvariant PSI references bind directly written label operands using the same
@@ -2037,9 +2042,17 @@ uses IntelliJ's general module support and requires no JDK or external
 build tool. Use IntelliJ's **Open** action to work in an existing source
 directory.
 
-## Next slices
+## M5 acceptance evidence
 
-Continue checking parser edge cases against the Java assembler while building
-completion, build-context reference binding, documentation, and native build
-actions and diagnostic reporting. Execution/debugger/tool work follows the component mapping. No existing
-MARS feature is deferred by this delivery order.
+| Area | Evidence |
+| --- | --- |
+| E04 completion and operand guidance | The completion and Parameter Info platform fixtures cover overloaded instructions, register banks, labels, macro arity and include paths. Their inputs include unfinished operands and unsaved dependencies. |
+| E06 documentation | `MipsDocumentationPlatformTest` resolves and renders editor and completion targets. Its syscall registry check covers all service numbers and names. Macro fixtures cover current source, captured expansion bindings and definition navigation. |
+| E07 navigation | Label, equivalence, macro and include reference fixtures exercise scope and cross-file resolution. Structure View, Go to Symbol, Find Usages, and breadcrumbs have native editor checks. `MarsExpansionPlatformTest` and the debugger fixtures verify navigation from expanded instructions and macro call chains. |
+| E08 refactoring | Symbol and macro formal rename fixtures exercise scope conflicts, expansions, writable source origins and Undo. `MarsSourceRefactoringPlatformTest` covers configured input paths, alongside include reference refactoring fixtures. |
+| E09 formatting and editor actions | Formatter tests compare machine words and data before and after formatting. Separate native fixtures cover comments, paired delimiters, folding, smart enter, live templates, and per-file EditorConfig indentation. |
+| E10 code insight | Native gutter, register-usage, inlay and quick-fix fixtures exercise rendered output, alias contexts, edits and stale data. The include quick fix uses IntelliJ's command and preview APIs. |
+
+These checks establish the implemented editor behavior against the pinned IntelliJ
+platform. Cross-host keyboard and hover interaction, install and upgrade checks, and
+the full feature-by-feature release checklist remain part of release qualification.

@@ -17,6 +17,7 @@ import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
+import edu.missouristate.mars.mips.instructions.SyscallRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,6 +39,34 @@ class MipsDocumentationPlatformTest {
             assertTrue(StringUtil.escapeXmlEntities(instruction.description) in html, html)
         }
         assertTrue("c.eq.s" in documentation("c.<caret>eq.s \$f0, \$f2").orEmpty())
+    }
+
+    @Test
+    fun `syscall documentation covers every registered service and follows aliases and completion`() = timeoutRunBlocking<Unit> {
+        val html = documentation("sys<caret>call").orEmpty()
+        val displayed = Regex("<p>(\\d+) (\\w+)</p></td>").findAll(html).map { it.groupValues[1].toInt() to it.groupValues[2] }.toList()
+        val registered = SyscallRegistry().services().map { it.number to it.name }.sortedBy { it.first }
+        assertEquals(registered, displayed)
+        for (contract in listOf(
+            "Set ${'$'}v0 to the service number",
+            "${'$'}a0 = integer",
+            "${'$'}f12/${'$'}f13 = double",
+            "${'$'}v0 = descriptor or negative error",
+            "0 &lt;= value &lt; ${'$'}a1",
+            "-4 truncated",
+            "Clears the simulator console",
+        )) assertTrue(contract in html, contract)
+        assertEquals(html, documentation(".eqv PRINT syscall\nPR<caret>INT"))
+
+        val item = withContext(Dispatchers.EDT) {
+            fixture.configureByText("doc.asm", "s<caret>\n")
+            fixture.completeBasic().orEmpty().single { it.lookupString == "syscall" }
+        }
+        val pointer = readAction {
+            IdeDocumentationTargetProvider.getInstance(project.get())
+                .documentationTargets(fixture.editor, fixture.file, item).single().createPointer()
+        }
+        assertEquals(html, computeDocumentationBlocking(pointer)?.html)
     }
 
     @Test
