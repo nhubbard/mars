@@ -113,6 +113,7 @@ import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
+import edu.missouristate.mars.plugin.run.ProjectOptionOverride
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
@@ -1852,6 +1853,25 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(file, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(1, debug.exit.await())
+            assertEquals(3L, process.instructionCounter.snapshot().total)
+        }
+    }
+
+    @Test
+    fun `Debug stops at global main before executing any instruction from its prepared image`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("debug-main.asm", "nop\nli \$v0, 10\nsyscall\n.globl main\nmain: li \$t0, 42\nli \$v0, 10\nsyscall\n")
+                .virtualFile.also {
+                    addBreakpoint(it, 0)
+                    addBreakpoint(it, 4)
+                }
+        }
+        withDebug(file, { startAtMain = ProjectOptionOverride.ENABLED }, beforeLaunch = true) { debug ->
+            debug.assertPausedAt(file, 4)
+            val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
+            assertEquals(0L, process.instructionCounter.snapshot().total)
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            assertEquals(0, debug.exit.await())
             assertEquals(3L, process.instructionCounter.snapshot().total)
         }
     }

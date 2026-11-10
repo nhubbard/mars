@@ -145,6 +145,26 @@ class SessionAssemblyTest {
   }
 
   @Test
+  void launchEntryUsesOnlyGlobalMainInAProgramTextSegment() throws Exception {
+    var programs = List.of(
+        Map.entry(".text\nnop\n.globl main\nmain: nop\n", 0x00400004),
+        Map.entry(".text\nnop\nmain: nop\n", 0x00400000),
+        Map.entry(".data\n.globl main\nmain: .word 1\n.text\nnop\n", 0x00400000),
+        Map.entry(".text\nnop\n.ktext 0x80000180\n.globl main\nmain: nop\n", 0x80000180),
+        Map.entry(".text\nnop\n", 0x00400000));
+    for (var scenario : programs) {
+      try (var builder = session("Default"); var launch = session("Default")) {
+        builder.assemble(List.of(source("launch.s", scenario.getKey())));
+        var image = builder.captureAssemblyImage(() -> {});
+        launch.loadAssemblyImage(image, true, () -> {});
+        assertThat(launch.registerFile.getProgramCounter()).isEqualTo(scenario.getValue());
+        launch.loadAssemblyImage(image, false, () -> {});
+        assertThat(launch.registerFile.getProgramCounter()).isEqualTo(launch.memory.textBaseAddress);
+      }
+    }
+  }
+
+  @Test
   void argumentSentinelDoesNotOverlapTheLastStringAtTheDefaultStackPointer() throws Exception {
     try (var session = session("Default")) {
       var memory = session.memory;

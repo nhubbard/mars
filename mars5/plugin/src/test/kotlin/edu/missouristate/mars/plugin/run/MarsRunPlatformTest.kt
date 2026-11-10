@@ -62,12 +62,15 @@ import com.intellij.ui.RawCommandLineEditor
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsAssemblyConfigurable
+import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
@@ -264,6 +267,86 @@ class MarsRunPlatformTest {
             assertEquals(".eqv VALUE 1\n", Files.readString(include))
         } finally {
             Disposer.dispose(disposable)
+        }
+    }
+
+    @Test
+    fun `Run inherits or overrides the global main preference without changing its assembly image`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val settings = project.getService(MarsAssemblySettings::class.java)
+        val build = project.getService(MarsBuildService::class.java)
+        try {
+            val source = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("entry.asm", """
+                    .text
+                    li ${'$'}a0, 1
+                    li ${'$'}v0, 17
+                    syscall
+                    .globl main
+                    main: li ${'$'}a0, 2
+                    li ${'$'}v0, 17
+                    syscall
+                """.trimIndent()).virtualFile.toNioPath()
+            }
+            suspend fun launch(selection: ProjectOptionOverride): Int {
+                val recording = Recording()
+                withContext(Dispatchers.EDT) {
+                    val config = type.createTemplateConfiguration(project)
+                    config.options.sourcePath = source.toString()
+                    assertEquals(ProjectOptionOverride.PROJECT, config.options.startAtMain)
+                    val editor = config.configurationEditor
+                    try {
+                        editor.resetFrom(config)
+                        val entry = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java)
+                            .last { it.selectedItem is ProjectOptionOverride }
+                        entry.selectedItem = selection
+                        editor.applyTo(config)
+                        editor.resetFrom(config)
+                        assertEquals(selection, entry.selectedItem)
+                    } finally {
+                        Disposer.dispose(editor)
+                    }
+                    val xml = Element("configuration").also(config::writeExternal)
+                    val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                    assertEquals(selection, restored.options.startAtMain)
+                    val environment = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                    project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                        override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                            if (env === environment) handler.addProcessListener(recording)
+                        }
+                    })
+                    environment.runner.execute(environment)
+                }
+                return recording.exit.await()
+            }
+            assertFalse(settings.startAtMain)
+            assertEquals(1, launch(ProjectOptionOverride.PROJECT))
+            assertEquals(2, launch(ProjectOptionOverride.ENABLED))
+            val sources = MarsSourceSet(source)
+            val original = requireNotNull(build.prepare(sources, settings.executionOptions, activateBuildView = false))
+            withContext(Dispatchers.EDT) {
+                val page = MarsAssemblyConfigurable(project)
+                try {
+                    val panel = page.createComponent()
+                    page.reset()
+                    val entry = UIUtil.findComponentsOfType(panel, JCheckBox::class.java).single { it.text == "Start at global main" }
+                    assertFalse(entry.isSelected)
+                    entry.isSelected = true
+                    assertTrue(page.isModified)
+                    page.apply()
+                    val saved = XmlSerializer.serialize(settings.getState())
+                    settings.loadState(XmlSerializer.deserialize(saved, MarsAssemblySettings.Settings::class.java))
+                    page.reset()
+                    assertTrue(entry.isSelected)
+                } finally {
+                    page.disposeUIResources()
+                }
+            }
+            assertSame(original.image, build.prepare(sources, settings.executionOptions, activateBuildView = false)?.image)
+            assertEquals(2, launch(ProjectOptionOverride.PROJECT))
+            assertEquals(1, launch(ProjectOptionOverride.DISABLED))
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
         }
     }
 
@@ -602,21 +685,21 @@ class MarsRunPlatformTest {
                 project.getService(MarsAssemblySettings::class.java).changeAssemblerOptions(false, true)
                 source.virtualFile.path
             }
-            suspend fun launch(pseudo: AssemblyOptionOverride, warnings: AssemblyOptionOverride): Recording {
+            suspend fun launch(pseudo: ProjectOptionOverride, warnings: ProjectOptionOverride): Recording {
                 val recording = Recording()
                 withContext(Dispatchers.EDT) {
                     val config = type.createTemplateConfiguration(project)
                     config.readExternal(Element("configuration"))
                     config.options.sourcePath = source
-                    assertEquals(AssemblyOptionOverride.PROJECT, config.options.allowPseudoInstructions)
-                    assertEquals(AssemblyOptionOverride.PROJECT, config.options.warningsAreErrors)
+                    assertEquals(ProjectOptionOverride.PROJECT, config.options.allowPseudoInstructions)
+                    assertEquals(ProjectOptionOverride.PROJECT, config.options.warningsAreErrors)
                     val editor = config.configurationEditor
                     try {
                         editor.resetFrom(config)
                         val combos = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java)
-                            .filter { it.selectedItem is AssemblyOptionOverride }
-                        assertEquals(2, combos.size)
-                        assertEquals(listOf(AssemblyOptionOverride.PROJECT, AssemblyOptionOverride.PROJECT), combos.map { it.selectedItem })
+                            .filter { it.selectedItem is ProjectOptionOverride }
+                        assertEquals(3, combos.size)
+                        assertTrue(combos.all { it.selectedItem == ProjectOptionOverride.PROJECT })
                         combos[0].selectedItem = pseudo
                         combos[1].selectedItem = warnings
                         editor.applyTo(config)
@@ -639,13 +722,13 @@ class MarsRunPlatformTest {
                 return recording
             }
 
-            val inherited = launch(AssemblyOptionOverride.PROJECT, AssemblyOptionOverride.PROJECT)
+            val inherited = launch(ProjectOptionOverride.PROJECT, ProjectOptionOverride.PROJECT)
             assertEquals(1, inherited.exit.await())
             assertEquals("", inherited.stdout.toString())
-            val strict = launch(AssemblyOptionOverride.ENABLED, AssemblyOptionOverride.PROJECT)
+            val strict = launch(ProjectOptionOverride.ENABLED, ProjectOptionOverride.PROJECT)
             assertEquals(1, strict.exit.await())
             assertEquals("", strict.stdout.toString())
-            val permissive = launch(AssemblyOptionOverride.ENABLED, AssemblyOptionOverride.DISABLED)
+            val permissive = launch(ProjectOptionOverride.ENABLED, ProjectOptionOverride.DISABLED)
             assertEquals(0, permissive.exit.await())
             assertEquals("42", permissive.stdout.toString())
             assertEquals(MarsExecutionOptions(allowPseudoInstructions = false, warningsAreErrors = true),

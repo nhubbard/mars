@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntSupplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -393,6 +394,17 @@ public final class MarsContext implements AutoCloseable {
 
   /** Installs an assembly image without consulting the assembler or source files. */
   public void loadAssemblyImage(AssemblyImage image, Runnable checkCancellation) {
+    loadAssemblyImage(image, checkCancellation, () -> image.entry);
+  }
+
+  /** Installs an image and selects its entry point using the launch's start-at-main setting. */
+  public void loadAssemblyImage(
+      AssemblyImage image, boolean startAtMain, Runnable checkCancellation) {
+    loadAssemblyImage(image, checkCancellation, () -> programEntryAddress(startAtMain));
+  }
+
+  private void loadAssemblyImage(
+      AssemblyImage image, Runnable checkCancellation, IntSupplier entryAddress) {
     try (var lease = claimStoppedSession()) {
       var instructions = new ArrayList<ProgramStatement>(image.instructions.size());
       for (var instruction : image.instructions) {
@@ -413,7 +425,7 @@ public final class MarsContext implements AutoCloseable {
         }
       }
       symbolTable.loadDefinitions(image.symbols.globals());
-      registerFile.initializeProgramCounter(image.entry);
+      registerFile.initializeProgramCounter(entryAddress.getAsInt());
       program = loaded;
     }
   }
@@ -458,14 +470,15 @@ public final class MarsContext implements AutoCloseable {
 
   void finishAssembly(MIPSprogram candidate) {
     program = candidate;
+    registerFile.initializeProgramCounter(programEntryAddress(settings.isStartAtMainEnabled()));
+  }
+
+  private int programEntryAddress(boolean startAtMain) {
     int entry =
-        settings.isStartAtMainEnabled()
-            ? symbolTable.getAddress(SymbolTable.getStartLabel())
-            : SymbolTable.NOT_FOUND;
-    registerFile.initializeProgramCounter(
-        entry != SymbolTable.NOT_FOUND
-                && (memory.inTextSegment(entry) || memory.inKernelTextSegment(entry))
-            ? entry
-            : memory.textBaseAddress);
+        startAtMain ? symbolTable.getAddress(SymbolTable.getStartLabel()) : SymbolTable.NOT_FOUND;
+    return entry != SymbolTable.NOT_FOUND
+            && (memory.inTextSegment(entry) || memory.inKernelTextSegment(entry))
+        ? entry
+        : memory.textBaseAddress;
   }
 }

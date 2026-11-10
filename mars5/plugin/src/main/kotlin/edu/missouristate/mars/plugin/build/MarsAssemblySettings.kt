@@ -47,6 +47,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var assembleOnOpen: Boolean = false,
         @JvmField var allowPseudoInstructions: Boolean = true,
         @JvmField var warningsAreErrors: Boolean = false,
+        @JvmField var startAtMain: Boolean = false,
         @JvmField var memoryLayout: String = MarsMemoryLayout.DEFAULT.identifier,
     )
 
@@ -54,6 +55,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     val exceptionHandler get() = projectFilePath(project, getState().exceptionHandler)
     val assembleBeforeJvmCompile get() = getState().assembleBeforeJvmCompile
     val assembleOnOpen get() = getState().assembleOnOpen
+    val startAtMain get() = getState().startAtMain
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val executionOptions get() = getState().let {
         MarsExecutionOptions(
@@ -91,6 +93,10 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeJvmCompile(value: Boolean) {
         updateState { it.copy(assembleBeforeJvmCompile = value) }
+    }
+
+    fun changeStartAtMain(value: Boolean) {
+        updateState { it.copy(startAtMain = value) }
     }
 
     fun changeMemoryLayout(layout: MarsMemoryLayout) {
@@ -158,6 +164,11 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
             checkBox(messages.getMessage("build.settings.open"))
                 .bindSelected({ settings.assembleOnOpen }, settings::changeAssembleOnOpen)
                 .comment(messages.getMessage("build.settings.open.help"))
+        }
+        row {
+            checkBox(messages.getMessage("run.start.at.main"))
+                .bindSelected({ settings.startAtMain }, settings::changeStartAtMain)
+                .comment(messages.getMessage("run.start.at.main.help"))
         }
         group(messages.getMessage("build.settings.policy")) {
             lateinit var pseudo: JCheckBox

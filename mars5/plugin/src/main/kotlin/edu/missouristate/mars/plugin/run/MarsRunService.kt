@@ -105,12 +105,14 @@ internal class MarsRunService(private val project: Project, private val scope: C
         workingDirectory: Path = entry.parent,
         instructionLimit: Int = 0,
         runSpeed: Float = 0f,
+        startAtMain: Boolean = false,
         execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, instructionLimit, runSpeed, captureBitmap, captureReferences,
-            connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, instructionLimit, runSpeed,
+            startAtMain, captureBitmap, captureReferences, connectDigitalLab, connectKeyboardDisplay, connectMarsBot,
+            connectScavengerHunt, execute,
         )
     }
 }
@@ -122,6 +124,7 @@ internal class MarsProcessHandler(
     private val workingDirectory: Path,
     private val instructionLimit: Int,
     initialRunSpeed: Float,
+    private val startAtMain: Boolean,
     captureBitmap: Boolean,
     captureReferences: Boolean,
     connectDigitalLab: Boolean,
@@ -238,7 +241,7 @@ internal class MarsProcessHandler(
         }
         return MarsSessionService.createMarsComponent().context().use { session ->
             launch.options.applyTo(session.settings)
-            session.loadAssemblyImage(program.image, execution::ensureActive)
+            session.loadAssemblyImage(program.image, startAtMain, execution::ensureActive)
             try {
                 ProgramArgumentList(arguments.toTypedArray()).storeProgramArguments(session, execution::ensureActive)
             } catch (_: IllegalArgumentException) {

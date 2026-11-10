@@ -1387,6 +1387,16 @@ second and **Unlimited**, the default. The simulator updates a pending
 delay when the speed changes. Single-instruction stepping still pauses
 immediately after executing the instruction.
 
+## Program entry point
+
+Set the default **Start at global main** under **Settings → Build,
+Execution, Deployment → MARS Assembly**. Each MIPS configuration can
+inherit, enable, or disable it. When enabled, MARS starts at the text label declared with
+`.globl main`. If there is no global `main` in a text segment, execution
+starts at the text segment base. The launch chooses its initial program
+counter when loading the assembly image, so this setting can change
+without rebuilding the source.
+
 ## Working directory
 
 Set **Working directory** in a MIPS Run or Debug configuration to control

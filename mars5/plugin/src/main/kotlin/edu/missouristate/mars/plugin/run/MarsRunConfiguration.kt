@@ -66,10 +66,10 @@ import javax.swing.JTextField
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
 
-internal enum class AssemblyOptionOverride(private val messageKey: String, private val override: Boolean?) {
-    PROJECT("run.assembly.override.project", null),
-    ENABLED("run.assembly.override.enabled", true),
-    DISABLED("run.assembly.override.disabled", false);
+internal enum class ProjectOptionOverride(private val messageKey: String, private val override: Boolean?) {
+    PROJECT("run.option.override.project", null),
+    ENABLED("run.option.override.enabled", true),
+    DISABLED("run.option.override.disabled", false);
 
     val title get() = runMessages.getMessage(messageKey)
     fun resolve(projectDefault: Boolean) = override ?: projectDefault
@@ -82,8 +82,9 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var instructionLimit: Int by property(0)
     var runSpeed: Float by property(0f)
     var delayedBranching: Boolean by property(false)
-    var allowPseudoInstructions by enum(AssemblyOptionOverride.PROJECT)
-    var warningsAreErrors by enum(AssemblyOptionOverride.PROJECT)
+    var allowPseudoInstructions by enum(ProjectOptionOverride.PROJECT)
+    var warningsAreErrors by enum(ProjectOptionOverride.PROJECT)
+    var startAtMain by enum(ProjectOptionOverride.PROJECT)
     var assembleDirectory: Boolean by property(false)
     var useProjectSources: Boolean by property(false)
     var selfModifyingCode: Boolean by property(false)
@@ -183,8 +184,9 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var runSpeed = 0f
         private var delayedBranching = false
         private var assembleDirectory = false
-        private var allowPseudoInstructions = AssemblyOptionOverride.PROJECT
-        private var warningsAreErrors = AssemblyOptionOverride.PROJECT
+        private var allowPseudoInstructions = ProjectOptionOverride.PROJECT
+        private var warningsAreErrors = ProjectOptionOverride.PROJECT
+        private var startAtMain = ProjectOptionOverride.PROJECT
         private var useProjectSources = false
         private var selfModifyingCode = false
         private var captureBitmap = false
@@ -239,14 +241,19 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                 comboBox(runSpeeds, textListCellRenderer("") { runSpeedTitle(it) })
                     .bindItem(::runSpeed.toNullableProperty())
             }
-            val overrideRenderer = textListCellRenderer<AssemblyOptionOverride>("") { it.title }
+            val overrideRenderer = textListCellRenderer<ProjectOptionOverride>("") { it.title }
             row(runMessages.getMessage("run.assembly.pseudo")) {
-                comboBox(AssemblyOptionOverride.entries, overrideRenderer)
+                comboBox(ProjectOptionOverride.entries, overrideRenderer)
                     .bindItem(::allowPseudoInstructions.toNullableProperty())
             }
             row(runMessages.getMessage("run.assembly.warnings")) {
-                comboBox(AssemblyOptionOverride.entries, overrideRenderer)
+                comboBox(ProjectOptionOverride.entries, overrideRenderer)
                     .bindItem(::warningsAreErrors.toNullableProperty())
+            }
+            row(runMessages.getMessage("run.start.at.main")) {
+                comboBox(ProjectOptionOverride.entries, overrideRenderer)
+                    .bindItem(::startAtMain.toNullableProperty())
+                    .comment(runMessages.getMessage("run.start.at.main.help"))
             }
             row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
             row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
@@ -269,6 +276,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             delayedBranching = configuration.options.delayedBranching
             allowPseudoInstructions = configuration.options.allowPseudoInstructions
             warningsAreErrors = configuration.options.warningsAreErrors
+            startAtMain = configuration.options.startAtMain
             assembleDirectory = configuration.options.assembleDirectory
             useProjectSources = configuration.options.useProjectSources
             selfModifyingCode = configuration.options.selfModifyingCode
@@ -293,6 +301,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.delayedBranching = delayedBranching
             configuration.options.allowPseudoInstructions = allowPseudoInstructions
             configuration.options.warningsAreErrors = warningsAreErrors
+            configuration.options.startAtMain = startAtMain
             configuration.options.assembleDirectory = assembleDirectory
             configuration.options.useProjectSources = useProjectSources
             configuration.options.selfModifyingCode = selfModifyingCode
@@ -312,7 +321,8 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             throw ExecutionException(runMessages.getMessage("run.project.untrusted"))
         }
         val sources = resolveSourceSet { ExecutionException(it) }
-        val defaults = project.service<MarsAssemblySettings>().executionOptions
+        val settings = project.service<MarsAssemblySettings>()
+        val defaults = settings.executionOptions
         checkDevices(defaults.memoryLayout) { ExecutionException(it) }
         val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
         val executionOptions = defaults.copy(
@@ -328,7 +338,8 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, launch, dumps, arguments, directory, limit, speed, options.captureBitmap, options.captureReferences,
+            environment, launch, dumps, arguments, directory, limit, speed, options.startAtMain.resolve(settings.startAtMain),
+            options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
@@ -341,6 +352,7 @@ internal class MarsRunState(
     private val workingDirectory: Path,
     private val instructionLimit: Int,
     private val runSpeed: Float,
+    private val startAtMain: Boolean,
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
     private val connectDigitalLab: Boolean,
@@ -358,13 +370,15 @@ internal class MarsRunState(
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit, runSpeed = runSpeed)
+            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit,
+            runSpeed = runSpeed, startAtMain = startAtMain)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit, runSpeed = runSpeed, execute = execute)
+            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit,
+            runSpeed = runSpeed, startAtMain = startAtMain, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }
