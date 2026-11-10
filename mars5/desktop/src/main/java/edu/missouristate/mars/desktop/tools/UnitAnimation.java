@@ -1,6 +1,10 @@
 package edu.missouristate.mars.desktop.tools;
 
 import edu.missouristate.mars.ApplicationInfo;
+import edu.missouristate.mars.datapath.DatapathDiagram;
+import edu.missouristate.mars.datapath.DatapathDiagram.Kind;
+import edu.missouristate.mars.datapath.DatapathDiagram.Palette;
+import edu.missouristate.mars.datapath.DatapathDiagram.Wire;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -16,15 +20,10 @@ import java.io.IOException;
 import java.io.Serial;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.Timer;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 class UnitAnimation extends JPanel implements ActionListener {
   @Serial private static final long serialVersionUID = -2681757800180958534L;
@@ -44,7 +43,6 @@ class UnitAnimation extends JPanel implements ActionListener {
   private ArrayList<Vertex> vertexTraversed;
   // Screen Label variables
 
-  private final HashMap<String, String> registerEquivalenceTable;
 
   private String instructionCode;
   private final int register = 1;
@@ -75,55 +73,25 @@ class UnitAnimation extends JPanel implements ActionListener {
     private boolean first_interaction;
     private boolean active;
     private final boolean isText;
-    private final ArrayList<Integer> targetVertex;
+    private final List<Integer> targetVertex;
 
-    public Vertex(
-        int index,
-        int init,
-        int end,
-        String name,
-        int oppositeAxis,
-        boolean isMovingXaxis,
-        String listOfColors,
-        String listTargetVertex,
-        boolean isText) {
+    public Vertex(int index, Wire wire, Palette palette) {
       this.numIndex = index;
-      this.init = init;
-      this.current = this.init;
-      this.end = end;
-      this.name = name;
-      this.oppositeAxis = oppositeAxis;
-      this.isMovingXaxis = isMovingXaxis;
+      this.init = wire.start();
+      this.current = init;
+      this.end = wire.end();
+      this.name = wire.name();
+      this.oppositeAxis = wire.axis();
+      this.isMovingXaxis = wire.horizontal();
       this.first_interaction = true;
       this.active = false;
-      this.isText = isText;
-      this.color = new Color(0, 153, 0);
-      if (isMovingXaxis) {
-        if (init < end) {
-          direction = movingLeft;
-        } else {
-          direction = movingRight;
-        }
-
-      } else {
-        if (init < end) {
-          direction = movingUpside;
-        } else {
-          direction = movingDownside;
-        }
-      }
-      String[] list = listTargetVertex.split("#");
-      targetVertex = new ArrayList<>();
-      for (String s : list) {
-        targetVertex.add(Integer.parseInt(s));
-        //	System.out.println("Adding " + i + " " +  Integer.parseInt(list[i])+ " in target");
-      }
-      String[] listColor = listOfColors.split("#");
-      this.color =
-          new Color(
-              Integer.parseInt(listColor[0]),
-              Integer.parseInt(listColor[1]),
-              Integer.parseInt(listColor[2]));
+      this.isText = wire.label();
+      this.color = new Color(wire.rgb(palette));
+      this.direction =
+          isMovingXaxis
+              ? (init < end ? movingLeft : movingRight)
+              : (init < end ? movingUpside : movingDownside);
+      this.targetVertex = wire.targets();
     }
 
     public int getDirection() {
@@ -134,7 +102,7 @@ class UnitAnimation extends JPanel implements ActionListener {
       return this.isText;
     }
 
-    public ArrayList<Integer> getTargetVertex() {
+    public List<Integer> getTargetVertex() {
       return targetVertex;
     }
 
@@ -243,303 +211,38 @@ class UnitAnimation extends JPanel implements ActionListener {
     instructionCode = instructionBinary;
 
     // declaration of labels definition.
-    registerEquivalenceTable = new HashMap<>();
 
     int countRegLabel = 400;
     int countALULabel = 380;
     int countPCLabel = 380;
-    loadHashMapValues();
+    loadWires();
   } // end of ImagesTests()
 
-  // set the binnary opcode value of the basic instructions of MIPS instruction set
-  public void loadHashMapValues() {
-    if (datapatTypeUsed == register) {
-      importXmlStringData(
-          "/registerDatapath.xml",
-          registerEquivalenceTable,
-          "register_equivalence",
-          "bits",
-          "mnemonic");
-      importXmlDatapathMap("/registerDatapath.xml", "datapath_map");
-    } else if (datapatTypeUsed == control) {
-      importXmlStringData(
-          "/controlDatapath.xml",
-          registerEquivalenceTable,
-          "register_equivalence",
-          "bits",
-          "mnemonic");
-      importXmlDatapathMap("/controlDatapath.xml", "datapath_map");
-    } else if (datapatTypeUsed == aluControl) {
-      importXmlStringData(
-          "/ALUcontrolDatapath.xml",
-          registerEquivalenceTable,
-          "register_equivalence",
-          "bits",
-          "mnemonic");
-      importXmlDatapathMapAluControl("/ALUcontrolDatapath.xml", "datapath_map");
+  private void loadWires() {
+    Kind kind = switch (datapatTypeUsed) {
+      case register -> Kind.REGISTERS;
+      case control -> Kind.CONTROL;
+      case aluControl -> Kind.ALU_CONTROL;
+      default -> null;
+    };
+    if (kind == null) {
+      return;
     }
-  }
-
-  // import the list of opcodes of mips set of instructions
-  public void importXmlStringData(
-      String xmlName,
-      HashMap<String, String> table,
-      String elementTree,
-      String tagId,
-      String tagData) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    dbf.setNamespaceAware(false);
-    DocumentBuilder docBuilder;
-    try {
-      // System.out.println();
-      dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-      dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-      dbf.setXIncludeAware(false);
-      dbf.setExpandEntityReferences(false);
-      docBuilder = dbf.newDocumentBuilder();
-      Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
-      Element root = doc.getDocumentElement();
-      Element equivalenceItem;
-      NodeList bitsList, mnemonic;
-      NodeList equivalenceList = root.getElementsByTagName(elementTree);
-      for (int i = 0; i < equivalenceList.getLength(); i++) {
-        equivalenceItem = (Element) equivalenceList.item(i);
-        bitsList = equivalenceItem.getElementsByTagName(tagId);
-        mnemonic = equivalenceItem.getElementsByTagName(tagData);
-        for (int j = 0; j < bitsList.getLength(); j++) {
-          table.put(bitsList.item(j).getTextContent(), mnemonic.item(j).getTextContent());
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
+    var palette = MipsXray.paletteFor(instructionCode, kind == Kind.ALU_CONTROL);
+    for (var wire : DatapathDiagram.forKind(kind).wires()) {
+      vertexList.add(new Vertex(vertexList.size(), wire, palette));
     }
-  }
-
-  // import the parameters of the animation on datapath
-  public void importXmlDatapathMap(String xmlName, String elementTree) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    dbf.setNamespaceAware(false);
-    DocumentBuilder docBuilder;
-    try {
-      dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-      dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-      dbf.setXIncludeAware(false);
-      dbf.setExpandEntityReferences(false);
-      docBuilder = dbf.newDocumentBuilder();
-      Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
-      Element root = doc.getDocumentElement();
-      Element datapath_mapItem;
-      NodeList index_vertex,
-          name,
-          init,
-          end,
-          color,
-          other_axis,
-          isMovingXaxis,
-          targetVertex,
-          sourceVertex,
-          isText;
-      NodeList datapath_mapList = root.getElementsByTagName(elementTree);
-      for (int i = 0;
-          i < datapath_mapList.getLength();
-          i++) { // extract the vertex of the xml input and encapsulate into the vertex object
-        datapath_mapItem = (Element) datapath_mapList.item(i);
-        index_vertex = datapath_mapItem.getElementsByTagName("num_vertex");
-        name = datapath_mapItem.getElementsByTagName("name");
-        init = datapath_mapItem.getElementsByTagName("init");
-        end = datapath_mapItem.getElementsByTagName("end");
-        // definition of colors line
-
-        if (instructionCode.startsWith("000000")) { // R-type instructions
-          color = datapath_mapItem.getElementsByTagName("color_Rtype");
-          // System.out.println("rtype");
-        } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { // J-type instructions
-          color = datapath_mapItem.getElementsByTagName("color_Jtype");
-          // System.out.println("jtype");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("100[0-1][0-1][0-1]")) { // LOAD type instructions
-          color = datapath_mapItem.getElementsByTagName("color_LOADtype");
-          // System.out.println("load type");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("101[0-1][0-1][0-1]")) { // LOAD type instructions
-          color = datapath_mapItem.getElementsByTagName("color_STOREtype");
-          // System.out.println("store type");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("0001[0-1][0-1]")) { // BRANCH type instructions
-          color = datapath_mapItem.getElementsByTagName("color_BRANCHtype");
-          // System.out.println("branch type");
-        } else { // BRANCH type instructions
-          color = datapath_mapItem.getElementsByTagName("color_Itype");
-          // System.out.println("immediate type");
-        }
-
-        other_axis = datapath_mapItem.getElementsByTagName("other_axis");
-        isMovingXaxis = datapath_mapItem.getElementsByTagName("isMovingXaxis");
-        targetVertex = datapath_mapItem.getElementsByTagName("target_vertex");
-        isText = datapath_mapItem.getElementsByTagName("is_text");
-
-        for (int j = 0; j < index_vertex.getLength(); j++) {
-          Vertex vert =
-              new Vertex(
-                  Integer.parseInt(index_vertex.item(j).getTextContent()),
-                  Integer.parseInt(init.item(j).getTextContent()),
-                  Integer.parseInt(end.item(j).getTextContent()),
-                  name.item(j).getTextContent(),
-                  Integer.parseInt(other_axis.item(j).getTextContent()),
-                  Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
-                  color.item(j).getTextContent(),
-                  targetVertex.item(j).getTextContent(),
-                  Boolean.parseBoolean(isText.item(j).getTextContent()));
-          vertexList.add(vert);
-        }
+    outputGraph = new ArrayList<>();
+    vertexTraversed = new ArrayList<>();
+    for (Vertex vertex : vertexList) {
+      var targets = new ArrayList<Vertex>();
+      for (int target : vertex.getTargetVertex()) {
+        targets.add(vertexList.get(target));
       }
-      // loading matrix of control of vertex.
-      outputGraph = new ArrayList<>();
-      vertexTraversed = new ArrayList<>();
-      int size = vertexList.size();
-      Vertex vertex;
-      ArrayList<Integer> targetList;
-      for (Vertex value : vertexList) {
-        vertex = value;
-        targetList = vertex.getTargetVertex();
-        ArrayList<Vertex> vertexOfTargets = new ArrayList<>();
-        for (Integer integer : targetList) {
-          vertexOfTargets.add(vertexList.get(integer));
-        }
-        outputGraph.add(vertexOfTargets);
-      }
-      vertexList.getFirst().setActive(true);
-      vertexTraversed.add(vertexList.getFirst());
-    } catch (Exception e) {
-      e.printStackTrace();
+      outputGraph.add(targets);
     }
-  }
-
-  public void importXmlDatapathMapAluControl(String xmlName, String elementTree) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    dbf.setNamespaceAware(false);
-    DocumentBuilder docBuilder;
-    try {
-      dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-      dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-      dbf.setXIncludeAware(false);
-      dbf.setExpandEntityReferences(false);
-      docBuilder = dbf.newDocumentBuilder();
-      Document doc = docBuilder.parse(getClass().getResource(xmlName).toString());
-      Element root = doc.getDocumentElement();
-      Element datapath_mapItem;
-      NodeList index_vertex,
-          name,
-          init,
-          end,
-          color,
-          other_axis,
-          isMovingXaxis,
-          targetVertex,
-          sourceVertex,
-          isText;
-      NodeList datapath_mapList = root.getElementsByTagName(elementTree);
-      for (int i = 0;
-          i < datapath_mapList.getLength();
-          i++) { // extract the vertex of the xml input and encapsulate into the vertex object
-        datapath_mapItem = (Element) datapath_mapList.item(i);
-        index_vertex = datapath_mapItem.getElementsByTagName("num_vertex");
-        name = datapath_mapItem.getElementsByTagName("name");
-        init = datapath_mapItem.getElementsByTagName("init");
-        end = datapath_mapItem.getElementsByTagName("end");
-        // definition of colors line
-
-        if (instructionCode.startsWith("000000")) { // R-type instructions
-          if (instructionCode.substring(28, 32).matches("0000")) { // BRANCH type instructions
-            color = datapath_mapItem.getElementsByTagName("ALU_out010");
-            System.out.println("ALU_out010 type " + instructionCode.substring(28, 32));
-          } else if (instructionCode
-              .substring(28, 32)
-              .matches("0010")) { // BRANCH type instructions
-            color = datapath_mapItem.getElementsByTagName("ALU_out110");
-            System.out.println("ALU_out110 type " + instructionCode.substring(28, 32));
-          } else if (instructionCode
-              .substring(28, 32)
-              .matches("0100")) { // BRANCH type instructions
-            color = datapath_mapItem.getElementsByTagName("ALU_out000");
-            System.out.println("ALU_out000 type " + instructionCode.substring(28, 32));
-          } else if (instructionCode
-              .substring(28, 32)
-              .matches("0101")) { // BRANCH type instructions
-            color = datapath_mapItem.getElementsByTagName("ALU_out001");
-            System.out.println("ALU_out001 type " + instructionCode.substring(28, 32));
-          } else { // BRANCH type instructions
-            color = datapath_mapItem.getElementsByTagName("ALU_out111");
-            System.out.println("ALU_out111 type " + instructionCode.substring(28, 32));
-          }
-        } else if (instructionCode.substring(0, 6).matches("00001[0-1]")) { // J-type instructions
-          color = datapath_mapItem.getElementsByTagName("color_Jtype");
-          System.out.println("jtype");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("100[0-1][0-1][0-1]")) { // LOAD type instructions
-          color = datapath_mapItem.getElementsByTagName("color_LOADtype");
-          System.out.println("load type");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("101[0-1][0-1][0-1]")) { // LOAD type instructions
-          color = datapath_mapItem.getElementsByTagName("color_STOREtype");
-          System.out.println("store type");
-        } else if (instructionCode
-            .substring(0, 6)
-            .matches("0001[0-1][0-1]")) { // BRANCH type instructions
-          color = datapath_mapItem.getElementsByTagName("color_BRANCHtype");
-          System.out.println("branch type");
-        } else {
-          color = datapath_mapItem.getElementsByTagName("color_Itype");
-          System.out.println("immediate type");
-        }
-
-        other_axis = datapath_mapItem.getElementsByTagName("other_axis");
-        isMovingXaxis = datapath_mapItem.getElementsByTagName("isMovingXaxis");
-        targetVertex = datapath_mapItem.getElementsByTagName("target_vertex");
-        isText = datapath_mapItem.getElementsByTagName("is_text");
-
-        for (int j = 0; j < index_vertex.getLength(); j++) {
-          Vertex vert =
-              new Vertex(
-                  Integer.parseInt(index_vertex.item(j).getTextContent()),
-                  Integer.parseInt(init.item(j).getTextContent()),
-                  Integer.parseInt(end.item(j).getTextContent()),
-                  name.item(j).getTextContent(),
-                  Integer.parseInt(other_axis.item(j).getTextContent()),
-                  Boolean.parseBoolean(isMovingXaxis.item(j).getTextContent()),
-                  color.item(j).getTextContent(),
-                  targetVertex.item(j).getTextContent(),
-                  Boolean.parseBoolean(isText.item(j).getTextContent()));
-          vertexList.add(vert);
-        }
-      }
-      // loading matrix of control of vertex.
-      outputGraph = new ArrayList<>();
-      vertexTraversed = new ArrayList<>();
-      int size = vertexList.size();
-      Vertex vertex;
-      ArrayList<Integer> targetList;
-      for (Vertex value : vertexList) {
-        vertex = value;
-        targetList = vertex.getTargetVertex();
-        ArrayList<Vertex> vertexOfTargets = new ArrayList<>();
-        for (Integer integer : targetList) {
-          vertexOfTargets.add(vertexList.get(integer));
-        }
-        outputGraph.add(vertexOfTargets);
-      }
-      for (ArrayList<Vertex> vert : outputGraph) {}
-
-      vertexList.getFirst().setActive(true);
-      vertexTraversed.add(vertexList.getFirst());
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    vertexList.getFirst().setActive(true);
+    vertexTraversed.add(vertexList.getFirst());
   }
 
   // set the initial state of the variables that controls the animation, and start the timer that

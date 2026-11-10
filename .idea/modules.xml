@@ -11,6 +11,9 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.benchmark.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.benchmark.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.main.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/core/mars5.core.test.iml" filepath="$PROJECT_DIR$/.idea/modules/core/mars5.core.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.iml" filepath="$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.main.iml" filepath="$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.test.iml" filepath="$PROJECT_DIR$/.idea/modules/datapath/mars5.datapath.test.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.iml" filepath="$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.main.iml" filepath="$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.test.iml" filepath="$PROJECT_DIR$/.idea/modules/desktop/mars5.desktop.test.iml" />

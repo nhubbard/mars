@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
   id("java")
 }
@@ -49,13 +51,23 @@ tasks.register<JavaExec>("benchmark") {
 
 val verifyCoreIsolation = tasks.register("verifyCoreIsolation") {
   group = "verification"
-  description = "Reject desktop and compatibility imports from the core library."
+  description = "Reject desktop, compatibility, and XML dependencies from the core library."
   val sources = fileTree("src/main/java") { include("**/*.java") }
+  val archive = tasks.jar.flatMap { it.archiveFile }
   inputs.files(sources)
+  inputs.file(archive)
   doLast {
     val forbidden = Regex("(?m)^\\s*import\\s+(javax\\.swing|java\\.awt|edu\\.missouristate\\.mars\\.(Globals|plugin\\.|desktop\\.|util\\.SystemIO))")
-    val violations = sources.files.filter { forbidden.containsMatchIn(it.readText()) }
-    check(violations.isEmpty()) { "Core has UI or compatibility dependencies: $violations" }
+    val xmlApi = Regex("""\b(?:javax\.xml|org\.(?:xml\.sax|w3c\.dom|jdom2?|dom4j))\b""")
+    val violations = sources.files.filter { file ->
+      val text = file.readText()
+      forbidden.containsMatchIn(text) || xmlApi.containsMatchIn(text)
+    }
+    check(violations.isEmpty()) { "Core has UI, compatibility, or XML dependencies: $violations" }
+    ZipFile(archive.get().asFile).use { jar ->
+      val xmlFiles = jar.entries().asSequence().map { it.name }.filter { it.endsWith(".xml", ignoreCase = true) }.toList()
+      check(xmlFiles.isEmpty()) { "Core archive contains XML resources: $xmlFiles" }
+    }
   }
 }
 tasks.check { dependsOn(verifyCoreIsolation) }

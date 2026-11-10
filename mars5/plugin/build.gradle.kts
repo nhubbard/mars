@@ -1,5 +1,6 @@
 import java.security.MessageDigest
 import java.util.zip.ZipFile
+import javax.xml.XMLConstants
 import org.gradle.language.jvm.tasks.ProcessResources
 import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
@@ -30,6 +31,7 @@ val localIdePath = providers.gradleProperty("localIdePath")
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":datapath"))
   intellijPlatform {
     if (localIdePath.isPresent) {
       local(localIdePath.get())
@@ -92,7 +94,10 @@ val distributionNotices = listOf(
   thirdPartyNotices,
 )
 tasks.processResources {
-  from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
+  from(rootProject.layout.projectDirectory.dir("shared/datapath")) {
+    include("images/*.png")
+    into("datapath")
+  }
   from(rootProject.layout.projectDirectory.dir("desktop/src/main/resources/help")) {
     include("Acknowledgements.html", "MarsHelpHistory.html")
     into("mars-reference")
@@ -110,11 +115,13 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
   val archiveRoot = pluginArchive.flatMap { it.archiveBaseName }
   val pluginJarName = tasks.named<ComposedJarTask>("composedJar").flatMap { it.archiveFileName }
   val coreJarName = project(":core").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
+  val datapathJarName = project(":datapath").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
   inputs.file(archiveFile)
   inputs.files(distributionNotices)
   inputs.property("archiveRoot", archiveRoot)
   inputs.property("pluginJarName", pluginJarName)
   inputs.property("coreJarName", coreJarName)
+  inputs.property("datapathJarName", datapathJarName)
   doLast {
     val root = archiveRoot.get()
     ZipFile(archiveFile.get().asFile).use { zip ->
@@ -129,7 +136,7 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
       val bundledJars = zip.entries().asSequence()
         .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
         .map { it.name.substringAfterLast('/') }
-        .toSet() - setOf(pluginJarName.get(), coreJarName.get())
+        .toSet() - setOf(pluginJarName.get(), coreJarName.get(), datapathJarName.get())
       val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
         lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
       }
@@ -183,7 +190,7 @@ tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 
 // A launch always verifies the plugin; callers clean the build and sandbox first.
 tasks.named("runIde") {
-  dependsOn(tasks.check, ":core:check", ":cli:check", ":desktop:check", rootProject.tasks.named("check"))
+  dependsOn(tasks.check, ":core:check", ":cli:check", ":datapath:check", ":desktop:check", rootProject.tasks.named("check"))
 }
 tasks.matching { it.name.startsWith("prepare") && it.name.contains("Sandbox") }.configureEach {
   mustRunAfter(tasks.named("cleanSandbox"))
@@ -228,8 +235,13 @@ val verifyGeneratedParserCoverage = tasks.register("verifyGeneratedParserCoverag
       val fields = line.split('\t')
       fields[0].toInt() to (fields[1].toInt() to fields[2])
     }
-    val parser = DocumentBuilderFactory.newInstance().apply {
+    val parser = DocumentBuilderFactory.newDefaultInstance().apply {
+      setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
       setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+      setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
+      setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
+      isXIncludeAware = false
+      isExpandEntityReferences = false
     }.newDocumentBuilder()
     val xml = parser.parse(report.get().asFile)
     val sources = xml.getElementsByTagName("sourcefile")

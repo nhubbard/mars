@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":datapath"))
   implementation("com.google.dagger:dagger:2.59.2")
   annotationProcessor("com.google.dagger:dagger-compiler:2.59.2")
 
@@ -29,7 +30,7 @@ tasks.jar {
 }
 
 tasks.processResources {
-  from(rootProject.layout.projectDirectory.dir("shared/datapath"))
+  from(rootProject.layout.projectDirectory.dir("shared/datapath")) { include("images/*.png") }
 }
 
 val cliArchive = project(":cli").tasks.named<Jar>("jar").flatMap { it.archiveFile }

@@ -53,6 +53,9 @@
       <module name="mars5.core.benchmark" target="25" />
       <module name="mars5.core.main" target="25" />
       <module name="mars5.core.test" target="25" />
+      <module name="mars5.datapath" target="25" />
+      <module name="mars5.datapath.main" target="25" />
+      <module name="mars5.datapath.test" target="25" />
       <module name="mars5.desktop" target="25" />
       <module name="mars5.desktop.main" target="25" />
       <module name="mars5.desktop.test" target="25" />
@@ -82,6 +85,9 @@
       <module name="mars5.core.benchmark" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
       <module name="mars5.core.main" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
       <module name="mars5.core.test" options="-Xlint:deprecation -Xlint:removal -Werror -Xlint:rawtypes -Xlint:unchecked -Werror" />
+      <module name="mars5.datapath" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.datapath.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
+      <module name="mars5.datapath.test" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.desktop" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.desktop.main" options="-Xlint:deprecation -Xlint:removal -Werror" />
       <module name="mars5.desktop.test" options="-Xlint:deprecation -Xlint:removal -Werror" />

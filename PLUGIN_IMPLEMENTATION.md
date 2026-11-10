@@ -1724,6 +1724,22 @@ Select a captured instruction to inspect its encoding and animate its datapath.
 **Clear trace** removes the selected execution's recorded instructions without
 changing the simulation or its capture setting.
 
+The four diagram tables are compiled into the shared `datapath` library.
+IntelliJ and Venus use the same wire coordinates, signal targets, palettes,
+and mnemonic lookups. The images remain packaged PNGs. Neither frontend
+parses diagram data at runtime. The data tests compare every field with
+fingerprints captured from the original diagrams, including the effective
+lookup values for keys that had repeated entries.
+
+The core isolation check rejects XML parser references and XML resources in
+the core JAR. The Gradle parser-coverage check still reads its generated JaCoCo
+report with external DTD and schema access, XInclude, and DOM entity
+expansion disabled.
+
+A fresh IntelliJ 2026.3 installation opened all four packaged diagrams and
+animated a captured `addu` instruction. A separate Venus archive check built
+all four wire graphs and verified their targets and colors.
+
 ## Memory Reference Visualization
 
 In **MARS Tools → Memory Reference Visualization**, hover over a grid cell to

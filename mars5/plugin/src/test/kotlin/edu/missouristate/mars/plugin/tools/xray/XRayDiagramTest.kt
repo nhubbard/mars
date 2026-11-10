@@ -2,11 +2,9 @@ package edu.missouristate.mars.plugin.tools.xray
 
 import edu.missouristate.mars.mips.instructions.BasicInstructionFormat.I_BRANCH_FORMAT
 import java.awt.Color
-import java.awt.image.BufferedImage
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -68,15 +66,5 @@ class XRayDiagramTest {
         assertEquals(5, palettes.distinct().size)
         assertEquals(palettes[0], colors(0x00220020))
         assertEquals(Color.RED, palettes.last().first())
-    }
-
-    @Test
-    fun `an invalid vertex ID cannot redirect a wire to the wrong segment`() {
-        val image = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
-        val xml = "<diagram><datapath_map><num_vertex>1</num_vertex></datapath_map></diagram>"
-        val error = assertThrows(IllegalStateException::class.java) {
-            xml.byteInputStream().use { XRayDiagram.read(XRayUnit.DATAPATH, image, it) }
-        }
-        assertEquals("Invalid vertex IDs in MipsXRayOpcode", error.message)
     }
 }
