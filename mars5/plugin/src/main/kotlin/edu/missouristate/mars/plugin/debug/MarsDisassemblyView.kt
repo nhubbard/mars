@@ -12,6 +12,7 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.BaseTableView
 import com.intellij.ui.table.TableView
+import com.intellij.util.messages.Topic
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
@@ -43,8 +44,47 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal const val DISASSEMBLY_LAYOUT_PREFIX = "mars.debug.disassembly.v1."
-private const val ADDRESS_COLUMN = 1
-private const val SOURCE_COLUMN = 4
+// BaseTableView stores complete layouts. Keep the imported order separate until the next native layout save.
+private const val importedOrderKey = DISASSEMBLY_LAYOUT_PREFIX + "importedOrder"
+private val addressColumn = MarsDisassemblyColumn.ADDRESS.ordinal
+private val sourceColumn = MarsDisassemblyColumn.SOURCE.ordinal
+
+internal enum class MarsDisassemblyColumn(private val suffix: String) {
+    PC("pc"), ADDRESS("address"), WORD("word"), INSTRUCTION("instruction"), SOURCE("source"),
+    BREAKPOINT("breakpoint"), EXECUTION("execution");
+
+    val title get() = runMessages.getMessage("debug.disassembly.$suffix")
+}
+
+// Venus persisted the model indices of Bkpt, Address, Code, Basic, and Source in that order.
+private val venusColumns = listOf(
+    MarsDisassemblyColumn.BREAKPOINT, MarsDisassemblyColumn.ADDRESS, MarsDisassemblyColumn.WORD,
+    MarsDisassemblyColumn.INSTRUCTION, MarsDisassemblyColumn.SOURCE,
+)
+private val columnSeparators = Regex("\\s+")
+
+internal fun venusDisassemblyOrder(value: String?): List<MarsDisassemblyColumn>? {
+    val indices = value?.trim()?.split(columnSeparators)?.map { it.toIntOrNull() ?: return null } ?: return null
+    if (indices.size != venusColumns.size || indices.toSet() != venusColumns.indices.toSet()) return null
+    return indices.map(venusColumns::get)
+}
+
+internal fun PropertiesComponent.importedDisassemblyOrder() = venusDisassemblyOrder(getValue(importedOrderKey))
+
+internal fun importDisassemblyOrder(order: List<MarsDisassemblyColumn>) {
+    PropertiesComponent.getInstance().setValue(importedOrderKey, order.joinToString(" ") { venusColumns.indexOf(it).toString() })
+    ApplicationManager.getApplication().messageBus.syncPublisher(MarsDisassemblyOrderListener.TOPIC).orderImported(order)
+}
+
+internal fun interface MarsDisassemblyOrderListener {
+    fun orderImported(order: List<MarsDisassemblyColumn>)
+
+    companion object {
+        @Topic.AppLevel
+        @JvmField
+        val TOPIC = Topic("MARS imported disassembly order", MarsDisassemblyOrderListener::class.java, Topic.BroadcastDirection.NONE)
+    }
+}
 
 internal data class ExecutionMarkers(val nextIsDelaySlot: Boolean = false, val previous: ExecutedInstruction? = null) {
     companion object {
@@ -99,16 +139,16 @@ internal class MarsDisassemblyView(
     private val toggleBreakpoint = JButton(runMessages.getMessage("debug.disassembly.breakpoint.toggle")).apply { isEnabled = false }
     private var breakpoints = emptyMap<Int, AddressBreakpoint>()
     private val model = ListTableModel<DisassemblyRow>(
-        column("debug.disassembly.pc") { if (it.current) "▶" else "" },
-        sortableColumn("debug.disassembly.address", { display.formatAddress(it.address) }, compareBy { it.address.toUInt() }),
-        sortableColumn("debug.disassembly.word", DisassemblyRow::word),
-        sortableColumn("debug.disassembly.instruction", DisassemblyRow::instruction),
-        sortableColumn("debug.disassembly.source", ::sourceLabel),
-        object : ColumnInfo<DisassemblyRow, Icon>(runMessages.getMessage("debug.disassembly.breakpoint")) {
+        column(MarsDisassemblyColumn.PC) { if (it.current) "▶" else "" },
+        sortableColumn(MarsDisassemblyColumn.ADDRESS, { display.formatAddress(it.address) }, compareBy { it.address.toUInt() }),
+        sortableColumn(MarsDisassemblyColumn.WORD, DisassemblyRow::word),
+        sortableColumn(MarsDisassemblyColumn.INSTRUCTION, DisassemblyRow::instruction),
+        sortableColumn(MarsDisassemblyColumn.SOURCE, ::sourceLabel),
+        object : ColumnInfo<DisassemblyRow, Icon>(MarsDisassemblyColumn.BREAKPOINT.title) {
             override fun getColumnClass() = Icon::class.java
             override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
         },
-        column("debug.disassembly.execution") { row ->
+        column(MarsDisassemblyColumn.EXECUTION) { row ->
             buildList {
                 if (row.nextIsDelaySlot) add(runMessages.getMessage("debug.disassembly.delay.next"))
                 row.previous?.let {
@@ -186,15 +226,19 @@ internal class MarsDisassemblyView(
     private fun restoreTableLayout() {
         val properties = PropertiesComponent.getInstance()
         BaseTableView.restore(properties, DISASSEMBLY_LAYOUT_PREFIX, table)
+        // The platform's persisted layout owns column widths. Move the existing columns after it restores them.
+        properties.importedDisassemblyOrder()?.let(::applyImportedOrder)
+        ApplicationManager.getApplication().messageBus.connect(this)
+            .subscribe(MarsDisassemblyOrderListener.TOPIC, MarsDisassemblyOrderListener(::applyImportedOrder))
         val sorter = table.rowSorter
-        val column = properties.getInt(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", ADDRESS_COLUMN)
-            .coerceIn(ADDRESS_COLUMN, SOURCE_COLUMN)
+        val column = properties.getInt(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", addressColumn)
+            .coerceIn(addressColumn, sourceColumn)
         val order = if (properties.getBoolean(DISASSEMBLY_LAYOUT_PREFIX + "descending")) SortOrder.DESCENDING else SortOrder.ASCENDING
         sorter.sortKeys = listOf(SortKey(column, order))
         sorter.addRowSorterListener { event ->
             if (event.type != RowSorterEvent.Type.SORT_ORDER_CHANGED) return@addRowSorterListener
-            val key = sorter.sortKeys.firstOrNull() ?: SortKey(ADDRESS_COLUMN, SortOrder.ASCENDING)
-            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", key.column, ADDRESS_COLUMN)
+            val key = sorter.sortKeys.firstOrNull() ?: SortKey(addressColumn, SortOrder.ASCENDING)
+            properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "sortColumn", key.column, addressColumn)
             properties.setValue(DISASSEMBLY_LAYOUT_PREFIX + "descending", key.sortOrder == SortOrder.DESCENDING)
         }
         table.tableHeader.addMouseListener(object : MouseAdapter() {
@@ -206,9 +250,25 @@ internal class MarsDisassemblyView(
             }
 
             override fun mouseReleased(event: MouseEvent) {
-                if (before != layout()) BaseTableView.store(properties, DISASSEMBLY_LAYOUT_PREFIX, table)
+                if (before != layout()) {
+                    BaseTableView.store(properties, DISASSEMBLY_LAYOUT_PREFIX, table)
+                    properties.unsetValue(importedOrderKey)
+                }
             }
         })
+    }
+
+    private fun applyImportedOrder(order: List<MarsDisassemblyColumn>) {
+        val imported = order.iterator()
+        val columns = table.columnModel
+        val target = columns.columns.asSequence().map { column ->
+            val current = MarsDisassemblyColumn.entries[column.modelIndex]
+            if (current in venusColumns) imported.next() else current
+        }.toList()
+        for ((index, column) in target.withIndex()) {
+            val previous = table.convertColumnIndexToView(column.ordinal)
+            if (index != previous) columns.moveColumn(previous, index)
+        }
     }
 
     fun showAddress(address: Int) {
@@ -317,14 +377,14 @@ internal class MarsDisassemblyView(
         revision.incrementAndGet()
     }
 
-    private fun column(key: String, value: (DisassemblyRow) -> String) =
-        object : ColumnInfo<DisassemblyRow, String>(runMessages.getMessage(key)) {
+    private fun column(column: MarsDisassemblyColumn, value: (DisassemblyRow) -> String) =
+        object : ColumnInfo<DisassemblyRow, String>(column.title) {
             override fun valueOf(item: DisassemblyRow) = value(item)
         }
 
     private fun sortableColumn(
-        key: String, value: (DisassemblyRow) -> String, order: Comparator<DisassemblyRow> = compareBy(value),
-    ) = object : ColumnInfo<DisassemblyRow, String>(runMessages.getMessage(key)) {
+        column: MarsDisassemblyColumn, value: (DisassemblyRow) -> String, order: Comparator<DisassemblyRow> = compareBy(value),
+    ) = object : ColumnInfo<DisassemblyRow, String>(column.title) {
         override fun valueOf(item: DisassemblyRow) = value(item)
         override fun getComparator() = order
     }

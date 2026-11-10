@@ -20,9 +20,12 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.debug.MarsDebuggerDisplaySettings
+import edu.missouristate.mars.plugin.debug.DISASSEMBLY_LAYOUT_PREFIX
+import edu.missouristate.mars.plugin.debug.MarsDisassemblyColumn
 import edu.missouristate.mars.plugin.debug.MarsSymbolColumn
 import edu.missouristate.mars.plugin.debug.MarsSymbolSort
 import edu.missouristate.mars.plugin.debug.MarsSymbolsView
+import edu.missouristate.mars.plugin.debug.importedDisassemblyOrder
 import edu.missouristate.mars.plugin.debug.storeSymbolSort
 import edu.missouristate.mars.plugin.debug.symbolSort
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +51,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     private val display get() = service<MarsDebuggerDisplaySettings>()
     private val numberMarker = "mars.venus.debugger.numbers.imported"
     private val sortMarker = "mars.venus.debugger.symbols.imported"
+    private val layoutMarker = "mars.venus.debugger.disassembly.imported"
+    private val importedOrderKey = DISASSEMBLY_LAYOUT_PREFIX + "importedOrder"
 
     @Test
     fun `debugger import previews both scopes and updates open Symbols views in the current project`() = timeoutRunBlocking<Unit> {
@@ -65,6 +70,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     putBoolean("DisplayAddressesInHex", false)
                     putBoolean("DisplayValuesInHex", false)
                     put("LabelSortState", "3")
+                    put("TextColumnOrder", "4 2 0 3 1")
                 }
                 val action = MarsImportVenusDebuggerPreferencesAction { root }
                 val view = MarsSymbolsView(project, MutableStateFlow(null))
@@ -81,6 +87,7 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                         assertTrue(preview.contains("Address format (all MARS projects)  Hexadecimal → Decimal"))
                         assertTrue(preview.contains("Value format (all MARS projects)  Hexadecimal → Decimal"))
                         assertTrue(preview.contains("Symbols sorting (this project)  Label ascending → Address descending"))
+                        assertTrue(preview.contains("Source → Word → Breakpoint → Instruction → Address"))
                         Messages.CANCEL
                     }) { action.actionPerformed(event(action)) }
                     assertEquals(listOf(SortKey(0, SortOrder.ASCENDING)), view.focus.rowSorter.sortKeys)
@@ -94,11 +101,51 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     assertEquals(1, displayChanges)
                     assertTrue(appProperties.isTrueValue(numberMarker))
                     assertTrue(projectProperties.isTrueValue(sortMarker))
+                    assertTrue(appProperties.isTrueValue(layoutMarker))
                     assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
                     action.actionPerformed(event(action))
                 } finally {
                     Disposer.dispose(lifetime)
                 }
+            }
+        }
+    }
+
+    @Test
+    fun `earlier debugger imports can add a valid Disassembly order independently`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withDefaults {
+                appProperties.setValue(numberMarker, true)
+                projectProperties.setValue(sortMarker, true)
+                val root = MemoryPreferences()
+                val saved = root.node("mars")
+                saved.putBoolean("DisplayValuesInHex", false)
+                saved.put("LabelSortState", "1")
+                val action = MarsImportVenusDebuggerPreferencesAction { root }
+                assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
+
+                for (invalid in listOf(null, "0 1 2 3", "0 1 2 3 3", "0 1 2 3 5", "0 1 2 x 4")) {
+                    if (invalid == null) saved.remove("TextColumnOrder") else saved.put("TextColumnOrder", invalid)
+                    withDialog({ info ->
+                        assertTrue(info.contains("No saved Venus debugger preferences differ"))
+                        Messages.OK
+                    }) { action.actionPerformed(event(action)) }
+                    assertFalse(appProperties.isTrueValue(layoutMarker))
+                }
+                saved.put("TextColumnOrder", "  2 3\t4 1 0  ")
+                withDialog({ preview ->
+                    assertTrue(preview.contains("Disassembly column order (all MARS projects)"))
+                    assertTrue(preview.contains("Word → Instruction → Source → Address → Breakpoint"))
+                    assertFalse(preview.contains("Value format"))
+                    assertFalse(preview.contains("Symbols sorting"))
+                    Messages.OK
+                }) { action.actionPerformed(event(action)) }
+                assertEquals(listOf(MarsDisassemblyColumn.WORD, MarsDisassemblyColumn.INSTRUCTION, MarsDisassemblyColumn.SOURCE,
+                    MarsDisassemblyColumn.ADDRESS, MarsDisassemblyColumn.BREAKPOINT), appProperties.importedDisassemblyOrder())
+                assertTrue(appProperties.isTrueValue(layoutMarker))
+                assertFalse(event(action).also(action::update).presentation.isEnabledAndVisible)
+                assertTrue(display.hexValues)
+                assertEquals(MarsSymbolSort(MarsSymbolColumn.NAME, false), projectProperties.symbolSort())
             }
         }
     }
@@ -113,16 +160,19 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
             withContext(Dispatchers.EDT) {
                 withDefaults {
                     appProperties.setValue(numberMarker, true)
+                    appProperties.setValue(layoutMarker, true)
                     projectProperties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.KIND, false))
                     val root = MemoryPreferences()
                     root.node("edu/missouristate/mars").apply {
                         put("LabelSortState", state.toString())
                         putBoolean("DisplayAddressesInHex", false)
+                        put("TextColumnOrder", "2 3 4 1 0")
                     }
                     val action = MarsImportVenusDebuggerPreferencesAction { root }
                     assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
                     withDialog({ preview ->
                         assertFalse(preview.contains("Address format"))
+                        assertFalse(preview.contains("Disassembly column order"))
                         Messages.OK
                     }) { action.actionPerformed(event(action)) }
                     assertEquals(MarsSymbolSort(MarsSymbolColumn.valueOf(column), descending), projectProperties.symbolSort())
@@ -178,6 +228,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
                     { projectProperties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.KIND, true)) },
                     { appProperties.setValue(numberMarker, true) },
                     { projectProperties.setValue(sortMarker, true) },
+                    { appProperties.setValue(layoutMarker, true) },
+                    { appProperties.setValue(importedOrderKey, "4 3 2 1 0") },
                 )) {
                     var count = 0
                     withDialog({ message ->
@@ -196,6 +248,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     private fun withDefaults(operation: () -> Unit) {
         val oldNumbers = appProperties.getValue(numberMarker)
         val oldSortMarker = projectProperties.getValue(sortMarker)
+        val oldLayoutMarker = appProperties.getValue(layoutMarker)
+        val oldImportedOrder = appProperties.getValue(importedOrderKey)
         val oldSort = projectProperties.symbolSort()
         val oldDisplay = display.getState()
         try {
@@ -204,6 +258,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
         } finally {
             appProperties.setValue(numberMarker, oldNumbers)
             projectProperties.setValue(sortMarker, oldSortMarker)
+            appProperties.setValue(layoutMarker, oldLayoutMarker)
+            appProperties.setValue(importedOrderKey, oldImportedOrder)
             projectProperties.storeSymbolSort(oldSort)
             display.loadState(oldDisplay)
         }
@@ -212,6 +268,8 @@ class MarsImportVenusDebuggerPreferencesPlatformTest {
     private fun resetDefaults() {
         appProperties.unsetValue(numberMarker)
         projectProperties.unsetValue(sortMarker)
+        appProperties.unsetValue(layoutMarker)
+        appProperties.unsetValue(importedOrderKey)
         projectProperties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.NAME, false))
         display.loadState(MarsDebuggerDisplaySettings.Settings())
     }

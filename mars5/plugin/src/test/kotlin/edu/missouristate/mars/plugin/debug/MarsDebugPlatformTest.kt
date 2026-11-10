@@ -3163,7 +3163,7 @@ class MarsDebugPlatformTest {
                 .also { addBreakpoint(it, 0) }
         }
         val properties = PropertiesComponent.getInstance()
-        val keys = (listOf("sortColumn", "descending") + (0..6).flatMap { listOf("Order$it", "Width$it") })
+        val keys = (listOf("sortColumn", "descending", "importedOrder") + (0..6).flatMap { listOf("Order$it", "Width$it") })
             .map { DISASSEMBLY_LAYOUT_PREFIX + it }
         val original = keys.associateWith(properties::getValue)
         try {
@@ -3179,6 +3179,13 @@ class MarsDebugPlatformTest {
                     val panel = withContext(Dispatchers.EDT) { listing("MarsDisassemblyLayoutTest") }
                     val table = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) }
                     fun selectedAddress(listing: JBTable) = listing.getValueAt(listing.selectedRow, listing.convertColumnIndexToView(1))
+                    fun gesture(change: () -> Unit) {
+                        val header = table.tableHeader
+                        header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_PRESSED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
+                        change()
+                        header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_RELEASED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
+                    }
+                    fun columnNames(table: JBTable) = (0 until table.columnCount).map(table::getColumnName)
                     pollAssertionsAsync(3.seconds, 10.milliseconds) {
                         withContext(Dispatchers.EDT) {
                             assertTrue(table.selectedRow >= 0)
@@ -3186,12 +3193,6 @@ class MarsDebugPlatformTest {
                         }
                     }
                     withContext(Dispatchers.EDT) {
-                        val header = table.tableHeader
-                        fun gesture(change: () -> Unit) {
-                            header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_PRESSED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
-                            change()
-                            header.dispatchEvent(MouseEvent(header, MouseEvent.MOUSE_RELEASED, 0, 0, 1, 1, 1, false, MouseEvent.BUTTON1))
-                        }
                         gesture {}
                         assertNull(properties.getValue(DISASSEMBLY_LAYOUT_PREFIX + "Order0"))
                         gesture {
@@ -3235,7 +3236,33 @@ class MarsDebugPlatformTest {
                             assertEquals("0x00400000", selectedAddress(restored))
                         }
                     }
-                    withContext(Dispatchers.EDT) { debug.session.resume() }
+                    withContext(Dispatchers.EDT) {
+                        val suspension = debug.session.suspendContext
+                        val selected = selectedAddress(table)
+                        val sourceColumn = table.columnModel.getColumn(table.convertColumnIndexToView(4))
+                        val imported = requireNotNull(venusDisassemblyOrder("2 3 4 1 0"))
+                        val expected = listOf("Word", "PC", "Instruction", "Source", "Address", "Breakpoint", "Execution")
+                        importDisassemblyOrder(imported)
+                        assertEquals(expected, columnNames(table))
+                        assertEquals(expected, columnNames(restored))
+                        assertSame(sourceColumn, table.columnModel.getColumn(3))
+                        assertEquals(235, sourceColumn.width)
+                        assertEquals(235, restored.columnModel.getColumn(3).preferredWidth)
+                        assertEquals(selected, selectedAddress(table))
+                        assertEquals(SortKey(1, SortOrder.DESCENDING), table.rowSorter.sortKeys.single())
+                        val reopened = requireNotNull(UIUtil.findComponentOfType(listing("MarsImportedDisassemblyLayoutTest"), JBTable::class.java))
+                        assertEquals(expected, columnNames(reopened))
+                        assertEquals(235, reopened.columnModel.getColumn(3).preferredWidth)
+                        assertEquals("4", properties.getValue(DISASSEMBLY_LAYOUT_PREFIX + "Order0"))
+
+                        gesture { table.columnModel.moveColumn(3, 0) }
+                        assertNull(properties.importedDisassemblyOrder())
+                        val afterDrag = requireNotNull(UIUtil.findComponentOfType(listing("MarsDraggedDisassemblyLayoutTest"), JBTable::class.java))
+                        assertEquals(columnNames(table), columnNames(afterDrag))
+                        assertEquals(235, afterDrag.columnModel.getColumn(0).preferredWidth)
+                        assertSame(suspension, debug.session.suspendContext)
+                        debug.session.resume()
+                    }
                     assertEquals(0, debug.exit.await())
                 } finally {
                     withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }

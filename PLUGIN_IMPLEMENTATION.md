@@ -2193,6 +2193,16 @@ The packaged IntelliJ 2026.3 smoke test confirmed the new number format and
 sort order in an open Symbols table while the debugger remained at the same
 suspension. IntelliJ saved both scopes in their respective settings files.
 
+The same action previews the five Disassembly columns shared with Venus.
+Confirming applies their relative order across MARS projects. PC and Execution
+keep their current positions. The views move existing columns with their widths,
+and preserve the current sort and selection. A later manual layout change
+saves the resulting layout through IntelliJ's table storage.
+
+The packaged IntelliJ 2026.3 smoke test imported the order at a breakpoint,
+verified the open table's order, Source width, and selected instruction, and
+confirmed that IntelliJ saved the preference.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose
