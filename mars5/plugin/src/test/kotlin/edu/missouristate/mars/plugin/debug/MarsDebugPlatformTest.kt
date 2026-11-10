@@ -112,6 +112,7 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.MarsRunOptions
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.run.RunMemoryDumpState
@@ -1852,6 +1853,30 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(1, debug.exit.await())
             assertEquals(3L, process.instructionCounter.snapshot().total)
+        }
+    }
+
+    @Test
+    fun `Debug exposes the launch speed and can change it while paused`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("debug-speed.asm", "nop\nli \$v0, 10\nsyscall\n")
+                .virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(file, { runSpeed = 0.05f }) { debug ->
+            debug.assertPausedAt(file, 0)
+            withContext(Dispatchers.EDT) {
+                val (action, event) = toolbarAction(debug.session, "Run speed")
+                val speed = assertInstanceOf(MarsRunSpeedAction::class.java, action)
+                assertTrue(event.presentation.isEnabled)
+                assertEquals("Speed: 0.05 instr/s", event.presentation.text)
+                val choices = speed.createPopupActionGroup(JPanel(), DataContext.EMPTY_CONTEXT).getChildren(ActionManager.getInstance())
+                val unlimited = choices.single { it.templatePresentation.text == "Unlimited" }
+                unlimited.actionPerformed(event)
+                action.update(event)
+                assertEquals("Speed: Unlimited", event.presentation.text)
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
         }
     }
 

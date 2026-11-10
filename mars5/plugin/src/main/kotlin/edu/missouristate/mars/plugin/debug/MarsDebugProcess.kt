@@ -48,6 +48,7 @@ import edu.missouristate.mars.plugin.debug.DebuggerCallStack.CallerSite
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsSyntaxHighlighter
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
@@ -141,6 +142,7 @@ internal class MarsDebugProcess(session: XDebugSession, state: MarsRunState) : X
     }
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
+        topToolbar.add(MarsRunSpeedAction(handler))
         topToolbar.add(object : DumbAwareAction(
             runMessages.getMessage("debug.step.instruction"),
             runMessages.getMessage("debug.step.instruction.description"),

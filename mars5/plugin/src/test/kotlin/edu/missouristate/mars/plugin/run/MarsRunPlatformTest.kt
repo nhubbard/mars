@@ -33,8 +33,11 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.execution.runners.ProgramRunner
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -74,6 +77,7 @@ import java.nio.file.Path
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JList
+import javax.swing.JPanel
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -313,6 +317,98 @@ class MarsRunPlatformTest {
             assertEquals("0000002a", Files.readAllLines(dump).single())
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `Run speed persists and the native toolbar controls only its own running process`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val handlers = mutableListOf<MarsProcessHandler>()
+        try {
+            val (first, second) = withContext(Dispatchers.EDT) {
+                val file = fixture.addFileToProject("speed.asm", "loop: j loop\n").virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = file.path
+                config.options.instructionLimit = 3
+                val editor = config.configurationEditor
+                try {
+                    editor.resetFrom(config)
+                    val speeds = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).single { it.selectedItem == 0f }
+                    speeds.selectedItem = 0.05f
+                    editor.applyTo(config)
+                    editor.resetFrom(config)
+                    assertEquals(0.05f, speeds.selectedItem)
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                val xml = Element("configuration").also(config::writeExternal)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(0.05f, restored.options.runSpeed)
+                config.options.runSpeed = -1f
+                assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
+                val invalid = ExecutionEnvironmentBuilder.create(executor, config).build()
+                assertThrows<ExecutionException> { config.getState(executor, invalid) }
+
+                fun start(): Triple<MarsProcessHandler, MarsRunSpeedAction, Recording> {
+                    val env = ExecutionEnvironmentBuilder.create(executor, restored).build()
+                    val result = restored.getState(executor, env).execute(executor, env.runner)!!
+                    Disposer.register(lifetime, result.executionConsole!!)
+                    val handler = assertInstanceOf(MarsProcessHandler::class.java, result.processHandler).also(handlers::add)
+                    val speed = assertInstanceOf(MarsRunSpeedAction::class.java, result.actions.single())
+                    val recording = Recording()
+                    handler.addProcessListener(recording)
+                    handler.startNotify()
+                    return Triple(handler, speed, recording)
+                }
+                start() to start()
+            }
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                assertEquals(1L, first.first.instructionCounter.snapshot().total)
+                assertEquals(1L, second.first.instructionCounter.snapshot().total)
+            }
+            withContext(Dispatchers.EDT) {
+                val action = first.second
+                val event = TestActionEvent.createTestEvent(action)
+                action.update(event)
+                assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                assertTrue(event.presentation.isEnabled)
+                assertEquals("Speed: 0.05 instr/s", event.presentation.text)
+                val choices = action.createPopupActionGroup(JPanel(), DataContext.EMPTY_CONTEXT).getChildren(ActionManager.getInstance())
+                assertEquals(37, choices.size)
+                val slow = choices.single { it.templatePresentation.text == "0.05 instr/s" } as ToggleAction
+                assertEquals(ActionUpdateThread.BGT, slow.actionUpdateThread)
+                assertTrue(slow.isSelected(TestActionEvent.createTestEvent(slow)))
+                val unlimited = choices.single { it.templatePresentation.text == "Unlimited" } as ToggleAction
+                assertFalse(unlimited.isSelected(TestActionEvent.createTestEvent(unlimited)))
+                unlimited.actionPerformed(TestActionEvent.createTestEvent(unlimited))
+                assertTrue(unlimited.isSelected(TestActionEvent.createTestEvent(unlimited)))
+                assertEquals(0.05f, second.first.runSpeed)
+            }
+            assertEquals(1, first.third.exit.await())
+            assertEquals(3L, first.first.instructionCounter.snapshot().total)
+            assertEquals(1L, second.first.instructionCounter.snapshot().total)
+            withContext(Dispatchers.EDT) {
+                val event = TestActionEvent.createTestEvent(first.second)
+                first.second.update(event)
+                assertFalse(event.presentation.isEnabled)
+                assertEquals("Speed: Unlimited", event.presentation.text)
+                val stopping = CompletableDeferred<Boolean>()
+                second.first.addProcessListener(object : ProcessListener {
+                    override fun processWillTerminate(event: ProcessEvent, willBeDestroyed: Boolean) {
+                        val update = TestActionEvent.createTestEvent(second.second)
+                        second.second.update(update)
+                        stopping.complete(update.presentation.isEnabled)
+                    }
+                })
+                second.first.destroyProcess()
+                assertFalse(stopping.await())
+            }
+            assertEquals(130, second.third.exit.await())
+        } finally {
+            withContext(Dispatchers.EDT) {
+                handlers.forEach(ProcessHandler::destroyProcess)
+                Disposer.dispose(lifetime)
+            }
         }
     }
 

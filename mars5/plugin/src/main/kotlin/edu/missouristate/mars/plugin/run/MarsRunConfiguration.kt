@@ -13,13 +13,16 @@ import com.intellij.execution.configurations.RunConfigurationOptions
 import com.intellij.execution.configurations.RuntimeConfigurationError
 import com.intellij.execution.configurations.SimpleConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.runners.GenericProgramRunner
 import com.intellij.execution.runners.showRunContent
 import com.intellij.execution.configurations.RunProfile
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.configurations.RunnerSettings
+import com.intellij.execution.ui.ConsoleView
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.components.PathMacroManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.ConfigurationException
@@ -73,6 +76,7 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var programArguments: String? by string()
     var instructionLimit: Int by property(0)
+    var runSpeed: Float by property(0f)
     var delayedBranching: Boolean by property(false)
     var allowPseudoInstructions by enum(AssemblyOptionOverride.PROJECT)
     var warningsAreErrors by enum(AssemblyOptionOverride.PROJECT)
@@ -125,6 +129,12 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         return limit
     }
 
+    private fun runSpeed(invalid: (String) -> Exception): Float {
+        val speed = options.runSpeed
+        if (speed !in runSpeeds) throw invalid(runMessages.getMessage("run.speed.invalid"))
+        return speed
+    }
+
     private fun checkDevices(layout: MarsMemoryLayout, invalid: (String) -> Exception) {
         if (options.connectMarsBot && options.connectScavengerHunt) {
             throw invalid(runMessages.getMessage("run.connect.deviceConflict"))
@@ -140,6 +150,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         memoryDumps(sources.entry) { RuntimeConfigurationError(it) }
         arguments { RuntimeConfigurationError(it) }
         instructionLimit { RuntimeConfigurationError(it) }
+        runSpeed { RuntimeConfigurationError(it) }
     }
 
     private fun resolveSourceSet(invalid: (String) -> Exception): MarsSourceSet {
@@ -156,6 +167,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var source = ""
         private var programArguments = ""
         private var instructionLimit = 0
+        private var runSpeed = 0f
         private var delayedBranching = false
         private var assembleDirectory = false
         private var allowPseudoInstructions = AssemblyOptionOverride.PROJECT
@@ -201,6 +213,10 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                     }
                     .comment(runMessages.getMessage("run.instruction.limit.help"))
             }
+            row(runMessages.getMessage("run.speed.title")) {
+                comboBox(runSpeeds, textListCellRenderer("") { runSpeedTitle(it) })
+                    .bindItem(::runSpeed.toNullableProperty())
+            }
             val overrideRenderer = textListCellRenderer<AssemblyOptionOverride>("") { it.title }
             row(runMessages.getMessage("run.assembly.pseudo")) {
                 comboBox(AssemblyOptionOverride.entries, overrideRenderer)
@@ -226,6 +242,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             source = configuration.options.sourcePath.orEmpty()
             programArguments = configuration.options.programArguments.orEmpty()
             instructionLimit = configuration.options.instructionLimit
+            runSpeed = configuration.options.runSpeed
             delayedBranching = configuration.options.delayedBranching
             allowPseudoInstructions = configuration.options.allowPseudoInstructions
             warningsAreErrors = configuration.options.warningsAreErrors
@@ -248,6 +265,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.sourcePath = source.trim()
             configuration.options.programArguments = programArguments
             configuration.options.instructionLimit = instructionLimit
+            configuration.options.runSpeed = runSpeed
             configuration.options.delayedBranching = delayedBranching
             configuration.options.allowPseudoInstructions = allowPseudoInstructions
             configuration.options.warningsAreErrors = warningsAreErrors
@@ -281,10 +299,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         )
         val arguments = arguments { ExecutionException(it) }
         val limit = instructionLimit { ExecutionException(it) }
+        val speed = runSpeed { ExecutionException(it) }
         val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, launch, dumps, arguments, limit, options.captureBitmap, options.captureReferences,
+            environment, launch, dumps, arguments, limit, speed, options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
     }
@@ -295,6 +314,7 @@ internal class MarsRunState(
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
     private val instructionLimit: Int,
+    private val runSpeed: Float,
     private val captureBitmap: Boolean,
     private val captureReferences: Boolean,
     private val connectDigitalLab: Boolean,
@@ -305,15 +325,20 @@ internal class MarsRunState(
     CommandLineState(environment) {
     val entry: Path get() = launch.sources.entry
 
+    override fun createActions(console: ConsoleView?, processHandler: ProcessHandler, executor: Executor?): Array<AnAction> =
+        arrayOf(MarsRunSpeedAction(processHandler as MarsProcessHandler))
+
     override fun startProcess() =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
-            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments, instructionLimit = instructionLimit)
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
+            arguments = arguments, instructionLimit = instructionLimit, runSpeed = runSpeed)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
-            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch, arguments = arguments, instructionLimit = instructionLimit, execute = execute)
+            connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
+            arguments = arguments, instructionLimit = instructionLimit, runSpeed = runSpeed, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
 }

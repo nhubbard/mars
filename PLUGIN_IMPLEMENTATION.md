@@ -1378,6 +1378,15 @@ and status 1, and any configured after-run dumps use the final state.
 A program that exits on its final allowed instruction keeps its own exit
 status.
 
+## Run speed
+
+Choose the initial **Run speed** in a MIPS Run or Debug configuration.
+The **Speed** control in the Run or Debug toolbar changes the current
+launch only. It uses Venus's rates from 0.05 through 30 instructions per
+second and **Unlimited**, the default. The simulator updates a pending
+delay when the speed changes. Single-instruction stepping still pauses
+immediately after executing the instruction.
+
 ## Program arguments
 
 Enter **Program arguments** in a MIPS Run or Debug configuration. IntelliJ's

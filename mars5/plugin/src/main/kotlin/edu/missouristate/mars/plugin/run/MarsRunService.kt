@@ -103,11 +103,12 @@ internal class MarsRunService(private val project: Project, private val scope: C
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
         arguments: List<String> = emptyList(),
         instructionLimit: Int = 0,
+        runSpeed: Float = 0f,
         execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, instructionLimit, captureBitmap, captureReferences,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, instructionLimit, runSpeed, captureBitmap, captureReferences,
             connectDigitalLab, connectKeyboardDisplay, connectMarsBot, connectScavengerHunt, execute,
         )
     }
@@ -118,6 +119,7 @@ internal class MarsProcessHandler(
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
     private val instructionLimit: Int,
+    initialRunSpeed: Float,
     captureBitmap: Boolean,
     captureReferences: Boolean,
     connectDigitalLab: Boolean,
@@ -128,6 +130,7 @@ internal class MarsProcessHandler(
 ) : ProcessHandler(), MarsToolExecution {
     private val entry = launch.sources.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
+    @Volatile var runSpeed = initialRunSpeed
 
     override fun addInstructionListener(listener: MarsToolInstructionListener, lifetime: Disposable) {
         toolInstructions.addListener(listener, lifetime)
@@ -249,6 +252,7 @@ internal class MarsProcessHandler(
                         session.program.setSyscallEnvironment(io)
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
+                        simulator.setRunSpeedSource { runSpeed.toDouble() }
                         simulator.addListener(object : SimulatorListener {
                             override fun onStep(event: StepEvent) {
                                 val word = event.instruction()

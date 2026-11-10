@@ -90,6 +90,27 @@ class SimulatorEngineTest {
   }
 
   @Test
+  void changingRunSpeedReleasesAnInstructionAlreadyWaitingForItsTick() throws Exception {
+    try (var session = load("loop: addiu $t0,$t0,1\nj loop\n")) {
+      var engine = session.simulator();
+      var waiting = new CountDownLatch(1);
+      var unlimited = new AtomicBoolean();
+      engine.setRunSpeedSource(
+          () -> {
+            if (unlimited.get()) return 0;
+            waiting.countDown();
+            return 0.05;
+          });
+      var completion = engine.runAsync(3, null);
+      assertThat(waiting.await(2, TimeUnit.SECONDS)).isTrue();
+      assertThat(completion).isNotDone();
+      unlimited.set(true);
+      assertThat(completion.get(2, TimeUnit.SECONDS).reason()).isEqualTo(StopEvent.Reason.STEP_LIMIT);
+      assertThat(session.registerFile.getValue(8)).isEqualTo(2);
+    }
+  }
+
+  @Test
   void deviceCheckpointsShareTheInstructionFrameAndExpireWithIt() throws Exception {
     try (var session = load("nop\n")) {
       int pc = session.registerFile.getPC();

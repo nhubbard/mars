@@ -7,7 +7,9 @@ import edu.missouristate.mars.core.MarsContext;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntPredicate;
 
 /**
@@ -70,21 +72,28 @@ public final class SimulatorEngine implements MarsSimulator, AutoCloseable {
     return instructionLimit > 0 && instructionsRemaining == 0;
   }
 
-  private volatile java.util.function.DoubleSupplier runSpeed = () -> Double.POSITIVE_INFINITY;
+  private volatile DoubleSupplier runSpeed = () -> Double.POSITIVE_INFINITY;
 
   /** Instructions per second; a nonpositive or infinite rate executes without throttling. */
-  public void setRunSpeedSource(java.util.function.DoubleSupplier source) {
+  public void setRunSpeedSource(DoubleSupplier source) {
     runSpeed = Objects.requireNonNull(source);
   }
 
-  private void awaitNextInstruction() {
+  private long instructionDelayNanos() {
     double rate = runSpeed.getAsDouble();
-    if (rate <= 0 || !Double.isFinite(rate)) return;
-    long delay = (long) Math.min(1_000_000_000.0 / rate, Long.MAX_VALUE / 2.0);
+    if (rate <= 0 || !Double.isFinite(rate)) return 0;
+    return (long) Math.min(1_000_000_000.0 / rate, Long.MAX_VALUE / 2.0);
+  }
+
+  private void awaitNextInstruction() {
+    long delay = instructionDelayNanos();
+    if (delay == 0) return;
     long start = System.nanoTime();
-    while (request == Request.NONE && System.nanoTime() - start < delay) {
-      java.util.concurrent.locks.LockSupport.parkNanos(
-          Math.min(10_000_000, delay - (System.nanoTime() - start)));
+    while (request == Request.NONE) {
+      long remaining = delay - (System.nanoTime() - start);
+      if (remaining <= 0) return;
+      LockSupport.parkNanos(Math.min(10_000_000, remaining));
+      delay = instructionDelayNanos();
     }
   }
 
