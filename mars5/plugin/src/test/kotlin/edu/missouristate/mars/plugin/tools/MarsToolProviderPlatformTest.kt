@@ -35,6 +35,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -109,6 +110,10 @@ class MarsToolProviderPlatformTest {
                 assertEquals(listOf("Base", "Introduction to Tools"), manager.contents.map { it.displayName })
                 assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), loaded)
                 assertEquals(listOf("Alpha", "Beta", "Retry", "Retry"), disposed.sorted())
+                assertTrue(manager.removeContent(manager.contents.first(), true))
+                ExtensionTestUtil.maskExtensions(MarsToolProvider.EP, emptyList(), Disposer.newDisposable(parent))
+                assertEquals(0, manager.contentCount)
+                assertNull(manager.selectedContent)
             }
         } finally {
             withContext(NonCancellable + Dispatchers.EDT) {

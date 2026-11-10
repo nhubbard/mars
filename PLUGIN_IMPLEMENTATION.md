@@ -1862,6 +1862,12 @@ Screen Magnifier is outside the IntelliJ plugin scope by user decision.
 The capture and annotation prototype was removed from the plugin.
 The M6 educational-tool target is 13 tools.
 
+## MARS Tools lifecycle
+
+MARS Tools lists its built-in and contributed tabs when the window opens.
+Each panel is created on first selection and reused when you switch tabs.
+IntelliJ owns the panel's lifetime through the tab's content disposer.
+
 ## Introduction to Tools
 
 Open **View → Tool Windows → MARS Tools → Introduction to Tools** for a

@@ -29,44 +29,49 @@ import kotlinx.coroutines.withContext
 
 internal class MarsToolsWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        fun addTab(name: String, component: JComponent, view: Disposable): Content {
-            val content = ContentFactory.getInstance().createContent(component, toolsMessages.getMessage(name), false)
-            content.setDisposer(view)
-            toolWindow.contentManager.addContent(content)
-            return content
+        val manager = toolWindow.contentManager
+        fun addTab(name: String, initialize: (Content) -> Unit) {
+            val content = ContentFactory.getInstance().createContent(JBLabel(), toolsMessages.getMessage(name), false)
+            content.initializeMarsToolOnSelection(initialize)
+            manager.addContent(content)
         }
-        val counter = InstructionCountsView(
-            project, listOf("counter.r", "counter.i", "counter.j", "counter.other"), showBars = false,
-            MarsProcessHandler::instructionCounter,
-        )
-        addTab("counter.name", counter.component, counter)
-        val statistics = InstructionCountsView(
-            project, InstructionStatistics.Category.entries.map { it.messageKey }, showBars = true,
-            MarsProcessHandler::instructionStatistics,
-        )
-        addTab("statistics.name", statistics.component, statistics)
-        val branchHistory = BranchHistoryView(project)
-        addTab("branchHistory.name", branchHistory.component, branchHistory)
-        val bitmap = MemoryGridView(project, Mode.BITMAP, MarsProcessHandler::bitmapDisplay)
-        addTab(Mode.BITMAP.nameKey, bitmap.component, bitmap)
-        val references = MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
-        addTab(Mode.REFERENCES.nameKey, references.component, references)
-        val xray = XRayView(project)
-        addTab("xray.name", xray.component, xray)
-        val cache = DataCacheView(project)
-        addTab("cache.name", cache.component, cache)
-        val floatingPoint = FloatingPointView(project)
-        addTab("float.name", floatingPoint.component, floatingPoint)
-        val digitalLab = DigitalLabView(project)
-        addTab("digitalLab.name", digitalLab.component, digitalLab)
-        val keyboardDisplay = KeyboardDisplayView(project)
-        addTab("keyboardDisplay.name", keyboardDisplay.component, keyboardDisplay)
-            .setPreferredFocusableComponent(keyboardDisplay.inputComponent)
-        val marsBot = MarsBotView(project)
-        addTab("marsBot.name", marsBot.component, marsBot)
-        val hunt = ScavengerHuntView(project)
-        addTab("scavenger.name", hunt.component, hunt)
-        MarsToolExtensions(project, toolWindow.contentManager, toolWindow.disposable)
+        fun <T : Disposable> addView(name: String, component: (T) -> JComponent, create: () -> T) {
+            addTab(name) { content ->
+                val view = create()
+                content.setDisposer(view)
+                content.component = component(view)
+            }
+        }
+        addView("counter.name", InstructionCountsView::component) {
+            InstructionCountsView(
+                project, listOf("counter.r", "counter.i", "counter.j", "counter.other"), showBars = false,
+                MarsProcessHandler::instructionCounter,
+            )
+        }
+        addView("statistics.name", InstructionCountsView::component) {
+            InstructionCountsView(
+                project, InstructionStatistics.Category.entries.map { it.messageKey }, showBars = true,
+                MarsProcessHandler::instructionStatistics,
+            )
+        }
+        addView("branchHistory.name", BranchHistoryView::component) { BranchHistoryView(project) }
+        addView(Mode.BITMAP.nameKey, MemoryGridView::component) { MemoryGridView(project, Mode.BITMAP, MarsProcessHandler::bitmapDisplay) }
+        addView(Mode.REFERENCES.nameKey, MemoryGridView::component) {
+            MemoryGridView(project, Mode.REFERENCES, MarsProcessHandler::memoryReferences)
+        }
+        addView("xray.name", XRayView::component) { XRayView(project) }
+        addView("cache.name", DataCacheView::component) { DataCacheView(project) }
+        addView("float.name", FloatingPointView::component) { FloatingPointView(project) }
+        addView("digitalLab.name", DigitalLabView::component) { DigitalLabView(project) }
+        addTab("keyboardDisplay.name") { content ->
+            val view = KeyboardDisplayView(project)
+            content.setDisposer(view)
+            content.component = view.component
+            content.setPreferredFocusableComponent(view.inputComponent)
+        }
+        addView("marsBot.name", MarsBotView::component) { MarsBotView(project) }
+        addView("scavenger.name", ScavengerHuntView::component) { ScavengerHuntView(project) }
+        MarsToolExtensions(project, manager, toolWindow.disposable)
     }
 }
 

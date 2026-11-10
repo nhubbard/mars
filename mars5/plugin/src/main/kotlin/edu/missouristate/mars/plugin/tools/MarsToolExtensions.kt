@@ -7,6 +7,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.extensions.ExtensionPointAdapter
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.Key
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
@@ -21,11 +22,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-internal class MarsToolExtensions(private val project: Project, private val manager: ContentManager, parent: Disposable) {
-    private data class Tab(val content: Content, val lifetime: Disposable, var initialized: Boolean = false)
+// The VCS and Problems lazy content helpers are internal to IntelliJ.
+private val toolInitializer = Key.create<(Content) -> Unit>("MARS_TOOL_TAB_INITIALIZER")
 
+internal fun Content.initializeMarsToolOnSelection(initializer: (Content) -> Unit) {
+    putUserData(toolInitializer, initializer)
+}
+
+internal class MarsToolExtensions(private val project: Project, private val manager: ContentManager, parent: Disposable) {
     private val firstExtensionIndex = manager.contentCount
-    private val tabs = IdentityHashMap<MarsToolProvider, Tab>()
+    private val tabs = IdentityHashMap<MarsToolProvider, Content>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.EDT)
 
     init {
@@ -58,14 +64,15 @@ internal class MarsToolExtensions(private val project: Project, private val mana
             unique
         }
         val removed = tabs.keys.filter { existing -> providers.none { it === existing } }
-            .map { tabs.remove(it)!!.content }
+            .map { tabs.remove(it)!! }
         removed.forEach { manager.removeContent(it, true) }
         providers.forEachIndexed { index, provider ->
             if (provider !in tabs) {
                 val content = ContentFactory.getInstance().createContent(JBLabel(), provider.title, false)
                 val lifetime = Disposer.newDisposable()
                 content.setDisposer(lifetime)
-                tabs[provider] = Tab(content, lifetime)
+                content.initializeMarsToolOnSelection { initializeProvider(it, provider, lifetime) }
+                tabs[provider] = content
                 manager.addContent(content, minOf(firstExtensionIndex + index, manager.contentCount))
             }
         }
@@ -73,21 +80,28 @@ internal class MarsToolExtensions(private val project: Project, private val mana
     }
 
     private fun loadSelected() {
-        val selected = manager.selectedContent
-        val (provider, tab) = tabs.entries.firstOrNull { it.value.content === selected } ?: return
-        if (tab.initialized) return
-        tab.initialized = true
-        val lifetime = Disposer.newDisposable(tab.lifetime)
+        val selected = manager.selectedContent ?: return
+        val initialize = selected.getUserData(toolInitializer) ?: return
+        selected.putUserData(toolInitializer, null)
         try {
-            tab.content.component = provider.createContent(MarsToolContext(project, lifetime))
+            initialize(selected)
+        } catch (error: CancellationException) {
+            selected.initializeMarsToolOnSelection(initialize)
+            throw error
+        }
+    }
+
+    private fun initializeProvider(content: Content, provider: MarsToolProvider, parent: Disposable) {
+        val lifetime = Disposer.newDisposable(parent)
+        try {
+            content.component = provider.createContent(MarsToolContext(project, lifetime))
         } catch (error: CancellationException) {
             Disposer.dispose(lifetime)
-            tab.initialized = false
             throw error
         } catch (error: Exception) {
             Disposer.dispose(lifetime)
             thisLogger().warn("Could not open MARS tool ${provider.id}", error)
-            tab.content.component = JBLabel(toolsMessages.getMessage("tools.provider.failed", provider.title))
+            content.component = JBLabel(toolsMessages.getMessage("tools.provider.failed", provider.title))
         }
     }
 }

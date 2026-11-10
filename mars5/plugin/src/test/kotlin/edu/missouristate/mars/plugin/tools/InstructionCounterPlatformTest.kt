@@ -6,6 +6,7 @@ import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -56,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -72,13 +74,31 @@ class InstructionCounterPlatformTest {
         val debug = DefaultDebugExecutor.getDebugExecutorInstance()
         val container = JPanel()
         val window = withContext(Dispatchers.EDT) { manager.registerToolWindow(RegisterToolWindowTask("MARS Tools")) }
-        val panels = withContext(Dispatchers.EDT) {
+        val (panels, keyboardEditor) = withContext(Dispatchers.EDT) {
+            val editorFactory = EditorFactory.getInstance()
+            val existingEditors = editorFactory.allEditors.toSet()
             MarsToolsWindowFactory().createToolWindowContent(project, window)
-            val contents = window.contentManager.contents
+            val toolContents = window.contentManager
+            val contents = toolContents.contents
             assertEquals(listOf("Instruction Counter", "Instruction Statistics", "Branch History Table", "Bitmap Display",
                 "Memory Reference Visualization", "MIPS X-Ray", "Data Cache Simulator", "Floating Point Representation",
                 "Digital Lab Sim", "Keyboard and Display Simulator", "MarsBot", "Scavenger Hunt", "Introduction to Tools"),
                 contents.map { it.displayName })
+            assertSame(contents[0], toolContents.selectedContent)
+            assertTrue(contents.drop(1).all { it.component is JBLabel })
+            assertEquals(existingEditors, editorFactory.allEditors.toSet())
+            val terminal = contents[9]
+            toolContents.setSelectedContent(terminal)
+            val terminalPanel = terminal.component
+            val editor = (editorFactory.allEditors.toSet() - existingEditors).single()
+            assertTrue(SwingUtilities.isDescendingFrom(editor.component, terminalPanel))
+            assertTrue(terminal.preferredFocusableComponent is JBTextField)
+            toolContents.setSelectedContent(contents[0])
+            toolContents.setSelectedContent(terminal)
+            assertSame(terminalPanel, terminal.component)
+            assertEquals(existingEditors + editor, editorFactory.allEditors.toSet())
+            contents.forEach { toolContents.setSelectedContent(it) }
+            toolContents.setSelectedContent(contents[0])
             ComponentUtil.forceMarkAsShowing(container, true)
             withForcedRespectIsShowingClientProperty {
                 UIUtil.dispatchAllInvocationEvents()
@@ -87,7 +107,7 @@ class InstructionCounterPlatformTest {
                 }
                 UIUtil.dispatchAllInvocationEvents()
             }
-            contents.map { it.component }
+            contents.map { it.component } to editor
         }
         val (panel, statistics, branches, bitmap, references) = panels
         val xray = panels[5]
@@ -735,6 +755,7 @@ class InstructionCounterPlatformTest {
         } finally {
             withContext(Dispatchers.EDT) {
                 window.contentManager.removeAllContents(true)
+                assertTrue(keyboardEditor.isDisposed)
                 withForcedRespectIsShowingClientProperty {
                     withShowingChanged {
                         container.remove(panel)
