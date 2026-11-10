@@ -12,6 +12,7 @@ import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -71,6 +72,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 expanded.reservation ?: continue
             }
             is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
+            is MipsSourceEvent.LabeledEnd -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.LabelDeclaration -> {
                 val expanded = physical.bind(macro != null, replacement) ?: continue
                 cursor.locations.replacedLabels.add(physical.offset)
@@ -103,6 +105,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 val lineStart = sourceLineStart(cursor.locations.file.viewProvider.contents, event.offset)
                 cursor.locations.macroClosingLines.add(lineStart)
                 val definition = macro
+                if (definition == null && !incompleteIncludes) {
+                    cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, Kind.UNMATCHED_END))
+                }
                 if (definition != null && definition.header.containingFile === cursor.locations.file) {
                     cursor.locations.localMacroBodies.add(MacroBody(definition.header, event.offset))
                 }
@@ -115,7 +120,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macroBoundaries[eventCount] = null
             }
             is MipsSourceEvent.RejectedEnd -> if (!incompleteIncludes) {
-                cursor.locations.rejectedMacroEnds.add(event.offset)
+                cursor.locations.macroBoundaryProblems.add(MacroBoundaryProblem(event.offset, Kind.TRAILING_TEXT))
             }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
@@ -140,6 +145,11 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
         }
         if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
+    }
+    val unclosed = macro
+    if (unclosed != null && !incompleteIncludes) {
+        val openingFile = unclosed.header.containingFile.viewProvider.virtualFile
+        files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
         MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries, macroNames, closedMacros),
@@ -196,8 +206,8 @@ internal class MipsSourceTimeline(
     fun localMacroBodies(file: MipsFile): List<MacroBody> =
         files.getValue(file.viewProvider.virtualFile).localMacroBodies
 
-    fun rejectedMacroEnds(file: MipsFile): List<Int> =
-        files.getValue(file.viewProvider.virtualFile).rejectedMacroEnds
+    fun macroBoundaryProblems(file: MipsFile): List<MacroBoundaryProblem> =
+        files.getValue(file.viewProvider.virtualFile).macroBoundaryProblems
 
     fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
         files.getValue(file.viewProvider.virtualFile).localMacros
@@ -300,6 +310,10 @@ internal enum class MacroPart { NAME, PARAMETER }
 
 internal data class MacroBody(val opening: PsiElement, val closingOffset: Int)
 
+internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
+    enum class Kind { TRAILING_TEXT, UNMATCHED_END, MISSING_END }
+}
+
 internal class SourceFileEvents(val file: MipsFile) {
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
@@ -307,7 +321,7 @@ internal class SourceFileEvents(val file: MipsFile) {
     val replacedExternals = HashSet<Int>()
     val expandedExternals = LinkedHashMap<PsiElement, MipsSourceEvent.External>()
     val macroClosingLines = HashSet<Int>()
-    val rejectedMacroEnds = ArrayList<Int>()
+    val macroBoundaryProblems = ArrayList<MacroBoundaryProblem>()
     val localMacros = LinkedHashMap<PsiElement, Begin>()
     val generatedMacroNames = HashSet<Int>()
     val localMacroBodies = ArrayList<MacroBody>()

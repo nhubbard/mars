@@ -102,13 +102,13 @@ internal sealed interface MipsSourceEvent {
             val hasErrors = errors.errorsOccurred()
             val name = tokens[0].value.takeIf { tokens.beginsWithLabel() }
             val operation = tokens.operationIndex(inMacro)
-            // A substitution can put the operation inside the written label's span.
-            // Otherwise the written suffix can still bind through its own PSI event.
+            // Handle operations supplied by the label and confirm whether the expanded label exposes a closer.
             val operationInLabel = operation < tokens.size() &&
                 start + expanded.originalOffset(tokens[operation].startPos - 1) < declaration.textRange.endOffset
-            val directive = if (operationInLabel) expandedDirective(head, expanded, inMacro, hasErrors) else null
+            val directive = expandedDirective(head, expanded, inMacro, hasErrors).takeIf { operationInLabel || it is End }
             if (hasErrors && directive == null) return null
-            return ExpandedLabel(name, if (operationInLabel) start + source.length else -1, directive)
+            val consumesLine = operationInLabel || directive != null
+            return ExpandedLabel(name, if (consumesLine) start + source.length else -1, directive)
         }
     }
 
@@ -131,6 +131,11 @@ internal sealed interface MipsSourceEvent {
 
     data class End(override val offset: Int) : Effective
     data class RejectedEnd(override val offset: Int) : Effective
+
+    data class LabeledEnd(override val offset: Int, val label: String) : MipsSourceEvent {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): End? =
+            if (inMacro || replacement(label) != null) null else End(offset)
+    }
 
     data class Include(val literal: MipsStringLiteral, val path: String) : Effective {
         override val offset = literal.textOffset
@@ -236,7 +241,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                         if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
                         if (directive == Directives.EQV) add(MipsSourceEvent.OperationCandidate(element))
                     }
-                    else -> if (isMacroEnd(element)) add(MipsSourceEvent.End(element.textOffset))
+                    else -> writtenMacroEnd(element)?.let { add(it) }
                 }
             }
         }
@@ -293,13 +298,20 @@ private fun macroSignature(
     val parameters = arguments.takeWhile { it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true) }
     val invalid = arguments.getOrNull(parameters.size)
     val name = tokens[nameIndex]
-    val directive = if (nameIndex == 0) start else originalOffset(tokens[nameIndex - 1])
+    val directive = if (nameIndex == 0) header.parent.firstChild.textOffset else originalOffset(tokens[nameIndex - 1])
     return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
         parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
         invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) })
 }
 
-private fun isMacroEnd(element: PsiElement): Boolean = macroLineTokens(element, fromLineStart = true).size() == 1
+private fun writtenMacroEnd(element: PsiElement): MipsSourceEvent? {
+    val tokens = macroLineTokens(element, fromLineStart = true)
+    val operation = tokens.operationIndex(inMacro = false)
+    if (tokens.size() != operation + 1) return null
+    if (sourceLineStart(element) + tokens[operation].startPos - 1 != element.textOffset) return null
+    return if (operation == 0) MipsSourceEvent.End(element.textOffset)
+    else MipsSourceEvent.LabeledEnd(element.textOffset, tokens[0].value)
+}
 
 private fun externalReservation(site: PsiElement, tokens: TokenList, operation: Int): MipsSourceEvent.External? {
     if (tokens.size() != operation + 3) return null

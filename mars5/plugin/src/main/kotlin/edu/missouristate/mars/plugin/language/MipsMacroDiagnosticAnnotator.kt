@@ -9,6 +9,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
+import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 
@@ -32,11 +33,16 @@ internal class MipsMacroDiagnosticAnnotator : Annotator {
             holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.formal.expanded", invalid.value))
                 .range(site.textRange).create()
         }
-        for (offset in timeline.rejectedMacroEnds(file)) {
+        for ((offset, kind) in timeline.macroBoundaryProblems(file)) {
             ProgressManager.checkCanceled()
             if (!hasEntry) return
             val site = file.findElementAt(offset)!!
-            holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.end.trailing"))
+            val message = when (kind) {
+                Kind.TRAILING_TEXT -> "syntax.macro.end.trailing"
+                Kind.UNMATCHED_END -> "syntax.macro.end.unmatched"
+                Kind.MISSING_END -> "syntax.macro.end.missing"
+            }
+            holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage(message))
                 .range(site.textRange).create()
         }
     }

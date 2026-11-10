@@ -186,6 +186,103 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `unmatched closers and the unclosed opener point to their written tokens`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv OPEN .macro
+                .eqv STOP .end_macro
+                .eqv LABEL alias_label
+                .end_macro
+                STOP
+                outside: .end_macro # the assembler strips this label
+                LABEL: .end_macro
+                OPEN emit (%value)
+                inside: .end_macro # macro bodies retain their labels
+                li ${'$'}t0, %value
+            """.trimIndent()
+            val entry = directory.resolve("boundaries.asm").also { it.writeText(source) }
+            val context = projectFixture.get().service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertEquals(
+                List(4) { ".END_MACRO without .MACRO" } + "Macro started but not ended (no .end_macro directive)",
+                failure.errors().errorMessages.map { it.message },
+            )
+            withContext(Dispatchers.EDT) { fixture.configureByText("boundaries.asm", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+            withContext(Dispatchers.EDT) {
+                assertEquals(
+                    listOf(".end_macro", "STOP", ".end_macro", ".end_macro").map { it to unmatchedEndMessage } +
+                        ("OPEN" to missingEndMessage),
+                    errors(),
+                )
+                assertEquals("%value", fixture.file.findReferenceAt(source.lastIndexOf("%value") + 1)?.resolve()?.text)
+                WriteCommandAction.runWriteCommandAction(fixture.project) {
+                    val repairedBody = source.substringAfter("LABEL: .end_macro\n").lineSequence()
+                        .filterNot { it.startsWith("inside:") }.joinToString("\n")
+                    fixture.editor.document.setText(source.substringBefore("\n.end_macro") + "\n" + repairedBody + "\nSTOP\nemit(1)\n")
+                }
+                assertEquals(emptyList<Pair<String, String>>(), errors())
+            }
+        }
+
+    @Test
+    fun `an invalid expanded label does not expose a trailing closer as an operation`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            fixture.configureByText("not-closers.asm", """
+                .eqv NUMBER 7
+                .eqv DOUBLE one: two
+                .eqv FIRST SECOND
+                .eqv SECOND FIRST
+                NUMBER: .end_macro
+                DOUBLE: .end_macro
+                FIRST: .end_macro
+                .word .end_macro
+                '1234\#' .end_macro
+            """.trimIndent())
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) { assertTrue(errors().none { it.second == unmatchedEndMessage }) }
+    }
+
+    @Test
+    fun `macro boundaries follow the selected entry through includes`() = timeoutRunBlocking<Unit> {
+        val current = projectFixture.get()
+        val (valid, open) = withContext(Dispatchers.EDT) {
+            val opener = fixture.addFileToProject("opener.s", ".macro emit\nnop\n")
+            fixture.addFileToProject("closer.s", ".end_macro\n")
+            val valid = fixture.addFileToProject("valid.asm", ".include \"opener.s\"\n.include \"closer.s\"\n")
+            val open = fixture.addFileToProject("open.asm", ".include \"opener.s\"\n")
+            fixture.configureFromExistingVirtualFile(opener.virtualFile)
+            valid.virtualFile to open.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val settings = current.service<MarsAssemblySettings>()
+            assertTrue(errors().isEmpty())
+            settings.changeSources(listOf(open.path))
+            assertEquals(listOf(".macro" to missingEndMessage), errors())
+            settings.changeSources(listOf(valid.path))
+            assertTrue(errors().isEmpty())
+        }
+    }
+
+    @Test
+    fun `a pending include can supply either macro boundary`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"start.s\"\n.end_macro\n.macro second\n.include \"finish.s\"\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) {
+            assertTrue(errors().none { it.second == unmatchedEndMessage || it.second == missingEndMessage })
+            fixture.addFileToProject("start.s", ".macro first\n")
+            fixture.addFileToProject("finish.s", ".end_macro\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) { assertTrue(errors().isEmpty()) }
+    }
+
+    @Test
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv FORMS %kept, 7, 8
@@ -255,6 +352,8 @@ class MipsMacroInspectionPlatformTest {
     }
 
     private val trailingCloseMessage = "Unexpected text after .end_macro"
+    private val unmatchedEndMessage = ".end_macro without a matching .macro"
+    private val missingEndMessage = "Missing .end_macro for this macro"
 
     private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
         .filter { it.severity == HighlightSeverity.ERROR }
