@@ -18,6 +18,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.refactoring.rename.RenameProcessor
 import com.intellij.refactoring.rename.RenamePsiElementProcessor
@@ -28,6 +29,7 @@ import com.intellij.usageView.UsageInfo
 import com.intellij.util.IncorrectOperationException
 import com.intellij.util.ProcessingContext
 import com.intellij.util.containers.MultiMap
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -47,7 +49,7 @@ class MipsLabelRenamePlatformTest {
     private val processor = MipsLabelRenameProcessor()
 
     @Test
-    fun `native rename edits precise ranges in nested plain-text includes and their typed children`() = timeoutRunBlocking<Unit> {
+    fun `native rename finds nested include references before highlighting and after unsaved edits`() = timeoutRunBlocking<Unit> {
         val source = ".data\ntarget: .word 42\n.text\n.include \"lib/wrapper.txt\"\n"
         val plainText = ".data\n.word target, target # target\n.asciiz \"target\"\n.text\n.include \"tail.s\"\n"
         val tailText = "lw \$a0, target # target\n"
@@ -63,13 +65,18 @@ class MipsLabelRenamePlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         val target = readAction { label(entry) }
         withContext(Dispatchers.EDT) {
-            fixture.doHighlighting()
             val docs = PsiDocumentManager.getInstance(project)
             val document = docs.getDocument(plain)!!
             val heading = "# unsaved heading\n"
+            assertTrue(project.service<MarsAnalysisService>().assembledUsages(target).none())
+            assertEquals(3, usages(target).size)
+            val limited = processor.findReferences(target, LocalSearchScope(entry), false)
+            assertTrue(limited.isEmpty())
+            assertTrue(conflicts(target, "updated", emptyList()).contains("every assembled reference"))
             WriteCommandAction.runWriteCommandAction(project) { document.insertString(0, heading) }
+            assertTrue(usages(target).isEmpty())
             docs.commitDocument(document)
-            fixture.doHighlighting()
+            assertTrue(project.service<MarsAnalysisService>().assembledUsages(target).none())
             val editor = FileEditorManager.getInstance(project).selectedEditor
             val undo = UndoManager.getInstance(project)
             RenameProcessor(project, target, "updated", false, false).run()
@@ -190,6 +197,7 @@ class MipsLabelRenamePlatformTest {
             assertFalse(validator.pattern.accepts(constant))
             assertFalse(processor.isInplaceRenameSupported)
             assertTrue(validator.isInputValid("valid.name", target, ProcessingContext()))
+            assertTrue(usages(target).isEmpty())
             assertTrue(conflicts(target, "next", emptyList()).contains("written local label"))
         }
     }

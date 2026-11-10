@@ -326,7 +326,8 @@ previewed reference ranges are checked again in IntelliJ's undoable write comman
 Instruction and data operands and forwarded macro arguments can participate when each
 reference maps to its own written token. Rename can edit verified usage ranges in plain-text
 includes, including when those includes lead to more MARS sources. It preserves the file
-association and uses the ranges from current assembly results. Comments, string literals,
+association. The refactoring gets current assembly results itself, including when highlighting
+has yet to run or an unsaved edit moved a reference. Comments, string literals,
 and independent assembly entries retain their existing text.
 
 Rename currently starts at a written local declaration in a MARS file and requires a

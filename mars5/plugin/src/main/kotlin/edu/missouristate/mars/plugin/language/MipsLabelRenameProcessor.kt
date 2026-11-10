@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.DynamicBundle
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Key
@@ -12,7 +13,9 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiPlainTextFile
+import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.refactoring.listeners.RefactoringElementListener
 import com.intellij.refactoring.rename.RenameInputValidator
@@ -33,6 +36,7 @@ import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.analysis.EditorAssemblyCapture
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.analysis.assembleIn
 import edu.missouristate.mars.plugin.analysis.collectBackgroundAssemblySources
@@ -50,6 +54,22 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
     override fun canProcessElement(element: PsiElement) = element is MipsDeclaration && element.kind == SymbolKind.LABEL
     override fun isInplaceRenameSupported() = false
     override fun getElementToSearchInStringsAndComments(element: PsiElement): PsiElement? = null
+
+    override fun findReferences(element: PsiElement, searchScope: SearchScope, searchInCommentsAndStrings: Boolean): Collection<PsiReference> {
+        val target = element as MipsDeclaration
+        val file = target.containingFile as MipsFile
+        val capture = collectEditorAssembly(file) ?: return emptyList()
+        val documents = capture.committedDocuments(file) ?: return emptyList()
+        val analysis = file.project.service<MarsAnalysisService>()
+        // A refactoring can run before external highlighting has published anything for this revision.
+        val symbols = analysis.backgroundAssembly.assemble(capture.sources, capture.structureStamp, capture.options).symbols
+            ?: return emptyList()
+        val declaration = writtenLabelToken(target, capture.source, documents.getValue(capture.source))
+        return symbols.assembledLabelUsages[declaration].orEmpty().mapNotNull { site ->
+            ProgressManager.checkCanceled()
+            analysis.assembledReference(target, site, searchScope)
+        }
+    }
 
     override fun findCollisions(element: PsiElement, newName: String, allRenames: Map<out PsiElement, String>, result: MutableList<UsageInfo>) {
         element.putUserData(renameVerification, null)
@@ -71,7 +91,7 @@ internal class MipsLabelRenameProcessor : RenamePsiElementProcessor() {
         element.putUserData(renameVerification, null)
         if (newName != plan.newName || usageEdits(usages.asList()) != plan.usages) throw labelRenameError("label.rename.unverified")
         val file = element.containingFile as MipsFile
-        val documents = plan.capture.checkedDocuments(file)
+        val documents = plan.capture.committedDocuments(file) ?: throw labelRenameError("label.rename.stale")
         if (PsiModificationTracker.getInstance(element.project).modificationCount != plan.projectRevision) {
             throw labelRenameError("label.rename.stale")
         }
@@ -117,11 +137,11 @@ private fun usageEdits(usages: List<UsageInfo>): Set<LabelEdit> = usages.mapTo(H
     LabelEdit(file.toNioPath().toAbsolutePath().normalize(), TextRange(range.startOffset, range.endOffset))
 }
 
-private fun EditorAssemblyCapture.checkedDocuments(file: MipsFile): Map<Path, Document> = buildMap {
+private fun EditorAssemblyCapture.committedDocuments(file: MipsFile): Map<Path, Document>? = buildMap {
     if (!validate(file) { path, document, revision ->
             put(path, document)
             document.modificationStamp == revision && PsiDocumentManager.getInstance(file.project).isCommitted(document)
-        }) throw labelRenameError("label.rename.stale")
+        }) return null
 }
 
 private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<LabelEdit>): LabelRenamePlan {
@@ -134,16 +154,14 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val sources = capture.sources
     val entry = sources.sourceSet.entry
     if (sources.sourceSet.mode != MarsAssemblyMode.SINGLE || sources.exceptionHandler != null) throw labelRenameError("label.rename.scope")
-    val documents = capture.checkedDocuments(file)
+    val documents = capture.committedDocuments(file) ?: throw labelRenameError("label.rename.stale")
     val vfs = VirtualFileManager.getInstance()
     val psi = PsiManager.getInstance(project)
     for (path in documents.keys) {
         val source = psi.findFile(vfs.findFileByNioPath(path)!!)
         if (source !is MipsFile && source !is PsiPlainTextFile) throw labelRenameError("label.rename.scope")
     }
-    val document = documents.getValue(capture.source)
-    val line = document.getLineNumber(target.textOffset)
-    val declaration = SourceToken(Location(capture.source, line + 1), target.textOffset - document.getLineStartOffset(line) + 1)
+    val declaration = writtenLabelToken(target, capture.source, documents.getValue(capture.source))
 
     val (before, beforeImage) = capture.assemble(sources)
     val definition = before.locals()[entry]?.get(oldName) ?: throw labelRenameError("label.rename.scope")
@@ -209,6 +227,12 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
 
 private fun Map<String, Definition>.withoutColumns() = mapValues { (_, definition) ->
     Definition(definition.address(), definition.kind(), definition.origin(), definition.macroPrivate())
+}
+
+private fun writtenLabelToken(target: MipsDeclaration, path: Path, document: Document): SourceToken {
+    val offset = target.textOffset
+    val line = document.getLineNumber(offset)
+    return SourceToken(Location(path, line + 1), offset - document.getLineStartOffset(line) + 1)
 }
 
 private fun SourceToken.offsetIn(document: Document) = document.getLineStartOffset(location().line() - 1) + column() - 1

@@ -7,8 +7,10 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.search.PsiSearchScopeUtil
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch.SearchParameters
 import com.intellij.util.Processor
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
@@ -23,14 +25,18 @@ internal class MipsAssembledReferencesSearcher : QueryExecutorBase<PsiReference,
         val scope = queryParameters.effectiveSearchScope
         for (site in analysis.assembledUsages(target)) {
             ProgressManager.checkCanceled()
-            val (file, offset) = analysis.sourceTokenPosition(site) ?: continue
-            val leaf = file.findElementAt(offset)!!
-            if (!PsiSearchScopeUtil.isInScope(scope, leaf)) continue
-            if (target.kind != SymbolKind.MACRO && leaf.references.any { it.isReferenceTo(target) }) continue
-            val end = if (file is MipsFile) leaf.textRange.endOffset
-            else MipsScanner.next(file.viewProvider.contents, offset)!!.end
-            val range = TextRange(offset - leaf.textOffset, end - leaf.textOffset)
-            if (!consumer.process(PsiReferenceBase.Immediate(leaf, range, target))) return
+            val reference = analysis.assembledReference(target, site, scope) ?: continue
+            if (target.kind != SymbolKind.MACRO && reference.element.references.any { it.isReferenceTo(target) }) continue
+            if (!consumer.process(reference)) return
         }
     }
+}
+
+internal fun MarsAnalysisService.assembledReference(target: MipsDeclaration, site: SourceToken, scope: SearchScope): PsiReference? {
+    val (file, offset) = sourceTokenPosition(site) ?: return null
+    val leaf = file.findElementAt(offset)!!
+    if (!PsiSearchScopeUtil.isInScope(scope, leaf)) return null
+    val end = if (file is MipsFile) leaf.textRange.endOffset else MipsScanner.next(file.viewProvider.contents, offset)!!.end
+    val range = TextRange(offset - leaf.textOffset, end - leaf.textOffset)
+    return PsiReferenceBase.Immediate(leaf, range, target)
 }
