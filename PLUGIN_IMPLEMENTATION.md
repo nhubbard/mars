@@ -1167,6 +1167,14 @@ The core applies its existing segment permissions. With self-modifying
 code enabled, replacing the instruction at the current PC updates
 Disassembly and clears that instruction's assembled source position.
 
+**Last Write** jumps to the newest program write still in the undo history,
+even when it falls outside the current page. Memory emphasizes the exact
+written bytes and the words that contain them. The address and byte count
+also appear beside the snapshot status. A later pause reflects the latest
+recorded write, and Backstep restores the previous marker with the data.
+The marker clears when the relevant history is cleared or evicted. While
+running, the retained page keeps the marker from its own suspension.
+
 ## Memory watchpoints
 
 Open IntelliJ's **Breakpoints** dialog and choose **Add → MIPS Memory

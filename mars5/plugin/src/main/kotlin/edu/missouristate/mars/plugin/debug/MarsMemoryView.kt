@@ -7,6 +7,9 @@ import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.project.Project
+import com.intellij.ui.ColoredTableCellRenderer
+import com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES
+import com.intellij.ui.SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
@@ -26,6 +29,7 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.awt.Font
 import java.awt.event.ItemEvent
 import java.nio.file.Path
@@ -86,11 +90,13 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private val next = JButton(runMessages.getMessage("debug.memory.next"))
     private val export = JButton(runMessages.getMessage("debug.memory.export"))
     private val edit = JButton(runMessages.getMessage("debug.memory.edit"))
+    private val lastWrite = JButton(runMessages.getMessage("debug.memory.last.write"))
     private val regions = ComboBox(MemoryRegion.entries.toTypedArray()).apply {
         renderer = textListCellRenderer(runMessages.getMessage("debug.memory.region")) { runMessages.getMessage(it.label) }
         selectedItem = null
     }
     private val status = JBLabel()
+    private val writeStatus = JBLabel()
     private val model = ListTableModel<MemoryRow>(
         column("debug.memory.address") { display.formatAddress(it.address) },
         column("debug.memory.bytes", MemoryRow::bytes),
@@ -111,10 +117,13 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         for ((index, sample) in samples.withIndex()) {
             columnModel.getColumn(index).preferredWidth = metrics.stringWidth(sample) + JBUI.scale(16)
         }
+        columnModel.getColumn(1).cellRenderer = writeRenderer(1, " ")
+        columnModel.getColumn(3).cellRenderer = writeRenderer(Int.SIZE_BYTES, "  ")
     }
     private var address: Long? = null
     private var renderedAddress = ""
     private var displayedSuspension: Long? = null
+    private var displayedWrite: MemoryWrite? = null
     private var revision = 0L
     private var disposed = false
 
@@ -129,14 +138,19 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         row {
             cell(edit)
             cell(export)
+            cell(lastWrite)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
-        row { cell(status) }
+        row {
+            cell(status)
+            cell(writeStatus)
+        }
     }
 
     init {
         display.addListener(this) {
             if (addressField.text == renderedAddress) address?.let(::renderAddress)
+            renderWriteStatus()
             table.repaint()
         }
         go.addActionListener { navigate() }
@@ -145,6 +159,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         next.addActionListener { move(BYTES_PER_PAGE) }
         export.addActionListener { exportSuspension() }
         edit.addActionListener { editSuspension() }
+        lastWrite.addActionListener { showAddress(displayedWrite!!.address()) }
         regions.addItemListener { event ->
             if (event.stateChange == ItemEvent.SELECTED) {
                 regions.selectedItem = null
@@ -156,6 +171,10 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             override fun sessionPaused() = refreshOnEdt()
             override fun sessionResumed() = refreshOnEdt()
             override fun sessionStopped() = refreshOnEdt()
+            override fun settingsChanged() = UIUtil.invokeLaterIfNeeded {
+                val context = session.suspendContext as? MarsSuspendContext
+                if (context != null && context.lastMemoryWrite != displayedWrite) refresh()
+            }
         }, this)
         refresh()
     }
@@ -231,6 +250,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         export.isEnabled = paused
         edit.isEnabled = paused
         regions.isEnabled = paused
+        lastWrite.isEnabled = false
         if (context == null) {
             previous.isEnabled = false
             next.isEnabled = false
@@ -249,12 +269,42 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             ?: runMessages.getMessage("debug.memory.loading")
         context.inspectionRequests.trySend { memory ->
             val rows = memoryPage(memory, start)
+            val write = context.lastMemoryWrite
             withContext(Dispatchers.EDT) {
                 if (request == revision) {
+                    displayedWrite = write
+                    lastWrite.isEnabled = write != null
+                    renderWriteStatus()
                     model.items = rows
                     displayedSuspension = context.number
                     status.text = runMessages.getMessage("debug.memory.current", context.number)
                 }
+            }
+        }
+    }
+
+    private fun renderWriteStatus() {
+        writeStatus.text = displayedWrite?.let {
+            runMessages.getMessage("debug.memory.last.write.status", display.formatAddress(it.address()), it.length())
+        }.orEmpty()
+    }
+
+    private fun writeRenderer(bytesPerValue: Int, separator: String) = object : ColoredTableCellRenderer() {
+        override fun customizeCellRenderer(table: JTable, value: Any?, selected: Boolean, hasFocus: Boolean, row: Int, column: Int) {
+            val text = value as String
+            val write = displayedWrite
+            if (write == null) {
+                append(text)
+                return
+            }
+            val start = model.getItem(table.convertRowIndexToModel(row)).address.toUInt().toLong()
+            val writeStart = write.address().toUInt().toLong()
+            val writeEnd = writeStart + write.length()
+            for ((index, token) in text.split(separator).withIndex()) {
+                if (index > 0) append(separator)
+                val address = start + index * bytesPerValue
+                val written = address < writeEnd && address + bytesPerValue > writeStart
+                append(token, if (written) REGULAR_BOLD_ATTRIBUTES else REGULAR_ATTRIBUTES)
             }
         }
     }

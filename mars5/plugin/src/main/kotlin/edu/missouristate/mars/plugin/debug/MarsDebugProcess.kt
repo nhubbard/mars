@@ -56,6 +56,7 @@ import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
+import edu.missouristate.mars.simulator.BackStepper.MemoryWrite
 import java.nio.file.Path
 import java.util.function.Consumer
 import kotlinx.coroutines.CompletableDeferred
@@ -500,6 +501,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
             ExecutionMarkers.capture(machine),
+            machine.backStepper.previousMemoryWrite(),
             number,
             watchRequests,
             machineEdits,
@@ -535,6 +537,7 @@ internal class MarsSuspendContext(
     canBackstep: Boolean,
     memoryRegions: Map<MemoryRegion, Long>,
     executionMarkers: ExecutionMarkers,
+    lastMemoryWrite: MemoryWrite?,
     val number: Long,
     val watchRequests: Channel<WatchMemoryRequest>,
     val machineEdits: Channel<MachineEditRequest>,
@@ -548,6 +551,8 @@ internal class MarsSuspendContext(
         private set
     @Volatile var executionMarkers = executionMarkers
         private set
+    @Volatile var lastMemoryWrite = lastMemoryWrite
+        private set
 
     @Volatile var sourceStep = sourceStep
         private set
@@ -558,6 +563,7 @@ internal class MarsSuspendContext(
         canBackstep = machine.backStepper.canBackstep()
         memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
         executionMarkers = ExecutionMarkers.capture(machine)
+        lastMemoryWrite = machine.backStepper.previousMemoryWrite()
     }
 
     val memoryExports = Channel<MemoryExportRequest>(16, onUndeliveredElement = MemoryExportRequest::unavailable)

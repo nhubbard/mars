@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.hardware.MemoryState;
 import edu.missouristate.mars.mips.instructions.basic.InstrSw;
+import edu.missouristate.mars.simulator.BackStepper.MemoryWrite;
 import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -80,6 +81,25 @@ class MemoryUndoIsolationTest {
       TestSessions.execution(machine).updateRegister(9, previousT1);
       machine.registerFile.initializeProgramCounter(previousPc);
     }
+  }
+
+  @Test
+  void lastProgramWriteOmitsUngroupedWritesAndClearedHistory() throws Exception {
+    int pc = machine.memory.textBaseAddress;
+    int address = machine.memory.dataBaseAddress;
+    var history = machine.backStepper;
+    var execution = TestSessions.execution(machine);
+    history.beginInstruction(pc, new ProgramStatement(0, pc, machine.instructionSet));
+    execution.setMemoryRawWord(address, 42);
+    history.endInstruction();
+    execution.setMemoryWord(address + Integer.BYTES, 99);
+
+    assertThat(history.previousMemoryWrite()).isEqualTo(new MemoryWrite(address, Integer.BYTES));
+    history.setEnabled(false);
+    assertThat(history.previousMemoryWrite()).isNull();
+    history.setEnabled(true);
+    history.clear();
+    assertThat(history.previousMemoryWrite()).isNull();
   }
 
   @Test

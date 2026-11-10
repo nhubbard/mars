@@ -229,6 +229,13 @@ public class BackStepper {
 
   public record ExecutedInstruction(int address, boolean delaySlot) {}
 
+  /** The newest retained program write of a stopped session, or null if none is recorded. */
+  public MemoryWrite previousMemoryWrite() {
+    return engaged ? backSteps.previousMemoryWrite() : null;
+  }
+
+  public record MemoryWrite(int address, int length) {}
+
   private BackStep previousInstructionStep() {
     if (!canBackstep()) {
       return null;
@@ -565,6 +572,26 @@ public class BackStepper {
 
     private synchronized boolean empty() {
       return size == 0;
+    }
+
+    private synchronized MemoryWrite previousMemoryWrite() {
+      int index = top;
+      for (int remaining = size; remaining > 0; remaining--) {
+        BackStep step = stack[index];
+        if (step.frame != 0) {
+          int length = switch (step.action) {
+            case MEMORY_RESTORE_RAW_WORD, MEMORY_RESTORE_WORD -> Integer.BYTES;
+            case MEMORY_RESTORE_HALF -> Short.BYTES;
+            case MEMORY_RESTORE_BYTE -> Byte.BYTES;
+            default -> 0;
+          };
+          if (length > 0) {
+            return new MemoryWrite(step.param1, length);
+          }
+        }
+        index = (index + capacity - 1) % capacity;
+      }
+      return null;
     }
 
     private synchronized void push(int act, int programCounter, int parm1, int parm2) {

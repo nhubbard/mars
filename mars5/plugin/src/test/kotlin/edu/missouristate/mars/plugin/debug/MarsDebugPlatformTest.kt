@@ -78,6 +78,7 @@ import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.SimpleTextAttributes.STYLE_BOLD
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
 import com.intellij.xdebugger.frame.XValueModifier.XModificationCallback
@@ -2184,6 +2185,123 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { afterDisposal() }
             withContext(Dispatchers.EDT) { debug.session.stop() }
             assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `Debug Memory highlights the newest recorded write and restores the previous write on backstep`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("last-memory-write.asm", """
+                .data
+                buffer: .space 0x200
+                .text
+                la ${'$'}t0, buffer
+                li ${'$'}t1, 0x1234
+                sw ${'$'}t1, 0(${'$'}t0)
+                first: nop
+                sh ${'$'}t1, 0x104(${'$'}t0)
+                second: nop
+                sb ${'$'}t1, 0x105(${'$'}t0)
+                third: nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { file ->
+                for (line in listOf(5, 6, 8, 10)) addBreakpoint(file, line)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 5)
+            val lifetime = Disposer.newDisposable()
+            val display = service<MarsDebuggerDisplaySettings>()
+            try {
+                val panel = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsLastWriteTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    requireNotNull(layout.findContent("MarsMipsMemory")).component
+                }
+                val (table, address, last) = withContext(Dispatchers.EDT) {
+                    Triple(
+                        requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)),
+                        requireNotNull(UIUtil.findComponentOfType(panel, JBTextField::class.java)),
+                        UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Last Write" },
+                    )
+                }
+                val labels = withContext(Dispatchers.EDT) { UIUtil.findComponentsOfType(panel, JBLabel::class.java) }
+                fun bold(column: Int): List<String> {
+                    val cell = assertInstanceOf(
+                        SimpleColoredComponent::class.java, table.prepareRenderer(table.getCellRenderer(0, column), 0, column),
+                    )
+                    val fragments = cell.iterator()
+                    return buildList {
+                        while (fragments.hasNext()) {
+                            val fragment = fragments.next()
+                            if (fragments.textAttributes.style and STYLE_BOLD != 0) add(fragment)
+                        }
+                    }
+                }
+                suspend fun assertWrite(status: String?, bytes: List<String> = emptyList(), words: List<String> = emptyList()) {
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            assertTrue(table.rowCount > 0)
+                            assertEquals(status, labels.map { it.text }.firstOrNull { it.startsWith("Last write at ") })
+                            assertEquals(status != null, last.isEnabled)
+                            assertEquals(bytes, bold(1))
+                            assertEquals(words, bold(3))
+                        }
+                    }
+                }
+                suspend fun resumeTo(line: Int) {
+                    withContext(Dispatchers.EDT) {
+                        debug.session.resume()
+                        assertFalse(last.isEnabled)
+                    }
+                    debug.assertPausedAt(source, line)
+                }
+                assertWrite(null)
+                resumeTo(6)
+                assertWrite("Last write at 0x10010000 (4 bytes)", listOf("34", "12", "00", "00"), listOf("0x00001234"))
+                resumeTo(8)
+                assertWrite("Last write at 0x10010104 (2 bytes)")
+                withContext(Dispatchers.EDT) {
+                    last.doClick(0)
+                    assertEquals("0x10010104", address.text)
+                }
+                assertMemory(table, "0x10010100", "00 00 00 00 34 12")
+                assertWrite("Last write at 0x10010104 (2 bytes)", listOf("34", "12"), listOf("0x00001234"))
+                resumeTo(10)
+                assertWrite("Last write at 0x10010105 (1 byte)", listOf("34"), listOf("0x00003434"))
+                withContext(Dispatchers.EDT) {
+                    val (action, event) = backstepAction(debug.session)
+                    action.actionPerformed(event)
+                }
+                debug.assertPausedAt(source, 9)
+                assertWrite("Last write at 0x10010104 (2 bytes)", listOf("34", "12"), listOf("0x00001234"))
+                withContext(Dispatchers.EDT) { display.setHexAddresses(false) }
+                assertWrite("Last write at 268501252 (2 bytes)", listOf("34", "12"), listOf("0x00001234"))
+                withContext(Dispatchers.EDT) {
+                    inspectRegisterNodes(debug.session, requireNotNull(debug.session.currentStackFrame)) { nodes ->
+                        val modifier = requireNotNull(nodes.single { it.name == "\$t1" }.valueContainer.modifier)
+                        assertNull(editValue(modifier, "0x5678"))
+                    }
+                    debug.session.rebuildViews()
+                }
+                assertWrite(null)
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                debug.assertPausedAt(source, 10)
+                assertWrite("Last write at 268501253 (1 byte)", listOf("78"), listOf("0x00007834"))
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                withContext(Dispatchers.EDT) {
+                    assertFalse(last.isEnabled)
+                    debug.session.rebuildViews()
+                    assertEquals(listOf("78"), bold(1))
+                }
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(lifetime)
+                    display.setHexAddresses(true)
+                }
+            }
         }
     }
 
