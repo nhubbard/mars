@@ -2097,8 +2097,9 @@ directory.
 | E10 code insight | Native gutter, register-usage, inlay and quick-fix fixtures exercise rendered output, alias contexts, edits and stale data. The include quick fix uses IntelliJ's command and preview APIs. |
 
 These checks establish the implemented editor behavior against the pinned IntelliJ
-platform. Cross-host keyboard and hover interaction, install and upgrade checks, and
-the full feature-by-feature release checklist remain part of release qualification.
+platform. Cross-host keyboard and hover interaction and the full feature-by-feature
+release checklist remain part of release qualification. See the release preflight
+below for packaged macOS install and archive replacement evidence.
 
 ## M6 educational-tool test ledger
 
@@ -2147,9 +2148,9 @@ reference keyboard inspection. The saved scenarios are
 `mars-branch-decision-playback`, `mars-xray-capture-playback`,
 `mars-terminal-geometry-playback`, `mars-tool-tabs-playback` and
 `mars-memory-grid-playback`. They supplement the in-tree fixtures.
-Cross-host and high-contrast presentation, fresh install and upgrade
-checks, and review of binary Plugin Verifier findings remain release
-qualification work.
+Cross-host and high-contrast presentation remain release qualification work.
+The packaged macOS install, archive replacement, and binary verifier evidence
+are recorded below.
 
 ## IntelliJ plugin release preflight
 
@@ -2194,6 +2195,24 @@ packaged `META-INF/pluginIcon.svg` supplies the Plugins settings logo.
 The local `mars-plugin-metadata-playback` scenario unpacks the generated ZIP
 into a clean IntelliJ test instance, runs a MIPS program, and opens the
 installed plugin's details.
+
+### macOS archive replacement
+
+The local `mars-plugin-upgrade-playback` scenario installed a ZIP from
+`04e9bc8f` with the test version `0.9.0` in IntelliJ IDEA
+`IU-263.7307.200`. The native New Project wizard created and ran a starter
+with `src/main.asm` and `src/console.s`. The test saved a conditional
+breakpoint in `console.s` and closed the IDE.
+
+A second clean launch installed the current `1.0-SNAPSHOT` ZIP and opened
+the same project. IntelliJ restored the shared Run configuration, the ordered
+assembly sources, and the enabled breakpoint with condition `$a0 != 0`.
+Debug stopped on the breakpoint. After Resume, the native console printed
+`Hello from MARS!` and the process exited successfully. The sources, project
+assembly settings, and shared Run configuration were byte-identical across
+the two launches. This check covers replacing the ZIP on the same IDE build
+on macOS. Marketplace delivery and the remaining host matrix require separate
+qualification.
 
 ### Reviewed API use in the 263 target
 
