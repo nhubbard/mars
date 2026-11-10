@@ -176,7 +176,7 @@ class MipsFindUsagesPlatformTest {
             assertFalse(LanguageFindUsages.canFindUsagesFor(orphan))
             assertEquals("macro parameter", LanguageFindUsages.getType(operation))
             assertEquals("%?", LanguageFindUsages.getDescriptiveName(operation))
-            assertThrows(IncorrectOperationException::class.java) { value.setName("\$replacement") }
+            assertThrows(IncorrectOperationException::class.java) { value.setName("%") }
             val flags = TargetElementUtil.REFERENCED_ELEMENT_ACCEPTED or TargetElementUtil.ELEMENT_NAME_ACCEPTED
             assertEquals(aliases, TargetElementUtil.getInstance().findTargetElement(fixture.editor, flags, firstUse + 1))
             assertEquals(operation, entryFile.findReferenceAt(operationUse)?.resolve())

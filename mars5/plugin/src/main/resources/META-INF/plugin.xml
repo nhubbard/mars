@@ -61,6 +61,8 @@
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroReferencesSearcher"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalReferencesSearcher"/>
+    <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameProcessor"/>
+    <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameInputValidator"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex"/>
     <fileBasedIndex implementation="edu.missouristate.mars.plugin.language.index.MipsReferenceIndex"/>
     <gotoSymbolContributor implementation="edu.missouristate.mars.plugin.language.MipsGoToSymbolContributor"/>

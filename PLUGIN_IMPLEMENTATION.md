@@ -277,6 +277,22 @@ spellings, including punctuation-only names such as `%?`. When one token in
 a written signature expands to several formals, searching from a reference
 to any of them finds the references that bind to that same signature token.
 
+## Rename macro parameters
+
+Use IntelliJ's **Refactor → Rename** on a written macro parameter or a reference
+to it. Rename updates the declaration and its bound code references, including
+references in MARS includes owned by the same assembly entry. IntelliJ handles
+the edits as one undoable refactoring. The name may use either the percent or
+the SPIM spelling.
+
+Before applying edits, the refactoring checks that the macro's include scope is
+complete and that each effective reference maps to a written source token.
+It uses the Java tokenizer to check that the edit preserves token boundaries
+and unrelated token values.
+Shared includes, ambiguous formals, indirect equivalence uses, and conflicts
+stop the operation. The final write also checks that IntelliJ found every
+reference in the macro scope.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

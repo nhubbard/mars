@@ -4,6 +4,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementResolveResult
 import com.intellij.psi.PsiPolyVariantReferenceBase
 import com.intellij.psi.PsiReference
@@ -75,6 +76,11 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
         private val data: DataLabelOperand?,
     ) :
         PsiPolyVariantReferenceBase<MipsSymbolToken>(element, TextRange.from(0, element.textLength), true) {
+        override fun handleElementRename(newElementName: String): PsiElement {
+            if (!parameter) throw formalRenameError("symbol.rename.unavailable")
+            return element.replace(macroFormalNameElement(element.project, newElementName))
+        }
+
         override fun multiResolve(incompleteCode: Boolean): Array<PsiElementResolveResult> {
             val file = element.containingFile as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()

@@ -160,7 +160,8 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries, macroNames, closedMacros),
+        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries,
+            macroNames, closedMacros, incompleteIncludes),
         dependencies,
     )
 }
@@ -174,6 +175,7 @@ internal class MipsSourceTimeline(
     private val macroBoundaries: TreeMap<Int, Begin?>,
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
+    val hasIncompleteIncludes: Boolean,
 ) {
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
 
@@ -219,6 +221,9 @@ internal class MipsSourceTimeline(
 
     fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
         files.getValue(file.viewProvider.virtualFile).localMacros
+
+    fun hasClosed(macro: Begin): Boolean =
+        closedMacros[macro.name].orEmpty()[macro.parameters.size].orEmpty().containsValue(macro)
 
     fun isGeneratedMacroName(file: MipsFile, offset: Int): Boolean =
         offset in files.getValue(file.viewProvider.virtualFile).generatedMacroNames
