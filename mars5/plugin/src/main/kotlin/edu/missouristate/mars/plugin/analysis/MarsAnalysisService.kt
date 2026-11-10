@@ -104,27 +104,32 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     fun submit(contributions: List<IndexContribution>): Deferred<Boolean> = coordinator.submit(contributions)
 
-    internal fun selectedAssembly(file: MipsFile): AssemblySelection? {
+    internal fun selectedAssembly(file: MipsFile): AssemblySelection? = selectedEditorContext(file)?.assembly
+
+    private fun selectedEditorContext(file: MipsFile): EditorContext? {
         val virtualFile = file.viewProvider.virtualFile
         if (!virtualFile.isInLocalFileSystem) return null
         val path = virtualFile.toNioPath()
         val build = lastBuild.get()
         if (build != null) {
             val selection = build.request.selection
-            if (selection.sourceSet.mode != MarsAssemblyMode.PROJECT &&
-                (build.snapshot.sourcePath(file) != null || path == exceptionHandler ||
-                    selection.sourceSet.mode == MarsAssemblyMode.DIRECTORY && virtualFile.isAssemblyDirectorySource() && path.parent == selection.entry.parent)
-            ) return selection.forEditor()
+            if (selection.sourceSet.mode != MarsAssemblyMode.PROJECT) {
+                val root = selection.sourceSet.editorRoot(path)
+                if (root != null) return EditorContext(selection.forEditor(), root)
+            }
         }
         val sources = settings.projectSourceSet() ?: return null
+        val root = sources.editorRoot(path) ?: return null
         val lastProject = build?.takeIf { it.request.selection.sourceSet == sources }
-        if (path in sources.entries || lastProject?.snapshot?.sourcePath(file) != null ||
-            !DumbService.isDumb(project) && mipsAssemblyRoots(file).any { it.toNioPath() in sources.entries }
-        ) {
-            return lastProject?.request?.selection?.forEditor() ?: AssemblySelection(sources, settings.executionOptions)
-        }
-        return null
+        val selection = lastProject?.request?.selection?.forEditor() ?: AssemblySelection(sources, settings.executionOptions)
+        return EditorContext(selection, root)
     }
+
+    // The last build selects the entry. Its saved source membership can change in an unsaved edit.
+    private fun MarsSourceSet.editorRoot(path: Path): Path? =
+        if (path in entries) path else collectBackgroundAssemblySources(project, this).rootsBySource[path]
+
+    private data class EditorContext(val assembly: AssemblySelection, val root: Path)
 
     private val settings get() = project.service<MarsAssemblySettings>()
     private val exceptionHandler get() = settings.exceptionHandler
@@ -715,19 +720,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun selectedTimeline(file: MipsFile): MipsSourceTimeline? {
-        val projectSources = selectedAssembly(file)?.sourceSet?.takeIf { it.mode == MarsAssemblyMode.PROJECT }
-        val path: Path
-        val root = if (projectSources != null) {
-            path = file.viewProvider.virtualFile.toNioPath()
-            if (path in projectSources.entries) path
-            else collectBackgroundAssemblySources(project, projectSources).rootsBySource[path] ?: return null
-        } else {
-            val build = lastBuild.get()?.snapshot?.takeIf { it.isCurrent(exceptionHandler) } ?: return null
-            path = build.sourcePath(file) ?: return null
-            build.rootFor(path)
-        }
-        if (path == root) return mipsSourceTimeline(file)
-        val entry = VirtualFileManager.getInstance().findFileByNioPath(root) ?: return null
+        val context = selectedEditorContext(file) ?: return null
+        val root = context.root
+        if (file.viewProvider.virtualFile.toNioPath() == root) return mipsSourceTimeline(file)
+        // The capture includes this root and is invalidated on VFS structure changes.
+        val entry = VirtualFileManager.getInstance().findFileByNioPath(root)!!
         val entryPsi = PsiManager.getInstance(project).findFile(entry) as? MipsFile ?: return null
         return mipsSourceTimeline(entryPsi)
     }

@@ -323,6 +323,62 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `shared macro body diagnostics follow the selected entry and its current includes`() = timeoutRunBlocking<Unit> {
+        val withoutBody = ".macro dormant\n.end_macro\nnop\n"
+        val withBody = withoutBody.replace(".end_macro", ".include \"shared.s\"\n.end_macro")
+        val (macro, topLevel) = withContext(Dispatchers.EDT) {
+            val first = fixture.addFileToProject("macro.asm", withoutBody).virtualFile
+            val second = fixture.addFileToProject("top.asm", ".include \"shared.s\"\n").virtualFile
+            val shared = fixture.addFileToProject("shared.s", "4 : )\n.word )\n").virtualFile
+            fixture.configureFromExistingVirtualFile(shared)
+            first to second
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val build = project.service<MarsBuildService>()
+        val analysis = project.service<MarsAnalysisService>()
+        val shared = fixture.file as MipsFile
+        suspend fun selected() = readAction { analysis.selectedAssembly(shared)?.entry }
+        suspend fun hasErrors() = withContext(Dispatchers.EDT) {
+            fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR }
+        }
+
+        assertTrue(build.assemble(macro.toNioPath()))
+        assertNull(selected())
+        assertTrue(hasErrors())
+        withContext(Dispatchers.EDT) { edit(macro, withBody) }
+        assertEquals(macro.toNioPath(), selected())
+        assertTrue(!hasErrors())
+
+        assertTrue(!build.assemble(topLevel.toNioPath()))
+        assertEquals(topLevel.toNioPath(), selected())
+        assertTrue(hasErrors())
+        assertTrue(build.assemble(macro.toNioPath()))
+        assertEquals(macro.toNioPath(), selected())
+        assertTrue(!hasErrors())
+
+        withContext(Dispatchers.EDT) { edit(macro, withoutBody) }
+        assertNull(selected())
+        assertTrue(hasErrors())
+    }
+
+    @Test
+    fun `a captured source outside the selected PSI timeline keeps its local syntax context`() = timeoutRunBlocking<Unit> {
+        val (entry, leaf) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("entry.s", ".macro outer\n.end_macro\n.include \"bridge.java\"\n")
+            fixture.addFileToProject("bridge.java", ".include \"leaf.s\"\n")
+            val leaf = fixture.addFileToProject("leaf.s", ".macro inner\n.end_macro\nnop\n") as MipsFile
+            main.virtualFile.toNioPath() to leaf
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        assertTrue(project.service<MarsBuildService>().assemble(entry))
+        readAction {
+            val analysis = project.service<MarsAnalysisService>()
+            assertEquals(entry, analysis.selectedAssembly(leaf)?.entry)
+            assertEquals(setOf("inner"), analysis.editorTimeline(leaf).macroNames)
+        }
+    }
+
+    @Test
     fun `equivalence generated macros defer operands and retain boundary diagnostics`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv OPEN .macro dormant

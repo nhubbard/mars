@@ -669,6 +669,16 @@ only the map for the selected or uniquely inferred entry. The editor can reuse a
 map for completion while the current instruction operand is incomplete. Stale results and
 changes elsewhere in the captured source graph cannot supply names.
 
+The last build selects an entry, and the current source capture determines
+which files belong to it. Adding an unsaved include associates the file with
+the selected entry immediately. Removing the include lets the editor infer
+the file's current context again. The same source map supplies the entry
+used by background diagnostics and the macro scope used by editor syntax
+highlighting.
+A packaged IntelliJ replay selected an entry through the Build action,
+then enabled an include inside its macro. The shared editor went from two
+syntax errors to zero after the edit.
+
 IntelliJ retains recovery PSI for malformed statements so editing can continue on the next
 line. A syntax error filter uses the Java assembler's data-continuation rule to identify
 lexically valid statements whose diagnostics depend on the effective segment. When the

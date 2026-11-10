@@ -544,7 +544,8 @@ class MarsBuildPlatformTest {
             }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
             readAction {
-                assertEquals(MarsAssemblyMode.PROJECT, analysis.selectedAssembly(include)?.sourceSet?.mode)
+                assertNull(analysis.selectedAssembly(include))
+                assertEquals(include.virtualFile.toNioPath(), collectEditorAssembly(include)?.sources?.sourceSet?.entry)
                 val number = requireNotNull(include.findElementAt(include.text.indexOf("NUMBER")))
                 assertNull(analysis.equivalenceTarget(include, number))
             }
