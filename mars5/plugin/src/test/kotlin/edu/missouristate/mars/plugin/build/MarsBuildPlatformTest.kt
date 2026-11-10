@@ -71,6 +71,8 @@ import com.intellij.util.ui.UIUtil
 import com.intellij.util.xmlb.XmlSerializer
 import edu.missouristate.mars.api.AssemblyError
 import edu.missouristate.mars.api.AssemblySourceSnapshot
+import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -1249,7 +1251,7 @@ class MarsBuildPlatformTest {
                 .globl generated
             """.trimIndent()
             val body = ".macro emit (%entry)\n  %entry: nop\n.end_macro\n" +
-                ".macro reserve (%name)\n  .extern %name 4\n.end_macro\n"
+                ".eqv RESERVE .extern\n.macro reserve (%name)\n  RESERVE %name 4\n.end_macro\n"
             val offset = source.indexOf("j generated") + 3
             val (main, include) = withContext(Dispatchers.EDT) {
                 val entry = fixture.addFileToProject("main.asm", source).virtualFile
@@ -1277,7 +1279,10 @@ class MarsBuildPlatformTest {
                 assertEquals(declaration, target(source.lastIndexOf("generated")))
                 assertEquals(declaration, target(source.lastIndexOf("privateLabel")))
                 val storage = source.lastIndexOf("storage")
-                assertEquals(".extern", target(storage)?.text)
+                val storageDeclaration = GotoDeclarationAction.findTargetElement(project, fixture.editor, storage)
+                assertEquals(target(storage), storageDeclaration)
+                assertEquals("%name", storageDeclaration?.text)
+                assertEquals(body.lastIndexOf("%name"), storageDeclaration?.textOffset)
                 val file = fixture.file as MipsFile
                 val analysis = project.service<MarsAnalysisService>()
                 assertTrue(analysis.labelTargets(file, file.findElementAt(storage)!!, allowExternal = false).isEmpty())
@@ -1329,6 +1334,15 @@ class MarsBuildPlatformTest {
             assertEquals("%entry", target(entry)?.text)
             assertNull(target(other))
         }
+        val definition = program.symbolMap().locals().getValue(path).getValue("generated")
+        fun publishWithoutColumn(value: Definition) {
+            val symbols = AssemblySymbolMap(mapOf(path to mapOf("generated" to value)), emptyMap())
+            analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), capture, symbols)
+        }
+        publishWithoutColumn(Definition(definition.address(), definition.kind(), definition.origin()))
+        readAction { assertEquals("%entry", target(entry)?.text) }
+        publishWithoutColumn(Definition(definition.address(), definition.kind(), null))
+        readAction { assertNull(target(entry)) }
         val missingRevision = capture.copy(revisions = capture.revisions - setOf(includePath))
         analysis.publishBuiltSymbols(analysis.beginSymbolBuild(path), missingRevision, program.symbolMap())
         readAction { assertNull(target(entry)) }

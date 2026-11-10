@@ -252,7 +252,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val definition = build.localSymbols(source)[name] ?: build.symbols.globals()[name] ?: return null
         if (definition.kind() == Kind.EXTERNAL && !allowExternal) return null
 
-        val location = definition.origin().location()
+        val location = definition.origin()?.location() ?: return null
         var target: Document? = null
         val valid = build.revisions.validateSourceDocuments { path, document, revision ->
             if (path == location.file()) target = document
@@ -264,7 +264,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (!manager.isCommitted(document)) return null
         val file = manager.getPsiFile(document) as? MipsFile ?: return null
         val start = document.getLineStartOffset(location.line() - 1)
-        val offset = CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
+        val offset = definition.column()?.let { start + it - 1 }
+            ?: CharArrayUtil.shiftForward(document.charsSequence, start, " \t,")
         return file.findElementAt(offset)
     }
 

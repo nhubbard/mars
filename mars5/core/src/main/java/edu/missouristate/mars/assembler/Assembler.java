@@ -89,7 +89,7 @@ public final class Assembler {
     for (var symbol : table.getAllSymbols()) {
       checkCancellation.run();
       result.put(symbol.getName(), new Definition(
-          symbol.getAddress(), symbol.kind(), symbol.origin(), symbol.macroPrivate()));
+          symbol.getAddress(), symbol.kind(), symbol.origin(), symbol.macroPrivate(), symbol.column()));
     }
     return result;
   }

@@ -485,10 +485,7 @@ final class FirstPassProcessor {
                   "\"" + label.getValue() + "\" already defined as global in a different file."));
         } else {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
-          context
-              .symbols()
-              .addSymbol(label, symtabEntry.getAddress(), symtabEntry.kind(), symtabEntry.origin(),
-                  symtabEntry.macroPrivate(), errors);
+          context.symbols().addSymbol(label, symtabEntry, errors);
         }
       }
     }

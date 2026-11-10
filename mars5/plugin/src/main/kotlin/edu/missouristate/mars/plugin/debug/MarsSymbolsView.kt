@@ -147,8 +147,8 @@ internal class MarsSymbolsView(
         })
         table.selectionModel.addListSelectionListener { openSource.isEnabled = table.selectedObject?.location != null }
         openSource.addActionListener {
-            val location = table.selectedObject!!.location!!
-            displayed!!.sources.hyperlink(project, location).navigate(project)
+            val symbol = table.selectedObject!!
+            displayed!!.sources.hyperlink(project, symbol.location!!, symbol.definition.column()).navigate(project)
         }
 
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(object : DocumentListener {

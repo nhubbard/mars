@@ -54,7 +54,7 @@ public class SymbolTable {
   public void loadDefinitions(Map<String, Definition> definitions) {
     clear();
     definitions.forEach((name, definition) -> table.add(new Symbol(
-        name, definition.address(), definition.kind(), definition.origin(), definition.macroPrivate())));
+        name, definition.address(), definition.kind(), definition.origin(), definition.macroPrivate(), definition.column())));
   }
 
   /** Create a new empty symbol table for given file */
@@ -81,6 +81,11 @@ public class SymbolTable {
   }
 
   void addSymbol(Token token, int address, Kind kind, Origin origin, boolean macroPrivate, ErrorList errors) {
+    addSymbol(token, new Symbol(token.getValue(), address, kind, origin, macroPrivate,
+        token.writtenOrigin().getOriginalStartPos()), errors);
+  }
+
+  void addSymbol(Token token, Symbol symbol, ErrorList errors) {
     String label = token.getValue();
     if (getSymbol(label) != null) {
       errors.add(
@@ -88,8 +93,7 @@ public class SymbolTable {
               token,
               "label \"" + label + "\" already defined"));
     } else {
-      Symbol s = new Symbol(label, address, kind, origin, macroPrivate);
-      table.add(s);
+      table.add(symbol);
     }
   }
 

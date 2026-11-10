@@ -551,14 +551,19 @@ class SessionAssemblyTest {
                 outer (exported_M0)
                 outer (privateLabel)
                 .globl exported_M0
+                reserve(shared)
                 """,
             macros, """
                 .macro inner (%entry)
-                %entry:
-                privateLoop: nop
+                  %entry:
+                  privateLoop: nop
                 .end_macro
                 .macro outer (%name)
                   inner (%name)
+                .end_macro
+                .eqv RESERVE .extern
+                .macro reserve (%name)
+                  RESERVE %name 4
                 .end_macro
                 """,
             other, ".text\nprivateLabel: j exported_M0\n"));
@@ -571,16 +576,19 @@ class SessionAssemblyTest {
       var secondCall = new Origin(new Location(main, 8), null);
       var exported = new Origin(new Location(macros, 2), new Origin(new Location(macros, 6), firstCall));
       var local = new Origin(new Location(macros, 2), new Origin(new Location(macros, 6), secondCall));
+      var storage = new Origin(new Location(main, 5), null);
+      var reserved = new Origin(new Location(macros, 10), new Origin(new Location(main, 10), null));
       assertThat(map.globals()).containsExactlyInAnyOrderEntriesOf(Map.of(
-          "exported_M0", new Definition(text, Kind.TEXT, exported),
-          "storage", new Definition(session.memory.externBaseAddress, Kind.EXTERNAL, new Origin(new Location(main, 5), null))));
+          "exported_M0", new Definition(text, Kind.TEXT, exported, false, 3),
+          "storage", new Definition(session.memory.externBaseAddress, Kind.EXTERNAL, storage, false, 9),
+          "shared", new Definition(session.memory.externBaseAddress + 4, Kind.EXTERNAL, reserved, false, 11)));
       assertThat(map.locals().get(main)).containsExactlyInAnyOrderEntriesOf(Map.of(
-          "word", new Definition(session.memory.dataBaseAddress + 4, Kind.DATA, new Origin(new Location(main, 4), null)),
-          "privateLabel", new Definition(text + 4, Kind.TEXT, local),
-          "privateLoop_M1", new Definition(text, Kind.TEXT, new Origin(new Location(macros, 3), exported.caller()), true),
-          "privateLoop_M3", new Definition(text + 4, Kind.TEXT, new Origin(new Location(macros, 3), local.caller()), true)));
+          "word", new Definition(session.memory.dataBaseAddress + 4, Kind.DATA, new Origin(new Location(main, 4), null), false, 1),
+          "privateLabel", new Definition(text + 4, Kind.TEXT, local, false, 3),
+          "privateLoop_M1", new Definition(text, Kind.TEXT, new Origin(new Location(macros, 3), exported.caller()), true, 3),
+          "privateLoop_M3", new Definition(text + 4, Kind.TEXT, new Origin(new Location(macros, 3), local.caller()), true, 3)));
       assertThat(map.locals().get(other)).containsExactlyEntriesOf(Map.of(
-          "privateLabel", new Definition(text + 8, Kind.TEXT, new Origin(new Location(other, 2), null))));
+          "privateLabel", new Definition(text + 8, Kind.TEXT, new Origin(new Location(other, 2), null), false, 1)));
       assertThatThrownBy(() -> map.locals().get(main).clear()).isInstanceOf(UnsupportedOperationException.class);
       assertThatThrownBy(() -> map.globals().clear()).isInstanceOf(UnsupportedOperationException.class);
     }

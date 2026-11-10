@@ -1399,7 +1399,11 @@ selected column and direction. The filter searches the displayed columns.
 **Open Source** navigates to the definition in the live source if it still
 matches the loaded image. Edits and VFS changes refresh the stale-source indicator
 in the background. Navigation opens the original, read-only source snapshot when
-the definition's file has changed or disappeared. Symbols stay available while the
+the definition's file has changed or disappeared. The assembled symbol map
+preserves the written token's column through macro and equivalence expansion
+and when `.globl` promotes a label. Go to Declaration in MARS source and
+**Open Source** in the debugger use that column, including for a parameter
+used as the name operand of `.extern`. Symbols stay available while the
 Debug tab remains open, including after the process exits. While paused, **Inspect
 Address** opens Disassembly for text labels and Memory for data and external
 labels. Both views read the paused machine, so their contents include runtime

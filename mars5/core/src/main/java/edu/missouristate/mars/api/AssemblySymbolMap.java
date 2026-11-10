@@ -43,8 +43,12 @@ public record AssemblySymbolMap(
     }
   }
 
-  /** A symbol's final address and source. Macro-private names were rewritten for one invocation. */
-  public record Definition(int address, Kind kind, Origin origin, boolean macroPrivate) {
+  /** A symbol's final address and source, with a one-based written column when available. */
+  public record Definition(int address, Kind kind, Origin origin, boolean macroPrivate, Integer column) {
+    public Definition(int address, Kind kind, Origin origin, boolean macroPrivate) {
+      this(address, kind, origin, macroPrivate, null);
+    }
+
     public Definition(int address, Kind kind, Origin origin) {
       this(address, kind, origin, false);
     }

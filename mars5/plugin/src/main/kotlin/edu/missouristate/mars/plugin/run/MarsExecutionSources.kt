@@ -44,13 +44,19 @@ internal class MarsExecutionSources(private val capture: CapturedAssemblySources
         }
     }
 
-    fun hyperlink(project: Project, location: Location): FileHyperlinkInfo = object : FileHyperlinkInfo {
-        override fun getDescriptor() = descriptor(project, location)
+    fun hyperlink(project: Project, location: Location, column: Int? = null): FileHyperlinkInfo = object : FileHyperlinkInfo {
+        override fun getDescriptor() = descriptor(project, location, column)
         override fun navigate(project: Project) = getDescriptor().navigate(true)
     }
 
-    private fun descriptor(project: Project, location: Location) =
-        OpenFileDescriptor(project, fileAt(location.file()), location.line() - 1, 0)
+    private fun descriptor(project: Project, location: Location, column: Int? = null): OpenFileDescriptor {
+        val file = fileAt(location.file())
+        val line = location.line() - 1
+        if (column == null) return OpenFileDescriptor(project, file, line, 0)
+        // Assembler columns count source characters. IntelliJ logical columns expand tabs.
+        val document = FileDocumentManager.getInstance().getDocument(file)!!
+        return OpenFileDescriptor(project, file, document.getLineStartOffset(line) + column - 1)
+    }
 
     fun location(file: VirtualFile, line: Int): Location? {
         if (line !in 0 until Int.MAX_VALUE) return null

@@ -32,6 +32,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
 import com.intellij.openapi.editor.EditorFactory
@@ -2663,7 +2664,7 @@ class MarsDebugPlatformTest {
     fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking<Unit> {
         val source = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("symbol-addresses.asm", """
-                .extern externalSlot, 4
+                ${'\t'}.extern externalSlot, 4
                 .data
                 padding: .byte 0
                 payload: .byte 42
@@ -2733,6 +2734,32 @@ class MarsDebugPlatformTest {
                 withContext(Dispatchers.EDT) {
                     inspect("externalSlot")
                     assertEquals("0x10000000", address.text)
+                    button(symbols.component, "Open Source").doClick(0)
+                }
+                val liveDocument = withContext(Dispatchers.EDT) { FileDocumentManager.getInstance().getDocument(source)!! }
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        val editor = FileEditorManager.getInstance(project).selectedTextEditor!!
+                        assertSame(liveDocument, editor.document)
+                        assertEquals(liveDocument.text.indexOf("externalSlot"), editor.caretModel.offset)
+                    }
+                }
+                val loadedText = liveDocument.text
+                try {
+                    withContext(Dispatchers.EDT) {
+                        WriteCommandAction.runWriteCommandAction(project) { liveDocument.insertString(0, "# changed since assembly\n") }
+                        button(symbols.component, "Open Source").doClick(0)
+                    }
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            val editor = FileEditorManager.getInstance(project).selectedTextEditor!!
+                            assertNotSame(liveDocument, editor.document)
+                            assertEquals(loadedText, editor.document.text)
+                            assertEquals(loadedText.indexOf("externalSlot"), editor.caretModel.offset)
+                        }
+                    }
+                } finally {
+                    withContext(Dispatchers.EDT) { WriteCommandAction.runWriteCommandAction(project) { liveDocument.setText(loadedText) } }
                 }
                 assertMemory(bytes, "0x10000000", "00 00 00 00")
                 withContext(Dispatchers.EDT) { inspect("far") }
@@ -3034,9 +3061,14 @@ class MarsDebugPlatformTest {
                         assertEquals(first.toString(), table.getValueAt(0, 4))
                         assertEquals(second.toString(), table.getValueAt(1, 4))
                         assertEquals("", table.getValueAt(1, 5))
+                        val openSource = UIUtil.findComponentsOfType(view.component, JButton::class.java).single { it.text == "Open Source" }
+                        if (!defaultProject) {
+                            table.setRowSelectionInterval(0, 0)
+                            assertTrue(openSource.isEnabled)
+                            openSource.doClick(0)
+                        }
                         table.setRowSelectionInterval(1, 1)
-                        assertFalse(UIUtil.findComponentsOfType(view.component, JButton::class.java)
-                            .single { it.text == "Open Source" }.isEnabled)
+                        assertFalse(openSource.isEnabled)
                     }
                 }
             } finally {
