@@ -54,6 +54,7 @@ class MipsReferenceIndexPlatformTest {
               .end_macro stray
               local: lw,, ${'$'}t0,,,Shared+4(${'$'}sp)
               lw ${'$'}t0,0(${'$'}sp CLOSE
+              ) BODY_SYMBOL (
             .end_macro
             .macro nop
             .end_macro
@@ -90,6 +91,7 @@ class MipsReferenceIndexPlatformTest {
             assertEquals(
                 operandKinds.map { MipsReferenceSite(it, source.indexOf("CLOSE"), macro) }, sites("CLOSE"),
             )
+            assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("BODY_SYMBOL"), macro) }, sites("BODY_SYMBOL"))
             assertEquals(
                 listOf(source.indexOf("NOP"), source.indexOf("NOP)"), source.lastIndexOf("NOP"))
                     .flatMap { offset -> listOf(SymbolKind.LABEL, SymbolKind.EXTERNAL).map { MipsReferenceSite(it, offset, -1) } },
@@ -117,7 +119,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(24, extension.version)
+            assertEquals(25, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

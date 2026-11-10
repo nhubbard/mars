@@ -48,8 +48,8 @@ statement ::= (include_line | label body? | body) {recoverWhile=line_recover}
 // The assembler replaces the physical line before interpreting labels, macros, or operands.
 include_line ::= <<isIncludeLine>> include_token+
 private include_token ::= assembly_token | <<recoverBadIncludeToken>>
-private body ::= macro_definition | macro_header | non_macro_body
-private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
+private body ::= macro_definition | macro_header | non_macro_body | data_continuation | <<recoverStatement>>
+private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate
 private line_recover ::= !NEWLINE
 // A macro argument can supply the name of a label at expansion time.
 label ::= (WORD | MNEMONIC | DOLLAR_WORD | PARAMETER) COLON
@@ -58,7 +58,7 @@ private name ::= WORD | MNEMONIC | DIRECTIVE | SET | DOLLAR_WORD | REGISTER
 macro_definition ::= MACRO &macro_name macro_signature (NEWLINE (NEWLINE | macro_statement)* macro_end? | <<eof>>) {pin=2}
 private macro_statement ::= !macro_end macro_body_statement
 macro_body_statement ::= (include_line | label macro_body? | macro_body) {elementType=statement recoverWhile=line_recover}
-private macro_body ::= macro_header | macro_instruction | macro_directive_statement | non_macro_body
+private macro_body ::= macro_header | macro_instruction | macro_directive_statement | non_macro_body | macro_data_continuation | <<recoverStatement>>
 // Keep the signature for include-aware binding without opening a nested PSI body.
 macro_header ::= MACRO (&macro_name macro_signature | <<recoverInvalidMacroName>>)
 // MARS leaves the macro open if the closing directive has additional tokens.
@@ -102,6 +102,8 @@ operation_candidate ::= candidate_head invocation_token*
 private candidate_head ::= WORD | DOLLAR_WORD | PARAMETER
 invocation_token ::= assembly_token
 data_continuation ::= operand_line
+// A body line without a written operation is also deferred until expansion.
+macro_data_continuation ::= macro_operand_line {elementType=data_continuation}
 private operand_line ::= complete_operand_list | operand_fragment | operand_list
 private complete_operand_list ::= operand_list &(NEWLINE | <<eof>>)
 // Substitution can introduce syntax that balances the row only after expansion.

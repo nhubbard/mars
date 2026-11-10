@@ -880,6 +880,18 @@ produce structured address PSI and that the fragments retain their exact operand
 The clean sandbox launch ran 1,262 tests and loaded the plugin in the smoke project. The rebuilt
 plugin archive passed its integrity check. Visual editor acceptance remains open.
 
+Inside a written macro definition, the parser also keeps body lines without
+an operation. A complete data continuation retains structured operands.
+Other lexically valid lines retain their tokens in an operand fragment
+until expansion, including punctuation after a label. Top-level statement
+recovery and lexical error reporting still apply. The reference index
+rebuilds so these fragments contribute candidate references with their
+physical macro owner.
+The assembler-backed fixture verifies that an invoked macro writes its
+continued words to memory and that calling a dormant malformed macro
+reports an assembly error. A fresh packaged IntelliJ session opened a
+macro fixture and verified the deferred rows and structured continuation in PSI.
+
 ## Whole-line include preprocessing
 
 The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the

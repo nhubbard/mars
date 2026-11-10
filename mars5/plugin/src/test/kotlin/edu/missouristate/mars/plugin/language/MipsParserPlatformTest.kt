@@ -45,8 +45,15 @@ class MipsParserPlatformTest {
                     lw ${'$'}t0, 0(${'$'}sp
                     .word )
                     .include %value
+                    ) 6 (
+                    deferredLabel: 4 : )
+                    42 43
                 .end_macro
                 .macro emit (%value)
+                    .data
+                    .word 1
+                    42 43
+                    .text
                     addiu ${'$'}a0, ${'$'}zero, %value
                 .end_macro
                 emit(42)
@@ -54,14 +61,25 @@ class MipsParserPlatformTest {
             assertAssembles(directory, source, 0x2404002a)
             val entry = directory.resolve("entry.asm").also { it.writeText(source + "deferred(1)\n") }
             val context = project.get().service<MarsSessionService>().context
+            val memory = context.memory
+            assertEquals(listOf(1, 42, 43), (0..2).map { memory.getWordNoNotify(memory.dataBaseAddress + it * Int.SIZE_BYTES) })
             assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
 
             readAction {
                 val file = assertParses(source)
-                assertEquals(listOf("\$t0, +", "\$t0, :", "\$t0, )", "\$t0, 0(\$sp", ")"),
+                assertEquals(listOf("\$t0, +", "\$t0, :", "\$t0, )", "\$t0, 0(\$sp", ")", ") 6 (", "4 : )"),
                     descendants(file.node, "OPERAND_FRAGMENT").map { it.text }.toList())
+                val deferredBody = descendants(file.node, "MACRO_DEFINITION").first()
+                assertEquals(listOf(") 6 (", "4 : )", "42 43"),
+                    descendants(deferredBody, "DATA_CONTINUATION").map { it.text }.toList())
+                assertEquals(listOf("42", "43"),
+                    descendants(deferredBody, "DATA_CONTINUATION").last().let { line ->
+                        descendants(line, "OPERAND").map { it.text }.toList()
+                    })
+                assertEquals("deferredLabel:", descendants(deferredBody, "LABEL").single().text)
                 val validBody = descendants(file.node, "MACRO_DEFINITION").last()
-                assertEquals(listOf("\$a0", "\$zero", "%value"), descendants(validBody, "OPERAND").map { it.text }.toList())
+                assertEquals(listOf("1", "42", "43", "\$a0", "\$zero", "%value"),
+                    descendants(validBody, "OPERAND").map { it.text }.toList())
                 assertEquals(listOf("emit(42)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
 
                 val factory = PsiFileFactory.getInstance(project.get())
@@ -930,7 +948,7 @@ class MipsParserPlatformTest {
     @Test
     fun `invalid statement heads preserve macro scope and later labels`() = timeoutRunBlocking<Unit> {
         readAction {
-            val source = ": 9 (\n.macro emit\n) 6 (\ninside: nop\n.end_macro\noutside: nop\n:"
+            val source = ": 9 (\n.macro emit\n! 6 (\ninside: nop\n.end_macro\noutside: nop\n:"
             val file = PsiFileFactory.getInstance(project.get()).createFileFromText("recover.asm", MipsFileType, source)
             assertEquals(source, file.text)
             val macro = descendants(file.node, "MACRO_DEFINITION").single()
@@ -938,7 +956,7 @@ class MipsParserPlatformTest {
             assertEquals(listOf("inside:", "outside:"), descendants(file.node, "LABEL").map { it.text }.toList())
             val allErrors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
             val errors = allErrors.filter { it.errorDescription == "Expected a MIPS statement" }
-            assertEquals(listOf(": 9 (", ") 6 (", ":"), errors.map { it.text },
+            assertEquals(listOf(": 9 (", "! 6 (", ":"), errors.map { it.text },
                 allErrors.joinToString { "${it.errorDescription} at ${it.textRange}: ${it.text}" })
         }
     }
