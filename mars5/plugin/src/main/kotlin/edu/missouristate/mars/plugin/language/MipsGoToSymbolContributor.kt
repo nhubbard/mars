@@ -15,8 +15,8 @@ import com.intellij.util.Processor
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.indexing.FindSymbolParameters
 import com.intellij.util.indexing.IdFilter
-import edu.missouristate.mars.plugin.analysis.GeneratedLabel
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
@@ -24,6 +24,7 @@ import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex.Companion.EXPANSION_SEED
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import javax.swing.Icon
 
 internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
     override fun processNames(processor: Processor<in String>, scope: GlobalSearchScope, filter: IdFilter?) {
@@ -33,7 +34,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             name == EXPANSION_SEED || processor.process(name.also(written::add))
         }, scope, filter)
         if (complete) {
-            expandedLabels(project, scope, filter).map(GeneratedLabel::name)
+            expandedSymbols(project, scope, filter).map(ExpandedSymbol::name)
                 .filter(written::add).all(processor::process)
         }
     }
@@ -60,15 +61,20 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
                 MipsDeclaration.findAt(psi, it.offset, name)
             }
             for (declaration in declarations) {
-                if (declaration.kind == SymbolKind.LABEL && timeline.replacesLabel(psi, declaration.textOffset)) continue
+                val replaced = when (declaration.kind) {
+                    SymbolKind.LABEL -> timeline.replacesLabel(psi, declaration.textOffset)
+                    SymbolKind.MACRO -> timeline.localMacros(psi)[declaration]?.let { it.name != declaration.name } == true
+                    else -> false
+                }
+                if (replaced) continue
                 if (!processor.process(declaration)) return
             }
         }
-        expandedLabels(project, parameters.searchScope, parameters.idFilter).filter { it.name == name }
-            .all { processor.process(ExpandedLabelItem(it)) }
+        expandedSymbols(project, parameters.searchScope, parameters.idFilter).filter { it.name == name }
+            .all { processor.process(ExpandedSymbolItem(it)) }
     }
 
-    private fun expandedLabels(project: Project, scope: GlobalSearchScope, filter: IdFilter?): Sequence<GeneratedLabel> {
+    private fun expandedSymbols(project: Project, scope: GlobalSearchScope, filter: IdFilter?): Sequence<ExpandedSymbol> {
         val psi = PsiManager.getInstance(project)
         val analysis = project.service<MarsAnalysisService>()
         // A declaration can be supplied by an alias defined outside the requested result scope.
@@ -85,14 +91,31 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
             scope.contains(source) && filter?.containsFileId(FileBasedIndex.getFileId(source)) != false
         }.flatMap { file ->
             ProgressManager.checkCanceled()
-            analysis.editorTimeline(file).generatedLabelsIn(file).asSequence()
+            analysis.editorTimeline(file).expandedSymbolsIn(file)
+        }
+    }
+
+    private fun MipsSourceTimeline.expandedSymbolsIn(file: MipsFile): Sequence<ExpandedSymbol> = sequence {
+        for (label in generatedLabelsIn(file)) {
+            yield(ExpandedSymbol(label.name, file, label.site.textOffset, AllIcons.Nodes.Bookmark))
+        }
+        for (macro in localMacros(file).values) {
+            if (macro.name != (macro.header as? MipsDeclaration)?.name) {
+                yield(ExpandedSymbol(macro.name, file, macro.nameOffset, AllIcons.Nodes.Function))
+            }
+        }
+        for (equivalence in generatedEquivalencesIn(file)) {
+            yield(ExpandedSymbol(equivalence.name, file, equivalence.site.textOffset, AllIcons.Nodes.Constant))
         }
     }
 }
 
-private class ExpandedLabelItem(label: GeneratedLabel) :
-    OpenFileDescriptor(label.site.project, label.site.containingFile.viewProvider.virtualFile, label.site.textOffset), NavigationItem {
-    private val symbolName = label.name
+private data class ExpandedSymbol(val name: String, val file: MipsFile, val offset: Int, val icon: Icon)
+
+private class ExpandedSymbolItem(symbol: ExpandedSymbol) :
+    OpenFileDescriptor(symbol.file.project, symbol.file.viewProvider.virtualFile, symbol.offset), NavigationItem {
+    private val symbolName = symbol.name
+    private val symbolIcon = symbol.icon
     override fun getName() = symbolName
-    override fun getPresentation() = PresentationData(symbolName, file.name, AllIcons.Nodes.Bookmark, null)
+    override fun getPresentation() = PresentationData(symbolName, file.name, symbolIcon, null)
 }

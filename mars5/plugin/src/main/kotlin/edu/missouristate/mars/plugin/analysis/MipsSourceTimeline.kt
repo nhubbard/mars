@@ -152,6 +152,13 @@ internal class MipsSourceTimeline(
 
     fun generatedLabelsIn(file: MipsFile): List<GeneratedLabel> = generatedLabelsByFile[file].orEmpty()
 
+    private val generatedEquivalencesByFile by lazy {
+        equivalences.values.map(IndexedEquivalence::definition).filter { it.site !is MipsDeclaration }
+            .groupBy { it.site.containingFile }
+    }
+
+    fun generatedEquivalencesIn(file: MipsFile): List<MipsSourceEvent.Equivalence> = generatedEquivalencesByFile[file].orEmpty()
+
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
     fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().map(SourceFileEvents::file)

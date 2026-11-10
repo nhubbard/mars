@@ -612,14 +612,15 @@ opens the name token. Duplicate declarations remain separate results, and each r
 shows a kind-specific icon and its source filename. The declaration index and navigation share the
 same PSI name extraction.
 
-For labels supplied by `.eqv` expansion, Go to Symbol uses the same
+For labels, macros, and equivalences supplied by `.eqv` expansion, Go to Symbol uses the same
 include-ordered source timeline as Structure View. The declaration index marks
 files containing `.eqv` or `.include` using a file-local key. Search follows
 those candidates to their assembly roots outside the index callback. Expanded
-labels use their effective name and navigate to the source that supplied it.
+declarations use their effective name and navigate to the source that supplied it.
 Search applies the result scope to that source, even if the equivalence lives
-outside the scope. A written label replaced by an expansion is filtered out of
-the exact results.
+outside the scope. A written label replaced by an expansion and a macro
+renamed by an expansion are filtered out under their old names. Generated
+equivalences follow the assembler's first-definition lookup order.
 
 Jupiter IDE fixtures exercise the registered extension, exact and scoped search,
 duplicate declarations, incomplete declarations, stale offsets, early termination,

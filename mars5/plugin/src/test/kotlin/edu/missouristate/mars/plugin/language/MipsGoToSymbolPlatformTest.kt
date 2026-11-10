@@ -170,6 +170,60 @@ class MipsGoToSymbolPlatformTest {
     }
 
     @Test
+    fun `search finds expanded macros and equivalences at their written origins`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .macro WRITTEN
+            .end_macro
+            WHOLE
+            .end_macro
+            DEFINE RESULT 7
+            .eqv PACK
+            .macro literal
+            .macro nested
+            .end_macro
+        """.trimIndent()
+        val (body, entry) = withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("expanded-symbols.s", source)
+            val entry = fixture.addFileToProject("symbol-aliases.asm", """
+                .eqv WRITTEN renamed_macro
+                .eqv WHOLE .macro generated_macro
+                .eqv DEFINE .eqv
+                .eqv PACK VALUE 42
+                .include "expanded-symbols.s"
+            """.trimIndent())
+            body to entry
+        }
+        val current = project.get()
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val scope = GlobalSearchScope.fileScope(current, body.virtualFile)
+        readAction {
+            val expected = mapOf("renamed_macro" to "WRITTEN", "generated_macro" to "WHOLE", "RESULT" to "DEFINE", "VALUE" to ".eqv PACK")
+            val names = mutableSetOf<String>()
+            contributor.processNames(names::add, scope, null)
+            assertTrue(names.containsAll(expected.keys))
+            assertTrue(items("WRITTEN", scope).isEmpty())
+            assertEquals("literal", items("literal", scope).single().name)
+            assertEquals("nested", items("nested", scope).single().name)
+            for ((name, origin) in expected) {
+                val item = assertInstanceOf(OpenFileDescriptor::class.java, items(name, scope).single())
+                assertEquals(body.virtualFile, item.file)
+                assertEquals(source.indexOf(origin), item.offset)
+            }
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.setText(fixture.editor.document.text.replace("renamed_macro", "updated_macro"))
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        readAction {
+            assertTrue(items("renamed_macro", scope).isEmpty())
+            assertEquals("updated_macro", items("updated_macro", scope).single().name)
+        }
+    }
+
+    @Test
     fun `symbol search recovers a local alias in a rootless include cycle`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("cycle-b.s", ".include \"cycle-a.asm\"\n")
