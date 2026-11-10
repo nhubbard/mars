@@ -36,6 +36,26 @@ class MipsEquivalenceReferencesPlatformTest {
     private val fixture by codeInsightFixture(project)
 
     @Test
+    fun `a short equivalence can acquire its definition from a prior alias`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val definition = ".eqv DECLARE VALUE 7\n"
+            val shortForm = ".eqv DECLARE\n"
+            val use = "addiu \$t0, \$zero, VALUE\n"
+            val source = definition + shortForm + use
+            val entry = directory.resolve("short-equivalence.asm").also { it.writeText(source) }
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement })
+
+            val alias = target(definition + shortForm.replace("DECLARE", "DEC<caret>LARE") + use)
+            assertEquals("DECLARE", alias?.name)
+            assertEquals(SymbolKind.CONSTANT, alias?.kind)
+            val generated = target(definition + shortForm + use.replace("VALUE", "VAL<caret>UE"))
+            assertEquals(".eqv", generated?.name)
+            assertEquals(definition.length, generated?.offset)
+            assertNull(target(shortForm + definition + use.replace("VALUE", "VAL<caret>UE")))
+        }
+
+    @Test
     fun `go to declaration reaches the first definition in include expansion order`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/outer.s", ".include \"inner.s\"\n.eqv COUNT 4\n")

@@ -33,6 +33,7 @@ class MipsFindUsagesPlatformTest {
             emit()
             emit(${'$'}t0)
             la ${'$'}t1, ${'$'}buffer
+            .eqv LIMIT
             # j .target.label
             .data
             .asciiz ".target.label ${'$'}buffer"
@@ -68,7 +69,8 @@ class MipsFindUsagesPlatformTest {
         }
         val sites = listOf("LIMIT", "\$buffer", ".target.label", "emit()", "emit(\$t0)")
         for ((target, site) in targets.zip(sites)) {
-            assertEquals(setOf("entry.asm" to source.indexOf(site)), usageLocations(target), site)
+            val offsets = if (site == "LIMIT") setOf(source.indexOf(site), source.lastIndexOf(site)) else setOf(source.indexOf(site))
+            assertEquals(offsets.map { "entry.asm" to it }.toSet(), usageLocations(target), site)
         }
     }
 
@@ -96,7 +98,7 @@ class MipsFindUsagesPlatformTest {
             .end_macro
             emit
             j target
-            .eqv
+            .eqv 7 8
         """.trimIndent()
         val file = withContext(Dispatchers.EDT) {
             val entry = fixture.addFileToProject("shadow.s", source)
@@ -108,7 +110,7 @@ class MipsFindUsagesPlatformTest {
             val nodes = declarations(file)
             val unnamed = nodes.single { it.name == null }
             assertFalse(LanguageFindUsages.canFindUsagesFor(unnamed))
-            assertEquals(".eqv", LanguageFindUsages.getDescriptiveName(unnamed))
+            assertEquals(".eqv 7 8", LanguageFindUsages.getDescriptiveName(unnamed))
             val instruction = file.findElementAt(source.indexOf("nop"))!!
             assertFalse(LanguageFindUsages.canFindUsagesFor(instruction))
             assertEquals("", LanguageFindUsages.getType(instruction))

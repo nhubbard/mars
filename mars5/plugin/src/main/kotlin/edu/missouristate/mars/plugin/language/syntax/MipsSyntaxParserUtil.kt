@@ -6,6 +6,9 @@ import com.intellij.platform.syntax.element.SyntaxTokenTypes.WHITE_SPACE
 import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
 import com.intellij.platform.syntax.util.runtime.ParserUserState
 import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
+import com.intellij.util.text.CharArrayUtil
+import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
@@ -62,6 +65,24 @@ internal fun startsSignedNumber(runtime: SyntaxGeneratedParserRuntime, level: In
     val builder = runtime.syntaxBuilder
     return builder.tokenType in signs && builder.signAttachesToNumber(builder.previousToken(separators))
 }
+
+/** MARS skips the definition when the physical line has fewer than three assembler tokens. */
+@Suppress("UNUSED_PARAMETER")
+internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    // Count the whole line only for plausible short forms. The assembler can join a sign
+    // to a number and counts trailing comments and any leading label as tokens.
+    val operand = builder.tokenType
+    if (!operand.endsLine() && !builder.lookAhead(1).endsLine() &&
+        (operand !in signs || !builder.lookAhead(2).endsLine())) return false
+    val offset = builder.currentOffset
+    val source = builder.text
+    val start = CharArrayUtil.shiftBackwardUntil(source, offset - 1, "\r\n") + 1
+    val end = CharArrayUtil.shiftForwardUntil(source, offset, "\r\n")
+    return Tokenizer().tokenizeLine(1, source.subSequence(start, end).toString(), ErrorList(), false).size() < 3
+}
+
+private fun SyntaxElementType?.endsLine() = this == null || this == NEWLINE
 
 /** Retain the broken literal and keep parsing the other operands on the line. */
 @Suppress("UNUSED_PARAMETER")

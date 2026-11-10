@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -50,7 +50,7 @@ include_line ::= before_include_target* include_target assembly_token*
 private before_include_target ::= !include_target assembly_token
 private include_target ::= INCLUDE STRING
 private body ::= macro_definition | non_macro_body
-private non_macro_body ::= macro_end | malformed_macro_end | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
+private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
 private line_recover ::= !NEWLINE
 // A macro argument can supply the name of a label at expansion time.
 label ::= (WORD | MNEMONIC | DOLLAR_WORD | PARAMETER) COLON
@@ -73,6 +73,7 @@ parameter_list ::= (macro_parameter | LEFT_PAREN | RIGHT_PAREN)+
 // A physical identifier may expand to one or more formals or parentheses.
 macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 // Equivalence replacement is source text, not an eagerly evaluated expression.
+short_equivalence ::= EQV <<isShortEquivalence>> raw_operand? &line_end {elementType=directive_statement}
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
 private assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | signed_number | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN | unfinished_character
@@ -83,9 +84,9 @@ ignored_set ::= SET assembly_token* {elementType=directive_statement}
 segment_switch ::= SEGMENT segment_address_symbol? assembly_token* {elementType=directive_statement}
 segment_address_symbol ::= WORD | DOLLAR_WORD
 // The assembler can reserve storage under any token spelling. Only addressable names get named PSI.
-external_statement ::= EXTERN external_name? external_operand* {elementType=directive_statement}
+external_statement ::= EXTERN external_name? raw_operand* {elementType=directive_statement}
 external_name ::= WORD | DOLLAR_WORD | MNEMONIC
-private external_operand ::= reference_expr | assembly_token
+private raw_operand ::= reference_expr | assembly_token
 // Directive-specific semantic checks use the canonical Java assembler catalog.
 directive_statement ::= (DIRECTIVE | INCLUDE) operand_line? {pin=1}
 instruction ::= operation operand_line?

@@ -705,6 +705,11 @@ definition for later uses, including when the directive is itself supplied
 by an alias. Go to Declaration opens the written directive or its alias at
 the call site. Formatting keeps the replacement text intact.
 
+A physical `.eqv` line with fewer than three assembler tokens parses as a
+directive without a declaration. A leading label or trailing comment still
+counts toward that minimum. If an active alias supplies both
+the name and replacement, Go to Declaration leads back to the short directive.
+
 Core fixtures cover a 6,000-link chain, repeated aliases inside one replacement,
 and cycles in included source after an earlier alias changes the line length.
 An IntelliJ fixture exercises the same cycle in an unsaved include through the

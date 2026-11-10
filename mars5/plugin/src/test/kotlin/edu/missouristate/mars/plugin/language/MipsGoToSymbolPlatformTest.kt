@@ -38,7 +38,7 @@ class MipsGoToSymbolPlatformTest {
 
     @Test
     fun `registered symbol search opens exact identifiers and retains all matching kinds`() = timeoutRunBlocking<Unit> {
-        val source = ".eqv shared 3\nshared: nop\n.macro shared\n.end_macro\n.eqv\nignored: .include \"other.asm\"\n"
+        val source = ".eqv shared 3\nshared: nop\n.macro shared\n.end_macro\n.eqv\n.eqv 7 8\nignored: .include \"other.asm\"\n"
         val (first, second) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("definitions.asm", source) to
                 fixture.addFileToProject("other.s", "shared: syscall\nMAIN: nop\n")
@@ -75,7 +75,9 @@ class MipsGoToSymbolPlatformTest {
             val incomplete = PsiTreeUtil.findChildrenOfType(first, MipsDeclaration::class.java).last()
             assertNull(incomplete.name)
             assertNull(incomplete.nameIdentifier)
-            assertEquals(source.indexOf(".eqv\n"), incomplete.textOffset)
+            assertEquals(source.indexOf(".eqv 7 8"), incomplete.textOffset)
+            val shortDirective = first.findElementAt(source.indexOf(".eqv\n"))!!
+            assertEquals(MipsTypes.psi("DIRECTIVE_STATEMENT"), shortDirective.parent.node.elementType)
             assertThrows(IncorrectOperationException::class.java) { firstItems.first().setName("different") }
             assertNull(MipsDeclaration.findAt(first, 0, "shared"))
             assertNull(MipsDeclaration.findAt(first, 5, "stale"))

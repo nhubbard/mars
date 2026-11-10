@@ -90,6 +90,31 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `short equivalence directives are no-ops when the assembler has fewer than three tokens`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val noOps = listOf(".eqv", "  .EQV , # ignored", ".eqv UNSET", ".eqv -7", ".eqv ,,, 7", ".eqv \$t0", ".eqv \"unused\"")
+            val source = noOps.joinToString("\n", postfix = "\n.eqv VALUE 7\naddiu \$t0, \$zero, VALUE\n.eqv EOF")
+            assertAssembles(directory, source)
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf(".eqv VALUE 7"), descendants(file.node, "EQUIVALENCE").map { it.text }.toList())
+                assertEquals(noOps.size + 1, descendants(file.node, "DIRECTIVE_STATEMENT").count())
+            }
+            for (line in listOf(".eqv UNSET # comment", "label: .eqv", ".eqv - 7", ".eqv - 7 8")) {
+                val entry = directory.resolve("invalid.asm").also { it.writeText("$line\nnop") }
+                val context = project.get().service<MarsSessionService>().context
+                val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+                assertTrue(failure.errors().errorMessages.any { ".eqv directive" in it.message }, line)
+                readAction {
+                    val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid.asm", MipsFileType, "$line\nnop")
+                    assertEquals(1, descendants(file.node, "EQUIVALENCE").count(), line)
+                    assertTrue(PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).isNotEmpty(), line)
+                    assertEquals("nop", descendants(file.node, "INSTRUCTION").single().text)
+                }
+            }
+        }
+
+    @Test
     fun `equivalence replacement preserves the original character literal in editor PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val spellings = listOf("'A'" to 65, "'\\n'" to 10, "'\\101'" to 65, "'\\''" to 39, "'\\\\'" to 92)
         for ((literal, value) in spellings) {
@@ -1177,7 +1202,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv", ".eqv ,,, 7", ".macro foo (1", ".macro 7",
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv @", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
                 ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
                 val text = broken + "\nnext: nop\n"

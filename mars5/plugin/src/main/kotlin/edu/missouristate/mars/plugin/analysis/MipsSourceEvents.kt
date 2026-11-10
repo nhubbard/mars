@@ -197,6 +197,7 @@ internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedVal
                     directiveStatement -> {
                         val directive = Directives.matchDirective(element.firstChild.text)
                         if (directive in dataStateDirectives) add(MipsSourceEvent.DataDirective(element.textOffset, directive))
+                        if (directive == Directives.EQV) add(MipsSourceEvent.OperationCandidate(element))
                     }
                     else -> if (isMacroEnd(element)) add(MipsSourceEvent.End(element.textOffset))
                 }
