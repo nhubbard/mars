@@ -3,7 +3,6 @@ package edu.missouristate.mars.mips.instructions.syscalls;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.util.*;
-import java.util.Date;
 
 /*
 Copyright (c) 2003-2007,  Pete Sanderson and Kenneth Vollmar
@@ -33,12 +32,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 (MIT license, http://www.opensource.org/licenses/mit-license.html)
  */
 
-/** Service to read a character from input console into $a0. */
+/** Service to read the wall-clock time into $a0 and $a1. */
 public class SyscallTime extends AbstractSyscall {
-  /**
-   * Build an instance of the Read Char syscall. Default service number is 12 and name is
-   * "ReadChar".
-   */
+  /** Builds the Time syscall (30). */
   public SyscallTime() {
     super(30, "Time");
   }
@@ -48,7 +44,7 @@ public class SyscallTime extends AbstractSyscall {
    * (high order 32 bits).
    */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    long value = new Date().getTime();
+    long value = context.environment().currentTimeMillis();
     context.updateRegister(4, Binary.lowOrderLongToInt(value)); // $a0
     context.updateRegister(5, Binary.highOrderLongToInt(value)); // $a1
   }

@@ -24,6 +24,7 @@ import javax.swing.JOptionPane
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
@@ -34,6 +35,11 @@ internal class MarsIdeSyscallEnvironment(
     io: SyscallEnvironment,
     private val clear: () -> Unit,
 ) : SyscallEnvironment by io {
+    override fun sleepMillis(milliseconds: Int) {
+        require(milliseconds >= 0) { "timeout value is negative" }
+        runBlocking(execution) { delay(milliseconds.toLong()) }
+    }
+
     override fun showInputDialog(message: String): String? = onEdt {
         val field = JBTextField(36)
         val dialog = MarsSyscallDialog(

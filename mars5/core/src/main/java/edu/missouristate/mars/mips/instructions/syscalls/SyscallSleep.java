@@ -47,13 +47,6 @@ public class SyscallSleep extends AbstractSyscall {
    * overhead.
    */
   public void simulate(ProgramStatement statement, InstructionContext context) {
-    // Input arguments: $a0 is the length of time to sleep in milliseconds.
-
-    try {
-      Thread.sleep(
-          context.registerFile.getValue(4)); // units of milliseconds  1000 millisec = 1 sec.
-    } catch (InterruptedException e) {
-      // no exception handling
-    }
+    context.environment().sleepMillis(context.registerFile.getValue(4));
   }
 }

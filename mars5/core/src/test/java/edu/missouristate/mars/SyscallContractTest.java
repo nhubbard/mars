@@ -23,6 +23,7 @@ class SyscallContractTest {
   void everySupportedServiceUsesItsSessionAndEnvironment(int number) throws Exception {
     try (var session = TestSessions.create()) {
       var calls = new ArrayList<String>();
+      long wallTime = 0x0123456789abcdefL;
       var environment =
           (SyscallEnvironment)
               Proxy.newProxyInstance(
@@ -39,6 +40,7 @@ class SyscallContractTest {
                       case "readString" -> "hi";
                       case "showInputDialog" -> "42";
                       case "showConfirmDialog" -> 2;
+                      case "currentTimeMillis" -> wallTime;
                       case "openFile" -> 3;
                       case "readFromFile" -> {
                         var buffer = (byte[]) args[1];
@@ -90,7 +92,7 @@ class SyscallContractTest {
           registers.updateRegister(6, 0);
           registers.updateRegister(7, 10);
         }
-        case 32 -> registers.updateRegister(4, 0);
+        case 32 -> registers.updateRegister(4, 250);
         case 40 -> {
           registers.updateRegister(4, 1);
           registers.updateRegister(5, 123);
@@ -104,7 +106,6 @@ class SyscallContractTest {
       }
       session.randomStreams.setSeed(1, 123);
       int heap = session.memory.heapAddress;
-      long before = System.currentTimeMillis();
       var service = session.syscalls.findByNumber(number);
       if (number == 10 || number == 17) {
         var failure = catchThrowable(() -> service.simulate(null, context));
@@ -146,12 +147,13 @@ class SyscallContractTest {
         }
         case 16 -> assertThat(calls).containsExactly("closeFile[3]");
         case 30 -> {
-          long time = ((long) registers.getValue(5) << 32) | (registers.getValue(4) & 0xffffffffL);
-          assertThat(time).isBetween(before, System.currentTimeMillis());
+          assertThat(calls).containsExactly("currentTimeMillis[]");
+          assertThat(registers.getValue(4)).isEqualTo(0x89abcdef);
+          assertThat(registers.getValue(5)).isEqualTo(0x01234567);
         }
         case 31, 33 ->
             assertThat(calls).containsExactly("playTone[60, 0, 0, 10, " + (number == 33) + "]");
-        case 32 -> assertThat(calls).isEmpty();
+        case 32 -> assertThat(calls).containsExactly("sleepMillis[250]");
         case 34 -> assertThat(calls).containsExactly("printString[0x0000002a]");
         case 35 ->
             assertThat(calls).containsExactly("printString[00000000000000000000000000101010]");

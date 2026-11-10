@@ -92,6 +92,20 @@ public interface SyscallEnvironment {
    */
   int sbrk(int bytes);
 
+  /** Returns the wall-clock time in milliseconds since the Unix epoch. */
+  default long currentTimeMillis() {
+    return System.currentTimeMillis();
+  }
+
+  /** Waits for the given number of milliseconds. Frontends may cancel the wait with the launch. */
+  default void sleepMillis(int milliseconds) {
+    try {
+      Thread.sleep(milliseconds);
+    } catch (InterruptedException ignored) {
+      // Preserve the synchronous simulator's behavior of returning after an interrupt.
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Dialog I/O (GUI: modal dialog; headless: stderr/stdin)
   // -------------------------------------------------------------------------

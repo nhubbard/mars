@@ -1596,6 +1596,37 @@ class MarsRunPlatformTest {
     }
 
     @Test
+    fun `Stop releases the simulator during a long MARS sleep`() = timeoutRunBlocking<Unit> {
+        val (handler, recording) = run("li \$a0, 60000\nli \$v0, 32\nsyscall\nli \$a0, 42\nli \$v0, 1\nsyscall\n")
+        try {
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                assertTrue(Thread.getAllStackTraces().any { (thread, trace) ->
+                    thread.name == "mars-simulator" && trace.any {
+                        it.className == MarsIdeSyscallEnvironment::class.java.name && it.methodName == "sleepMillis"
+                    }
+                }, "simulator is waiting for syscall 32")
+            }
+            withContext(Dispatchers.EDT) { handler.destroyProcess() }
+            assertEquals(130, recording.exit.await())
+            assertEquals("", recording.stdout.toString())
+            assertEquals("", recording.stderr.toString())
+        } finally {
+            withContext(Dispatchers.EDT) { handler.destroyProcess() }
+        }
+    }
+
+    @Test
+    fun `MARS sleep resumes normally and keeps the error for negative durations`() = timeoutRunBlocking<Unit> {
+        val (_, complete) = run("li \$a0, 10\nli \$v0, 32\nsyscall\nli \$a0, 42\nli \$v0, 1\nsyscall\nli \$v0, 10\nsyscall\n")
+        assertEquals(0, complete.exit.await())
+        assertEquals("42", complete.stdout.toString())
+        assertEquals("", complete.stderr.toString())
+        val (_, invalid) = run("li \$a0, -1\nli \$v0, 32\nsyscall\n")
+        assertEquals(1, invalid.exit.await())
+        assertEquals("MARS runtime error. timeout value is negative\n", invalid.stderr.toString())
+    }
+
+    @Test
     fun `stop releases a syscall blocked on console input`() = timeoutRunBlocking<Unit> {
         val (handler, recording) = run("li \$v0, 5\nsyscall\n")
         try {

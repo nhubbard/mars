@@ -898,6 +898,13 @@ instructions appears after the clear. Input already submitted to the
 program stays in its input stream. The native console may discard input
 still being edited when it clears the transcript.
 
+### Time and sleep
+
+Syscall 30 returns the wall-clock time as two 32-bit register values.
+Syscall 32 waits for the requested number of milliseconds on the simulator
+worker. Stopping an IntelliJ Run or Debug launch cancels that wait, even
+when the program requested a long sleep.
+
 ## Simulator boundary for native breakpoints
 
 The debugger can supply an address predicate to `SimulatorEngine.runUntilAsync`.
