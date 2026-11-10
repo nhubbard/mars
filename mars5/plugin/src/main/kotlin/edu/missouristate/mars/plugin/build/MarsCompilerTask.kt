@@ -29,9 +29,9 @@ internal class MarsCompilerTask : CompileTask {
         return runBlockingCancellable {
             if (!readAction { sources.entries.any { scope.belongs(sourceUrl(it)) } }) return@runBlockingCancellable true
             context.getUserData(resultKey)?.let { return@runBlockingCancellable it }
-            project.service<MarsBuildService>().assembleForCompiler(sources) { result, revisions ->
+            project.service<MarsBuildService>().assembleForCompiler(sources) { diagnostics, revisions ->
                 val messages = readAction {
-                    result.errors().map { diagnosticEvent(project, context, it, revisions) }
+                    diagnostics.map { diagnosticEvent(project, context, it, revisions) }
                 }
                 for (message in messages) {
                     checkCanceled()

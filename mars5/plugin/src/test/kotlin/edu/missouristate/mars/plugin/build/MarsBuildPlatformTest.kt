@@ -24,6 +24,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -91,6 +92,7 @@ import org.jetbrains.concurrency.await
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -143,6 +145,101 @@ class MarsBuildPlatformTest {
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
         }
+    }
+
+    @Test
+    fun `launch reuses a successful build with current diagnostic positions and rebuild replaces it`() = timeoutRunBlocking<Unit> {
+        val (entry, include) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("cached.asm", ".include \"value.s\"\nli \$t0, VALUE\n").virtualFile
+            val value = fixture.addFileToProject("value.s", ".set noat\n.eqv VALUE 42\n").virtualFile
+            main to value
+        }
+        val path = include.toNioPath()
+        val sourceSet = MarsSourceSet(entry.toNioPath())
+        val build = project.service<MarsBuildService>()
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        fun warning(upToDate: Boolean): FileMessageEvent {
+            val received = buildList { while (true) add(events.tryReceive().getOrNull() ?: break) }
+            val result = assertInstanceOf(SuccessResult::class.java, received.filterIsInstance<FinishBuildEvent>().single().result)
+            assertEquals(upToDate, result.isUpToDate)
+            return received.filterIsInstance<FileMessageEvent>().single()
+        }
+        suspend fun prepare() = requireNotNull(build.prepare(sourceSet, MarsExecutionOptions(), activateBuildView = false))
+        try {
+            val initial = prepare()
+            assertEquals(path, warning(upToDate = false).filePosition.path)
+            withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("unrelated.txt", "new file")
+                edit(include, ".eqv VALUE 99\n")
+                edit(include, ".set noat\n.eqv VALUE 42\n")
+            }
+            val hit = prepare()
+            assertSame(initial.image, hit.image)
+            assertTrue(initial.sources.revisions[path] != hit.sources.revisions[path])
+            assertEquals(0, warning(upToDate = true).filePosition.startLine)
+
+            assertTrue(build.assemble(sourceSet))
+            assertEquals(path, warning(upToDate = false).filePosition.path)
+            val rebuilt = prepare()
+            assertNotSame(hit.image, rebuilt.image)
+            warning(upToDate = true)
+            assertSame(rebuilt.image, prepare().image)
+            warning(upToDate = true)
+
+            withContext(Dispatchers.EDT) { edit(include, ".set noat\n.eqv VALUE 99\n") }
+            val changed = prepare()
+            assertNotSame(rebuilt.image, changed.image)
+            warning(upToDate = false)
+            MarsSessionService.createMarsComponent().context().use { session ->
+                session.loadAssemblyImage(initial.image) {}
+                assertEquals(0x2408002a, session.program.machineList.single().binaryStatement)
+                session.loadAssemblyImage(changed.image) {}
+                assertEquals(0x24080063, session.program.machineList.single().binaryStatement)
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `launch image changes with source ordering include paths handler and execution options`() = timeoutRunBlocking<Unit> {
+        val (entry, include, handler) = withContext(Dispatchers.EDT) {
+            val main = fixture.addFileToProject("project/cached.asm", ".include \"body.inc\"\nnop\n").virtualFile
+            val body = fixture.addFileToProject("project/body.inc", "nop\n").virtualFile
+            val trap = fixture.addFileToProject("trap.asm", ".ktext 0x80000180\nnop\n").virtualFile
+            Triple(main, body, trap)
+        }
+        val build = project.service<MarsBuildService>()
+        val settings = project.service<MarsAssemblySettings>()
+        val options = MarsExecutionOptions()
+        val sourceSet = MarsSourceSet(entry.toNioPath(), MarsAssemblyMode.DIRECTORY)
+        suspend fun prepare(policy: MarsExecutionOptions = options) =
+            requireNotNull(build.prepare(sourceSet, policy, activateBuildView = false))
+
+        val original = prepare()
+        val added = withContext(Dispatchers.EDT) { fixture.addFileToProject("project/another.asm", "nop\n").virtualFile }
+        val expanded = prepare()
+        assertNotSame(original.image, expanded.image)
+        assertEquals(listOf(entry.toNioPath(), added.toNioPath()), expanded.sources.snapshot.entries())
+        val delayed = prepare(options.copy(delayedBranching = true))
+        assertNotSame(expanded.image, delayed.image)
+        assertSame(expanded.image, prepare().image)
+        withContext(Dispatchers.EDT) { settings.changeExceptionHandler(handler.path) }
+        val withHandler = prepare()
+        assertNotSame(expanded.image, withHandler.image)
+        assertEquals(handler.toNioPath(), withHandler.sources.exceptionHandler)
+
+        val oldPath = include.toNioPath()
+        withContext(Dispatchers.EDT) {
+            WriteAction.run<RuntimeException> { include.rename(this, "moved.inc") }
+            edit(entry, ".include \"moved.inc\"\nnop\n")
+        }
+        val moved = prepare()
+        assertNotSame(withHandler.image, moved.image)
+        assertFalse(oldPath in moved.sources.snapshot.texts())
+        assertTrue(include.toNioPath() in moved.sources.snapshot.texts())
+        assertSame(moved.image, prepare().image)
     }
 
     @Test

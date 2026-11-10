@@ -19,8 +19,9 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.task.ProjectTaskRunner
 import com.intellij.task.TaskRunnerResults
+import com.intellij.util.containers.SLRUMap
 import edu.missouristate.mars.api.AssemblyError
-import edu.missouristate.mars.api.AssemblyResult
+import edu.missouristate.mars.api.AssemblySourceSnapshot
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.core.AssemblyImage
 import edu.missouristate.mars.di.MarsComponent
@@ -47,6 +48,24 @@ internal class MarsAssembledProgram(val image: AssemblyImage, val sources: Captu
 
 @Service(Service.Level.PROJECT)
 internal class MarsBuildService(private val project: Project, private val scope: CoroutineScope) {
+    private data class Revision(
+        val snapshot: AssemblySourceSnapshot,
+        val exceptionHandler: Path?,
+        val options: MarsExecutionOptions,
+    )
+
+    private data class BuildOutput(
+        val diagnostics: List<AssemblyError>,
+        val symbols: AssemblySymbolMap?,
+        val image: AssemblyImage? = null,
+        val reused: Boolean = false,
+    ) {
+        val succeeded get() = symbols != null
+    }
+
+    // Use content and resolved include identities. Fresh document stamps belong to each caller.
+    private val images = SLRUMap<Revision, BuildOutput>(2, 2)
+
     fun assembleTasks(tasks: List<MarsBuildTask>) = scope.async<ProjectTaskRunner.Result>(Dispatchers.Default) {
         var result = TaskRunnerResults.SUCCESS
         withBackgroundProgress(project, buildMessages.getMessage("build.progress")) {
@@ -59,22 +78,35 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     internal suspend fun assemble(entry: Path) = assemble(MarsSourceSet(entry))
 
-    internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean {
-        val component = MarsSessionService.createMarsComponent()
-        return component.context().use { assemble(sourceSet, component, activateBuildView = true) }
-    }
+    internal suspend fun assemble(sourceSet: MarsSourceSet): Boolean =
+        buildImage(sourceSet, projectOptions, activateBuildView = true, reuse = false) != null
 
     internal suspend fun prepare(
         sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
+    ): MarsAssembledProgram? = buildImage(sources, options, activateBuildView, reuse = true)
+
+    private suspend fun buildImage(
+        sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean, reuse: Boolean,
     ): MarsAssembledProgram? {
+        val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView) { sources ->
+            val revision = Revision(sources.snapshot, sources.exceptionHandler, options)
+            val cached = if (reuse) synchronized(images) { images.get(revision) } else null
+            cached?.copy(reused = true) ?: assembleImage(sources, options)
+        }
+        val image = output.image ?: return null
+        checkCanceled()
+        if (!output.reused) {
+            synchronized(images) { images.put(Revision(capture.snapshot, capture.exceptionHandler, options), output) }
+        }
+        return MarsAssembledProgram(image, capture)
+    }
+
+    private suspend fun assembleImage(sources: CapturedAssemblySources, options: MarsExecutionOptions): BuildOutput {
         val component = MarsSessionService.createMarsComponent()
         val context = currentCoroutineContext()
         return component.context().use { session ->
-            var program: MarsAssembledProgram? = null
-            assemble(sources, component, activateBuildView, options) { capture ->
-                program = MarsAssembledProgram(session.captureAssemblyImage(context::ensureActive), capture)
-            }
-            program
+            val result = assembleInto(sources, options, component)
+            if (result.succeeded) result.copy(image = session.captureAssemblyImage(context::ensureActive)) else result
         }
     }
 
@@ -82,12 +114,14 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     internal suspend fun assemble(
         entry: Path, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
-    ) = assemble(MarsSourceSet(entry), component, activateBuildView, options)
+    ): Boolean = buildWithProgress(MarsSourceSet(entry), options, activateBuildView) { sources ->
+        assembleInto(sources, options, component)
+    }.second.succeeded
 
-    internal suspend fun assemble(
-        sourceSet: MarsSourceSet, component: MarsComponent, activateBuildView: Boolean, options: MarsExecutionOptions = projectOptions,
-        onAssembled: (CapturedAssemblySources) -> Unit = {},
-    ): Boolean {
+    private suspend fun buildWithProgress(
+        sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
+        assemble: suspend (CapturedAssemblySources) -> BuildOutput,
+    ): Pair<CapturedAssemblySources, BuildOutput> {
         val entry = sourceSet.entry
         val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sourceSet, options)
         val descriptor = DefaultBuildDescriptor(
@@ -101,10 +135,11 @@ internal class MarsBuildService(private val project: Project, private val scope:
         val progress = BuildViewManager.createBuildProgress(project).start(progressDescriptor.title, progressDescriptor)
         var cancelled = false
         var succeeded = false
+        var reused = false
         try {
-            succeeded = assembleAndReport(symbolBuild, component, onAssembled) { result, revisions ->
+            val completed = assembleAndReport(symbolBuild, assemble) { diagnostics, revisions ->
                 val events = readAction {
-                    result.errors().map { diagnosticEvent(project, progress.id, it, revisions) }
+                    diagnostics.map { diagnosticEvent(project, progress.id, it, revisions) }
                 }
                 checkCanceled()
                 val view = project.getService(BuildViewManager::class.java)
@@ -113,50 +148,60 @@ internal class MarsBuildService(private val project: Project, private val scope:
                     view.onEvent(progress.id, event)
                 }
             }
-            return succeeded
+            succeeded = completed.second.succeeded
+            reused = completed.second.reused
+            return completed
         } catch (cancel: CancellationException) {
             cancelled = true
             throw cancel
         } finally {
-            finish(progress, cancelled, succeeded)
+            finish(progress, cancelled, succeeded, reused)
         }
     }
 
     internal suspend fun assembleForCompiler(
-        sources: MarsSourceSet, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
+        sources: MarsSourceSet, report: suspend (List<AssemblyError>, Map<Path, Long>) -> Unit,
     ): Boolean {
+        val options = projectOptions
         val component = MarsSessionService.createMarsComponent()
-        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, projectOptions)
-        return component.context().use { assembleAndReport(symbolBuild, component, {}, report) }
+        val symbolBuild = project.service<MarsAnalysisService>().beginSymbolBuild(sources, options)
+        return component.context().use {
+            assembleAndReport(symbolBuild, { capture -> assembleInto(capture, options, component) }, report).second.succeeded
+        }
+    }
+
+    private suspend fun assembleInto(
+        sources: CapturedAssemblySources, options: MarsExecutionOptions, component: MarsComponent,
+    ): BuildOutput {
+        options.applyTo(component.context().settings)
+        val result = sources.assembleIn(component)
+        return BuildOutput(result.errors(), if (result.succeeded()) result.program().symbolMap() else null)
     }
 
     private suspend fun assembleAndReport(
-        symbolBuild: MarsAnalysisService.SymbolBuild, component: MarsComponent,
-        onAssembled: (CapturedAssemblySources) -> Unit, report: suspend (AssemblyResult, Map<Path, Long>) -> Unit,
-    ): Boolean {
-        val selection = symbolBuild.selection
-        selection.options.applyTo(component.context().settings)
+        symbolBuild: MarsAnalysisService.SymbolBuild, assemble: suspend (CapturedAssemblySources) -> BuildOutput,
+        report: suspend (List<AssemblyError>, Map<Path, Long>) -> Unit,
+    ): Pair<CapturedAssemblySources, BuildOutput> {
         val analysis = project.service<MarsAnalysisService>()
-        val capture = captureBuildSources(selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
+        val capture = captureBuildSources(symbolBuild.selection.sourceSet, project.service<MarsAssemblySettings>().exceptionHandler)
         checkCanceled()
         analysis.publishBuiltSymbols(symbolBuild, capture, AssemblySymbolMap.EMPTY)
         DaemonCodeAnalyzer.getInstance(project).restart("MARS assembly entry selected")
         project.messageBus.syncPublisher(MipsAssemblyContextListener.TOPIC).assemblyEntryChanged()
-        val result = capture.assembleIn(component)
+        val result = assemble(capture)
         checkCanceled()
-        report(result, capture.revisions)
+        report(result.diagnostics, capture.revisions)
         checkCanceled()
-        if (result.succeeded()) {
-            onAssembled(capture)
-            analysis.publishBuiltSymbols(symbolBuild, capture, result.program().symbolMap())
-        }
-        return result.succeeded()
+        result.symbols?.let { analysis.publishBuiltSymbols(symbolBuild, capture, it) }
+        return capture to result
     }
 
-    private fun finish(progress: BuildProgress<BuildProgressDescriptor>, cancelled: Boolean, succeeded: Boolean) {
+    private fun finish(
+        progress: BuildProgress<BuildProgressDescriptor>, cancelled: Boolean, succeeded: Boolean, reused: Boolean,
+    ) {
         when {
             cancelled -> progress.cancel()
-            succeeded -> progress.finish()
+            succeeded -> progress.finish(reused)
             else -> progress.fail()
         }
     }

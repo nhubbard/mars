@@ -1349,7 +1349,13 @@ image to Run or Debug. The image preserves the initialized memory, entry
 point, machine instructions, symbols, macro source map, and captured source
 text. Run and Debug load it into a fresh session. Later tasks can change files
 on disk or in the editor without changing what that launch executes. Without
-the Before Launch task, Run and Debug capture and assemble as they start.
+the Before Launch task, Run and Debug prepare the image as they start.
+
+Run and Debug reuse recent successful images when the ordered source text,
+resolved includes, exception handler, and execution options match. The Build
+window marks a reused image as up to date and republishes its diagnostics at
+the current document positions. Explicit Assemble actions build a new image.
+Each launch loads its own machine state.
 
 For mixed projects that use IntelliJ's bundled JVM compiler, enable
 **Assemble project sources before IntelliJ JVM compilation** under
