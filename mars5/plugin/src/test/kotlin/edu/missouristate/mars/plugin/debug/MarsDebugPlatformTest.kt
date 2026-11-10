@@ -91,6 +91,8 @@ import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.mips.dump.DumpFormat
 import edu.missouristate.mars.mips.dump.DumpFormatLoader
 import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
+import edu.missouristate.mars.mips.hardware.AccessNotice
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryConfigurations
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
@@ -129,6 +131,7 @@ import java.util.concurrent.TimeUnit
 import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.milliseconds
@@ -143,6 +146,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.ValueSource
 
 @TestApplication
@@ -152,6 +156,121 @@ class MarsDebugPlatformTest {
     private val project get() = projectFixture.get()
     private val debugger get() = XDebuggerManager.getInstance(project)
     private val breakpointType get() = XDebuggerUtil.getInstance().findBreakpointType(MarsLineBreakpointType::class.java)
+
+    @Test
+    fun `native watchpoint dialog validates and saves inclusive unsigned addresses`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+            assertTrue(type.isAddBreakpointButtonVisible)
+            val manager = debugger.breakpointManager
+            fun intercept(action: (MarsMemoryWatchpointDialog) -> Unit) =
+                UiInterceptors.register(object : UiInterceptors.UiInterceptor<MarsMemoryWatchpointDialog>(MarsMemoryWatchpointDialog::class.java) {
+                    override fun doIntercept(component: MarsMemoryWatchpointDialog) = action(component)
+                })
+            try {
+                intercept { it.doCancelAction() }
+                assertNull(type.addBreakpoint(project, null))
+                intercept { dialog ->
+                    val (first, last) = UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java)
+                    assertSame(first, dialog.getPreferredFocusedComponent())
+                    assertSame(first, dialog.performValidateAll().single().component)
+                    first.text = " 0Xfffffffe "
+                    last.text = "4294967296"
+                    assertSame(last, dialog.performValidateAll().single().component)
+                    last.text = "0"
+                    assertTrue(dialog.performValidateAll().single().message.contains("at or after"))
+                    last.text = "4294967295"
+                    @Suppress("UNCHECKED_CAST")
+                    val modes = UIUtil.findComponentsOfType(dialog.fields, JComboBox::class.java).single() as JComboBox<MemoryWatchMode>
+                    val list = JList(MemoryWatchMode.entries.toTypedArray())
+                    for ((index, mode) in MemoryWatchMode.entries.withIndex()) {
+                        val rendered = modes.renderer.getListCellRendererComponent(list, mode, index, false, false)
+                        assertTrue(rendered.preferredSize.width > 0)
+                    }
+                    modes.selectedItem = MemoryWatchMode.READ
+                    assertTrue(dialog.performValidateAll().isEmpty())
+                    dialog.performOKAction()
+                }
+                val point = requireNotNull(type.addBreakpoint(project, null))
+                assertSame(point, manager.getBreakpoints(type).single())
+                assertEquals("0xfffffffe to 0xffffffff (Read)", type.getDisplayText(point))
+                assertSame(MarsDebugEditors, type.getEditorsProvider(point, project))
+                val state = XmlSerializer.serialize(requireNotNull(point.properties).getState())
+                val restored = type.createProperties()
+                restored.loadState(XmlSerializer.deserialize(state, MarsMemoryWatchpointProperties::class.java))
+                val range = requireNotNull(restored.range())
+                assertEquals(MemoryWatchRange(0xfffffffeL, 0xffffffffL, MemoryWatchMode.READ), range)
+                assertTrue(range.overlaps(MemoryAccessNotice(AccessNotice.READ, 0xfffffffc.toInt(), 0)))
+                assertFalse(range.overlaps(MemoryAccessNotice(AccessNotice.READ, 0, 0)))
+                assertFalse(range.overlaps(MemoryAccessNotice(AccessNotice.WRITE, 0xfffffffc.toInt(), 0)))
+                restored.last++
+                assertNull(restored.range())
+                restored.last = 1
+                assertNull(restored.range())
+                val invalid = WriteAction.compute<MemoryWatchpoint, RuntimeException> { manager.addBreakpoint(type, type.createProperties()) }
+                assertEquals("Invalid MIPS memory watchpoint", type.getDisplayText(invalid))
+                val missing = WriteAction.compute<MemoryWatchpoint, RuntimeException> { manager.addBreakpoint(type, null) }
+                assertEquals("Invalid MIPS memory watchpoint", type.getDisplayText(missing))
+            } finally {
+                UiInterceptors.clear()
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(MemoryWatchMode::class)
+    internal fun `native memory watchpoints stop after overlapping accesses from the program`(mode: MemoryWatchMode) = timeoutRunBlocking<Unit> {
+        val type = XDebuggerUtil.getInstance().findBreakpointType(MarsMemoryWatchpointType::class.java)
+        val manager = debugger.breakpointManager
+        val address = 0x10010000
+        val (source, point) = withContext(Dispatchers.EDT) {
+            val file = fixture.addFileToProject("watchpoints.asm", """
+                .data
+                cell: .word 7
+                .text
+                la ${'$'}t0, cell
+                lbu ${'$'}t1, 0(${'$'}t0)
+                lw ${'$'}t1, 0(${'$'}t0)
+                li ${'$'}t2, 1
+                sb ${'$'}t2, 3(${'$'}t0)
+                sh ${'$'}t2, 0(${'$'}t0)
+                nop
+            """.trimIndent()).virtualFile
+            addBreakpoint(file, 3)
+            val point = WriteAction.compute<MemoryWatchpoint, RuntimeException> {
+                manager.addBreakpoint(type, type.createProperties())
+                manager.addBreakpoint(type, null)
+                manager.addBreakpoint(type, MarsMemoryWatchpointProperties(0x400000, 0x400007, MemoryWatchMode.READ))
+                manager.addBreakpoint(type, MarsMemoryWatchpointProperties(address + 1L, address + 2L, mode))
+            }
+            file to point
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 3)
+            suspend fun readWord(): Int {
+                val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                val read = CompletableDeferred<Int>()
+                context.inspectionRequests.send { read.complete(it.getWord(address)) }
+                return read.await()
+            }
+            assertEquals(7, readWord())
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            if (mode != MemoryWatchMode.WRITE) {
+                debug.assertPausedAt(source, 6)
+                assertEquals(7, readWord())
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+            }
+            if (mode != MemoryWatchMode.READ) {
+                debug.assertPausedAt(source, 9)
+                assertEquals(0x01000001, readWord())
+                withContext(Dispatchers.EDT) {
+                    WriteAction.run<RuntimeException> { point.isEnabled = false }
+                    debug.session.resume()
+                }
+            }
+            assertEquals(0, debug.exit.await())
+        }
+    }
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])

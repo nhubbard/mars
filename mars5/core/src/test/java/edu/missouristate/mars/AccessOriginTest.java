@@ -22,11 +22,33 @@ class AccessOriginTest {
       session.memory.addObserver(
           notices::add, session.memory.textBaseAddress, session.memory.textBaseAddress + 4);
       assertThat(program.simulate(1)).isFalse();
-      assertThat(notices).isNotEmpty().allMatch(n -> n.origin() == AccessOrigin.EXECUTION);
+      assertThat(notices).isNotEmpty().allMatch(n ->
+          n.origin() == AccessOrigin.EXECUTION && n.isInstructionFetch());
       assertThat(AccessOrigin.current()).isEqualTo(AccessOrigin.APPLICATION);
       session.memory.getStatement(session.memory.textBaseAddress);
       assertThat(notices.getLast().origin()).isEqualTo(AccessOrigin.APPLICATION);
+      assertThat(notices.getLast().isInstructionFetch()).isFalse();
       assertThat(notices.getFirst().origin()).isEqualTo(AccessOrigin.EXECUTION);
+    }
+  }
+
+  @Test
+  void fetchFromDataIsDistinctFromReadingTheSameWord() throws Exception {
+    try (var session = TestSessions.create()) {
+      var memory = session.memory;
+      int address = memory.dataSegmentBaseAddress;
+      session.settings.setSelfModifyingCodeEnabled(true);
+      memory.setWord(address, 0);
+      var notices = new ArrayList<MemoryAccessNotice>();
+      memory.addObserver(notices::add, address);
+      AccessOrigin.duringExecution(() -> {
+        memory.fetchInstruction(address);
+        memory.getWord(address);
+        memory.getStatementNoNotify(address);
+        return null;
+      });
+      assertThat(notices).extracting(MemoryAccessNotice::isInstructionFetch).containsExactly(true, false);
+      assertThat(notices).allMatch(n -> n.origin() == AccessOrigin.EXECUTION);
     }
   }
 

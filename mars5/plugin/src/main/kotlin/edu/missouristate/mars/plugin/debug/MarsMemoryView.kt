@@ -155,14 +155,13 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     }
 
     private fun navigate() {
-        val text = addressField.text.trim()
-        val parsed = if (text.startsWith("0x", ignoreCase = true)) text.substring(2).toUIntOrNull(16) else text.toUIntOrNull()
+        val parsed = parseMemoryAddress(addressField.text)
         if (parsed == null) {
             revision++
             status.text = runMessages.getMessage("debug.memory.invalid")
             return
         }
-        jumpTo(parsed.toLong())
+        jumpTo(parsed)
     }
 
     private fun jumpTo(target: Long) {

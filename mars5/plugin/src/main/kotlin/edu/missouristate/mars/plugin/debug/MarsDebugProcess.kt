@@ -32,7 +32,6 @@ import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.ProgramStatement
 import edu.missouristate.mars.api.ErrorEvent
-import edu.missouristate.mars.api.InstructionSourceMap
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.SimulatorListener
@@ -43,6 +42,8 @@ import edu.missouristate.mars.api.StepEvent.ExceptionReturn
 import edu.missouristate.mars.api.StepEvent.Jump
 import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
+import edu.missouristate.mars.mips.hardware.AccessOrigin
+import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.debug.DebuggerCallStack.CallerSite
 import edu.missouristate.mars.plugin.language.MipsFileType
@@ -54,6 +55,7 @@ import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.simulator.SimulatorEngine
 import java.nio.file.Path
+import java.util.function.Consumer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,8 +97,19 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private val entry = entryPath.toString()
     private val registeredLines = linkedSetOf<LineBreakpoint>()
     private val registeredAddresses = linkedSetOf<AddressBreakpoint>()
-    private var sourceMap: InstructionSourceMap? = null
+    private val registeredWatchpoints = linkedSetOf<MemoryWatchpoint>()
+    private var boundMachine: MarsContext? = null
     @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
+    @Volatile private var watchpoints = emptyMap<MemoryWatchpoint, MemoryWatchRange>()
+    // Written on the simulator worker and drained when its slice completes.
+    private val watchpointHits = linkedSetOf<MemoryWatchpoint>()
+    private val watchMemory = Consumer<MemoryAccessNotice> { access ->
+        if (access.origin() == AccessOrigin.EXECUTION && !access.isInstructionFetch) {
+            for ((breakpoint, range) in watchpoints) {
+                if (range.overlaps(access)) watchpointHits.add(breakpoint)
+            }
+        }
+    }
     private var suspensionNumber = 0L
     @Volatile private lateinit var sources: MarsExecutionSources
     private val handler = state.createProcess { machine, executionSources ->
@@ -106,6 +119,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
 
     private val lineHandler = bindingHandler(MarsLineBreakpointType::class.java, registeredLines)
     private val addressHandler = bindingHandler(MarsAddressBreakpointType::class.java, registeredAddresses)
+    private val watchpointHandler = bindingHandler(MarsMemoryWatchpointType::class.java, registeredWatchpoints)
 
     private fun <B : XBreakpoint<*>> bindingHandler(type: Class<out XBreakpointType<B, *>>, registered: MutableSet<B>) =
         object : XBreakpointHandler<B>(type) {
@@ -124,7 +138,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             }
         }
 
-    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(lineHandler, addressHandler)
+    override fun getBreakpointHandlers(): Array<XBreakpointHandler<*>> = arrayOf(lineHandler, addressHandler, watchpointHandler)
     override fun doGetProcessHandler() = handler
     override fun createConsole() = TextConsoleBuilderFactory.getInstance().createBuilder(session.project).console.also {
         it.attachToProcess(handler)
@@ -222,7 +236,8 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     }
 
     private fun updateBindings() {
-        val map = sourceMap ?: return
+        val machine = boundMachine ?: return
+        val map = machine.program.sourceMap()
         val next = mutableMapOf<Int, MutableList<XBreakpoint<*>>>()
         for (breakpoint in registeredLines) {
             val file = VirtualFileManager.getInstance().findFileByUrl(breakpoint.fileUrl)
@@ -240,6 +255,25 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             next.getOrPut(address) { mutableListOf() }.add(breakpoint)
         }
         addresses = next
+        val nextWatchpoints = buildMap {
+            for (breakpoint in registeredWatchpoints) {
+                val range = breakpoint.properties?.range()
+                if (range == null) {
+                    session.updateBreakpointPresentation(breakpoint, AllIcons.Debugger.Db_invalid_breakpoint, runMessages.getMessage("debug.watchpoint.invalid"))
+                } else {
+                    put(breakpoint, range)
+                    session.updateBreakpointPresentation(breakpoint, null, null)
+                }
+            }
+        }
+        bindWatchpoints(machine.memory, nextWatchpoints)
+    }
+
+    private fun bindWatchpoints(memory: MemoryState, next: Map<MemoryWatchpoint, MemoryWatchRange>) {
+        val wasObserving = watchpoints.isNotEmpty()
+        watchpoints = next
+        if (wasObserving == next.isNotEmpty()) return
+        if (wasObserving) memory.deleteObserver(watchMemory) else memory.addObserver(watchMemory)
     }
 
     private suspend fun debug(process: MarsProcessHandler, machine: MarsContext): StopEvent {
@@ -250,7 +284,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
         val map = machine.program.sourceMap()
         try {
             synchronized(bindings) {
-                sourceMap = map
+                boundMachine = machine
                 updateBindings()
             }
             var command = Command()
@@ -296,7 +330,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                                 else -> command.sourceStep?.reached(machine.memory, pc)
                             }
                             stepOrTargetReached = pc in targets || stepReached == true
-                            hits.isNotEmpty() || stepOrTargetReached
+                            hits.isNotEmpty() || stepOrTargetReached || watchpointHits.isNotEmpty()
                         }
                     }
                 } finally {
@@ -305,11 +339,12 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 val reason: StopEvent.Reason = event.reason()
                 when (reason) {
                     StopEvent.Reason.BREAKPOINT, StopEvent.Reason.PAUSE, StopEvent.Reason.STEP_LIMIT -> {
+                        val reached = if (reason == StopEvent.Reason.BREAKPOINT) hits + watchpointHits else watchpointHits.toList()
+                        watchpointHits.clear()
                         withSuspension(machine, calls) { pause ->
                             val context = pause.context
-                            val breakpointSuspended = reason == StopEvent.Reason.BREAKPOINT &&
-                                hits.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
-                                    .any { handleBreakpoint(it, context, machine.memory) }
+                            val breakpointSuspended = reached.sortedBy { it.suspendPolicy != SuspendPolicy.NONE }
+                                .any { handleBreakpoint(it, context, machine.memory) }
                             val positionReached = reason != StopEvent.Reason.BREAKPOINT || stepOrTargetReached
                             if (!breakpointSuspended && positionReached) {
                                 withContext(Dispatchers.EDT) { session.positionReached(context) }
@@ -322,6 +357,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
                 }
             }
         } finally {
+            synchronized(bindings) {
+                boundMachine = null
+                bindWatchpoints(machine.memory, emptyMap())
+            }
+            watchpointHits.clear()
             engine.removeListener(calls)
             simulator = null
         }

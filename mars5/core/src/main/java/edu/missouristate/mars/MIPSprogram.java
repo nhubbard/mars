@@ -661,7 +661,7 @@ public class MIPSprogram implements Program {
     int pc = session.registerFile.getProgramCounter();
     ProgramStatement statement;
     try {
-      statement = session.memory.getStatement(pc);
+      statement = session.memory.fetchInstruction(pc);
     } catch (AddressErrorException error) {
       var location = new ProgramStatement(0, pc, session.instructionSet);
       boolean recording = session.backStepper.beginInstruction(pc, location);

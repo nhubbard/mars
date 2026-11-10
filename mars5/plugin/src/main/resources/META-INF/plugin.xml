@@ -66,6 +66,7 @@
     <programRunner implementation="edu.missouristate.mars.plugin.debug.MarsDebugRunner"/>
     <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsLineBreakpointType"/>
     <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsAddressBreakpointType"/>
+    <xdebugger.breakpointType implementation="edu.missouristate.mars.plugin.debug.MarsMemoryWatchpointType"/>
     <include.provider implementation="edu.missouristate.mars.plugin.language.index.MipsIncludeProvider"/>
     <syntax.syntaxDefinition language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxDefinition"/>
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>

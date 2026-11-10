@@ -626,8 +626,12 @@ public class MemoryState {
     return get(address, length, true);
   }
 
-  // Does the real work, but includes option to NOT notify observers.
   private int get(int address, int length, boolean notify) throws AddressErrorException {
+    return get(address, length, notify, false);
+  }
+
+  private int get(int address, int length, boolean notify, boolean instructionFetch)
+      throws AddressErrorException {
     int value;
     int relativeByteAddress;
     if (inDataSegment(address)) {
@@ -670,7 +674,7 @@ public class MemoryState {
           "address out of range ", Exceptions.ADDRESS_EXCEPTION_LOAD, address);
     }
     if (notify) {
-      notifyAnyObservers(AccessNotice.READ, address, length, value);
+      notifyAnyObservers(AccessNotice.READ, address, length, value, instructionFetch);
     }
     return value;
   }
@@ -936,7 +940,7 @@ public class MemoryState {
    * @see ProgramStatement
    */
   public ProgramStatement getStatement(int address) throws AddressErrorException {
-    return getStatement(address, true);
+    return getStatement(address, true, false);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -949,12 +953,18 @@ public class MemoryState {
    * @see ProgramStatement
    */
   public ProgramStatement getStatementNoNotify(int address) throws AddressErrorException {
-    return getStatement(address, false);
+    return getStatement(address, false, false);
   }
 
   //////////
 
-  private ProgramStatement getStatement(int address, boolean notify) throws AddressErrorException {
+  /** Fetches the instruction at the program counter and identifies the access to observers. */
+  public ProgramStatement fetchInstruction(int address) throws AddressErrorException {
+    return getStatement(address, true, true);
+  }
+
+  private ProgramStatement getStatement(int address, boolean notify, boolean instructionFetch)
+      throws AddressErrorException {
     if (!wordAligned(address)) {
       throw new AddressErrorException(
           "fetch address for text segment not aligned to word boundary ",
@@ -969,11 +979,11 @@ public class MemoryState {
           address);
     }
     if (inTextSegment(address)) {
-      return readProgramStatement(address, textBaseAddress, textBlockTable, notify);
+      return readProgramStatement(address, textBaseAddress, textBlockTable, notify, instructionFetch);
     } else if (inKernelTextSegment(address)) {
-      return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, notify);
+      return readProgramStatement(address, kernelTextBaseAddress, kernelTextBlockTable, notify, instructionFetch);
     } else {
-      return decoder.apply(get(address, WORD_LENGTH_BYTES), address);
+      return decoder.apply(get(address, WORD_LENGTH_BYTES, notify, instructionFetch), address);
     }
   }
 
@@ -1142,8 +1152,12 @@ public class MemoryState {
   /*********************************  THE HELPERS  *************************************/
 
   private void notifyAnyObservers(int type, int address, int length, int value) {
+    notifyAnyObservers(type, address, length, value, false);
+  }
+
+  private void notifyAnyObservers(int type, int address, int length, int value, boolean instructionFetch) {
     if (!this.listeners.isEmpty()) {
-      MemoryAccessNotice notice = new MemoryAccessNotice(type, address, length, value);
+      MemoryAccessNotice notice = new MemoryAccessNotice(type, address, length, value, instructionFetch);
       for (MemoryListener ml : listeners) {
         if (ml.match(address)) {
           ml.callback().accept(notice);
@@ -1199,14 +1213,15 @@ public class MemoryState {
   }
 
   private ProgramStatement readProgramStatement(
-      int address, int baseAddress, TextMemorySegment segment, boolean notify) {
+      int address, int baseAddress, TextMemorySegment segment, boolean notify, boolean instructionFetch) {
     ProgramStatement statement = segment.read((address - baseAddress) >> 2);
     if (notify) {
       notifyAnyObservers(
           AccessNotice.READ,
           address,
           Instruction.INSTRUCTION_LENGTH,
-          statement == null ? 0 : statement.getBinaryStatement());
+          statement == null ? 0 : statement.getBinaryStatement(),
+          instructionFetch);
     }
     return statement;
   }

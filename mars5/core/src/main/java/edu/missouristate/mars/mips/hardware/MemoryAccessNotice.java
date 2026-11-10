@@ -39,24 +39,23 @@ public class MemoryAccessNotice extends AccessNotice {
   private final int address;
   private final int length;
   private final int value;
+  private final boolean instructionFetch;
 
   /**
    * Constructor will be called only within this package, so assume address and length are in valid
    * ranges.
    */
-  MemoryAccessNotice(int type, int address, int length, int value) {
+  MemoryAccessNotice(int type, int address, int length, int value, boolean instructionFetch) {
     super(type);
     this.address = address;
     this.length = length;
     this.value = value;
+    this.instructionFetch = instructionFetch;
   }
 
   /** Constructor will be called only within this package, so assume address is in valid range. */
   public MemoryAccessNotice(int type, int address, int value) {
-    super(type);
-    this.address = address;
-    this.length = MemoryState.WORD_LENGTH_BYTES;
-    this.value = value;
+    this(type, address, MemoryState.WORD_LENGTH_BYTES, value, false);
   }
 
   /** Fetch the memory address that was accessed. */
@@ -72,6 +71,11 @@ public class MemoryAccessNotice extends AccessNotice {
   /** Fetch the value of the access operation (the value read or written). */
   public int getValue() {
     return value;
+  }
+
+  /** Whether the simulator fetched an instruction, even when executing from data memory. */
+  public boolean isInstructionFetch() {
+    return instructionFetch;
   }
 
   /** String representation indicates access type, address and length in bytes */

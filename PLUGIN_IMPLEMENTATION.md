@@ -1157,6 +1157,22 @@ IntelliJ fixtures check navigation, address validation, endian display,
 resume, store and backstep refresh, view disposal, and the updated PC and
 stack pointer after execution advances.
 
+## Memory watchpoints
+
+Open IntelliJ's **Breakpoints** dialog and choose **Add → MIPS Memory
+Watchpoints**. Enter the first and last byte addresses in hexadecimal or
+unsigned decimal, and choose **Read**, **Write**, or **Read or write**. The
+range is inclusive. Any overlapping byte of a program access can trigger
+the breakpoint, even when the access starts before the range.
+
+The debugger stops after the instruction completes, so a matching store's
+new value is available in Memory and Watches. Each watchpoint is reported
+at most once per instruction. Native breakpoint conditions and logging
+are evaluated against the post-instruction state. Data watchpoints ignore
+instruction fetches, debugger inspection, device updates between instructions,
+and writes made during backstep. Use an address breakpoint in Disassembly
+to stop before an instruction executes.
+
 ## Disassembly
 
 The **Disassembly** tab follows the current program counter. It shows a bounded
