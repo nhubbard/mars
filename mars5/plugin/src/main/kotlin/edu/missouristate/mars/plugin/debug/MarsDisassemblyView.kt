@@ -11,6 +11,7 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.ColumnInfo
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import com.intellij.xdebugger.XDebugSession
 import com.intellij.xdebugger.XDebugSessionListener
@@ -20,8 +21,10 @@ import com.intellij.xdebugger.XSourcePosition
 import com.intellij.xdebugger.breakpoints.SuspendPolicy
 import com.intellij.xdebugger.breakpoints.XBreakpointListener
 import edu.missouristate.mars.api.InstructionSourceMap.Location
+import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.run.runMessages
+import edu.missouristate.mars.simulator.BackStepper.ExecutedInstruction
 import edu.missouristate.mars.util.Binary
 import java.awt.Font
 import java.util.concurrent.atomic.AtomicLong
@@ -31,15 +34,25 @@ import javax.swing.ListSelectionModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+internal data class ExecutionMarkers(val nextIsDelaySlot: Boolean = false, val previous: ExecutedInstruction? = null) {
+    companion object {
+        fun capture(machine: MarsContext) = ExecutionMarkers(machine.delayedBranch.isTriggered, machine.backStepper.previousExecution())
+    }
+}
+
 internal data class DisassemblyRow(
     val current: Boolean,
     val address: Int,
     val word: String,
     val instruction: String,
     val location: Location?,
+    val nextIsDelaySlot: Boolean,
+    val previous: ExecutedInstruction?,
 )
 
-internal fun disassemblyWindow(memory: MemoryState, pc: Long, center: Long = pc): List<DisassemblyRow> {
+internal fun disassemblyWindow(
+    memory: MemoryState, pc: Long, center: Long = pc, markers: ExecutionMarkers = ExecutionMarkers(),
+): List<DisassemblyRow> {
     if (!MemoryState.wordAligned(center.toInt())) return emptyList()
     val start = (center - 4 * Int.SIZE_BYTES).coerceAtLeast(0)
     val end = (center + 11 * Int.SIZE_BYTES).coerceAtMost(0xffff_fffcL)
@@ -53,6 +66,8 @@ internal fun disassemblyWindow(memory: MemoryState, pc: Long, center: Long = pc)
             statement?.let { Binary.intToHexString(it.binaryStatement) } ?: "—",
             statement?.printableBasicAssemblyStatement?.trimEnd() ?: "—",
             statement?.instructionOrigin?.location(),
+            address == pc && markers.nextIsDelaySlot,
+            markers.previous?.takeIf { it.address() == address.toInt() },
         )
     }
 }
@@ -67,6 +82,7 @@ internal class MarsDisassemblyView(
     private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
     private val status = JBLabel()
     private val followPc = JButton(runMessages.getMessage("debug.disassembly.follow.pc"))
+    private val lastExecuted = JButton(runMessages.getMessage("debug.disassembly.last.executed"))
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
     private val toggleBreakpoint = JButton(runMessages.getMessage("debug.disassembly.breakpoint.toggle")).apply { isEnabled = false }
     private var breakpoints = emptyMap<Int, AddressBreakpoint>()
@@ -80,15 +96,27 @@ internal class MarsDisassemblyView(
             override fun getColumnClass() = Icon::class.java
             override fun valueOf(item: DisassemblyRow): Icon? = breakpointIcon(item.address)
         },
+        column("debug.disassembly.execution") { row ->
+            buildList {
+                if (row.nextIsDelaySlot) add(runMessages.getMessage("debug.disassembly.delay.next"))
+                row.previous?.let {
+                    val key = if (it.delaySlot()) "debug.disassembly.previous.delay" else "debug.disassembly.previous"
+                    add(runMessages.getMessage(key))
+                }
+            }.joinToString(" · ")
+        },
     )
     private val table = JBTable(model).apply {
         font = Font(Font.MONOSPACED, font.style, font.size)
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
         columnModel.getColumn(0).maxWidth = getFontMetrics(font).stringWidth(" PC ")
         columnModel.getColumn(3).preferredWidth = getFontMetrics(font).stringWidth("addiu $00, $00, 0x00000000")
+        columnModel.getColumn(6).preferredWidth =
+            getFontMetrics(font).stringWidth(runMessages.getMessage("debug.disassembly.previous.delay")) + JBUI.scale(16)
     }
     private var target: Location? = null
     private var browsedAddress: Pair<Long, Long>? = null
+    private var previousAddress: Int? = null
     private var displayedAddresses: Pair<Long, Long?>? = null
     private val revision = AtomicLong()
     @Volatile private var disposed = false
@@ -98,6 +126,7 @@ internal class MarsDisassemblyView(
         row {
             cell(status)
             cell(followPc)
+            cell(lastExecuted)
             cell(openSource)
             cell(toggleBreakpoint)
         }
@@ -114,6 +143,7 @@ internal class MarsDisassemblyView(
             browsedAddress = null
             refresh()
         }
+        lastExecuted.addActionListener { showAddress(previousAddress!!) }
         openSource.addActionListener { sourcePosition(target!!).createNavigatable(session.project).navigate(true) }
         toggleBreakpoint.addActionListener { toggleSelectedBreakpoint() }
         breakpointManager.addBreakpointListener(breakpointType, object : XBreakpointListener<AddressBreakpoint> {
@@ -153,6 +183,8 @@ internal class MarsDisassemblyView(
         table.clearSelection()
         model.items = emptyList()
         val context = session.suspendContext as? MarsSuspendContext
+        previousAddress = context?.executionMarkers?.previous?.address()
+        lastExecuted.isEnabled = previousAddress != null
         if (context == null) {
             followPc.isEnabled = false
             displayedAddresses = null
@@ -166,8 +198,9 @@ internal class MarsDisassemblyView(
         val center = browsed ?: pc
         displayedAddresses = pc to browsed
         updateStatus()
+        val markers = context.executionMarkers
         context.inspectionRequests.trySend { memory ->
-            val rows = disassemblyWindow(memory, pc, center)
+            val rows = disassemblyWindow(memory, pc, center, markers)
             withContext(Dispatchers.EDT) {
                 if (request == revision.get()) {
                     model.items = rows

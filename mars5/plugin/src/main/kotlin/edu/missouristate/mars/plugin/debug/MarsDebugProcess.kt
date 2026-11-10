@@ -499,6 +499,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             frame,
             machine.backStepper.canBackstep(),
             MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() },
+            ExecutionMarkers.capture(machine),
             number,
             watchRequests,
             machineEdits,
@@ -533,6 +534,7 @@ internal class MarsSuspendContext(
     val frame: MarsStackFrame,
     canBackstep: Boolean,
     memoryRegions: Map<MemoryRegion, Long>,
+    executionMarkers: ExecutionMarkers,
     val number: Long,
     val watchRequests: Channel<WatchMemoryRequest>,
     val machineEdits: Channel<MachineEditRequest>,
@@ -544,6 +546,8 @@ internal class MarsSuspendContext(
         private set
     @Volatile var memoryRegions = memoryRegions
         private set
+    @Volatile var executionMarkers = executionMarkers
+        private set
 
     @Volatile var sourceStep = sourceStep
         private set
@@ -553,6 +557,7 @@ internal class MarsSuspendContext(
         sourceStep = step
         canBackstep = machine.backStepper.canBackstep()
         memoryRegions = MemoryRegion.entries.associateWith { it.address(machine).toUInt().toLong() }
+        executionMarkers = ExecutionMarkers.capture(machine)
     }
 
     val memoryExports = Channel<MemoryExportRequest>(16, onUndeliveredElement = MemoryExportRequest::unavailable)

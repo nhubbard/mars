@@ -217,11 +217,24 @@ public class BackStepper {
 
   /** The instruction that actually ran, even when its code has since been overwritten. */
   ProgramStatement previousInstruction() {
+    var step = previousInstructionStep();
+    return step == null ? null : step.ps;
+  }
+
+  /** The last recorded instruction of a stopped session, or null when history is unavailable. */
+  public ExecutedInstruction previousExecution() {
+    var step = previousInstructionStep();
+    return step == null ? null : new ExecutedInstruction(step.pc, step.inDelaySlot);
+  }
+
+  public record ExecutedInstruction(int address, boolean delaySlot) {}
+
+  private BackStep previousInstructionStep() {
     if (!canBackstep()) {
       return null;
     }
     var step = backSteps.peek();
-    return step.frame == 0 ? null : step.ps;
+    return step.frame == 0 ? null : step;
   }
 
   /**

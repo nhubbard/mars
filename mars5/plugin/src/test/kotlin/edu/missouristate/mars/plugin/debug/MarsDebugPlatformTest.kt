@@ -2003,6 +2003,8 @@ class MarsDebugPlatformTest {
                     debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
                     val memory = requireNotNull(layout.findContent("MarsMipsMemory")).component
                     val edit = UIUtil.findComponentsOfType(memory, JButton::class.java).single { it.text == "Edit Word…" }
+                    val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                    assertEquals(0x00400000, context.executionMarkers.previous?.address())
                     interceptMemoryEdit { finishMemoryEdit(it, "0x00400004", "0x2404002a") }
                     edit.doClick()
                     val disassembly = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
@@ -2011,7 +2013,9 @@ class MarsDebugPlatformTest {
                 pollAssertionsAsync(5.seconds, 10.milliseconds) {
                     withContext(Dispatchers.EDT) {
                         assertNull(debug.session.topFramePosition)
-                        assertNull(assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext).sourceStep)
+                        val context = assertInstanceOf(MarsSuspendContext::class.java, debug.session.suspendContext)
+                        assertNull(context.sourceStep)
+                        assertNull(context.executionMarkers.previous)
                         val row = (0 until listing.rowCount).firstOrNull { listing.getValueAt(it, 1) == "0x00400004" }
                         assertNotNull(row)
                         requireNotNull(row)
@@ -2966,6 +2970,74 @@ class MarsDebugPlatformTest {
             debug.assertPausedAt(include, 1)
             withContext(Dispatchers.EDT) { debug.session.resume() }
             assertEquals(0, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `Disassembly marks the pending delay slot and follows the last executed address across backsteps`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("execution-markers.asm", """
+                b far
+                addiu ${'$'}t0, ${'$'}zero, 7
+                nop
+                .text 0x00400100
+                far: nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 0) }
+        }
+        withDebug(source, { delayedBranching = true }) { debug ->
+            debug.assertPausedAt(source, 0)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val (table, last) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsExecutionMarkersTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val panel = requireNotNull(layout.findContent("MarsMipsDisassembly")).component
+                    requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java)) to
+                        UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == "Last Executed" }
+                }
+                suspend fun assertMarkers(selected: String, hasLast: Boolean, expected: Map<String, String>) {
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            val row = table.selectedRow
+                            assertTrue(row >= 0)
+                            assertEquals(selected, table.getValueAt(row, 1))
+                            assertEquals(hasLast, last.isEnabled)
+                            val marked = (0 until table.rowCount).mapNotNull {
+                                val label = table.getValueAt(it, 6).toString()
+                                (table.getValueAt(it, 1).toString() to label).takeIf { label.isNotEmpty() }
+                            }.toMap()
+                            assertEquals(expected, marked)
+                        }
+                    }
+                }
+                val branch = "0x00400000"
+                val slot = "0x00400004"
+                val target = "0x00400100"
+                assertMarkers(branch, false, emptyMap())
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(source, 1)
+                val delay = mapOf(branch to "Last executed", slot to "Delay slot next")
+                assertMarkers(slot, true, delay)
+                withContext(Dispatchers.EDT) { debug.session.stepInto() }
+                debug.assertPausedAt(source, 4)
+                assertMarkers(target, true, emptyMap())
+                withContext(Dispatchers.EDT) { last.doClick(0) }
+                assertMarkers(slot, true, mapOf(slot to "Last executed in delay slot"))
+                repeat(2) { index ->
+                    withContext(Dispatchers.EDT) {
+                        val (action, event) = backstepAction(debug.session)
+                        action.actionPerformed(event)
+                    }
+                    debug.assertPausedAt(source, 1 - index)
+                    if (index == 0) assertMarkers(slot, true, delay) else assertMarkers(branch, false, emptyMap())
+                }
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+            }
         }
     }
 

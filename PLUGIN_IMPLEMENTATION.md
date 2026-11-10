@@ -1197,6 +1197,13 @@ Inspecting a text symbol selects its instruction for the current suspension.
 The PC marker continues to identify the instruction that will execute next.
 **Follow PC** returns to it immediately, and a new suspension follows its own PC.
 
+The **Execution** column identifies a pending branch delay slot and the last
+executed instruction, including whether it ran in a delay slot. **Last Executed**
+opens that address even when it falls outside the current window. Backstep
+restores the markers from the undo history and the pending branch state.
+The previous instruction marker is unavailable when there is no recorded
+history, including after an edit that resets the backstep baseline.
+
 The tab uses the same pause-owned inspection queue as Memory. Resume clears the
 listing, and a newer pause or disposal invalidates results already in flight.
 The core read issues no simulated memory events. Fixtures cover navigation,
