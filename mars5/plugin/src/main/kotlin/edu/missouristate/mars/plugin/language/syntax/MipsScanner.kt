@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.language.syntax
 
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.util.Binary
 
 enum class MipsTokenKind {
     SPACE, NEWLINE, COMMENT, WORD, DIRECTIVE, REGISTER, PARAMETER, NUMBER,
@@ -35,8 +36,8 @@ object MipsScanner {
                 if (first == '\r' && position < end && source[position] == '\n') position++
                 MipsTokenKind.NEWLINE
             }
-            first.isWhitespace() -> {
-                while (position < end && source[position].isWhitespace() && source[position] != '\r' && source[position] != '\n') position++
+            first.isSpace(debuggerExpression) -> {
+                while (position < end && source[position].isSpace(debuggerExpression)) position++
                 MipsTokenKind.SPACE
             }
             first == '#' -> {
@@ -153,7 +154,11 @@ object MipsScanner {
                     } else {
                         MipsTokenKind.DIRECTIVE
                     }
-                    numeric -> MipsTokenKind.NUMBER
+                    numeric -> if (debuggerExpression || isAssemblyNumber(source.subSequence(start, position).toString())) {
+                        MipsTokenKind.NUMBER
+                    } else {
+                        MipsTokenKind.BAD_CHARACTER
+                    }
                     first == '$' -> MipsTokenKind.REGISTER
                     else -> MipsTokenKind.WORD
                 }
@@ -164,6 +169,20 @@ object MipsScanner {
     }
 
     private fun Char.isNameCharacter(): Boolean = isLetterOrDigit() || this in "_.$"
+
+    // Outside the debugger, control characters belong to the assembler's candidate token.
+    // Double.parseDouble can accept them at either end of a floating-point value.
+    private fun Char.isSpace(debuggerExpression: Boolean): Boolean =
+        if (debuggerExpression) isWhitespace() && this !in "\r\n" else this in " \t"
+
+    private fun isAssemblyNumber(text: String): Boolean {
+        try {
+            Binary.stringToInt(text)
+            return true
+        } catch (_: NumberFormatException) {
+            return text.toDoubleOrNull() != null
+        }
+    }
 
     private fun continuesSignedExponent(source: CharSequence, position: Int, end: Int, markers: String = "eE"): Boolean =
         source[position - 1] in markers && position + 1 < end && source[position + 1].isDigit()

@@ -27,7 +27,8 @@ class MipsScannerTest {
     @Test
     fun `all token kinds preserve source and restart exactly at token boundaries`() {
         val cases = mapOf(
-            " " to MipsTokenKind.SPACE, "\t\u000c " to MipsTokenKind.SPACE,
+            " " to MipsTokenKind.SPACE, "\t " to MipsTokenKind.SPACE,
+            "\u000c" to MipsTokenKind.BAD_CHARACTER,
             "\n" to MipsTokenKind.NEWLINE, "\r" to MipsTokenKind.NEWLINE, "\r\n" to MipsTokenKind.NEWLINE,
             "# comment" to MipsTokenKind.COMMENT, "name" to MipsTokenKind.WORD,
             "_local.\$x" to MipsTokenKind.WORD,
@@ -112,7 +113,7 @@ class MipsScannerTest {
         for (source in listOf("1-2", "label+4", "1e-x", "name+ 2")) {
             assertEquals(3, MipsScanner.scan(source).count { it.kind != MipsTokenKind.SPACE }, source)
         }
-        assertEquals(listOf(MipsTokenKind.NUMBER, MipsTokenKind.PLUS), kinds("1e+"))
+        assertEquals(listOf(MipsTokenKind.BAD_CHARACTER, MipsTokenKind.PLUS), kinds("1e+"))
     }
 
     @Test
@@ -131,6 +132,10 @@ class MipsScannerTest {
             "4?5, a!e-7, 7*8",
             "@name-7, @name+value",
             ".double 1.5\u000c, NaN\u000b",
+            ".double \u000c1.5, \u000bNaN, \u000b1.25\u000c",
+            ".word 0X80000000, 0xffffffff, 4294967295, 077, 09, ١٢",
+            ".double 0x1p2, 1e2, 2147483648",
+            ".word 0xG, 0x, 1oops, 1e, 0b101, 0x123456789",
             ".macro emit (%value!@?, \$argument)",
         )) {
             val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
@@ -149,6 +154,12 @@ class MipsScannerTest {
             MipsScanner.next("bad%name", 0, debuggerExpression = true))
         assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 0, 1),
             MipsScanner.next("@name", 0, debuggerExpression = true))
+        assertEquals(MipsToken(MipsTokenKind.SPACE, 0, 2),
+            MipsScanner.next("\t\u000c7", 0, debuggerExpression = true))
+        assertEquals(MipsToken(MipsTokenKind.SPACE, 0, 1),
+            MipsScanner.next(" \r\n", 0, debuggerExpression = true))
+        assertEquals(MipsToken(MipsTokenKind.NUMBER, 0, 2),
+            MipsScanner.next("0x", 0, debuggerExpression = true))
     }
 
     @Test

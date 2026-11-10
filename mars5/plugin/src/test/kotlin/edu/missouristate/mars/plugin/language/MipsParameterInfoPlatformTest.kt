@@ -17,6 +17,7 @@ import edu.missouristate.mars.plugin.MarsSessionService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -65,6 +66,15 @@ class MipsParameterInfoPlatformTest {
                 "custom \$t0 <caret>", "add \$t0, \$t1 # <caret>comment")) {
                 assertNull(info(source), source)
             }
+            val file = fixture.configureByText("uncommitted-parameter.asm", "nop\n")
+            val editor = fixture.editor
+            val document = editor.document
+            WriteCommandAction.runWriteCommandAction(project.get()) {
+                document.insertString(document.textLength, "sll ")
+            }
+            editor.caretModel.moveToOffset(document.textLength)
+            assertFalse(PsiDocumentManager.getInstance(project.get()).isCommitted(document))
+            assertNull(MipsParameterInfoHandler().findElementForParameterInfo(MockCreateParameterInfoContext(editor, file)))
         }
     }
 

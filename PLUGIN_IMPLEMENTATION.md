@@ -39,6 +39,14 @@ Zero-offset loads retain separate register and base operands when the comma is o
 Numeric, character, and label offsets still group with their base register when commas appear
 before the opening parenthesis.
 
+The assembly lexer uses the core's integer conversion and the assembler's
+floating-point syntax for digit-leading candidates. Malformed candidates
+such as `0xG` retain their entire span and recover at the next statement.
+Only spaces and tabs separate assembly tokens within a line. Control
+characters that the assembler accepts inside a floating-point token stay
+with that token, including at its leading edge. Debugger expressions retain
+their separate lexical rules.
+
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
 An operation-head alias receives the mnemonic style when its expansion supplies an instruction.

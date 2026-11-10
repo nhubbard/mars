@@ -659,6 +659,49 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `assembly numeric tokens preserve accepted legacy spellings and recover malformed candidates`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val wordSpellings = listOf("0X80000000", "0xffffffff", "4294967295", "077", "09", "١٢")
+            val doubleSpellings = listOf("\u000c1.5", "\u000bNaN", "\u000b1.25\u000c", "0x1p2")
+            val valid = ".data\n.word ${wordSpellings.joinToString()}\n.double ${doubleSpellings.joinToString()}\n.text\nnop\n"
+            val entry = directory.resolve("number-spellings.asm").also { it.writeText(valid) }
+            val context = project.get().service<MarsSessionService>().context
+            val program = context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+            val memory = context.memory
+            val base = memory.dataBaseAddress
+            assertEquals(listOf(Int.MIN_VALUE, -1, -1, 63, 9, 12), wordSpellings.indices.map {
+                memory.getWordNoNotify(base + it * Int.SIZE_BYTES)
+            })
+            assertEquals(listOf(1.5, Double.NaN, 1.25, 4.0).map(Double::toBits), doubleSpellings.indices.map {
+                val address = base + wordSpellings.size * Int.SIZE_BYTES + it * Double.SIZE_BYTES
+                val low = memory.getWordNoNotify(address).toUInt().toLong()
+                val high = memory.getWordNoNotify(address + Int.SIZE_BYTES).toLong()
+                (high shl Int.SIZE_BITS) or low
+            })
+            readAction {
+                val file = assertParses(valid)
+                assertEquals(wordSpellings + doubleSpellings, descendants(file.node, "LITERAL_EXPR").map { it.text }.toList())
+            }
+
+            val malformed = listOf("0xG", "0x", "1oops", "1e", "0b101", "0x123456789")
+            val invalid = ".data\n.word ${malformed.joinToString()}\n.text\nnext: nop\n"
+            entry.writeText(invalid)
+            val diagnostics = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            for (spelling in malformed) {
+                assertTrue(diagnostics.errors().errorMessages.any { it.message.endsWith("Invalid language element: $spelling") })
+            }
+            readAction {
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("invalid-numbers.asm", MipsFileType, invalid)
+                assertEquals(invalid, file.text)
+                assertEquals(malformed, descendants(file.node, "BAD_CHARACTER").map { it.text }.toList())
+                assertTrue(descendants(file.node, "LITERAL_EXPR").none())
+                assertEquals("next:", descendants(file.node, "LABEL").single().text)
+                assertEquals("nop", descendants(file.node, "OPERATION").single().text)
+            }
+        }
+
+    @Test
     fun `malformed lexical candidates keep their full span and recover the following line`() = timeoutRunBlocking<Unit> {
         readAction {
             val source = """

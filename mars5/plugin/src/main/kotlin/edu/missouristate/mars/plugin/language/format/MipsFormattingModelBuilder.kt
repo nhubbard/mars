@@ -133,7 +133,6 @@ private class MipsBlock(
         val gap = source.subSequence(left.textRange.endOffset, right.startOffset)
         val expandedParenthesis = line?.operandParentheses?.get(right.startOffset)
         return when {
-            gap.any { it !in " \t\r\n" } -> readOnly
             StringUtil.containsLineBreak(gap) -> keepLines
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
