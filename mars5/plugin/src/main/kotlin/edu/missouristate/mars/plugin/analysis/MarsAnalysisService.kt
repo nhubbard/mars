@@ -70,6 +70,7 @@ internal data class FormattingLine(
     val atMargin: Boolean,
     // Null means the formatter has no complete expanded operand layout.
     val operandParentheses: Map<Int, OperandParenthesis>?,
+    val expandedStrings: List<TextRange>,
 )
 
 internal data class MacroInvocation(
@@ -523,8 +524,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val source = sourceLine(anchor, fromLineStart = true)
         val errors = ErrorList()
         val replacement: (String) -> String? = { prefix.equivalence(it)?.replacement }
-        val mapped = if (projectOperands) Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled) else null
-        val expanded = mapped?.expanded() ?: Tokenizer.expandLine(source, errors, replacement, ProgressManager::checkCanceled)
+        val mapped = Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
+        val expanded = mapped.expanded()
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
@@ -532,8 +533,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // Even a macro call can record an equivalence as a tokenizer side effect.
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
-        val openings = if (canFormatOperands) mapped?.let { expandedOperandParentheses(it, source, start) } else null
-        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings)
+        val openings = if (canFormatOperands && projectOperands) expandedOperandParentheses(mapped, source, start) else null
+        // An opening quote supplied by an alias can absorb written tokens and their whitespace.
+        val strings = (0 until tokens.size()).mapNotNull { index ->
+            val token = tokens[index]
+            if (token.type != TokenTypes.QUOTED_STRING) return@mapNotNull null
+            TextRange(start + mapped.originalOffset(token.startPos - 1), start + mapped.originalOffset(token.endPos - 1))
+        }
+        return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, strings)
     }
 
     private fun expandedOperandParentheses(

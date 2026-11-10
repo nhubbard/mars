@@ -198,6 +198,7 @@ internal class MipsSourceTimeline(
     val hasUnindexedIncludes: Boolean,
 ) {
     val hasIncompleteIncludes: Boolean get() = firstIncompleteInclude != Int.MAX_VALUE
+    val hasQuotedEquivalence: Boolean by lazy { equivalences.values.any { '"' in it.definition.replacement } }
 
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
     private val registerUsagesByFile = ConcurrentHashMap<MipsFile, Map<Int, List<TextRange>>>()

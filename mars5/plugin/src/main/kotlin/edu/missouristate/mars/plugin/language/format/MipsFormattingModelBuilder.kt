@@ -92,12 +92,14 @@ private class MipsBlock(
     private fun layoutOf(child: ASTNode): FormattingLine? {
         val operation = child.findChildByType(operationOwners)
         val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
-        val anchor = operation?.let { it.psi.operationHead } ?: child.psi.takeIf { hasFragment } ?: return null
+        val anchor = operation?.psi?.operationHead ?: child.psi
         val context = timeline.value ?: return null
         val file = anchor.containingFile as MipsFile
-        val projectOperands = hasFragment || child.textContains('(') &&
+        val hasParenthesis = operation != null && child.textContains('(')
+        val hasAlias = (hasParenthesis || context.hasQuotedEquivalence) &&
             hasVisibleAlias(child, context.prefix(file, sourceLineStart(anchor)))
-        if (operation?.elementType != candidate && !projectOperands && anchor !in context.generatedLabelSites) return null
+        val projectOperands = hasFragment || hasParenthesis && hasAlias
+        if (operation?.elementType != candidate && !projectOperands && !hasAlias && anchor !in context.generatedLabelSites) return null
         return analysis.formattingLine(file, anchor, context, projectOperands)
     }
 
@@ -135,6 +137,7 @@ private class MipsBlock(
         return when {
             StringUtil.containsLineBreak(gap) -> keepLines
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
+            line?.expandedStrings.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
             before in signs -> readOnly
             after in signs -> if (gap.length == 0) readOnly else oneSpace

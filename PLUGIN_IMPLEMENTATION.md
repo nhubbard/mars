@@ -189,6 +189,8 @@ style for its directory.
 The bundled IntelliJ EditorConfig integration applies these settings to
 **Reformat Code**, including macro bodies and instructions. Segment directives,
 labels and macro boundaries retain their usual placement.
+When `.eqv` expansion opens a string across written operands, the formatter
+uses the assembler’s source ranges to preserve whitespace that becomes string data.
 
 ## Live templates
 

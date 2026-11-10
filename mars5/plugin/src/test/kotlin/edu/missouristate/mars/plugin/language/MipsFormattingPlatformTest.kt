@@ -96,6 +96,32 @@ class MipsFormattingPlatformTest {
     }
 
     @Test
+    fun `reformat preserves written whitespace inside a string opened by an equivalence`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv HEAD OPEN
+                .eqv OPEN "x
+                .eqv FULL "ok"
+                .data
+                message   :   .asciiz   HEAD ,      "
+                .asciiz    FULL ,   "z"
+                .text
+                   nop
+            """.trimIndent()
+            val before = assemble(directory.resolve("quoted-before.asm"), source)
+            assertEquals("x ,      ".map(Char::code) + 0, before.second.take(10))
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("quoted.asm", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
+            assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
+            assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)
+        }
+
+    @Test
     fun `reformat uses the substituted operation at alias call sites without changing assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .eqv LOAD lw
