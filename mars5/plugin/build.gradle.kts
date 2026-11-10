@@ -5,6 +5,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
+import org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask
 import org.jetbrains.intellij.platform.gradle.tasks.GenerateParserTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES
@@ -98,11 +99,13 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
   description = "Check the license files and third-party JAR inventory in the installable plugin."
   val archiveFile = pluginArchive.flatMap { it.archiveFile }
   val archiveRoot = pluginArchive.flatMap { it.archiveBaseName }
-  val projectJars = setOf("core-${project.version}.jar", "${project.name}-${project.version}.jar")
+  val pluginJarName = tasks.named<ComposedJarTask>("composedJar").flatMap { it.archiveFileName }
+  val coreJarName = project(":core").tasks.named<Jar>("jar").flatMap { it.archiveFileName }
   inputs.file(archiveFile)
   inputs.files(distributionNotices)
   inputs.property("archiveRoot", archiveRoot)
-  inputs.property("projectJars", projectJars)
+  inputs.property("pluginJarName", pluginJarName)
+  inputs.property("coreJarName", coreJarName)
   doLast {
     val root = archiveRoot.get()
     ZipFile(archiveFile.get().asFile).use { zip ->
@@ -117,7 +120,7 @@ val verifyPluginNotices = tasks.register("verifyPluginNotices") {
       val bundledJars = zip.entries().asSequence()
         .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
         .map { it.name.substringAfterLast('/') }
-        .toSet() - projectJars
+        .toSet() - setOf(pluginJarName.get(), coreJarName.get())
       val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
         lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
       }

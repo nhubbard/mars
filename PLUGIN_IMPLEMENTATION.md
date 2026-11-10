@@ -2184,7 +2184,9 @@ Apache 2.0 text, and a third-party notice index in its `licenses` directory.
 The core JAR carries the same MARS license for the standalone CLI and desktop
 distributions. `verifyPluginNotices` compares the notice files with the ZIP
 contents and checks that the notice index covers every bundled third-party
-JAR. Both the regular checks and Plugin Verifier run this check.
+JAR. It uses the packaged names of the plugin and core JARs so the check also
+works when the plugin descriptor version differs from the Gradle project
+version. Both the regular checks and Plugin Verifier run this check.
 
 The plugin descriptor links to the project repository and describes the
 editing, Run, Debug, and educational tools available in IntelliJ. The
