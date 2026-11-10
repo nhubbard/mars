@@ -877,6 +877,18 @@ original bytes. Existing CLI sessions use the JVM's default encoding. Another
 fixture waits for the simulator to enter a blocking read, then verifies that
 Stop completes without a runtime diagnostic.
 
+### Standard input mode
+
+Choose **Console** or **Dialogs** under **Standard input** in a MIPS Run
+or Debug configuration. Console is the default for new and existing
+configurations. Dialog mode prompts for the ordinary integer, float, double,
+string, and character reads (syscalls 5–8 and 12). Both modes use the same
+MARS number parsing and string limits. Canceling a prompt follows the
+existing end-of-input behavior for that syscall.
+
+Raw reads from descriptor 0 still consume bytes from the console stream.
+Explicit dialog syscalls open dialogs in either mode.
+
 ### Dialog syscalls
 
 MARS syscalls 50–59 display IntelliJ dialogs for confirmation, typed input,
@@ -888,7 +900,6 @@ as plain text, with the icon requested by the syscall.
 
 Each dialog belongs to the launch that opened it. Stopping Run or Debug,
 or closing the project, dismisses the dialog and releases the simulator.
-Standard console input still uses the Run or Debug console.
 
 ### Clear screen
 

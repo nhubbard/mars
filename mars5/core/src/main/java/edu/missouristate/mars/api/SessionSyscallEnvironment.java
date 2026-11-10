@@ -19,6 +19,17 @@ import java.util.Objects;
  * the console streams. Call only while the session is stopped or from its execution thread.
  */
 public final class SessionSyscallEnvironment implements SyscallEnvironment, AutoCloseable {
+  public enum ReadKind {
+    INTEGER, FLOAT, DOUBLE, STRING, CHARACTER
+  }
+
+  /** Supplies typed reads without changing the raw stream used for descriptor 0. */
+  @FunctionalInterface
+  public interface TextInput {
+    /** Returns a line without its terminator, or null on end of input. */
+    String read(ReadKind kind, int maximumLength);
+  }
+
   private final ToneGenerator tones;
 
   @Override
@@ -32,6 +43,7 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
 
   private final MemoryState memory;
   private final InputStream input;
+  private final TextInput textInput;
   private final CharsetDecoder inputDecoder;
   private ByteBuffer inputBytes = ByteBuffer.allocate(8);
   private final CharBuffer inputChars = CharBuffer.allocate(8);
@@ -59,8 +71,16 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   public SessionSyscallEnvironment(
       MemoryState memory, InputStream input, PrintStream output, PrintStream error,
       Path workingDirectory, Charset inputCharset) {
+    this(memory, input, output, error, workingDirectory, inputCharset, null);
+  }
+
+  /** Uses the supplied text input for typed reads, or the console stream when it is null. */
+  public SessionSyscallEnvironment(
+      MemoryState memory, InputStream input, PrintStream output, PrintStream error,
+      Path workingDirectory, Charset inputCharset, TextInput textInput) {
     this.memory = Objects.requireNonNull(memory);
     this.input = Objects.requireNonNull(input);
+    this.textInput = textInput == null ? (kind, maximumLength) -> readLine() : textInput;
     this.inputDecoder = inputCharset.newDecoder().onMalformedInput(REPLACE).onUnmappableCharacter(REPLACE);
     this.output = Objects.requireNonNull(output);
     this.error = Objects.requireNonNull(error);
@@ -139,29 +159,29 @@ public final class SessionSyscallEnvironment implements SyscallEnvironment, Auto
   }
 
   public String readString(int maxLength) {
-    String line = readLine();
+    String line = textInput.read(ReadKind.STRING, maxLength);
     return line == null ? null : line.substring(0, Math.clamp(maxLength, 0, line.length()));
   }
 
-  private String numericInput() {
-    String line = readLine();
+  private String numericInput(ReadKind kind) {
+    String line = textInput.read(kind, -1);
     return line == null ? "" : line.trim();
   }
 
   public int readInt() {
-    return Integer.parseInt(numericInput());
+    return Integer.parseInt(numericInput(ReadKind.INTEGER));
   }
 
   public float readFloat() {
-    return Float.parseFloat(numericInput());
+    return Float.parseFloat(numericInput(ReadKind.FLOAT));
   }
 
   public double readDouble() {
-    return Double.parseDouble(numericInput());
+    return Double.parseDouble(numericInput(ReadKind.DOUBLE));
   }
 
   public char readChar() {
-    String line = readLine();
+    String line = textInput.read(ReadKind.CHARACTER, 1);
     return (line == null ? "" : line).charAt(0);
   }
 

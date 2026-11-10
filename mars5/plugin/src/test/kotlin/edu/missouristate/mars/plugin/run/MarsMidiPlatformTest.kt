@@ -33,7 +33,8 @@ class MarsMidiPlatformTest {
                         calls += Tone(pitch, duration, instrument, volume, synchronous)
                     }
                 }
-                val environment = MarsIdeSyscallEnvironment(projectFixture.get(), "audio.asm", execution, fake) {}
+                val dialogs = MarsSyscallDialogs(projectFixture.get(), "audio.asm", execution)
+                val environment = MarsIdeSyscallEnvironment(execution, fake, dialogs) {}
                 environment.playTone(72, 50, 4, 100, true)
                 assertEquals(listOf(Tone(72, 50, 4, 100, true)), calls)
                 assertTrue(execution.isActive)
@@ -63,7 +64,8 @@ class MarsMidiPlatformTest {
                         }
                     }
                 }
-                val environment = MarsIdeSyscallEnvironment(projectFixture.get(), "audio.asm", execution, fake) {}
+                val dialogs = MarsSyscallDialogs(projectFixture.get(), "audio.asm", execution)
+                val environment = MarsIdeSyscallEnvironment(execution, fake, dialogs) {}
                 environment.playTone(60, 200, 2, 90, false)
                 assertEquals(Tone(60, 200, 2, 90, false), calls.receive())
                 val waiting = async(Dispatchers.Default) {

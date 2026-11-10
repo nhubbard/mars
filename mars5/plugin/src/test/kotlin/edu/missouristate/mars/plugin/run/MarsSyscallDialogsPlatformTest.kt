@@ -1,25 +1,30 @@
 package edu.missouristate.mars.plugin.run
 
+import com.intellij.execution.configurations.ConfigurationTypeUtil
+import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
+import com.intellij.execution.runners.ExecutionEnvironmentBuilder
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.testFramework.closeProjectAsync
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.ui.UiInterceptors
 import com.intellij.util.ui.UIUtil
-import edu.missouristate.mars.plugin.MarsSessionService
 import java.awt.event.ActionEvent
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.Action
 import javax.swing.Icon
+import javax.swing.JComboBox
 import javax.swing.JLabel
 import javax.swing.JTextArea
 import javax.swing.JTextField
@@ -28,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
+import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -37,6 +43,151 @@ import org.junit.jupiter.params.provider.ValueSource
 class MarsSyscallDialogsPlatformTest {
     private val projectFixture = projectFixture(openAfterCreation = true)
     private val project get() = projectFixture.get()
+
+    @Test
+    fun `standard input choice persists and isolates simultaneous console and dialog launches`() = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val handlers = mutableListOf<MarsProcessHandler>()
+        val prompts = mutableListOf<String>()
+        try {
+            val path = writeSource("""
+                .data
+                buffer: .space 8
+                .text
+                .macro call (%service)
+                    li ${'$'}v0, %service
+                    syscall
+                .end_macro
+                .macro separator
+                    li ${'$'}a0, 124
+                    call (11)
+                .end_macro
+                call (5)
+                move ${'$'}a0, ${'$'}v0
+                call (1)
+                separator
+                call (6)
+                mov.s ${'$'}f12, ${'$'}f0
+                call (2)
+                separator
+                call (7)
+                mov.d ${'$'}f12, ${'$'}f0
+                call (3)
+                separator
+                la ${'$'}a0, buffer
+                li ${'$'}a1, 5
+                call (8)
+                la ${'$'}a0, buffer
+                call (4)
+                separator
+                call (12)
+                move ${'$'}a0, ${'$'}v0
+                call (11)
+                separator
+                li ${'$'}a0, 0
+                la ${'$'}a1, buffer
+                li ${'$'}a2, 1
+                call (14)
+                lbu ${'$'}a0, buffer
+                call (11)
+                call (10)
+            """.trimIndent())
+            val (console, dialogs) = withContext(Dispatchers.EDT) {
+                val type = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
+                val consoleConfig = type.createTemplateConfiguration(project).also { it.readExternal(Element("configuration")) }
+                assertEquals(MarsInputMode.CONSOLE, consoleConfig.options.inputMode)
+                consoleConfig.options.sourcePath = path.toString()
+                val editor = consoleConfig.configurationEditor
+                val dialogConfig = type.createTemplateConfiguration(project)
+                try {
+                    editor.resetFrom(consoleConfig)
+                    val mode = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java).single { it.selectedItem is MarsInputMode }
+                    assertEquals(MarsInputMode.CONSOLE, mode.selectedItem)
+                    mode.selectedItem = MarsInputMode.DIALOG
+                    editor.applyTo(dialogConfig)
+                    editor.resetFrom(dialogConfig)
+                    assertEquals(MarsInputMode.DIALOG, mode.selectedItem)
+                } finally {
+                    Disposer.dispose(editor)
+                }
+                val xml = Element("configuration").also(dialogConfig::writeExternal)
+                val restored = type.createTemplateConfiguration(project).also { it.readExternal(xml) }
+                assertEquals(MarsInputMode.DIALOG, restored.options.inputMode)
+                for (response in listOf(" 7 ", "1.25", "2.5", "abcdef", "Zebra")) {
+                    interceptSyscallDialog { dialog ->
+                        prompts += dialog.messageText()
+                        UIUtil.findComponentsOfType(dialog.fields, JTextField::class.java).single().text = response
+                        dialog.clickButton("OK")
+                    }
+                }
+                fun start(config: MarsRunConfiguration): Pair<MarsProcessHandler, Recording> {
+                    val executor = DefaultRunExecutor.getRunExecutorInstance()
+                    val env = ExecutionEnvironmentBuilder.create(executor, config).build()
+                    val result = config.getState(executor, env).execute(executor, env.runner)!!
+                    Disposer.register(lifetime, result.executionConsole!!)
+                    val handler = assertInstanceOf(MarsProcessHandler::class.java, result.processHandler).also(handlers::add)
+                    val recording = Recording()
+                    handler.addProcessListener(recording)
+                    handler.startNotify()
+                    return handler to recording
+                }
+                start(consoleConfig) to start(restored)
+            }
+            withContext(Dispatchers.IO) {
+                val charset = EncodingManager.getInstance().defaultCharset
+                console.first.processInput.write(" 9 \n3.5\n4.25\n12345\nXray\n".toByteArray(charset) + 'R'.code.toByte())
+                dialogs.first.processInput.write(byteArrayOf('Q'.code.toByte()))
+            }
+            assertEquals(0, console.second.exit.await())
+            assertEquals(0, dialogs.second.exit.await())
+            assertEquals("9|3.5|4.25|1234|X|R", console.second.stdout.toString())
+            assertEquals("7|1.25|2.5|abcd|Z|Q", dialogs.second.stdout.toString())
+            assertEquals(listOf(
+                "Enter an integer (syscall 5).",
+                "Enter a single-precision number (syscall 6).",
+                "Enter a double-precision number (syscall 7).",
+                "Enter a string of up to 4 characters (syscall 8).",
+                "Enter a character (syscall 12).",
+            ), prompts)
+        } finally {
+            withContext(Dispatchers.EDT) {
+                handlers.forEach { it.destroyProcess() }
+                Disposer.dispose(lifetime)
+                UiInterceptors.clear()
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [5, 8, 12])
+    fun `canceling standard input follows the existing end-of-input behavior`(syscall: Int) = timeoutRunBlocking<Unit> {
+        try {
+            withContext(Dispatchers.EDT) { interceptSyscallDialog { it.doCancelAction() } }
+            val (_, recording) = run("""
+                .data
+                buffer: .space 8
+                .text
+                la ${'$'}a0, buffer
+                li ${'$'}a1, 8
+                li ${'$'}v0, $syscall
+                syscall
+                li ${'$'}v0, 4
+                syscall
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent(), MarsInputMode.DIALOG)
+            if (syscall == 8) {
+                assertEquals(0, recording.exit.await())
+                assertEquals("\n", recording.stdout.toString())
+            } else {
+                assertEquals(1, recording.exit.await())
+                val name = if (syscall == 5) "integer" else "char"
+                assertTrue(recording.stderr.toString().contains("invalid $name input (syscall $syscall)"))
+            }
+        } finally {
+            withContext(Dispatchers.EDT) { UiInterceptors.clear() }
+        }
+    }
 
     @Test
     fun `MARS confirmation dialogs report Yes No and Cancel to the program`() = timeoutRunBlocking<Unit> {
@@ -236,10 +387,7 @@ class MarsSyscallDialogsPlatformTest {
                 }
             }
             withContext(Dispatchers.Default) {
-                MarsSessionService.createMarsComponent().context().use { session ->
-                    val dialogs = MarsIdeSyscallEnvironment(project, "unused.asm", execution, session.syscallEnvironment) {}
-                    dialogs.showMessageDialog("Complete", "Simulation result", -1)
-                }
+                MarsSyscallDialogs(project, "unused.asm", execution).showMessageDialog("Complete", "Simulation result", -1)
             }
         } finally {
             withContext(Dispatchers.EDT) { UiInterceptors.clear() }
@@ -289,16 +437,17 @@ class MarsSyscallDialogsPlatformTest {
         action.actionPerformed(ActionEvent(fields, ActionEvent.ACTION_PERFORMED, text))
     }
 
+    private suspend fun writeSource(source: String): Path = withContext(Dispatchers.IO) {
+        val file = Path.of(requireNotNull(project.basePath), "dialog.asm")
+        Files.writeString(file, source)
+        checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file))
+        file
+    }
 
-    private suspend fun run(source: String): Pair<MarsProcessHandler, Recording> {
-        val path = withContext(Dispatchers.IO) {
-            val file = Path.of(requireNotNull(project.basePath), "dialog.asm")
-            Files.writeString(file, source)
-            checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(file))
-            file
-        }
+    private suspend fun run(source: String, inputMode: MarsInputMode = MarsInputMode.CONSOLE): Pair<MarsProcessHandler, Recording> {
+        val path = writeSource(source)
         val recording = Recording()
-        val handler = project.service<MarsRunService>().createProcess(path, memoryDumps = emptyList())
+        val handler = project.service<MarsRunService>().createProcess(path, memoryDumps = emptyList(), inputMode = inputMode)
         handler.addProcessListener(recording)
         withContext(Dispatchers.EDT) { handler.startNotify() }
         return handler to recording

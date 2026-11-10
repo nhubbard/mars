@@ -15,6 +15,7 @@ import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.util.ui.UIUtil
+import edu.missouristate.mars.api.SessionSyscallEnvironment.ReadKind
 import edu.missouristate.mars.api.SyscallEnvironment
 import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
@@ -30,10 +31,9 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 
 internal class MarsIdeSyscallEnvironment(
-    private val project: Project,
-    private val sourceName: String,
     private val execution: Job,
     private val io: SyscallEnvironment,
+    private val dialogs: MarsSyscallDialogs,
     private val clear: () -> Unit,
 ) : SyscallEnvironment by io {
     override fun playTone(pitch: Int, duration: Int, instrument: Int, volume: Int, synchronous: Boolean) {
@@ -51,7 +51,29 @@ internal class MarsIdeSyscallEnvironment(
         runBlocking(execution) { delay(milliseconds.toLong()) }
     }
 
-    override fun showInputDialog(message: String): String? = onEdt {
+    override fun showInputDialog(message: String) = dialogs.showInputDialog(message)
+    override fun showConfirmDialog(message: String) = dialogs.showConfirmDialog(message)
+    override fun showMessageDialog(message: String, title: String?, messageType: Int) = dialogs.showMessageDialog(message, title, messageType)
+    override fun clearConsole() = onEdt(execution) { clear() }
+}
+
+internal class MarsSyscallDialogs(
+    private val project: Project,
+    private val sourceName: String,
+    private val execution: Job,
+) {
+    fun readStandardInput(kind: ReadKind, maximumLength: Int): String? {
+        val key = when (kind) {
+            ReadKind.INTEGER -> "run.input.integer"
+            ReadKind.FLOAT -> "run.input.float"
+            ReadKind.DOUBLE -> "run.input.double"
+            ReadKind.STRING -> "run.input.string"
+            ReadKind.CHARACTER -> "run.input.character"
+        }
+        return showInputDialog(runMessages.getMessage(key, maximumLength))
+    }
+
+    fun showInputDialog(message: String): String? = onEdt(execution) {
         val field = JBTextField(36)
         val dialog = MarsSyscallDialog(
             project, runMessages.getMessage("run.dialog.input", sourceName), message,
@@ -60,7 +82,7 @@ internal class MarsIdeSyscallEnvironment(
         if (dialog.showAndAwaitClose() == DialogWrapper.OK_EXIT_CODE) field.text else null
     }
 
-    override fun showConfirmDialog(message: String): Int = onEdt {
+    fun showConfirmDialog(message: String): Int = onEdt(execution) {
         val dialog = MarsSyscallDialog(
             project, runMessages.getMessage("run.dialog.confirm", sourceName), message, Messages.getQuestionIcon(), MarsSyscallDialog.Kind.CONFIRM,
         )
@@ -71,7 +93,7 @@ internal class MarsIdeSyscallEnvironment(
         }
     }
 
-    override fun showMessageDialog(message: String, title: String?, messageType: Int) = onEdt {
+    fun showMessageDialog(message: String, title: String?, messageType: Int) = onEdt(execution) {
         val icon = when (messageType) {
             JOptionPane.ERROR_MESSAGE -> Messages.getErrorIcon()
             JOptionPane.INFORMATION_MESSAGE -> Messages.getInformationIcon()
@@ -86,13 +108,6 @@ internal class MarsIdeSyscallEnvironment(
         Unit
     }
 
-    override fun clearConsole() = onEdt { clear() }
-
-    // Only the simulator worker waits. The execution job cancels pending UI work on Stop.
-    private fun <T> onEdt(block: suspend () -> T): T = runBlocking(execution) {
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { block() }
-    }
-
     private suspend fun MarsSyscallDialog.showAndAwaitClose(): Int {
         val closed = CompletableDeferred<Int>()
         Disposer.register(disposable) { closed.complete(exitCode) }
@@ -103,6 +118,11 @@ internal class MarsIdeSyscallEnvironment(
             if (!closed.isCompleted) close(DialogWrapper.CANCEL_EXIT_CODE)
         }
     }
+}
+
+// Only the simulator worker waits. The execution job cancels pending UI work on Stop.
+private fun <T> onEdt(execution: Job, block: suspend () -> T): T = runBlocking(execution) {
+    withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { block() }
 }
 
 internal class MarsSyscallDialog(

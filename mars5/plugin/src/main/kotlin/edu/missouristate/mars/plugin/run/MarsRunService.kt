@@ -18,8 +18,10 @@ import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.SessionSyscallEnvironment
+import edu.missouristate.mars.api.SessionSyscallEnvironment.TextInput
 import edu.missouristate.mars.api.SimulatorListener
 import edu.missouristate.mars.api.StepEvent
 import edu.missouristate.mars.api.StopEvent
@@ -104,6 +106,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
         launch: MarsLaunchAssembly = MarsLaunchAssembly(MarsSourceSet(entry), options),
         arguments: List<String> = emptyList(),
         workingDirectory: Path = entry.parent,
+        inputMode: MarsInputMode = MarsInputMode.CONSOLE,
         instructionLimit: Int = 0,
         runSpeed: Float = 0f,
         startAtMain: Boolean = false,
@@ -111,7 +114,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
-            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, instructionLimit, runSpeed,
+            project, scope, launch, Pipe.open(), memoryDumps, arguments, workingDirectory, inputMode, instructionLimit, runSpeed,
             startAtMain, captureBitmap, captureReferences, connectDigitalLab, connectKeyboardDisplay, connectMarsBot,
             connectScavengerHunt, execute,
         )
@@ -123,6 +126,7 @@ internal class MarsProcessHandler(
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
     private val workingDirectory: Path,
+    private val inputMode: MarsInputMode,
     private val instructionLimit: Int,
     initialRunSpeed: Float,
     private val startAtMain: Boolean,
@@ -268,10 +272,10 @@ internal class MarsProcessHandler(
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
                     val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
-                    SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset).use { io ->
-                        session.program.setSyscallEnvironment(
-                            MarsIdeSyscallEnvironment(project, entry.fileName.toString(), execution, io, ::clearConsole),
-                        )
+                    val dialogs = MarsSyscallDialogs(project, entry.fileName.toString(), execution)
+                    val textInput = if (inputMode == MarsInputMode.DIALOG) TextInput(dialogs::readStandardInput) else null
+                    SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset, textInput).use { io ->
+                        session.program.setSyscallEnvironment(MarsIdeSyscallEnvironment(execution, io, dialogs, ::clearConsole))
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.setRunSpeedSource { runSpeed.toDouble() }
@@ -292,7 +296,9 @@ internal class MarsProcessHandler(
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
                                 if (execution.isActive) {
-                                    notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message()) + "\n", ProcessOutputTypes.STDERR)
+                                    val cause = event.cause()
+                                    val message = if (cause is ProcessingException) cause.errors().generateErrorReport().trimEnd() else event.message()
+                                    notifyTextAvailable(runMessages.getMessage("run.runtime.error", message) + "\n", ProcessOutputTypes.STDERR)
                                 }
                             }
                         })

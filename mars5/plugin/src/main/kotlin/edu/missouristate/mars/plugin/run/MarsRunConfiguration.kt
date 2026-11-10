@@ -75,10 +75,18 @@ internal enum class ProjectOptionOverride(private val messageKey: String, privat
     fun resolve(projectDefault: Boolean) = override ?: projectDefault
 }
 
+internal enum class MarsInputMode(private val messageKey: String) {
+    CONSOLE("run.input.console"),
+    DIALOG("run.input.dialog");
+
+    val title get() = runMessages.getMessage(messageKey)
+}
+
 internal class MarsRunOptions : RunConfigurationOptions() {
     var sourcePath: String? by string()
     var programArguments: String? by string()
     var workingDirectory: String? by string()
+    var inputMode by enum(MarsInputMode.CONSOLE)
     var instructionLimit: Int by property(0)
     var runSpeed: Float by property(0f)
     var delayedBranching: Boolean by property(false)
@@ -180,6 +188,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var source = ""
         private var programArguments = ""
         private var workingDirectory = ""
+        private var inputMode = MarsInputMode.CONSOLE
         private var instructionLimit = 0
         private var runSpeed = 0f
         private var delayedBranching = false
@@ -229,6 +238,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                     .align(AlignX.FILL)
                     .comment(runMessages.getMessage("run.working.directory.help"))
             }
+            row(runMessages.getMessage("run.input.mode")) {
+                comboBox(MarsInputMode.entries, textListCellRenderer<MarsInputMode>("") { it.title })
+                    .bindItem(::inputMode.toNullableProperty())
+                    .comment(runMessages.getMessage("run.input.mode.help"))
+            }
             row(runMessages.getMessage("run.instruction.limit")) {
                 intTextField(0..Int.MAX_VALUE).bindIntText(::instructionLimit)
                     .validationOnApply {
@@ -271,6 +285,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             source = configuration.options.sourcePath.orEmpty()
             programArguments = configuration.options.programArguments.orEmpty()
             workingDirectory = configuration.options.workingDirectory.orEmpty()
+            inputMode = configuration.options.inputMode
             instructionLimit = configuration.options.instructionLimit
             runSpeed = configuration.options.runSpeed
             delayedBranching = configuration.options.delayedBranching
@@ -296,6 +311,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.sourcePath = source.trim()
             configuration.options.programArguments = programArguments
             configuration.options.workingDirectory = workingDirectory.trim()
+            configuration.options.inputMode = inputMode
             configuration.options.instructionLimit = instructionLimit
             configuration.options.runSpeed = runSpeed
             configuration.options.delayedBranching = delayedBranching
@@ -338,7 +354,7 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         val launch = MarsLaunchAssembly(sources, executionOptions)
         environment.putUserData(launchAssemblyKey, launch)
         return MarsRunState(
-            environment, launch, dumps, arguments, directory, limit, speed, options.startAtMain.resolve(settings.startAtMain),
+            environment, launch, dumps, arguments, directory, options.inputMode, limit, speed, options.startAtMain.resolve(settings.startAtMain),
             options.captureBitmap, options.captureReferences,
             options.connectDigitalLab, options.connectKeyboardDisplay, options.connectMarsBot, options.connectScavengerHunt,
         )
@@ -350,6 +366,7 @@ internal class MarsRunState(
     private val memoryDumps: List<MemoryExportSelection>,
     private val arguments: List<String>,
     private val workingDirectory: Path,
+    private val inputMode: MarsInputMode,
     private val instructionLimit: Int,
     private val runSpeed: Float,
     private val startAtMain: Boolean,
@@ -373,14 +390,14 @@ internal class MarsRunState(
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit,
+            arguments = arguments, workingDirectory = workingDirectory, inputMode = inputMode, instructionLimit = instructionLimit,
             runSpeed = runSpeed, startAtMain = startAtMain)
 
     fun debugProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) =
         service().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,
-            arguments = arguments, workingDirectory = workingDirectory, instructionLimit = instructionLimit,
+            arguments = arguments, workingDirectory = workingDirectory, inputMode = inputMode, instructionLimit = instructionLimit,
             runSpeed = runSpeed, startAtMain = startAtMain, execute = execute)
 
     private fun service() = environment.project.getService(MarsRunService::class.java)
