@@ -798,6 +798,12 @@ A clean IntelliJ 2026.3 launch verified this in a file shared by two entries. Go
 Declaration opened the completed path, and Run printed the value from the included
 file. All 1,782 tests and both parser coverage gates passed.
 
+Put the caret on an unfinished include path and choose **Close .include path with a
+double quote** from **Alt+Enter**. The quick fix inserts one quote at the end of the
+literal and preserves the written path, including spaces, hash characters, and
+backslashes. IntelliJ supplies the diff preview and undo/redo. The fix applies to
+the physical quoted operand selected by the assembler prepass.
+
 The assembler fixtures cover labels, equivalences, incomplete operands, an earlier include without
 a quoted path, and a macro body inserted in place of a closing line. The declaration index rebuilds
 to drop labels and constants from replaced lines. The parser and include index use the same core
