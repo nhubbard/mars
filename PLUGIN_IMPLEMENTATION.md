@@ -201,6 +201,8 @@ after both passes, since a preceding macro call can define them during assembly.
 During indexing, Reformat Code can adjust indentation but preserves spacing within
 lines until it can resolve the assembly context. An unresolved or ignored include
 likewise preserves spacing in the source that follows it in assembly order.
+When a file has multiple containing entries, formatting follows the active layout
+while preserving string data and raw replacement text required by any of them.
 
 ## Live templates
 

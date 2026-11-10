@@ -6,7 +6,9 @@ import com.intellij.formatting.Indent
 import com.intellij.lang.LanguageFormatting
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.util.TextRange
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.codeStyle.CodeStyleManager
@@ -16,6 +18,8 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.build.MarsBuildService
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
@@ -128,6 +132,69 @@ class MipsFormattingPlatformTest {
             assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
             assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
             assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)
+        }
+
+    @Test
+    fun `reformat preserves data for every entry that uses a shared include`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val dataEntry = """
+                .eqv STORE .asciiz
+                .eqv DEFINE .eqv
+                .eqv HEAD "x
+                .eqv TAIL "y
+                .include "library/shared.s"
+                .eqv KEEP 1,   2
+            """.trimIndent()
+            val ignoredEntry = """
+                .eqv STORE .set
+                .eqv DEFINE .set
+                .eqv HEAD 1
+                .eqv TAIL "z
+                .include "library/shared.s"
+            """.trimIndent()
+            val body = """
+                .data
+                prefix   :   .byte  7
+                message   :   STORE   HEAD ,      "
+                .asciiz TAIL ,    "
+                DEFINE KEEP 1,   2
+                .text
+                nop
+            """.trimIndent()
+            val include = Files.createDirectory(directory.resolve("library")).resolve("shared.s")
+            include.writeText(body)
+            val dataBefore = assemble(directory.resolve("data-before.asm"), dataEntry)
+            val ignoredBefore = assemble(directory.resolve("ignored-before.asm"), ignoredEntry)
+            val selected = withContext(Dispatchers.EDT) {
+                fixture.addFileToProject("data.asm", dataEntry)
+                val entry = fixture.addFileToProject("ignored.asm", ignoredEntry)
+                val shared = fixture.addFileToProject("library/shared.s", body)
+                val library = shared.virtualFile.parent.toNioPath()
+                val alias = Files.createSymbolicLink(library.resolveSibling("alias"), library)
+                checkNotNull(VirtualFileManager.getInstance().refreshAndFindFileByNioPath(alias))
+                // The reverse index sees this entry, but its second include is a duplicate.
+                fixture.addFileToProject("duplicate.asm", ".include \"alias/shared.s\"\n.include \"library/shared.s\"\n")
+                fixture.configureFromExistingVirtualFile(shared.virtualFile)
+                entry.virtualFile.toNioPath()
+            }
+            val current = project.get()
+            IndexingTestUtil.suspendUntilIndexesAreReady(current)
+            val unselected = withContext(Dispatchers.EDT) { reformat() }
+            include.writeText(unselected)
+            assertEquals(dataBefore, assemble(directory.resolve("data-unselected.asm"), dataEntry))
+            assertEquals(ignoredBefore, assemble(directory.resolve("ignored-unselected.asm"), ignoredEntry))
+            assertTrue(current.service<MarsBuildService>().assemble(selected))
+            val formatted = withContext(Dispatchers.EDT) {
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            include.writeText(formatted)
+            assertEquals(dataBefore, assemble(directory.resolve("data-after.asm"), dataEntry))
+            assertEquals(ignoredBefore, assemble(directory.resolve("ignored-after.asm"), ignoredEntry))
+            assertTrue("prefix: .byte 7" in formatted, formatted)
+            assertTrue("message: STORE HEAD ,      \"" in formatted, formatted)
+            assertTrue("DEFINE KEEP 1,   2" in formatted, formatted)
         }
 
     @Test

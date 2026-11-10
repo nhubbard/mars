@@ -12,6 +12,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.psi.PsiManager
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.TokenType
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
@@ -25,6 +26,8 @@ import edu.missouristate.mars.plugin.analysis.FormattingLine
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.MipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.OperandParenthesis
+import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import edu.missouristate.mars.plugin.analysis.sourceLineStart
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
@@ -35,26 +38,36 @@ internal class MipsFormattingModelBuilder : FormattingModelBuilder {
     override fun createModel(formattingContext: FormattingContext): FormattingModel {
         val file = formattingContext.containingFile as MipsFile
         val analysis = file.project.service<MarsAnalysisService>()
-        val timeline = lazy(LazyThreadSafetyMode.NONE) {
-            if (DumbService.isDumb(file.project)) null else analysis.editorTimeline(file)
+        val timelines = lazy(LazyThreadSafetyMode.NONE) {
+            if (DumbService.isDumb(file.project)) return@lazy null
+            val primary = analysis.editorTimeline(file)
+            val psi = PsiManager.getInstance(file.project)
+            val alternatives = mipsAssemblyRoots(file).asSequence()
+                .filter { it != file.viewProvider.virtualFile }
+                .map { mipsSourceTimeline(psi.findFile(it) as MipsFile) }
+                .filter { it !== primary && it.includes(file) }
+                .toList()
+            FormattingTimelines(primary, alternatives)
         }
-        val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents, analysis, timeline)
+        val root = MipsBlock(file.node, Indent.getNoneIndent(), file.viewProvider.contents, analysis, timelines)
         return DocumentBasedFormattingModel(root, formattingContext.codeStyleSettings, file)
     }
 }
+
+private class FormattingTimelines(val primary: MipsSourceTimeline, val alternatives: List<MipsSourceTimeline>)
 
 private class MipsBlock(
     node: ASTNode,
     private val indent: Indent,
     private val source: CharSequence,
     private val analysis: MarsAnalysisService,
-    private val timeline: Lazy<MipsSourceTimeline?>,
+    private val timelines: Lazy<FormattingTimelines?>,
     private val line: FormattingLine? = null,
     alignment: Alignment? = null,
 ) : AbstractBlock(node, null, alignment) {
     private val rawOperation = line?.operationType.takeIf { node.elementType == candidate }
     private val hasSemanticMacroHeader by lazy(LazyThreadSafetyMode.NONE) {
-        val context = timeline.value ?: return@lazy false
+        val context = timelines.value?.primary ?: return@lazy false
         val headerEnd = CharArrayUtil.shiftForwardUntil(source, myNode.startOffset, "\r\n")
         context.macroAt(myNode.psi.containingFile as MipsFile, headerEnd) != null
     }
@@ -81,7 +94,7 @@ private class MipsBlock(
                     fileIndentAlignment = Alignment.createAlignment()
                 }
                 val alignment = fileIndentAlignment.takeIf { indented }
-                MipsBlock(child, childIndent, source, analysis, timeline, childLine, alignment)
+                MipsBlock(child, childIndent, source, analysis, timelines, childLine, alignment)
             }
             .toList()
     }
@@ -91,17 +104,31 @@ private class MipsBlock(
     } else Indent.getNoneIndent()
 
     private fun layoutOf(child: ASTNode): FormattingLine? {
+        val contexts = timelines.value ?: return null
+        val primary = layoutIn(child, contexts.primary)
+        val rawOperation = child.findChildByType(candidate) != null
+        val protected = contexts.alternatives.flatMap { context ->
+            val layout = layoutIn(child, context) ?: return@flatMap emptyList()
+            if (rawOperation && layout.operationType !in formatOperations) {
+                // Another entry can treat this operation as raw replacement text.
+                listOf(physicalLineRange(sourceLineStart(child.psi)))
+            } else layout.verbatimOperandRanges
+        }
+        if (protected.isEmpty()) return primary
+        return primary?.copy(verbatimOperandRanges = primary.verbatimOperandRanges + protected)
+            ?: FormattingLine(null, false, null, protected)
+    }
+
+    private fun layoutIn(child: ASTNode, context: MipsSourceTimeline): FormattingLine? {
         val operation = child.findChildByType(operationOwners)
         val hasFragment = child.findChildByType(operandOwners)?.findChildByType(operandFragment) != null
         val anchor = operation?.psi?.operationHead ?: child.psi
-        val context = timeline.value ?: return null
         val file = anchor.containingFile as MipsFile
         val hasParenthesis = operation != null && child.textContains('(')
         val start = sourceLineStart(anchor)
         val prefix = context.prefix(file, start)
         if (prefix.hasIncompleteIncludes) {
-            val end = CharArrayUtil.shiftForwardUntil(source, start, "\r\n")
-            return FormattingLine(null, false, null, listOf(TextRange(start, end)))
+            return FormattingLine(null, false, null, listOf(physicalLineRange(start)))
         }
         val hasAlias = (hasParenthesis || context.hasQuotedEquivalence) && hasVisibleAlias(child, prefix)
         val projectOperands = hasFragment || hasParenthesis && hasAlias
@@ -110,6 +137,9 @@ private class MipsBlock(
         return analysis.formattingLine(file, anchor, context, projectOperands)
     }
 
+    private fun physicalLineRange(start: Int): TextRange =
+        TextRange(start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n"))
+
     private fun hasVisibleAlias(child: ASTNode, prefix: MipsSourceTimeline.Prefix): Boolean =
         SyntaxTraverser.astTraverser(child).filterTypes { it in aliasTokens }.any {
             prefix.equivalence(it.text) != null
@@ -117,7 +147,7 @@ private class MipsBlock(
 
     private fun indentOf(child: ASTNode, childLine: FormattingLine?): Indent {
         if (child.elementType != statement) return Indent.getNoneIndent()
-        val context = timeline.value
+        val context = timelines.value?.primary
         if (context != null) {
             val file = child.psi.containingFile as MipsFile
             val lineStart = sourceLineStart(source, child.startOffset)
@@ -144,7 +174,7 @@ private class MipsBlock(
         return when {
             StringUtil.containsLineBreak(gap) -> keepLines
             // Without assembly context, a written gap can be part of an expanded string.
-            timeline.value == null -> readOnly
+            timelines.value == null -> readOnly
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
             line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
