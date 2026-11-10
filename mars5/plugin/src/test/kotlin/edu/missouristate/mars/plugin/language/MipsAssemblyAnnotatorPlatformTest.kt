@@ -285,22 +285,52 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
-    fun `data syntax suppression requires a known segment and a skipped operation`() = timeoutRunBlocking<Unit> {
+    fun `segment-dependent errors defer to assembly only when an entry is available`() = timeoutRunBlocking<Unit> {
         val filter = MipsDataStatementErrorFilter()
         withContext(Dispatchers.EDT) {
-            val source = ".data\n)\n# comment\n.macro spare\nnop\n.end_macro\n"
+            val source = ".data\n)\n# comment\n.word 1\n"
             val file = fixture.configureByText("segments.asm", source) as MipsFile
             val error = PsiTreeUtil.findChildOfType(file, PsiErrorElement::class.java)!!
             val analysis = project.service<MarsAnalysisService>()
             assertTrue(!filter.shouldHighlightErrorElement(error))
             DumbModeTestUtils.runInDumbModeSynchronously(project) { assertTrue(filter.shouldHighlightErrorElement(error)) }
-            assertTrue(!analysis.ignoresDataStatement(file, file.findElementAt(source.indexOf('#'))!!))
-            assertTrue(!analysis.ignoresDataStatement(file, file.findElementAt(source.indexOf("nop"))!!))
+            assertTrue(!analysis.defersSegmentDependentError(file, file.findElementAt(source.indexOf('#'))!!))
+            assertTrue(!analysis.defersSegmentDependentError(file, file.findElementAt(source.indexOf(".word"))!!))
 
             val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
             assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!))
+            val scratch = PsiFileFactory.getInstance(project).createFileFromText("detached.asm", MipsFileType, ".data\n)\n")
+            assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(scratch, PsiErrorElement::class.java)!!))
             val java = fixture.configureByText("Broken.java", "class {")
             assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(java, PsiErrorElement::class.java)!!))
+        }
+    }
+
+    @Test
+    fun `expanded macro segment switches decide syntax diagnostics on the following line`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "switches.txt"
+            .text
+            select(.data)
+            )
+            .text
+            nop
+        """.trimIndent()
+        val main = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("switches.txt", ".macro select (%segment)\n%segment\n.end_macro\n")
+            fixture.addFileToProject("expansion.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors().isEmpty())
+            edit(main, source.replace(".text\nselect(.data)", ".data\nselect(.text)"))
+            val error = errors().single()
+            assertTrue(error.description!!.contains("is not a recognized operator"))
+            assertEquals(source.indexOf("\n)\n") + 1, error.startOffset)
+            assertEquals(")", fixture.file.text.substring(error.startOffset, error.endOffset))
+            edit(main, source)
+            assertTrue(errors().isEmpty())
         }
     }
 

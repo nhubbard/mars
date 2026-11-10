@@ -37,7 +37,6 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val macroBoundaries = TreeMap<Int, Begin?>()
     val macroNames = HashSet<String>()
     val closedMacros = LinkedHashMap<String, MutableMap<Int, TreeMap<Int, Begin>>>()
-    val segmentChanges = TreeMap<Int, Boolean>()
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
@@ -147,14 +146,8 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
-                    Directives.DATA, Directives.KDATA -> {
-                        inData = true
-                        segmentChanges[eventCount] = true
-                    }
-                    Directives.TEXT, Directives.KTEXT -> {
-                        inData = false
-                        segmentChanges[eventCount] = false
-                    }
+                    Directives.DATA, Directives.KDATA -> inData = true
+                    Directives.TEXT, Directives.KTEXT -> inData = false
                     else -> dataList = event.directive
                 }
             }
@@ -194,7 +187,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(files, equivalences, segmentChanges, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
+        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
             macroNames, closedMacros, incompleteIncludes, plainIncludes),
         dependencies,
     )
@@ -203,7 +196,6 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
 internal class MipsSourceTimeline(
     private val files: Map<VirtualFile, SourceFileEvents>,
     private val equivalences: Map<String, IndexedEquivalence>,
-    private val segmentChanges: TreeMap<Int, Boolean>,
     private val integerDataPrefixes: BitSet,
     val externalStorage: Map<String, PsiElement>,
     val unindexedLabels: Map<String, List<TimelineLabel>>,
@@ -324,7 +316,6 @@ internal class MipsSourceTimeline(
     }
 
     inner class Prefix(private val end: Int) {
-        val inDataSegment: Boolean get() = segmentChanges.floorEntry(end)?.value == true
         val hasIntegerDataList: Boolean get() = integerDataPrefixes[end]
         val openMacro: Begin? get() = openMacro(end)
 

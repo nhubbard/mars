@@ -9,6 +9,6 @@ import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 internal class MipsDataStatementErrorFilter : HighlightErrorFilter() {
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
         val file = element.containingFile as? MipsFile ?: return true
-        return !file.project.service<MarsAnalysisService>().ignoresDataStatement(file, element)
+        return !file.project.service<MarsAnalysisService>().defersSegmentDependentError(file, element)
     }
 }
