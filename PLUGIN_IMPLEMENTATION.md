@@ -877,6 +877,19 @@ original bytes. Existing CLI sessions use the JVM's default encoding. Another
 fixture waits for the simulator to enter a blocking read, then verifies that
 Stop completes without a runtime diagnostic.
 
+### Dialog syscalls
+
+MARS syscalls 50–59 display IntelliJ dialogs for confirmation, typed input,
+and messages. The simulator waits for the response while the rest of the
+IDE stays usable. Confirmation returns 0 for Yes, 1 for No, and 2 for
+Cancel or closing the window. Input preserves the simulator's distinction
+between an empty response and cancellation. Guest message text is displayed
+as plain text, with the icon requested by the syscall.
+
+Each dialog belongs to the launch that opened it. Stopping Run or Debug,
+or closing the project, dismisses the dialog and releases the simulator.
+Standard console input still uses the Run or Debug console.
+
 ## Simulator boundary for native breakpoints
 
 The debugger can supply an address predicate to `SimulatorEngine.runUntilAsync`.

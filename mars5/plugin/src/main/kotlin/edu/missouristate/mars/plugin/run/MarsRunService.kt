@@ -254,7 +254,7 @@ internal class MarsProcessHandler(
                 PrintStream(stderr, true, Charsets.UTF_8).use { error ->
                     val stdin = BufferedInputStream(Channels.newInputStream(input.source()))
                     SessionSyscallEnvironment(session.memory, stdin, output, error, workingDirectory, inputCharset).use { io ->
-                        session.program.setSyscallEnvironment(io)
+                        session.program.setSyscallEnvironment(MarsSyscallDialogs(project, entry.fileName.toString(), execution, io))
                         val simulator = session.simulator()
                         simulator.setInstructionLimit(instructionLimit.toLong())
                         simulator.setRunSpeedSource { runSpeed.toDouble() }
