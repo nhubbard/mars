@@ -337,8 +337,10 @@ Rename currently starts at a written declaration in a MARS file and requires a r
 include graph with exclusive ownership of each edited file by the selected assembly.
 It checks other indexed entries using the assembler's include traversal, including edges
 through plain text. A declaration compiled into multiple local symbol tables, two paths
-to the same edited file, a generated label, an indirect equivalence use, or an active
-exception handler still stops the operation.
+to the same edited file, a generated label, or an indirect equivalence use still stops the
+operation. When an exception handler is configured, Rename verifies the handler and its
+includes alongside the application. Edits to the handler's source files require a wider
+scope because those files are shared by other assemblies.
 
 ## Go to Declaration for equivalences
 

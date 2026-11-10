@@ -299,8 +299,62 @@ class MipsLabelRenamePlatformTest {
     }
 
     @Test
+    fun `native rename verifies application edits with a configured exception handler`() = timeoutRunBlocking<Unit> {
+        val application = ".text\nj target\ntarget: teq \$zero, \$zero\n"
+        val exceptionCode = ".ktext 0x80000180\ntarget: nop\nj target\n"
+        val (entry, handler) = withContext(Dispatchers.EDT) {
+            val handler = fixture.addFileToProject("handler.s", exceptionCode)
+            val entry = fixture.addFileToProject("entry.asm", application)
+            project.service<MarsAssemblySettings>().changeExceptionHandler(handler.virtualFile.path)
+            fixture.configureFromExistingVirtualFile(entry.virtualFile)
+            entry to handler
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val target = label(entry)
+            assertEquals("entry.asm", usages(target).single().virtualFile!!.name)
+            RenameProcessor(project, target, "updated", false, false).run()
+            assertEquals(application.replace("target", "updated"), entry.text)
+            assertEquals(exceptionCode, handler.text)
+
+            val renamed = label(entry)
+            val references = usages(renamed)
+            assertEquals("", conflicts(renamed, "again", references))
+            val docs = PsiDocumentManager.getInstance(project)
+            val handlerDocument = docs.getDocument(handler)!!
+            WriteCommandAction.runWriteCommandAction(project) { handlerDocument.insertString(0, "# changed handler\n") }
+            docs.commitDocument(handlerDocument)
+            assertTrue(assertThrows<IncorrectOperationException> {
+                processor.renameElement(renamed, "again", references.toTypedArray(), null)
+            }.message!!.contains("changed after"))
+            assertEquals(application.replace("target", "updated"), entry.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses a cross-entry reference in a nested handler include`() = timeoutRunBlocking<Unit> {
+        val (entry, operand) = withContext(Dispatchers.EDT) {
+            val handler = fixture.addFileToProject("handler.s", ".include \"bridge.txt\"\n")
+            fixture.addFileToProject("bridge.txt", ".include \"operand.txt\"\n")
+            val operand = fixture.addFileToProject("operand.txt", ".ktext 0x80000180\nla \$k0, target\njr \$k0\n")
+            val entry = fixture.addFileToProject("entry.asm", ".globl target\ntarget: nop\n")
+            project.service<MarsAssemblySettings>().changeExceptionHandler(handler.virtualFile.path)
+            entry to operand
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = label(entry)
+            val usages = usages(target)
+            assertEquals(setOf("operand.txt", "entry.asm"), usages.map { it.virtualFile!!.name }.toSet())
+            assertTrue(conflicts(target, "updated", usages).contains("project exception handler"))
+            assertEquals(".globl target\ntarget: nop\n", entry.text)
+            assertTrue(operand.text.contains("la \$k0, target"))
+        }
+    }
+
+    @Test
     fun `rename requires an exclusive assembly graph with supported file types`() = timeoutRunBlocking<Unit> {
-        val (foreign, shared, hidden, independent, handler) = withContext(Dispatchers.EDT) {
+        val (foreign, shared, hidden, independent) = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("body.xml", "nop\n")
             val foreign = fixture.addFileToProject("foreign.asm", ".include \"body.xml\"\ntarget: nop\n")
             val shared = fixture.addFileToProject("shared.s", "target: nop\n")
@@ -310,8 +364,7 @@ class MipsLabelRenamePlatformTest {
             fixture.addFileToProject("bridge.txt", ".include \"hidden.asm\"\n")
             fixture.addFileToProject("hidden-owner.asm", ".include \"bridge.txt\"\n")
             val independent = fixture.addFileToProject("independent.asm", "target: nop\n")
-            val handler = fixture.addFileToProject("handler.asm", ".ktext\nnop\n")
-            listOf(foreign, shared, hidden, independent, handler)
+            listOf(foreign, shared, hidden, independent)
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
@@ -323,11 +376,6 @@ class MipsLabelRenamePlatformTest {
         val settings = project.service<MarsAssemblySettings>()
         withContext(Dispatchers.EDT) { settings.changeSources(listOf(independent.virtualFile.path)) }
         readAction { assertEquals("", conflicts(label(independent), "next", emptyList())) }
-        withContext(Dispatchers.EDT) {
-            settings.changeSources(emptyList())
-            settings.changeExceptionHandler(handler.virtualFile.path)
-        }
-        readAction { assertTrue(conflicts(label(independent), "next", emptyList()).contains("no exception handler")) }
     }
 
     @Test

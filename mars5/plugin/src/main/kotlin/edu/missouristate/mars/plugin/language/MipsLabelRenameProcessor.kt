@@ -152,7 +152,6 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val project = file.project
     val capture = collectEditorAssembly(file) ?: throw labelRenameError("label.rename.scope")
     val sources = capture.sources
-    if (sources.exceptionHandler != null) throw labelRenameError("label.rename.scope")
     val documents = capture.committedDocuments(file) ?: throw labelRenameError("label.rename.stale")
     val vfs = VirtualFileManager.getInstance()
     val psi = PsiManager.getInstance(project)
@@ -169,16 +168,23 @@ private fun verifyRename(target: MipsDeclaration, newName: String, usages: Set<L
     val binding = SymbolUse(declaration, oldName)
     val references = before.symbolUses().filterValues { binding in it }.keys
     val expected = references.mapTo(HashSet()) { it.editIn(documents, oldName.length) }
-    if (usages != expected) throw labelRenameError("label.rename.usages")
     val sites = references + declaration
     val edits = (expected + declaration.editIn(documents, oldName.length)).groupBy(LabelEdit::path, LabelEdit::range)
-    val entryFiles = sources.snapshot.entries().mapTo(HashSet()) { vfs.findFileByNioPath(it)!! }
     val editedFiles = edits.keys.map(sourceFiles::getValue)
+    val editedPhysicalFiles = editedFiles.mapTo(HashSet()) { it.canonicalFile }
+    sources.exceptionHandler?.let { handler ->
+        // Capture the handler's include closure independently. An entry file may also be included by the handler.
+        val handlerSources = collectBackgroundAssemblySources(project, MarsSourceSet(handler))
+        if (handlerSources.revisions.keys.any { sourceFiles.getValue(it).canonicalFile in editedPhysicalFiles }) {
+            throw labelRenameError("label.rename.handler.shared")
+        }
+    }
+    if (usages != expected) throw labelRenameError("label.rename.usages")
+    val entryFiles = sources.snapshot.entries().mapTo(HashSet()) { vfs.findFileByNioPath(it)!! }
     for (source in editedFiles) {
         // A plain-text parent has no reverse index entry. The forward check below covers those edges.
         if ((mipsAssemblyRoots(project, source) - source).any { it !in entryFiles }) throw labelRenameError("label.rename.scope")
     }
-    val editedPhysicalFiles = editedFiles.mapTo(HashSet()) { it.canonicalFile }
     if (sourceFiles.values.count { it.canonicalFile in editedPhysicalFiles } != editedPhysicalFiles.size) {
         throw labelRenameError("label.rename.scope")
     }
