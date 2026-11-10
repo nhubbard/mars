@@ -51,6 +51,8 @@ internal class XRayView(project: Project) : Disposable {
         selectedItem = Rate.NORMAL
         getAccessibleContext().accessibleName = toolsMessages.getMessage("xray.speed")
     }
+    private val capture = JButton()
+    private val clear = JButton(toolsMessages.getMessage("xray.clear"))
     private val play = JButton()
     private val reset = JButton(toolsMessages.getMessage("xray.reset"))
     private val description = JBTextArea(4, 24).apply {
@@ -71,6 +73,10 @@ internal class XRayView(project: Project) : Disposable {
 
     val component = panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
+        row {
+            cell(capture)
+            cell(clear)
+        }
         row(toolsMessages.getMessage("xray.instruction")) { cell(history).align(AlignX.FILL) }
         row(toolsMessages.getMessage("xray.diagram")) { cell(unit) }
         row {
@@ -84,6 +90,15 @@ internal class XRayView(project: Project) : Disposable {
     }
 
     init {
+        capture.addActionListener {
+            val trace = selector.process!!.xray
+            trace.setCaptureEnabled(!trace.connected)
+            refreshTrace()
+        }
+        clear.addActionListener {
+            selector.process!!.xray.clear()
+            refreshTrace()
+        }
         history.addActionListener { selectInstruction() }
         unit.addActionListener { showDiagram() }
         play.addActionListener {
@@ -95,6 +110,7 @@ internal class XRayView(project: Project) : Disposable {
             showPosition()
         }
         showDiagram()
+        refreshTrace()
     }
 
     private val refreshJob = component.launchOnShow("Refresh MIPS X-Ray") {
@@ -121,7 +137,11 @@ internal class XRayView(project: Project) : Disposable {
     }
 
     private fun refreshTrace(resetSelection: Boolean = false) {
-        val snapshot = selector.process?.xray?.snapshot().orEmpty()
+        val trace = selector.process?.xray
+        val snapshot = trace?.snapshot().orEmpty()
+        capture.isEnabled = trace != null
+        capture.text = toolsMessages.getMessage(if (trace?.connected == true) "counter.disconnect" else "counter.connect")
+        clear.isEnabled = snapshot.isNotEmpty()
         if (snapshot === steps) return
         val previous = history.selectedItem as StepEvent?
         val reviewing = if (resetSelection || previous == steps.lastOrNull()) null else previous

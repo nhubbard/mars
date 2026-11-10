@@ -1683,6 +1683,18 @@ resumes it, and Reset clears the selected execution's counts. Backstepping keeps
 the accumulated counts. Executing an instruction again adds another event.
 The panel refreshes only while visible and reads a consistent snapshot.
 
+## MIPS X-Ray
+
+The **MIPS X-Ray** tab keeps the latest 128 captured instructions for each Run or
+Debug execution. Capture starts automatically. **Disconnect** freezes the trace
+for review while the program continues. **Connect** resumes capture and removes
+any steps reversed by the debugger while capture was disconnected.
+
+Select a captured instruction to inspect its encoding and animate its datapath.
+**Reset animation** returns the selected diagram to its first frame.
+**Clear trace** removes the selected execution's recorded instructions without
+changing the simulation or its capture setting.
+
 ## Data Cache Simulator
 
 The **Data Cache Simulator** tab in **MARS Tools** tracks data and stack

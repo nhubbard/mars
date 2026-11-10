@@ -17,9 +17,31 @@ import edu.missouristate.mars.util.Binary
 internal class XRayTrace {
     private val steps = ArrayDeque<StepEvent>()
     private var cached: List<StepEvent>? = emptyList()
+    private var rewindOnConnect: Long? = null
+
+    @get:Synchronized
+    var connected = true
+        private set
+
+    @Synchronized
+    fun setCaptureEnabled(enabled: Boolean) {
+        connected = enabled
+        if (enabled) {
+            rewindOnConnect?.let(::trimAfter)
+            rewindOnConnect = null
+        }
+    }
+
+    @Synchronized
+    fun clear() {
+        steps.clear()
+        cached = emptyList()
+        rewindOnConnect = null
+    }
 
     @Synchronized
     fun record(event: StepEvent) {
+        if (!connected) return
         if (steps.size == capacity) steps.removeFirst()
         steps.addLast(event)
         cached = null
@@ -27,6 +49,15 @@ internal class XRayTrace {
 
     @Synchronized
     fun rewind(stepCount: Long) {
+        if (connected) {
+            trimAfter(stepCount)
+        } else {
+            // Leave the trace available for review until capture resumes.
+            rewindOnConnect = minOf(rewindOnConnect ?: stepCount, stepCount)
+        }
+    }
+
+    private fun trimAfter(stepCount: Long) {
         while ((steps.lastOrNull()?.stepCount() ?: 0) > stepCount) {
             steps.removeLast()
             cached = null

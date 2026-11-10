@@ -345,6 +345,34 @@ class InstructionCounterPlatformTest {
                 withContext(Dispatchers.EDT) { assertTrue(button("Play animation", xray).isEnabled) }
             }
             withContext(Dispatchers.EDT) {
+                val execution = xrayChoices().single { it.itemCount == 2 && it.getItemAt(0) !is StepEvent }
+                button("Disconnect", xray).doClick()
+                assertFalse(trace.connected)
+                assertTrue(button("Play animation", xray).isEnabled)
+                trace.record(StepEvent(0x00400004, 0, 2))
+                assertEquals(1, trace.snapshot().size)
+
+                execution.selectedIndex = 1
+                assertTrue(button("Disconnect", xray).isEnabled)
+                assertTrue(xrayDetails().contains("addiu"))
+                execution.selectedIndex = 0
+                assertTrue(button("Connect", xray).isEnabled)
+                assertEquals(1, xrayHistory().itemCount)
+                button("Clear trace", xray).doClick()
+                assertFalse(button("Clear trace", xray).isEnabled)
+                assertFalse(button("Play animation", xray).isEnabled)
+                assertFalse(trace.connected)
+                button("Connect", xray).doClick()
+                assertTrue(trace.connected)
+                trace.record(StepEvent(0x00400008, 0, 3))
+            }
+            pollAssertionsAsync(5.seconds, 30.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    assertTrue(button("Clear trace", xray).isEnabled)
+                    assertEquals(3L, (xrayHistory().selectedItem as StepEvent).stepCount())
+                }
+            }
+            withContext(Dispatchers.EDT) {
                 assertEquals(mapOf("ALU" to 100, "Jump" to 0, "Branch" to 0, "Memory" to 0, "Other" to 0), percentages())
                 statsSelector.selectedIndex = 0
                 button("Disconnect", statistics).doClick()

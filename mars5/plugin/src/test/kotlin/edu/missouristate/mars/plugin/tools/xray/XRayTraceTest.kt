@@ -31,6 +31,55 @@ class XRayTraceTest {
     }
 
     @Test
+    fun `disconnect freezes the trace and reconnect drops instructions from the rewound path`() {
+        val trace = XRayTrace()
+        val first = StepEvent(0x00400000, 0, 1)
+        val second = StepEvent(0x00400004, 0, 2)
+        val third = StepEvent(0x00400008, 0, 3)
+        trace.record(first)
+        trace.record(second)
+        trace.record(third)
+        val original = trace.snapshot()
+
+        trace.setCaptureEnabled(false)
+        trace.record(StepEvent(0x0040000c, 0, 4))
+        trace.rewind(1)
+        trace.record(StepEvent(0x00400010, 0, 2))
+        trace.record(StepEvent(0x00400014, 0, 3))
+        trace.rewind(2)
+        assertSame(original, trace.snapshot())
+
+        trace.setCaptureEnabled(true)
+        assertEquals(listOf(first), trace.snapshot())
+        val resumed = StepEvent(0x00400014, 0, 3)
+        trace.record(resumed)
+        assertEquals(listOf(first, resumed), trace.snapshot())
+        assertEquals(listOf(first, second, third), original)
+    }
+
+    @Test
+    fun `clearing preserves capture state and discards any pending rewind`() {
+        val trace = XRayTrace()
+        trace.record(StepEvent(0x00400000, 0, 1))
+        trace.setCaptureEnabled(false)
+        trace.rewind(0)
+        trace.clear()
+        assertFalse(trace.connected)
+        val resumed = StepEvent(0x00400004, 0, 2)
+        trace.record(resumed)
+        assertTrue(trace.snapshot().isEmpty())
+
+        trace.setCaptureEnabled(true)
+        trace.record(resumed)
+        assertEquals(listOf(resumed), trace.snapshot())
+        trace.clear()
+        assertTrue(trace.connected)
+        assertTrue(trace.snapshot().isEmpty())
+        trace.record(resumed)
+        assertEquals(listOf(resumed), trace.snapshot())
+    }
+
+    @Test
     fun `instruction details distinguish core encoding formats and observed branch outcomes`() {
         val add = XRayInstruction(StepEvent(0x00400000, 0x012a4020, 1))
         assertTrue(add.describe().contains("0x00400000 · 0x012a4020 · add"))
