@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CancellationException;
+import java.util.function.LongConsumer;
 
 /*
 Copyright (c) 2003-2006,  Pete Sanderson and Kenneth Vollmar
@@ -548,6 +549,15 @@ public class MIPSprogram implements Program {
   }
 
   /**
+   * Simulates from the current PC, reporting the number of instructions completed in this call.
+   * The observer runs on the caller's thread after each completed instruction, including a normal
+   * exit syscall. An empty instruction slot or a failing instruction does not increment the count.
+   */
+  public boolean simulate(int maxSteps, LongConsumer instructionCount) throws ProcessingException {
+    return simulateSession(null, maxSteps, Objects.requireNonNull(instructionCount));
+  }
+
+  /**
    * Simulates execution of the MIPS program. Program must have already been assembled. Begins
    * simulation at current program counter address and continues until stopped, paused, maximum
    * steps exceeded, or exception occurs.
@@ -558,7 +568,7 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulateFromPC(int[] breakPoints, int maxSteps) throws ProcessingException {
-    return simulateSession(breakPoints, maxSteps);
+    return simulateSession(breakPoints, maxSteps, null);
   }
 
   /**
@@ -569,7 +579,7 @@ public class MIPSprogram implements Program {
    * @throws ProcessingException Will throw exception if errors occured while simulating.
    */
   public boolean simulateStepAtPC() throws ProcessingException {
-    return simulateSession(null, 1);
+    return simulateSession(null, 1, null);
   }
 
   /** Sets I/O for a session program; call while execution is stopped. */
@@ -716,18 +726,25 @@ public class MIPSprogram implements Program {
   }
 
   /** Synchronous, frontend-independent execution for a session-owned program. */
-  private boolean simulateSession(int[] breakPoints, int maxSteps) throws ProcessingException {
+  private boolean simulateSession(int[] breakPoints, int maxSteps, LongConsumer instructionCount)
+      throws ProcessingException {
     MarsContext session = assemblyContext.session();
     try (var lease = session.claimStoppedSession()) {
-      int steps = 0;
+      long steps = 0;
       while (maxSteps <= 0 || steps < maxSteps) {
         if (Thread.currentThread().isInterrupted() || session.isClosing()) {
           return false;
         }
-        if (executeSessionInstruction().stopReason() != null) {
+        var result = executeSessionInstruction();
+        if (result.executed()) {
+          steps++;
+          if (instructionCount != null) {
+            instructionCount.accept(steps);
+          }
+        }
+        if (result.stopReason() != null) {
           return true;
         }
-        steps++;
         if (breakPoints != null) {
           for (int breakpoint : breakPoints) {
             if (breakpoint == session.registerFile.getProgramCounter()) {

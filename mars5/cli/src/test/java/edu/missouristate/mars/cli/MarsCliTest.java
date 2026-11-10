@@ -343,6 +343,49 @@ class MarsCliTest {
     assertTrue(error.toString().contains("Invalid or unaligned memory range"));
   }
 
+  @Test
+  void countsRepeatedInstructionsAtAddressZeroUpToTheStepLimit() throws Exception {
+    var source = directory.resolve("loop.s");
+    Files.writeString(source, ".text\nloop: beq $zero,$zero,loop\n");
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+
+    assertEquals(3, execute(new String[] {
+        "ic", "mc", "CompactTextAtZero", "--max-steps", "4", source.toString()
+    }, output, error));
+    assertEquals(List.of("", "4", ""), output.toString().lines().toList());
+    assertTrue(error.toString().contains("step limit"));
+  }
+
+  @Test
+  void countsNormalExitButSkipsTheEmptySlotAndFailingInstructions() throws Exception {
+    var source = directory.resolve("count.s");
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+    var arguments = new String[] {"--instruction-count", "se23", source.toString()};
+
+    Files.writeString(source, "li $v0,10\nsyscall\n");
+    assertEquals(0, execute(arguments, output, error));
+    assertEquals(List.of("", "2", ""), output.toString().lines().toList());
+    output.reset();
+
+    Files.writeString(source, "nop\n");
+    assertEquals(0, execute(arguments, output, error));
+    assertEquals(List.of("", "1", ""), output.toString().lines().toList());
+    assertEquals("", error.toString());
+    output.reset();
+
+    Files.writeString(source, "li $v0,999\nsyscall\n");
+    assertEquals(23, execute(arguments, output, error));
+    assertEquals(List.of("", "1", ""), output.toString().lines().toList());
+    assertTrue(error.toString().contains("syscall"));
+    output.reset();
+    error.reset();
+    assertEquals(0, execute(new String[] {"a", "ic", source.toString()}, output, error));
+    assertEquals("", output.toString());
+    assertEquals("", error.toString());
+  }
+
   private static int execute(String[] args, ByteArrayOutputStream out, ByteArrayOutputStream err) {
     return MarsCli.execute(
         args, InputStream.nullInputStream(), new PrintStream(out), new PrintStream(err));

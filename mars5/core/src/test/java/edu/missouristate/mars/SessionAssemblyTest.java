@@ -1556,7 +1556,9 @@ class SessionAssemblyTest {
                       nop
                     """)));
     int base = session.memory.textBaseAddress;
-    assertThat(program.simulate(3)).isFalse();
+    var completed = new ArrayList<Long>();
+    assertThat(program.simulate(3, completed::add)).isFalse();
+    assertThat(completed).containsExactly(1L, 2L, 3L);
     assertThat(session.registerFile.getValue(8)).isEqualTo(2);
     session.backStepper.backStep();
     assertThat(session.registerFile.getValue(8)).isEqualTo(1);

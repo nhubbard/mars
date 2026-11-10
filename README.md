@@ -40,6 +40,7 @@ Use `--dump REGION FORMAT FILE` to export `.text`, `.data`, or an inclusive word
 The CLI lists the available formats in `--help`. Repeat `--dump` to write several files from one run.
 Use `--register NAME` and `--memory-range M-N` to print the machine state after execution.
 The `hex`, `dec`, and `ascii` options select the format. `me` directs reports to stderr.
+Use `--instruction-count` (`ic`) to report completed instructions, including a normal exit syscall.
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 

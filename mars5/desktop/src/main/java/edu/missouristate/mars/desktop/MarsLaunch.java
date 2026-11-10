@@ -122,7 +122,7 @@ public class MarsLaunch {
   private ArrayList<String> filenameList;
   private MIPSprogram code;
   private int maxSteps;
-  private int instructionCount;
+  private long instructionCount;
   private PrintStream out; // stream for display of command line output
   private ArrayList<String[]> dumpTriples = null; // each element holds 3 arguments for dump option
   private ArrayList<String>
@@ -508,13 +508,13 @@ public class MarsLaunch {
       if (simulate) {
         // store program args (if any) in MIPS memory
         new ProgramArgumentList(programArgumentList).storeProgramArguments(session.context());
-        // establish observer if specified
-        establishObserver();
         if (session.debug()) {
           out.println("--------  SIMULATION BEGINS  -----------");
         }
         programRan = true;
-        boolean done = code.simulate(maxSteps);
+        boolean done = countInstructions
+            ? code.simulate(maxSteps, completed -> instructionCount = completed)
+            : code.simulate(maxSteps);
         session.setExitCode(code.getExitCode());
         if (!done) {
           out.println("\nProgram terminated when maximum step limit " + maxSteps + " reached.");
@@ -553,38 +553,6 @@ public class MarsLaunch {
       }
     }
     return memoryRange;
-  }
-
-  /////////////////////////////////////////////////////////////////
-  // Required for counting instructions executed, if that option is specified.
-  // DPS 19 July 2012
-  private void establishObserver() {
-    if (countInstructions) {
-      final int[] lastAddress = {0};
-      try {
-        session.memory.addObserver(
-            notice -> {
-              if (notice.origin() != edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION) {
-                return;
-              }
-              if (notice.getAccessType() != AccessNotice.READ) {
-                return;
-              }
-              int a = notice.getAddress();
-              if (a == lastAddress[0]) {
-                return;
-              }
-              lastAddress[0] = a;
-              instructionCount++;
-            },
-            session.memory.textBaseAddress,
-            session.memory.textLimitAddress);
-      } catch (AddressErrorException aee) {
-        out.println(
-            "Internal error: MarsLaunch uses incorrect text segment address for instruction"
-                + " observer");
-      }
-    }
   }
 
   //////////////////////////////////////////////////////////////////////

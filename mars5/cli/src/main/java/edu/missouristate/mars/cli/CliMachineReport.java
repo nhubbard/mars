@@ -16,8 +16,10 @@ final class CliMachineReport {
 
   private final ArrayList<RegisterSelection> registers = new ArrayList<>();
   private final ArrayList<CliAddressRange> ranges = new ArrayList<>();
+  private long instructions;
   Format format = Format.HEX;
   boolean brief;
+  boolean countInstructions;
 
   boolean addRegister(String name, MarsContext session) {
     String label = name.startsWith("$") ? name : "$" + name;
@@ -47,8 +49,14 @@ final class CliMachineReport {
     ranges.add(CliAddressRange.parse(text));
   }
 
+  void recordInstructionCount(long completed) {
+    instructions = completed;
+  }
+
   void write(MarsContext session, PrintStream out) {
-    if (registers.isEmpty() && ranges.isEmpty()) {
+    if (countInstructions) {
+      out.println("\n" + instructions);
+    } else if (registers.isEmpty() && ranges.isEmpty()) {
       return;
     }
     out.println();

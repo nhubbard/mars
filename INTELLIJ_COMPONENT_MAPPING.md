@@ -467,12 +467,17 @@ Do not depend on internal Java compiler implementations or require `com.intellij
 
 ### 5.3 Existing launcher parity that must not disappear
 
-The smaller `MarsCli` does not currently expose everything in desktop `MarsLaunch`.
 Preserve the latter's `a`, `ae<n>`, `ascii`, `b`, `d`, `db`, `dec`, `dump`, `h`, `hex`, `ic`, `mc`, `me`, `nc`,
 `np`, `p`, `se<n>`, `sm`, `smc`, numeric step limit, register selections, memory ranges, `pa`, and warnings-as-errors behavior.
 Map them to typed requests and documented CLI equivalents. Retiring the desktop launcher requires differential tests for this complete set.
 Program exit status is distinct from assembly failure, simulator error, cancellation, and a step-limit stop.
 Do not change a simulated exit value simply because the IDE process remains alive.
+
+Both launchers now use the same completed-instruction count, including a normal exit syscall.
+Executable JAR comparisons covered normal exit, an empty instruction slot, a failing syscall,
+and repeated execution at address zero. Register and memory report comparisons covered
+hexadecimal, brief decimal, and ASCII output with stderr redirection. B06 still needs the
+standalone phase diagnostics and a committed differential suite across the full option set.
 
 ## 6. Execution and console adapters
 

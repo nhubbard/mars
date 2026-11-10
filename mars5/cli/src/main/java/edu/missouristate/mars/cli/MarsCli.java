@@ -66,6 +66,7 @@ public final class MarsCli {
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
           case "--messages-to-stderr", "me" -> reportOutput = error;
           case "--brief", "b" -> report.brief = true;
+          case "--instruction-count", "ic" -> report.countInstructions = true;
           case "hex" -> report.format = CliMachineReport.Format.HEX;
           case "dec" -> report.format = CliMachineReport.Format.DECIMAL;
           case "ascii" -> report.format = CliMachineReport.Format.ASCII;
@@ -128,7 +129,10 @@ public final class MarsCli {
         try (var io = new SessionSyscallEnvironment(session.memory, input, output, error)) {
           program.setSyscallEnvironment(io);
           simulating = true;
-          if (!program.simulate(maximumSteps)) {
+          boolean finished = report.countInstructions
+              ? program.simulate(maximumSteps, report::recordInstructionCount)
+              : program.simulate(maximumSteps);
+          if (!finished) {
             error.println("Execution reached the step limit.");
             return 3;
           }
@@ -207,6 +211,7 @@ public final class MarsCli {
       --memory-range M-N    Report an inclusive word range after execution (M-N)
       hex | dec | ascii     Select the register and memory display format (default: hex)
       --brief               Omit register names and memory row addresses (b)
+      --instruction-count   Report the number of completed instructions (ic)
       --messages-to-stderr  Send reports to stderr (me)
       --max-steps COUNT      Bound execution and return code 3 at the limit
       COUNT                  Positional step limit (zero or negative means unlimited)
