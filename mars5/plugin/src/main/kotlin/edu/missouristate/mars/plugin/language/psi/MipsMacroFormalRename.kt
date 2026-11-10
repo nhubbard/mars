@@ -42,7 +42,9 @@ internal fun MipsMacroFormal.checkedRenameSites(newName: String): Set<PsiElement
     val entry = PsiManager.getInstance(project).findFile(root) as MipsFile
     val timeline = mipsSourceTimeline(entry)
     val macro = timeline.localMacros(file)[parent.parent] ?: throw formalRenameError("macro.rename.incomplete.scope")
-    if (timeline.hasIncompleteIncludes || !timeline.hasClosed(macro)) throw formalRenameError("macro.rename.incomplete.scope")
+    if (timeline.hasIncompleteIncludes || timeline.hasPlainIncludes || !timeline.hasClosed(macro)) {
+        throw formalRenameError("macro.rename.incomplete.scope")
+    }
     val oldName = name
     if (macro.parametersByName[oldName]?.offset != textOffset ||
         macro.parameters.count { it.offset == textOffset || it.value == oldName } != 1

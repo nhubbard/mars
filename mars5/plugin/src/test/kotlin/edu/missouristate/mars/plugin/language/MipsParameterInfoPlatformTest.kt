@@ -198,7 +198,7 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
-    fun `direct hints use realized signatures and argument positions from plain includes`() = timeoutRunBlocking<Unit> {
+    fun `direct hints use live signatures from plain includes even when a call is incomplete`() = timeoutRunBlocking<Unit> {
         val source = """
             .macro emit (%written, %obsolete)
             .end_macro
@@ -213,9 +213,6 @@ class MipsParameterInfoPlatformTest {
         val call = source.indexOf("emit(7")
         val extra = source.indexOf("extra 4")
         withContext(Dispatchers.EDT) {
-            assertEquals("emit (%written, <b>%obsolete</b>)", hintAt(call + "emit(7, ".length))
-            assertNull(hintAt(extra + "extra ".length))
-            fixture.doHighlighting()
             assertEquals("emit (<b>%first</b>, %second)", hintAt(call + "emit(".length))
             assertEquals("emit (%first, <b>%second</b>)", hintAt(call + "emit(7, -2".length))
             assertNull(hintAt(call + "emit(7, -27)".length))
@@ -224,9 +221,9 @@ class MipsParameterInfoPlatformTest {
             val document = FileDocumentManager.getInstance().getDocument(include.virtualFile)!!
             WriteCommandAction.runWriteCommandAction(current) { document.setText(definitions.replace("%only", "%updated")) }
             PsiDocumentManager.getInstance(current).commitAllDocuments()
-            assertNull(hintAt(extra + "extra ".length))
-            fixture.doHighlighting()
             assertEquals("extra (<b>%updated</b>)", hintAt(extra + "extra ".length))
+            assertEquals("emit (%first, <b>%second</b>)", info(".include \"signature.txt\"\nemit(7, <caret>"))
+            assertEquals("emit (%first, <b>%second</b>)", info(".include \"missing.txt\"\n.include \"signature.txt\"\nemit(7, <caret>"))
         }
     }
 

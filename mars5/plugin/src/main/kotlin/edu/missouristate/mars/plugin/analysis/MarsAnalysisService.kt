@@ -50,6 +50,7 @@ import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsIncludedDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import edu.missouristate.mars.plugin.language.psi.equivalenceDefinitionParameterContexts
+import edu.missouristate.mars.plugin.language.psi.writtenDeclarationAt
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -234,15 +235,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             }
             for (label in timeline.generatedLabels[name].orEmpty()) {
                 ProgressManager.checkCanceled()
-                if (label.macro == null) outer.add(label.site)
-                else if (label.macro === macro) local.add(label.site)
+                if (label.macro == null) outer.add(label.site.writtenDeclarationAt())
+                else if (label.macro === macro) local.add(label.site.writtenDeclarationAt())
             }
             if (local.isNotEmpty()) return local
             if (outer.isNotEmpty()) return outer
         }
         val built = builtLabelTarget(root, name, allowExternal)
         if (built != null) return listOf(built)
-        return if (allowExternal) listOfNotNull(timeline?.externalStorage?.get(name)) else emptyList()
+        return if (allowExternal) listOfNotNull(timeline?.externalStorage?.get(name)?.writtenDeclarationAt()) else emptyList()
     }
 
     private fun builtLabelTarget(root: MipsFile, name: String, allowExternal: Boolean): PsiElement? {
@@ -290,7 +291,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val calls = assembledMacroCallsAt(root, position, hasLiveDefinition = definition != null)
         if (calls.isNotEmpty()) return calls.map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
         val header = definition?.header ?: return emptyList()
-        return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
+        val declaration = header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
+        return listOfNotNull(declaration).map { it.writtenDeclarationAt(definition.nameOffset) }
     }
 
     internal fun assembledMacroCallsAt(root: MipsFile, position: PsiElement, hasLiveDefinition: Boolean): Set<MacroCall> {
@@ -613,7 +615,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parametersByName[name] ?: return emptyList()
         return listOfNotNull(macro.header.containingFile.findElementAt(parameter.offset))
-            .map { (it.parent as? MipsMacroFormal) ?: it }
+            .map { ((it.parent as? MipsMacroFormal) ?: it).writtenDeclarationAt(parameter.offset) }
     }
 
     internal fun macroFormalNames(root: MipsFile, formal: MipsMacroFormal): Set<String> {
@@ -707,7 +709,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     /** Finds the definition used by the assembler to substitute this token. */
     internal fun equivalenceTarget(root: MipsFile, position: PsiElement): PsiElement? =
-        equivalenceUse(root, position)?.target
+        equivalenceUse(root, position)?.target?.writtenDeclarationAt()
 
     internal fun equivalenceUse(root: MipsFile, position: PsiElement): EquivalenceUse? {
         if (DumbService.isDumb(project)) return null

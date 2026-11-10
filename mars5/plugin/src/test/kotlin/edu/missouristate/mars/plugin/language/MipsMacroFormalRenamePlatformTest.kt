@@ -103,6 +103,7 @@ class MipsMacroFormalRenamePlatformTest {
 
     @Test
     fun `rename refuses ambiguous headers references and new token boundaries`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("plain-body.txt", "li \$a0, %arg\n") }
         val cases = listOf(
             Triple(".macro emit (%arg)\n.end_macro", "%", "Enter one MARS macro parameter"),
             Triple(".macro emit (%arg, %arg)\n.end_macro", "%next", "unambiguous effective name"),
@@ -116,6 +117,7 @@ class MipsMacroFormalRenamePlatformTest {
             Triple(".macro emit (\$arg)\n.eqv EXPORTED \$arg\n.end_macro", "%next", "supplied through an equivalence"),
             Triple(".macro emit (%arg)\nli \$a0, @\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\n.include \"absent.s\"\n.end_macro", "%next", "fully resolved"),
+            Triple(".macro emit (%arg)\n.include \"plain-body.txt\"\n.end_macro", "%next", "fully resolved"),
             Triple(".macro emit (%arg)\nnop", "%next", "closed macro"),
             Triple(".macro emit\n.macro nested (%arg)\n.end_macro", "%next", "closed macro"),
         )

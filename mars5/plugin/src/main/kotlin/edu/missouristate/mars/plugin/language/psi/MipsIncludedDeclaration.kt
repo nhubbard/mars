@@ -3,6 +3,8 @@ package edu.missouristate.mars.plugin.language.psi
 import com.intellij.ide.projectView.PresentationData
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.impl.light.LightElement
 import edu.missouristate.mars.plugin.language.MipsLanguage
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
@@ -29,4 +31,9 @@ internal data class MipsIncludedDeclaration(
             return MipsIncludedDeclaration(file, range, range.subSequence(source).toString(), file.fileDocument.modificationStamp)
         }
     }
+}
+
+internal fun PsiElement.writtenDeclarationAt(offset: Int = textOffset): PsiElement {
+    val original = containingFile.originalFile
+    return if (original is PsiPlainTextFile) MipsIncludedDeclaration.at(original, offset) else this
 }

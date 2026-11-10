@@ -234,11 +234,13 @@ the signature. Its smart pointer rebinds the call after an edit and drops the ta
 the invocation no longer matches. Parameter Info uses the available live MARS
 signatures while a call is being typed.
 
-For a call resolved by a current assembly, both popups can use a signature
-declared in a plain-text include. If that include redefines a visible macro,
-the popups use the overload chosen by the assembler. Parameter Info highlights
-the active argument using the written token positions. Editing the include
-invalidates the assembled signature until the next successful assembly.
+Completion, Quick Documentation, and Parameter Info share the live source
+timeline for direct calls into plain-text includes, including nested includes
+and signatures introduced by equivalences. The timeline caches a MARS PSI
+view against the original text without changing its file association or adding
+the view to the indexes. Committed editor changes refresh the signature before
+the next assembly. Calls inside macro bodies can still use a current assembly
+to show the overloads selected for the actual expansions.
 
 Jupiter fixtures use IntelliJ's documentation service to resolve source and lookup targets,
 render their content, and verify that comments, strings, labels and unrelated lookup items
@@ -318,12 +320,13 @@ include cycles, an include appearing after lookup, and unsaved edits.
 
 ## Go to Declaration for macro calls
 
-An up-to-date assembly can also supply a declaration in an include that
-IntelliJ treats as plain text. Go to Declaration opens the written macro
-name or assembled symbol operand at its original offset. A platform light
-PSI element supplies the range to the existing reference and navigation APIs.
-The destination expires when its source changes, and the include keeps its
-file type.
+Go to Declaration opens live macro definitions, equivalences, and other
+timeline declarations in plain-text includes at their original offsets.
+An up-to-date assembly also supplies targets for assembled symbols that
+depend on expansion. A platform light PSI element supplies the physical
+range to the existing reference and navigation APIs. Its destination expires
+when the source changes. Macro formal rename requires MARS file associations
+throughout its edit scope so it can find and update every reference.
 
 Direct macro calls resolve by case-sensitive name and token argument count. The plugin uses
 the Java tokenizer and shares the assembler's rule for removing one outer pair of call

@@ -213,8 +213,6 @@ class MipsDocumentationPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         val provider = IdeDocumentationTargetProvider.getInstance(current)
         fun target() = provider.documentationTargets(fixture.editor, fixture.file, fixture.editor.caretModel.offset).single()
-        readAction { assertEquals("emit", target().computePresentation().presentableText) }
-        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
         val pointer = readAction {
             val target = target()
             assertEquals("emit(%actual)", target.computePresentation().presentableText)
@@ -230,7 +228,6 @@ class MipsDocumentationPlatformTest {
             WriteCommandAction.runWriteCommandAction(current) { document.setText(included.replace("%actual", "%updated")) }
             PsiDocumentManager.getInstance(current).commitAllDocuments()
             assertNull(pointer.dereference())
-            fixture.doHighlighting()
         }
         readAction {
             assertNull(pointer.dereference())

@@ -116,6 +116,14 @@ class MipsMacroParameterReferencesPlatformTest {
     }
 
     @Test
+    fun `parameters navigate to written formals in a plain include`() = timeoutRunBlocking<Unit> {
+        val header = "# written header\n.macro emit (%value)\n"
+        withContext(Dispatchers.EDT) { fixture.addFileToProject("header.txt", header) }
+        configure(".include \"header.txt\"\nli \$t0, %val<caret>ue\n.end_macro\n")
+        assertEquals(Target("header.txt", "%value", header.indexOf("%value")), target())
+    }
+
+    @Test
     fun `formals supplied by aliases navigate through their physical header and equivalences`() = timeoutRunBlocking<Unit> {
         val aliases = ".eqv NAME emit\n.eqv FORMALS (%value)\n.eqv \$SPIM \$value\n"
         withContext(Dispatchers.EDT) { fixture.addFileToProject("aliases.s", aliases) }

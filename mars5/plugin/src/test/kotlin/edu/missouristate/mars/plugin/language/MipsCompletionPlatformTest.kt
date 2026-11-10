@@ -113,6 +113,50 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `completion reads nested plain includes and refreshes their signatures after an edit`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"lib/wrapper.txt\"\nj generated\n.data\n.word COUNT, storage\n.text\nem<caret>\n"
+        val definitions = """
+            .eqv NAME emit
+            .eqv FORMALS (%first, %second)
+            .macro NAME FORMALS
+            .end_macro
+            .macro emitPair
+            .end_macro
+            .eqv COUNT 4
+            .eqv LABEL generated:
+            LABEL nop
+            .extern storage 4
+        """.trimIndent()
+        val current = project.get()
+        val inner = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("lib/wrapper.txt", ".include \"inner.txt\"\n")
+            val inner = fixture.addFileToProject("lib/inner.txt", definitions)
+            fixture.configureByText("plain-completion.asm", source)
+            inner
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            fun assertChoices(expected: String) {
+                val choices = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("emit") }
+                assertEquals(setOf("emit", "emitPair"), choices.map { it.lookupString }.toSet())
+                val item = choices.single { it.lookupString == "emit" }
+                assertEquals(expected, LookupElementPresentation().also(item::renderElement).tailText)
+                fixture.lookup.hideLookup(true)
+            }
+            assertChoices(" (%first, %second)")
+            for ((use, declaration) in mapOf("generated" to "LABEL nop", "COUNT" to "COUNT 4", "storage" to "storage 4")) {
+                val target = fixture.file.findReferenceAt(source.indexOf(use))!!.resolve()!!
+                assertEquals(inner.virtualFile, target.containingFile.virtualFile)
+                assertEquals(definitions.indexOf(declaration), target.textOffset)
+            }
+            val document = FileDocumentManager.getInstance().getDocument(inner.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.setText(definitions.replace("%second", "%updated")) }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+            assertChoices(" (%first, %updated)")
+        }
+    }
+
+    @Test
     fun `macro formal completion replaces the whole token after an aliased included header`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val current = project.get()

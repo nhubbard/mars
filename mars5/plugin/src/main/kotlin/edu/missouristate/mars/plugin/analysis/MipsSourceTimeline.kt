@@ -4,6 +4,8 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
+import com.intellij.psi.PsiPlainTextFile
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ErrorList
@@ -15,6 +17,7 @@ import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
+import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -27,6 +30,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val dependencies = arrayListOf<Any>(VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS, entry)
     var eventCount = 0
     val files = LinkedHashMap<VirtualFile, SourceFileEvents>()
+    val visited = HashSet<VirtualFile>()
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
     val generatedLabels = LinkedHashMap<String, MutableList<GeneratedLabel>>()
@@ -36,6 +40,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val integerDataPrefixes = BitSet()
     val pending = ArrayDeque<SourceCursor>()
     fun enter(file: MipsFile) {
+        visited.add(file.originalFile.viewProvider.virtualFile)
         val locations = SourceFileEvents(file)
         files[file.viewProvider.virtualFile] = locations
         pending.addLast(SourceCursor(locations, mipsSourceEvents(file).iterator()))
@@ -44,6 +49,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     enter(entry)
     var macro: Begin? = null
     var incompleteIncludes = false
+    var plainIncludes = false
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
@@ -146,10 +152,23 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             }
             is MipsSourceEvent.Include -> {
                 val included = resolveMipsInclude(event.literal, event.path)
-                if (included is MipsFile && included.viewProvider.virtualFile !in files) {
-                    dependencies.add(included)
-                    enter(included)
-                } else incompleteIncludes = true
+                if (included == null || included.virtualFile in visited) {
+                    incompleteIncludes = true
+                    continue
+                }
+                val syntax = when (included) {
+                    is MipsFile -> included
+                    is PsiPlainTextFile -> {
+                        plainIncludes = true
+                        plainIncludeSyntax(included)
+                    }
+                    else -> {
+                        incompleteIncludes = true
+                        continue
+                    }
+                }
+                dependencies.add(included)
+                enter(syntax)
             }
         }
         if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
@@ -161,7 +180,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     }
     CachedValueProvider.Result.create(
         MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries,
-            macroNames, closedMacros, incompleteIncludes),
+            macroNames, closedMacros, incompleteIncludes, plainIncludes),
         dependencies,
     )
 }
@@ -176,6 +195,7 @@ internal class MipsSourceTimeline(
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
     val hasIncompleteIncludes: Boolean,
+    val hasPlainIncludes: Boolean,
 ) {
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
 
@@ -207,7 +227,9 @@ internal class MipsSourceTimeline(
 
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
+    // Index callers need the physical MARS PSI files, not the contextual parse copies.
     fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().map(SourceFileEvents::file)
+        .filter { it.originalFile is MipsFile }
 
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
@@ -363,3 +385,11 @@ private class SourceCursor(val locations: SourceFileEvents, val events: Iterator
 }
 
 internal fun resolveMipsInclude(literal: MipsStringLiteral, path: String) = MipsFileReferenceSet(path, literal).resolve()
+
+private fun plainIncludeSyntax(source: PsiPlainTextFile): MipsFile = CachedValuesManager.getCachedValue(source) {
+    val file = PsiFileFactory.getInstance(source.project)
+        .createFileFromText(source.name, MipsFileType, source.viewProvider.contents.toString()) as MipsFile
+    // FileReferenceSet resolves relative paths against the original physical file.
+    file.setOriginalFile(source)
+    CachedValueProvider.Result.create(file, source)
+}
