@@ -892,6 +892,15 @@ continued words to memory and that calling a dormant malformed macro
 reports an assembly error. A fresh packaged IntelliJ session opened a
 macro fixture and verified the deferred rows and structured continuation in PSI.
 
+An included file or an `.eqv` expansion can supply a macro boundary that the
+physical parser cannot see. The editor uses the assembly timeline to defer
+syntax diagnostics on lexically valid body lines in that scope. It still
+reports lexical errors and malformed macro boundaries. Unsaved changes to
+the opening file update the diagnostics in the included body.
+In a fresh packaged IntelliJ session, the editor reported zero errors for
+the included body and the alias-defined macro. It still marked an invalid
+`@` operand in a third file.
+
 ## Whole-line include preprocessing
 
 The parser recognizes an `INCLUDE_LINE` when the assembler's include prepass would replace the

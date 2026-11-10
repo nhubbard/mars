@@ -292,8 +292,72 @@ class MipsAssemblyAnnotatorPlatformTest {
     }
 
     @Test
+    fun `deferred macro operands follow an included opening through unsaved edits`() = timeoutRunBlocking<Unit> {
+        val source = "4 : )\n.word )\nlabel: 6 : )\n"
+        val (entry, opening, body) = withContext(Dispatchers.EDT) {
+            val header = fixture.addFileToProject("opening.txt", ".macro dormant\n")
+            val part = fixture.addFileToProject("macro-body.s", source)
+            val main = fixture.addFileToProject("entry.asm", """
+                .include "opening.txt"
+                .include "macro-body.s"
+                .end_macro
+                nop
+            """.trimIndent())
+            fixture.configureFromExistingVirtualFile(part.virtualFile)
+            Triple(main.virtualFile, header.virtualFile, part.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program = project.service<MarsSessionService>().context.assemble(listOf(entry.toNioPath()))
+        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(PsiTreeUtil.hasErrorElements(fixture.file))
+            assertTrue(errors().isEmpty())
+            edit(opening, "# no macro opening\n")
+            assertTrue(errors().isNotEmpty())
+            edit(opening, ".macro dormant\n")
+            assertTrue(errors().isEmpty())
+            edit(body, source + ".word @\n")
+            assertTrue(errors().any { it.startOffset >= source.length })
+        }
+    }
+
+    @Test
+    fun `equivalence generated macros defer operands and retain boundary diagnostics`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv OPEN .macro dormant
+            .eqv CLOSE .end_macro
+            OPEN
+            4 : )
+            .word )
+            CLOSE
+            nop
+        """.trimIndent()
+        val main = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("aliased-macro.asm", source).virtualFile.also(fixture::configureFromExistingVirtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val program = project.service<MarsSessionService>().context.assemble(listOf(main.toNioPath()))
+        assertEquals(listOf(0), program.machineList.map { it.binaryStatement })
+        withContext(Dispatchers.EDT) {
+            fun errors() = fixture.doHighlighting().filter { it.severity == HighlightSeverity.ERROR }
+            assertTrue(errors().isEmpty())
+            val malformed = source.replace("CLOSE\nnop", ".macro 123\n.end_macro extra\nCLOSE\nnop")
+            edit(main, malformed)
+            val boundaryErrors = errors()
+            val nested = malformed.indexOf(".macro 123")
+            val end = malformed.indexOf(".end_macro extra")
+            assertTrue(boundaryErrors.any { it.startOffset in nested until end })
+            assertTrue(boundaryErrors.any { it.startOffset in end until malformed.indexOf("CLOSE\nnop") })
+            assertTrue(boundaryErrors.all { it.startOffset >= nested })
+            edit(main, source.replace("CLOSE\nnop", "CLOSE\n4 : )\nnop"))
+            assertTrue(errors().any { it.startOffset >= source.indexOf("CLOSE\nnop") })
+        }
+    }
+
+    @Test
     fun `segment-dependent errors defer to assembly only when an entry is available`() = timeoutRunBlocking<Unit> {
-        val filter = MipsDataStatementErrorFilter()
+        val filter = MipsAssemblySyntaxErrorFilter()
         withContext(Dispatchers.EDT) {
             val source = ".data\n)\n# comment\n.word 1\n"
             val file = fixture.configureByText("segments.asm", source) as MipsFile
@@ -301,8 +365,8 @@ class MipsAssemblyAnnotatorPlatformTest {
             val analysis = project.service<MarsAnalysisService>()
             assertTrue(!filter.shouldHighlightErrorElement(error))
             DumbModeTestUtils.runInDumbModeSynchronously(project) { assertTrue(filter.shouldHighlightErrorElement(error)) }
-            assertTrue(!analysis.defersSegmentDependentError(file, file.findElementAt(source.indexOf('#'))!!))
-            assertTrue(!analysis.defersSegmentDependentError(file, file.findElementAt(source.indexOf(".word"))!!))
+            assertTrue(!analysis.defersContextDependentError(file, file.findElementAt(source.indexOf('#'))!!))
+            assertTrue(!analysis.defersContextDependentError(file, file.findElementAt(source.indexOf(".word"))!!))
 
             val missing = fixture.configureByText("pending.asm", ".data\n.include \"pending.s\"\n)\n")
             assertTrue(filter.shouldHighlightErrorElement(PsiTreeUtil.findChildOfType(missing, PsiErrorElement::class.java)!!))

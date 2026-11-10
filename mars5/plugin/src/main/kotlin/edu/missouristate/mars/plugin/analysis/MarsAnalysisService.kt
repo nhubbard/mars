@@ -575,6 +575,10 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     private fun expandedOperation(
         prefix: MipsSourceTimeline.Prefix, source: String, allowIncompleteOperand: Boolean = false,
+    ): TokenList? = expandedTokens(prefix, source, allowIncompleteOperand)?.operationTokens()
+
+    private fun expandedTokens(
+        prefix: MipsSourceTimeline.Prefix, source: String, allowIncompleteOperand: Boolean,
     ): TokenList? {
         val errors = ErrorList()
         val tokens = Tokenizer.tokenizeWithEquivalences(
@@ -583,7 +587,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // On a circular expansion the tokenizer restores the original source, so the token spans
         // cannot be used to highlight an operand. Other errors can be unfinished operand tokens.
         if (errors.errorsOccurred() && (!allowIncompleteOperand || tokens.processedLine == source)) return null
-        return tokens.operationTokens()
+        return tokens
     }
 
     // Tokenize the written label too, so operationTokens removes the same label as assembly.
@@ -650,16 +654,24 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return editorPrefix(root, position.textOffset).hasIntegerDataList
     }
 
-    internal fun defersSegmentDependentError(root: MipsFile, position: PsiElement): Boolean {
+    internal fun defersContextDependentError(root: MipsFile, position: PsiElement): Boolean {
         if (DumbService.isDumb(project)) return false
         val timeline = editorTimeline(root)
         if (timeline.hasIncompleteIncludes) return false
         val prefix = timeline.prefix(root, sourceLineStart(position))
-        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true)) ?: return false
+        val tokens = expandedTokens(prefix, sourceLine(position, fromLineStart = true), allowIncompleteOperand = false)
+            ?: return false
+        val inMacro = prefix.openMacro != null
+        // A label in a macro body is recorded without stripping it before directive recognition.
+        if (inMacro) tokens.discardTrailingComment() else tokens.operationTokens()
         if (tokens.isEmpty) return false
-        val head = tokens[0].type
+        val head = tokens[0]
+        if (inMacro) {
+            val directive = Directives.matchDirective(head.value)
+            return directive != Directives.MACRO && directive != Directives.END_MACRO
+        }
         // Only assembly can decide if an expanded macro switched segments before this line.
-        return head != TokenTypes.DIRECTIVE && !TokenTypes.startsDataContinuation(head) && collectEditorAssembly(root) != null
+        return head.type != TokenTypes.DIRECTIVE && !TokenTypes.startsDataContinuation(head.type) && collectEditorAssembly(root) != null
     }
 
     /** An ambiguous physical operation may be a data directive or a continuation after substitution. */
