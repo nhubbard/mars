@@ -1368,6 +1368,21 @@ plugin and leaves delegated Gradle and Maven builds to their own tasks.
 MIPS Run and Debug keep their own assembly step even when their launch
 configuration also requests a JVM build.
 
+## Assemble when opened
+
+Enable **Assemble MIPS sources when opened** in **Settings → Build,
+Execution, Deployment → MARS Assembly**. The option is off by default.
+When a local MIPS editor opens, IntelliJ waits briefly and checks its
+selected assembly or uniquely inferred entry. Opening several files from
+one configured assembly produces one Build result. For an include with
+several possible entries, use **Build → Assemble Containing Entry** to
+select the intended assembly.
+
+Automatic checks run in trusted projects and skip files closed before the
+check starts. Build results stay available in the Build tool window while
+focus stays in the editor. A successful check can warm the assembly image
+for Run or Debug, and the check has its own session.
+
 ## Assembler policy
 
 In **Settings → Build, Execution, Deployment → MARS Assembly**, choose whether to allow pseudo-instructions

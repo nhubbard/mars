@@ -39,6 +39,7 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var exceptionHandler: String? = null,
         @JvmField @XCollection(style = XCollection.Style.v2) var sources: List<String> = emptyList(),
         @JvmField var assembleBeforeJvmCompile: Boolean = false,
+        @JvmField var assembleOnOpen: Boolean = false,
         @JvmField var allowPseudoInstructions: Boolean = true,
         @JvmField var warningsAreErrors: Boolean = false,
     )
@@ -46,6 +47,7 @@ internal class MarsAssemblySettings(private val project: Project) :
     val sourceChanges = SimpleModificationTracker()
     val exceptionHandler get() = projectFilePath(project, getState().exceptionHandler)
     val assembleBeforeJvmCompile get() = getState().assembleBeforeJvmCompile
+    val assembleOnOpen get() = getState().assembleOnOpen
     val executionOptions get() = getState().let {
         MarsExecutionOptions(allowPseudoInstructions = it.allowPseudoInstructions, warningsAreErrors = it.warningsAreErrors)
     }
@@ -70,6 +72,10 @@ internal class MarsAssemblySettings(private val project: Project) :
         val stored = paths.mapNotNull { macros.collapsePath(it) }.distinct()
         if (stored == getState().sources) return
         change { it.copy(sources = stored) }
+    }
+
+    fun changeAssembleOnOpen(value: Boolean) {
+        updateState { it.copy(assembleOnOpen = value) }
     }
 
     fun changeJvmCompile(value: Boolean) {
@@ -131,6 +137,11 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
             checkBox(messages.getMessage("build.settings.compiler"))
                 .bindSelected({ settings.assembleBeforeJvmCompile }, settings::changeJvmCompile)
                 .comment(messages.getMessage("build.settings.compiler.help"))
+        }
+        row {
+            checkBox(messages.getMessage("build.settings.open"))
+                .bindSelected({ settings.assembleOnOpen }, settings::changeAssembleOnOpen)
+                .comment(messages.getMessage("build.settings.open.help"))
         }
         group(messages.getMessage("build.settings.policy")) {
             lateinit var pseudo: JCheckBox

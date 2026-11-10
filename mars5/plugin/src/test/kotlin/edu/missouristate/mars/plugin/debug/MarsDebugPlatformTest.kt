@@ -29,6 +29,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
@@ -36,6 +37,7 @@ import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
@@ -92,7 +94,9 @@ import edu.missouristate.mars.mips.dump.MemoryDumpSnapshot
 import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsOpenAssembly
 import edu.missouristate.mars.plugin.build.MarsMemoryExportDialog
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.MemoryExportCapture
@@ -100,6 +104,7 @@ import edu.missouristate.mars.plugin.build.MemoryExportOptions
 import edu.missouristate.mars.plugin.build.MemoryExportRegion
 import edu.missouristate.mars.plugin.build.interceptMemoryExportDialog
 import edu.missouristate.mars.plugin.build.replaceMemoryExportSaveDialog
+import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
@@ -1823,6 +1828,34 @@ class MarsDebugPlatformTest {
             withContext(Dispatchers.EDT) { afterDisposal() }
             withContext(Dispatchers.EDT) { debug.session.stop() }
             assertEquals(130, debug.exit.await())
+        }
+    }
+
+    @Test
+    fun `assembling another opened file leaves the paused machine intact`() = timeoutRunBlocking<Unit> {
+        val (entry, other) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("paused.asm", "li \$t0, 42\nnop\n").virtualFile
+            val other = fixture.addFileToProject("other.asm", "li \$t0, 99\n") as MipsFile
+            addBreakpoint(entry, 1)
+            entry to other
+        }
+        withDebug(entry) { debug ->
+            debug.assertPausedAt(entry, 1)
+            val analysis = project.service<MarsAnalysisService>()
+            val suspension = requireNotNull(debug.session.suspendContext)
+            readAction { assertNull(analysis.selectedAssembly(other)) }
+            withContext(Dispatchers.EDT) {
+                project.service<MarsAssemblySettings>().changeAssembleOnOpen(true)
+                FileEditorManager.getInstance(project).openFile(other.virtualFile, FileEditorOpenRequest.withFocus(false))
+            }
+            project.service<MarsOpenAssembly>().awaitPending()
+            readAction { assertEquals(other.virtualFile.toNioPath(), analysis.selectedAssembly(other)?.entry) }
+            withContext(Dispatchers.EDT) {
+                assertSame(suspension, debug.session.suspendContext)
+                assertEquals("0x0000002a", evaluate(debug.session, requireNotNull(debug.session.currentStackFrame), "\$t0"))
+                debug.session.resume()
+            }
+            assertEquals(0, debug.exit.await())
         }
     }
 

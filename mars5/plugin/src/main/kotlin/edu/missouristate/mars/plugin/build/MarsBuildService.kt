@@ -85,10 +85,15 @@ internal class MarsBuildService(private val project: Project, private val scope:
         sources: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
     ): MarsAssembledProgram? = buildImage(sources, options, activateBuildView, reuse = true)
 
+    internal suspend fun assembleOpened(sources: MarsSourceSet) {
+        buildImage(sources, projectOptions, activateBuildView = false, reuse = true, activateOnFailure = false)
+    }
+
     private suspend fun buildImage(
         sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean, reuse: Boolean,
+        activateOnFailure: Boolean = true,
     ): MarsAssembledProgram? {
-        val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView) { sources ->
+        val (capture, output) = buildWithProgress(sourceSet, options, activateBuildView, activateOnFailure) { sources ->
             val revision = Revision(sources.snapshot, sources.exceptionHandler, options)
             val cached = if (reuse) synchronized(images) { images.get(revision) } else null
             cached?.copy(reused = true) ?: assembleImage(sources, options)
@@ -120,6 +125,7 @@ internal class MarsBuildService(private val project: Project, private val scope:
 
     private suspend fun buildWithProgress(
         sourceSet: MarsSourceSet, options: MarsExecutionOptions, activateBuildView: Boolean,
+        activateOnFailure: Boolean = true,
         assemble: suspend (CapturedAssemblySources) -> BuildOutput,
     ): Pair<CapturedAssemblySources, BuildOutput> {
         val entry = sourceSet.entry
@@ -127,7 +133,10 @@ internal class MarsBuildService(private val project: Project, private val scope:
         val descriptor = DefaultBuildDescriptor(
             Any(), buildMessages.getMessage("build.title", entry.fileName.toString()),
             entry.toAbsolutePath().parent.toString(), System.currentTimeMillis(),
-        ).apply { isActivateToolWindowWhenAdded = activateBuildView }
+        ).apply {
+            isActivateToolWindowWhenAdded = activateBuildView
+            isActivateToolWindowWhenFailed = activateOnFailure
+        }
         val progressDescriptor = object : BuildProgressDescriptor {
             override fun getTitle() = descriptor.title
             override fun getBuildDescriptor() = descriptor

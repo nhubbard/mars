@@ -71,6 +71,10 @@
     <syntax.elementTypeConverter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsElementTypeConverterFactory"/>
     <notificationGroup id="MARS Memory Export" displayType="BALLOON" bundle="messages.MarsBundle" key="export.title"/>
   </extensions>
+  <projectListeners>
+    <listener class="edu.missouristate.mars.plugin.build.MarsOpenAssemblyListener"
+              topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+  </projectListeners>
   <actions resource-bundle="messages.MarsBundle">
     <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>

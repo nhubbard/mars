@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.build
 
 import com.intellij.build.BuildViewManager
+import com.intellij.build.DefaultBuildDescriptor
 import com.intellij.build.events.BuildEvent
 import com.intellij.build.events.FailureResult
 import com.intellij.build.events.FileMessageEvent
@@ -11,6 +12,7 @@ import com.intellij.build.events.StartBuildEvent
 import com.intellij.build.events.SuccessResult
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -28,6 +30,8 @@ import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorOpenRequest
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserFactory
@@ -144,6 +148,151 @@ class MarsBuildPlatformTest {
             assertFalse(success.hasErrors())
         } finally {
             withContext(Dispatchers.EDT) { Disposer.dispose(disposable) }
+        }
+    }
+
+    @Test
+    fun `opening project entries and includes debounces one assembly and warms the launch image`() = timeoutRunBlocking<Unit> {
+        val settings = project.service<MarsAssemblySettings>()
+        val request = FileEditorOpenRequest.withFocus(false)
+        val (entry, include, library) = withContext(Dispatchers.EDT) {
+            val entry = fixture.addFileToProject("main.asm", ".include \"body.s\"\nla \$a0, library\n").virtualFile
+            val include = fixture.addFileToProject("body.s", "nop\n").virtualFile
+            val library = fixture.addFileToProject("library.s", ".globl library\nlibrary: nop\n").virtualFile
+            TrustedProjects.setProjectTrusted(project, true)
+            settings.changeSources(listOf(entry.path, library.path))
+            val page = MarsAssemblyConfigurable(project)
+            try {
+                val form = page.createComponent()
+                page.reset()
+                val option = UIUtil.findComponentsOfType(form, JCheckBox::class.java)
+                    .single { it.text == "Assemble MIPS sources when opened" }
+                assertFalse(option.isSelected)
+                option.isSelected = true
+                page.apply()
+                val persisted = XmlSerializer.serialize(settings.getState())
+                settings.loadState(XmlSerializer.deserialize(persisted, MarsAssemblySettings.Settings::class.java))
+                assertTrue(settings.assembleOnOpen)
+            } finally {
+                page.disposeUIResources()
+            }
+            Triple(entry, include, library)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        val opened = project.service<MarsOpenAssembly>()
+        try {
+            withContext(Dispatchers.EDT) {
+                val editors = FileEditorManager.getInstance(project)
+                editors.openFile(include, request)
+                editors.openFile(entry, request)
+                editors.openFile(library, request)
+            }
+            opened.awaitPending()
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.tryReceive().getOrThrow())
+            assertEquals("Assemble main.asm", start.message)
+            val descriptor = assertInstanceOf(DefaultBuildDescriptor::class.java, start.buildDescriptor)
+            assertFalse(descriptor.isActivateToolWindowWhenAdded)
+            assertFalse(descriptor.isActivateToolWindowWhenFailed)
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.tryReceive().getOrThrow())
+            assertFalse(assertInstanceOf(SuccessResult::class.java, finish.result).isUpToDate)
+            assertTrue(events.tryReceive().isFailure)
+
+            val build = project.service<MarsBuildService>()
+            val prepared = requireNotNull(build.prepare(requireNotNull(settings.projectSourceSet()), settings.executionOptions, false))
+            assertEquals(setOf(entry.toNioPath(), include.toNioPath(), library.toNioPath()), prepared.sources.snapshot.texts().keys)
+            assertInstanceOf(StartBuildEvent::class.java, events.receive())
+            val launch = assertInstanceOf(FinishBuildEvent::class.java, events.receive())
+            assertTrue(assertInstanceOf(SuccessResult::class.java, launch.result).isUpToDate)
+        } finally {
+            withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+        }
+    }
+
+    @Test
+    fun `opening a file respects scope and trust and reports assembly failures without activating Build`() = timeoutRunBlocking<Unit> {
+        val settings = project.service<MarsAssemblySettings>()
+        val request = FileEditorOpenRequest.withFocus(false)
+        val editors = FileEditorManager.getInstance(project)
+        val opened = project.service<MarsOpenAssembly>()
+        val lifetime = Disposer.newDisposable()
+        val events = recordBuildEvents(lifetime)
+        suspend fun expectQuiet(reason: String) {
+            opened.awaitPending()
+            assertNull(events.tryReceive().getOrNull(), reason)
+        }
+        try {
+            val (disabled, closed, rejected) = withContext(Dispatchers.EDT) {
+                TrustedProjects.setProjectTrusted(project, true)
+                val disabled = fixture.addFileToProject("disabled.asm", "nop\n").virtualFile
+                val closed = fixture.addFileToProject("closed.asm", "nop\n").virtualFile
+                val rejected = fixture.addFileToProject("untrusted.asm", "nop\n").virtualFile
+                editors.openFile(disabled, request)
+                Triple(disabled, closed, rejected)
+            }
+            expectQuiet("disabled by default")
+            withContext(Dispatchers.EDT) {
+                settings.changeAssembleOnOpen(true)
+                val plain = fixture.addFileToProject("other.txt", "nop\n").virtualFile
+                editors.openFile(plain, request)
+                editors.openFile(LightVirtualFile("snapshot.asm", MipsFileType, "nop\n"), request)
+                editors.openFile(closed, request)
+                editors.closeFile(closed)
+                val retagged = fixture.addFileToProject("retagged.asm", "nop\n").virtualFile
+                editors.openFile(retagged, request)
+                WriteAction.run<RuntimeException> { retagged.rename(this, "retagged.txt") }
+                editors.openFile(retagged, request)
+                assertTrue(editors.isFileOpen(retagged))
+            }
+            expectQuiet("non-MIPS, nonlocal, closed and renamed files")
+            withContext(Dispatchers.EDT) {
+                editors.closeFile(disabled)
+                editors.openFile(disabled, request)
+                settings.changeAssembleOnOpen(false)
+            }
+            expectQuiet("disabled after queuing")
+            val trustProperty = TrustedProjects.TRUST_HEADLESS_DISABLED_PROPERTY
+            val previous = System.setProperty(trustProperty, "false")
+            try {
+                withContext(Dispatchers.EDT) {
+                    settings.changeAssembleOnOpen(true)
+                    TrustedProjects.setProjectTrusted(project, false)
+                    editors.openFile(rejected, request)
+                }
+                expectQuiet("untrusted project")
+            } finally {
+                if (previous == null) System.clearProperty(trustProperty) else System.setProperty(trustProperty, previous)
+            }
+
+            val (ambiguous, broken) = withContext(Dispatchers.EDT) {
+                TrustedProjects.setProjectTrusted(project, true)
+                fixture.addFileToProject("one.asm", ".include \"shared.s\"\n")
+                fixture.addFileToProject("two.asm", ".include \"shared.s\"\n")
+                val ambiguous = fixture.addFileToProject("shared.s", "nop\n").virtualFile
+                val broken = fixture.addFileToProject("broken.asm", "j missing\n").virtualFile
+                ambiguous to broken
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) { editors.openFile(ambiguous, request) }
+            expectQuiet("ambiguous source")
+
+            withContext(Dispatchers.EDT) { editors.openFile(broken, request) }
+            opened.awaitPending()
+            val start = assertInstanceOf(StartBuildEvent::class.java, events.tryReceive().getOrThrow())
+            val descriptor = assertInstanceOf(DefaultBuildDescriptor::class.java, start.buildDescriptor)
+            assertFalse(descriptor.isActivateToolWindowWhenFailed)
+            val diagnostic = assertInstanceOf(FileMessageEvent::class.java, events.tryReceive().getOrThrow())
+            assertEquals(broken.toNioPath(), diagnostic.filePosition.path)
+            assertTrue(diagnostic.message.contains("missing"))
+            val finish = assertInstanceOf(FinishBuildEvent::class.java, events.tryReceive().getOrThrow())
+            assertInstanceOf(FailureResult::class.java, finish.result)
+            assertTrue(events.tryReceive().isFailure)
+        } finally {
+            withContext(Dispatchers.EDT) {
+                TrustedProjects.setProjectTrusted(project, true)
+                Disposer.dispose(lifetime)
+            }
         }
     }
 
