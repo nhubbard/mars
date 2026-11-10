@@ -80,6 +80,10 @@ import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.ui.SimpleColoredComponent
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.colors.EditorColorsScheme
+import com.intellij.openapi.editor.colors.impl.EditorColorsManagerImpl
+import com.intellij.openapi.editor.markup.TextAttributes
 import com.intellij.ui.SimpleTextAttributes.STYLE_BOLD
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
@@ -131,6 +135,8 @@ import edu.missouristate.mars.plugin.run.RunMemoryDumpState
 import edu.missouristate.mars.plugin.run.runMessages
 import edu.missouristate.mars.plugin.tools.FloatingPointView
 import java.awt.event.ActionEvent
+import java.awt.Color
+import java.awt.Font
 import java.awt.event.MouseEvent
 import java.io.File
 import java.nio.file.Files
@@ -2294,6 +2300,25 @@ class MarsDebugPlatformTest {
                 assertWrite(null)
                 resumeTo(6)
                 assertWrite("Last write at 0x10010000 (4 bytes)", listOf("34", "12", "00", "00"), listOf("0x00001234"))
+                withContext(Dispatchers.EDT) {
+                    val foreground = Color(0x164b67)
+                    val background = Color(0xd1e5ff)
+                    withHighlightScheme({
+                        it.setAttributes(MarsMachineHighlight.WRITE.colorKey, TextAttributes().apply {
+                            foregroundColor = foreground
+                            backgroundColor = background
+                            fontType = Font.ITALIC
+                        })
+                    }) {
+                        val cell = assertInstanceOf(SimpleColoredComponent::class.java,
+                            table.getCellRenderer(0, 1).getTableCellRendererComponent(table, table.getValueAt(0, 1), false, false, 0, 1))
+                        val fragments = cell.iterator()
+                        assertEquals("34", fragments.next())
+                        assertEquals(foreground, fragments.textAttributes.fgColor)
+                        assertEquals(background, fragments.textAttributes.bgColor)
+                        assertEquals(Font.ITALIC, fragments.textAttributes.style)
+                    }
+                }
                 resumeTo(8)
                 assertWrite("Last write at 0x10010104 (2 bytes)")
                 withContext(Dispatchers.EDT) {
@@ -3320,6 +3345,22 @@ class MarsDebugPlatformTest {
                 debug.assertPausedAt(source, 1)
                 val delay = mapOf(branch to "Last executed", slot to "Delay slot next")
                 assertMarkers(slot, true, delay)
+                withContext(Dispatchers.EDT) {
+                    val background = Color(0xd1e5ff)
+                    val row = table.selectedRow
+                    val column = 1
+                    val renderer = table.getCellRenderer(row, column)
+                    val value = table.getValueAt(row, column)
+                    val normal = renderer.getTableCellRendererComponent(table, value, false, false, row, column).background
+                    withHighlightScheme({
+                        it.setAttributes(MarsMachineHighlight.DELAY.colorKey, TextAttributes().apply { backgroundColor = background })
+                    }) {
+                        assertEquals(background, renderer.getTableCellRendererComponent(table, value, false, false, row, column).background)
+                        assertFalse(background == renderer.getTableCellRendererComponent(table, value, true, false, row, column).background)
+                        val other = (0 until table.rowCount).first { it != row }
+                        assertEquals(normal, renderer.getTableCellRendererComponent(table, table.getValueAt(other, column), false, false, other, column).background)
+                    }
+                }
                 withContext(Dispatchers.EDT) { debug.session.stepInto() }
                 debug.assertPausedAt(source, 4)
                 assertMarkers(target, true, emptyMap())
@@ -3338,6 +3379,22 @@ class MarsDebugPlatformTest {
             } finally {
                 withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
             }
+        }
+    }
+
+    private fun withHighlightScheme(configure: (EditorColorsScheme) -> Unit, verify: () -> Unit) {
+        val manager = EditorColorsManager.getInstance() as EditorColorsManagerImpl
+        val previous = manager.globalScheme
+        val scheme = previous.clone() as EditorColorsScheme
+        scheme.name = "MARS Machine Highlights Test"
+        configure(scheme)
+        manager.addColorScheme(scheme)
+        try {
+            manager.setGlobalScheme(scheme)
+            verify()
+        } finally {
+            manager.setGlobalScheme(previous)
+            manager.removeScheme(scheme)
         }
     }
 

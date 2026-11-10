@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.project.Project
 import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.SimpleTextAttributes.REGULAR_ATTRIBUTES
-import com.intellij.ui.SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.builder.Align
@@ -148,6 +147,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     }
 
     init {
+        repaintMachineHighlights(this, table)
         display.addListener(this) {
             if (addressField.text == renderedAddress) address?.let(::renderAddress)
             renderWriteStatus()
@@ -300,11 +300,12 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             val start = model.getItem(table.convertRowIndexToModel(row)).address.toUInt().toLong()
             val writeStart = write.address().toUInt().toLong()
             val writeEnd = writeStart + write.length()
+            val highlight = MarsMachineHighlight.WRITE.tableStyle()
             for ((index, token) in text.split(separator).withIndex()) {
                 if (index > 0) append(separator)
                 val address = start + index * bytesPerValue
                 val written = address < writeEnd && address + bytesPerValue > writeStart
-                append(token, if (written) REGULAR_BOLD_ATTRIBUTES else REGULAR_ATTRIBUTES)
+                append(token, if (written) highlight else REGULAR_ATTRIBUTES)
             }
         }
     }

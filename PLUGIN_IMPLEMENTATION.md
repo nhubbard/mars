@@ -2203,6 +2203,24 @@ The packaged IntelliJ 2026.3 smoke test imported the order at a breakpoint,
 verified the open table's order, Source width, and selected instruction, and
 confirmed that IntelliJ saved the preference.
 
+### Import Venus machine highlight styles
+
+**File → Import Venus Machine Highlight Styles** previews saved foreground
+colors, backgrounds, and font styles for the current instruction, next delay
+slot, and latest memory write. Confirming creates a **MARS Venus Machine**
+copy of the active scheme. Select it in **Settings → Editor → Color Scheme**.
+The three styles are editable under **Color Scheme → MARS MIPS**.
+
+Disassembly uses the current-instruction or delay-slot style on the
+corresponding row's text cells. Memory uses the write style on the affected
+bytes and words. Selected cells use IntelliJ's selection colors. The machine
+import has its own local completion marker and can build on an active scheme
+that already contains imported syntax styles.
+
+The packaged IntelliJ 2026.3 smoke test selected the imported scheme at a
+breakpoint, confirmed the current instruction and memory-write styles in
+the open views, and verified the saved color-scheme file.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose

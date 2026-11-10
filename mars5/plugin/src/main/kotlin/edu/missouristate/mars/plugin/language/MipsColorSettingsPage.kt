@@ -4,6 +4,7 @@ import com.intellij.DynamicBundle
 import com.intellij.openapi.options.colors.AttributesDescriptor
 import com.intellij.openapi.options.colors.ColorDescriptor
 import com.intellij.openapi.options.colors.ColorSettingsPage
+import edu.missouristate.mars.plugin.debug.MarsMachineHighlight
 
 internal class MipsColorSettingsPage : ColorSettingsPage {
     override fun getDisplayName() = bundle.getMessage("colors.name")
@@ -22,6 +23,10 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
         .data
         .asciiz "MARS"
         .byte 'A', 'bad'
+        # Debugger previews
+        <current.instruction>Current instruction</current.instruction>
+        <delay.slot>Next delay slot</delay.slot>
+        <memory.write>Changed memory</memory.write>
         .eqv <equivalence>COUNT</equivalence> 3
         .eqv <equivalence>AGAIN</equivalence> <replacement>loop</replacement>
         .macro <macro>decrement</macro> (%counter)
@@ -45,7 +50,7 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
             "replacement" to equivalenceReplacementColor,
             "parameter" to macroParameterColor,
             "punctuation" to punctuationColor,
-        )
+        ) + MarsMachineHighlight.entries.associate { it.tag to it.colorKey }
         val syntaxColors = mapOf(
             "directive" to directiveColor,
             "string" to stringColor,

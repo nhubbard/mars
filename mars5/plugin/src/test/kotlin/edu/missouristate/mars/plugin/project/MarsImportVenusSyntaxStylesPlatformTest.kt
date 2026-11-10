@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.ActionUiKind
 import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
@@ -25,6 +26,7 @@ import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.debug.MarsMachineHighlight
 import edu.missouristate.mars.plugin.language.characterColor
 import edu.missouristate.mars.plugin.language.commentColor
 import edu.missouristate.mars.plugin.language.directiveColor
@@ -190,6 +192,58 @@ class MarsImportVenusSyntaxStylesPlatformTest {
         colors.addColorScheme(this)
     }
 
+    @Test
+    fun `machine styles migrate saved colors and font styles into a separate scheme`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withSchemes {
+                val marker = "mars.venus.machine.styles.imported"
+                val previous = properties.getValue(marker)
+                try {
+                    properties.unsetValue(marker)
+                    assertInstanceOf(MarsImportVenusMachineStylesAction::class.java,
+                        ActionManager.getInstance().getAction("Mars.ImportVenusMachineStyles"))
+                    val base = colors.globalScheme
+                    val root = MemoryPreferences()
+                    val venus = root.node("mars")
+                    val action = MarsImportVenusMachineStylesAction { root }
+                    venus.put("DataSegmentHighlightFontStyle", "invalid")
+                    withDialog({ info ->
+                        assertTrue(info.contains("No saved Venus highlight styles differ"))
+                        Messages.OK
+                    }) { action.actionPerformed(event(action)) }
+                    venus.put("TextSegmentHighlightForeground", "0x00012345")
+                    venus.put(" TextSegmentHighlightFontStyle", "Italic")
+                    venus.put("TextSegmentDelaySlotHighlightBackground", "0x00345566")
+                    venus.put("TextSegmentDelayslotHighightFontStyle", "Plain")
+                    venus.put("DataSegmentHighlightForeground", "0x00787980")
+                    venus.put("DataSegmentHighlightBackground", "0x00010203")
+                    venus.put("DataSegmentHighlightFontStyle", "Bold")
+                    withDialog({ preview ->
+                        assertTrue(preview.contains("Current instruction"))
+                        assertTrue(preview.contains("#012345, italic"))
+                        assertTrue(preview.contains("background #345566"))
+                        assertTrue(preview.contains("#787980, bold, background #010203"))
+                        Messages.CANCEL
+                    }) { action.actionPerformed(event(action)) }
+                    assertNull(colors.getScheme("MARS Venus Machine"))
+                    venus.put("DataSegmentHighlightFontStyle", "Bold + Italic")
+                    withDialog(TestDialog.OK) { action.actionPerformed(event(action)) }
+                    val scheme = checkNotNull(colors.getScheme("MARS Venus Machine"))
+                    assertSame(base, colors.globalScheme)
+                    assertEquals(Font.ITALIC, MarsMachineHighlight.CURRENT.attributes(scheme).fontType)
+                    assertEquals(Color(0x012345), MarsMachineHighlight.CURRENT.attributes(scheme).foregroundColor)
+                    assertEquals(Color(0x345566), MarsMachineHighlight.DELAY.attributes(scheme).backgroundColor)
+                    assertEquals(Font.PLAIN, MarsMachineHighlight.DELAY.attributes(scheme).fontType)
+                    assertEquals(Font.BOLD or Font.ITALIC, MarsMachineHighlight.WRITE.attributes(scheme).fontType)
+                    assertEquals(Color(0x010203), MarsMachineHighlight.WRITE.attributes(scheme).backgroundColor)
+                    assertTrue(properties.isTrueValue(marker))
+                } finally {
+                    properties.setValue(marker, previous)
+                }
+            }
+        }
+    }
+
     private fun withSchemes(operation: () -> Unit) {
         val base = colors.globalScheme
         val before = colors.allSchemes.toSet()
@@ -205,7 +259,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     }
 
     private fun event(
-        action: MarsImportVenusSyntaxStylesAction,
+        action: AnAction,
         data: DataContext = SimpleDataContext.getSimpleContext(CommonDataKeys.PROJECT, project),
     ) = AnActionEvent.createEvent(action, data, null, ActionPlaces.MAIN_MENU, ActionUiKind.NONE, null)
 

@@ -1,5 +1,7 @@
 package edu.missouristate.mars.plugin.language
 
+import edu.missouristate.mars.plugin.debug.MarsMachineHighlight
+
 import com.intellij.codeInsight.folding.CodeFoldingManager
 import com.intellij.codeInsight.highlighting.BraceMatchingUtil
 import com.intellij.lang.LanguageBraceMatching
@@ -484,13 +486,17 @@ class MipsEditorPlatformTest {
                 "Equivalence replacement symbol" to equivalenceReplacementColor, "Macro parameter" to macroParameterColor,
                 "Punctuation and operators" to punctuationColor, "Assembler directive" to directiveColor,
                 "String literal" to stringColor, "Character literal" to characterColor, "Invalid token" to invalidColor,
-                "Comment" to commentColor, "Register" to registerColor),
+                "Comment" to commentColor, "Register" to registerColor,
+                "Current instruction" to MarsMachineHighlight.CURRENT.colorKey,
+                "Next delay slot" to MarsMachineHighlight.DELAY.colorKey,
+                "Memory write" to MarsMachineHighlight.WRITE.colorKey),
             page.attributeDescriptors.associate { it.displayName to it.key },
         )
         assertEquals(
             mapOf("instruction" to instructionMnemonicColor, "label" to labelColor, "macro" to macroColor,
                 "equivalence" to equivalenceColor, "replacement" to equivalenceReplacementColor,
-                "parameter" to macroParameterColor, "punctuation" to punctuationColor),
+                "parameter" to macroParameterColor, "punctuation" to punctuationColor) +
+                MarsMachineHighlight.entries.associate { it.tag to it.colorKey },
             page.additionalHighlightingTagToDescriptorMap,
         )
         assertTrue(page.demoText.contains("<instruction>li</instruction>"))

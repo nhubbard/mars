@@ -8,6 +8,7 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.components.service
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.BaseTableView
@@ -167,8 +168,10 @@ internal class MarsDisassemblyView(
             runMessages.getMessage("debug.disassembly.previous.delay"),
         )
         val metrics = getFontMetrics(font)
+        val renderer = executionRenderer()
         for ((index, sample) in samples.withIndex()) {
             val column = columnModel.getColumn(index)
+            if (index != MarsDisassemblyColumn.BREAKPOINT.ordinal) column.cellRenderer = renderer
             val width = maxOf(metrics.stringWidth(sample), metrics.stringWidth(column.headerValue.toString()))
             column.preferredWidth = width + JBUI.scale(16)
         }
@@ -194,6 +197,7 @@ internal class MarsDisassemblyView(
     }
 
     init {
+        repaintMachineHighlights(this, table)
         restoreTableLayout()
         display.addListener(this) {
             updateStatus()
@@ -268,6 +272,21 @@ internal class MarsDisassemblyView(
         for ((index, column) in target.withIndex()) {
             val previous = table.convertColumnIndexToView(column.ordinal)
             if (index != previous) columns.moveColumn(previous, index)
+        }
+    }
+
+    private fun executionRenderer() = object : ColoredTableCellRenderer() {
+        override fun customizeCellRenderer(table: JTable, value: Any?, selected: Boolean, hasFocus: Boolean, row: Int, column: Int) {
+            val text = value as String
+            val instruction = model.getItem(table.convertRowIndexToModel(row))
+            if (!instruction.current) {
+                append(text)
+                return
+            }
+            val highlight = if (instruction.nextIsDelaySlot) MarsMachineHighlight.DELAY else MarsMachineHighlight.CURRENT
+            val style = highlight.tableStyle()
+            if (!selected) style.bgColor?.let { background = it }
+            append(text, style)
         }
     }
 
