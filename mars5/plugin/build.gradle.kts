@@ -1,8 +1,10 @@
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 import org.gradle.language.jvm.tasks.ProcessResources
 import javax.xml.parsers.DocumentBuilderFactory
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.BuildPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.GenerateParserTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES
@@ -80,6 +82,53 @@ tasks.test { useJUnitPlatform { includeEngines("junit-jupiter") } }
 tasks.processResources {
   from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
 }
+
+val thirdPartyNotices = layout.projectDirectory.file("licenses/THIRD-PARTY-NOTICES.txt")
+val distributionNotices = listOf(
+  rootProject.layout.projectDirectory.file("shared/MARSlicense.txt"),
+  layout.projectDirectory.file("licenses/Apache-2.0.txt"),
+  thirdPartyNotices,
+)
+val pluginArchive = tasks.named<BuildPluginTask>("buildPlugin") {
+  from(distributionNotices) { into("licenses") }
+}
+
+val verifyPluginNotices = tasks.register("verifyPluginNotices") {
+  group = "verification"
+  description = "Check the license files and third-party JAR inventory in the installable plugin."
+  val archiveFile = pluginArchive.flatMap { it.archiveFile }
+  val archiveRoot = pluginArchive.flatMap { it.archiveBaseName }
+  val projectJars = setOf("core-${project.version}.jar", "${project.name}-${project.version}.jar")
+  inputs.file(archiveFile)
+  inputs.files(distributionNotices)
+  inputs.property("archiveRoot", archiveRoot)
+  inputs.property("projectJars", projectJars)
+  doLast {
+    val root = archiveRoot.get()
+    ZipFile(archiveFile.get().asFile).use { zip ->
+      for (notice in distributionNotices) {
+        val path = "$root/licenses/${notice.asFile.name}"
+        val entry = checkNotNull(zip.getEntry(path)) { "Plugin archive is missing $path" }
+        check(zip.getInputStream(entry).use { it.readBytes() }.contentEquals(notice.asFile.readBytes())) {
+          "Plugin archive contains a different copy of $path"
+        }
+      }
+      val libraryPrefix = "$root/lib/"
+      val bundledJars = zip.entries().asSequence()
+        .filter { it.name.startsWith(libraryPrefix) && it.name.endsWith(".jar") }
+        .map { it.name.substringAfterLast('/') }
+        .toSet() - projectJars
+      val documentedJars = thirdPartyNotices.asFile.useLines { lines ->
+        lines.filter { it.startsWith("JAR ") }.map { it.removePrefix("JAR ") }.toSet()
+      }
+      check(bundledJars == documentedJars) {
+        "Update third-party notices. Undocumented: ${bundledJars - documentedJars}. Absent: ${documentedJars - bundledJars}."
+      }
+    }
+  }
+}
+tasks.check { dependsOn(verifyPluginNotices) }
+tasks.named("verifyPlugin") { dependsOn(verifyPluginNotices) }
 
 jacoco { toolVersion = "0.8.16" }
 

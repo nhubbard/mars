@@ -1475,7 +1475,7 @@ No resource is discarded without checking its consumers and preserving the relev
 | [core/Settings.properties](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/Settings.properties) | S07: retain and map typed defaults |
 | [core/edu/missouristate/mars/instructions/basic-instructions.list](/Users/nhubbard/IdeaProjects/mars-original/mars5/core/src/main/resources/edu/missouristate/mars/instructions/basic-instructions.list) | C04: retain canonical metadata |
 | [shared/datapath/ALUcontrolDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/ALUcontrolDatapath.xml) | T12: preserve datapath content in Kotlin tool |
-| [desktop/MARSlicense.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/MARSlicense.txt) | H01: preserve/update bundled documentation and attribution |
+| [shared/MARSlicense.txt](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/MARSlicense.txt) | H01: preserve the original desktop license in the core and plugin distributions |
 | [shared/datapath/MipsXRayOpcode.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/MipsXRayOpcode.xml) | T12: preserve datapath content in Kotlin tool |
 | [shared/datapath/controlDatapath.xml](/Users/nhubbard/IdeaProjects/mars-original/mars5/shared/datapath/controlDatapath.xml) | T12: preserve datapath content in Kotlin tool |
 | [desktop/help/Acknowledgements.html](/Users/nhubbard/IdeaProjects/mars-original/mars5/desktop/src/main/resources/help/Acknowledgements.html) | H01: preserve/update bundled documentation and attribution |

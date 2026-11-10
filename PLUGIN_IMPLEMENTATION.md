@@ -2179,6 +2179,13 @@ The Gradle project configuration check advises removing the upper build
 bound. The plugin intentionally uses `263.*` because IntelliJ 2026.3 is
 the approved compatibility target.
 
+The installable ZIP contains the original MARS copyright and license, the
+Apache 2.0 text, and a third-party notice index in its `licenses` directory.
+The core JAR carries the same MARS license for the standalone CLI and desktop
+distributions. `verifyPluginNotices` compares the notice files with the ZIP
+contents and checks that the notice index covers every bundled third-party
+JAR. Both the regular checks and Plugin Verifier run this check.
+
 ### Reviewed API use in the 263 target
 
 | API | Scope and evidence |

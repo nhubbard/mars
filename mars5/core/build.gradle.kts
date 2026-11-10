@@ -23,6 +23,10 @@ tasks.test {
   useJUnitPlatform()
 }
 
+tasks.processResources {
+  from(rootProject.layout.projectDirectory.file("shared/MARSlicense.txt"))
+}
+
 tasks.withType<JavaCompile>().configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:rawtypes", "-Xlint:unchecked", "-Werror"))
 }
