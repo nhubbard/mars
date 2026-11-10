@@ -59,7 +59,6 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsMemoryLayout
-import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
@@ -415,7 +414,7 @@ internal class MarsRunState(
 
     override fun startProcess() = createProcess { machine, _ -> runSlice(machine.simulator()) }
 
-    fun createProcess(execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent) = with(parameters) {
+    fun createProcess(execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent) = with(parameters) {
         environment.project.service<MarsRunService>().createProcess(entry, memoryDumps = memoryDumps, captureBitmap = captureBitmap,
             captureReferences = captureReferences, connectDigitalLab = connectDigitalLab, connectKeyboardDisplay = connectKeyboardDisplay,
             connectMarsBot = connectMarsBot, connectScavengerHunt = connectScavengerHunt, launch = launch,

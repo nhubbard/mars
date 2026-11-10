@@ -48,6 +48,7 @@ import edu.missouristate.mars.plugin.debug.DebuggerCallStack.CallerSite
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsSyntaxHighlighter
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.MarsRunState
 import edu.missouristate.mars.plugin.run.runMessages
@@ -92,9 +93,9 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     private var sourceMap: InstructionSourceMap? = null
     @Volatile private var addresses = emptyMap<Int, List<XBreakpoint<*>>>()
     private var suspensionNumber = 0L
-    @Volatile private lateinit var sources: MarsDebugSources
-    private val handler = state.createProcess { machine, capture ->
-        sources = MarsDebugSources(capture)
+    @Volatile private lateinit var sources: MarsExecutionSources
+    private val handler = state.createProcess { machine, executionSources ->
+        sources = executionSources
         debug(this, machine)
     }
 

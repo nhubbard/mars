@@ -1,5 +1,6 @@
 package edu.missouristate.mars;
 
+import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.core.InstructionContext;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.Instruction;
@@ -41,6 +42,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 public class ProcessingException extends Exception {
   private final ErrorList errs;
+  private final Origin instructionOrigin;
 
   /**
    * Constructor for ProcessingException.
@@ -50,6 +52,7 @@ public class ProcessingException extends Exception {
    */
   public ProcessingException(ErrorList e) {
     errs = e;
+    instructionOrigin = null;
   }
 
   /**
@@ -60,7 +63,7 @@ public class ProcessingException extends Exception {
    * @param aee AddressErrorException object containing specialized error message, cause, address
    */
   public ProcessingException(ErrorList e, AddressErrorException aee) {
-    errs = e;
+    this(e);
   }
 
   /**
@@ -70,15 +73,7 @@ public class ProcessingException extends Exception {
    * @param m a String containing specialized error message
    */
   public ProcessingException(ProgramStatement ps, String m) {
-    errs = new ErrorList();
-    errs.add(
-        new ErrorMessage(
-            ps, "Runtime exception at " + Binary.intToHexString(ps.getAddress()) + ": " + m));
-    // Stopped using ps.getAddress() because of pseudo-instructions.  All instructions in
-    // the macro expansion point to the same ProgramStatement, and thus all will return the
-    // same value for getAddress(). But only the first such expanded instruction will
-    // be stored at that address.  So now I use the program counter (which has already
-    // been incremented).
+    this(new ErrorList(), ps, ps.getAddress(), m);
   }
 
   /**
@@ -109,20 +104,29 @@ public class ProcessingException extends Exception {
    * syscall 10 for exit).
    */
   public ProcessingException() {
-    errs = null;
+    this((ErrorList) null);
   }
 
   /** Runtime error whose program counter comes from the supplied execution context. */
   public ProcessingException(InstructionContext context, ProgramStatement ps, String message) {
-    errs = context.newErrorList();
-    errs.add(
-        new ErrorMessage(
-            ps,
-            "Runtime exception at "
-                + Binary.intToHexString(
-                    context.registerFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH)
-                + ": "
-                + message));
+    this(
+        context.newErrorList(),
+        ps,
+        context.registerFile.getProgramCounter() - Instruction.INSTRUCTION_LENGTH,
+        message);
+  }
+
+  private ProcessingException(
+      ErrorList errors, ProgramStatement statement, int address, String message) {
+    super("Runtime exception at " + Binary.intToHexString(address) + ": " + message);
+    errs = errors;
+    instructionOrigin = statement.getInstructionOrigin();
+    errs.add(new ErrorMessage(statement, getMessage()));
+  }
+
+  /** Physical instruction and macro callers, or null for a failure without source provenance. */
+  public Origin instructionOrigin() {
+    return instructionOrigin;
   }
 
   /** Runtime error that updates only this execution context's exception registers. */

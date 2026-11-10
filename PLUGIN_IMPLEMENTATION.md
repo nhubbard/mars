@@ -972,6 +972,16 @@ instruction without an origin. The map describes the assembled image. The
 native debugger uses live instruction metadata when presenting a current
 execution position.
 
+## Runtime error navigation
+
+Run and Debug report the simulator's terminal error once in the console.
+Errors from assembled instructions link to the physical instruction and each
+macro invocation that led to it, including callers in different files. The
+links open live source when it matches the loaded assembly. If the source has
+changed or disappeared, they open the corresponding line in a read-only copy
+of the assembled text. An instruction fetch fault without assembly provenance
+shows its machine address and reason.
+
 ## Native line debugging
 
 The Debug executor starts a native XDebugger session for the MIPS Run

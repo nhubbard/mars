@@ -111,6 +111,7 @@ import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.run.MarsRunType
 import edu.missouristate.mars.plugin.run.MarsBeforeLaunchTask
+import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.run.MarsRunSpeedAction
 import edu.missouristate.mars.plugin.run.ProjectOptionOverride
@@ -2024,7 +2025,7 @@ class MarsDebugPlatformTest {
                     AssemblySourceSnapshot(listOf(path), mapOf(path to "nop\n")), null,
                     mapOf(path to file.modificationStamp), mapOf(path to path),
                 )
-                val sources = MarsDebugSources(capture)
+                val sources = MarsExecutionSources(capture)
                 val location = Location(path, 1)
                 assertEquals(file, sources.position(location).file)
                 assertEquals(location, sources.location(file, 0))
@@ -2036,7 +2037,7 @@ class MarsDebugPlatformTest {
                 WriteAction.run<RuntimeException> { file.delete(this) }
                 assertSame(snapshot, sources.position(location).file)
                 assertEquals(location, sources.location(snapshot, 0))
-                assertNull(MarsDebugSources(capture).location(snapshot, 0))
+                assertNull(MarsExecutionSources(capture).location(snapshot, 0))
             }
         }
 

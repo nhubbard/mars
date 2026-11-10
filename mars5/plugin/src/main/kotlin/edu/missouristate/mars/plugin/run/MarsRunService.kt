@@ -6,6 +6,7 @@ import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -20,6 +21,7 @@ import com.intellij.util.EventDispatcher
 import com.intellij.util.io.IOUtil
 import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.api.ErrorEvent
+import edu.missouristate.mars.api.InstructionSourceMap.Origin
 import edu.missouristate.mars.api.SessionSyscallEnvironment
 import edu.missouristate.mars.api.SessionSyscallEnvironment.TextInput
 import edu.missouristate.mars.api.SimulatorListener
@@ -28,7 +30,6 @@ import edu.missouristate.mars.api.StopEvent
 import edu.missouristate.mars.core.MarsContext
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
-import edu.missouristate.mars.plugin.analysis.CapturedAssemblySources
 import edu.missouristate.mars.plugin.build.MarsAssembledProgram
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
@@ -111,7 +112,7 @@ internal class MarsRunService(private val project: Project, private val scope: C
         instructionLimit: Int = 0,
         runSpeed: Float = 0f,
         startAtMain: Boolean = false,
-        execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
+        execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent = { machine, _ -> runSlice(machine.simulator()) },
     ): MarsProcessHandler {
         require(!connectMarsBot || !connectScavengerHunt) { runMessages.getMessage("run.connect.deviceConflict") }
         return MarsProcessHandler(
@@ -137,7 +138,7 @@ internal class MarsProcessHandler(
     connectKeyboardDisplay: Boolean,
     connectMarsBot: Boolean,
     private val connectScavengerHunt: Boolean,
-    private val execute: suspend MarsProcessHandler.(MarsContext, CapturedAssemblySources) -> StopEvent,
+    private val execute: suspend MarsProcessHandler.(MarsContext, MarsExecutionSources) -> StopEvent,
 ) : ProcessHandler(), MarsToolExecution {
     private val entry = launch.sources.entry
     private val toolInstructions = EventDispatcher.create(MarsToolInstructionListener::class.java)
@@ -271,6 +272,7 @@ internal class MarsProcessHandler(
                 return 1
             }
             capturedProgram = program
+            val sources = MarsExecutionSources(program.sources)
             val stdout = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDOUT) }
             val stderr = ConsoleOutput { notifyTextAvailable(it, ProcessOutputTypes.STDERR) }
             PrintStream(stdout, true, Charsets.UTF_8).use { output ->
@@ -300,9 +302,7 @@ internal class MarsProcessHandler(
                             override fun onStop(event: StopEvent) = Unit
                             override fun onError(event: ErrorEvent) {
                                 if (execution.isActive) {
-                                    val cause = event.cause()
-                                    val message = if (cause is ProcessingException) cause.errors().generateErrorReport().trimEnd() else event.message()
-                                    notifyTextAvailable(runMessages.getMessage("run.runtime.error", message) + "\n", ProcessOutputTypes.STDERR)
+                                    reportRuntimeError(event, sources)
                                 }
                             }
                         })
@@ -314,7 +314,7 @@ internal class MarsProcessHandler(
                                     dataCache.observe(session.memory).use {
                                         digitalLab.observe(session).use {
                                             keyboardDisplay.observe(session).use {
-                                                executeWithWorldDevices(session, program.sources)
+                                                executeWithWorldDevices(session, sources)
                                             }
                                         }
                                     }
@@ -339,7 +339,21 @@ internal class MarsProcessHandler(
             }
         }
     }
-    private suspend fun executeWithWorldDevices(session: MarsContext, sources: CapturedAssemblySources): StopEvent {
+
+    private fun reportRuntimeError(event: ErrorEvent, sources: MarsExecutionSources) {
+        notifyTextAvailable(runMessages.getMessage("run.runtime.error", event.message()) + "\n", ProcessOutputTypes.STDERR)
+        val origin = (event.cause() as? ProcessingException)?.instructionOrigin() ?: return
+        val view = console ?: return
+        for ((index, frame) in generateSequence(origin, Origin::caller).withIndex()) {
+            val location = frame.location()
+            val label = if (index == 0) "run.runtime.source" else "run.runtime.caller"
+            view.print(runMessages.getMessage(label) + " ", ConsoleViewContentType.SYSTEM_OUTPUT)
+            view.printHyperlink("${location.file()}:${location.line()}", sources.hyperlink(project, location))
+            view.print("\n", ConsoleViewContentType.SYSTEM_OUTPUT)
+        }
+    }
+
+    private suspend fun executeWithWorldDevices(session: MarsContext, sources: MarsExecutionSources): StopEvent {
         val (bot, hunt) = synchronized(this) {
             val hunt = if (ScavengerHuntDevice.supports(session.memory)) ScavengerHuntDevice(session, connectScavengerHunt) else null
             scavengerHunt = hunt

@@ -16,7 +16,9 @@ import com.intellij.execution.Executor
 import com.intellij.execution.PsiLocation
 import com.intellij.execution.RunManager
 import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.filters.FileHyperlinkInfo
 import com.intellij.execution.impl.ConsoleViewImpl
+import com.intellij.execution.impl.EditorHyperlinkSupport
 import com.intellij.execution.impl.ExecutionManagerImpl
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.execution.actions.RunConfigurationProducer
@@ -45,6 +47,7 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
@@ -110,6 +113,96 @@ class MarsRunPlatformTest {
     private val type get() = ConfigurationTypeUtil.findConfigurationType(MarsRunType::class.java)
     private val executor get() = DefaultRunExecutor.getRunExecutorInstance()
     private var runCount = 0
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `runtime errors link to the loaded instruction and each macro caller in Run and Debug`(debug: Boolean) = timeoutRunBlocking<Unit> {
+        val lifetime = Disposer.newDisposable()
+        val started = CompletableDeferred<Triple<MarsProcessHandler, Recording, ConsoleViewImpl>>()
+        val body = ".macro inner\nbreak 7\n.end_macro\n"
+        val invocation = ".include \"fault-macros.s\"\n.text\nli \$v0, 5\nsyscall\nouter\n"
+        val executor = if (debug) DefaultDebugExecutor.getDebugExecutorInstance() else executor
+        try {
+            val (entry, wrappers, fault) = withContext(Dispatchers.EDT) {
+                val fault = fixture.addFileToProject("with space/fault-body.s", body).virtualFile
+                val wrappers = fixture.addFileToProject("fault-macros.s", """
+                    .include "with space/fault-body.s"
+                    .macro outer
+                    inner
+                    .end_macro
+                """.trimIndent()).virtualFile
+                val entry = fixture.addFileToProject("fault-entry.asm", invocation).virtualFile
+                val config = type.createTemplateConfiguration(project)
+                config.options.sourcePath = entry.path
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                project.messageBus.connect(lifetime).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+                    override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
+                        if (env !== environment) return
+                        val console = assertInstanceOf(ConsoleViewImpl::class.java, env.contentToReuse?.executionConsole)
+                        console.component
+                        val recording = Recording()
+                        handler.addProcessListener(recording)
+                        started.complete(Triple(handler as MarsProcessHandler, recording, console))
+                    }
+                })
+                environment.runner.execute(environment)
+                Triple(entry, wrappers, fault)
+            }
+            val (handler, recording, console) = started.await()
+            pollAssertionsAsync(5.seconds, 10.milliseconds) { assertEquals(1L, handler.instructionCounter.snapshot().total) }
+            withContext(Dispatchers.EDT) {
+                val document = requireNotNull(FileDocumentManager.getInstance().getDocument(fault))
+                WriteCommandAction.runWriteCommandAction(project) { document.setText(body.replace("break 7", "nop")) }
+            }
+            handler.processInput.write("0\n".toByteArray())
+            assertEquals(1, recording.exit.await())
+            assertEquals(1, recording.stderr.toString().lineSequence().count { it.startsWith("MARS runtime error.") })
+            assertTrue(recording.stderr.toString().contains("break instruction executed; code = 7."))
+
+            pollAssertionsAsync(5.seconds, 10.milliseconds) {
+                withContext(Dispatchers.EDT) {
+                    val text = console.editor!!.document.text
+                    assertTrue(text.contains("Instruction at ${fault.path}:2\n"), text)
+                    assertTrue(text.contains("Called from ${wrappers.path}:3\n"), text)
+                    assertTrue(text.contains("Called from ${entry.path}:5\n"), text)
+                }
+            }
+            withContext(Dispatchers.EDT) {
+                val consoleEditor = console.editor!!
+                val links = EditorHyperlinkSupport.get(consoleEditor)
+                fun link(prefix: String): FileHyperlinkInfo {
+                    val line = consoleEditor.document.text.lineSequence().indexOfFirst { it.startsWith(prefix) }
+                    val highlighter = links.findAllHyperlinksOnLine(line).single()
+                    return assertInstanceOf(FileHyperlinkInfo::class.java, EditorHyperlinkSupport.getHyperlinkInfo(highlighter))
+                }
+                val instruction = link("Instruction at ")
+                val assembled = requireNotNull(instruction.descriptor)
+                assertNotEquals(fault, assembled.file)
+                assertFalse(assembled.file.isWritable)
+                assertEquals(body, FileDocumentManager.getInstance().getDocument(assembled.file)?.text)
+                assertEquals(1, assembled.line)
+
+                val wrapper = requireNotNull(link("Called from ${wrappers.path}").descriptor)
+                assertEquals(wrappers, wrapper.file)
+                assertEquals(2, wrapper.line)
+
+                val caller = link("Called from ${entry.path}")
+                assertEquals(entry, caller.descriptor?.file)
+                val current = requireNotNull(FileDocumentManager.getInstance().getDocument(entry))
+                WriteCommandAction.runWriteCommandAction(project) { current.insertString(0, "# line shifted after termination\n") }
+                caller.navigate(project)
+                val selected = requireNotNull(FileEditorManager.getInstance(project).selectedTextEditor)
+                assertEquals(invocation, selected.document.text)
+                assertEquals(4, selected.caretModel.logicalPosition.line)
+                assertFalse(FileDocumentManager.getInstance().getFile(selected.document)!!.isWritable)
+            }
+        } finally {
+            withContext(Dispatchers.EDT) {
+                if (started.isCompleted) started.await().first.destroyProcess()
+                Disposer.dispose(lifetime)
+            }
+        }
+    }
 
     @ParameterizedTest
     @ValueSource(booleans = [false, true])
@@ -1513,6 +1606,7 @@ class MarsRunPlatformTest {
         val cases = listOf(
             Triple("b missing\n", 1, "Assembly failed"),
             Triple("break\n", 1, "MARS runtime error"),
+            Triple("li \$t0, 1\njr \$t0\n", 1, "fetch address for text segment not aligned"),
             Triple("nop\n", 0, ""),
         )
         for ((source, status, message) in cases) {
