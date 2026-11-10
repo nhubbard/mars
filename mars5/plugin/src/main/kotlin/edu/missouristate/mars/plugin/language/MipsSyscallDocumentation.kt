@@ -12,18 +12,25 @@ import com.intellij.openapi.util.text.StringUtil
 
 /** Offline syscall contracts shared by the editor and completion documentation. */
 internal object MipsSyscallDocumentation {
-    val html: String by lazy {
+    private val labels = DynamicBundle(javaClass, "messages.MarsBundle")
+
+    val entries: List<MipsSyscallEntry> by lazy {
         val catalog = DynamicBundle.getResourceBundle(javaClass.classLoader, "messages.MarsSyscalls")
-        val labels = DynamicBundle(javaClass, "messages.MarsBundle")
+        catalog.keySet().sortedBy(String::toInt).map { key ->
+            val (name, arguments, result) = catalog.getString(key).split('|', limit = 3)
+            MipsSyscallEntry(key.toInt(), name, arguments, result)
+        }
+    }
+
+    val html: String by lazy {
         buildString {
             append(CONTENT_START)
             append(StringUtil.escapeXmlEntities(labels.getMessage("documentation.syscalls.intro")))
             append(CONTENT_END)
             append(SECTIONS_START)
-            for (key in catalog.keySet().sortedBy(String::toInt)) {
-                val (name, arguments, result) = catalog.getString(key).split('|', limit = 3)
+            for ((number, name, arguments, result) in entries) {
                 append(SECTION_HEADER_START)
-                append(key).append(' ').append(StringUtil.escapeXmlEntities(name)).append("</p>")
+                append(number).append(' ').append(StringUtil.escapeXmlEntities(name)).append("</p>")
                 append(SECTION_SEPARATOR)
                 append("<b>").append(StringUtil.escapeXmlEntities(labels.getMessage("documentation.syscalls.arguments"))).append("</b> ")
                 append(StringUtil.escapeXmlEntities(arguments))
@@ -36,3 +43,5 @@ internal object MipsSyscallDocumentation {
         }
     }
 }
+
+internal data class MipsSyscallEntry(val number: Int, val name: String, val arguments: String, val result: String)

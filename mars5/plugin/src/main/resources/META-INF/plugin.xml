@@ -117,6 +117,9 @@
               topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
   </projectListeners>
   <actions resource-bundle="messages.MarsBundle">
+    <action id="Mars.OpenReference" class="edu.missouristate.mars.plugin.help.MarsReferenceAction">
+      <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
+    </action>
     <action id="Mars.AssembleCurrentFile" class="edu.missouristate.mars.plugin.build.MarsAssembleAction">
       <add-to-group group-id="BuildMenu" anchor="last"/>
     </action>

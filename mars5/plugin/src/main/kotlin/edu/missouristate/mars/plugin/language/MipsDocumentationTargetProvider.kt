@@ -143,13 +143,18 @@ internal class MipsCatalogEntry(
 
     override fun computePresentation(): TargetPresentation = TargetPresentation.builder(name).presentation()
 
-    override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(buildString {
+    val searchText: String = forms.joinToString(" ") { (example, description) -> "$example $description" }
+
+    fun referenceHtml(): String = buildString {
         for ((example, description) in forms) {
             append(DEFINITION_START).append(StringUtil.escapeXmlEntities(example)).append(DEFINITION_END)
             append(CONTENT_START).append(StringUtil.escapeXmlEntities(description)).append(CONTENT_END)
         }
-        if (name == "syscall") append(MipsSyscallDocumentation.html)
-    })
+    }
+
+    override fun computeDocumentation(): DocumentationResult = DocumentationResult.documentation(
+        referenceHtml() + if (name == "syscall") MipsSyscallDocumentation.html else "",
+    )
 }
 
 internal object MipsDocumentationCatalog {

@@ -330,6 +330,22 @@ result registers, and effects for each service. The same offline catalog appears
 operation alias and in completion documentation. The registry parity test checks the
 numbers and names against the Java engine, including MARS service 60 (`ClearScreen`).
 
+## Offline MARS reference
+
+Open **Help → MARS Reference** to search the instruction and directive forms,
+individual syscall contracts, and guides for assembly, macros, debugging,
+exception handlers, command-line builds, and educational tools. The modeless
+window works without an open project and remains available while editing.
+Search accepts several terms, matches titles and descriptions, and supports
+keyboard selection from the search field. Reference entries reuse the same
+catalog data and escaping as Quick Documentation.
+
+`MarsReferencePlatformTest` opens the registered action with no project,
+checks the shared catalog, selects an individual syscall and directive, and
+verifies that an empty search result clears the selected topic.
+The `mars-reference-playback` scenario exercises the registered action from the
+installed ZIP in a clean IntelliJ 2026.3 instance and captures the syscall result.
+
 ## Go to Declaration for instruction labels
 
 Native polyvariant PSI references bind directly written label operands using the same
