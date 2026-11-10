@@ -110,12 +110,19 @@ class MipsFormattingPlatformTest {
             """.trimIndent()
             val before = assemble(directory.resolve("quoted-before.asm"), source)
             assertEquals("x ,      ".map(Char::code) + 0, before.second.take(10))
-            val formatted = withContext(Dispatchers.EDT) {
+            val (indexing, formatted) = withContext(Dispatchers.EDT) {
                 fixture.configureByText("quoted.asm", source)
+                lateinit var indexing: String
+                DumbModeTestUtils.runInDumbModeSynchronously(fixture.project) {
+                    indexing = reformat()
+                    assertTrue("message   :   .asciiz   HEAD ,      \"" in indexing, indexing)
+                    assertTrue("\n    nop" in indexing, indexing)
+                }
                 val result = reformat()
                 assertEquals(result, reformat())
-                result
+                indexing to result
             }
+            assertEquals(before, assemble(directory.resolve("quoted-indexing.asm"), indexing))
             assertEquals(before, assemble(directory.resolve("quoted-after.asm"), formatted))
             assertTrue("message: .asciiz HEAD ,      \"" in formatted, formatted)
             assertTrue(".asciiz FULL, \"z\"" in formatted, formatted)

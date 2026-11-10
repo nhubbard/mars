@@ -137,6 +137,8 @@ private class MipsBlock(
         val expandedParenthesis = line?.operandParentheses?.get(right.startOffset)
         return when {
             StringUtil.containsLineBreak(gap) -> keepLines
+            // Without assembly context, a written gap can be part of an expanded string.
+            timeline.value == null -> readOnly
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
             line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
             // A space can turn a sign into a separate token, or prevent an exponent from joining.
