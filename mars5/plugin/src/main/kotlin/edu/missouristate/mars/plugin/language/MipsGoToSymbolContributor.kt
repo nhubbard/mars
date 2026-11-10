@@ -105,7 +105,7 @@ internal class MipsGoToSymbolContributor : ChooseByNameContributorEx {
                 yield(ExpandedSymbol(macro.name, file, macro.nameOffset, AllIcons.Nodes.Function))
             }
         }
-        for (equivalence in generatedEquivalencesIn(file)) {
+        for (equivalence in generatedEquivalencesIn(file).values) {
             yield(ExpandedSymbol(equivalence.name, file, equivalence.site.textOffset, AllIcons.Nodes.Constant))
         }
         for (external in expandedExternalsIn(file).values) {

@@ -7,6 +7,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.util.Disposer
@@ -265,6 +266,66 @@ class MipsStructureViewPlatformTest {
                     fixture.editor.caretModel.moveToOffset(source.indexOf(hidden))
                     assertNull(model.currentEditorElement)
                 }
+            } finally {
+                Disposer.dispose(model)
+            }
+        }
+    }
+
+    @Test
+    fun `outline shows generated equivalences and navigates to their written directive`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            MAKE FIRST 7
+            .eqv PACK
+            BOTH
+            .macro local
+                MAKE INSIDE 9
+            .end_macro
+            MAKE FIRST 7
+        """.trimIndent()
+        val entry = withContext(Dispatchers.EDT) {
+            val body = fixture.addFileToProject("equivalence-outline.s", source)
+            val entry = fixture.addFileToProject("equivalence-outline-entry.asm", """
+                .eqv MAKE .eqv
+                .eqv PACK SECOND 8
+                .eqv BOTH generated: .eqv THIRD 10
+                .include "equivalence-outline.s"
+            """.trimIndent())
+            fixture.configureFromExistingVirtualFile(body.virtualFile)
+            entry
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val builder = LanguageStructureViewBuilder.getInstance().getStructureViewBuilder(fixture.file) as TreeBasedStructureViewBuilder
+            val model = builder.createStructureViewModel(fixture.editor)
+            try {
+                val nodes = model.root.children.map { it as StructureViewTreeElement }
+                assertEquals(listOf("FIRST", "SECOND", "generated", "THIRD", "local"), nodes.map(::name))
+                assertNotSame(nodes[2].value, nodes[3].value)
+                nodes[3].navigate(true)
+                assertEquals(source.indexOf("BOTH"), fixture.editor.caretModel.offset)
+                val inside = nodes.last().children.single() as StructureViewTreeElement
+                assertEquals("INSIDE", name(inside))
+                for ((node, origin) in listOf(nodes[0] to "MAKE FIRST", nodes[1] to ".eqv PACK", inside to "MAKE INSIDE")) {
+                    assertTrue(node.canNavigateToSource())
+                    assertNotNull(withContext(Dispatchers.Default) { readAction { node.navigationRequest() } })
+                    node.navigate(true)
+                    assertEquals(source.indexOf(origin), fixture.editor.caretModel.offset)
+                    assertSame(node.value, model.currentEditorElement)
+                }
+                fixture.editor.caretModel.moveToOffset(source.indexOf(".end_macro"))
+                assertNull(model.currentEditorElement)
+                DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                    assertEquals(listOf("local"), model.root.children.map { it.presentation.presentableText })
+                }
+                val document = FileDocumentManager.getInstance().getDocument(entry.virtualFile)!!
+                WriteCommandAction.runWriteCommandAction(current) {
+                    document.setText(document.text.replace("SECOND 8", "UPDATED 8"))
+                }
+                PsiDocumentManager.getInstance(current).commitAllDocuments()
+                assertEquals(listOf("FIRST", "UPDATED", "generated", "THIRD", "local"),
+                    model.root.children.map { it.presentation.presentableText })
             } finally {
                 Disposer.dispose(model)
             }

@@ -16,6 +16,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
@@ -35,6 +36,8 @@ private class MipsStructureViewBuilder(private val file: MipsFile) : TreeBasedSt
     override fun createStructureViewModel(editor: Editor?) = MipsStructureModel(file, editor)
 }
 
+private val equivalenceDirective = MipsTypes.psi("EQV")
+
 private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
     StructureViewModelBase(file, editor, MipsStructureNode(file)) {
     init {
@@ -53,10 +56,11 @@ private class MipsStructureModel(private val file: MipsFile, editor: Editor?) :
                 else -> true
             }
         }
-        if (element !is MipsSymbolToken || dumb) return false
+        if (element !is LeafPsiElement || dumb) return false
+        if (element !is MipsSymbolToken && element.elementType != equivalenceDirective) return false
         val timeline = file.project.service<MarsAnalysisService>().editorTimeline(file)
         return timeline.isGeneratedMacroName(file, element.textOffset) || element in timeline.generatedLabelSites ||
-            element in timeline.expandedExternalsIn(file)
+            element in timeline.expandedExternalsIn(file) || element in timeline.generatedEquivalencesIn(file)
     }
 }
 
@@ -75,7 +79,7 @@ private class MipsStructureNode(
     override fun getPresentableText() = element?.let { expandedName ?: (it as NavigationItem).name }
 
     override fun navigationRequest() = element?.let { item ->
-        if (item is MipsSymbolToken) {
+        if (item is LeafPsiElement) {
             OpenFileDescriptor(item.project, item.containingFile.viewProvider.virtualFile, item.textOffset).navigationRequest()
         } else {
             (item as NavigationItem).navigationRequest()
@@ -118,17 +122,21 @@ private class MipsStructureNode(
                 else -> false
             }
         }
-        val groups = written.groupBy { declaration ->
-            timeline.macroAt(file, declaration.textOffset)?.header?.takeIf { it in macros }
-        }
+        fun localMacroHeader(offset: Int) = timeline.macroAt(file, offset)?.header?.takeIf { it in macros }
+        val groups = written.groupBy { localMacroHeader(it.textOffset) }
         val labels = timeline.generatedLabelsIn(file).groupBy { it.macro?.header?.takeIf { header -> header in macros } }
-        val externals = timeline.expandedExternalsIn(file).values.groupBy {
-            timeline.macroAt(file, it.offset)?.header?.takeIf { header -> header in macros }
-        }
+        val externals = timeline.expandedExternalsIn(file).values.groupBy { localMacroHeader(it.offset) }
+        val equivalences = timeline.generatedEquivalencesIn(file).values.groupBy { localMacroHeader(it.offset) }
         fun declarationNodes(header: PsiElement?) = labels[header].orEmpty().map { label ->
             label.site.textOffset to MipsStructureNode(label.site, label.name, emptyList(), AllIcons.Nodes.Bookmark)
         } + externals[header].orEmpty().map { external ->
             external.offset to MipsStructureNode(external.site, external.name, emptyList(), AllIcons.Nodes.Field)
+        } + equivalences[header].orEmpty().map { equivalence ->
+            // The platform identifies outline rows by their PSI value. A single alias can
+            // introduce both a label and a constant, so use its statement node for the constant.
+            val site = equivalence.site
+            val anchor = if (site in timeline.generatedLabelSites) site.parent else site
+            equivalence.offset to MipsStructureNode(anchor, equivalence.name, emptyList(), AllIcons.Nodes.Constant)
         }
         fun children(header: PsiElement): List<StructureViewTreeElement> {
             val declarations = groups[header].orEmpty().map { it.textOffset to MipsStructureNode(it, effectiveChildren = emptyList()) }

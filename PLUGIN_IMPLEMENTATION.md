@@ -129,6 +129,12 @@ External reservations use their expanded names in the outline as well.
 A reservation written inside a macro stays under that macro. Unexpanded
 macro reservations stay out of ordinary operand completion.
 
+Generated equivalences appear as constants in the outline, including
+definitions supplied by a short `.eqv` line or by an alias in a macro body.
+The outline uses the first definition in assembly order and navigates to
+the written source. One alias that supplies both a label and a constant
+has a separate row for each.
+
 ## Native macro folding
 
 IntelliJ collapses nonblank macro bodies in `.asm` and `.s` files. After indexing,

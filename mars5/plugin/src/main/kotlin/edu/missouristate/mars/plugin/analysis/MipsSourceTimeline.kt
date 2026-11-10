@@ -166,10 +166,13 @@ internal class MipsSourceTimeline(
 
     private val generatedEquivalencesByFile by lazy {
         equivalences.values.map(IndexedEquivalence::definition).filter { it.site !is MipsDeclaration }
-            .groupBy { it.site.containingFile }
+            .groupBy { it.site.containingFile }.mapValues { (_, definitions) ->
+                definitions.associateBy(MipsSourceEvent.Equivalence::site)
+            }
     }
 
-    fun generatedEquivalencesIn(file: MipsFile): List<MipsSourceEvent.Equivalence> = generatedEquivalencesByFile[file].orEmpty()
+    fun generatedEquivalencesIn(file: MipsFile): Map<PsiElement, MipsSourceEvent.Equivalence> =
+        generatedEquivalencesByFile[file].orEmpty()
 
     fun expandedExternalsIn(file: MipsFile): Map<PsiElement, MipsSourceEvent.External> =
         files.getValue(file.viewProvider.virtualFile).expandedExternals
