@@ -147,7 +147,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     }
 
     init {
-        repaintMachineHighlights(this, table)
+        onMachineHighlightSchemeChange(this, table::repaint)
         display.addListener(this) {
             if (addressField.text == renderedAddress) address?.let(::renderAddress)
             renderWriteStatus()

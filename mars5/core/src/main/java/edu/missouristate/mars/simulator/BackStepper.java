@@ -3,7 +3,9 @@ package edu.missouristate.mars.simulator;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.mips.hardware.*;
 import edu.missouristate.mars.mips.instructions.*;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
@@ -235,6 +237,20 @@ public class BackStepper {
   }
 
   public record MemoryWrite(int address, int length) {}
+
+  /** The registers written by the newest retained writing instruction in each bank. */
+  public Set<RegisterWrite> previousRegisterWrites() {
+    return engaged ? backSteps.previousRegisterWrites() : Set.of();
+  }
+
+  public enum RegisterWriteBank {
+    CPU,
+    COPROCESSOR_0,
+    COPROCESSOR_1,
+    CONDITION_FLAGS
+  }
+
+  public record RegisterWrite(RegisterWriteBank bank, int number) {}
 
   private BackStep previousInstructionStep() {
     if (!canBackstep()) {
@@ -592,6 +608,45 @@ public class BackStepper {
         index = (index + capacity - 1) % capacity;
       }
       return null;
+    }
+
+    private synchronized Set<RegisterWrite> previousRegisterWrites() {
+      var writes = new HashSet<RegisterWrite>();
+      var frames = new long[RegisterWriteBank.values().length];
+      int banks = 0;
+      long frame = 0;
+      int index = top;
+      for (int remaining = size; remaining > 0; remaining--) {
+        BackStep step = stack[index];
+        if (banks == frames.length && step.frame != frame) {
+          break;
+        }
+        frame = step.frame;
+        if (frame != 0) {
+          RegisterWriteBank bank =
+              switch (step.action) {
+                case REGISTER_RESTORE -> RegisterWriteBank.CPU;
+                case COPROC0_REGISTER_RESTORE -> RegisterWriteBank.COPROCESSOR_0;
+                case COPROC1_REGISTER_RESTORE -> RegisterWriteBank.COPROCESSOR_1;
+                case COPROC1_CONDITION_SET, COPROC1_CONDITION_CLEAR ->
+                    RegisterWriteBank.CONDITION_FLAGS;
+                default -> null;
+              };
+          if (bank != null) {
+            int slot = bank.ordinal();
+            if (frames[slot] == 0) {
+              frames[slot] = frame;
+              banks++;
+            }
+            if (frames[slot] == frame) {
+              int number = bank == RegisterWriteBank.CONDITION_FLAGS ? 0 : step.param1;
+              writes.add(new RegisterWrite(bank, number));
+            }
+          }
+        }
+        index = (index + capacity - 1) % capacity;
+      }
+      return Set.copyOf(writes);
     }
 
     private synchronized void push(int act, int programCounter, int parm1, int parm2) {

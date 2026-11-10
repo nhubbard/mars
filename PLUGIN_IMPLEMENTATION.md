@@ -2207,9 +2207,9 @@ confirmed that IntelliJ saved the preference.
 
 **File → Import Venus Machine Highlight Styles** previews saved foreground
 colors, backgrounds, and font styles for the current instruction, next delay
-slot, and latest memory write. Confirming creates a **MARS Venus Machine**
+slot, latest memory write, and register writes. Confirming creates a **MARS Venus Machine**
 copy of the active scheme. Select it in **Settings → Editor → Color Scheme**.
-The three styles are editable under **Color Scheme → MARS MIPS**.
+The styles are editable under **Color Scheme → MARS MIPS**.
 
 Disassembly uses the current-instruction or delay-slot style on the
 corresponding row's text cells. Memory uses the write style on the affected
@@ -2217,9 +2217,20 @@ bytes and words. Selected cells use IntelliJ's selection colors. The machine
 import has its own local completion marker and can build on an active scheme
 that already contains imported syntax styles.
 
+Variables styles the values written by the newest retained writing instruction
+in each register bank. This includes HI and LO, CP0, CP1, and the FCC value.
+The paired floating-point view highlights a value when either half was written.
+Backstep restores the highlights from the remaining instruction history.
+An earlier machine-style import leaves the register style available for a
+separate preview. Activate the earlier scheme first to carry its styles into
+the new copy.
+
 The packaged IntelliJ 2026.3 smoke test selected the imported scheme at a
 breakpoint, confirmed the current instruction and memory-write styles in
 the open views, and verified the saved color-scheme file.
+A separate debugger replay imported the register style while suspended and
+confirmed that the open Variables tree applied the new foreground, background,
+and font style to the written register. It also checked the saved scheme.
 
 ## New MIPS files and projects
 

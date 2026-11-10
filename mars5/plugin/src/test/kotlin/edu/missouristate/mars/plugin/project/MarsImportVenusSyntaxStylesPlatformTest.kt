@@ -196,7 +196,7 @@ class MarsImportVenusSyntaxStylesPlatformTest {
     fun `machine styles migrate saved colors and font styles into a separate scheme`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             withSchemes {
-                val marker = "mars.venus.machine.styles.imported"
+                val marker = "mars.venus.machine.styles.v2.imported"
                 val previous = properties.getValue(marker)
                 try {
                     properties.unsetValue(marker)
@@ -239,6 +239,49 @@ class MarsImportVenusSyntaxStylesPlatformTest {
                     assertTrue(properties.isTrueValue(marker))
                 } finally {
                     properties.setValue(marker, previous)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `earlier machine imports can add the register style to the active scheme`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            withSchemes {
+                val oldKey = "mars.venus.machine.styles.imported"
+                val newKey = "mars.venus.machine.styles.v2.imported"
+                val oldMarker = properties.getValue(oldKey)
+                val newMarker = properties.getValue(newKey)
+                try {
+                    properties.setValue(oldKey, true)
+                    properties.unsetValue(newKey)
+                    val base = addScheme("Prior MARS scheme")
+                    base.setAttributes(MarsMachineHighlight.WRITE.colorKey, TextAttributes().apply { foregroundColor = Color.CYAN })
+                    colors.setGlobalScheme(base)
+                    val root = MemoryPreferences()
+                    root.node("mars").apply {
+                        put("DataSegmentHighlightForeground", "0x00ff1234")
+                        put("RegisterHighlightForeground", "0x00012345")
+                        put("RegisterHighlightBackground", "0x00ddeeff")
+                        put("RegisterHighlightFontStyle", "Italic")
+                    }
+                    val action = MarsImportVenusMachineStylesAction { root }
+                    assertTrue(event(action).also(action::update).presentation.isEnabledAndVisible)
+                    withDialog({ preview ->
+                        assertTrue(preview.contains("Register write"))
+                        assertFalse(preview.contains("Memory write"))
+                        Messages.OK
+                    }) { action.actionPerformed(event(action)) }
+                    val imported = checkNotNull(colors.getScheme("MARS Venus Machine"))
+                    assertEquals(Color.CYAN, MarsMachineHighlight.WRITE.attributes(imported).foregroundColor)
+                    val style = MarsMachineHighlight.REGISTER.attributes(imported)
+                    assertEquals(Color(0x012345), style.foregroundColor)
+                    assertEquals(Color(0xddeeff), style.backgroundColor)
+                    assertEquals(Font.ITALIC, style.fontType)
+                    assertTrue(properties.isTrueValue(newKey))
+                } finally {
+                    properties.setValue(oldKey, oldMarker)
+                    properties.setValue(newKey, newMarker)
                 }
             }
         }

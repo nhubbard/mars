@@ -80,10 +80,13 @@ import com.intellij.xdebugger.evaluation.XDebuggerEvaluator.XEvaluationCallback
 import com.intellij.xdebugger.frame.XExecutionStack.XStackFrameContainer
 import com.intellij.xdebugger.frame.XStackFrame
 import com.intellij.ui.SimpleColoredComponent
+import com.intellij.ui.SimpleColoredText
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.colors.EditorColorsScheme
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.colors.impl.EditorColorsManagerImpl
 import com.intellij.openapi.editor.markup.TextAttributes
+import com.intellij.xdebugger.impl.ui.tree.nodes.XValueTextRendererImpl
 import com.intellij.ui.SimpleTextAttributes.STYLE_BOLD
 import com.intellij.xdebugger.frame.XValue
 import com.intellij.xdebugger.frame.XValueModifier
@@ -3395,6 +3398,62 @@ class MarsDebugPlatformTest {
         } finally {
             manager.setGlobalScheme(previous)
             manager.removeScheme(scheme)
+        }
+    }
+
+    @Test
+    fun `Variables highlights written register banks and restores their presentation on backstep`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("register-highlights.asm", """
+                addiu ${'$'}t0, ${'$'}zero, 2
+                addiu ${'$'}t1, ${'$'}zero, 3
+                mult ${'$'}t0, ${'$'}t1
+                mtc1 ${'$'}t0, ${'$'}f1
+                c.eq.s ${'$'}f0, ${'$'}f0
+                mtc0 ${'$'}t0, ${'$'}14
+                nop
+                add.d ${'$'}f2, ${'$'}f0, ${'$'}f0
+                nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 3)
+                addBreakpoint(it, 6)
+                addBreakpoint(it, 8)
+            }
+        }
+        withDebug(source) { debug ->
+            suspend fun assertHighlighted(vararg names: String) {
+                withContext(Dispatchers.EDT) {
+                    val frame = requireNotNull(debug.session.currentStackFrame)
+                    inspectRegisterNodes(debug.session, frame) { nodes ->
+                        val highlighted = nodes.filter { node ->
+                            var usedKey: TextAttributesKey? = null
+                            requireNotNull(node.valuePresentation).renderValue(object : XValueTextRendererImpl(SimpleColoredText()) {
+                                override fun renderRawValue(value: String, key: TextAttributesKey) {
+                                    usedKey = key
+                                }
+                            })
+                            usedKey == MarsMachineHighlight.REGISTER.colorKey
+                        }.map { it.name }.toSet()
+                        assertEquals(names.toSet(), highlighted)
+                    }
+                }
+            }
+            debug.assertPausedAt(source, 3)
+            assertHighlighted("hi", "lo")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 6)
+            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f1", "\$f0/\$f1")
+            withContext(Dispatchers.EDT) { debug.session.resume() }
+            debug.assertPausedAt(source, 8)
+            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f2", "\$f3", "\$f2/\$f3")
+            withContext(Dispatchers.EDT) {
+                val (action, event) = backstepAction(debug.session)
+                action.actionPerformed(event)
+            }
+            debug.assertPausedAt(source, 7)
+            assertHighlighted("hi", "lo", "\$14 (epc)", "FCC", "\$f1", "\$f0/\$f1")
         }
     }
 

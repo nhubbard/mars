@@ -489,7 +489,8 @@ class MipsEditorPlatformTest {
                 "Comment" to commentColor, "Register" to registerColor,
                 "Current instruction" to MarsMachineHighlight.CURRENT.colorKey,
                 "Next delay slot" to MarsMachineHighlight.DELAY.colorKey,
-                "Memory write" to MarsMachineHighlight.WRITE.colorKey),
+                "Memory write" to MarsMachineHighlight.WRITE.colorKey,
+                "Register write" to MarsMachineHighlight.REGISTER.colorKey),
             page.attributeDescriptors.associate { it.displayName to it.key },
         )
         assertEquals(

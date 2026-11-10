@@ -27,6 +27,7 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
         <current.instruction>Current instruction</current.instruction>
         <delay.slot>Next delay slot</delay.slot>
         <memory.write>Changed memory</memory.write>
+        <register.write>Written register</register.write>
         .eqv <equivalence>COUNT</equivalence> 3
         .eqv <equivalence>AGAIN</equivalence> <replacement>loop</replacement>
         .macro <macro>decrement</macro> (%counter)

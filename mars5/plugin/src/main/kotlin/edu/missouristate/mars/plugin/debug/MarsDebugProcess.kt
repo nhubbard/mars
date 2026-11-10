@@ -182,9 +182,11 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             labels.isCloseable = false
             labels.setDisposer(symbols)
             ui.addContent(labels, 4, PlaceInGrid.center, false)
-            service<MarsDebuggerDisplaySettings>().addValueListener(labels) {
+            val refreshVariables = {
                 if (session.isSuspended) session.rebuildViews()
             }
+            service<MarsDebuggerDisplaySettings>().addValueListener(labels, refreshVariables)
+            onMachineHighlightSchemeChange(labels, refreshVariables)
         }
     }
 

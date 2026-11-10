@@ -197,7 +197,7 @@ internal class MarsDisassemblyView(
     }
 
     init {
-        repaintMachineHighlights(this, table)
+        onMachineHighlightSchemeChange(this, table::repaint)
         restoreTableLayout()
         display.addListener(this) {
             updateStatus()
