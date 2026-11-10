@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.components.service
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
@@ -61,6 +62,7 @@ internal class MarsDisassemblyView(
     private val entry: String,
     private val sourcePosition: (Location) -> XSourcePosition,
 ) : Disposable {
+    private val display = service<MarsDebuggerDisplaySettings>()
     private val breakpointManager = XDebuggerManager.getInstance(session.project).breakpointManager
     private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
     private val status = JBLabel()
@@ -70,7 +72,7 @@ internal class MarsDisassemblyView(
     private var breakpoints = emptyMap<Int, AddressBreakpoint>()
     private val model = ListTableModel<DisassemblyRow>(
         column("debug.disassembly.pc") { if (it.current) "▶" else "" },
-        column("debug.disassembly.address") { Binary.intToHexString(it.address) },
+        column("debug.disassembly.address") { display.formatAddress(it.address) },
         column("debug.disassembly.word", DisassemblyRow::word),
         column("debug.disassembly.instruction", DisassemblyRow::instruction),
         column("debug.disassembly.source") { it.location?.let { site -> "${site.file().fileName}:${site.line()}" }.orEmpty() },
@@ -87,6 +89,7 @@ internal class MarsDisassemblyView(
     }
     private var target: Location? = null
     private var browsedAddress: Pair<Long, Long>? = null
+    private var displayedAddresses: Pair<Long, Long?>? = null
     private val revision = AtomicLong()
     @Volatile private var disposed = false
 
@@ -102,6 +105,10 @@ internal class MarsDisassemblyView(
     }
 
     init {
+        display.addListener(this) {
+            updateStatus()
+            table.repaint()
+        }
         table.selectionModel.addListSelectionListener { updateSelection() }
         followPc.addActionListener {
             browsedAddress = null
@@ -148,17 +155,17 @@ internal class MarsDisassemblyView(
         val context = session.suspendContext as? MarsSuspendContext
         if (context == null) {
             followPc.isEnabled = false
-            status.text = runMessages.getMessage("debug.disassembly.pause")
+            displayedAddresses = null
+            updateStatus()
             return
         }
         val pc = context.memoryRegions.getValue(MemoryRegion.PC)
-        val pcText = Binary.intToHexString(pc.toInt())
         val browsing = browsedAddress
         val browsed = if (browsing?.first == context.number) browsing.second else null
         followPc.isEnabled = browsed != null
         val center = browsed ?: pc
-        status.text = if (browsed == null) runMessages.getMessage("debug.disassembly.current", pcText)
-        else runMessages.getMessage("debug.disassembly.browsing", Binary.intToHexString(center.toInt()), pcText)
+        displayedAddresses = pc to browsed
+        updateStatus()
         context.inspectionRequests.trySend { memory ->
             val rows = disassemblyWindow(memory, pc, center)
             withContext(Dispatchers.EDT) {
@@ -172,6 +179,18 @@ internal class MarsDisassemblyView(
                 }
             }
         }
+    }
+
+    private fun updateStatus() {
+        val addresses = displayedAddresses
+        if (addresses == null) {
+            status.text = runMessages.getMessage("debug.disassembly.pause")
+            return
+        }
+        val (pc, browsed) = addresses
+        val pcText = display.formatAddress(pc.toInt())
+        status.text = if (browsed == null) runMessages.getMessage("debug.disassembly.current", pcText)
+        else runMessages.getMessage("debug.disassembly.browsing", display.formatAddress(browsed.toInt()), pcText)
     }
 
     private fun updateSelection() {

@@ -26,7 +26,6 @@ import edu.missouristate.mars.mips.hardware.MemoryState
 import edu.missouristate.mars.plugin.build.MarsMemoryExportService
 import edu.missouristate.mars.plugin.build.chooseMemoryExport
 import edu.missouristate.mars.plugin.run.runMessages
-import edu.missouristate.mars.util.Binary
 import java.awt.Font
 import java.awt.event.ItemEvent
 import java.nio.file.Path
@@ -43,7 +42,7 @@ private const val ADDRESS_SPACE = 0x1_0000_0000L
 private const val LAST_ROW = ADDRESS_SPACE - BYTES_PER_ROW
 private val hex = HexFormat.of()
 
-internal data class MemoryRow(val address: String, val bytes: String, val characters: String)
+internal data class MemoryRow(val address: Int, val bytes: String, val characters: String)
 
 internal enum class MemoryRegion(val label: String, val address: (MarsContext) -> Int) {
     PC("debug.memory.region.pc", { it.registerFile.programCounterRegister.valueNoNotify }),
@@ -67,7 +66,7 @@ internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
             words[index / Int.SIZE_BYTES]?.let { it ushr shift and 0xff }
         }
         MemoryRow(
-            Binary.intToHexString(start),
+            start,
             bytes.joinToString(" ") { if (it == null) "--" else hex.toHexDigits(it.toByte()) },
             bytes.joinToString("") {
                 val byte = it ?: 0
@@ -79,6 +78,7 @@ internal fun memoryPage(memory: MemoryState, address: Long): List<MemoryRow> {
 
 /** The Debug tab requests bounded reads from the owner of the current suspension. */
 internal class MarsMemoryView(private val session: XDebugSession, private val entry: Path) : Disposable {
+    private val display = service<MarsDebuggerDisplaySettings>()
     val addressField = JBTextField(12)
     private val go = JButton(runMessages.getMessage("debug.memory.go"))
     private val previous = JButton(runMessages.getMessage("debug.memory.previous"))
@@ -91,7 +91,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     }
     private val status = JBLabel()
     private val model = ListTableModel<MemoryRow>(
-        column("debug.memory.address", MemoryRow::address),
+        column("debug.memory.address") { display.formatAddress(it.address) },
         column("debug.memory.bytes", MemoryRow::bytes),
         column("debug.memory.ascii", MemoryRow::characters),
     )
@@ -105,6 +105,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         }
     }
     private var address: Long? = null
+    private var renderedAddress = ""
     private var displayedSuspension: Long? = null
     private var revision = 0L
     private var disposed = false
@@ -126,6 +127,10 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     }
 
     init {
+        display.addListener(this) {
+            if (addressField.text == renderedAddress) address?.let(::renderAddress)
+            table.repaint()
+        }
         go.addActionListener { navigate() }
         addressField.addActionListener { navigate() }
         previous.addActionListener { move(-BYTES_PER_PAGE) }
@@ -203,6 +208,11 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
 
     private fun pageStart(target: Long) = target / BYTES_PER_ROW * BYTES_PER_ROW
 
+    private fun renderAddress(target: Long) {
+        renderedAddress = display.formatAddress(target.toInt())
+        addressField.text = renderedAddress
+    }
+
     private fun refresh() {
         if (disposed) return
         val request = ++revision
@@ -224,7 +234,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         val target = address ?: context.memoryRegions.getValue(MemoryRegion.DATA)
         address = target
         val start = pageStart(target)
-        addressField.text = Binary.intToHexString(target.toInt())
+        renderAddress(target)
         previous.isEnabled = start > 0
         next.isEnabled = start < LAST_ROW
         status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.loading.last", it) }

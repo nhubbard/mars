@@ -151,6 +151,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
+import org.jdom.Element
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -2615,6 +2616,114 @@ class MarsDebugPlatformTest {
                 }
             } finally {
                 withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+            }
+        }
+    }
+
+    @Test
+    fun `Debugger address display updates existing views and preserves machine state`() = timeoutRunBlocking<Unit> {
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("display-addresses.asm", """
+                .kdata
+                kernelWord: .word 0x41424344
+                .text
+                entry: nop
+                li ${'$'}v0, 10
+                syscall
+            """.trimIndent()).virtualFile.also { addBreakpoint(it, 3) }
+        }
+        withDebug(file) { debug ->
+            debug.assertPausedAt(file, 3)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val (layout, action, event) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsAddressDisplayTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    val settings = DefaultActionGroup()
+                    debug.session.debugProcess.registerAdditionalActions(DefaultActionGroup(), DefaultActionGroup(), settings)
+                    val action = assertInstanceOf(MarsHexAddressesAction::class.java, settings.getChildren(ActionManager.getInstance()).single())
+                    val event = AnActionEvent.createEvent(action, DataContext.EMPTY_CONTEXT, null, ActionPlaces.DEBUGGER_TOOLBAR, ActionUiKind.POPUP, null)
+                    assertEquals("Hexadecimal MARS Addresses", action.templatePresentation.text)
+                    assertEquals(ActionUpdateThread.BGT, action.actionUpdateThread)
+                    assertTrue(action.isSelected(event))
+                    Triple(layout, action, event)
+                }
+                val (symbols, memory, listing) = withContext(Dispatchers.EDT) {
+                    Triple(
+                        layout.findContent("MarsMipsSymbols")!!.component,
+                        layout.findContent("MarsMipsMemory")!!.component,
+                        layout.findContent("MarsMipsDisassembly")!!.component,
+                    )
+                }
+                fun table(panel: JComponent) = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                val bytes = withContext(Dispatchers.EDT) { table(memory) }
+                val instructions = withContext(Dispatchers.EDT) { table(listing) }
+                val labels = withContext(Dispatchers.EDT) { table(symbols) }
+                val field = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(memory, JBTextField::class.java)) }
+                val search = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(symbols, SearchTextField::class.java)) }
+                val status = withContext(Dispatchers.EDT) { requireNotNull(UIUtil.findComponentOfType(listing, JBLabel::class.java)) }
+                val context = debug.session.suspendContext
+                val display = service<MarsDebuggerDisplaySettings>()
+                assertMemory(bytes, "0x10010000", "")
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) {
+                        assertTrue(instructions.selectedRow >= 0)
+                        assertEquals(2, labels.rowCount)
+                    }
+                }
+                withContext(Dispatchers.EDT) {
+                    search.text = "0x90000000"
+                    assertEquals(1, labels.rowCount)
+                    assertEquals("kernelWord", labels.getValueAt(0, 0))
+                    labels.setRowSelectionInterval(0, 0)
+                    UIUtil.findComponentsOfType(symbols, JButton::class.java).single { it.text == "Inspect Address" }.doClick(0)
+                }
+                assertMemory(bytes, "0x90000000", "44 43 42 41", "DCBA")
+                withContext(Dispatchers.EDT) {
+                    action.actionPerformed(event)
+                    assertFalse(action.isSelected(event))
+                    assertEquals(0, labels.rowCount)
+                    search.text = "2415919104"
+                    assertEquals("kernelWord", labels.getValueAt(0, 0))
+                    assertEquals("2415919104", field.text)
+                    assertEquals("2415919104", bytes.getValueAt(0, 0))
+                    assertEquals("44 43 42 41", bytes.getValueAt(0, 1).toString().take(11))
+                    assertEquals("Program counter 4194304", status.text)
+                    val pc = instructions.selectedRow
+                    assertEquals("4194304", instructions.getValueAt(pc, 1))
+                    assertEquals("0x00000000", instructions.getValueAt(pc, 2))
+                    assertSame(context, debug.session.suspendContext)
+                    assertEquals("4294967295", display.formatAddress(-1))
+                    val xml = XmlSerializer.serialize(display.getState())
+                    assertFalse(XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java).hexAddresses)
+                    field.text = "0xffffffff"
+                    action.actionPerformed(event)
+                    assertTrue(action.isSelected(event))
+                    assertEquals("0xffffffff", field.text)
+                    assertEquals("0x90000000", bytes.getValueAt(0, 0))
+                    display.loadState(XmlSerializer.deserialize(xml, MarsDebuggerDisplaySettings.Settings::class.java))
+                    assertEquals("0xffffffff", field.text)
+                    assertEquals("2415919104", bytes.getValueAt(0, 0))
+                    field.postActionEvent()
+                    assertEquals("4294967295", field.text)
+                }
+                assertMemory(bytes, "4294967280", "")
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                withContext(Dispatchers.EDT) {
+                    val unattached = MarsMemoryView(debug.session, file.toNioPath())
+                    Disposer.register(lifetime, unattached)
+                    display.loadState(XmlSerializer.deserialize(Element("state"), MarsDebuggerDisplaySettings.Settings::class.java))
+                    assertTrue(action.isSelected(event))
+                    assertEquals("0xffffffff", field.text)
+                    assertEquals("0xfffffff0", bytes.getValueAt(0, 0))
+                    assertEquals("", unattached.addressField.text)
+                }
+            } finally {
+                withContext(Dispatchers.EDT) {
+                    Disposer.dispose(lifetime)
+                    service<MarsDebuggerDisplaySettings>().setHexAddresses(true)
+                }
             }
         }
     }

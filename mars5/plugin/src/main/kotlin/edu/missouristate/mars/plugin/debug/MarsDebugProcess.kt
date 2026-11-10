@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.ex.EditorEx
@@ -184,6 +185,7 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
     }
 
     override fun registerAdditionalActions(leftToolbar: DefaultActionGroup, topToolbar: DefaultActionGroup, settings: DefaultActionGroup) {
+        settings.add(MarsHexAddressesAction(service<MarsDebuggerDisplaySettings>()))
         topToolbar.add(MarsRunSpeedAction(handler))
         topToolbar.add(state.resetAction(handler))
         topToolbar.add(object : DumbAwareAction(

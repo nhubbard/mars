@@ -4,6 +4,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -26,7 +27,6 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
 import edu.missouristate.mars.plugin.run.runMessages
-import edu.missouristate.mars.util.Binary
 import java.nio.file.Path
 import java.util.Locale
 import java.util.regex.Pattern
@@ -70,6 +70,7 @@ internal class MarsSymbolsView(
     private val project: Project,
     private val image: StateFlow<LoadedSymbols?>,
 ) : Disposable {
+    private val display = service<MarsDebuggerDisplaySettings>()
     private val scope = CoroutineScope(Dispatchers.EDT)
     private val changes = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST).apply { tryEmit(Unit) }
     private val status = JBLabel(runMessages.getMessage("debug.symbols.waiting"))
@@ -82,7 +83,7 @@ internal class MarsSymbolsView(
     private val inspectAddress = JButton(runMessages.getMessage("debug.symbols.inspect")).apply { isEnabled = false }
     private val model = ListTableModel<AssembledSymbol>(
         column("name", AssembledSymbol::name),
-        column("address", { Binary.intToHexString(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
+        column("address", { display.formatAddress(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
         column("kind") { runMessages.getMessage("debug.symbols.kind.${it.definition.kind().name.lowercase(Locale.ROOT)}") },
         column("scope") { runMessages.getMessage("debug.symbols.scope.${it.scope}") },
         column("unit") { it.unit?.let(::displayPath).orEmpty() },
@@ -134,6 +135,10 @@ internal class MarsSymbolsView(
         }
         sorter.stringConverter = object : TableStringConverter() {
             override fun toString(model: TableModel, row: Int, column: Int) = model.getValueAt(row, column).toString()
+        }
+        display.addListener(this) {
+            sorter.sort()
+            table.repaint()
         }
         filter.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: SwingDocumentEvent) {

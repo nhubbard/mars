@@ -1232,6 +1232,16 @@ Address** opens Disassembly for text labels and Memory for data and external
 labels. Both views read the paused machine, so their contents include runtime
 writes to the selected address.
 
+## Debugger address display
+
+In **Debug → More → Debugger Settings**, clear **Hexadecimal MARS Addresses**
+to show addresses in unsigned decimal across Symbols, Memory, and
+Disassembly. The preference applies to all MARS debug sessions in the IDE.
+Symbol filtering uses the displayed format, and address sorting stays numeric.
+Memory accepts either input format and preserves unfinished edits when the
+preference changes. The switch reformats existing rows and paused or retained
+memory snapshots. Instruction encodings and raw memory bytes remain hexadecimal.
+
 ## Instruction Counter
 
 Open **View → Tool Windows → MARS Tools** and select a Run or Debug execution.
