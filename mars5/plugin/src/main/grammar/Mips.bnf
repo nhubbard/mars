@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -46,9 +46,8 @@ file ::= (NEWLINE | statement)*
 // The assembler consumes one leading label; a later colon can be a macro argument.
 statement ::= (include_line | label body? | body) {recoverWhile=line_recover}
 // The assembler replaces the physical line before interpreting labels, macros, or operands.
-include_line ::= before_include_target* include_target assembly_token*
-private before_include_target ::= !include_target assembly_token
-private include_target ::= INCLUDE STRING
+include_line ::= <<isIncludeLine>> include_token+
+private include_token ::= assembly_token | <<recoverBadIncludeToken>>
 private body ::= macro_definition | non_macro_body
 private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate | data_continuation | <<recoverStatement>>
 private line_recover ::= !NEWLINE

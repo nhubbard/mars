@@ -7,8 +7,10 @@ import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
 import com.intellij.platform.syntax.util.runtime.ParserUserState
 import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
 import com.intellij.util.text.CharArrayUtil
+import com.intellij.util.text.CharSequenceSubSequence
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.COMMA
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.DOLLAR_WORD
@@ -83,6 +85,32 @@ internal fun isShortEquivalence(runtime: SyntaxGeneratedParserRuntime, level: In
 }
 
 private fun SyntaxElementType?.endsLine() = this == null || this == NEWLINE
+
+/** The assembler's include prepass runs on the physical line before any parsing or expansion. */
+@Suppress("UNUSED_PARAMETER")
+internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    val start = builder.currentOffset
+    val source = builder.text
+    return findMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n")) != null
+}
+
+internal fun findMipsInclude(source: CharSequence, start: Int, end: Int): Tokenizer.IncludePath? {
+    val line = CharSequenceSubSequence(source, start, end)
+    if (!line.contains(".include", ignoreCase = true)) return null
+    return Tokenizer().findInclude(line.toString())
+}
+
+/** Report the invalid token without losing the path or resuming normal statement parsing. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    val builder = runtime.syntaxBuilder
+    if (builder.tokenType != BAD_CHARACTER) return false
+    val marker = builder.mark()
+    builder.advanceLexer()
+    marker.error(syntaxMessages.getMessage("syntax.include.invalid.token"))
+    return true
+}
 
 /** Retain the broken literal and keep parsing the other operands on the line. */
 @Suppress("UNUSED_PARAMETER")

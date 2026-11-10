@@ -400,6 +400,28 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `lexical errors retain valid includes without parsing the replaced prefix`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val factory = PsiFileFactory.getInstance(project.get())
+            val cases = mapOf(
+                "discarded: @ .include \"part.s\" 0xG" to listOf("@", "0xG"),
+                "'abcde.include \"part.s\"" to listOf("'abcde.include"),
+            )
+            for ((line, expectedErrors) in cases) {
+                val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
+                assertEquals(line, descendants(file.node, "INCLUDE_LINE").single().text)
+                assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
+                assertEquals(expectedErrors, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+            }
+            for (line in listOf("'a .include \"hidden.s\"", ".include \"unfinished")) {
+                val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
+                assertTrue(descendants(file.node, "INCLUDE_LINE").none(), line)
+                assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
+            }
+        }
+    }
+
+    @Test
     fun `an include can replace a macro boundary line before macro assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         directory.resolve("body.s").writeText("addiu \$t0,\$zero,7")
         for (prefix in listOf(".end_macro", ".macro replaced")) {

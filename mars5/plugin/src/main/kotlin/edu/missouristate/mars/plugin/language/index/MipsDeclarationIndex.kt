@@ -26,7 +26,7 @@ data class MipsDeclarationSite(val kind: SymbolKind, val offset: Int, val macroO
 /** Index only this file's syntax. Never resolve names or query another index while producing facts. */
 class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclarationSite>>() {
     override fun getName() = NAME
-    override fun getVersion(): Int = 23
+    override fun getVersion(): Int = 24
     override fun dependsOnFileContent(): Boolean = true
     override fun getInputFilter() = DefaultFileTypeSpecificInputFilter(MipsFileType)
     override fun getKeyDescriptor() = EnumeratorStringDescriptor.INSTANCE
@@ -59,7 +59,7 @@ class MipsDeclarationIndex : FileBasedIndexExtension<String, List<MipsDeclaratio
     companion object {
         val NAME: ID<String, List<MipsDeclarationSite>> = ID.create("mars.declarations")
         internal const val EXPANSION_SEED = "#mars.expansion"
-        private val expansionSeeds = TokenSet.create(MipsTypes.psi("EQV"), MipsTypes.psi("INCLUDE"))
+        private val expansionSeeds = TokenSet.create(MipsTypes.psi("EQV"), MipsTypes.psi("INCLUDE_LINE"))
     }
 }
 

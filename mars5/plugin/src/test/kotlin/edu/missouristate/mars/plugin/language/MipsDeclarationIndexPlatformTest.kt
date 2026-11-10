@@ -53,7 +53,7 @@ class MipsDeclarationIndexPlatformTest {
             ${'$'}gcc: .word 2
             .extern reserved 4
             .eqv UNDEFINED
-            replaced: .include "ignored.s"
+            replaced: @ .include "ignored.s"
             .eqv REMOVED 7 .include "ignored.s"
             # ignored: .macro ghost
             .asciiz "fake: .eqv ghost 4"
@@ -89,6 +89,26 @@ class MipsDeclarationIndexPlatformTest {
     }
 
     @Test
+    fun `only includes recognized by the assembler seed expanded symbol searches`() = timeoutRunBlocking<Unit> {
+        val recognized = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("recognized.s", "'abcde.include \"part.s\"").virtualFile.also {
+                fixture.addFileToProject("hidden.s", "'a .include \"part.s\"")
+                fixture.addFileToProject("incomplete.s", ".include \"unfinished")
+            }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        readAction {
+            assertEquals(
+                setOf(recognized),
+                FileBasedIndex.getInstance().getContainingFiles(
+                    MipsDeclarationIndex.NAME, MipsDeclarationIndex.EXPANSION_SEED,
+                    GlobalSearchScope.projectScope(project.get()),
+                ).toSet(),
+            )
+        }
+    }
+
+    @Test
     fun `native index follows unsaved documents deletion and file type filtering`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("ignored.txt", "ignored: nop\n")
@@ -105,7 +125,7 @@ class MipsDeclarationIndexPlatformTest {
             assertTrue(index.getContainingFiles(MipsDeclarationIndex.NAME, "ignored", scope).isEmpty())
             val extension = MipsDeclarationIndex()
             assertSame(MipsDeclarationIndex.NAME, extension.name)
-            assertEquals(23, extension.version)
+            assertEquals(24, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file.virtualFile))
             assertTrue(extension.keyDescriptor.isEqual("key", "key"))

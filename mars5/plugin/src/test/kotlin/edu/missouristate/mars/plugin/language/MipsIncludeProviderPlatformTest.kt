@@ -65,9 +65,22 @@ class MipsIncludeProviderPlatformTest {
         provider.registerFileTypesUsedForIndexing { types.add(it) }
         assertEquals(listOf(MipsFileType), types)
         assertEquals("mars", provider.id)
-        assertEquals(7, provider.version)
+        assertEquals(8, provider.version)
         val empty = LightVirtualFile("empty.asm", MipsFileType, "")
         assertTrue(provider.getIncludeInfos(FileContentImpl.createByText(empty, "", null)).isEmpty())
+    }
+
+    @Test
+    fun `malformed tokens preserve the assembler include decision and physical quote offsets`() {
+        val source = "'a .include \"hidden.s\"\r\n" +
+            "'abcde.include \"part.s\"\n" +
+            "before: @ .InClUdE,, \"second.s\" 0xG\r" +
+            ".include \"unfinished\n" +
+            ".include \"last.s\""
+        val file = LightVirtualFile("entry.s", MipsFileType, source)
+        val infos = MipsIncludeProvider().getIncludeInfos(FileContentImpl.createByText(file, source, null))
+        assertEquals(listOf("part.s", "second.s", "last.s"), infos.map { it.path })
+        assertEquals(infos.map { source.indexOf("\"${it.path}\"") }, infos.map { it.offset })
     }
 
     @Test

@@ -208,9 +208,19 @@ public class Tokenizer {
    * null when the include prepass would leave the line in place. The path's spelling is literal.
    */
   public String findIncludePath(String sourceLine) {
-    var candidates = scanPossibleInclude(sourceMIPSprogram, 1, sourceLine, () -> {});
-    return quotedIncludePath(firstIncludePath(candidates));
+    IncludePath include = findInclude(sourceLine);
+    return include == null ? null : include.path();
   }
+
+  /** Finds the include and the zero-based offset of its opening quote in a physical line. */
+  public IncludePath findInclude(String sourceLine) {
+    var candidates = scanPossibleInclude(sourceMIPSprogram, 1, sourceLine, () -> {});
+    var token = firstIncludePath(candidates);
+    String path = quotedIncludePath(token);
+    return path == null ? null : new IncludePath(path, token.getStartPos() - 1);
+  }
+
+  public record IncludePath(String path, int offset) {}
 
   private TokenList scanPossibleInclude(
       MIPSprogram program, int lineNumber, String line, Runnable checkCancellation) {

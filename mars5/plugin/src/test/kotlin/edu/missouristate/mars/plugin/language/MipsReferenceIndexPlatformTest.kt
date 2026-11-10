@@ -69,7 +69,7 @@ class MipsReferenceIndexPlatformTest {
             li ${'$'}v0, invalid%name
             .asciiz "literal"
             # comment
-            erased: .eqv BAD hidden .include "missing.s"
+            erased: .eqv BAD hidden @ .include "missing.s"
         """.trimIndent() + "\n"
         val file = withContext(Dispatchers.EDT) { fixture.addFileToProject("references.asm", source).virtualFile }
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
@@ -115,7 +115,7 @@ class MipsReferenceIndexPlatformTest {
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(19, extension.version)
+            assertEquals(20, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))

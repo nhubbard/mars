@@ -420,8 +420,9 @@ The visual acceptance limit above still applies.
 
 `MipsIncludeProvider` contributes unresolved paths to IntelliJ's existing `fileIncludes` index.
 It uses the current `acceptFile(IndexedFile)` contract. There is no additional MARS include store.
-Extraction uses the native MARS lexer and follows the assembler's include prepass: first include
-per line, case variations, optional comma separators, macro/replacement content and raw quoted paths.
+Extraction shares the assembler's include prepass with the parser. It records the first valid
+path per physical line, including case variations, optional comma separators, macro and replacement
+content, and the literal spelling and offset of each quoted path.
 
 Four Jupiter tests cover extraction, malformed input, native relative/absolute resolution, spaces,
 Unicode, dot segments, reverse lookups, cycle-safe traversal, newly created targets and unsaved edits.
@@ -570,8 +571,17 @@ physical closing token. Incomplete include directives still have ordinary direct
 
 The assembler fixtures cover labels, equivalences, incomplete operands, an earlier include without
 a quoted path, and a macro body inserted in place of a closing line. The declaration index rebuilds
-to drop labels and constants from replaced lines. Editor highlighting and include indexing use the
-same lexer token for the directive.
+to drop labels and constants from replaced lines. The parser and include index use the same core
+path lookup even when the editor and assembler recover from a malformed character literal
+differently. A valid include retains its path and reports invalid tokens as syntax errors.
+When a malformed character literal exposes a comment to the editor lexer, the include index
+still records the assembler's path. Editor navigation and source analysis require a visible
+string token to follow that path.
+
+The follow-up clean launch passed all 1,780 tests and both parser coverage gates. In IntelliJ
+2026.3, Go to Declaration opened the included file despite two syntax errors on its line.
+Removing the invalid tokens cleared the errors, and the Run console printed the value from
+the included file.
 
 The core reports lexical errors on retained lines during assembly tokenization,
 after it knows their original file and line. An include line that gets replaced
