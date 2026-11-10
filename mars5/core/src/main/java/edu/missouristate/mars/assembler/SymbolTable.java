@@ -136,9 +136,17 @@ public class SymbolTable {
    * @return The memory address of the label given, or NOT_FOUND if not found in symbol table.
    */
   public int getAddressLocalOrGlobal(String s) {
-    int address = this.getAddress(s);
-    SymbolTable globals = globalSymbols;
-    return address == NOT_FOUND && globals != null ? globals.getAddress(s) : address;
+    Symbol symbol = getSymbolLocalOrGlobal(s);
+    return symbol == null ? NOT_FOUND : symbol.getAddress();
+  }
+
+  /** Looks up the symbol whose address is used for an operand in this scope. */
+  public Symbol getSymbolLocalOrGlobal(String name) {
+    Symbol local = getSymbol(name);
+    if (globalSymbols != null && (local == null || local.getAddress() == NOT_FOUND)) {
+      return globalSymbols.getSymbol(name);
+    }
+    return local;
   }
 
   /**

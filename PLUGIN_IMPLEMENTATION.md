@@ -287,6 +287,13 @@ The result opens the exact written token, including in a plain `.inc` file.
 Go to Declaration on that token still follows its written equivalence or
 parameter binding.
 
+For labels and external storage, the assembler records the resolved definition at
+each instruction operand, data operand, and export. Find Usages joins those bindings
+with the native word search for the current source revisions. A forwarded macro
+argument opens its original argument token, and an equivalence opens the written
+alias use. Locations in plain-text includes preserve the original file and exact
+column. The reverse lookup is built on demand for usage search.
+
 Find Usages on a written macro formal, or from a reference to it, resolves
 through the include-ordered macro scope. It supports both percent and SPIM
 spellings, including punctuation-only names such as `%?`. When one token in

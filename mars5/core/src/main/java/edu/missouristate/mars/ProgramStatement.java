@@ -7,6 +7,7 @@ import edu.missouristate.mars.core.SimulationSettings;
 import edu.missouristate.mars.mips.instructions.*;
 import edu.missouristate.mars.util.*;
 import java.util.*;
+import java.util.function.BiConsumer;
 
 /*
 Copyright (c) 2003-2013,  Pete Sanderson and Kenneth Vollmar
@@ -264,6 +265,12 @@ public class ProgramStatement {
    * @param errors The list of assembly errors encountered so far. May add to it here.
    */
   public void buildBasicStatementFromBasicInstruction(ErrorList errors) {
+    buildBasicStatementFromBasicInstruction(errors, (token, symbol) -> {});
+  }
+
+  /** Resolves operands and reports each source token whose address came from a symbol. */
+  public void buildBasicStatementFromBasicInstruction(
+      ErrorList errors, BiConsumer<Token, Symbol> recordSymbolUse) {
     Token token = strippedTokenList.get(0);
     String basicStatementElement = token.getValue() + " ";
     StringBuilder basic = new StringBuilder(basicStatementElement);
@@ -320,15 +327,16 @@ public class ProgramStatement {
         }
         this.operands[this.numOperands++] = registerNumber;
       } else if (tokenType == TokenTypes.IDENTIFIER) {
-        int address =
-            this.sourceMIPSprogram.getLocalSymbolTable().getAddressLocalOrGlobal(tokenValue);
-        if (address == SymbolTable.NOT_FOUND) { // symbol used without being defined
+        Symbol symbol = this.sourceMIPSprogram.getLocalSymbolTable().getSymbolLocalOrGlobal(tokenValue);
+        if (symbol == null || symbol.getAddress() == SymbolTable.NOT_FOUND) {
           errors.add(
               new ErrorMessage(
                   token,
                   "Symbol \"" + tokenValue + "\" not found in symbol table."));
           return;
         }
+        recordSymbolUse.accept(token, symbol);
+        int address = symbol.getAddress();
         boolean absoluteAddress = true; // (used below)
         //////////////////////////////////////////////////////////////////////
         // added code 12-20-2004. If basic instruction with I_BRANCH format, then translate

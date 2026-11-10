@@ -33,6 +33,14 @@ internal class AssemblySymbols(
             for (call in calls) getOrPut(call.definition(), ::LinkedHashSet).add(site)
         }
     }
+    val assembledLabelUsages: Map<SourceToken, Set<SourceToken>> by lazy {
+        buildMap<SourceToken, MutableSet<SourceToken>> {
+            for ((site, bindings) in symbols.symbolUses()) {
+                ProgressManager.checkCanceled()
+                for (binding in bindings) getOrPut(binding.definition(), ::LinkedHashSet).add(site)
+            }
+        }
+    }
     val localSymbols get() = localSymbols(entry)
 
     fun rootFor(source: Path): Path = rootsBySource.getValue(source)

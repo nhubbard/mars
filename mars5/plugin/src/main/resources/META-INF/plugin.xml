@@ -60,7 +60,7 @@
     <lang.psiStructureViewFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
     <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
-    <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroReferencesSearcher"/>
+    <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalReferencesSearcher"/>
     <renamePsiElementProcessor implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameProcessor"/>
     <renameInputValidator implementation="edu.missouristate.mars.plugin.language.MipsMacroFormalRenameInputValidator"/>

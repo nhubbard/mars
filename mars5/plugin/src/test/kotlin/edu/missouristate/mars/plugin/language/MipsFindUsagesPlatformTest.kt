@@ -263,6 +263,64 @@ class MipsFindUsagesPlatformTest {
     }
 
     @Test
+    fun `native label usage search finds assembled aliases and forwarded arguments`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .include "defs.s"
+            .eqv DEST target
+            .include "operands.txt"
+            outer(target)
+            j DEST
+            j target
+        """.trimIndent()
+        val body = """
+            .data
+            .word DEST
+            .text
+            .macro inner (%address)
+                j %address
+            .end_macro
+            .macro outer (%address)
+                inner(%address)
+            .end_macro
+        """.trimIndent()
+        val current = project.get()
+        val definitions = withContext(Dispatchers.EDT) {
+            val defs = fixture.addFileToProject("defs.s", "target: nop\nother: nop\n")
+            fixture.addFileToProject("operands.txt", body)
+            fixture.configureFromExistingVirtualFile(fixture.addFileToProject("entry.asm", source).virtualFile)
+            defs
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val (target, other) = readAction { declarations(definitions).sortedBy { it.textOffset } }
+        val direct = "entry.asm" to source.lastIndexOf("target")
+        val forwarded = "entry.asm" to (source.indexOf("outer(target)") + "outer(".length)
+        val alias = "entry.asm" to source.lastIndexOf("DEST")
+        val data = "operands.txt" to body.indexOf("DEST")
+        assertEquals(setOf(direct), realizedUsageLocations(target))
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        assertEquals(setOf(direct, forwarded, alias, data), realizedUsageLocations(target))
+        readAction {
+            val caller = fixture.file.findElementAt(forwarded.second)!!
+            val query = ReferencesSearch.search(target, LocalSearchScope(caller))
+            assertFalse(query.forEach(Processor { false }))
+            assertEquals(target, query.findFirst()!!.resolve())
+        }
+        withContext(Dispatchers.EDT) {
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.setText(source.replace(".eqv DEST target", ".eqv DEST other"))
+            }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        val changedDirect = "entry.asm" to direct.second - 1
+        val changedForwarded = "entry.asm" to forwarded.second - 1
+        val changedAlias = "entry.asm" to alias.second - 1
+        assertEquals(setOf(changedDirect), realizedUsageLocations(target))
+        withContext(Dispatchers.EDT) { fixture.doHighlighting() }
+        assertEquals(setOf(changedDirect, changedForwarded), realizedUsageLocations(target))
+        assertEquals(setOf(changedAlias, data), realizedUsageLocations(other))
+    }
+
+    @Test
     fun `native usage search respects the directory assembly inputs and assembler policy`() = timeoutRunBlocking<Unit> {
         val source = ".include \"parts/defs.s\"\n.eqv CALL inner\n.macro outer\nCALL\n.end_macro\nouter\nnop\n"
         val current = project.get()

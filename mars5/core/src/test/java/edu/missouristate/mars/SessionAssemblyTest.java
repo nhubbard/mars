@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
+import edu.missouristate.mars.api.AssemblySymbolMap.SymbolUse;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.api.MarsGuiProxy;
@@ -32,6 +34,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -591,6 +594,54 @@ class SessionAssemblyTest {
           "privateLabel", new Definition(text + 8, Kind.TEXT, new Origin(new Location(other, 2), null), false, 1)));
       assertThatThrownBy(() -> map.locals().get(main).clear()).isInstanceOf(UnsupportedOperationException.class);
       assertThatThrownBy(() -> map.globals().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+  }
+
+  @Test
+  void symbolUsesKeepWrittenColumnsThroughMacroForwardingAndDataBackpatches() throws Exception {
+    var main = directory.resolve("main.s");
+    var other = directory.resolve("other.s");
+    var macros = directory.resolve("macros.txt");
+    var sources = new AssemblySourceSnapshot(List.of(main, other), Map.of(
+        main, """
+            .include "macros.txt"
+            .eqv TARGET target
+            .data
+            first: .word target
+            .text
+            branch (target)
+            j TARGET
+            local: nop
+            .data
+            .word local
+            .word future
+            future: .word 0
+            """,
+        other, ".text\ntarget: nop\n.globl target\n",
+        macros, """
+            .macro inner (%label)
+              j %label
+            .end_macro
+            .macro branch (%label)
+              inner(%label)
+            .end_macro
+            """));
+    try (var session = session("Default")) {
+      var result = new SessionAssembler(session).assembleSnapshot(sources, null, true, false);
+      assertThat(result.errors()).isEmpty();
+      var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target");
+      var local = new SymbolUse(new SourceToken(new Location(main, 8), 1), "local");
+      var future = new SymbolUse(new SourceToken(new Location(main, 12), 1), "future");
+      var uses = result.program().symbolMap().symbolUses();
+      assertThat(uses).containsExactlyInAnyOrderEntriesOf(Map.of(
+          new SourceToken(new Location(main, 4), 14), Set.of(target),
+          new SourceToken(new Location(main, 6), 9), Set.of(target),
+          new SourceToken(new Location(main, 7), 3), Set.of(target),
+          new SourceToken(new Location(main, 10), 7), Set.of(local),
+          new SourceToken(new Location(main, 11), 7), Set.of(future),
+          new SourceToken(new Location(other, 3), 8), Set.of(target)));
+      assertThatThrownBy(() -> uses.get(new SourceToken(new Location(main, 4), 14)).clear())
+          .isInstanceOf(UnsupportedOperationException.class);
     }
   }
 

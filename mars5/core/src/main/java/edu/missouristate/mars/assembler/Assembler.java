@@ -62,7 +62,8 @@ public final class Assembler {
     try (var lease = context.session().claimStoppedSession()) {
       sourceMap = InstructionSourceMap.EMPTY;
       symbolMap = AssemblySymbolMap.EMPTY;
-      var first = new FirstPassProcessor(context, checkCancellation);
+      var symbolUses = new AssemblySymbolUses();
+      var first = new FirstPassProcessor(context, checkCancellation, symbolUses);
       try {
         errors = first.process(programs, extended, warnings);
       } catch (ProcessingException failure) {
@@ -70,7 +71,7 @@ public final class Assembler {
         throw failure;
       }
       var result =
-          new SecondPassProcessor(context, checkCancellation).process(programs, errors, warnings);
+          new SecondPassProcessor(context, checkCancellation, symbolUses).process(programs, errors, warnings);
       var locals = new HashMap<Path, Map<String, Definition>>();
       for (var program : programs) {
         checkCancellation.run();
@@ -78,7 +79,7 @@ public final class Assembler {
         locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
       }
       symbolMap = new AssemblySymbolMap(
-          locals, definitions(context.symbols(), checkCancellation), first.macroCalls);
+          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings());
       sourceMap = result.sourceMap();
       return result.instructions();
     }

@@ -14,18 +14,19 @@ import edu.missouristate.mars.plugin.analysis.SymbolKind
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 
-/** Supplements IntelliJ's word search with calls whose names appeared only during expansion. */
-internal class MipsMacroReferencesSearcher : QueryExecutorBase<PsiReference, SearchParameters>(true) {
+/** Supplements IntelliJ's word search with bindings established during assembly. */
+internal class MipsAssembledReferencesSearcher : QueryExecutorBase<PsiReference, SearchParameters>(true) {
     override fun processQuery(queryParameters: SearchParameters, consumer: Processor<in PsiReference>) {
         val target = queryParameters.elementToSearch as? MipsDeclaration ?: return
-        if (target.kind != SymbolKind.MACRO) return
+        if (target.kind == SymbolKind.CONSTANT) return
         val analysis = target.project.service<MarsAnalysisService>()
         val scope = queryParameters.effectiveSearchScope
-        for (site in analysis.assembledMacroUsages(target)) {
+        for (site in analysis.assembledUsages(target)) {
             ProgressManager.checkCanceled()
             val (file, offset) = analysis.sourceTokenPosition(site) ?: continue
             val leaf = file.findElementAt(offset)!!
             if (!PsiSearchScopeUtil.isInScope(scope, leaf)) continue
+            if (target.kind != SymbolKind.MACRO && leaf.references.any { it.isReferenceTo(target) }) continue
             val end = if (file is MipsFile) leaf.textRange.endOffset
             else MipsScanner.next(file.viewProvider.contents, offset)!!.end
             val range = TextRange(offset - leaf.textOffset, end - leaf.textOffset)

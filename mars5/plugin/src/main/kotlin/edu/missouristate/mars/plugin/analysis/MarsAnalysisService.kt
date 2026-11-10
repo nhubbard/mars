@@ -305,14 +305,15 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         }.orEmpty()
     }
 
-    internal fun assembledMacroUsages(target: MipsDeclaration): Sequence<SourceToken> {
+    internal fun assembledUsages(target: MipsDeclaration): Sequence<SourceToken> {
         val file = target.containingFile as MipsFile
         val snapshots = listOfNotNull(lastBuild.get()?.snapshot) + synchronized(backgroundSymbols) { backgroundSymbols.values() }
         val handler = exceptionHandler
         return snapshots.asSequence().flatMap { snapshot ->
             ProgressManager.checkCanceled()
             val path = snapshot.sourcePath(file) ?: return@flatMap emptySequence()
-            val sites = snapshot.assembledMacroUsages[sourceTokenAt(file, path, target.textOffset)] ?: return@flatMap emptySequence()
+            val usages = if (target.kind == SymbolKind.MACRO) snapshot.assembledMacroUsages else snapshot.assembledLabelUsages
+            val sites = usages[sourceTokenAt(file, path, target.textOffset)] ?: return@flatMap emptySequence()
             val selection = AssemblySelection(snapshot.sourceSet, snapshot.options)
             if (!snapshot.isCurrent(handler) || !snapshot.hasCurrentDirectory() ||
                 selection.options != selection.forEditor().options || !snapshot.hasCurrentMacroSources()

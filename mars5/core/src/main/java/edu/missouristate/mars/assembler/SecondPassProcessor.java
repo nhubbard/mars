@@ -20,10 +20,12 @@ final class SecondPassProcessor {
 
   private final AssemblyContext context;
   private final Runnable checkCancellation;
+  private final AssemblySymbolUses symbolUses;
 
-  SecondPassProcessor(AssemblyContext context, Runnable checkCancellation) {
+  SecondPassProcessor(AssemblyContext context, Runnable checkCancellation, AssemblySymbolUses symbolUses) {
     this.context = context;
     this.checkCancellation = checkCancellation;
+    this.symbolUses = symbolUses;
   }
 
   Result process(
@@ -37,7 +39,7 @@ final class SecondPassProcessor {
       }
       for (var statement : program.getParsedList()) {
         checkCancellation.run();
-        statement.buildBasicStatementFromBasicInstruction(errors);
+        statement.buildBasicStatementFromBasicInstruction(errors, symbolUses::record);
         if (errors.errorsOccurred()) {
           throw new ProcessingException(errors);
         }

@@ -51,10 +51,12 @@ final class FirstPassProcessor {
   final AssemblyContext context;
   final Runnable checkCancellation;
   final Map<SourceToken, Set<MacroCall>> macroCalls = new HashMap<>();
+  private final AssemblySymbolUses symbolUses;
 
-  FirstPassProcessor(AssemblyContext context, Runnable checkCancellation) {
+  FirstPassProcessor(AssemblyContext context, Runnable checkCancellation, AssemblySymbolUses symbolUses) {
     this.context = context;
     this.checkCancellation = checkCancellation;
+    this.symbolUses = symbolUses;
   }
 
   private final Parser parser = new Parser(this);
@@ -486,6 +488,7 @@ final class FirstPassProcessor {
         } else {
           fileCurrentlyBeingAssembled.getLocalSymbolTable().removeSymbol(label);
           context.symbols().addSymbol(label, symtabEntry, errors);
+          symbolUses.record(label, symtabEntry);
         }
       }
     }
@@ -697,16 +700,17 @@ final class FirstPassProcessor {
     } // end of "if integer token type"
     else if (token.getType() == TokenTypes.IDENTIFIER) {
       if (this.inDataSegment) {
-        int value =
+        var symbol =
             fileCurrentlyBeingAssembled
                 .getLocalSymbolTable()
-                .getAddressLocalOrGlobal(token.getValue());
-        if (value == SymbolTable.NOT_FOUND) {
+                .getSymbolLocalOrGlobal(token.getValue());
+        if (symbol == null || symbol.getAddress() == SymbolTable.NOT_FOUND) {
           // Record value 0 for now, then set up backpatch entry
           int dataAddress = writeToDataSegment(0, lengthInBytes, token, errors);
           currentFileDataSegmentForwardReferences.add(dataAddress, lengthInBytes, token);
         } else { // label already defined, so write its address
-          writeToDataSegment(value, lengthInBytes, token, errors);
+          symbolUses.record(token, symbol);
+          writeToDataSegment(symbol.getAddress(), lengthInBytes, token, errors);
         }
       } // Data segment check done previously, so this "else" will not be.
       // See 11/20/06 note above.
@@ -1036,18 +1040,18 @@ final class FirstPassProcessor {
     // defined in a file not yet parsed).
     private int resolve(SymbolTable localSymtab) {
       int count = 0;
-      int labelAddress;
       DataSegmentForwardReference entry;
       for (int i = 0; i < forwardReferenceList.size(); i++) {
         checkCancellation.run();
         entry = forwardReferenceList.get(i);
-        labelAddress = localSymtab.getAddressLocalOrGlobal(entry.token.getValue());
-        if (labelAddress != SymbolTable.NOT_FOUND) {
+        var symbol = localSymtab.getSymbolLocalOrGlobal(entry.token.getValue());
+        if (symbol != null && symbol.getAddress() != SymbolTable.NOT_FOUND) {
           // patch address has to be valid b/c we already stored there...
           try {
-            context.memory().set(entry.patchAddress, labelAddress, entry.length);
+            context.memory().set(entry.patchAddress, symbol.getAddress(), entry.length);
           } catch (AddressErrorException ignored) {
           }
+          symbolUses.record(entry.token, symbol);
           forwardReferenceList.remove(i);
           i--; // needed because removal shifted the remaining list indices down
           count++;
