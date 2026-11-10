@@ -183,8 +183,9 @@ class MipsAddressInlayPlatformTest {
     }
 
     private suspend fun assertHints(expected: List<String>, providerId: String = MIPS_ADDRESS_HINTS_ID) {
+        awaitEditorRefreshes()
         withContext(Dispatchers.EDT) { fixture.doHighlighting() }
-        refresh.waitForRefresh()
+        awaitEditorRefreshes()
         withContext(Dispatchers.EDT) {
             fixture.doHighlighting()
             val editor = fixture.editor
@@ -198,6 +199,12 @@ class MipsAddressInlayPlatformTest {
                 .map { inlay -> inlay.renderer.presentationList.getEntries().joinToString("") { (it as TextInlayPresentationEntry).text } }
             assertEquals(expected, hints)
         }
+    }
+
+    private fun awaitEditorRefreshes() {
+        // A folding refresh restarts the same daemon the highlighting fixture drives.
+        project.service<MipsFoldingRefresh>().waitForRefresh()
+        refresh.waitForRefresh()
     }
 
     private fun assertNoPublishedHints(file: PsiFile, provider: InlayHintsProvider = MipsAddressInlayProvider()) {
