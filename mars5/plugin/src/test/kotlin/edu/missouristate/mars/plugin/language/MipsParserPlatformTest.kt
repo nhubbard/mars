@@ -36,6 +36,44 @@ class MipsParserPlatformTest {
     private val project = projectFixture()
 
     @Test
+    fun `macro definitions retain raw operands until the assembler expands them`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .macro deferred (%value)
+                    addiu ${'$'}t0, +
+                    addiu ${'$'}t0, :
+                    addiu ${'$'}t0, )
+                    lw ${'$'}t0, 0(${'$'}sp
+                    .word )
+                    .include %value
+                .end_macro
+                .macro emit (%value)
+                    addiu ${'$'}a0, ${'$'}zero, %value
+                .end_macro
+                emit(42)
+            """.trimIndent() + "\n"
+            assertAssembles(directory, source, 0x2404002a)
+            val entry = directory.resolve("entry.asm").also { it.writeText(source + "deferred(1)\n") }
+            val context = project.get().service<MarsSessionService>().context
+            assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+
+            readAction {
+                val file = assertParses(source)
+                assertEquals(listOf("\$t0, +", "\$t0, :", "\$t0, )", "\$t0, 0(\$sp", ")"),
+                    descendants(file.node, "OPERAND_FRAGMENT").map { it.text }.toList())
+                val validBody = descendants(file.node, "MACRO_DEFINITION").last()
+                assertEquals(listOf("\$a0", "\$zero", "%value"), descendants(validBody, "OPERAND").map { it.text }.toList())
+                assertEquals(listOf("emit(42)"), descendants(file.node, "OPERATION_CANDIDATE").map { it.text }.toList())
+
+                val factory = PsiFileFactory.getInstance(project.get())
+                val invalid = factory.createFileFromText("invalid.asm", MipsFileType,
+                    "addiu \$t0, :\n.macro bad\n.word 'bad'\n.end_macro\nnext: nop")
+                assertEquals(2, PsiTreeUtil.findChildrenOfType(invalid, PsiErrorElement::class.java).size)
+                assertEquals("next:", descendants(invalid.node, "LABEL").single().text)
+            }
+        }
+
+    @Test
     fun `mixed case macro and equivalence directives assemble and produce native PSI`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val source = """
             .EqV LIMIT 7

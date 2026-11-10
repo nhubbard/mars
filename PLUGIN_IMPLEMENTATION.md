@@ -39,6 +39,12 @@ Zero-offset loads retain separate register and base operands when the comma is o
 Numeric, character, and label offsets still group with their base register when commas appear
 before the opening parenthesis.
 
+In a written macro body, instructions and ordinary directives retain raw operand tokens when
+the structured operand grammar would report an error. MARS validates those operands on
+expansion. IntelliJ still preserves structured operands wherever the full parse succeeds and
+continues to report malformed lexical tokens, such as invalid character literals. The parser
+uses the platform's syntax markers to discard errors from the speculative structured parse.
+
 The assembly lexer uses the core's integer conversion and the assembler's
 floating-point syntax for digit-leading candidates. Malformed candidates
 such as `0xG` retain their entire span and recover at the next statement.

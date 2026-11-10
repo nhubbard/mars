@@ -4,6 +4,8 @@ import com.intellij.DynamicBundle
 import com.intellij.platform.syntax.SyntaxElementType
 import com.intellij.platform.syntax.element.SyntaxTokenTypes.WHITE_SPACE
 import com.intellij.platform.syntax.parser.SyntaxTreeBuilder
+import com.intellij.platform.syntax.util.runtime.Modifiers
+import com.intellij.platform.syntax.util.runtime.Parser
 import com.intellij.platform.syntax.util.runtime.ParserUserState
 import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
 import com.intellij.util.text.CharArrayUtil
@@ -37,6 +39,14 @@ private val addressBases = setOf(REGISTER, WORD, DOLLAR_WORD, PARAMETER)
 private val spacing = setOf(WHITE_SPACE)
 private val separators = spacing + COMMA
 private val syntaxMessages = DynamicBundle(MipsScanner::class.java, "messages.MarsBundle")
+
+/** Keep structured macro operands only when the complete grammar succeeds without recovery. */
+internal fun parseCompleteMacroOperands(runtime: SyntaxGeneratedParserRuntime, level: Int, parser: Parser): Boolean {
+    val start = runtime.enter_section_(level, Modifiers._NONE_)
+    val complete = runtime.parseWithProtectedLastPos(level + 1, parser) && !runtime.syntaxBuilder.hasErrorsAfter(start)
+    runtime.exit_section_(level, start, complete, false, null)
+    return complete
+}
 
 /** Apply the assembler's boundaries for address and signed operands. */
 @Suppress("UNUSED_PARAMETER")
