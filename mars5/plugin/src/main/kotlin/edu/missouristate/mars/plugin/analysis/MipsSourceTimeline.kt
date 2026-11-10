@@ -257,10 +257,15 @@ internal class MipsSourceTimeline(
             val operationOffset = if (operation != null && prefix.operationType(tokens, operationIndex) != null) {
                 expansion.originalOffset(operation.startPos - 1)
             } else -1
-            val types = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
+            val tokensByOffset = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
                 expansion.originalOffset(it.startPos - 1)
-            }.mapValues { (_, tokens) -> tokens.singleOrNull()?.type }
-            LineEquivalenceUses(expansion.substitutionOffsets().associateWith(types::get), operationOffset)
+            }
+            val types = expansion.substitutionOffsets().associateWith { offset ->
+                tokensByOffset[offset]?.singleOrNull()?.let {
+                    if (prefix.isMacroParameter(it.value)) TokenTypes.MACRO_PARAMETER else it.type
+                }
+            }
+            LineEquivalenceUses(types, operationOffset)
         }
 
     private fun prefixEnd(file: MipsFile, offset: Int): Int {
@@ -277,12 +282,15 @@ internal class MipsSourceTimeline(
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition
 
+        fun isMacroParameter(name: String): Boolean = openMacro != null && Macro.tokenIsMacroParameter(name, true)
+
         fun operationType(tokens: TokenList, operationIndex: Int): TokenTypes? {
-            val type = tokens[operationIndex].type
+            val operation = tokens[operationIndex]
             return when {
-                type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+                operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+                isMacroParameter(operation.value) -> TokenTypes.MACRO_PARAMETER
                 matchingMacro(tokens, operationIndex) != null -> TokenTypes.IDENTIFIER
-                type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
+                operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
                 else -> null
             }
         }

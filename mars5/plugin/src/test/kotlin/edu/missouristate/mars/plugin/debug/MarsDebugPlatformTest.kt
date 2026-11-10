@@ -498,6 +498,36 @@ class MarsDebugPlatformTest {
     }
 
     @Test
+    fun `a macro parameter supplied through an alias binds a native breakpoint when used as an instruction`() =
+        timeoutRunBlocking<Unit> {
+            val entry = withContext(Dispatchers.EDT) {
+                val source = fixture.addFileToProject("parameter-operation.asm", """
+                    .eqv HEAD %operation
+                    .macro emit (%operation, %value)
+                      HEAD ${'$'}a0, %value
+                      li ${'$'}v0, 1
+                      syscall
+                    .end_macro
+                    emit(li, 42)
+                    li ${'$'}v0, 10
+                    syscall
+                """.trimIndent()).virtualFile
+                val outside = fixture.addFileToProject("no-macro.asm", ".eqv HEAD %operation\nHEAD\n").virtualFile
+                assertFalse(breakpointType.canPutAt(outside, 1, project))
+                assertTrue(breakpointType.canPutAt(source, 2, project))
+                addBreakpoint(source, 2)
+                source
+            }
+            withDebug(entry) { debug ->
+                debug.assertPausedAt(entry, 2)
+                assertEquals("", debug.stdout.toString())
+                withContext(Dispatchers.EDT) { debug.session.resume() }
+                assertEquals(0, debug.exit.await())
+                assertEquals("42", debug.stdout.toString())
+            }
+        }
+
+    @Test
     fun `aliased instructions and macro calls bind native breakpoints to their machine code`() = timeoutRunBlocking<Unit> {
         val (entry, definitions) = withContext(Dispatchers.EDT) {
             val definitions = fixture.addFileToProject("aliases.s", """

@@ -292,6 +292,9 @@ class MipsEditorPlatformTest {
                 .eqv MESSAGE "hello"
                 .eqv MANY 1, 2
                 .eqv VALUE %value
+                .eqv HEAD %op
+                .eqv SPIM_HEAD ${'$'}operation
+                .eqv SPIM_VALUE ${'$'}value
                 .eqv FIRST SECOND
                 .eqv SECOND FIRST
                 .eqv CALL emit
@@ -301,6 +304,12 @@ class MipsEditorPlatformTest {
                 .end_macro
                 .macro apply (%op)
                     %op
+                    HEAD
+                .end_macro
+                .macro spim (${'$'}operation, ${'$'}value)
+                    ${'$'}operation
+                    SPIM_HEAD
+                    li ${'$'}t0, SPIM_VALUE
                 .end_macro
                 .data
                 text: .asciiz MESSAGE
@@ -316,6 +325,9 @@ class MipsEditorPlatformTest {
                 apply (OPCODE)
                 CALL (FIRST)
                 unknown (bare_argument)
+                ${'$'}operation
+                HEAD
+                nop
             """.trimIndent())
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
@@ -334,6 +346,13 @@ class MipsEditorPlatformTest {
             assertEquals(labelColor, color("j DEST", "DEST"))
             assertEquals(DefaultLanguageHighlighterColors.STRING, color(".asciiz MESSAGE", "MESSAGE"))
             assertEquals(macroParameterColor, color("li \$t0, VALUE", "VALUE"))
+            assertEquals(macroParameterColor, color("\n    %op\n", "%op"))
+            assertEquals(macroParameterColor, color("\n    HEAD\n", "HEAD"))
+            assertEquals(macroParameterColor, color("\n    \$operation\n", "\$operation"))
+            assertEquals(macroParameterColor, color("\n    SPIM_HEAD\n", "SPIM_HEAD"))
+            assertEquals(macroParameterColor, color("li \$t0, SPIM_VALUE", "SPIM_VALUE"))
+            assertNull(color("\n\$operation\n", "\$operation"))
+            assertEquals(equivalenceColor, color("\nHEAD\nnop", "HEAD"))
             assertEquals(equivalenceColor, color(".word MANY", "MANY"))
             assertEquals(macroColor, color("CALL (bare_argument)", "CALL"))
             assertEquals(macroParameterColor, color("CALL (bare_argument)", "bare_argument"))

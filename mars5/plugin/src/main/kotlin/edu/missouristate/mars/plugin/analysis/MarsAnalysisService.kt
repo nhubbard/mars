@@ -365,6 +365,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (head.elementType == mnemonicType) return OperationSite(head.text, TokenTypes.OPERATOR, head.textRange)
         if (!DumbService.isDumb(project)) {
             val timeline = editorTimeline(root)
+            if (Macro.tokenIsMacroParameter(head.text, true) && timeline.macroAt(root, sourceLineStart(head)) != null) {
+                return OperationSite(head.text, TokenTypes.MACRO_PARAMETER, head.textRange)
+            }
             if (head.text in timeline.macroNames) {
                 return expandedOperationSite(root, head, timeline.prefix(root, head.textOffset))
             }
@@ -447,7 +450,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val prefix = leadingEquivalencePrefix(root, head) ?: return true
         val tokens = expandedOperation(prefix, sourceLine(head, fromLineStart = true)) ?: return true
         if (tokens.isEmpty) return false
-        return tokens[0].type == TokenTypes.OPERATOR || tokens[0].type == TokenTypes.IDENTIFIER
+        val operation = tokens[0]
+        return operation.type == TokenTypes.OPERATOR || operation.type == TokenTypes.IDENTIFIER ||
+            prefix.isMacroParameter(operation.value)
     }
 
     private fun leadingEquivalencePrefix(root: MipsFile, head: PsiElement): MipsSourceTimeline.Prefix? {
