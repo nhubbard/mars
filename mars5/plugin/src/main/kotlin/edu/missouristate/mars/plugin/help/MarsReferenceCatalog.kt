@@ -1,8 +1,11 @@
 package edu.missouristate.mars.plugin.help
 
 import com.intellij.DynamicBundle
+import com.intellij.ide.plugins.PluginDetailsService
+import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.openapi.util.text.StringUtil.stripHtml
+import com.intellij.util.ResourceUtil.loadText
 import edu.missouristate.mars.plugin.language.MipsDocumentationCatalog
 import edu.missouristate.mars.plugin.language.MipsSyscallDocumentation
 import org.jetbrains.annotations.Nls
@@ -17,6 +20,16 @@ internal class MarsReferenceTopic(val title: @Nls String, private val searchText
 }
 
 internal object MarsReferenceCatalog {
+    val about: MarsReferenceTopic by lazy {
+        val title = guides.getMessage("about.title")
+        val body = guides.getMessage("about.body")
+        MarsReferenceTopic(title, stripHtml(body, true)) {
+            val version = PluginDetailsService.getInstance().findDetails(PluginId.getId("edu.missouristate.mars"))!!.version!!
+            val label = referenceMessages.getMessage("reference.version", version)
+            "<p>${escapeXmlEntities(label)}</p>$body"
+        }
+    }
+
     val topics: List<MarsReferenceTopic> by lazy {
         buildList {
             for (id in listOf("start", "macros", "debug", "exceptions", "cli", "tools")) {
@@ -24,6 +37,12 @@ internal object MarsReferenceCatalog {
                 val body = guides.getMessage("$id.body")
                 add(MarsReferenceTopic(title, stripHtml(body, true)) { body })
             }
+            add(about)
+            add(archivedTopic("acknowledgements", "Acknowledgements.html"))
+            add(archivedTopic("history", "MarsHelpHistory.html"))
+            add(noticeTopic("license", "MARSlicense.txt"))
+            add(noticeTopic("apache", "Apache-2.0.txt"))
+            add(noticeTopic("notices", "THIRD-PARTY-NOTICES.txt"))
             for (entry in MipsDocumentationCatalog.entries) {
                 add(MarsReferenceTopic(entry.name, entry.searchText, entry::referenceHtml))
             }
@@ -38,4 +57,18 @@ internal object MarsReferenceCatalog {
             }
         }
     }
+
+    private fun archivedTopic(id: String, filename: String): MarsReferenceTopic {
+        val body = readResource(filename).substringAfter("<body>").substringBefore("</body>")
+            .replace(Regex("</?a\\b[^>]*>", RegexOption.IGNORE_CASE), "")
+        val context = escapeXmlEntities(referenceMessages.getMessage("reference.archive.note"))
+        return MarsReferenceTopic(guides.getMessage("$id.title"), stripHtml(body, true)) { "<p><i>$context</i></p>$body" }
+    }
+
+    private fun noticeTopic(id: String, filename: String): MarsReferenceTopic {
+        val body = readResource(filename)
+        return MarsReferenceTopic(guides.getMessage("$id.title"), body) { "<pre>${escapeXmlEntities(body)}</pre>" }
+    }
+
+    private fun readResource(filename: String): String = loadText(javaClass.getResourceAsStream("/mars-reference/$filename")!!)
 }

@@ -340,11 +340,16 @@ Search accepts several terms, matches titles and descriptions, and supports
 keyboard selection from the search field. Reference entries reuse the same
 catalog data and escaping as Quick Documentation.
 
+**Help → About MARS** opens the installed plugin version and original authors.
+The same reference has searchable archival acknowledgements, release history,
+and offline copies of the notices shipped with the ZIP. The MIPS/SPIM reference
+card link opens the original MARS repository in the browser.
+
 `MarsReferencePlatformTest` opens the registered action with no project,
 checks the shared catalog, selects an individual syscall and directive, and
 verifies that an empty search result clears the selected topic.
 The `mars-reference-playback` scenario exercises the registered action from the
-installed ZIP in a clean IntelliJ 2026.3 instance and captures the syscall result.
+installed ZIP in a clean IntelliJ 2026.3 instance and captures the syscall and About views.
 
 ## Go to Declaration for instruction labels
 

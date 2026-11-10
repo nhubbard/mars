@@ -85,16 +85,20 @@ tasks.test {
   systemProperty("jetbrains.ide.builtin.descovery.enabled", false)
 }
 
-tasks.processResources {
-  from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
-}
-
 val thirdPartyNotices = layout.projectDirectory.file("licenses/THIRD-PARTY-NOTICES.txt")
 val distributionNotices = listOf(
   rootProject.layout.projectDirectory.file("shared/MARSlicense.txt"),
   layout.projectDirectory.file("licenses/Apache-2.0.txt"),
   thirdPartyNotices,
 )
+tasks.processResources {
+  from(rootProject.layout.projectDirectory.dir("shared/datapath")) { into("datapath") }
+  from(rootProject.layout.projectDirectory.dir("desktop/src/main/resources/help")) {
+    include("Acknowledgements.html", "MarsHelpHistory.html")
+    into("mars-reference")
+  }
+  from(distributionNotices) { into("mars-reference") }
+}
 val pluginArchive = tasks.named<BuildPluginTask>("buildPlugin") {
   from(distributionNotices) { into("licenses") }
 }

@@ -12,6 +12,7 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.ScrollingUtil
 import com.intellij.ui.SearchTextField
+import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBHtmlPane
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
@@ -25,10 +26,15 @@ import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
 
 internal class MarsReferenceAction : DumbAwareAction() {
-    override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project).show()
+    override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project, MarsReferenceCatalog.topics.first()).show()
 }
 
-internal class MarsReferenceDialog(project: Project?) : DialogWrapper(project, false, IdeModalityType.MODELESS) {
+internal class MarsAboutAction : DumbAwareAction() {
+    override fun actionPerformed(e: AnActionEvent) = MarsReferenceDialog(e.project, MarsReferenceCatalog.about).show()
+}
+
+internal class MarsReferenceDialog(project: Project?, initialTopic: MarsReferenceTopic) :
+    DialogWrapper(project, false, IdeModalityType.MODELESS) {
     private val search = SearchTextField(false)
     private val model = FilteringListModel(CollectionListModel(MarsReferenceCatalog.topics))
     private val topics = JBList(model).apply {
@@ -53,6 +59,12 @@ internal class MarsReferenceDialog(project: Project?) : DialogWrapper(project, f
             }
             cell(split).align(Align.FILL)
         }.resizableRow()
+        row {
+            cell(BrowserLink(
+                referenceMessages.getMessage("reference.card"),
+                "https://github.com/dpetersanderson/MARS/blob/main/help/mipsref.pdf",
+            ))
+        }
     }
 
     init {
@@ -69,6 +81,7 @@ internal class MarsReferenceDialog(project: Project?) : DialogWrapper(project, f
             override fun textChanged(e: DocumentEvent) = filterTopics()
         })
         filterTopics()
+        topics.setSelectedValue(initialTopic, true)
         init()
     }
 
