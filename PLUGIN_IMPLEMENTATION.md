@@ -178,6 +178,17 @@ Macro and entry templates stay outside physically written macro bodies.
 The syscall templates are intended for text code and use basic instructions.
 Template expansion uses IntelliJ's formatter and project indentation settings.
 
+## Complete Current Statement
+
+IntelliJ's **Complete Current Statement** closes an unfinished physical
+`.include` path and preserves the literal path spelling. It also closes a
+written memory operand when adding `)` after the base register produces a
+valid form for the written mnemonic. For example, `lw $t0, -4($sp` becomes
+`lw $t0, -4($sp)`. It inserts the delimiter before any inline comment.
+IntelliJ then starts a new line using the editor's indentation rules, and
+Undo restores both edits together. Macro calls, aliased mnemonics and
+ambiguous operands use the ordinary Start New Line behavior.
+
 ## Mnemonic and directive completion
 
 IntelliJ's basic completion uses the generated parser's statement-head PSI and the Java core's

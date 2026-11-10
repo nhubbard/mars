@@ -9,7 +9,6 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiUtilCore
 import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.assembler.Macro
@@ -120,15 +119,11 @@ internal class MipsParameterInfoHandler : ParameterInfoHandler<PsiElement, MipsP
         val lineStart = document.getLineStartOffset(document.getLineNumber(offset))
         val first = CharArrayUtil.shiftForward(document.immutableCharSequence, lineStart, " \t,")
         if (first >= offset || PsiUtilCore.getElementType(context.file.findElementAt(offset - 1)) == commentType) return null
-        val statement = PsiTreeUtil.findFirstParent(context.file.findElementAt(first), true) {
-            PsiUtilCore.getElementType(it) == statementType
-        } ?: return null
-        val owner = statement.node.findChildByType(operationOwners)?.psi ?: return null
+        val owner = operationOnLine(context.file.findElementAt(first)) ?: return null
         return owner.takeIf { offset >= it.firstChild.textRange.endOffset }
     }
 
     private companion object {
-        val statementType = MipsTypes.psi("STATEMENT")
         val commentType = MipsTypes.psi("COMMENT")
         val operandPrefixes = setOf(TokenTypes.LEFT_PAREN, TokenTypes.PLUS, TokenTypes.MINUS)
     }

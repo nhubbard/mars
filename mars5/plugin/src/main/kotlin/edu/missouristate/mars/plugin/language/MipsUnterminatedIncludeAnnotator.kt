@@ -38,5 +38,5 @@ private object CloseIncludeQuote : PsiUpdateModCommandAction<PsiElement>(PsiElem
 private val unclosedString = MipsTypes.psi("UNCLOSED_STRING")
 private val bundle = DynamicBundle(MipsUnterminatedIncludeAnnotator::class.java, "messages.MarsBundle")
 
-private fun PsiElement.isUnterminatedInclude(): Boolean =
+internal fun PsiElement.isUnterminatedInclude(): Boolean =
     elementType == unclosedString && textOffset in mipsIncludeSites(containingFile).unterminated

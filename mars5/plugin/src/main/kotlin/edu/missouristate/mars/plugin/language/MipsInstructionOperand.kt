@@ -12,12 +12,18 @@ import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 
 private val instructionType = MipsTypes.psi("INSTRUCTION")
+private val statementType = MipsTypes.psi("STATEMENT")
 internal val operationOwners = TokenSet.create(instructionType, MipsTypes.psi("OPERATION_CANDIDATE"))
 internal val PsiElement.operationHead: PsiElement
     get() = if (elementType == instructionType) firstChild.firstChild else firstChild
 
 internal fun operationOwner(position: PsiElement): PsiElement? =
     PsiTreeUtil.findFirstParent(position, true) { it.elementType in operationOwners }
+
+/** Use the statement's head even when a malformed operand is in a recovery node. */
+internal fun operationOnLine(first: PsiElement?): PsiElement? =
+    PsiTreeUtil.findFirstParent(first, true) { it.elementType == statementType }
+        ?.node?.findChildByType(operationOwners)?.psi
 
 internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
     val acceptsLabel: Boolean get() = formats.any { it.tokenList[index].type == TokenTypes.IDENTIFIER }

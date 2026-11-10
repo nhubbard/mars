@@ -67,6 +67,8 @@
     <lang.commenter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
     <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
     <lang.quoteHandler language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsQuoteHandler"/>
+    <lang.smartEnterProcessor language="MARS_MIPS"
+                              implementationClass="edu.missouristate.mars.plugin.language.MipsSmartEnterProcessor"/>
     <defaultLiveTemplates file="liveTemplates/MarsMips.xml"/>
     <liveTemplateContext contextId="MARS_MIPS_STATEMENT"
                          implementation="edu.missouristate.mars.plugin.language.MipsStatementTemplateContext"/>
