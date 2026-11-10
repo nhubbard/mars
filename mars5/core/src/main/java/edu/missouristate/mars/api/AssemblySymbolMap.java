@@ -14,7 +14,8 @@ public record AssemblySymbolMap(
     Map<String, Definition> globals,
     Map<SourceToken, Set<MacroCall>> macroCalls,
     Map<SourceToken, Set<SymbolUse>> symbolUses,
-    Map<Path, List<MacroDefinition>> macros) {
+    Map<Path, List<MacroDefinition>> macros,
+    Map<Path, Set<EquivalenceOccurrence>> equivalences) {
 
   public static final AssemblySymbolMap EMPTY = new AssemblySymbolMap(Map.of(), Map.of());
 
@@ -34,6 +35,13 @@ public record AssemblySymbolMap(
     this(locals, globals, macroCalls, symbolUses, Map.of());
   }
 
+  public AssemblySymbolMap(
+      Map<Path, Map<String, Definition>> locals, Map<String, Definition> globals,
+      Map<SourceToken, Set<MacroCall>> macroCalls, Map<SourceToken, Set<SymbolUse>> symbolUses,
+      Map<Path, List<MacroDefinition>> macros) {
+    this(locals, globals, macroCalls, symbolUses, macros, Map.of());
+  }
+
   public AssemblySymbolMap {
     var copied = new HashMap<Path, Map<String, Definition>>();
     locals.forEach((entry, definitions) -> copied.put(entry, Map.copyOf(definitions)));
@@ -48,10 +56,17 @@ public record AssemblySymbolMap(
     var definitions = new HashMap<Path, List<MacroDefinition>>();
     macros.forEach((entry, entries) -> definitions.put(entry, List.copyOf(entries)));
     macros = Map.copyOf(definitions);
+    var aliases = new HashMap<Path, Set<EquivalenceOccurrence>>();
+    equivalences.forEach((entry, occurrences) -> aliases.put(entry, Set.copyOf(occurrences)));
+    equivalences = Map.copyOf(aliases);
   }
 
   /** A token at a one-based column in physical source, before macro and equivalence expansion. */
   public record SourceToken(Location location, int column) {}
+
+  /** The effective definition and written spelling of one .eqv declaration or substitution. */
+  public record EquivalenceOccurrence(
+      SourceToken site, SourceToken spelling, SourceToken definition, String name, boolean declaration) {}
 
   /** A label binding and, for an expanded .eqv, the written replacement that supplied it. */
   public record SymbolUse(SourceToken definition, String name, SourceToken equivalenceSource) {

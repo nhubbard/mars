@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import edu.missouristate.mars.api.AssemblySourceSnapshot;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
+import edu.missouristate.mars.api.AssemblySymbolMap.EquivalenceOccurrence;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
@@ -663,6 +664,14 @@ class SessionAssemblyTest {
               new MacroDefinition(new SourceToken(new Location(macros, 5), 8), "branch", List.of("%label"))),
           other, List.of()));
       var target = new SymbolUse(new SourceToken(new Location(other, 2), 1), "target");
+      var alias = new SourceToken(new Location(main, 2), 6);
+      var base = new SourceToken(new Location(macros, 1), 6);
+      var invocation = new SourceToken(new Location(main, 7), 3);
+      assertThat(result.program().symbolMap().equivalences().get(main)).contains(
+          new EquivalenceOccurrence(alias, alias, alias, "TARGET", true),
+          new EquivalenceOccurrence(base, base, base, "BASE", true),
+          new EquivalenceOccurrence(invocation, invocation, alias, "TARGET", false),
+          new EquivalenceOccurrence(invocation, new SourceToken(new Location(main, 2), 13), base, "BASE", false));
       var aliasedTarget = new SymbolUse(target.definition(), target.name(),
           new SourceToken(new Location(macros, 1), 11));
       var local = new SymbolUse(new SourceToken(new Location(main, 8), 1), "local");

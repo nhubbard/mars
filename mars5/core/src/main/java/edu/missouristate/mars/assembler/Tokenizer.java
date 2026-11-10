@@ -1,6 +1,7 @@
 package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.*;
+import edu.missouristate.mars.api.AssemblySymbolMap.EquivalenceOccurrence;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.mips.instructions.InstructionDefaults;
@@ -60,6 +61,7 @@ public class Tokenizer {
   private ErrorList errors;
   private MIPSprogram sourceMIPSprogram;
   private final Map<String, EquivalenceReplacement> equivalents = new HashMap<>();
+  private final Set<EquivalenceOccurrence> equivalenceOccurrences = new HashSet<>();
   // Single-character escape spellings and their corresponding values.
   private static final String escapedCharacters = "'\"\\ntbrf0";
   private static final int[] escapedCharactersValues = {'\'', '"', '\\', '\n', '\t', '\b', '\r', '\f', 0};
@@ -101,6 +103,7 @@ public class Tokenizer {
       throws ProcessingException {
     sourceMIPSprogram = p;
     equivalents.clear();
+    equivalenceOccurrences.clear();
     ArrayList<TokenList> tokenList = new ArrayList<>();
     ArrayList<SourceLine> source = processIncludes(p, checkCancellation);
     p.setSourceLineList(source);
@@ -455,7 +458,11 @@ public class Tokenizer {
   private record SourceEdit(
       int start, int removedLength, int insertedLength, int originalStart, SourceToken source) {}
 
-  private record EquivalenceReplacement(String text, SourceToken source) {}
+  private record EquivalenceReplacement(String text, SourceToken source, SourceToken definition) {}
+
+  Set<EquivalenceOccurrence> equivalenceOccurrences() {
+    return equivalenceOccurrences;
+  }
 
   /** An equivalence recorded while processing a detached line. */
   public record EquivalenceDefinition(String name, String replacement) {}
@@ -499,7 +506,7 @@ public class Tokenizer {
     TokenList tokens = tokenizeLine(null, 1, line, false, checkCancellation);
     return processEqv(null, 1, line, tokens, name -> {
       var text = replacements.apply(name);
-      return text == null ? null : new EquivalenceReplacement(text, null);
+      return text == null ? null : new EquivalenceReplacement(text, null, null);
     }, checkCancellation, edits, null);
   }
 
@@ -775,6 +782,13 @@ public class Tokenizer {
       int end = token.getEndPos() - 1;
       path.addLast(new EquivalenceExpansion(symbol, theLine.length() - end));
       var replacement = use.replacement();
+      var definition = replacement.definition();
+      var location = definition == null ? null : physicalLocation(program, lineNum);
+      if (location != null) {
+        var site = equivalenceSite(token, edits, location, expansion);
+        var spelling = spellingSource(edits, start, end, location, expansion);
+        equivalenceOccurrences.add(new EquivalenceOccurrence(site, spelling, definition, symbol, false));
+      }
       edits.add(new SourceEdit(start, end - start, replacement.text().length(), originalColumn - 1,
           replacement.source()));
       theLine = theLine.substring(0, start) + replacement.text() + theLine.substring(end);
@@ -786,7 +800,7 @@ public class Tokenizer {
       checkCancellation.run();
       Token token = tokens.get(i);
       token.setOriginalStartPos(originalColumn(token, edits));
-      token.setEquivalenceSource(spellingSource(edits, token.getStartPos() - 1, token.getEndPos() - 1, null));
+      token.setEquivalenceSource(spellingSource(edits, token.getStartPos() - 1, token.getEndPos() - 1, null, null));
     }
     reportLexicalErrors(originalProgram, lineNum, originalLine, tokens, originalTokens, expansion);
     return tokens;
@@ -825,7 +839,8 @@ public class Tokenizer {
   }
 
   /** A contiguous range can inherit a spelling from a replacement or the original physical line. */
-  private static SourceToken spellingSource(List<SourceEdit> edits, int start, int end, Location physicalLine) {
+  private static SourceToken spellingSource(
+      List<SourceEdit> edits, int start, int end, Location physicalLine, Macro.ExpandedLine expansion) {
     for (int i = edits.size() - 1; i >= 0; i--) {
       var edit = edits.get(i);
       int replacementEnd = edit.start() + edit.insertedLength();
@@ -841,7 +856,31 @@ public class Tokenizer {
         return new SourceToken(source.location(), source.column() + start - edit.start());
       }
     }
+    if (expansion != null) {
+      var origin = expansion.tokenOriginAt(start + 1);
+      if (origin != null) {
+        var token = origin.diagnostic();
+        return token.equivalenceSource() == null ? token.diagnosticSite() : token.equivalenceSource();
+      }
+      return null;
+    }
     return physicalLine == null ? null : new SourceToken(physicalLine, start + 1);
+  }
+
+  private static Location physicalLocation(MIPSprogram program, int lineNum) {
+    var lines = program == null ? null : program.getSourceLineList();
+    if (lines == null || lineNum < 1 || lineNum > lines.size()) {
+      return null;
+    }
+    var source = lines.get(lineNum - 1);
+    return new Location(Path.of(source.getFilename()), source.getLineNumber());
+  }
+
+  private static SourceToken equivalenceSite(
+      Token token, List<SourceEdit> edits, Location location, Macro.ExpandedLine expansion) {
+    int column = originalColumn(token, edits);
+    var origin = expansion == null ? null : expansion.tokenOriginAt(column);
+    return new SourceToken(location, origin == null ? column : origin.written().getOriginalStartPos());
   }
 
   private static int equivalenceDirectiveIndex(TokenList tokens) {
@@ -884,17 +923,18 @@ public class Tokenizer {
     int start = tokens.get(directive + 2).getStartPos() - 1;
     int end = tokens.get(last).getEndPos() - 1;
     String expression = line.substring(start, end);
-    Location location = null;
-    var lines = program == null ? null : program.getSourceLineList();
-    if (expansion == null && lines != null && lineNum > 0 && lineNum <= lines.size()) {
-      var source = lines.get(lineNum - 1);
-      location = new Location(Path.of(source.getFilename()), source.getLineNumber());
-    }
-    var replacement = new EquivalenceReplacement(expression, spellingSource(edits, start, end, location));
+    var location = physicalLocation(program, lineNum);
+    var site = location == null ? null : equivalenceSite(name, edits, location, expansion);
+    var source = spellingSource(edits, start, end, expansion == null ? location : null, null);
+    var replacement = new EquivalenceReplacement(expression, source, site);
     var previous = equivalents.putIfAbsent(symbol, replacement);
     if (previous != null && !previous.text().equals(expression)) {
       addLineError(program, lineNum, originalColumn(name, edits),
           "\"" + symbol + "\" is already defined", expansion);
+    } else if (site != null) {
+      var spelling = spellingSource(edits, name.getStartPos() - 1, name.getEndPos() - 1, location, expansion);
+      equivalenceOccurrences.add(new EquivalenceOccurrence(
+          site, spelling, previous == null ? site : previous.definition(), symbol, true));
     }
     return true;
   }

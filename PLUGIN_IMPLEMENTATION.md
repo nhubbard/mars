@@ -375,6 +375,21 @@ reference when renaming that export. External Rename requires a written allocati
 and a binding in the selected assembly. Macro-generated allocations and unexpanded
 declarations still require additional source evidence.
 
+## Rename equivalences
+
+Use IntelliJ's **Refactor → Rename** on a written `.eqv` declaration or an operand
+that resolves to it. The preview includes identical repeated declarations, direct
+uses, and the written links that reach the definition through realized alias chains.
+For example, renaming `BASE` updates the replacement in `.eqv VIA BASE` when `VIA`
+expands through `BASE`. The `VIA` name, its invocations, and the effective replacement
+value stay intact.
+
+The assembler records equivalence bindings per entry, including substitutions in
+ignored directives. Rename checks that every definition and substitution has the
+expected binding after the edit, even when the generated instructions are identical.
+Declarations owned by multiple entry tokenizers, unknown replacement spellings, and
+unresolved occurrences in dormant alias chains still stop the operation.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

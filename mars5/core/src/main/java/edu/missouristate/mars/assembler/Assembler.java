@@ -3,6 +3,7 @@ package edu.missouristate.mars.assembler;
 import edu.missouristate.mars.*;
 import edu.missouristate.mars.api.AssemblySymbolMap;
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition;
+import edu.missouristate.mars.api.AssemblySymbolMap.EquivalenceOccurrence;
 import edu.missouristate.mars.api.AssemblySymbolMap.MacroDefinition;
 import edu.missouristate.mars.api.InstructionSourceMap;
 import edu.missouristate.mars.core.*;
@@ -75,14 +76,17 @@ public final class Assembler {
           new SecondPassProcessor(context, checkCancellation, symbolUses).process(programs, errors, warnings);
       var locals = new HashMap<Path, Map<String, Definition>>();
       var macros = new HashMap<Path, List<MacroDefinition>>();
+      var equivalences = new HashMap<Path, Set<EquivalenceOccurrence>>();
       for (var program : programs) {
         checkCancellation.run();
         var entry = Path.of(program.getFilename()).toAbsolutePath().normalize();
         locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
         macros.put(entry, program.getLocalMacroPool().definitions(checkCancellation));
+        equivalences.put(entry, program.getTokenizer().equivalenceOccurrences());
       }
       symbolMap = new AssemblySymbolMap(
-          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(), macros);
+          locals, definitions(context.symbols(), checkCancellation), first.macroCalls, symbolUses.bindings(), macros,
+          equivalences);
       sourceMap = result.sourceMap();
       return result.instructions();
     }

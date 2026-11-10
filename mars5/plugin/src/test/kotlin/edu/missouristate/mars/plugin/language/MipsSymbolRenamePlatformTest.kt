@@ -291,6 +291,135 @@ class MipsSymbolRenamePlatformTest {
     }
 
     @Test
+    fun `native equivalence rename updates repeated definitions and the realized links in alias chains`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv BASE 42 # BASE\n"
+        val aliases = ".eqv BASE 42\n.eqv VIA BASE\n.eqv LOAD li \$a0, VIA\n"
+        val source = """
+            .include "definitions.s"
+            .include "aliases.txt"
+            .data
+            .word BASE, BASE
+            .asciiz "BASE"
+            .text
+            .macro emit (%value)
+                li ${'$'}a1, %value
+            .end_macro
+            emit (BASE)
+            LOAD
+        """.trimIndent()
+        val (defs, chain, entry) = withContext(Dispatchers.EDT) {
+            val defs = fixture.addFileToProject("definitions.s", definitions)
+            val chain = fixture.addFileToProject("aliases.txt", aliases)
+            val entry = fixture.addFileToProject("entry.asm", source)
+            fixture.configureFromExistingVirtualFile(defs.virtualFile)
+            Triple(defs, chain, entry)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val alias = constants(defs).single()
+            val references = usages(alias)
+            assertEquals(listOf("aliases.txt", "aliases.txt", "entry.asm", "entry.asm", "entry.asm"),
+                references.map { it.virtualFile!!.name }.sorted())
+            RenameProcessor(project, alias, "NUMBER", false, false).run()
+            assertEquals(".eqv NUMBER 42 # BASE\n", defs.text)
+            assertEquals(aliases.replace("BASE", "NUMBER"), chain.text)
+            assertEquals(source.replace(".word BASE, BASE", ".word NUMBER, NUMBER").replace("emit (BASE)", "emit (NUMBER)"), entry.text)
+            assertTrue(fixture.psiManager.findFile(chain.virtualFile) is PsiPlainTextFile)
+            val dialog = TestDialogManager.setTestDialog(TestDialog.OK)
+            try {
+                UndoManager.getInstance(project).undo(FileEditorManager.getInstance(project).selectedEditor)
+                PsiDocumentManager.getInstance(project).commitAllDocuments()
+                assertEquals(listOf(definitions, aliases, source), listOf(defs.text, chain.text, entry.text))
+            } finally {
+                TestDialogManager.setTestDialog(dialog)
+            }
+        }
+    }
+
+    @Test
+    fun `native equivalence rename can start at an identical repeated declaration`() = timeoutRunBlocking<Unit> {
+        val source = ".eqv BASE 42\n.eqv BASE 42\nli \$t0, BASE\n"
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            val alias = constants(file).last()
+            assertEquals(2, usages(alias).size)
+            RenameProcessor(project, alias, "VALUE", false, false).run()
+            assertEquals(source.replace("BASE", "VALUE"), file.text)
+        }
+    }
+
+    @Test
+    fun `rename rejects alias declarations shared by independent entry tokenizers`() = timeoutRunBlocking<Unit> {
+        val definitions = withContext(Dispatchers.EDT) {
+            val definitions = fixture.addFileToProject("defs.s", ".eqv BASE 42\n")
+            val first = fixture.addFileToProject("first.asm", ".include \"defs.s\"\nli \$t0, BASE\n")
+            val second = fixture.addFileToProject("second.asm", ".include \"defs.s\"\nli \$t1, BASE\n")
+            project.service<MarsAssemblySettings>().changeSources(listOf(first, second).map { it.virtualFile.path })
+            definitions
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = constants(definitions).single()
+            assertTrue(usages(target).isEmpty())
+            assertTrue(conflicts(target, "VALUE", emptyList()).contains("unique definition"))
+        }
+    }
+
+    @Test
+    fun `rename detects a changed alias binding even when both assemblies emit identical code`() = timeoutRunBlocking<Unit> {
+        val original = ".eqv BASE 1\n.include \"shared.txt\"\nnop\n"
+        val first = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("shared.txt", ".set BASE\n")
+            val first = fixture.addFileToProject("first.asm", original)
+            val second = fixture.addFileToProject("second.asm", original.replace("BASE 1", "BASE 2"))
+            project.service<MarsAssemblySettings>().changeSources(listOf(first, second).map { it.virtualFile.path })
+            first
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = constants(first).single()
+            val sites = usages(target)
+            assertEquals("shared.txt", sites.single().virtualFile!!.name)
+            val conflict = conflicts(target, "VALUE", sites)
+            assertTrue(conflict.contains("different symbol"), conflict)
+            assertEquals(original, first.text)
+        }
+    }
+
+    @Test
+    fun `rename refuses unproven macro-produced equivalence spellings`() = timeoutRunBlocking<Unit> {
+        val source = """
+            BASE: nop
+            j BASE
+            other: nop
+            .eqv DEFINE .eqv
+            .macro define (%directive)
+                %directive CHAIN BASE
+            .end_macro
+            .macro consume
+                li ${'$'}a0, CHAIN
+            .end_macro
+            .eqv BASE 42
+            define DEFINE
+            consume
+        """.trimIndent()
+        val file = withContext(Dispatchers.EDT) { fixture.configureByText("entry.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction {
+            val target = constants(file).last()
+            assertTrue(usages(target).isEmpty())
+            val conflict = conflicts(target, "VALUE", emptyList())
+            assertTrue(conflict.contains("traceable spellings"), conflict)
+            val label = label(file)
+            assertTrue(conflicts(label, "VALUE", usages(label)).contains("ambiguous"))
+            val other = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java).single { it.name == "other" }
+            assertEquals("", conflicts(other, "unrelated", usages(other)))
+            assertEquals(source, file.text)
+        }
+    }
+
+    @Test
     fun `native rename from a repeated extern updates its allocation aliases and cross-file operands`() = timeoutRunBlocking<Unit> {
         val application = ".include \"allocation.txt\"\n.include \"repeat.s\"\n.data\n.word \$buffer\n.text\nla \$t0, CELL\n"
         val allocation = ".extern \$buffer 4\n.eqv CELL \$buffer # \$buffer\n"
@@ -506,8 +635,8 @@ class MipsSymbolRenamePlatformTest {
             val validator = MipsSymbolRenameInputValidator()
             assertTrue(validator.pattern.accepts(target))
             assertFalse(processor.canProcessElement(scratch))
-            assertFalse(processor.canProcessElement(constant))
-            assertFalse(validator.pattern.accepts(constant))
+            assertTrue(processor.canProcessElement(constant))
+            assertTrue(validator.pattern.accepts(constant))
             assertFalse(processor.isInplaceRenameSupported)
             assertTrue(validator.isInputValid("valid.name", target, ProcessingContext()))
             assertTrue(usages(target).isEmpty())
@@ -593,7 +722,8 @@ class MipsSymbolRenamePlatformTest {
             val target = label(shared)
             val sites = usages(target)
             assertEquals(direct.virtualFile, sites.single().virtualFile)
-            assertTrue(conflicts(target, "updated", sites).contains("ambiguous"))
+            val conflict = conflicts(target, "updated", sites)
+            assertTrue(conflict.contains("could not assemble"), conflict)
             assertEquals("target: nop\n", shared.text)
         }
     }
@@ -783,6 +913,9 @@ class MipsSymbolRenamePlatformTest {
 
     private fun externals(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
         .filter { it.kind == SymbolKind.EXTERNAL }
+
+    private fun constants(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
+        .filter { it.kind == SymbolKind.CONSTANT }
 
     private fun usages(label: MipsDeclaration) =
         processor.findReferences(label, GlobalSearchScope.projectScope(project), false)
