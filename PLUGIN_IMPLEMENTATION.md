@@ -271,6 +271,12 @@ The result opens the exact written token, including in a plain `.inc` file.
 Go to Declaration on that token still follows its written equivalence or
 parameter binding.
 
+Find Usages on a written macro formal, or from a reference to it, resolves
+through the include-ordered macro scope. It supports both percent and SPIM
+spellings, including punctuation-only names such as `%?`. When one token in
+a written signature expands to several formals, searching from a reference
+to any of them finds the references that bind to that same signature token.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

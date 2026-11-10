@@ -1,31 +1,37 @@
 package edu.missouristate.mars.plugin.language
 
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.lang.findUsages.LanguageFindUsages
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElement
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiFile
 import com.intellij.psi.search.LocalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.util.Processor
+import com.intellij.util.IncorrectOperationException
 import edu.missouristate.mars.plugin.build.MarsAssemblyMode
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -129,6 +135,59 @@ class MipsFindUsagesPlatformTest {
         }
         assertEquals(setOf("shadow.s" to source.indexOf("j target") + 2), usageLocations(outer))
         assertEquals(setOf("shadow.s" to source.indexOf("b target") + 2), usageLocations(local))
+    }
+
+    @Test
+    fun `native usage search resolves written and aliased macro formals across includes`() = timeoutRunBlocking<Unit> {
+        val header = ".macro emit (%?, \$value, FORMALS, %?, BROKEN)\n"
+        val entry = """
+            .eqv FORMALS (%first, %second)
+            .include "header.s"
+            move ${'$'}a0, ${'$'}value
+            %?(%first)
+            li ${'$'}a1, %second
+            # %? %first
+            .asciiz "%second"
+            .macro ignored (%orphan)
+            .end_macro
+            .macro other (%first, ${'$'}value)
+            li ${'$'}a0, %first
+            .end_macro
+        """.trimIndent()
+        val current = project.get()
+        val (headerFile, entryFile) = withContext(Dispatchers.EDT) {
+            val signature = fixture.addFileToProject("header.s", header)
+            val root = fixture.addFileToProject("formals.asm", entry)
+            fixture.configureFromExistingVirtualFile(root.virtualFile)
+            signature to root
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val formals = readAction {
+            PsiTreeUtil.findChildrenOfType(headerFile, MipsMacroFormal::class.java).sortedBy { it.textOffset }
+        }
+        val (operation, value, aliases, duplicate, invalid) = formals
+        val operationUse = entry.indexOf("%?(")
+        val firstUse = operationUse + "%?(".length
+        val secondUse = entry.indexOf("%second", entry.indexOf("li "))
+        readAction {
+            assertEquals(listOf("%?", "\$value", "FORMALS", "%?", "BROKEN"), formals.map { it.name })
+            assertEquals(listOf(true, true, true, true, false), formals.map(LanguageFindUsages::canFindUsagesFor))
+            val orphan = entryFile.findElementAt(entry.indexOf("%orphan"))!!.parent
+            assertFalse(LanguageFindUsages.canFindUsagesFor(orphan))
+            assertEquals("macro parameter", LanguageFindUsages.getType(operation))
+            assertEquals("%?", LanguageFindUsages.getDescriptiveName(operation))
+            assertThrows(IncorrectOperationException::class.java) { value.setName("\$replacement") }
+            val flags = TargetElementUtil.REFERENCED_ELEMENT_ACCEPTED or TargetElementUtil.ELEMENT_NAME_ACCEPTED
+            assertEquals(aliases, TargetElementUtil.getInstance().findTargetElement(fixture.editor, flags, firstUse + 1))
+            assertEquals(operation, entryFile.findReferenceAt(operationUse)?.resolve())
+        }
+        assertEquals(setOf("formals.asm" to operationUse), usageLocations(operation))
+        assertEquals(setOf("formals.asm" to entry.indexOf("\$value", entry.indexOf("move"))), usageLocations(value))
+        assertEquals(setOf("formals.asm" to firstUse, "formals.asm" to secondUse), usageLocations(aliases))
+        assertTrue(usageLocations(duplicate).isEmpty())
+        withContext(Dispatchers.EDT) {
+            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertFalse(LanguageFindUsages.canFindUsagesFor(value)) }
+        }
     }
 
     @Test
@@ -240,7 +299,7 @@ class MipsFindUsagesPlatformTest {
 
     private fun declarations(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)
 
-    private suspend fun usageLocations(target: MipsDeclaration): Set<Pair<String, Int>> = readAction {
+    private suspend fun usageLocations(target: PsiElement): Set<Pair<String, Int>> = readAction {
         fixture.findUsages(target).map { usage ->
             val reference = requireNotNull(usage.reference)
             reference.element.containingFile.name to (reference.element.textRange.startOffset + reference.rangeInElement.startOffset)

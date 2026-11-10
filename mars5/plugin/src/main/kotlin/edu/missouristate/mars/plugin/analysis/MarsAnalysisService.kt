@@ -47,6 +47,7 @@ import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.MipsMacroFormal
 import edu.missouristate.mars.plugin.language.psi.equivalenceDefinitionParameterContexts
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
@@ -609,6 +610,13 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         // The assembler uses the first exact match when a parameter name is repeated.
         val parameter = macro.parametersByName[name] ?: return emptyList()
         return listOfNotNull(macro.header.containingFile.findElementAt(parameter.offset))
+            .map { (it.parent as? MipsMacroFormal) ?: it }
+    }
+
+    internal fun macroFormalNames(root: MipsFile, formal: MipsMacroFormal): Set<String> {
+        if (DumbService.isDumb(project)) return emptySet()
+        val macro = editorTimeline(root).localMacros(root)[formal.parent.parent] ?: return emptySet()
+        return macro.parameters.filter { it.offset == formal.textOffset }.mapTo(LinkedHashSet(), MipsSourceEvent.MacroFormal::value)
     }
 
     internal fun macroParameterNames(root: MipsFile, position: PsiElement): List<String> {
