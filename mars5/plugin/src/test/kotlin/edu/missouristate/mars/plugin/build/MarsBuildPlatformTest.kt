@@ -720,6 +720,54 @@ class MarsBuildPlatformTest {
     }
 
     @Test
+    fun `project execution defaults persist and bare machine updates Build and editor diagnostics`() = timeoutRunBlocking<Unit> {
+        val (named, numeric) = withContext(Dispatchers.EDT) {
+            val named = fixture.addFileToProject("named.s", "addiu \$t0,\$zero,7\n") as MipsFile
+            val numeric = fixture.addFileToProject("numeric.s", "addiu \$8,\$0,7\n") as MipsFile
+            named to numeric
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        val settings = project.service<MarsAssemblySettings>()
+        val build = project.service<MarsBuildService>()
+        val annotator = MipsAssemblyAnnotator()
+        assertTrue(build.assemble(named.virtualFile.toNioPath()))
+        val before = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(named)) })
+        assertTrue(before.diagnostics.isEmpty())
+
+        withContext(Dispatchers.EDT) {
+            val page = MarsAssemblyConfigurable(project)
+            try {
+                val panel = page.createComponent()
+                page.reset()
+                val choices = UIUtil.findComponentsOfType(panel, JCheckBox::class.java).associateBy { it.text }
+                val delayed = choices.getValue("Enable delayed branching")
+                val modify = choices.getValue("Allow self-modifying code")
+                val bare = choices.getValue("Require numeric integer register operands (bare machine)")
+                assertTrue(listOf(delayed, modify, bare).none { it.isSelected })
+                listOf(delayed, modify, bare).forEach { it.isSelected = true }
+                assertTrue(page.isModified)
+                page.apply()
+                val saved = XmlSerializer.serialize(settings.getState())
+                settings.loadState(XmlSerializer.deserialize(saved, MarsAssemblySettings.Settings::class.java))
+                page.reset()
+                assertTrue(listOf(delayed, modify, bare).all { it.isSelected })
+                assertEquals(MarsExecutionOptions(delayedBranching = true, selfModifyingCode = true, bareMachine = true), settings.executionOptions)
+                val generation = settings.sourceChanges.modificationCount
+                settings.changeDelayedBranching(true)
+                settings.changeBareMachine(true)
+                assertEquals(generation, settings.sourceChanges.modificationCount)
+            } finally {
+                page.disposeUIResources()
+            }
+        }
+
+        assertFalse(build.assemble(named.virtualFile.toNioPath()))
+        assertTrue(build.assemble(numeric.virtualFile.toNioPath()))
+        val result = annotator.doAnnotate(readAction { requireNotNull(annotator.collectInformation(named)) })
+        assertTrue(result.diagnostics.single().message().contains("Use register number"))
+    }
+
+    @Test
     fun `project settings select a single exception handler and invalidate stale analysis and builds`() = timeoutRunBlocking<Unit> {
         val (main, handler) = withContext(Dispatchers.EDT) {
             val main = fixture.addFileToProject("trap/main.asm", "la \$t0, trapEntry\nnop\n") as MipsFile

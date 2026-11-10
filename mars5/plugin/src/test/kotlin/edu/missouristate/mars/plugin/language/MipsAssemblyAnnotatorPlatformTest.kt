@@ -29,6 +29,7 @@ import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -121,6 +122,12 @@ class MipsAssemblyAnnotatorPlatformTest {
         assertEquals(setOf("generated"), names())
         val pending = analysis.beginSymbolBuild(path, options)
         analysis.publishBuiltSymbols(pending, withoutDelay.input.capture.sources, AssemblySymbolMap.EMPTY)
+        assertEquals(setOf("generated"), names())
+        assertSame(withoutDelay.outcome, analyze().outcome)
+
+        withContext(Dispatchers.EDT) {
+            project.service<MarsAssemblySettings>().changeDelayedBranching(true)
+        }
         assertTrue(names().isEmpty())
 
         val component = MarsSessionService.createMarsComponent()
@@ -130,7 +137,7 @@ class MipsAssemblyAnnotatorPlatformTest {
         }
         val delayed = analyze()
         assertEquals(options, delayed.input.capture.options)
-        assertSame(withoutDelay.input.capture.sources, delayed.input.capture.sources)
+        assertEquals(withoutDelay.input.capture.sources.revisions, delayed.input.capture.sources.revisions)
         assertNotSame(withoutDelay.outcome, delayed.outcome)
         assertEquals(original + 4, assembledAddress)
         assertEquals(assembledAddress, requireNotNull(delayed.symbols).localSymbols.getValue("marker").address())

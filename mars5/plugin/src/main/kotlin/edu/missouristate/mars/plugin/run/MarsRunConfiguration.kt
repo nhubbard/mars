@@ -36,6 +36,7 @@ import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.JDOMExternalizerUtil.readField
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.openapi.util.Ref
@@ -72,10 +73,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JCheckBox
 import javax.swing.JTextField
+import org.jdom.Element
 
 internal val runMessages = DynamicBundle(MarsRunConfiguration::class.java, "messages.MarsBundle")
 
 private val resetLaunchKey = Key.create<MarsResetLaunch>("MARS reset launch")
+private const val EXECUTION_DEFAULTS_VERSION = "marsExecutionDefaults"
 
 private class MarsResetLaunch(val parameters: MarsRunParameters, val program: MarsAssembledProgram)
 
@@ -102,13 +105,14 @@ internal class MarsRunOptions : RunConfigurationOptions() {
     var inputMode by enum(MarsInputMode.CONSOLE)
     var instructionLimit: Int by property(0)
     var runSpeed: Float by property(0f)
-    var delayedBranching: Boolean by property(false)
+    var delayedBranchingMode by enum(ProjectOptionOverride.PROJECT)
+    var selfModifyingCodeMode by enum(ProjectOptionOverride.PROJECT)
+    var bareMachineMode by enum(ProjectOptionOverride.PROJECT)
     var allowPseudoInstructions by enum(ProjectOptionOverride.PROJECT)
     var warningsAreErrors by enum(ProjectOptionOverride.PROJECT)
     var startAtMain by enum(ProjectOptionOverride.PROJECT)
     var assembleDirectory: Boolean by property(false)
     var useProjectSources: Boolean by property(false)
-    var selfModifyingCode: Boolean by property(false)
     var captureBitmap: Boolean by property(false)
     var captureReferences: Boolean by property(false)
     var connectDigitalLab: Boolean by property(false)
@@ -130,6 +134,29 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
     RunConfigurationBase<MarsRunOptions>(project, factory, name) {
 
     public override fun getOptions() = super.getOptions() as MarsRunOptions
+
+    override fun readExternal(element: Element) {
+        super.readExternal(element)
+        if (element.getAttributeValue(EXECUTION_DEFAULTS_VERSION) == null) {
+            options.delayedBranchingMode = legacyExecutionMode(element, "delayedBranching")
+            options.selfModifyingCodeMode = legacyExecutionMode(element, "selfModifyingCode")
+        }
+    }
+
+    override fun writeExternal(element: Element) {
+        super.writeExternal(element)
+        element.setAttribute(EXECUTION_DEFAULTS_VERSION, "1")
+    }
+
+    private fun legacyExecutionMode(element: Element, key: String): ProjectOptionOverride {
+        val value = readField(element, key)
+        return when {
+            value.toBoolean() -> ProjectOptionOverride.ENABLED
+            // An older concrete launch omitted false flags. An unmodified template can inherit.
+            value != null || element.getAttributeValue("default") != "true" -> ProjectOptionOverride.DISABLED
+            else -> ProjectOptionOverride.PROJECT
+        }
+    }
 
     private fun memoryDumps(entry: Path, invalid: (String) -> Exception): List<MemoryExportSelection> {
         val outputs = mutableSetOf<Path>()
@@ -204,13 +231,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         private var inputMode = MarsInputMode.CONSOLE
         private var instructionLimit = 0
         private var runSpeed = 0f
-        private var delayedBranching = false
+        private var delayedBranchingMode = ProjectOptionOverride.PROJECT
+        private var selfModifyingCodeMode = ProjectOptionOverride.PROJECT
+        private var bareMachineMode = ProjectOptionOverride.PROJECT
         private var assembleDirectory = false
         private var allowPseudoInstructions = ProjectOptionOverride.PROJECT
         private var warningsAreErrors = ProjectOptionOverride.PROJECT
         private var startAtMain = ProjectOptionOverride.PROJECT
         private var useProjectSources = false
-        private var selfModifyingCode = false
         private var captureBitmap = false
         private var captureReferences = false
         private var connectDigitalLab = false
@@ -277,13 +305,20 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
                 comboBox(ProjectOptionOverride.entries, overrideRenderer)
                     .bindItem(::warningsAreErrors.toNullableProperty())
             }
+            row(runMessages.getMessage("run.delayed.branching")) {
+                comboBox(ProjectOptionOverride.entries, overrideRenderer).bindItem(::delayedBranchingMode.toNullableProperty())
+            }
+            row(runMessages.getMessage("run.self.modifying.code")) {
+                comboBox(ProjectOptionOverride.entries, overrideRenderer).bindItem(::selfModifyingCodeMode.toNullableProperty())
+            }
+            row(runMessages.getMessage("run.bare.machine")) {
+                comboBox(ProjectOptionOverride.entries, overrideRenderer).bindItem(::bareMachineMode.toNullableProperty())
+            }
             row(runMessages.getMessage("run.start.at.main")) {
                 comboBox(ProjectOptionOverride.entries, overrideRenderer)
                     .bindItem(::startAtMain.toNullableProperty())
                     .comment(runMessages.getMessage("run.start.at.main.help"))
             }
-            row { checkBox(runMessages.getMessage("run.delayed.branching")).bindSelected(::delayedBranching) }
-            row { checkBox(runMessages.getMessage("run.self.modifying.code")).bindSelected(::selfModifyingCode) }
             row { checkBox(runMessages.getMessage("run.capture.bitmap")).bindSelected(::captureBitmap) }
             row { checkBox(runMessages.getMessage("run.capture.references")).bindSelected(::captureReferences) }
             row { checkBox(runMessages.getMessage("run.connect.digitalLab")).bindSelected(::connectDigitalLab) }
@@ -301,13 +336,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             inputMode = configuration.options.inputMode
             instructionLimit = configuration.options.instructionLimit
             runSpeed = configuration.options.runSpeed
-            delayedBranching = configuration.options.delayedBranching
+            delayedBranchingMode = configuration.options.delayedBranchingMode
+            selfModifyingCodeMode = configuration.options.selfModifyingCodeMode
+            bareMachineMode = configuration.options.bareMachineMode
             allowPseudoInstructions = configuration.options.allowPseudoInstructions
             warningsAreErrors = configuration.options.warningsAreErrors
             startAtMain = configuration.options.startAtMain
             assembleDirectory = configuration.options.assembleDirectory
             useProjectSources = configuration.options.useProjectSources
-            selfModifyingCode = configuration.options.selfModifyingCode
             captureBitmap = configuration.options.captureBitmap
             captureReferences = configuration.options.captureReferences
             connectDigitalLab = configuration.options.connectDigitalLab
@@ -327,13 +363,14 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
             configuration.options.inputMode = inputMode
             configuration.options.instructionLimit = instructionLimit
             configuration.options.runSpeed = runSpeed
-            configuration.options.delayedBranching = delayedBranching
+            configuration.options.delayedBranchingMode = delayedBranchingMode
+            configuration.options.selfModifyingCodeMode = selfModifyingCodeMode
+            configuration.options.bareMachineMode = bareMachineMode
             configuration.options.allowPseudoInstructions = allowPseudoInstructions
             configuration.options.warningsAreErrors = warningsAreErrors
             configuration.options.startAtMain = startAtMain
             configuration.options.assembleDirectory = assembleDirectory
             configuration.options.useProjectSources = useProjectSources
-            configuration.options.selfModifyingCode = selfModifyingCode
             configuration.options.captureBitmap = captureBitmap
             configuration.options.captureReferences = captureReferences
             configuration.options.connectDigitalLab = connectDigitalLab
@@ -360,10 +397,11 @@ internal class MarsRunConfiguration(project: Project, factory: ConfigurationFact
         checkDevices(defaults.memoryLayout) { ExecutionException(it) }
         val dumps = memoryDumps(sources.entry) { ExecutionException(it) }
         val executionOptions = defaults.copy(
-            delayedBranching = options.delayedBranching,
-            selfModifyingCode = options.selfModifyingCode,
+            delayedBranching = options.delayedBranchingMode.resolve(defaults.delayedBranching),
+            selfModifyingCode = options.selfModifyingCodeMode.resolve(defaults.selfModifyingCode),
             allowPseudoInstructions = options.allowPseudoInstructions.resolve(defaults.allowPseudoInstructions),
             warningsAreErrors = options.warningsAreErrors.resolve(defaults.warningsAreErrors),
+            bareMachine = options.bareMachineMode.resolve(defaults.bareMachine),
         )
         val arguments = arguments { ExecutionException(it) }
         val directory = workingDirectory(sources.entry) { ExecutionException(it) }

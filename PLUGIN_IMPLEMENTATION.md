@@ -1250,13 +1250,12 @@ same captured-source assembly and Build diagnostics as Assemble Current MIPS
 File. It passes the assembled program to the simulator in the session that
 produced it.
 
-The Run configuration also stores delayed branching and self-modifying code.
-Both default to off for older configurations. Run and Debug take an immutable
-snapshot of those choices and apply it to the new session before assembly.
-Delayed branching can add instructions to a pseudo-instruction's expansion,
-so the source map and simulator use the same setting. Background diagnostics
-and symbol facts use the selected launch options and separate cached results
-when those options change.
+Run and Debug take an immutable snapshot of execution options and apply it
+to the new session before assembly. Delayed branching can add instructions
+to a pseudo-instruction's expansion, so the source map and simulator use the
+same setting. Assembly results cache separately for different options. See
+[Assembler and execution defaults](#assembler-and-execution-defaults) for
+the current configuration and inheritance rules.
 
 The process handler preserves simulated exit values, routes stdout and stderr
 to their matching console streams, and requests a stop before releasing the
@@ -2082,17 +2081,30 @@ check starts. Build results stay available in the Build tool window while
 focus stays in the editor. A successful check can warm the assembly image
 for Run or Debug, and the check has its own session.
 
-## Assembler policy
+## Assembler and execution defaults
 
-In **Settings → Build, Execution, Deployment → MARS Assembly**, choose whether to allow pseudo-instructions
-and whether to treat assembler warnings as errors. The project defaults apply to manual assembly,
-optional assembly before JVM compilation, and editor diagnostics. The default project policy allows
-pseudo-instructions and reports warnings without failing the build.
+In **Settings → Build, Execution, Deployment → MARS Assembly**, set pseudo-instruction
+support, warnings as errors, bare-machine register operands, delayed branching,
+self-modifying code, and starting at the global `main` label. Project defaults apply
+to manual assembly, optional assembly before JVM compilation, and editor diagnostics
+where relevant. Bare-machine mode requires numeric integer registers in operands.
+Pseudo-instructions have a separate setting and are allowed by default. Warnings
+are reported without failing the build by default.
 
-Run and Debug configurations can inherit or override either setting independently. Before Launch
-and process startup use the same resolved options for that launch. A run configuration can use a
-different policy without changing diagnostics in the editor. Promoted warnings appear as errors
-with the original source locations.
+Each Run or Debug configuration can inherit or override all six settings
+independently. Before Launch and process startup use the same resolved options
+for that launch. Editor diagnostics use the project's assembly policy. Promoted
+warnings appear as errors with their original source locations.
+
+Previously saved Run configurations keep their delayed-branching and self-modifying
+code settings, including off values omitted by the old serializer. An older
+configuration template inherits each project default when its corresponding value
+was omitted. Newly saved configuration XML identifies the inheritance-aware format
+so an omitted override continues to inherit after reopening.
+
+The packaged IntelliJ 2026.3 smoke test reopened a project with the older shared
+Run configuration, hit its conditional breakpoint in `console.s`, and confirmed
+the expected console output after Resume.
 
 ## New MIPS files and projects
 

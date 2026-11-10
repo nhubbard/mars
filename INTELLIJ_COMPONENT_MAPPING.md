@@ -886,7 +886,7 @@ Keep commits reviewable by component, including necessary IDE project metadata w
 | Backstep cannot undo external effects | Preserve machine undo; show irreversible boundaries; reversible device deltas/checkpoints; never replay host side effects. |
 | Near-total coverage becomes busywork | Reachable business branches and assertions first; mutation/negative-control checks; narrow documented mechanical exceptions. |
 | Published fixtures include old helpers | Jupiter-only authored tests and engine discovery; document helper dependencies; no inherited Vintage lifecycle. |
-| Source example uses internal/deprecated API | Read declaration/annotation; use public builder or current overload; record exceptions if no equivalent exists. |
+| Source example uses an internal or deprecated API | Check the declaration and API status. Use a supported public builder or overload, or redesign the integration using public APIs when an equivalent is unavailable. |
 | Tool requires actual host capture/audio | Injectable ports plus OS smoke tests; retain capability and actionable failure state. |
 
 ### 12.2 Decisions that are already made

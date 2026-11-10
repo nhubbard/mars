@@ -755,7 +755,7 @@ class MarsDebugPlatformTest {
             fixture.addFileToProject("debug-delay.s", "b target\nli \$t0, 7\nli \$t0, 9\ntarget: nop\n")
                 .virtualFile.also { addBreakpoint(it, 0) }
         }
-        withDebug(file, { delayedBranching = true }) { debug ->
+        withDebug(file, { delayedBranchingMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(file, 0)
             val process = assertInstanceOf(MarsProcessHandler::class.java, debug.session.debugProcess.processHandler)
             assertTrue(process.branchHistory.snapshot().recent.isEmpty())
@@ -833,7 +833,7 @@ class MarsDebugPlatformTest {
                 if (breakInsideCall) addBreakpoint(it, 8)
             }
         }
-        withDebug(file, { delayedBranching = true }) { debug ->
+        withDebug(file, { delayedBranchingMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(file, 1)
             withContext(Dispatchers.EDT) { debug.session.stepOver(false) }
             debug.assertPausedAt(file, if (breakInsideCall) 8 else 3)
@@ -966,7 +966,7 @@ class MarsDebugPlatformTest {
                 leaf: nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 10) }
         }
-        withDebug(file, { selfModifyingCode = true }) { debug ->
+        withDebug(file, { selfModifyingCodeMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(file, 10)
             val frames = debug.frames()
             assertEquals(67, frames.size)
@@ -1033,8 +1033,9 @@ class MarsDebugPlatformTest {
     }
 
     @Test
-    fun `debugging configured self modifying code steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
+    fun `debugging inherits project self modifying code and steps the rewritten instruction without stale source`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
+            project.service<MarsAssemblySettings>().changeSelfModifyingCode(true)
             fixture.addFileToProject("debug-patch.s", """
                 la ${'$'}t0, patch
                 li ${'$'}t1, 0x240a002a
@@ -1043,7 +1044,7 @@ class MarsDebugPlatformTest {
                 after_patch: nop
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 2) }
         }
-        withDebug(file, { selfModifyingCode = true }) { debug ->
+        withDebug(file) { debug ->
             debug.assertPausedAt(file, 2)
             withContext(Dispatchers.EDT) { debug.session.stepInto() }
             assertNull(debug.nextPosition())
@@ -2028,7 +2029,7 @@ class MarsDebugPlatformTest {
             fixture.addFileToProject("edit-instruction.s", "li \$a0, 0\naddiu \$a0, \$a0, 2\nli \$v0, 1\nsyscall\n")
                 .virtualFile.also { addBreakpoint(it, 1) }
         }
-        withDebug(source, configure = { selfModifyingCode = true }) { debug ->
+        withDebug(source, configure = { selfModifyingCodeMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(source, 1)
             val lifetime = Disposer.newDisposable()
             try {
@@ -3258,7 +3259,7 @@ class MarsDebugPlatformTest {
                 syscall
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 0) }
         }
-        withDebug(source, { delayedBranching = true }) { debug ->
+        withDebug(source, { delayedBranchingMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(source, 0)
             val lifetime = Disposer.newDisposable()
             try {
@@ -3329,7 +3330,7 @@ class MarsDebugPlatformTest {
             """.trimIndent()).virtualFile.also { addBreakpoint(it, 5) }
             entry to fragment
         }
-        withDebug(source, { selfModifyingCode = true }) { debug ->
+        withDebug(source, { selfModifyingCodeMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(source, 5)
             val disposable = Disposer.newDisposable()
             try {
@@ -3486,7 +3487,7 @@ class MarsDebugPlatformTest {
             }
             file
         }
-        withDebug(source, { selfModifyingCode = true }) { debug ->
+        withDebug(source, { selfModifyingCodeMode = ProjectOptionOverride.ENABLED }) { debug ->
             debug.assertPausedAt(source, 4)
             val disposable = Disposer.newDisposable()
             try {

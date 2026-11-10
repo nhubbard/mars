@@ -146,9 +146,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun AssemblySelection.forEditor(): AssemblySelection {
         val defaults = settings.executionOptions
         return copy(options = options.copy(
+            delayedBranching = defaults.delayedBranching,
             allowPseudoInstructions = defaults.allowPseudoInstructions,
             warningsAreErrors = defaults.warningsAreErrors,
             memoryLayout = defaults.memoryLayout,
+            bareMachine = defaults.bareMachine,
         ))
     }
 

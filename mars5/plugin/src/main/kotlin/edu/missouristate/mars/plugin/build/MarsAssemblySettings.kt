@@ -49,6 +49,9 @@ internal class MarsAssemblySettings(private val project: Project) :
         @JvmField var warningsAreErrors: Boolean = false,
         @JvmField var startAtMain: Boolean = false,
         @JvmField var memoryLayout: String = MarsMemoryLayout.DEFAULT.identifier,
+        @JvmField var delayedBranching: Boolean = false,
+        @JvmField var selfModifyingCode: Boolean = false,
+        @JvmField var bareMachine: Boolean = false,
     )
 
     val sourceChanges = SimpleModificationTracker()
@@ -56,12 +59,18 @@ internal class MarsAssemblySettings(private val project: Project) :
     val assembleBeforeJvmCompile get() = getState().assembleBeforeJvmCompile
     val assembleOnOpen get() = getState().assembleOnOpen
     val startAtMain get() = getState().startAtMain
+    val delayedBranching get() = getState().delayedBranching
+    val selfModifyingCode get() = getState().selfModifyingCode
+    val bareMachine get() = getState().bareMachine
     val memoryLayout get() = MarsMemoryLayout.fromIdentifier(getState().memoryLayout)
     val executionOptions get() = getState().let {
         MarsExecutionOptions(
+            delayedBranching = it.delayedBranching,
+            selfModifyingCode = it.selfModifyingCode,
             allowPseudoInstructions = it.allowPseudoInstructions,
             warningsAreErrors = it.warningsAreErrors,
             memoryLayout = MarsMemoryLayout.fromIdentifier(it.memoryLayout),
+            bareMachine = it.bareMachine,
         )
     }
     val projectSources: List<Path> get() = getState().sources.mapNotNull { projectFilePath(project, it) }.distinct()
@@ -116,6 +125,18 @@ internal class MarsAssemblySettings(private val project: Project) :
 
     fun changeStartAtMain(value: Boolean) {
         updateState { it.copy(startAtMain = value) }
+    }
+
+    fun changeDelayedBranching(value: Boolean) {
+        if (delayedBranching != value) change { it.copy(delayedBranching = value) }
+    }
+
+    fun changeSelfModifyingCode(value: Boolean) {
+        updateState { it.copy(selfModifyingCode = value) }
+    }
+
+    fun changeBareMachine(value: Boolean) {
+        if (bareMachine != value) change { it.copy(bareMachine = value) }
     }
 
     fun changeMemoryLayout(layout: MarsMemoryLayout) {
@@ -189,11 +210,23 @@ internal class MarsAssemblyConfigurable(private val project: Project) :
                 .bindSelected({ settings.startAtMain }, settings::changeStartAtMain)
                 .comment(messages.getMessage("run.start.at.main.help"))
         }
+        row {
+            checkBox(messages.getMessage("run.delayed.branching"))
+                .bindSelected({ settings.delayedBranching }, settings::changeDelayedBranching)
+        }
+        row {
+            checkBox(messages.getMessage("run.self.modifying.code"))
+                .bindSelected({ settings.selfModifyingCode }, settings::changeSelfModifyingCode)
+        }
         group(messages.getMessage("build.settings.policy")) {
             lateinit var pseudo: JCheckBox
             lateinit var warnings: JCheckBox
             row { pseudo = checkBox(messages.getMessage("build.settings.pseudo")).component }
             row { warnings = checkBox(messages.getMessage("build.settings.warnings")).component }
+            row {
+                checkBox(messages.getMessage("run.bare.machine"))
+                    .bindSelected({ settings.bareMachine }, settings::changeBareMachine)
+            }
             onReset {
                 val options = settings.executionOptions
                 pseudo.isSelected = options.allowPseudoInstructions

@@ -20,6 +20,7 @@ internal data class MarsExecutionOptions(
     val allowPseudoInstructions: Boolean = true,
     val warningsAreErrors: Boolean = false,
     val memoryLayout: MarsMemoryLayout = MarsMemoryLayout.DEFAULT,
+    val bareMachine: Boolean = false,
 ) {
     fun applyForAssembly(session: MarsContext) {
         applyTo(session.settings)
@@ -33,5 +34,6 @@ internal data class MarsExecutionOptions(
         settings.setSelfModifyingCodeEnabled(selfModifyingCode)
         settings.setExtendedAssemblerEnabled(allowPseudoInstructions)
         settings.setWarningsAreErrors(warningsAreErrors)
+        settings.setBareMachineEnabled(bareMachine)
     }
 }

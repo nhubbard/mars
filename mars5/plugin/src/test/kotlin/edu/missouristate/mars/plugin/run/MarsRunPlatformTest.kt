@@ -46,6 +46,7 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.options.ConfigurationException
@@ -53,6 +54,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.TextFieldWithBrowseButton
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.JDOMExternalizerUtil.writeField
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.encoding.EncodingManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -902,7 +904,7 @@ class MarsRunPlatformTest {
                 val recording = Recording()
                 withContext(Dispatchers.EDT) {
                     val config = type.createTemplateConfiguration(project)
-                    config.readExternal(Element("configuration"))
+                    config.readExternal(Element("configuration").setAttribute("default", "true"))
                     config.options.sourcePath = source
                     assertEquals(ProjectOptionOverride.PROJECT, config.options.allowPseudoInstructions)
                     assertEquals(ProjectOptionOverride.PROJECT, config.options.warningsAreErrors)
@@ -911,7 +913,7 @@ class MarsRunPlatformTest {
                         editor.resetFrom(config)
                         val combos = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java)
                             .filter { it.selectedItem is ProjectOptionOverride }
-                        assertEquals(3, combos.size)
+                        assertEquals(6, combos.size)
                         assertTrue(combos.all { it.selectedItem == ProjectOptionOverride.PROJECT })
                         combos[0].selectedItem = pseudo
                         combos[1].selectedItem = warnings
@@ -1070,7 +1072,7 @@ class MarsRunPlatformTest {
     }
 
     @Test
-    fun `native Run applies delay slots only to the configuration that enables them`() = timeoutRunBlocking<Unit> {
+    fun `native Run inherits project delay slots and honors an explicit override`() = timeoutRunBlocking<Unit> {
         val file = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("delay.asm", """
                 li ${'$'}a0, 1
@@ -1080,7 +1082,10 @@ class MarsRunPlatformTest {
                 syscall
             """.trimIndent()).virtualFile
         }
-        for ((enabled, expected) in listOf(true to "3", false to "1")) {
+        withContext(Dispatchers.EDT) { project.service<MarsAssemblySettings>().changeDelayedBranching(true) }
+        for ((mode, expected) in listOf(
+            ProjectOptionOverride.PROJECT to "3", ProjectOptionOverride.ENABLED to "3", ProjectOptionOverride.DISABLED to "1",
+        )) {
             val disposable = Disposer.newDisposable()
             val recording = Recording()
             val process = CompletableDeferred<MarsProcessHandler>()
@@ -1088,7 +1093,7 @@ class MarsRunPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val config = type.createTemplateConfiguration(project)
                     config.options.sourcePath = file.path
-                    config.options.delayedBranching = enabled
+                    config.options.delayedBranchingMode = mode
                     val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
                     project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                         override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
@@ -1102,11 +1107,56 @@ class MarsRunPlatformTest {
                 }
                 assertEquals(0, recording.exit.await())
                 assertEquals(expected, recording.stdout.toString())
-                val alu = if (enabled) 3L else 2L
+                val alu = if (mode == ProjectOptionOverride.DISABLED) 2L else 3L
                 assertEquals(listOf(alu, 0L, 1L, 0L, 1L), process.await().instructionStatistics.countsSnapshot().counts)
             } finally {
                 Disposer.dispose(disposable)
             }
+        }
+    }
+
+    @Test
+    fun `legacy Run XML preserves booleans and new configurations keep inherited defaults on reload`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val source = fixture.addFileToProject("migration.asm", "nop\n").virtualFile
+            val settings = project.service<MarsAssemblySettings>()
+            settings.changeDelayedBranching(true)
+            settings.changeSelfModifyingCode(true)
+            settings.changeBareMachine(true)
+            fun verify(xml: Element, delayed: ProjectOptionOverride, selfModifying: ProjectOptionOverride, bare: ProjectOptionOverride) {
+                val config = type.createTemplateConfiguration(project)
+                config.readExternal(xml)
+                config.options.sourcePath = source.path
+                assertEquals(delayed, config.options.delayedBranchingMode)
+                assertEquals(selfModifying, config.options.selfModifyingCodeMode)
+                assertEquals(bare, config.options.bareMachineMode)
+                val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
+                assertInstanceOf(MarsRunState::class.java, config.getState(executor, environment))
+                val launch = requireNotNull(environment.getUserData(launchAssemblyKey))
+                try {
+                    assertEquals(
+                        MarsExecutionOptions(
+                            delayedBranching = delayed.resolve(true), selfModifyingCode = selfModifying.resolve(true), bareMachine = bare.resolve(true),
+                        ),
+                        launch.options,
+                    )
+                } finally {
+                    Disposer.dispose(launch)
+                }
+            }
+            val inherited = ProjectOptionOverride.PROJECT
+            val enabled = ProjectOptionOverride.ENABLED
+            val disabled = ProjectOptionOverride.DISABLED
+            val legacy = Element("configuration").apply { writeField(this, "delayedBranching", "true") }
+            verify(legacy, enabled, disabled, inherited)
+            verify(Element("configuration"), disabled, disabled, inherited)
+            val template = Element("configuration").setAttribute("default", "true").apply { writeField(this, "selfModifyingCode", "false") }
+            verify(template, inherited, disabled, inherited)
+            val fresh = type.createTemplateConfiguration(project)
+            verify(Element("configuration").also(fresh::writeExternal), inherited, inherited, inherited)
+            fresh.options.selfModifyingCodeMode = enabled
+            fresh.options.bareMachineMode = disabled
+            verify(Element("configuration").also(fresh::writeExternal), inherited, enabled, disabled)
         }
     }
 
@@ -1123,7 +1173,7 @@ class MarsRunPlatformTest {
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
                 config.options.connectMarsBot = true
-                config.options.delayedBranching = true
+                config.options.delayedBranchingMode = ProjectOptionOverride.ENABLED
                 val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
                 project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                     override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
@@ -1163,7 +1213,7 @@ class MarsRunPlatformTest {
                 val config = type.createTemplateConfiguration(project)
                 config.options.sourcePath = file.path
                 config.options.connectScavengerHunt = true
-                config.options.delayedBranching = true
+                config.options.delayedBranchingMode = ProjectOptionOverride.ENABLED
                 val environment = ExecutionEnvironmentBuilder.create(executor, config).build()
                 project.messageBus.connect(disposable).subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                     override fun processStarting(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
@@ -1224,9 +1274,9 @@ class MarsRunPlatformTest {
                 assertThrows<RuntimeConfigurationError> { config.checkConfiguration() }
             }
             config.options.sourcePath = source.virtualFile.path
-            config.options.delayedBranching = true
+            config.options.delayedBranchingMode = ProjectOptionOverride.ENABLED
             config.options.assembleDirectory = true
-            config.options.selfModifyingCode = true
+            config.options.selfModifyingCodeMode = ProjectOptionOverride.ENABLED
             config.options.captureBitmap = true
             config.options.captureReferences = true
             config.options.connectDigitalLab = true
@@ -1248,9 +1298,9 @@ class MarsRunPlatformTest {
             val restored = type.createTemplateConfiguration(project)
             restored.readExternal(state)
             assertEquals(config.options.sourcePath, restored.options.sourcePath)
-            assertTrue(restored.options.delayedBranching)
+            assertEquals(ProjectOptionOverride.ENABLED, restored.options.delayedBranchingMode)
             assertTrue(restored.options.assembleDirectory)
-            assertTrue(restored.options.selfModifyingCode)
+            assertEquals(ProjectOptionOverride.ENABLED, restored.options.selfModifyingCodeMode)
             assertTrue(restored.options.captureBitmap)
             assertTrue(restored.options.captureReferences)
             assertTrue(restored.options.connectDigitalLab)
@@ -1259,9 +1309,9 @@ class MarsRunPlatformTest {
             assertTrue(restored.options.connectScavengerHunt)
             val previousConfiguration = type.createTemplateConfiguration(project)
             previousConfiguration.readExternal(Element("configuration"))
-            assertFalse(previousConfiguration.options.delayedBranching)
+            assertEquals(ProjectOptionOverride.DISABLED, previousConfiguration.options.delayedBranchingMode)
             assertFalse(previousConfiguration.options.assembleDirectory)
-            assertFalse(previousConfiguration.options.selfModifyingCode)
+            assertEquals(ProjectOptionOverride.DISABLED, previousConfiguration.options.selfModifyingCodeMode)
             assertFalse(previousConfiguration.options.captureBitmap)
             assertFalse(previousConfiguration.options.captureReferences)
             assertFalse(previousConfiguration.options.connectDigitalLab)
@@ -1273,18 +1323,22 @@ class MarsRunPlatformTest {
                 editor.resetFrom(type.createTemplateConfiguration(project))
                 assertEquals("", UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!.text)
                 val flags = UIUtil.findComponentsOfType(editor.component, JCheckBox::class.java).associateBy { it.text }
-                val delay = flags.getValue("Enable delayed branching")
+                val overrides = UIUtil.findComponentsOfType(editor.component, JComboBox::class.java)
+                    .filter { it.selectedItem is ProjectOptionOverride }
+                val delay = overrides[2]
+                val modify = overrides[3]
+                val bare = overrides[4]
                 val directory = flags.getValue("Assemble other MIPS files in the source directory")
-                val modify = flags.getValue("Allow self-modifying code")
                 val capture = flags.getValue("Capture Bitmap Display from launch")
                 val references = flags.getValue("Capture memory references from launch")
                 val digitalLab = flags.getValue("Connect Digital Lab Sim from launch")
                 val keyboardDisplay = flags.getValue("Connect Keyboard and Display Simulator from launch")
                 val marsBot = flags.getValue("Connect MarsBot from launch")
                 val hunt = flags.getValue("Connect Scavenger Hunt from launch")
-                assertFalse(delay.isSelected)
+                assertEquals(ProjectOptionOverride.PROJECT, delay.selectedItem)
                 assertFalse(directory.isSelected)
-                assertFalse(modify.isSelected)
+                assertEquals(ProjectOptionOverride.PROJECT, modify.selectedItem)
+                assertEquals(ProjectOptionOverride.PROJECT, bare.selectedItem)
                 assertFalse(capture.isSelected)
                 assertFalse(references.isSelected)
                 assertFalse(digitalLab.isSelected)
@@ -1292,9 +1346,10 @@ class MarsRunPlatformTest {
                 assertFalse(marsBot.isSelected)
                 assertFalse(hunt.isSelected)
                 editor.resetFrom(restored)
-                assertTrue(delay.isSelected)
+                assertEquals(ProjectOptionOverride.ENABLED, delay.selectedItem)
                 assertTrue(directory.isSelected)
-                assertTrue(modify.isSelected)
+                assertEquals(ProjectOptionOverride.ENABLED, modify.selectedItem)
+                assertEquals(ProjectOptionOverride.PROJECT, bare.selectedItem)
                 assertTrue(capture.isSelected)
                 assertTrue(references.isSelected)
                 assertTrue(digitalLab.isSelected)
@@ -1304,7 +1359,8 @@ class MarsRunPlatformTest {
                 val field = UIUtil.findComponentOfType(editor.component, JTextField::class.java)!!
                 assertEquals(source.virtualFile.path, field.text)
                 field.text = "  ${source.virtualFile.path}  "
-                modify.isSelected = false
+                modify.selectedItem = ProjectOptionOverride.DISABLED
+                bare.selectedItem = ProjectOptionOverride.ENABLED
                 directory.isSelected = false
                 capture.isSelected = false
                 references.isSelected = false
@@ -1314,9 +1370,10 @@ class MarsRunPlatformTest {
                 hunt.isSelected = false
                 editor.applyTo(restored)
                 assertEquals(source.virtualFile.path, restored.options.sourcePath)
-                assertTrue(restored.options.delayedBranching)
+                assertEquals(ProjectOptionOverride.ENABLED, restored.options.delayedBranchingMode)
                 assertFalse(restored.options.assembleDirectory)
-                assertFalse(restored.options.selfModifyingCode)
+                assertEquals(ProjectOptionOverride.DISABLED, restored.options.selfModifyingCodeMode)
+                assertEquals(ProjectOptionOverride.ENABLED, restored.options.bareMachineMode)
                 assertFalse(restored.options.captureBitmap)
                 assertFalse(restored.options.captureReferences)
                 assertFalse(restored.options.connectDigitalLab)
