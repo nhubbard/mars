@@ -9,7 +9,7 @@ import com.intellij.psi.util.CachedValuesManager
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
-import edu.missouristate.mars.assembler.Token
+import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
@@ -229,7 +229,7 @@ internal class MipsSourceTimeline(
             tokens.discardTrailingComment()
             val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
             val operation = if (operationIndex < tokens.size()) tokens[operationIndex] else null
-            val operationOffset = if (operation != null && prefix.operationType(operation) != null) {
+            val operationOffset = if (operation != null && prefix.operationType(tokens, operationIndex) != null) {
                 expansion.originalOffset(operation.startPos - 1)
             } else -1
             val types = if (errors.errorsOccurred()) emptyMap() else (0 until tokens.size()).map(tokens::get).groupBy {
@@ -252,12 +252,18 @@ internal class MipsSourceTimeline(
         fun equivalence(name: String): MipsSourceEvent.Equivalence? =
             equivalences[name]?.takeIf { it.index < end }?.definition
 
-        fun operationType(operation: Token): TokenTypes? = when {
-            operation.type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
-            macroOverloads(operation.value).isNotEmpty() -> TokenTypes.IDENTIFIER
-            operation.type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
-            else -> null
+        fun operationType(tokens: TokenList, operationIndex: Int): TokenTypes? {
+            val type = tokens[operationIndex].type
+            return when {
+                type == TokenTypes.DIRECTIVE -> TokenTypes.DIRECTIVE
+                matchingMacro(tokens, operationIndex) != null -> TokenTypes.IDENTIFIER
+                type == TokenTypes.OPERATOR -> TokenTypes.OPERATOR
+                else -> null
+            }
         }
+
+        fun matchingMacro(tokens: TokenList, operationIndex: Int): Begin? =
+            macroOverload(tokens[operationIndex].value, tokens.macroArgumentCount(operationIndex))
 
         // Each history is keyed by the position after .end_macro, when that overload becomes visible.
         fun macroOverloads(name: String): Map<Int, Begin> = buildMap {
@@ -279,6 +285,9 @@ internal class MipsSourceTimeline(
 }
 
 internal data class SourceEventSite(val offset: Int, val index: Int)
+
+internal fun TokenList.macroArgumentCount(operationIndex: Int = 0): Int =
+    size() - operationIndex - if (Macro.hasCallParentheses(this, operationIndex)) 3 else 1
 
 internal enum class MacroPart { NAME, PARAMETER }
 

@@ -295,6 +295,10 @@ The query supplies visible physical and generated `.eqv` definitions from the en
 to the Java tokenizer before counting arguments. The tokenizer preserves replacement source
 text, retokenizes chained substitutions and reports cycles. This covers aliases that add tokens
 or supply the outer call parentheses. Calls in macro bodies still require expansion context.
+The mapped operation token determines where IntelliJ offers macro navigation and documentation,
+including when an equivalence supplies the colon of a preceding label. Highlighting uses the
+same exact arity check as navigation. The arity inspection and Parameter Info still use the
+visible overloads to help correct an unmatched call.
 IDE fixtures exercise redefinitions, arity,
 case, incomplete definitions, raw call arguments, nested includes, and the indexing guard.
 An assembler-backed fixture compares the selected overload with the emitted instruction.

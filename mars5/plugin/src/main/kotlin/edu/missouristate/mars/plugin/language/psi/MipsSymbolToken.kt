@@ -84,7 +84,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 val targets = analysis.macroParameterTargets(file, element)
                 if (targets != null) return targets.map(::PsiElementResolveResult).toTypedArray()
             }
-            if (macroCall) {
+            if (macroCall || aliasOperand || PsiUtilCore.getElementType(element.parent) in instructionOperandContexts) {
                 val target = analysis.macroTarget(file, element)
                 if (target != null) return arrayOf(PsiElementResolveResult(target))
             }

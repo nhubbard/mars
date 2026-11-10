@@ -40,6 +40,8 @@ import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationIndex
 import edu.missouristate.mars.plugin.language.index.MipsDeclarationSite
 import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
+import edu.missouristate.mars.plugin.language.operationHead
+import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
@@ -50,6 +52,7 @@ internal data class IndexedSymbolSite(val source: SourceId, val offset: Int, val
 
 internal data class OperationSite(
     val name: String, val type: TokenTypes, val range: TextRange, val compositeEquivalence: Boolean = false,
+    val macroDefinition: MipsSourceEvent.Begin? = null,
 )
 
 internal enum class OperandParenthesis { ADDRESS, GROUP }
@@ -271,17 +274,11 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
-        val definition = macroDefinition(root, position) ?: return null
+        val owner = operationOwner(position) ?: return null
+        val site = operationSite(root, owner.operationHead) ?: return null
+        val definition = site.macroDefinition?.takeIf { site.range.startOffset == position.textOffset } ?: return null
         val header = definition.header
         return header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
-    }
-
-    internal fun macroDefinition(root: MipsFile, position: PsiElement): MipsSourceEvent.Begin? {
-        if (DumbService.isDumb(project)) return null
-        val prefix = editorPrefix(root, position.textOffset)
-        val tokens = expandedOperation(prefix, sourceLine(position, fromLineStart = true))
-            ?.takeUnless(TokenList::isEmpty) ?: return null
-        return matchingMacro(prefix, tokens)
     }
 
     internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
@@ -324,7 +321,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val name = tokens[0].value
         val definitions = prefix.macroOverloads(name)
         if (definitions.isEmpty()) return null
-        val actual = macroArgumentCount(tokens)
+        val actual = tokens.macroArgumentCount()
         if (actual in definitions) return null
         val offset = start + expanded.originalOffset(tokens[0].startPos - 1)
         return MacroArityMismatch(root.findElementAt(offset)!!, name, actual, definitions.keys.sorted())
@@ -379,20 +376,24 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     ): OperationSite? {
         val start = sourceLineStart(head)
         val source = sourceLine(head, fromLineStart = true)
+        val errors = ErrorList()
         val expansion = Tokenizer.tokenizeMappedLine(
-            source, ErrorList(), { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
+            source, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
         val tokens = expansion.tokens()
         tokens.discardTrailingComment()
         val operationIndex = if (tokens.beginsWithLabel()) 2 else 0
         if (operationIndex == tokens.size()) return null
         val operation = tokens[operationIndex]
-        val type = prefix.operationType(operation) ?: return null
+        val type = prefix.operationType(tokens, operationIndex) ?: return null
         val written = expansion.originalOffset(operation.startPos - 1)
         val composite = (0 until tokens.size()).any {
             it != operationIndex && expansion.originalOffset(tokens[it].startPos - 1) == written
         }
-        return OperationSite(operation.value, type, root.findElementAt(start + written)!!.textRange, composite)
+        val macro = if (type == TokenTypes.IDENTIFIER && !errors.errorsOccurred()) {
+            matchingMacro(prefix, tokens, operationIndex)
+        } else null
+        return OperationSite(operation.value, type, root.findElementAt(start + written)!!.textRange, composite, macro)
     }
 
     internal fun formattingLine(
@@ -408,7 +409,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         if (errors.errorsOccurred()) return null
         val hasLabel = expanded.tokens().beginsWithLabel()
         val tokens = expanded.tokens().operationTokens()
-        val type = if (tokens.isEmpty) null else prefix.operationType(tokens[0])
+        val type = if (tokens.isEmpty) null else prefix.operationType(tokens, 0)
         // Even a macro call can record an equivalence as a tokenizer side effect.
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
@@ -489,12 +490,12 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return this
     }
 
-    private fun matchingMacro(prefix: MipsSourceTimeline.Prefix, tokens: TokenList): MipsSourceEvent.Begin? {
+    private fun matchingMacro(
+        prefix: MipsSourceTimeline.Prefix, tokens: TokenList, operationIndex: Int = 0,
+    ): MipsSourceEvent.Begin? {
         if (prefix.openMacro != null) return null
-        return prefix.macroOverload(tokens[0].value, macroArgumentCount(tokens))
+        return prefix.matchingMacro(tokens, operationIndex)
     }
-
-    private fun macroArgumentCount(tokens: TokenList): Int = tokens.size() - if (Macro.hasCallParentheses(tokens)) 3 else 1
 
     /** A null list means no enclosing macro. An empty list means an undeclared parameter. */
     internal fun macroParameterTargets(root: MipsFile, position: PsiElement): List<PsiElement>? {

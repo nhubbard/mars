@@ -240,8 +240,13 @@ public class Macro {
 
   /** Whether a comment-free invocation has the optional outer SPIM-style parentheses. */
   public static boolean hasCallParentheses(TokenList tokens) {
-    return tokens.size() > 2
-        && tokens.get(1).getType() == TokenTypes.LEFT_PAREN
+    return hasCallParentheses(tokens, 0);
+  }
+
+  /** The same check with the operator at an offset in a comment-free token list. */
+  public static boolean hasCallParentheses(TokenList tokens, int operationIndex) {
+    return tokens.size() - operationIndex > 2
+        && tokens.get(operationIndex + 1).getType() == TokenTypes.LEFT_PAREN
         && tokens.get(tokens.size() - 1).getType() == TokenTypes.RIGHT_PAREN;
   }
 

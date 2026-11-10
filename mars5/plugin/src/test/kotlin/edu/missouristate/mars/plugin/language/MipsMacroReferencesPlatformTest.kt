@@ -50,6 +50,26 @@ class MipsMacroReferencesPlatformTest {
     }
 
     @Test
+    fun `navigation follows the expanded operation token after a generated label`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
+        val definitions = ".macro emit (%value)\naddiu \$t0, \$zero, 7\n.end_macro\n.eqv SEP :\n.eqv CALL emit\n"
+        for (label in listOf("split", "addiu")) {
+            val resolved = target("${definitions}$label SEP em<caret>it(7)\n")
+            assertEquals(definitions.indexOf("emit"), resolved?.offset)
+            assertEquals(SymbolKind.MACRO, resolved?.kind)
+        }
+        assertEquals(SymbolKind.CONSTANT, target("${definitions}split SEP CA<caret>LL(7)\n")?.kind)
+        assertNull(target("${definitions}sp<caret>lit SEP emit(7)\n"))
+        assertNull(target("${definitions}emit (em<caret>it)\n"))
+        assertNull(target("${definitions}em<caret>it @\n"))
+
+        val source = directory.resolve("shifted.asm").also {
+            it.writeText("${definitions}split SEP emit(7)\naddiu SEP CALL(7)\n")
+        }
+        val program = project.get().service<MarsSessionService>().context.assemble(listOf(source), null, true, false)
+        assertEquals(listOf(0x24080007, 0x24080007), program.machineList.map { it.binaryStatement })
+    }
+
+    @Test
     fun `macro arity follows chained equivalences and substituted parentheses`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
         val one = ".macro emit (%x)\naddiu \$t0, \$zero, %x\n.end_macro\n"
         val two = ".macro emit (%x,%y)\naddiu \$t1, \$zero, %y\n.end_macro\n"

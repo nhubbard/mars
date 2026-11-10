@@ -45,7 +45,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             val site = analysis.operationSite(file, candidate.operationHead) ?: return null
             if (site.range.startOffset != token.textOffset) return null
             if (site.type == TokenTypes.IDENTIFIER) {
-                val definition = analysis.macroDefinition(file, token) ?: return null
+                val definition = site.macroDefinition ?: return null
                 return MacroDocumentation(token, definition)
             }
             // Includes are expanded before equivalences, so a generated .include cannot open a file.

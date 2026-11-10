@@ -14,6 +14,7 @@ import edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspectio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -123,6 +124,12 @@ class MipsMacroArityPlatformTest {
                 ),
                 warnings(),
             )
+            val macroColors = fixture.doHighlighting().filter { it.forcedTextAttributesKey == macroColor }
+                .map { it.startOffset }.toSet()
+            assertFalse(source.indexOf("CALL ()") in macroColors)
+            assertFalse(source.indexOf("FULL 1") in macroColors)
+            assertFalse(source.indexOf("split SEP load") + "split SEP ".length in macroColors)
+            assertTrue(source.indexOf("CALL (1, 2)") in macroColors)
             fixture.configureByText("plain.s", ".text\nnop\n")
             assertTrue(warnings().isEmpty())
         }
