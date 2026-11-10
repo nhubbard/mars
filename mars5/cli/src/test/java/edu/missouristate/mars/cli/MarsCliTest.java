@@ -259,6 +259,90 @@ class MarsCliTest {
     assertFalse(Files.exists(window));
   }
 
+  @Test
+  void reportsIntegerAndFloatingPointRegistersAndMemoryInHexadecimal() throws Exception {
+    var source = directory.resolve("report.s");
+    Files.writeString(source, """
+        .data
+        .word 1, 2, 3, 4, 5
+        .text
+        li $t0,-7
+        li $t1,0x3ff00000
+        mtc1 $t1,$f1
+        li $v0,10
+        syscall
+        """);
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+
+    assertEquals(0, execute(new String[] {
+        "hex", "--register", "t0", "$8", "f0", "$f1", "0x10010000-0x10010010",
+        "--memory-range", "0x00400000-0x00400000", source.toString()
+    }, output, error));
+    assertEquals(List.of(
+        "", "$t0\t0xfffffff9", "$8\t0xfffffff9", "$f0\t0x00000000\t0x3ff0000000000000",
+        "$f1\t0x3ff00000", "Mem[0x10010000]\t0x00000001\t0x00000002\t0x00000003\t0x00000004\t",
+        "Mem[0x10010010]\t0x00000005\t", "Mem[0x00400000]\t0x2408fff9\t"
+    ), output.toString().lines().toList());
+    assertEquals("", error.toString());
+  }
+
+  @Test
+  void sendsBriefDecimalAndAsciiReportsToStderrWhileProgramOutputStaysOnStdout() throws Exception {
+    var source = directory.resolve("brief.s");
+    Files.writeString(source, """
+        .data
+        .word 0x41424344
+        .text
+        li $t0,0x41424344
+        mtc1 $t0,$f0
+        mtc1 $t0,$f1
+        li $a0,7
+        li $v0,1
+        syscall
+        li $v0,10
+        syscall
+        """);
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+    assertEquals(0, execute(new String[] {"dec", "b", "me", "$a0", "$f0", source.toString()}, output, error));
+    assertEquals("7", output.toString());
+    assertEquals(List.of("", "7", "12.141422\t2393736.509834679"), error.toString().lines().toList());
+    output.reset();
+    error.reset();
+
+    assertEquals(0, execute(new String[] {
+        "ascii", "--brief", "--messages-to-stderr", "t0", "f0", "0x10010000-0x10010000", source.toString()
+    }, output, error));
+    assertEquals("7", output.toString());
+    assertEquals(List.of("", "  A  B  C  D", "  A  B  C  D\t  A  B  C  D  A  B  C  D", "  A  B  C  D\t"),
+        error.toString().lines().toList());
+  }
+
+  @Test
+  void reportsKernelMemoryAndInvalidAddressesAndRejectsMalformedSelections() throws Exception {
+    var source = directory.resolve("ranges.s");
+    Files.writeString(source, ".kdata\n.word 34\n.text\nnop\n");
+    var output = new ByteArrayOutputStream();
+    var error = new ByteArrayOutputStream();
+
+    assertEquals(0, execute(new String[] {
+        "dec", "0x90000000-0x90000000", "0x00000000-0x00000000", source.toString()
+    }, output, error));
+    assertEquals(List.of("", "Mem[0x90000000]\t34\t", "Mem[0x00000000]\tInvalid address: 0\t"),
+        output.toString().lines().toList());
+    assertEquals("", error.toString());
+    output.reset();
+
+    assertEquals(0, execute(new String[] {"a", "$t0", "0x90000000-0x90000000", source.toString()}, output, error));
+    assertEquals("", output.toString());
+    assertEquals(2, execute(new String[] {"$f", source.toString()}, output, error));
+    assertTrue(error.toString().contains("Invalid register name"));
+    error.reset();
+    assertEquals(2, execute(new String[] {"0x90000000-0x8ffffffc", source.toString()}, output, error));
+    assertTrue(error.toString().contains("Invalid or unaligned memory range"));
+  }
+
   private static int execute(String[] args, ByteArrayOutputStream out, ByteArrayOutputStream err) {
     return MarsCli.execute(
         args, InputStream.nullInputStream(), new PrintStream(out), new PrintStream(err));

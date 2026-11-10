@@ -40,6 +40,8 @@ public final class MarsCli {
       var files = new ArrayList<Path>();
       var programArguments = new ArrayList<String>();
       var dumps = new ArrayList<CliMemoryDump>();
+      var report = new CliMachineReport();
+      PrintStream reportOutput = output;
       String layout = "Default";
       int maximumSteps = 0;
       boolean assembleOnly = false;
@@ -62,6 +64,13 @@ public final class MarsCli {
           case "--start-at-main", "sm" -> session.settings.setStartAtMainEnabled(true);
           case "--no-pseudo", "np", "ne" -> session.settings.setExtendedAssemblerEnabled(false);
           case "--warnings-as-errors", "we" -> session.settings.setWarningsAreErrors(true);
+          case "--messages-to-stderr", "me" -> reportOutput = error;
+          case "--brief", "b" -> report.brief = true;
+          case "hex" -> report.format = CliMachineReport.Format.HEX;
+          case "dec" -> report.format = CliMachineReport.Format.DECIMAL;
+          case "ascii" -> report.format = CliMachineReport.Format.ASCII;
+          case "--register" -> report.requireRegister(requiredValue(arguments, ++i, "register name"), session);
+          case "--memory-range" -> report.addRange(requiredValue(arguments, ++i, "memory range"));
           case "nc" -> {}
           case "--dump", "dump" -> dumps.add(CliMemoryDump.parse(
               requiredValue(arguments, ++i, "dump segment or address range"),
@@ -88,11 +97,17 @@ public final class MarsCli {
               assemblyErrorExitCode = assemblyStatus;
             } else if (simulationStatus != null) {
               simulationErrorExitCode = simulationStatus;
-            } else if (number != null && !Files.isRegularFile(Path.of(arg))) {
+            } else if (arg.startsWith("$")) {
+              report.requireRegister(arg, session);
+            } else if (!arg.startsWith("-") && Files.isRegularFile(Path.of(arg))) {
+              files.add(Path.of(arg));
+            } else if (number != null) {
               maximumSteps = number;
+            } else if (CliAddressRange.hasAddressPrefix(arg)) {
+              report.addRange(arg);
             } else if (arg.startsWith("-")) {
               throw new IllegalArgumentException("Unknown option: " + arg);
-            } else {
+            } else if (!report.addRegister(arg, session)) {
               files.add(Path.of(arg));
             }
           }
@@ -120,6 +135,9 @@ public final class MarsCli {
           return program.getExitCode();
         }
       } finally {
+        if (simulating) {
+          report.write(session, reportOutput);
+        }
         for (var dump : dumps) {
           dump.write(session, error);
         }
@@ -185,6 +203,11 @@ public final class MarsCli {
       --memory LAYOUT        Default, CompactDataAtZero, or CompactTextAtZero (mc)
       --dump REGION FORMAT FILE   Export .text, .data, or an inclusive word range (dump)
                              Formats: %s
+      --register NAME       Report a register after execution ($NAME or bare mnemonic)
+      --memory-range M-N    Report an inclusive word range after execution (M-N)
+      hex | dec | ascii     Select the register and memory display format (default: hex)
+      --brief               Omit register names and memory row addresses (b)
+      --messages-to-stderr  Send reports to stderr (me)
       --max-steps COUNT      Bound execution and return code 3 at the limit
       COUNT                  Positional step limit (zero or negative means unlimited)
       --assembly-error-exit-code CODE     Override the assembly error status (aeCODE)

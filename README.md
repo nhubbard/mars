@@ -38,6 +38,8 @@ Run options include memory layouts, branch delay slots, self-modifying code, and
 Automated builds can set separate exit codes for assembly and simulation errors.
 Use `--dump REGION FORMAT FILE` to export `.text`, `.data`, or an inclusive word address range.
 The CLI lists the available formats in `--help`. Repeat `--dump` to write several files from one run.
+Use `--register NAME` and `--memory-range M-N` to print the machine state after execution.
+The `hex`, `dec`, and `ascii` options select the format. `me` directs reports to stderr.
 For embedding, use `MarsComponent.assembler()`, `simulator()`, `memory()`, and `registerFile()`;
 close the owning `MarsContext` when finished. The core has no desktop or IntelliJ dependency.
 

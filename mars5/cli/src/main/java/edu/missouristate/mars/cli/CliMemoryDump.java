@@ -14,12 +14,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
-record CliMemoryDump(String region, AddressRange range, DumpFormat format, Path output) {
+record CliMemoryDump(String region, CliAddressRange range, DumpFormat format, Path output) {
   static CliMemoryDump parse(String region, String descriptor, String filename) {
     var range =
         Arrays.asList(MemoryDump.getSegmentNames()).contains(region)
             ? null
-            : AddressRange.parse(region);
+            : CliAddressRange.parse(region);
     var format = DumpFormatLoader.findByCommandDescriptor(descriptor);
     if (format == null) {
       throw new IllegalArgumentException("Unknown memory dump format: " + descriptor);
@@ -65,34 +65,6 @@ record CliMemoryDump(String region, AddressRange range, DumpFormat format, Path 
           "Cannot dump " + region + ": invalid address " + Binary.intToHexString(failure.getAddress()));
     } catch (IOException failure) {
       error.println("Cannot dump " + region + " to " + output + ": " + failure.getMessage());
-    }
-  }
-
-  record AddressRange(int first, int last) {
-    static AddressRange parse(String text) {
-      int separator = text.indexOf('-', 1);
-      try {
-        if (separator > 0) {
-          int first = address(text.substring(0, separator));
-          int last = address(text.substring(separator + 1));
-          if (Integer.compareUnsigned(first, last) <= 0
-              && MemoryState.wordAligned(first)
-              && MemoryState.wordAligned(last)) {
-            return new AddressRange(first, last);
-          }
-        }
-      } catch (NumberFormatException ignored) {
-        // Report malformed addresses together with the original range.
-      }
-      throw new IllegalArgumentException("Invalid or unaligned memory range: " + text);
-    }
-
-    private static int address(String text) {
-      long value = Long.decode(text);
-      if (value < Integer.MIN_VALUE || value > 0xffffffffL) {
-        throw new NumberFormatException(text);
-      }
-      return (int) value;
     }
   }
 }
