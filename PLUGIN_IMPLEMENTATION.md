@@ -396,6 +396,17 @@ expected binding after the edit, even when the generated instructions are identi
 Declarations owned by multiple entry tokenizers, unknown replacement spellings, and
 unresolved occurrences in dormant alias chains still stop the operation.
 
+## Assembled address inlays
+
+Enable **Assembled MARS addresses** in IntelliJ's **Editor → Inlay Hints** settings.
+The editor shows hexadecimal addresses beside written labels and `.extern` allocations
+from the selected assembly, including unsaved includes and the current memory layout.
+The hints reuse the editor's detached background assembly and require a matching set
+of document revisions and assembly settings before they are rendered. They disappear
+when the assembly becomes invalid or an include has no unique selected assembly.
+Addresses from expanded macro bodies stay out of the editor hints. Each displayed
+address must match a written declaration by name and position.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source
