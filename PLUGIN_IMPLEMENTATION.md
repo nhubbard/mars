@@ -173,6 +173,18 @@ entry selection can add or remove folds in other open MARS editors through
 IntelliJ's folding refresh API. Platform tests also cover creating, rewriting,
 and deleting an unopened include on disk.
 
+## EditorConfig indentation
+
+MARS formatting uses IntelliJ's per-file EditorConfig settings. Set
+`indent_style`, `indent_size` and `tab_width` in sections matching your assembly
+files. The MARS-specific IntelliJ key for indentation size is
+`ij_mars-mips_indent_size`. A nested `.editorconfig` can override the inherited
+style for its directory.
+
+The bundled IntelliJ EditorConfig integration applies these settings to
+**Reformat Code**, including macro bodies and instructions. Segment directives,
+labels and macro boundaries retain their usual placement.
+
 ## Live templates
 
 On a blank MARS statement line, type an abbreviation and press **Tab**.
