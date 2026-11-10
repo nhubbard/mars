@@ -2177,6 +2177,22 @@ The packaged IntelliJ 2026.3 smoke test created the scheme from sample Venus
 preferences, selected it, and verified the imported comment and directive
 styles in an open MIPS editor. IntelliJ wrote the scheme to an `.icls` file.
 
+### Import Venus debugger preferences
+
+**File → Import Venus Debugger Preferences** previews the saved address and
+value formats for all MARS projects and the Symbols sort for the open project.
+Confirming refreshes the debugger views. Addresses use unsigned decimal when
+decimal is selected. The import translates Venus's eight label-sort states
+to the primary column and direction used by IntelliJ's Symbols table.
+
+The number-format import records completion for the IDE. Symbols sorting
+records completion separately in each project workspace. A scope with no
+changes stays available for a later import.
+
+The packaged IntelliJ 2026.3 smoke test confirmed the new number format and
+sort order in an open Symbols table while the debugger remained at the same
+suspension. IntelliJ saved both scopes in their respective settings files.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose

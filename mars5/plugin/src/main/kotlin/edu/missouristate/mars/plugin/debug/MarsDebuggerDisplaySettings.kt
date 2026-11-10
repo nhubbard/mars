@@ -44,6 +44,11 @@ internal class MarsDebuggerDisplaySettings :
         notifyViews()
     }
 
+    fun applyImportedSettings(settings: Settings) {
+        updateState { settings }
+        notifyViews()
+    }
+
     override fun loadState(state: Settings) {
         super.loadState(state)
         notifyViews()

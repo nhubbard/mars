@@ -128,6 +128,9 @@
     <action id="Mars.ImportVenusSyntaxStyles" class="edu.missouristate.mars.plugin.project.MarsImportVenusSyntaxStylesAction">
       <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusEditorPreferences"/>
     </action>
+    <action id="Mars.ImportVenusDebuggerPreferences" class="edu.missouristate.mars.plugin.project.MarsImportVenusDebuggerPreferencesAction">
+      <add-to-group group-id="FileMenu" anchor="after" relative-to-action="Mars.ImportVenusSyntaxStyles"/>
+    </action>
     <action id="Mars.NewMipsFile" class="edu.missouristate.mars.plugin.project.MarsNewFileAction" icon="AllIcons.FileTypes.Custom">
       <add-to-group group-id="NewGroup"/>
     </action>

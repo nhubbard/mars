@@ -18,6 +18,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.TableView
+import com.intellij.util.messages.Topic
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
@@ -66,6 +67,41 @@ internal data class AssembledSymbol(val name: String, val definition: Definition
     }
 }
 
+internal enum class MarsSymbolColumn(val messageSuffix: String) {
+    NAME("name"), ADDRESS("address"), KIND("kind"), SCOPE("scope"), UNIT("unit"), DEFINITION("definition");
+
+    val title get() = runMessages.getMessage("debug.symbols.column.$messageSuffix")
+}
+
+internal data class MarsSymbolSort(val column: MarsSymbolColumn, val descending: Boolean) {
+    val key get() = SortKey(column.ordinal, if (descending) SortOrder.DESCENDING else SortOrder.ASCENDING)
+}
+
+internal fun PropertiesComponent.symbolSort() = MarsSymbolSort(
+    MarsSymbolColumn.entries[getInt("mars.debug.symbols.sortColumn", 0).coerceIn(MarsSymbolColumn.entries.indices)],
+    getBoolean("mars.debug.symbols.sortDescending"),
+)
+
+internal fun PropertiesComponent.storeSymbolSort(sort: MarsSymbolSort) {
+    setValue("mars.debug.symbols.sortColumn", sort.column.ordinal, 0)
+    setValue("mars.debug.symbols.sortDescending", sort.descending)
+}
+
+internal fun importSymbolSort(project: Project, sort: MarsSymbolSort) {
+    PropertiesComponent.getInstance(project).storeSymbolSort(sort)
+    project.messageBus.syncPublisher(MarsSymbolSortListener.TOPIC).sortImported(sort)
+}
+
+internal fun interface MarsSymbolSortListener {
+    fun sortImported(sort: MarsSymbolSort)
+
+    companion object {
+        @Topic.ProjectLevel
+        @JvmField
+        val TOPIC = Topic("MARS imported symbol sort", MarsSymbolSortListener::class.java, Topic.BroadcastDirection.NONE)
+    }
+}
+
 internal class MarsSymbolsView(
     private val project: Project,
     private val image: StateFlow<LoadedSymbols?>,
@@ -82,12 +118,12 @@ internal class MarsSymbolsView(
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
     private val inspectAddress = JButton(runMessages.getMessage("debug.symbols.inspect")).apply { isEnabled = false }
     private val model = ListTableModel<AssembledSymbol>(
-        column("name", AssembledSymbol::name),
-        column("address", { display.formatAddress(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
-        column("kind") { runMessages.getMessage("debug.symbols.kind.${it.definition.kind().name.lowercase(Locale.ROOT)}") },
-        column("scope") { runMessages.getMessage("debug.symbols.scope.${it.scope}") },
-        column("unit") { it.unit?.let(::displayPath).orEmpty() },
-        column("definition") { it.location?.let { site -> "${displayPath(site.file())}:${site.line()}" }.orEmpty() },
+        column(MarsSymbolColumn.NAME, AssembledSymbol::name),
+        column(MarsSymbolColumn.ADDRESS, { display.formatAddress(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
+        column(MarsSymbolColumn.KIND) { runMessages.getMessage("debug.symbols.kind.${it.definition.kind().name.lowercase(Locale.ROOT)}") },
+        column(MarsSymbolColumn.SCOPE) { runMessages.getMessage("debug.symbols.scope.${it.scope}") },
+        column(MarsSymbolColumn.UNIT) { it.unit?.let(::displayPath).orEmpty() },
+        column(MarsSymbolColumn.DEFINITION) { it.location?.let { site -> "${displayPath(site.file())}:${site.line()}" }.orEmpty() },
     )
     private val table = TableView(model).apply {
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
@@ -124,18 +160,18 @@ internal class MarsSymbolsView(
 
     init {
         val properties = PropertiesComponent.getInstance(project)
-        val sortColumn = properties.getInt("mars.debug.symbols.sortColumn", 0).coerceIn(0, model.columnCount - 1)
-        val sortOrder = if (properties.getBoolean("mars.debug.symbols.sortDescending")) SortOrder.DESCENDING else SortOrder.ASCENDING
-        sorter.sortKeys = listOf(SortKey(sortColumn, sortOrder))
+        sorter.sortKeys = listOf(properties.symbolSort().key)
         sorter.addRowSorterListener {
             sorter.sortKeys.firstOrNull()?.let { key ->
-                properties.setValue("mars.debug.symbols.sortColumn", key.column, 0)
-                properties.setValue("mars.debug.symbols.sortDescending", key.sortOrder == SortOrder.DESCENDING)
+                properties.storeSymbolSort(MarsSymbolSort(MarsSymbolColumn.entries[key.column], key.sortOrder == SortOrder.DESCENDING))
             }
         }
         sorter.stringConverter = object : TableStringConverter() {
             override fun toString(model: TableModel, row: Int, column: Int) = model.getValueAt(row, column).toString()
         }
+        project.messageBus.connect(this).subscribe(MarsSymbolSortListener.TOPIC, MarsSymbolSortListener { sort ->
+            sorter.sortKeys = listOf(sort.key)
+        })
         display.addListener(this) {
             sorter.sort()
             table.repaint()
@@ -182,13 +218,13 @@ internal class MarsSymbolsView(
         return if (base != null && path.startsWith(base)) base.relativize(path).toString() else path.toString()
     }
 
-    private fun column(key: String, value: (AssembledSymbol) -> String, order: Comparator<AssembledSymbol>) =
-        object : ColumnInfo<AssembledSymbol, String>(runMessages.getMessage("debug.symbols.column.$key")) {
+    private fun column(column: MarsSymbolColumn, value: (AssembledSymbol) -> String, order: Comparator<AssembledSymbol>) =
+        object : ColumnInfo<AssembledSymbol, String>(column.title) {
             override fun valueOf(item: AssembledSymbol) = value(item)
             override fun getComparator() = order
         }
 
-    private fun column(key: String, value: (AssembledSymbol) -> String) = column(key, value, compareBy(value))
+    private fun column(column: MarsSymbolColumn, value: (AssembledSymbol) -> String) = column(column, value, compareBy(value))
 
     override fun dispose() = scope.cancel()
 }
