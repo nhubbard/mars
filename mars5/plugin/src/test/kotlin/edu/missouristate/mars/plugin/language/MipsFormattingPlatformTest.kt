@@ -122,6 +122,39 @@ class MipsFormattingPlatformTest {
         }
 
     @Test
+    fun `reformat preserves strings opened by equivalences declared after a macro body`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv WRITE .asciiz
+                .data
+                .macro emit
+                message   :   WRITE   HEAD ,      "
+                .end_macro
+                .macro unused
+                .asciiz   CYCLE ,   "x"
+                .end_macro
+                .eqv CYCLE BACK
+                .eqv BACK CYCLE
+                .eqv HEAD OPEN
+                .eqv OPEN "z
+                emit
+                .text
+                nop
+            """.trimIndent()
+            val before = assemble(directory.resolve("late-quote-before.asm"), source)
+            assertEquals("z ,      ".map(Char::code) + 0, before.second.take(10))
+            val formatted = withContext(Dispatchers.EDT) {
+                fixture.configureByText("late-quote.asm", source)
+                val result = reformat()
+                assertEquals(result, reformat())
+                result
+            }
+            assertEquals(before, assemble(directory.resolve("late-quote-after.asm"), formatted))
+            assertTrue("    message: WRITE HEAD ,      \"" in formatted, formatted)
+            assertTrue("    .asciiz CYCLE, \"x\"" in formatted, formatted)
+        }
+
+    @Test
     fun `reformat preserves text that a macro formal can place inside a string`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """

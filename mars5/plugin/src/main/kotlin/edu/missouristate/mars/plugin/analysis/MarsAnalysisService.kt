@@ -534,25 +534,39 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val canFormatOperands = expanded.definition() == null
         val spacingType = type.takeIf { canFormatOperands }
         val openings = if (canFormatOperands && projectOperands) expandedOperandParentheses(mapped, source, start) else null
-        val formals = prefix.openMacro?.parametersByName.orEmpty()
+        val macro = prefix.openMacro
         val verbatim = buildList {
-            for (index in 0 until tokens.size()) {
-                val token = tokens[index]
-                val writtenStart = start + mapped.originalOffset(token.startPos - 1)
-                // A formal can absorb the rest of a row as a quoted argument, even when a
-                // later macro expansion supplies the closing quote. Instructions require typed operands.
-                if (type != TokenTypes.OPERATOR && token.value in formals) {
+            addAll(quotedStringRanges(tokens) { start + mapped.originalOffset(it) })
+            val formals = macro?.parametersByName.orEmpty()
+            // A formal can absorb the rest of a row as a quoted argument, even when a
+            // later macro expansion supplies the closing quote. Instructions require typed operands.
+            if (type != TokenTypes.OPERATOR) {
+                val first = (0 until tokens.size()).firstOrNull { tokens[it].value in formals }
+                if (first != null) {
+                    val writtenStart = start + mapped.originalOffset(tokens[first].startPos - 1)
                     add(TextRange(writtenStart, start + source.length))
-                    break
                 }
-                // An opening quote supplied by an alias can absorb written tokens and whitespace.
-                if (token.type == TokenTypes.QUOTED_STRING) {
-                    add(TextRange(writtenStart, start + mapped.originalOffset(token.endPos - 1)))
+            }
+            if (macro != null && timeline.hasQuotedEquivalence) {
+                val expansionErrors = ErrorList()
+                val body = Tokenizer.tokenizeMappedLine(
+                    tokens.processedLine, expansionErrors, timeline::macroExpansionReplacement, ProgressManager::checkCanceled,
+                )
+                if (!expansionErrors.errorsOccurred()) {
+                    addAll(quotedStringRanges(body.tokens()) { start + mapped.originalOffset(body.originalOffset(it)) })
                 }
             }
         }
         return FormattingLine(spacingType, hasLabel || type == TokenTypes.DIRECTIVE, openings, verbatim)
     }
+
+    // An opening quote supplied by an alias can absorb written tokens and whitespace.
+    private fun quotedStringRanges(tokens: TokenList, writtenOffset: (Int) -> Int): List<TextRange> =
+        (0 until tokens.size()).mapNotNull { index ->
+            val token = tokens[index]
+            if (token.type != TokenTypes.QUOTED_STRING) return@mapNotNull null
+            TextRange(writtenOffset(token.startPos - 1), writtenOffset(token.endPos - 1))
+        }
 
     private fun expandedOperandParentheses(
         mapped: Tokenizer.MappedLine, source: String, start: Int,

@@ -194,6 +194,8 @@ uses the assembler’s source ranges to preserve whitespace that becomes string 
 Inside a macro, spacing after a formal is preserved on rows that can treat an
 argument as text. This also covers incomplete quoted arguments forwarded to another
 macro. Rows with known instruction mnemonics keep ordinary operand formatting.
+The formatter also maps quoted strings from the second equivalence pass in a
+macro body, which can use definitions later in the assembly source.
 
 ## Live templates
 

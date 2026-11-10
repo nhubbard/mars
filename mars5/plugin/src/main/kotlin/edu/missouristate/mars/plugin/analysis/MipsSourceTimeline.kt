@@ -200,6 +200,9 @@ internal class MipsSourceTimeline(
     val hasIncompleteIncludes: Boolean get() = firstIncompleteInclude != Int.MAX_VALUE
     val hasQuotedEquivalence: Boolean by lazy { equivalences.values.any { '"' in it.definition.replacement } }
 
+    // The assembler tokenizes all physical lines before expanding any macro calls.
+    fun macroExpansionReplacement(name: String): String? = equivalences[name]?.definition?.replacement
+
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
     private val registerUsagesByFile = ConcurrentHashMap<MipsFile, Map<Int, List<TextRange>>>()
 
