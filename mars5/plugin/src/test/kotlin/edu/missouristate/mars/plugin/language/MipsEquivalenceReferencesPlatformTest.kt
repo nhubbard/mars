@@ -10,6 +10,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiErrorElement
+import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -148,6 +150,37 @@ class MipsEquivalenceReferencesPlatformTest {
             assertNull(target(".eqv DEFINE .eqv\n$macro$use$call"))
         }
     }
+
+    @Test
+    fun `third token equivalences in unused macro bodies are visible in later source`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val aliases = ".eqv DEFINE .eqv\n.eqv WHOLE .eqv COUNT 7\n.eqv PREFIX 2 .eqv COUNT 7\n"
+            val beforeBody = aliases + ".macro unused\n"
+            val use = "addiu \$t0, \$zero, CO<caret>UNT\n"
+            val context = project.get().service<MarsSessionService>().context
+            for ((body, site) in listOf(
+                "li \$t0 .eqv COUNT 7" to ".eqv",
+                "li \$t0 DEFINE COUNT 7" to "DEFINE",
+                "1 2 .eqv COUNT 7" to ".eqv",
+                "-1 , 'A' DEFINE COUNT 7" to "DEFINE",
+                "1 2 WHOLE" to "WHOLE",
+                "-1 PREFIX" to "PREFIX",
+            )) {
+                val macro = "$beforeBody$body\n.end_macro\n"
+                val source = macro + use
+                val entry = directory.resolve("positional.asm").also { it.writeText(source.replace("<caret>", "")) }
+                val program = context.assemble(listOf(entry), null, true, false)
+                assertEquals(listOf(0x24080007), program.machineList.map { it.binaryStatement }, body)
+                val declaration = target(source)
+                assertEquals(site, declaration?.name, body)
+                assertEquals(beforeBody.length + body.indexOf(site), declaration?.offset, body)
+                readAction { assertTrue(PsiTreeUtil.findChildrenOfType(fixture.file, PsiErrorElement::class.java).isEmpty(), body) }
+                assertNull(target(use + macro), body)
+            }
+            for (body in listOf("li .eqv COUNT 7", ".word 1 .eqv COUNT 7", "1 2 .set COUNT 7")) {
+                assertNull(target("$beforeBody$body\n.end_macro\n$use"), body)
+            }
+        }
 
     @Test
     fun `generated lookups refresh when an include appears or its unsaved PSI changes`() = timeoutRunBlocking<Unit> {

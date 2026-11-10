@@ -699,11 +699,13 @@ keeps its definition file and column, even when retokenizing the expansion
 resolves a later equivalence. The Build action and editor use these same
 assembler locations.
 
-An `.eqv` at the third assembler token of an unlabeled macro call can define
-an alias during tokenization. The editor's source timeline records that
-definition for later uses, including when the directive is itself supplied
-by an alias. Go to Declaration opens the written directive or its alias at
-the call site. Formatting keeps the replacement text intact.
+An `.eqv` at the third assembler token of an unlabeled macro call, instruction,
+or data-shaped line can define an alias during tokenization. This includes
+lines inside a macro that is never invoked. The editor's source timeline
+uses the assembler's token boundaries, so a signed literal or character
+literal in the prefix occupies one position. Go to Declaration opens the
+written directive or the alias that supplied it. Formatting keeps the
+replacement text intact.
 
 A physical `.eqv` line with fewer than three assembler tokens parses as a
 directive without a declaration. A leading label or trailing comment still
