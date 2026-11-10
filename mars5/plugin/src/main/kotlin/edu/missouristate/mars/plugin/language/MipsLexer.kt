@@ -12,7 +12,7 @@ import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
 import edu.missouristate.mars.plugin.language.syntax.MipsToken
 import edu.missouristate.mars.plugin.language.syntax.MipsTokenKind
-import edu.missouristate.mars.plugin.language.syntax.findMipsInclude
+import edu.missouristate.mars.plugin.language.syntax.inspectMipsInclude
 import java.util.TreeSet
 
 class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
@@ -51,7 +51,7 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
         if (offset >= includeLineEnd) {
             val start = CharArrayUtil.shiftBackwardUntil(buffer, offset - 1, "\r\n") + 1
             includeLineEnd = minOf(limit, CharArrayUtil.shiftForwardUntil(buffer, offset, "\r\n"))
-            val include = findMipsInclude(buffer, start, includeLineEnd)
+            val include = inspectMipsInclude(buffer, start, includeLineEnd)
             includeDirective = if (include == null) -1 else start + include.directiveOffset()
         }
         // A malformed token can swallow the directive and path. Resume at the assembler's directive.

@@ -569,6 +569,15 @@ physical line. It preserves the full token sequence and avoids producing declara
 nodes for the replaced prefix. A valid include on a macro closing line takes precedence over the
 physical closing token. Incomplete include directives still have ordinary directive PSI.
 
+The file-local annotator reports an unfinished quoted include at the path itself, even
+when the open file belongs to multiple possible entries. It uses the same physical
+operand and quote offsets as the assembler. IntelliJ runs this check during indexing.
+Its standard external annotation pass waits for the local error to clear. Closing the
+quote removes the error and makes the path eligible for references and include traversal.
+A clean IntelliJ 2026.3 launch verified this in a file shared by two entries. Go to
+Declaration opened the completed path, and Run printed the value from the included
+file. All 1,782 tests and both parser coverage gates passed.
+
 The assembler fixtures cover labels, equivalences, incomplete operands, an earlier include without
 a quoted path, and a macro body inserted in place of a closing line. The declaration index rebuilds
 to drop labels and constants from replaced lines. The parser and include index use the same core

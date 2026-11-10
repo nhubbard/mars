@@ -92,13 +92,13 @@ internal fun isIncludeLine(runtime: SyntaxGeneratedParserRuntime, level: Int): B
     val builder = runtime.syntaxBuilder
     val start = builder.currentOffset
     val source = builder.text
-    return findMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n")) != null
+    return inspectMipsInclude(source, start, CharArrayUtil.shiftForwardUntil(source, start, "\r\n"))?.path() != null
 }
 
-internal fun findMipsInclude(source: CharSequence, start: Int, end: Int): Tokenizer.IncludePath? {
+internal fun inspectMipsInclude(source: CharSequence, start: Int, end: Int): Tokenizer.IncludePath? {
     val line = CharSequenceSubSequence(source, start, end)
     if (!line.contains(".include", ignoreCase = true)) return null
-    return Tokenizer().findInclude(line.toString())
+    return Tokenizer().inspectInclude(line.toString())
 }
 
 /** Report the invalid token without losing the path or resuming normal statement parsing. */

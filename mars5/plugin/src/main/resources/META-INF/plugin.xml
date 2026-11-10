@@ -32,6 +32,7 @@
     <lang.syntaxHighlighterFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsSyntaxHighlighterFactory"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsInstructionHighlighter"/>
     <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsIncludeCycleAnnotator"/>
+    <annotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsUnterminatedIncludeAnnotator"/>
     <colorSettings implementation="edu.missouristate.mars.plugin.language.MipsColorSettingsPage" bundle="messages.MarsBundle" key="colors.name"/>
     <additionalTextAttributes scheme="Default" file="colors/MipsDefault.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colors/MipsDarcula.xml"/>

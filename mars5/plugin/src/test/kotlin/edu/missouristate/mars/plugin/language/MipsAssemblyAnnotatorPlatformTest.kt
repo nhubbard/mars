@@ -345,7 +345,9 @@ class MipsAssemblyAnnotatorPlatformTest {
                 val (error, range) = readAction { annotator.acceptResult(file, result).single() }
                 assertEquals("Unterminated .include path", error.message())
                 assertEquals(unfinished, range.substring(source))
-                assertTrue(fixture.doHighlighting().any { it.severity == HighlightSeverity.ERROR })
+                val highlight = fixture.doHighlighting().single { it.severity == HighlightSeverity.ERROR }
+                assertEquals(error.message(), highlight.description)
+                assertEquals(range, TextRange(highlight.startOffset, highlight.endOffset))
                 assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
             }
             val completed = ".include \"part.s\"\nj target\n"
@@ -354,6 +356,39 @@ class MipsAssemblyAnnotatorPlatformTest {
             assertEquals(setOf(entryPath, includePath), captured.revisions.keys)
             assertTrue(fixture.doHighlighting().none { it.severity == HighlightSeverity.ERROR })
             assertEquals(include, file.findReferenceAt(completed.indexOf("part.s"))?.resolve()?.containingFile?.virtualFile)
+        }
+    }
+
+    @Test
+    fun `unterminated include paths are highlighted without an inferred assembly entry`() = timeoutRunBlocking<Unit> {
+        val source = """
+            prefix: .InClUdE ,, "unfinished path
+            .eqv ALIAS .include "replacement path
+            'a#xx .include "hidden path
+            .asciiz "ordinary string
+            .include "complete.s" "unused suffix
+            # .include "comment
+            tail: nop
+        """.trimIndent()
+        val file = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("first.s", ".include \"shared.s\"")
+            fixture.addFileToProject("second.s", ".include \"shared.s\"")
+            fixture.addFileToProject("complete.s", "nop")
+            val shared = fixture.addFileToProject("shared.s", source) as MipsFile
+            fixture.configureFromExistingVirtualFile(shared.virtualFile)
+            shared
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        readAction { assertNull(annotator.collectInformation(file)) }
+        withContext(Dispatchers.EDT) {
+            val errors = fixture.doHighlighting().filter { it.description == "Unterminated .include path" }
+            assertTrue(errors.all { it.severity == HighlightSeverity.ERROR })
+            assertEquals(
+                listOf("\"unfinished path", "\"replacement path", "\"hidden path"),
+                errors.sortedBy { it.startOffset }.map { source.substring(it.startOffset, it.endOffset) },
+            )
+            assertEquals(MipsTypes.psi("LABEL"), file.findElementAt(source.indexOf("prefix"))?.parent?.elementType)
+            assertEquals(MipsTypes.psi("OPERATION"), file.findElementAt(source.lastIndexOf("nop"))?.parent?.elementType)
         }
     }
 

@@ -111,8 +111,10 @@ class MipsFileReferencesPlatformTest {
                     editor.document.deleteString(closingQuote, closingQuote + 1)
                 }
                 PsiDocumentManager.getInstance(project.get()).commitAllDocuments()
-                assertEquals(MipsTypes.psi("COMMENT"), tokenType(directive))
-                assertEquals(MipsTypes.psi("COMMENT"), tokenType(path))
+                assertEquals(MipsTypes.psi("INCLUDE"), tokenType(directive))
+                assertEquals(MipsTypes.psi("UNCLOSED_STRING"), tokenType(path))
+                editor.caretModel.moveToOffset(path + 1)
+                assertNull(fixture.getReferenceAtCaretPosition())
                 WriteCommandAction.runWriteCommandAction(project.get()) {
                     editor.document.insertString(closingQuote, "\"")
                 }

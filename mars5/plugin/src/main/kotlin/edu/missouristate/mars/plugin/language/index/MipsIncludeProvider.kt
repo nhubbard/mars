@@ -13,7 +13,7 @@ import com.intellij.util.indexing.IndexedFile
 import edu.missouristate.mars.plugin.language.MipsFileType
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
-import edu.missouristate.mars.plugin.language.syntax.findMipsInclude
+import edu.missouristate.mars.plugin.language.syntax.inspectMipsInclude
 
 /** Supplies unresolved paths to IntelliJ's shared include index, matching MARS's include prepass. */
 class MipsIncludeProvider : FileIncludeProvider() {
@@ -40,8 +40,10 @@ internal fun collectMipsIncludes(text: CharSequence): Array<FileIncludeInfo> {
     while (!lines.atEnd()) {
         ProgressManager.checkCanceled()
         val start = lines.offset
-        findMipsInclude(text, start, start + lines.length)?.let {
-            includes.add(FileIncludeInfo(it.path(), start + it.offset()))
+        val include = inspectMipsInclude(text, start, start + lines.length)
+        val path = include?.path()
+        if (path != null) {
+            includes.add(FileIncludeInfo(path, start + include.offset()))
         }
         lines.advance()
     }

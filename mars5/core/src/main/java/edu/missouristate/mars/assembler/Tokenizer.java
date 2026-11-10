@@ -215,16 +215,20 @@ public class Tokenizer {
 
   /** Finds the include and the zero-based offsets of its directive and opening quote. */
   public IncludePath findInclude(String sourceLine) {
+    IncludePath include = inspectInclude(sourceLine);
+    return include != null && include.path() != null ? include : null;
+  }
+
+  /** Finds the first quoted include operand. Its path is null if the quote is unfinished. */
+  public IncludePath inspectInclude(String sourceLine) {
     var candidates = scanPossibleInclude(sourceMIPSprogram, 1, sourceLine, () -> {});
     int includeIndex = firstIncludePathIndex(candidates);
     if (includeIndex < 0) {
       return null;
     }
     Token token = candidates.get(includeIndex);
-    String path = quotedIncludePath(token);
-    return path == null
-        ? null
-        : new IncludePath(path, token.getStartPos() - 1, candidates.get(includeIndex - 1).getStartPos() - 1);
+    return new IncludePath(
+        quotedIncludePath(token), token.getStartPos() - 1, candidates.get(includeIndex - 1).getStartPos() - 1);
   }
 
   public record IncludePath(String path, int offset, int directiveOffset) {}
