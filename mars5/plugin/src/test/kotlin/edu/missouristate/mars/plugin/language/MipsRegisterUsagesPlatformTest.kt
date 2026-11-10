@@ -10,6 +10,8 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +89,71 @@ class MipsRegisterUsagesPlatformTest {
             assertNull(handler())
             fixture.configureByText("other.txt", "${'$'}t0<caret>")
             assertNull(handler())
+        }
+    }
+
+    @Test
+    fun `equivalences project register identities to unambiguous written operands`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val source = """
+            .include "values.txt"
+            .eqv CP mfc0
+            .eqv PAIR ${'$'}8, ${'$'}9
+            .eqv SAME ${'$'}8, ${'$'}t0
+            .eqv HOME 0(${'$'}8)
+            .eqv DEFINED anchor:
+            .eqv LABEL_ONLY marker:
+            .eqv WHOLE addu ${'$'}t0, ${'$'}zero, ${'$'}zero
+            .eqv CALL emit
+            .eqv FLOAT_ALIAS ${'$'}f0x8
+            .eqv CYCLE LOOP
+            .eqv LOOP CYCLE
+            .macro emit (%value)
+                addu ${'$'}s0, VAL, ${'$'}zero
+            .end_macro
+            addu ${'$'}t0, ${'$'}zero, ${'$'}zero
+            DEFINED addu ${'$'}s0, VAL, ${'$'}zero
+            CP ${'$'}a0, VAL
+            addu ${'$'}s0, PAIR
+            addu ${'$'}s0, SAME
+            lw ${'$'}a1, HOME
+            LABEL_ONLY
+            WHOLE
+            CALL (VAL)
+            addu ${'$'}s0, VAL
+            addu ${'$'}s0, CYCLE, ${'$'}zero
+            mov.s ${'$'}f1, FLOAT_ALIAS
+        """.trimIndent()
+        val include = withContext(Dispatchers.EDT) {
+            val include = fixture.addFileToProject("values.txt", ".eqv VAL ${'$'}8\n")
+            fixture.configureByText("entry.asm", source)
+            include
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val direct = source.indexOf("\naddu ${'$'}t0") + 7
+            fixture.editor.caretModel.moveToOffset(direct)
+            assertEquals(listOf("${'$'}t0", "VAL", "SAME", "HOME"), currentUses())
+            DumbModeTestUtils.runInDumbModeSynchronously(current) {
+                assertEquals(listOf("${'$'}t0"), currentUses())
+            }
+            moveTo("VAL\naddu")
+            assertEquals(listOf("VAL"), currentUses())
+            for (unresolved in listOf("PAIR\naddu", "WHOLE\nCALL", "VAL)\n", "CYCLE,")) {
+                moveTo(unresolved)
+                assertNull(handler(), unresolved)
+            }
+            fixture.editor.caretModel.moveToOffset(source.lastIndexOf("FLOAT_ALIAS") + 1)
+            assertNull(handler())
+
+            val documents = PsiDocumentManager.getInstance(current)
+            val document = documents.getDocument(include)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.setText(".eqv VAL ${'$'}9\n") }
+            documents.commitDocument(document)
+            fixture.editor.caretModel.moveToOffset(direct)
+            assertEquals(listOf("${'$'}t0", "SAME", "HOME"), currentUses())
+            moveTo("VAL, ${'$'}zero\nCP")
+            assertEquals(listOf("VAL"), currentUses())
         }
     }
 

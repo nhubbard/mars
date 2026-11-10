@@ -1,6 +1,7 @@
 package edu.missouristate.mars.plugin.analysis
 
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiElement
@@ -18,6 +19,7 @@ import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.analysis.MipsSourceEvent.Begin
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsFileType
+import edu.missouristate.mars.plugin.language.collectRegisterUsages
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import edu.missouristate.mars.plugin.language.psi.MipsStringLiteral
 import edu.missouristate.mars.plugin.language.references.MipsFileReferenceSet
@@ -206,6 +208,10 @@ internal class MipsSourceTimeline(
     val hasPlainIncludes: Boolean,
 ) {
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
+    private val registerUsagesByFile = ConcurrentHashMap<MipsFile, Map<Int, List<TextRange>>>()
+
+    fun registerUsages(file: MipsFile): Map<Int, List<TextRange>> =
+        registerUsagesByFile.getOrPut(file) { collectRegisterUsages(file, this) }
 
     private val generatedLabels by lazy { unindexedLabels.values.asSequence().flatten().filter(TimelineLabel::generated).toList() }
 

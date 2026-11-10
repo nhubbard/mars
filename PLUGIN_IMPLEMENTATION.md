@@ -233,15 +233,19 @@ CP0 and CP1 transfers, aliased instructions, non-register operands, and register
 
 ## Register usage highlighting
 
-Put the caret on a written register operand and choose **Highlight Usages in File**.
+Put the caret on a register operand or its `.eqv` alias and choose **Highlight Usages in File**.
 The editor groups GPR aliases by register number, including `$t0`, `$8` and
 `$0x8`. Floating-point registers and the Coprocessor 0 operands of `mfc0` and
 `mtc0` have separate groups.
 
 The file-local PSI cache includes written instruction operands in macro bodies
-and recoverable lines such as unfinished memory operands. The cache updates on
-editor changes. Macro call arguments and operands supplied by `.eqv` expansion
-remain outside the written occurrence set.
+and recoverable lines such as unfinished memory operands. After indexing, the
+selected source timeline adds aliases in complete expanded instructions,
+including aliases defined in unsaved includes. Each occurrence points to the
+written token that supplied it. An alias such as `0($sp)` can highlight as `$sp`.
+Aliases that supply several distinct registers or supply the operation itself
+stay outside the occurrence set. Macro call arguments and substitutions inside
+macro bodies depend on invocation context and keep their existing navigation.
 
 ## Instruction label completion
 
