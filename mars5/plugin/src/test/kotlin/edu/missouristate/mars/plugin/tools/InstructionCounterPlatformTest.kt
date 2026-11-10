@@ -504,13 +504,17 @@ class InstructionCounterPlatformTest {
                 withContext(Dispatchers.EDT) {
                     val table = UIUtil.findComponentsOfType(branches, JBTable::class.java).single()
                     val log = UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single()
-                    assertEquals(listOf("Index", "History", "Prediction", "Correct", "Incorrect", "Precision"),
+                    assertEquals(listOf("Index", "History", "Prediction", "Correct", "Incorrect", "Precision", "Latest decision"),
                         (0 until table.columnCount).map(table::getColumnName))
-                    assertEquals(listOf("0", "Taken", "Taken", "0", "1", "0.0%"),
+                    assertEquals(listOf("0", "Taken", "Taken", "0", "1", "0.0%", ""),
                         (0 until table.columnCount).map { table.getValueAt(0, it) })
                     assertEquals("1", table.getValueAt(1, 3))
-                    assertTrue(log.text.contains("predicted Not taken, actual Taken"))
-                    assertTrue(log.text.contains("predicted Not taken, actual Not taken"))
+                    assertEquals("Correct", table.getValueAt(1, 6))
+                    assertTrue(log.text.contains("predicted Not taken, actual Taken (Incorrect)"))
+                    assertTrue(log.text.contains("predicted Not taken, actual Not taken (Correct)"))
+                    val latest = UIUtil.findComponentsOfType(branches, JBLabel::class.java)
+                        .single { it.text.startsWith("0x00400004 · bne") }
+                    assertTrue(latest.text.endsWith(" · row 1"))
                 }
             }
             withContext(Dispatchers.EDT) {
@@ -524,6 +528,9 @@ class InstructionCounterPlatformTest {
                 assertEquals(8, table.rowCount)
                 assertEquals("Taken, Taken", table.getValueAt(0, 1))
                 assertEquals("0", table.getValueAt(0, 4))
+                assertEquals("", table.getValueAt(1, 6))
+                assertTrue(UIUtil.findComponentsOfType(branches, JBLabel::class.java).any { it.text == "No branches recorded." })
+                assertTrue(UIUtil.findComponentsOfType(branches, JBTextArea::class.java).single().text.isEmpty())
                 button("Connect", branches).doClick()
                 button("Reset", branches).doClick()
                 assertEquals("Taken", table.getValueAt(0, 2))

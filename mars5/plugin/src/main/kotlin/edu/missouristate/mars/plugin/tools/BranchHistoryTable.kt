@@ -16,7 +16,11 @@ internal class BranchHistoryTable {
         val precision: Double get() = if (correct + incorrect == 0L) 0.0 else correct * 100.0 / (correct + incorrect)
     }
 
-    data class Observation(val pc: Int, val target: Int, val index: Int, val predictedTaken: Boolean, val taken: Boolean)
+    data class Observation(
+        val pc: Int, val instruction: Int, val target: Int, val index: Int, val predictedTaken: Boolean, val taken: Boolean,
+    ) {
+        val correct: Boolean get() = predictedTaken == taken
+    }
     data class Snapshot(val connected: Boolean, val options: Options, val rows: List<Row>, val recent: List<Observation>)
 
     private class Entry(var history: Int, var predictedTaken: Boolean, var correct: Long = 0, var incorrect: Long = 0)
@@ -44,7 +48,7 @@ internal class BranchHistoryTable {
         }
         if (recent.size == logLimit) recent.removeFirst()
         val target = event.pc() + INSTRUCTION_LENGTH + (event.instruction().toShort().toInt() shl 2)
-        recent.addLast(Observation(event.pc(), target, index, predicted, taken))
+        recent.addLast(Observation(event.pc(), event.instruction(), target, index, predicted, taken))
     }
 
     @Synchronized

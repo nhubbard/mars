@@ -1683,6 +1683,15 @@ resumes it, and Reset clears the selected execution's counts. Backstepping keeps
 the accumulated counts. Executing an instruction again adds another event.
 The panel refreshes only while visible and reads a consistent snapshot.
 
+## Branch History Table
+
+The **Branch History Table** shows how completed conditional branches train the
+selected execution's predictor. **Latest branch** shows the executed instruction,
+its address and the predictor row it used. The row's **Latest decision** column
+reports whether the prediction matched the outcome. The **Prediction** column
+shows what the updated row will predict the next time it is used. The recent
+decision log includes both the original prediction and the actual outcome.
+
 ## MIPS X-Ray
 
 The **MIPS X-Ray** tab keeps the latest 128 captured instructions for each Run or
