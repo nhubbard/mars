@@ -28,10 +28,10 @@ import edu.missouristate.mars.plugin.language.punctuationColor
 private val instructionOperandContexts = TokenSet.create(MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"))
 private val equivalenceContexts = TokenSet.orSet(
     instructionOperandContexts,
-    TokenSet.create(MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"), MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN")),
+    TokenSet.create(MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"), MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("LABEL")),
 )
 internal val macroParameterUseContexts = TokenSet.orSet(
-    equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT"), MipsTypes.psi("LABEL")),
+    equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT")),
 )
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {

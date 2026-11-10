@@ -74,23 +74,7 @@ internal sealed interface MipsSourceEvent {
             val startsWithLabel = tokens.beginsWithLabel()
             if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
             if (errors.errorsOccurred()) return null
-            tokens.discardTrailingComment()
-            expanded.expanded().definition()?.let {
-                val directiveOffset = sourceLineStart(head) + expanded.equivalenceDirectiveOffset()
-                val site = head.containingFile.findElementAt(directiveOffset)!!
-                return Equivalence(site, it.name(), it.replacement())
-            }
-            // In an open macro a label is part of the body, even before a closing directive.
-            val operation = if (!inMacro && startsWithLabel) 2 else 0
-            if (operation >= tokens.size()) return null
-            val directive = Directives.matchDirective(tokens[operation].value)
-            return when (directive) {
-                Directives.MACRO -> macroSignature(head, tokens, operation + 1, sourceLineStart(head), expanded)
-                Directives.END_MACRO -> End(offset).takeIf { tokens.size() == operation + 1 }
-                Directives.EXTERN -> externalReservation(head, tokens, operation)
-                in dataStateDirectives -> DataDirective(offset, directive)
-                else -> null
-            }
+            return expandedDirective(head, expanded, inMacro)
         }
 
         private fun canDefineFromPrefix(replacement: (String) -> String?): Boolean =
@@ -105,19 +89,29 @@ internal sealed interface MipsSourceEvent {
 
     class LabelDeclaration(val declaration: MipsDeclaration) : MipsSourceEvent {
         override val offset = declaration.textOffset
-        private val name = declaration.name
 
-        fun expandedName(replacement: (String) -> String?): String? {
-            val original = name ?: return null
-            if (replacement(original) == null) return null
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): ExpandedLabel? {
+            val head = declaration.nameIdentifier ?: return null
+            if (replacement(head.text) == null) return null
+            val start = sourceLineStart(head)
+            val source = sourceLine(head, fromLineStart = true)
             val errors = ErrorList()
-            val tokens = Tokenizer.tokenizeWithEquivalences(
-                sourceLine(declaration, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
-            )
-            if (errors.errorsOccurred() || !tokens.beginsWithLabel()) return null
-            return tokens[0].value.takeUnless { it == original }
+            val expanded = Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
+            if (errors.errorsOccurred() || offset - start !in expanded.substitutionOffsets()) return null
+            val tokens = expanded.tokens()
+            val name = tokens[0].value.takeIf { tokens.beginsWithLabel() }
+            val operation = tokens.operationIndex(inMacro)
+            // A substitution can put the operation inside the written label's span.
+            // Otherwise the written suffix can still bind through its own PSI event.
+            if (operation < tokens.size() &&
+                start + expanded.originalOffset(tokens[operation].startPos - 1) < declaration.textRange.endOffset) {
+                return ExpandedLabel(name, start + source.length, expandedDirective(head, expanded, inMacro))
+            }
+            return ExpandedLabel(name)
         }
     }
+
+    data class ExpandedLabel(val name: String?, val ignoreBefore: Int = -1, val directive: Effective? = null)
 
     data class Begin(
         val header: PsiElement, val name: String, val nameOffset: Int, val directiveOffset: Int,
@@ -176,6 +170,29 @@ private val dataStateDirectives = setOf(
     Directives.DATA, Directives.KDATA, Directives.TEXT, Directives.KTEXT,
     Directives.WORD, Directives.HALF, Directives.BYTE, Directives.FLOAT, Directives.DOUBLE, Directives.ASCII, Directives.ASCIIZ,
 )
+
+// In an open macro a label is part of the body, even before a closing directive.
+private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsWithLabel()) 2 else 0
+
+private fun expandedDirective(head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean): MipsSourceEvent.Effective? {
+    val tokens = expanded.tokens()
+    tokens.discardTrailingComment()
+    val start = sourceLineStart(head)
+    expanded.expanded().definition()?.let {
+        val site = head.containingFile.findElementAt(start + expanded.equivalenceDirectiveOffset())!!
+        return MipsSourceEvent.Equivalence(site, it.name(), it.replacement())
+    }
+    val operation = tokens.operationIndex(inMacro)
+    if (operation >= tokens.size()) return null
+    val directive = Directives.matchDirective(tokens[operation].value)
+    return when (directive) {
+        Directives.MACRO -> macroSignature(head, tokens, operation + 1, start, expanded)
+        Directives.END_MACRO -> MipsSourceEvent.End(head.textOffset).takeIf { tokens.size() == operation + 1 }
+        Directives.EXTERN -> externalReservation(head, tokens, operation)
+        in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
+        else -> null
+    }
+}
 
 /** Physical source events that affect macro boundaries or the current data list. */
 internal fun mipsSourceEvents(file: MipsFile): List<MipsSourceEvent> = CachedValuesManager.getCachedValue(file) {

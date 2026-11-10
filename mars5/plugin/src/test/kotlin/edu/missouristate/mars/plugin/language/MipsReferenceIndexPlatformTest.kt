@@ -101,19 +101,21 @@ class MipsReferenceIndexPlatformTest {
             )
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("FORMALS"), macro)), sites("FORMALS"))
             assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("rejected"), macro)), sites("rejected"))
+            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("local:"), macro)), sites("local"))
+            assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf("top,,"), -1)), sites("top"))
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf("\$gcc"), -1) }, sites("\$gcc"))
             assertEquals(operandKinds.map { MipsReferenceSite(it, source.indexOf(".1_private"), -1) }, sites(".1_private"))
             for (name in listOf("DATA_ADDRESS", "\$textAddress")) {
                 assertEquals(listOf(MipsReferenceSite(SymbolKind.CONSTANT, source.indexOf(name), -1)), sites(name))
             }
-            for (name in listOf("Alias", "Literal", "local", "top", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
+            for (name in listOf("Alias", "Literal", "shared", "%arg", "\$t0", "lw", "NaN", "Infinity",
                 "trailing", "unused", "ignored", "stray",
                 "noat", "invalid%name", "literal", "comment", "erased", "BAD", "hidden", "missing.s", "nop")) {
                 assertTrue(sites(name).isEmpty(), name)
             }
             val extension = MipsReferenceIndex()
             assertSame(MipsReferenceIndex.NAME, extension.name)
-            assertEquals(18, extension.version)
+            assertEquals(19, extension.version)
             assertTrue(extension.dependsOnFileContent())
             assertTrue(extension.inputFilter.acceptInput(file))
             assertTrue(extension.keyDescriptor.isEqual("Shared", "Shared"))
@@ -139,7 +141,7 @@ class MipsReferenceIndexPlatformTest {
         IndexingTestUtil.suspendUntilIndexesAreReady(project)
         readAction {
             assertEquals(setOf(definition.virtualFile), index.getContainingFiles(MipsDeclarationIndex.NAME, "remote", scope).toSet())
-            assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
+            assertEquals(setOf(use.virtualFile, definition.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
         }
         val editedSource = ",,b,,,unsaved,,\n"
         withContext(Dispatchers.EDT) {
@@ -150,7 +152,7 @@ class MipsReferenceIndexPlatformTest {
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         }
         readAction {
-            assertTrue(index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).isEmpty())
+            assertEquals(setOf(definition.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "remote", scope).toSet())
             assertEquals(setOf(use.virtualFile), index.getContainingFiles(MipsReferenceIndex.NAME, "unsaved", scope).toSet())
         }
         val edited = project.service<MarsAnalysisService>().lookupCandidates(SymbolKey("unsaved", SymbolKind.LABEL), scope)
@@ -208,7 +210,7 @@ class MipsReferenceIndexPlatformTest {
         assertEquals(listOf(expectedCall), macros.references)
         val constants = service.lookupCandidates(SymbolKey("shared", SymbolKind.CONSTANT), scope)
         assertEquals(listOf(IndexedSymbolSite(SourceId(constant.url), 5, -1)), constants.declarations)
-        assertEquals(setOf(expectedBranch, expectedCall, IndexedSymbolSite(SourceId(macro.url), 7, 0)), constants.references.toSet())
+        assertEquals(setOf(expectedBranch, expectedCall, expectedLabel, IndexedSymbolSite(SourceId(macro.url), 7, 0)), constants.references.toSet())
 
         val narrow = GlobalSearchScope.filesScope(project, listOf(label, call))
         assertEquals(

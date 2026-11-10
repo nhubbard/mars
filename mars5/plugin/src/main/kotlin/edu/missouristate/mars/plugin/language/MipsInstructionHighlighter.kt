@@ -41,6 +41,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         when {
             element is MipsDeclaration -> {
                 val identifier = element.nameIdentifier ?: return
+                if (element.kind == SymbolKind.LABEL && (identifier as MipsSymbolToken).highlightingColor() != null) return
                 holder.color(identifier.textRange, element.kind.color)
             }
             element.elementType in operationOwners -> highlightOperation(element, holder)

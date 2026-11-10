@@ -56,15 +56,18 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
             pending.removeLast()
             continue
         }
-        val event = when (val physical = cursor.events.next()) {
+        val physical = cursor.events.next()
+        if (physical.offset < cursor.ignoreBefore) continue
+        val event = when (physical) {
             is MipsSourceEvent.Header -> physical.bind(replacement) ?: continue
             is MipsSourceEvent.ExternalDeclaration -> physical.bind(replacement) ?: continue
             is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
             is MipsSourceEvent.LabelDeclaration -> {
-                val name = physical.expandedName(replacement) ?: continue
+                val expanded = physical.bind(macro != null, replacement) ?: continue
                 cursor.locations.replacedLabels.add(physical.offset)
-                addLabel(name, physical.declaration)
-                continue
+                expanded.name?.let { addLabel(it, physical.declaration) }
+                cursor.ignoreBefore = expanded.ignoreBefore
+                expanded.directive ?: continue
             }
             is MipsSourceEvent.Effective -> physical
         }
@@ -251,6 +254,8 @@ internal data class IndexedEquivalence(val index: Int, val definition: MipsSourc
 
 internal data class GeneratedLabel(val site: PsiElement, val macro: MipsSourceEvent.Begin?)
 
-private data class SourceCursor(val locations: SourceFileEvents, val events: Iterator<MipsSourceEvent>)
+private class SourceCursor(val locations: SourceFileEvents, val events: Iterator<MipsSourceEvent>) {
+    var ignoreBefore = -1
+}
 
 internal fun resolveMipsInclude(literal: MipsStringLiteral, path: String) = MipsFileReferenceSet(path, literal).resolve()

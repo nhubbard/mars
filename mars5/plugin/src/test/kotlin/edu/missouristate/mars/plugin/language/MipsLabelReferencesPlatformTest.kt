@@ -161,6 +161,9 @@ class MipsLabelReferencesPlatformTest {
         }
         configure("j gene<caret>rated\n.include \"body.s\"\n.include \"aliases.s\"\n")
         readAction { assertNull(referenceAtCaret()?.resolve()) }
+        val standalone = ".eqv ORIGINAL renamed\nORIGINAL:\nj rena<caret>med\n"
+        configure(standalone)
+        readAction { assertEquals(standalone.indexOf("ORIGINAL:"), referenceAtCaret()?.resolve()?.textOffset) }
 
         directory.resolve("aliases.s").writeText(aliases)
         directory.resolve("body.s").writeText(body)
@@ -170,6 +173,42 @@ class MipsLabelReferencesPlatformTest {
         assertEquals(context.memory.textBaseAddress, context.symbolTable.getAddress("generated"))
         assertEquals(context.memory.textBaseAddress + 4, context.symbolTable.getAddress("renamed"))
     }
+
+    @Test
+    fun `a written label can expand into a data directive and replace its suffix`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            for (replacement in listOf(".data", "renamed: .data")) {
+                val header = ".eqv OPEN $replacement\n"
+                val line = "OPEN: .ascii \"ignored\"\n"
+                val data = "target\ntarget: .word 42\n.text\nnop\n"
+                val source = header + line + data
+                configure(header + line + data.replaceFirst("target", "tar<caret>get"))
+                readAction { assertEquals(source.indexOf("target:"), referenceAtCaret()?.resolve()?.textOffset, replacement) }
+                configure(source + "j OP<caret>EN\n")
+                readAction {
+                    val use = referenceAtCaret()!!.element
+                    val analysis = project.get().service<MarsAnalysisService>()
+                    assertTrue(analysis.labelCompletionNames(fixture.file as MipsFile, use, "OP").isEmpty())
+                }
+                configure(header + line.replace("OPEN", "OP<caret>EN") + data)
+                readAction {
+                    val declaration = referenceAtCaret()?.resolve() as MipsDeclaration
+                    assertEquals(SymbolKind.CONSTANT, declaration.kind)
+                    assertEquals(listOf(header.length), fixture.findUsages(declaration).map { it.reference!!.element.textOffset })
+                }
+                if (replacement.startsWith("renamed")) {
+                    configure(source + "j rena<caret>med\n")
+                    readAction { assertEquals(header.length, referenceAtCaret()?.resolve()?.textOffset) }
+                }
+                val context = project.get().service<MarsSessionService>().context
+                val entry = directory.resolve("label-alias.asm").also { it.writeText(source) }
+                context.assemble(listOf(entry), null, true, false)
+                val memory = context.memory
+                val base = memory.dataBaseAddress
+                assertEquals(base + 4, memory.getWordNoNotify(base))
+                assertEquals(42, memory.getWordNoNotify(base + 4))
+            }
+        }
 
     @Test
     fun `a separator alias declares the written label before assembly`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
@@ -241,12 +280,12 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
-    fun `invalid expansions leave the written labels available for recovery`() = timeoutRunBlocking<Unit> {
+    fun `written labels survive failed substitutions and definitions that block expansion`() = timeoutRunBlocking<Unit> {
         configure("""
             .eqv physical expanded
             physical: .eqv LIMIT 7
-            .eqv invalid .data
-            invalid: nop
+            .eqv SWITCH .data
+            SWITCH: nop
             .eqv cycleA cycleB
             .eqv cycleB cycleA
             cycleA: nop
@@ -257,7 +296,7 @@ class MipsLabelReferencesPlatformTest {
             val file = fixture.file as MipsFile
             val position = file.findElementAt(fixture.editor.caretModel.offset - 1)!!
             val names = file.project.service<MarsAnalysisService>().labelCompletionNames(file, position, "")
-            assertEquals(setOf("physical", "invalid", "cycleA", "first"), names)
+            assertEquals(setOf("physical", "cycleA", "first"), names)
         }
     }
 

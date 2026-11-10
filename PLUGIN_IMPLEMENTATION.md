@@ -712,6 +712,12 @@ offsets. When expansion introduces a new `.eqv` definition, the alias that
 supplied the directive remains a reference. The stored replacement text
 acquires its own alias references only when it is expanded at a later use.
 
+A written label can supply the line's effective directive through `.eqv`.
+For example, `.eqv OPEN .data` makes `OPEN: .ascii "ignored"` a segment
+switch. The source timeline uses that switch, skips the written `.ascii`
+event, and removes the apparent label from completion. Navigation and
+Find Usages still recognize `OPEN` as a reference to the equivalence.
+
 A physical `.eqv` line with fewer than three assembler tokens parses as a
 directive without a declaration. A leading label or trailing comment still
 counts toward that minimum. If an active alias supplies both
