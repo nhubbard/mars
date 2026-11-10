@@ -136,6 +136,7 @@ import java.util.concurrent.TimeUnit
 import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.JTextField
@@ -2495,6 +2496,121 @@ class MarsDebugPlatformTest {
                         assertTrue(status.text.startsWith("Source has changed"))
                         assertEquals(5, table.rowCount)
                         table.rowSorter.sortKeys = emptyList()
+                    }
+                }
+            } finally {
+                withContext(Dispatchers.EDT) { Disposer.dispose(lifetime) }
+            }
+        }
+    }
+
+    @Test
+    fun `Symbols opens live code and exact data addresses without moving the PC`() = timeoutRunBlocking<Unit> {
+        val source = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("symbol-addresses.asm", """
+                .extern externalSlot, 4
+                .data
+                padding: .byte 0
+                payload: .byte 42
+                .text
+                entry: nop
+                next: nop
+                li ${'$'}v0, 10
+                syscall
+                .text 0x00400100
+                far: addiu ${'$'}t0, ${'$'}zero, 42
+            """.trimIndent()).virtualFile.also {
+                addBreakpoint(it, 5)
+                addBreakpoint(it, 6)
+            }
+        }
+        withDebug(source) { debug ->
+            debug.assertPausedAt(source, 5)
+            val lifetime = Disposer.newDisposable()
+            try {
+                val (symbols, memory, disassembly) = withContext(Dispatchers.EDT) {
+                    val layout = RunnerLayoutUi.Factory.getInstance(project).create("MarsSymbolAddressesTest", "Debug", "MIPS", lifetime)
+                    debug.session.debugProcess.createTabLayouter().registerAdditionalContent(layout)
+                    Triple(
+                        requireNotNull(layout.findContent("MarsMipsSymbols")),
+                        requireNotNull(layout.findContent("MarsMipsMemory")),
+                        requireNotNull(layout.findContent("MarsMipsDisassembly")),
+                    )
+                }
+                val (labels, bytes, instructions) = withContext(Dispatchers.EDT) {
+                    fun table(panel: JComponent) = requireNotNull(UIUtil.findComponentOfType(panel, JBTable::class.java))
+                    Triple(table(symbols.component), table(memory.component), table(disassembly.component))
+                }
+                fun button(panel: JComponent, text: String) =
+                    UIUtil.findComponentsOfType(panel, JButton::class.java).single { it.text == text }
+                val inspect = withContext(Dispatchers.EDT) { button(symbols.component, "Inspect Address") }
+                val follow = withContext(Dispatchers.EDT) { button(disassembly.component, "Follow PC") }
+                val address = withContext(Dispatchers.EDT) {
+                    requireNotNull(UIUtil.findComponentOfType(memory.component, JBTextField::class.java))
+                }
+                fun inspect(label: String) {
+                    val row = (0 until labels.rowCount).first { labels.getValueAt(it, 0) == label }
+                    labels.setRowSelectionInterval(row, row)
+                    assertTrue(inspect.isEnabled)
+                    inspect.doClick(0)
+                }
+                suspend fun assertInstruction(address: String, marker: String, canFollow: Boolean) {
+                    pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                        withContext(Dispatchers.EDT) {
+                            val row = instructions.selectedRow
+                            assertTrue(row >= 0)
+                            assertEquals(address, instructions.getValueAt(row, 1))
+                            assertEquals(marker, instructions.getValueAt(row, 0))
+                            assertEquals(canFollow, follow.isEnabled)
+                        }
+                    }
+                }
+                assertInstruction("0x00400000", "▶", false)
+                pollAssertionsAsync(3.seconds, 10.milliseconds) {
+                    withContext(Dispatchers.EDT) { assertEquals(6, labels.rowCount) }
+                }
+                withContext(Dispatchers.EDT) {
+                    assertFalse(inspect.isEnabled)
+                    inspect("payload")
+                    assertEquals("0x10010001", address.text)
+                }
+                assertMemory(bytes, "0x10010000", "00 2a")
+                withContext(Dispatchers.EDT) {
+                    inspect("externalSlot")
+                    assertEquals("0x10000000", address.text)
+                }
+                assertMemory(bytes, "0x10000000", "00 00 00 00")
+                withContext(Dispatchers.EDT) { inspect("far") }
+                assertInstruction("0x00400100", "", true)
+                withContext(Dispatchers.EDT) {
+                    val row = instructions.selectedRow
+                    assertEquals("0x2408002a", instructions.getValueAt(row, 2))
+                    assertEquals(5, debug.session.topFramePosition!!.line)
+                    val status = requireNotNull(UIUtil.findComponentOfType(disassembly.component, JBLabel::class.java))
+                    assertEquals("Inspecting 0x00400100 (program counter 0x00400000)", status.text)
+                    follow.doClick(0)
+                }
+                assertInstruction("0x00400000", "▶", false)
+                withContext(Dispatchers.EDT) {
+                    inspect("far")
+                    debug.session.resume()
+                    assertFalse(inspect.isEnabled)
+                }
+                debug.assertPausedAt(source, 6)
+                assertInstruction("0x00400004", "▶", false)
+                withContext(Dispatchers.EDT) {
+                    assertTrue(inspect.isEnabled)
+                    debug.session.resume()
+                }
+                assertEquals(0, debug.exit.await())
+                withContext(Dispatchers.EDT) {
+                    assertFalse(inspect.isEnabled)
+                    val view = MarsDisassemblyView(debug.session, source.path) { error("No live instruction") }
+                    try {
+                        view.showAddress(0x00400100)
+                        assertEquals(0, view.focus.rowCount)
+                    } finally {
+                        Disposer.dispose(view)
                     }
                 }
             } finally {

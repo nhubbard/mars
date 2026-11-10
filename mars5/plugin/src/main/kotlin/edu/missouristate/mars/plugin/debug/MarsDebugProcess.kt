@@ -31,6 +31,7 @@ import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider
 import com.intellij.xdebugger.frame.XSuspendContext
 import com.intellij.xdebugger.ui.XDebugTabLayouter
 import edu.missouristate.mars.ProgramStatement
+import edu.missouristate.mars.api.AssemblySymbolMap.Kind
 import edu.missouristate.mars.api.ErrorEvent
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.api.InstructionSourceMap.Origin
@@ -163,6 +164,18 @@ internal class MarsDebugProcess(session: XDebugSession, private val state: MarsR
             listing.setDisposer(disassembly)
             ui.addContent(listing, 3, PlaceInGrid.center, false)
             val symbols = MarsSymbolsView(session.project, loadedSymbols)
+            symbols.bindAddressInspection(session) { definition ->
+                when (definition.kind()) {
+                    Kind.TEXT -> {
+                        disassembly.showAddress(definition.address())
+                        ui.selectAndFocus(listing, true, true)
+                    }
+                    Kind.DATA, Kind.EXTERNAL -> {
+                        view.showAddress(definition.address())
+                        ui.selectAndFocus(content, true, true)
+                    }
+                }
+            }
             val labels = ui.createContent("MarsMipsSymbols", symbols.component, runMessages.getMessage("debug.symbols"), null, symbols.focus)
             labels.isCloseable = false
             labels.setDisposer(symbols)

@@ -1141,7 +1141,8 @@ already produced remains visible.
 The default Debug layout shows Memory and Disassembly as separate tabs. The
 Memory tab displays the paused machine. Each
 page shows addresses, hexadecimal bytes, and printable characters. The
-address field accepts unsigned decimal and hexadecimal values. Pages stop
+address field accepts unsigned decimal and hexadecimal values and retains the exact
+address while the page starts at its containing 16-byte row. Pages stop
 at the end of the 32-bit address space and show unavailable words with
 dashes. Go to Region jumps to text, data, heap, kernel text and data,
 memory-mapped I/O, and the PC and stack pointer captured at the suspension.
@@ -1192,6 +1193,10 @@ owning simulator's instruction set, without borrowing source locations from the
 assembled image. An unmapped row has no word and a misaligned PC shows its address
 without selecting an instruction.
 
+Inspecting a text symbol selects its instruction for the current suspension.
+The PC marker continues to identify the instruction that will execute next.
+**Follow PC** returns to it immediately, and a new suspension follows its own PC.
+
 The tab uses the same pause-owned inspection queue as Memory. Resume clears the
 listing, and a newer pause or disposal invalidates results already in flight.
 The core read issues no simulated memory events. Fixtures cover navigation,
@@ -1222,8 +1227,10 @@ selected column and direction. The filter searches the displayed columns.
 matches the loaded image. Edits and VFS changes refresh the stale-source indicator
 in the background. Navigation opens the original, read-only source snapshot when
 the definition's file has changed or disappeared. Symbols stay available while the
-Debug tab remains open, including after the process exits. Address navigation
-from Symbols into Memory and Disassembly is tracked under V04–V06.
+Debug tab remains open, including after the process exits. While paused, **Inspect
+Address** opens Disassembly for text labels and Memory for data and external
+labels. Both views read the paused machine, so their contents include runtime
+writes to the selected address.
 
 ## Instruction Counter
 

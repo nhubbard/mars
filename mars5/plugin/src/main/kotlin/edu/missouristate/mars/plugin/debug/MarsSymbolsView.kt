@@ -19,6 +19,9 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
+import com.intellij.util.ui.UIUtil
+import com.intellij.xdebugger.XDebugSession
+import com.intellij.xdebugger.XDebugSessionListener
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Definition
 import edu.missouristate.mars.plugin.run.MarsExecutionSources
@@ -76,6 +79,7 @@ internal class MarsSymbolsView(
         textEditor.columns = 22
     }
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
+    private val inspectAddress = JButton(runMessages.getMessage("debug.symbols.inspect")).apply { isEnabled = false }
     private val model = ListTableModel<AssembledSymbol>(
         column("name", AssembledSymbol::name),
         column("address", { Binary.intToHexString(it.definition.address()) }, compareBy { it.definition.address().toUInt() }),
@@ -97,9 +101,24 @@ internal class MarsSymbolsView(
         row {
             cell(filter)
             cell(openSource)
+            cell(inspectAddress)
             cell(status)
         }
         row { scrollCell(table).align(Align.FILL) }.resizableRow()
+    }
+
+    fun bindAddressInspection(session: XDebugSession, inspect: (Definition) -> Unit) {
+        fun update() {
+            inspectAddress.isEnabled = table.selectedObject != null && session.isSuspended
+        }
+        table.selectionModel.addListSelectionListener { update() }
+        inspectAddress.addActionListener { inspect(table.selectedObject!!.definition) }
+        session.addSessionListener(object : XDebugSessionListener {
+            override fun sessionPaused() = UIUtil.invokeLaterIfNeeded { update() }
+            override fun sessionResumed() = UIUtil.invokeLaterIfNeeded { update() }
+            override fun sessionStopped() = UIUtil.invokeLaterIfNeeded { update() }
+        }, this)
+        update()
     }
 
     init {

@@ -38,10 +38,10 @@ internal data class DisassemblyRow(
     val location: Location?,
 )
 
-internal fun disassemblyWindow(memory: MemoryState, pc: Long): List<DisassemblyRow> {
-    if (!MemoryState.wordAligned(pc.toInt())) return emptyList()
-    val start = (pc - 4 * Int.SIZE_BYTES).coerceAtLeast(0)
-    val end = (pc + 11 * Int.SIZE_BYTES).coerceAtMost(0xffff_fffcL)
+internal fun disassemblyWindow(memory: MemoryState, pc: Long, center: Long = pc): List<DisassemblyRow> {
+    if (!MemoryState.wordAligned(center.toInt())) return emptyList()
+    val start = (center - 4 * Int.SIZE_BYTES).coerceAtLeast(0)
+    val end = (center + 11 * Int.SIZE_BYTES).coerceAtMost(0xffff_fffcL)
     val count = ((end - start) / Int.SIZE_BYTES + 1).toInt()
     return List(count) { index ->
         val address = start + index * Int.SIZE_BYTES
@@ -64,6 +64,7 @@ internal class MarsDisassemblyView(
     private val breakpointManager = XDebuggerManager.getInstance(session.project).breakpointManager
     private val breakpointType = XDebuggerUtil.getInstance().findBreakpointType(MarsAddressBreakpointType::class.java)
     private val status = JBLabel()
+    private val followPc = JButton(runMessages.getMessage("debug.disassembly.follow.pc"))
     private val openSource = JButton(runMessages.getMessage("debug.disassembly.open.source")).apply { isEnabled = false }
     private val toggleBreakpoint = JButton(runMessages.getMessage("debug.disassembly.breakpoint.toggle")).apply { isEnabled = false }
     private var breakpoints = emptyMap<Int, AddressBreakpoint>()
@@ -85,6 +86,7 @@ internal class MarsDisassemblyView(
         columnModel.getColumn(3).preferredWidth = getFontMetrics(font).stringWidth("addiu $00, $00, 0x00000000")
     }
     private var target: Location? = null
+    private var browsedAddress: Pair<Long, Long>? = null
     private val revision = AtomicLong()
     @Volatile private var disposed = false
 
@@ -92,6 +94,7 @@ internal class MarsDisassemblyView(
     val component = panel {
         row {
             cell(status)
+            cell(followPc)
             cell(openSource)
             cell(toggleBreakpoint)
         }
@@ -100,6 +103,10 @@ internal class MarsDisassemblyView(
 
     init {
         table.selectionModel.addListSelectionListener { updateSelection() }
+        followPc.addActionListener {
+            browsedAddress = null
+            refresh()
+        }
         openSource.addActionListener { sourcePosition(target!!).createNavigatable(session.project).navigate(true) }
         toggleBreakpoint.addActionListener { toggleSelectedBreakpoint() }
         breakpointManager.addBreakpointListener(breakpointType, object : XBreakpointListener<AddressBreakpoint> {
@@ -115,6 +122,12 @@ internal class MarsDisassemblyView(
             override fun breakpointsMuted(muted: Boolean) = onEdt(table::repaint)
         }, this)
         reloadBreakpoints()
+        refresh()
+    }
+
+    fun showAddress(address: Int) {
+        val context = session.suspendContext as? MarsSuspendContext ?: return
+        browsedAddress = context.number to address.toUInt().toLong()
         refresh()
     }
 
@@ -134,20 +147,27 @@ internal class MarsDisassemblyView(
         model.items = emptyList()
         val context = session.suspendContext as? MarsSuspendContext
         if (context == null) {
+            followPc.isEnabled = false
             status.text = runMessages.getMessage("debug.disassembly.pause")
             return
         }
         val pc = context.memoryRegions.getValue(MemoryRegion.PC)
-        status.text = runMessages.getMessage("debug.disassembly.current", Binary.intToHexString(pc.toInt()))
+        val pcText = Binary.intToHexString(pc.toInt())
+        val browsing = browsedAddress
+        val browsed = if (browsing?.first == context.number) browsing.second else null
+        followPc.isEnabled = browsed != null
+        val center = browsed ?: pc
+        status.text = if (browsed == null) runMessages.getMessage("debug.disassembly.current", pcText)
+        else runMessages.getMessage("debug.disassembly.browsing", Binary.intToHexString(center.toInt()), pcText)
         context.inspectionRequests.trySend { memory ->
-            val rows = disassemblyWindow(memory, pc)
+            val rows = disassemblyWindow(memory, pc, center)
             withContext(Dispatchers.EDT) {
                 if (request == revision.get()) {
                     model.items = rows
-                    val current = rows.indexOfFirst(DisassemblyRow::current)
-                    if (current >= 0) {
-                        table.setRowSelectionInterval(current, current)
-                        table.scrollRectToVisible(table.getCellRect(current, 0, true))
+                    val selected = rows.indexOfFirst { it.address == center.toInt() }
+                    if (selected >= 0) {
+                        table.setRowSelectionInterval(selected, selected)
+                        table.scrollRectToVisible(table.getCellRect(selected, 0, true))
                     }
                 }
             }

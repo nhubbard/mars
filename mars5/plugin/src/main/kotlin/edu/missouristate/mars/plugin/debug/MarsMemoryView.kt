@@ -104,7 +104,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             columnModel.getColumn(index).preferredWidth = metrics.stringWidth(sample) + JBUI.scale(16)
         }
     }
-    private var address = 0L
+    private var address: Long? = null
     private var displayedSuspension: Long? = null
     private var revision = 0L
     private var disposed = false
@@ -181,8 +181,7 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
     private fun refreshOnEdt() = UIUtil.invokeLaterIfNeeded { refresh() }
 
     private fun move(delta: Int) {
-        address = (address + delta).coerceIn(0L, LAST_ROW)
-        refresh()
+        jumpTo((pageStart(address!!) + delta).coerceIn(0L, LAST_ROW))
     }
 
     private fun navigate() {
@@ -195,10 +194,14 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
         jumpTo(parsed)
     }
 
+    fun showAddress(target: Int) = jumpTo(target.toUInt().toLong())
+
     private fun jumpTo(target: Long) {
-        address = target / BYTES_PER_ROW * BYTES_PER_ROW
+        address = target
         refresh()
     }
+
+    private fun pageStart(target: Long) = target / BYTES_PER_ROW * BYTES_PER_ROW
 
     private fun refresh() {
         if (disposed) return
@@ -218,9 +221,10 @@ internal class MarsMemoryView(private val session: XDebugSession, private val en
             return
         }
 
-        if (addressField.text.isEmpty()) address = context.memoryRegions.getValue(MemoryRegion.DATA)
-        val start = address
-        addressField.text = Binary.intToHexString(start.toInt())
+        val target = address ?: context.memoryRegions.getValue(MemoryRegion.DATA)
+        address = target
+        val start = pageStart(target)
+        addressField.text = Binary.intToHexString(target.toInt())
         previous.isEnabled = start > 0
         next.isEnabled = start < LAST_ROW
         status.text = displayedSuspension?.let { runMessages.getMessage("debug.memory.loading.last", it) }
