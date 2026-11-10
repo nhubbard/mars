@@ -3,16 +3,19 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 @TestApplication
@@ -47,6 +50,43 @@ class MipsMacroParameterReferencesPlatformTest {
         assertEquals(header.indexOf("%value"), target()?.offset)
         configure("${header}li \$t0, %la<caret>ter\n.end_macro\n")
         assertNull(target())
+    }
+
+    @Test
+    fun `aliased headers keep formals accepted before a lexical error`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv FORM %value\n.eqv OPEN .macro\n.eqv COMPLETE entry: .macro emit (FORM\n"
+        val headers = mapOf(
+            ".macro emit (FORM, @, %later)" to "FORM",
+            "OPEN emit (FORM, \$bad!, %later)" to "FORM",
+            "COMPLETE: @, %later)" to "COMPLETE",
+        )
+        for ((header, written) in headers) {
+            val prefix = "$definitions$header\n"
+            configure("${prefix}li \$t0, %val<caret>ue\n.end_macro\n")
+            val hit = target()
+            assertEquals(written, hit?.text, header)
+            assertEquals(definitions.length + header.indexOf(written), hit?.offset, header)
+            configure("${prefix}li \$t0, %la<caret>ter\n.end_macro\n")
+            assertNull(target(), header)
+        }
+
+        configure(".eqv NAME generated\n.eqv STORAGE hidden: .extern region 4\nNAME: @\nSTORAGE: @\nn<caret>op\n")
+        readAction {
+            val file = fixture.file as MipsFile
+            val timeline = project.get().service<MarsAnalysisService>().editorTimeline(file)
+            assertTrue(timeline.generatedLabels.isEmpty())
+            assertTrue(timeline.expandedExternalsIn(file).isEmpty())
+        }
+    }
+
+    @Test
+    fun `a circular alias does not establish a partial macro scope`() = timeoutRunBlocking<Unit> {
+        val definitions = ".eqv FIRST SECOND\n.eqv SECOND FIRST\n.eqv OPEN .macro\n" +
+            ".eqv COMPLETE entry: .macro emit (%value, FIRST\n"
+        for (header in listOf(".macro emit (%value, FIRST)", "OPEN emit (%value, FIRST)", "COMPLETE:)")) {
+            configure("$definitions$header\nli \$t0, %val<caret>ue\n.end_macro\n")
+            assertNull(target(), header)
+        }
     }
 
     @Test

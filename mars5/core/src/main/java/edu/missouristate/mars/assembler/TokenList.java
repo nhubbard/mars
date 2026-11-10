@@ -41,6 +41,7 @@ public class TokenList implements Cloneable {
 
   private ArrayList<Token> tokenList;
   private String processedLine; // DPS 03-Jan-2013
+  private boolean equivalenceExpansionIncomplete;
 
   /** Constructor for objects of class TokenList */
   public TokenList() {
@@ -69,6 +70,15 @@ public class TokenList implements Cloneable {
   // DPS 03-Jan-2013/
   public String getProcessedLine() {
     return processedLine;
+  }
+
+  /** Whether equivalence substitution finished, independently of lexical diagnostics. */
+  public boolean hasCompleteEquivalenceExpansion() {
+    return !equivalenceExpansionIncomplete;
+  }
+
+  void markEquivalenceExpansionIncomplete() {
+    equivalenceExpansionIncomplete = true;
   }
 
   /**

@@ -752,6 +752,7 @@ public class Tokenizer {
         path.forEach(step -> chain.add(step.symbol()));
         addLineError(program, lineNum, originalColumn,
             "Circular .eqv expansion " + chain.add(symbol), expansion);
+        tokens.markEquivalenceExpansionIncomplete();
         tokens.setProcessedLine(originalLine);
         break;
       }

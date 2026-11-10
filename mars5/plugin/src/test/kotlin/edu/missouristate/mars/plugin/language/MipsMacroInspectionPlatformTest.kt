@@ -142,6 +142,17 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `a lexical error on a generated header gets one diagnostic`() = timeoutRunBlocking<Unit> {
+        val source = ".eqv OPEN .macro\n.eqv FORM %value\nOPEN emit (FORM, @)\nli \$t0, %value\n.end_macro\n"
+        withContext(Dispatchers.EDT) { fixture.configureByText("bad-generated-formal.asm", source) }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) {
+            assertEquals(1, formalErrors().size)
+            assertEquals("FORM", fixture.file.findReferenceAt(source.lastIndexOf("%value") + 1)?.resolve()?.text)
+        }
+    }
+
+    @Test
     fun `a shared macro header waits for an entry before diagnosing its expanded formal`() = timeoutRunBlocking<Unit> {
         val current = projectFixture.get()
         val (valid, invalid) = withContext(Dispatchers.EDT) {

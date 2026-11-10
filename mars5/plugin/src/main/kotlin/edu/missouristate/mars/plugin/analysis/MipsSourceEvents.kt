@@ -39,14 +39,14 @@ internal sealed interface MipsSourceEvent {
                 token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
             }
             if (!needsExpansion) return direct
-            val errors = ErrorList()
             val directive = declaration.parent.firstChild
             val expanded = Tokenizer.tokenizeMappedLine(
-                sourceLine(directive), errors, replacement, ProgressManager::checkCanceled,
+                sourceLine(directive), ErrorList(), replacement, ProgressManager::checkCanceled,
             )
-            expanded.tokens().discardTrailingComment()
-            if (errors.errorsOccurred()) return null
-            return macroSignature(declaration, expanded.tokens(), 1, directive.textOffset, expanded)
+            val tokens = expanded.tokens()
+            if (!tokens.hasCompleteEquivalenceExpansion()) return null
+            tokens.discardTrailingComment()
+            return macroSignature(declaration, tokens, 1, directive.textOffset, expanded)
         }
     }
 
@@ -71,10 +71,10 @@ internal sealed interface MipsSourceEvent {
                 sourceLine(head, fromLineStart = true), errors, replacement, ProgressManager::checkCanceled,
             )
             val tokens = expanded.tokens()
+            if (!tokens.hasCompleteEquivalenceExpansion()) return null
             val startsWithLabel = tokens.beginsWithLabel()
             if (startsWithLabel && !followsLabel) addLabel(tokens[0].value, head)
-            if (errors.errorsOccurred()) return null
-            return expandedDirective(head, expanded, inMacro)
+            return expandedDirective(head, expanded, inMacro, errors.errorsOccurred())
         }
 
         private fun canDefineFromPrefix(replacement: (String) -> String?): Boolean =
@@ -97,21 +97,22 @@ internal sealed interface MipsSourceEvent {
             val source = sourceLine(head, fromLineStart = true)
             val errors = ErrorList()
             val expanded = Tokenizer.tokenizeMappedLine(source, errors, replacement, ProgressManager::checkCanceled)
-            if (errors.errorsOccurred() || offset - start !in expanded.substitutionOffsets()) return null
             val tokens = expanded.tokens()
+            if (!tokens.hasCompleteEquivalenceExpansion() || offset - start !in expanded.substitutionOffsets()) return null
+            val hasErrors = errors.errorsOccurred()
             val name = tokens[0].value.takeIf { tokens.beginsWithLabel() }
             val operation = tokens.operationIndex(inMacro)
             // A substitution can put the operation inside the written label's span.
             // Otherwise the written suffix can still bind through its own PSI event.
-            if (operation < tokens.size() &&
-                start + expanded.originalOffset(tokens[operation].startPos - 1) < declaration.textRange.endOffset) {
-                return ExpandedLabel(name, start + source.length, expandedDirective(head, expanded, inMacro))
-            }
-            return ExpandedLabel(name)
+            val operationInLabel = operation < tokens.size() &&
+                start + expanded.originalOffset(tokens[operation].startPos - 1) < declaration.textRange.endOffset
+            val directive = if (operationInLabel) expandedDirective(head, expanded, inMacro, hasErrors) else null
+            if (hasErrors && directive == null) return null
+            return ExpandedLabel(name, if (operationInLabel) start + source.length else -1, directive)
         }
     }
 
-    data class ExpandedLabel(val name: String?, val ignoreBefore: Int = -1, val directive: Effective? = null)
+    data class ExpandedLabel(val name: String?, val ignoreBefore: Int, val directive: Effective?)
 
     data class Begin(
         val header: PsiElement, val name: String, val nameOffset: Int, val directiveOffset: Int,
@@ -181,7 +182,9 @@ private val dataStateDirectives = setOf(
 // In an open macro a label is part of the body, even before a closing directive.
 private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsWithLabel()) 2 else 0
 
-private fun expandedDirective(head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean): MipsSourceEvent.Effective? {
+private fun expandedDirective(
+    head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean, hasErrors: Boolean,
+): MipsSourceEvent.Effective? {
     val tokens = expanded.tokens()
     tokens.discardTrailingComment()
     val start = sourceLineStart(head)
@@ -192,6 +195,8 @@ private fun expandedDirective(head: PsiElement, expanded: Tokenizer.MappedLine, 
     val operation = tokens.operationIndex(inMacro)
     if (operation >= tokens.size()) return null
     val directive = Directives.matchDirective(tokens[operation].value)
+    // A macro with a valid name can open a scope before its first rejected formal.
+    if (hasErrors && directive != Directives.MACRO) return null
     return when (directive) {
         Directives.MACRO -> macroSignature(head, tokens, operation + 1, start, expanded)
         Directives.END_MACRO -> MipsSourceEvent.End(head.textOffset).takeIf { tokens.size() == operation + 1 }
@@ -281,7 +286,7 @@ private fun macroSignature(
     }
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
-    val parameters = arguments.takeWhile { Macro.tokenIsMacroParameter(it.value, true) }
+    val parameters = arguments.takeWhile { it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true) }
     val invalid = arguments.getOrNull(parameters.size)
     val name = tokens[nameIndex]
     val directive = if (nameIndex == 0) start else originalOffset(tokens[nameIndex - 1])

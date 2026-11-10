@@ -963,6 +963,23 @@ class SessionAssemblyTest {
     assertThat(mapped.originalOffset(mapped.tokens().get(0).getStartPos() - 1)).isZero();
   }
 
+  @Test
+  void mappedExpansionDistinguishesLexicalErrorsFromInterruptedSubstitution() {
+    var replacements = Map.of("FORM", "%value", "FIRST", "SECOND", "SECOND", "FIRST");
+    var lexicalErrors = new ErrorList();
+    var lexical = Tokenizer.tokenizeMappedLine(".macro emit (FORM, @)", lexicalErrors,
+        replacements::get, () -> {});
+    assertThat(lexicalErrors.errorsOccurred()).isTrue();
+    assertThat(lexical.tokens().hasCompleteEquivalenceExpansion()).isTrue();
+    assertThat(lexical.tokens().getProcessedLine()).isEqualTo(".macro emit (%value, @)");
+
+    var cycleErrors = new ErrorList();
+    var cycle = Tokenizer.tokenizeMappedLine(".macro emit (FORM, FIRST)", cycleErrors,
+        replacements::get, () -> {});
+    assertThat(cycleErrors.errorsOccurred()).isTrue();
+    assertThat(cycle.tokens().hasCompleteEquivalenceExpansion()).isFalse();
+  }
+
   static Stream<Arguments> equivalenceDiagnosticCases() {
     return Stream.of(
         Arguments.of(".eqv DEST $f0\n.eqv ADDRESS OFFSET\n.eqv OFFSET -4(\n",

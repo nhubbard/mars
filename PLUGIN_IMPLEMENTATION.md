@@ -313,6 +313,10 @@ The parser marks the first token rejected by the written formal list and retains
 prefix. When expansion rejects a formal, the editor marks the token or alias that supplied it.
 The expansion check uses the selected or uniquely inferred entry so a shared header can have
 different valid formals in different assemblies.
+If substitution completes but the header contains a lexical error, the timeline still
+records the accepted formal prefix for navigation. This also applies when the directive
+or a preceding label comes from an alias. A cycle interrupts substitution and prevents
+the partial header from opening a semantic scope.
 
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,

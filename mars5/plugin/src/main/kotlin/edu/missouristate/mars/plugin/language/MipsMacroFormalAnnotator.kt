@@ -7,6 +7,7 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.components.service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiErrorElement
 import com.intellij.psi.util.PsiTreeUtil
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
@@ -25,8 +26,9 @@ internal class MipsMacroFormalAnnotator : Annotator {
             val invalid = macro.invalidFormal ?: continue
             // A physical syntax error on this header already explains the rejected parameter list.
             if (PsiTreeUtil.hasErrorElements(macro.header)) continue
-            if (!hasEntry) return
             val site = file.findElementAt(invalid.offset)!!
+            if (PsiTreeUtil.getParentOfType(site, PsiErrorElement::class.java) != null) continue
+            if (!hasEntry) return
             holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.formal.expanded", invalid.value))
                 .range(site.textRange).create()
         }
