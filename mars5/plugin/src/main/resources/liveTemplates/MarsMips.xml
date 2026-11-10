@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templateSet group="MARS MIPS">
+  <template name="mipsmacro" value=".macro $NAME$ (%$PARAMETER$)&#10;    $END$&#10;.end_macro"
+            resource-bundle="messages.MarsBundle" key="template.macro" toReformat="true" toShortenFQNames="false">
+    <variable name="NAME" expression="" defaultValue="&quot;emit&quot;" alwaysStopAt="true"/>
+    <variable name="PARAMETER" expression="" defaultValue="&quot;value&quot;" alwaysStopAt="true"/>
+    <context>
+      <option name="MARS_MIPS_TOP_LEVEL" value="true"/>
+    </context>
+  </template>
+  <template name="mipsentry" value=".text&#10;.globl $NAME$&#10;$NAME$:&#10;    $END$"
+            resource-bundle="messages.MarsBundle" key="template.entry" toReformat="true" toShortenFQNames="false">
+    <variable name="NAME" expression="" defaultValue="&quot;main&quot;" alwaysStopAt="true"/>
+    <context>
+      <option name="MARS_MIPS_TOP_LEVEL" value="true"/>
+    </context>
+  </template>
+  <template name="mipseqv" value=".eqv $NAME$ $VALUE$$END$"
+            resource-bundle="messages.MarsBundle" key="template.equivalence" toReformat="true" toShortenFQNames="false">
+    <variable name="NAME" expression="" defaultValue="&quot;VALUE&quot;" alwaysStopAt="true"/>
+    <variable name="VALUE" expression="" defaultValue="&quot;0&quot;" alwaysStopAt="true"/>
+    <context>
+      <option name="MARS_MIPS_STATEMENT" value="true"/>
+    </context>
+  </template>
+  <template name="mipsprint" value="addiu $$v0, $$zero, 1&#10;syscall$END$"
+            resource-bundle="messages.MarsBundle" key="template.print" toReformat="true" toShortenFQNames="false">
+    <context>
+      <option name="MARS_MIPS_STATEMENT" value="true"/>
+    </context>
+  </template>
+  <template name="mipsexit" value="addiu $$v0, $$zero, 10&#10;syscall$END$"
+            resource-bundle="messages.MarsBundle" key="template.exit" toReformat="true" toShortenFQNames="false">
+    <context>
+      <option name="MARS_MIPS_STATEMENT" value="true"/>
+    </context>
+  </template>
+</templateSet>

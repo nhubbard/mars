@@ -159,6 +159,25 @@ entry selection can add or remove folds in other open MARS editors through
 IntelliJ's folding refresh API. Platform tests also cover creating, rewriting,
 and deleting an unopened include on disk.
 
+## Live templates
+
+On a blank MARS statement line, type an abbreviation and press **Tab**.
+The templates are listed under **Editor → Live Templates → MARS MIPS**.
+Tab moves through editable fields, then places the caret at the template's
+end position.
+
+| Abbreviation | Inserts |
+| --- | --- |
+| `mipsmacro` | A macro with one formal parameter and the caret in its body |
+| `mipsentry` | A text segment and an exported entry point with a linked label name |
+| `mipseqv` | A textual equivalence with editable name and replacement |
+| `mipsprint` | The syscall sequence to print the integer already in `$a0` |
+| `mipsexit` | The exit syscall sequence |
+
+Macro and entry templates stay outside physically written macro bodies.
+The syscall templates are intended for text code and use basic instructions.
+Template expansion uses IntelliJ's formatter and project indentation settings.
+
 ## Mnemonic and directive completion
 
 IntelliJ's basic completion uses the generated parser's statement-head PSI and the Java core's

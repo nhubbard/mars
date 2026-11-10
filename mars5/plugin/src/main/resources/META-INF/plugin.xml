@@ -67,6 +67,11 @@
     <lang.commenter language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCommenter"/>
     <lang.braceMatcher language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsBraceMatcher"/>
     <lang.quoteHandler language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsQuoteHandler"/>
+    <defaultLiveTemplates file="liveTemplates/MarsMips.xml"/>
+    <liveTemplateContext contextId="MARS_MIPS_STATEMENT"
+                         implementation="edu.missouristate.mars.plugin.language.MipsStatementTemplateContext"/>
+    <liveTemplateContext contextId="MARS_MIPS_TOP_LEVEL" baseContextId="MARS_MIPS_STATEMENT"
+                         implementation="edu.missouristate.mars.plugin.language.MipsTopLevelTemplateContext"/>
     <lang.psiStructureViewFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
     <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
