@@ -45,6 +45,8 @@
                      implementationClass="edu.missouristate.mars.plugin.language.inspection.MipsMacroArityInspection"/>
     <highlightErrorFilter implementation="edu.missouristate.mars.plugin.language.MipsDataStatementErrorFilter"/>
     <externalAnnotator language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsAssemblyAnnotator"/>
+    <codeInsight.lineMarkerProvider language="MARS_MIPS"
+                                    implementationClass="edu.missouristate.mars.plugin.language.MipsTransferLineMarkerProvider"/>
     <completion.contributor language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsCompletionContributor"/>
     <codeInsight.parameterInfo language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsParameterInfoHandler"/>
     <platform.backend.documentation.targetProvider implementation="edu.missouristate.mars.plugin.language.MipsDocumentationTargetProvider"/>

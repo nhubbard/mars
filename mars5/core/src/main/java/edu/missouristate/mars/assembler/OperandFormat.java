@@ -43,6 +43,11 @@ public class OperandFormat {
 
   private OperandFormat() {}
 
+  /** Tests a complete instruction form without normalizing the caller's tokens in place. */
+  public static boolean matches(TokenList tokens, Instruction instruction) {
+    return tokenOperandMatch((TokenList) tokens.clone(), instruction, new ErrorList());
+  }
+
   /*
    * Syntax test for correct match in both numbers and types of operands.
    *

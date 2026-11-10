@@ -216,8 +216,9 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         addAll(builtLabelNames(root, position.textOffset + prefix.length, prefix))
     }
 
-    internal fun labelTargets(root: MipsFile, position: PsiElement, allowExternal: Boolean): List<PsiElement> {
-        val name = position.text
+    internal fun labelTargets(
+        root: MipsFile, position: PsiElement, allowExternal: Boolean, name: String = position.text,
+    ): List<PsiElement> {
         val timeline = if (DumbService.isDumb(project)) null else editorTimeline(root)
         if (timeline != null) {
             val local = ArrayList<PsiElement>()

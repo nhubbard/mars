@@ -134,6 +134,16 @@ public class ExtendedInstruction extends Instruction {
     return translationStrings;
   }
 
+  /** Whether an expansion can branch to the label in the final source operand. */
+  public boolean branchesToLabel() {
+    return hasLabelBranch(translationStrings) || hasLabelBranch(compactTranslationStrings);
+  }
+
+  private static boolean hasLabelBranch(ArrayList<String> templates) {
+    // LAB substitutes the final source operand in the branch template.
+    return templates != null && templates.stream().anyMatch(template -> template.stripTrailing().endsWith(" LAB"));
+  }
+
   /**
    * Get length in bytes that this extended instruction requires in its binary form if it includes
    * an alternative expansion for compact memory (16 bit addressing) configuration. The answer

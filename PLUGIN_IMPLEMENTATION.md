@@ -419,6 +419,17 @@ body are excluded from that count.
 Both inlay providers share the detached background assembly and its freshness
 checks. Each provider has an independent setting and starts disabled.
 
+## Branch and call gutter navigation
+
+Click the gutter arrow on a symbolic branch, jump, or call to open its label.
+IntelliJ offers the same targets under **Navigate → Related Symbol** and lets
+you toggle **MARS Branch and Call Targets** under **Editor → General → Gutter Icons**.
+The assembler catalog identifies branch forms, including pseudo-instructions.
+The source timeline expands aliases, and the shared label resolver follows
+macro-local scope and physical includes, including plain-text includes.
+The gutter works while unrelated lines contain errors. It offers no destination
+for a register-indirect jump or a label that cannot be resolved.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source
