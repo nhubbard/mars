@@ -313,7 +313,10 @@ class MipsMacroInspectionPlatformTest {
             withContext(Dispatchers.EDT) { fixture.configureByText("nested.asm", "$source\nouter(7)\n") }
             IndexingTestUtil.suspendUntilIndexesAreReady(project)
             withContext(Dispatchers.EDT) {
-                assertEquals(listOf(".macro" to nestedMacroMessage, "OPEN" to nestedMacroMessage), errors())
+                assertEquals(
+                    listOf(".macro" to nestedMacroMessage, "OPEN" to nestedMacroMessage, "BAD_NAME" to invalidNameMessage),
+                    errors(),
+                )
                 readAction {
                     val file = fixture.file as MipsFile
                     assertEquals(setOf("outer"), project.service<MarsAnalysisService>().editorTimeline(file).macroNames)
@@ -363,6 +366,77 @@ class MipsMacroInspectionPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
         withContext(Dispatchers.EDT) { assertTrue(errors().isEmpty()) }
+    }
+
+    @Test
+    fun `expanded openers diagnose missing and invalid names at the original tokens`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv OPEN .macro
+                .eqv BAD_NAME 7
+                .eqv WHOLE .macro ${'$'}t0
+                OPEN # missing name
+                .macro BAD_NAME
+                WHOLE
+                .macro real (%value)
+                    li ${'$'}t0, %value
+                .end_macro
+                real(42)
+            """.trimIndent()
+            val entry = directory.resolve("bad-macro-names.asm").also { it.writeText(source) }
+            val project = projectFixture.get()
+            val context = project.service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertEquals(
+                listOf("\".macro\" directive requires at least one argument.", "Invalid Macro name \"7\"", "Invalid Macro name \"\$t0\""),
+                failure.errors().errorMessages.map { it.message },
+            )
+            withContext(Dispatchers.EDT) { fixture.configureByText("bad-macro-names.asm", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) {
+                assertEquals(
+                    listOf("OPEN" to "Expected a macro name", "BAD_NAME" to invalidNameMessage, "WHOLE" to invalidNameMessage),
+                    errors(),
+                )
+                readAction {
+                    val file = fixture.file as MipsFile
+                    assertEquals(setOf("real"), project.service<MarsAnalysisService>().editorTimeline(file).macroNames)
+                    assertEquals("real", (file.findReferenceAt(source.lastIndexOf("real"))?.resolve() as? MipsDeclaration)?.name)
+                }
+                WriteCommandAction.runWriteCommandAction(project) {
+                    fixture.editor.document.setText(
+                        source.replace("OPEN # missing name", "OPEN first\n.end_macro")
+                            .replace("BAD_NAME 7", "BAD_NAME second")
+                            .replace(".macro BAD_NAME\n", ".macro BAD_NAME\n.end_macro\n")
+                            .replace(".macro \$t0", ".macro third").replace("\nWHOLE\n", "\nWHOLE\n.end_macro\n"),
+                    )
+                }
+                assertTrue(errors().isEmpty())
+            }
+        }
+
+    @Test
+    fun `a shared macro name uses the alias from the selected assembly entry`() = timeoutRunBlocking<Unit> {
+        val current = projectFixture.get()
+        val (valid, invalid) = withContext(Dispatchers.EDT) {
+            val valid = fixture.addFileToProject("valid.asm", ".eqv NAME emit\n.include \"shared.s\"\n")
+            val invalid = fixture.addFileToProject("invalid.asm", ".eqv NAME 7\n.include \"shared.s\"\n")
+            val shared = fixture.addFileToProject("shared.s", ".macro NAME\nnop\n.end_macro\n")
+            fixture.configureFromExistingVirtualFile(shared.virtualFile)
+            valid.virtualFile to invalid.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            val settings = current.service<MarsAssemblySettings>()
+            assertTrue(errors().isEmpty())
+            settings.changeSources(listOf(invalid.path))
+            assertEquals(
+                listOf("NAME" to invalidNameMessage, ".end_macro" to unmatchedEndMessage),
+                errors(),
+            )
+            settings.changeSources(listOf(valid.path))
+            assertTrue(errors().isEmpty())
+        }
     }
 
     @Test
@@ -438,6 +512,7 @@ class MipsMacroInspectionPlatformTest {
     private val unmatchedEndMessage = ".end_macro without a matching .macro"
     private val missingEndMessage = "Missing .end_macro for this macro"
     private val nestedMacroMessage = "Nested macros are not allowed"
+    private val invalidNameMessage = "Invalid MARS macro name"
 
     private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
         .filter { it.severity == HighlightSeverity.ERROR }

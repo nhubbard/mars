@@ -15,6 +15,7 @@ import edu.missouristate.mars.assembler.Token
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
+import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
 import edu.missouristate.mars.plugin.language.MipsFile
 import edu.missouristate.mars.plugin.language.MipsTypes
 import edu.missouristate.mars.plugin.language.operationOwners
@@ -33,9 +34,9 @@ internal sealed interface MipsSourceEvent {
         private val start = sourceLineStart(declaration)
         private val tokens = macroLineTokens(declaration, fromLineStart = true)
         private val operation = tokens.operationIndex(inMacro = false)
-        private val direct = macroSignature(declaration, tokens, operation, start, null)
+        private val direct = macroSignature(declaration, tokens, operation, start, null) as? Begin
 
-        fun bind(inMacro: Boolean, replacement: (String) -> String?): Begin? {
+        fun bind(inMacro: Boolean, replacement: (String) -> String?): Effective? {
             val needsExpansion = (0 until tokens.size()).any {
                 val token = tokens[it]
                 token.type == TokenTypes.IDENTIFIER && replacement(token.value) != null
@@ -131,7 +132,7 @@ internal sealed interface MipsSourceEvent {
     data class MacroFormal(val value: String, val offset: Int)
 
     data class End(override val offset: Int) : Effective
-    data class RejectedEnd(override val offset: Int) : Effective
+    data class RejectedMacro(override val offset: Int, val kind: Kind) : Effective
 
     data class LabeledEnd(override val offset: Int, val label: String) : MipsSourceEvent {
         fun bind(inMacro: Boolean, replacement: (String) -> String?): End? =
@@ -189,6 +190,9 @@ private val dataStateDirectives = setOf(
 // In an open macro a label is part of the body, even before a closing directive.
 private fun TokenList.operationIndex(inMacro: Boolean) = if (!inMacro && beginsWithLabel()) 2 else 0
 
+private fun TokenList.directiveAt(operation: Int): Directives? =
+    if (operation < size()) Directives.matchDirective(this[operation].value) else null
+
 private fun expandedDirective(
     head: PsiElement, expanded: Tokenizer.MappedLine, inMacro: Boolean, hasErrors: Boolean,
 ): MipsSourceEvent.Effective? {
@@ -200,15 +204,15 @@ private fun expandedDirective(
         return MipsSourceEvent.Equivalence(site, it.name(), it.replacement())
     }
     val operation = tokens.operationIndex(inMacro)
-    if (operation >= tokens.size()) return null
-    val directive = Directives.matchDirective(tokens[operation].value)
+    val directive = tokens.directiveAt(operation) ?: return null
     // A macro with a valid name can open a scope before its first rejected formal.
     if (hasErrors && directive != Directives.MACRO) return null
     return when (directive) {
         Directives.MACRO -> macroSignature(head, tokens, operation, start, expanded)
         Directives.END_MACRO -> {
             val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
-            if (tokens.size() == operation + 1) MipsSourceEvent.End(offset) else MipsSourceEvent.RejectedEnd(offset)
+            if (tokens.size() == operation + 1) MipsSourceEvent.End(offset)
+            else MipsSourceEvent.RejectedMacro(offset, Kind.TRAILING_TEXT)
         }
         Directives.EXTERN -> externalReservation(head, tokens, operation)
         in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
@@ -288,21 +292,23 @@ internal fun TokenList.discardTrailingComment() {
 
 private fun macroSignature(
     header: PsiElement, tokens: TokenList, operation: Int, start: Int, mapped: Tokenizer.MappedLine?,
-): MipsSourceEvent.Begin? {
-    val nameIndex = operation + 1
-    if (nameIndex >= tokens.size() || !tokens[operation].value.equals(Directives.MACRO.getName(), ignoreCase = true) ||
-        tokens[nameIndex].type != TokenTypes.IDENTIFIER
-    ) return null
+): MipsSourceEvent.Effective? {
+    if (tokens.directiveAt(operation) != Directives.MACRO) return null
     fun originalOffset(token: Token): Int {
         val column = token.startPos - 1
         return start + (mapped?.originalOffset(column) ?: column)
+    }
+    val directive = originalOffset(tokens[operation])
+    val nameIndex = operation + 1
+    if (nameIndex == tokens.size()) return MipsSourceEvent.RejectedMacro(directive, Kind.MISSING_NAME)
+    val name = tokens[nameIndex]
+    if (name.type != TokenTypes.IDENTIFIER) {
+        return MipsSourceEvent.RejectedMacro(originalOffset(name), Kind.INVALID_NAME)
     }
     val arguments = (nameIndex + 1 until tokens.size()).map(tokens::get)
         .filter { it.type != TokenTypes.LEFT_PAREN && it.type != TokenTypes.RIGHT_PAREN }
     val parameters = arguments.takeWhile { it.type != TokenTypes.ERROR && Macro.tokenIsMacroParameter(it.value, true) }
     val invalid = arguments.getOrNull(parameters.size)
-    val name = tokens[nameIndex]
-    val directive = originalOffset(tokens[operation])
     return MipsSourceEvent.Begin(header, name.value, originalOffset(name), directive,
         parameters.map { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) },
         invalid?.let { MipsSourceEvent.MacroFormal(it.value, originalOffset(it)) })
