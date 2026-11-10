@@ -12,7 +12,7 @@ import java.util.Set;
 public record AssemblySymbolMap(
     Map<Path, Map<String, Definition>> locals,
     Map<String, Definition> globals,
-    Map<SourceToken, Set<NestedMacroCall>> nestedMacroCalls) {
+    Map<SourceToken, Set<MacroCall>> macroCalls) {
 
   public static final AssemblySymbolMap EMPTY = new AssemblySymbolMap(Map.of(), Map.of());
 
@@ -25,19 +25,19 @@ public record AssemblySymbolMap(
     locals.forEach((entry, definitions) -> copied.put(entry, Map.copyOf(definitions)));
     locals = Map.copyOf(copied);
     globals = Map.copyOf(globals);
-    var calls = new HashMap<SourceToken, Set<NestedMacroCall>>();
-    nestedMacroCalls.forEach((site, occurrences) -> calls.put(site, Set.copyOf(occurrences)));
-    nestedMacroCalls = Map.copyOf(calls);
+    var calls = new HashMap<SourceToken, Set<MacroCall>>();
+    macroCalls.forEach((site, occurrences) -> calls.put(site, Set.copyOf(occurrences)));
+    macroCalls = Map.copyOf(calls);
   }
 
   /** A token at a one-based column in physical source, before macro and equivalence expansion. */
   public record SourceToken(Location location, int column) {}
 
   /** One realized call shape at a written site. Columns are one-based in that site's source line. */
-  public record NestedMacroCall(
+  public record MacroCall(
       SourceToken definition, String name, List<String> parameters, List<Integer> argumentColumns,
       Integer closingParenthesisColumn) {
-    public NestedMacroCall {
+    public MacroCall {
       parameters = List.copyOf(parameters);
       argumentColumns = List.copyOf(argumentColumns);
     }

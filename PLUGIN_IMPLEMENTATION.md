@@ -265,6 +265,12 @@ existing PSI references resolve them using include order, macro scope, and call
 arity. Code, comments, and strings keep their separate search contexts. Labels
 such as `.target.label`, `$buffer`, and `.` remain searchable.
 
+For a named macro declaration, Find Usages also searches current assembly
+results for calls made through an equivalence or a forwarded macro parameter.
+The result opens the exact written token, including in a plain `.inc` file.
+Go to Declaration on that token still follows its written equivalence or
+parameter binding.
+
 ## Go to Declaration for equivalences
 
 Symbol references navigate to the first valid case-sensitive `.eqv` definition in the source

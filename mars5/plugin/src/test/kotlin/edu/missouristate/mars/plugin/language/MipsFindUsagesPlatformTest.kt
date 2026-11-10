@@ -3,13 +3,23 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.lang.findUsages.LanguageFindUsages
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.components.service
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiFile
+import com.intellij.psi.search.LocalSearchScope
+import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import com.intellij.util.Processor
+import edu.missouristate.mars.plugin.build.MarsAssemblyMode
+import edu.missouristate.mars.plugin.build.MarsAssemblySettings
+import edu.missouristate.mars.plugin.build.MarsBuildService
+import edu.missouristate.mars.plugin.build.MarsSourceSet
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -119,6 +129,113 @@ class MipsFindUsagesPlatformTest {
         }
         assertEquals(setOf("shadow.s" to source.indexOf("j target") + 2), usageLocations(outer))
         assertEquals(setOf("shadow.s" to source.indexOf("b target") + 2), usageLocations(local))
+    }
+
+    @Test
+    fun `native usage search joins realized macro calls from current assemblies`() = timeoutRunBlocking<Unit> {
+        val left = """
+            .include "defs.s"
+            .eqv CALL inner
+            .macro outer (%operation)
+                inner(1)
+                CALL(2)
+                %operation(3)
+            .end_macro
+            outer(inner)
+            CALL(5)
+            nop
+        """.trimIndent()
+        val right = ".include \"defs.s\"\n.macro outer (%operation)\n.include \"body.inc\"\n.end_macro\nouter(inner)\nnop"
+        val body = "# expanded body\n%operation(4)\n"
+        val current = project.get()
+        val (definitions, entryFiles) = withContext(Dispatchers.EDT) {
+            val defs = fixture.addFileToProject("defs.s", ".macro inner (%value)\n.end_macro\n.macro alternative (%value)\n.end_macro\n")
+            fixture.addFileToProject("body.inc", body)
+            defs to listOf(
+                fixture.addFileToProject("left.asm", left), fixture.addFileToProject("right.asm", right),
+                fixture.addFileToProject("unrelated.asm", "nop\n"),
+            )
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            for (file in entryFiles) {
+                fixture.configureFromExistingVirtualFile(file.virtualFile)
+                fixture.doHighlighting()
+            }
+        }
+        val leftFile = entryFiles.first()
+        val (inner, alternative) = readAction { declarations(definitions).sortedBy { it.textOffset } }
+        val literal = "left.asm" to left.indexOf("inner(1)")
+        val alias = "left.asm" to left.indexOf("CALL(2)")
+        val directAlias = "left.asm" to left.indexOf("CALL(5)")
+        val parameter = "left.asm" to left.indexOf("%operation(3)")
+        val included = "body.inc" to body.indexOf("%operation")
+        assertEquals(setOf(literal, alias, directAlias, parameter, included), realizedUsageLocations(inner))
+        assertTrue(realizedUsageLocations(alternative).isEmpty())
+        readAction {
+            val aliasToken = leftFile.findElementAt(alias.second)!!
+            assertEquals("CALL", (aliasToken.reference?.resolve() as MipsDeclaration).name)
+            val parameterToken = leftFile.findElementAt(parameter.second)!!
+            assertEquals("%operation", parameterToken.reference?.resolve()?.text)
+            val scope = LocalSearchScope(aliasToken)
+            assertTrue(ReferencesSearch.search(definitions, scope).findAll().isEmpty())
+            val query = ReferencesSearch.search(inner, scope)
+            assertFalse(query.forEach(Processor { reference ->
+                assertEquals(inner, reference.resolve())
+                false
+            }))
+            assertEquals(listOf(aliasToken), query.findAll().map { it.element })
+        }
+        withContext(Dispatchers.EDT) {
+            fixture.configureFromExistingVirtualFile(leftFile.virtualFile)
+            val document = fixture.editor.document
+            val call = left.lastIndexOf("inner")
+            WriteCommandAction.runWriteCommandAction(current) {
+                document.replaceString(call, call + "inner".length, "alternative")
+            }
+            PsiDocumentManager.getInstance(current).commitDocument(document)
+            assertEquals(setOf(included), realizedUsageLocations(inner))
+            fixture.doHighlighting()
+        }
+        val movedDirectAlias = "left.asm" to left.replace("outer(inner)", "outer(alternative)").indexOf("CALL(5)")
+        assertEquals(setOf(literal, alias, movedDirectAlias, included), realizedUsageLocations(inner))
+        assertEquals(setOf(parameter), realizedUsageLocations(alternative))
+    }
+
+    @Test
+    fun `native usage search respects the directory assembly inputs and assembler policy`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"parts/defs.s\"\n.eqv CALL inner\n.macro outer\nCALL\n.end_macro\nouter\nnop\n"
+        val current = project.get()
+        val (entry, definitions) = withContext(Dispatchers.EDT) {
+            val defs = fixture.addFileToProject("parts/defs.s", ".macro inner\n.end_macro\n")
+            fixture.addFileToProject("dir.asm", source).virtualFile to defs
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val settings = current.service<MarsAssemblySettings>()
+        val sources = MarsSourceSet(entry.toNioPath(), MarsAssemblyMode.DIRECTORY)
+        assertNotNull(current.service<MarsBuildService>().prepare(sources, settings.executionOptions, activateBuildView = false))
+        val target = readAction { declarations(definitions).single() }
+        val expected = setOf("dir.asm" to source.lastIndexOf("CALL"))
+        assertEquals(expected, realizedUsageLocations(target))
+        withContext(Dispatchers.EDT) {
+            settings.changeAssemblerOptions(allowPseudoInstructions = false, warningsAreErrors = false)
+            assertTrue(realizedUsageLocations(target).isEmpty())
+            settings.changeAssemblerOptions(allowPseudoInstructions = true, warningsAreErrors = false)
+            settings.changeExceptionHandler(definitions.virtualFile.path)
+            assertTrue(realizedUsageLocations(target).isEmpty())
+            settings.changeExceptionHandler("")
+            assertEquals(expected, realizedUsageLocations(target))
+            fixture.addFileToProject("new-sibling.s", "nop\n")
+            assertTrue(realizedUsageLocations(target).isEmpty())
+        }
+    }
+
+    private suspend fun realizedUsageLocations(target: MipsDeclaration): Set<Pair<String, Int>> = readAction {
+        val results = fixture.findUsages(target).map { usage ->
+            requireNotNull(usage.virtualFile).name to requireNotNull(usage.segment).startOffset
+        }
+        assertEquals(results.size, results.toSet().size)
+        results.toSet()
     }
 
     private fun declarations(file: PsiFile) = PsiTreeUtil.findChildrenOfType(file, MipsDeclaration::class.java)

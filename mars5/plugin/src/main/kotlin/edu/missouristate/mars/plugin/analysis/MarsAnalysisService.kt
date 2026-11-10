@@ -26,7 +26,7 @@ import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
-import edu.missouristate.mars.api.AssemblySymbolMap.NestedMacroCall
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.Directives
@@ -73,7 +73,7 @@ internal data class MacroInvocation(
     val tokens: TokenList, val fullTokens: TokenList?, val parameters: List<List<String>>,
 )
 
-internal data class NestedMacroInvocation(val calls: List<NestedMacroCall>, val argument: Int)
+internal data class NestedMacroInvocation(val calls: List<MacroCall>, val argument: Int)
 
 internal data class MacroArityMismatch(val site: PsiElement, val name: String, val actual: Int, val expected: List<Int>)
 
@@ -288,20 +288,39 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val header = definition.header
             return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
         }
-        return nestedMacroCallsAt(root, position).map(NestedMacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
+        return nestedMacroCallsAt(root, position).map(MacroCall::definition).distinct().mapNotNull(::macroDeclarationAt)
     }
 
-    internal fun nestedMacroCallsAt(root: MipsFile, position: PsiElement): Set<NestedMacroCall> {
+    internal fun nestedMacroCallsAt(root: MipsFile, position: PsiElement): Set<MacroCall> {
         if (macroBodyPrefix(root, position)?.openMacro == null) return emptySet()
         return fromAssemblySymbols(root) { snapshot, path ->
-            val offset = position.textOffset
-            val document = root.fileDocument
-            val line = document.getLineNumber(offset)
-            val column = offset - document.getLineStartOffset(line) + 1
-            val calls = snapshot.symbols.nestedMacroCalls()[SourceToken(Location(path, line + 1), column)] ?: return@fromAssemblySymbols null
+            val calls = snapshot.symbols.macroCalls()[sourceTokenAt(root, path, position.textOffset)]
+                ?: return@fromAssemblySymbols null
             if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null
             calls
         }.orEmpty()
+    }
+
+    internal fun assembledMacroUsages(target: MipsDeclaration): Sequence<SourceToken> {
+        val file = target.containingFile as MipsFile
+        val snapshots = listOfNotNull(lastBuild.get()?.snapshot) + synchronized(backgroundSymbols) { backgroundSymbols.values() }
+        val handler = exceptionHandler
+        return snapshots.asSequence().flatMap { snapshot ->
+            ProgressManager.checkCanceled()
+            val path = snapshot.sourcePath(file) ?: return@flatMap emptySequence()
+            val sites = snapshot.assembledMacroUsages[sourceTokenAt(file, path, target.textOffset)] ?: return@flatMap emptySequence()
+            val selection = AssemblySelection(snapshot.sourceSet, snapshot.options)
+            if (!snapshot.isCurrent(handler) || !snapshot.hasCurrentDirectory() ||
+                selection.options != selection.forEditor().options || !snapshot.hasCurrentMacroSources()
+            ) return@flatMap emptySequence()
+            sites.asSequence()
+        }.distinct()
+    }
+
+    private fun sourceTokenAt(file: MipsFile, path: Path, offset: Int): SourceToken {
+        val document = file.fileDocument
+        val line = document.getLineNumber(offset)
+        return SourceToken(Location(path, line + 1), offset - document.getLineStartOffset(line) + 1)
     }
 
     private fun AssemblySymbols.hasCurrentMacroSources(): Boolean {
@@ -312,14 +331,14 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     }
 
     private fun macroDeclarationAt(target: SourceToken): PsiElement? {
-        val (file, offset) = macroDefinitionSource(target)
+        val (file, offset) = sourceTokenPosition(target)
         if (file !is MipsFile) return null
         val token = file.findElementAt(offset)!!
         val declaration = token.parent
         return if (declaration.elementType == MipsTypes.psi("MACRO_SIGNATURE")) declaration else token
     }
 
-    internal fun macroDefinitionSource(target: SourceToken): Pair<PsiFile, Int> {
+    internal fun sourceTokenPosition(target: SourceToken): Pair<PsiFile, Int> {
         val location = target.location()
         // The source snapshot has already validated each physical file and its committed document.
         val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
@@ -356,7 +375,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
             val line = document.getLineNumber(head.textOffset)
             val start = document.getLineStartOffset(line)
             val column = caret - start + 1
-            val site = snapshot.nestedMacroSites[Location(path, line + 1)].orEmpty()
+            val site = snapshot.macroCallSites[Location(path, line + 1)].orEmpty()
                 .filter { it.key.column() <= column }.maxByOrNull { it.key.column() }
                 ?: return@fromAssemblySymbols null
             if (!snapshot.hasCurrentMacroSources()) return@fromAssemblySymbols null

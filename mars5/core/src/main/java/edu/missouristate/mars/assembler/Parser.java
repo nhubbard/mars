@@ -2,7 +2,7 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.ProgramStatement;
-import edu.missouristate.mars.api.AssemblySymbolMap.NestedMacroCall;
+import edu.missouristate.mars.api.AssemblySymbolMap.MacroCall;
 import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
@@ -133,20 +133,18 @@ final class Parser {
         //                }
         var invocation = origin(physicalLine, caller);
         var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
-        if (caller != null) {
-          var call = new SourceToken(invocation.location(), token.writtenOrigin().getOriginalStartPos());
-          var header = physicalLines.get(macro.getFromLine() - 1);
-          var target = new SourceToken(origin(header, null).location(), macro.nameColumn);
-          var arguments = new ArrayList<Integer>(tokens.size() - 1);
-          for (int i = 1; i < tokens.size(); i++) {
-            arguments.add(tokens.get(i).writtenOrigin().getOriginalStartPos());
-          }
-          Integer closingColumn = closingParenthesis == null
-              ? null : closingParenthesis.writtenOrigin().getOriginalStartPos();
-          var occurrence = new NestedMacroCall(
-              target, macro.getName(), macro.getArgs(), arguments, closingColumn);
-          pass.nestedMacroCalls.computeIfAbsent(call, ignored -> new HashSet<>()).add(occurrence);
+        var call = new SourceToken(invocation.location(), token.writtenOrigin().getOriginalStartPos());
+        var header = physicalLines.get(macro.getFromLine() - 1);
+        var target = new SourceToken(origin(header, null).location(), macro.nameColumn);
+        var arguments = new ArrayList<Integer>(tokens.size() - 1);
+        for (int i = 1; i < tokens.size(); i++) {
+          arguments.add(tokens.get(i).writtenOrigin().getOriginalStartPos());
         }
+        Integer closingColumn = closingParenthesis == null
+            ? null : closingParenthesis.writtenOrigin().getOriginalStartPos();
+        var occurrence = new MacroCall(
+            target, macro.getName(), macro.getArgs(), arguments, closingColumn);
+        pass.macroCalls.computeIfAbsent(call, ignored -> new HashSet<>()).add(occurrence);
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();
           if (pass.errors.errorLimitExceeded()) {

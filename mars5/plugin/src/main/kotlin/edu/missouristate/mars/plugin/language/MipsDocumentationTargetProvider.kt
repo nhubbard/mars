@@ -44,7 +44,7 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
             val calls = analysis.nestedMacroCallsAt(file, token)
             if (calls.isNotEmpty()) {
                 return calls.distinctBy { Triple(it.definition(), it.name(), it.parameters()) }.map { call ->
-                    val (source, offset) = analysis.macroDefinitionSource(call.definition())
+                    val (source, offset) = analysis.sourceTokenPosition(call.definition())
                     MacroDocumentation(token, source, offset, call.name(), call.parameters(), expanded = true)
                 }.sortedWith(compareBy({ it.source.viewProvider.virtualFile.path }, { it.nameOffset }, { it.signature }))
             }

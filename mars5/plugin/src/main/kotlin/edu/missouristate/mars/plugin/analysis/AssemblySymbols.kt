@@ -4,6 +4,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFileManager
 import edu.missouristate.mars.api.AssemblySymbolMap
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.MarsExecutionOptions
 import edu.missouristate.mars.plugin.build.MarsSourceSet
@@ -25,7 +26,13 @@ internal class AssemblySymbols(
     val sourceSet: MarsSourceSet = MarsSourceSet(entry),
 ) {
     private val sourcesByUrl = revisions.keys.associateBy { VfsUtilCore.pathToUrl(it.invariantSeparatorsPathString) }
-    val nestedMacroSites = symbols.nestedMacroCalls().entries.groupBy { it.key.location() }
+    val macroCallSites = symbols.macroCalls().entries.groupBy { it.key.location() }
+    val assembledMacroUsages: Map<SourceToken, Set<SourceToken>> = buildMap<SourceToken, MutableSet<SourceToken>> {
+        for ((site, calls) in symbols.macroCalls()) {
+            ProgressManager.checkCanceled()
+            for (call in calls) getOrPut(call.definition(), ::LinkedHashSet).add(site)
+        }
+    }
     val localSymbols get() = localSymbols(entry)
 
     fun rootFor(source: Path): Path = rootsBySource.getValue(source)
