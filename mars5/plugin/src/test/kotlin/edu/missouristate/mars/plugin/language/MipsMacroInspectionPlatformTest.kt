@@ -114,6 +114,21 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `the include prepass discards written macro parameter candidates on the replaced line`() = timeoutRunBlocking<Unit> {
+        val source = ".macro emit (%value)\n%discarded: .include \"body.s\"\nli \$t0, %missing\n.end_macro\n"
+        val project = projectFixture.get()
+        withContext(Dispatchers.EDT) {
+            fixture.enableInspections(MipsMacroParameterInspection::class.java)
+            fixture.addFileToProject("body.s", "nop\n")
+            fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(project)
+        withContext(Dispatchers.EDT) {
+            assertEquals(listOf(Warning(source.indexOf("%missing"), "%missing", unknown("emit", "%missing"))), warnings())
+        }
+    }
+
+    @Test
     fun `a malformed expanded closer reports its written token and leaves the macro open`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val source = """

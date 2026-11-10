@@ -42,6 +42,9 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
             element is MipsDeclaration -> {
                 val identifier = element.nameIdentifier ?: return
                 if (element.kind == SymbolKind.LABEL && (identifier as MipsSymbolToken).highlightingColor() != null) return
+                if (element.kind == SymbolKind.CONSTANT && identifier.elementType == dollarWord &&
+                    (identifier as MipsSymbolToken).highlightingColor() != null
+                ) return
                 holder.color(identifier.textRange, element.kind.color)
             }
             element.elementType in operationOwners -> highlightOperation(element, holder)
@@ -50,9 +53,11 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
             element.elementType == replacement -> {
                 val token = element.firstChild
                 // A replacement identifier can expand into different roles at different use sites.
-                if (token.elementType in replacementIdentifiers) holder.color(token.textRange, equivalenceReplacementColor)
+                val color = (token as? MipsSymbolToken)?.highlightingColor()
+                    ?: equivalenceReplacementColor.takeIf { token.elementType in replacementIdentifiers }
+                if (color != null) holder.color(token.textRange, color)
             }
-            element is MipsSymbolToken && element.parent.elementType !in operationOwners -> {
+            element is MipsSymbolToken && element.parent.elementType !in operationOwners && element.parent.elementType != replacement -> {
                 val color = element.highlightingColor() ?: return
                 holder.color(element.textRange, color)
             }
@@ -98,6 +103,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
         val addition = MipsTypes.psi("ADD_EXPR")
         val number = MipsTypes.psi("NUMBER")
         val replacement = MipsTypes.psi("REPLACEMENT")
+        val dollarWord = MipsTypes.psi("DOLLAR_WORD")
         val replacementIdentifiers = TokenSet.create(MipsTypes.psi("WORD"), MipsTypes.psi("DOLLAR_WORD"), MipsTypes.psi("MNEMONIC"))
 
         val SymbolKind.color: TextAttributesKey get() = when (this) {

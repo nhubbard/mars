@@ -43,6 +43,7 @@ import edu.missouristate.mars.plugin.language.index.MipsReferenceIndex
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.operationOwner
 import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import edu.missouristate.mars.plugin.language.psi.equivalenceDefinitionParameterContexts
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
@@ -508,7 +509,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
 
     internal fun macroParameterNames(root: MipsFile, position: PsiElement): List<String> {
         val prefix = macroBodyPrefix(root, position) ?: return emptyList()
-        return prefix.openMacro?.parametersByName?.keys.orEmpty().filter { prefix.equivalence(it) == null }
+        val definingEquivalence = position.parent.elementType in equivalenceDefinitionParameterContexts
+        return prefix.openMacro?.parametersByName?.keys.orEmpty().filter { definingEquivalence || prefix.equivalence(it) == null }
     }
 
     private fun macroBodyPrefix(root: MipsFile, position: PsiElement): MipsSourceTimeline.Prefix? {

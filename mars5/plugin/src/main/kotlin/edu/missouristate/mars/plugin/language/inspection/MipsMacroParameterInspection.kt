@@ -37,11 +37,12 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
                 val end = CharArrayUtil.shiftForwardUntil(source, element.textOffset, "\r\n")
                 val before = timeline.macroAt(file, start)
                 val after = timeline.macroAt(file, end) ?: return
-                when {
-                    after === before ->
+                if (after === before) {
+                    if (element.node.findChildByType(includeLine) == null) {
                         inspectBody(holder, file, timeline.prefix(file, start), after, start, end)
-                    after.header.containingFile === file ->
-                        inspectHeader(holder, file, after)
+                    }
+                } else if (after.header.containingFile === file) {
+                    inspectHeader(holder, file, after)
                 }
             }
         }
@@ -92,6 +93,7 @@ internal class MipsMacroParameterInspection : LocalInspectionTool() {
     private companion object {
         val messages = DynamicBundle(MipsMacroParameterInspection::class.java, "messages.MarsBundle")
         val statement = MipsTypes.psi("STATEMENT")
+        val includeLine = MipsTypes.psi("INCLUDE_LINE")
         val boundaries = setOf(Directives.MACRO, Directives.END_MACRO, Directives.INCLUDE)
     }
 }

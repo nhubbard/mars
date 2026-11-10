@@ -10,13 +10,17 @@ import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsMacroParameterReferencesPlatformTest {
@@ -166,6 +170,40 @@ class MipsMacroParameterReferencesPlatformTest {
         configure("$aliases${header.replace("%value", "%val<caret>ue")}STOP\n")
         readAction { assertNull(referenceAtCaret()?.resolve()) }
     }
+
+    @Test
+    fun `parameters in an equivalence definition navigate and use the formal color`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val header = ".macro emit (\$name, \$value)\n"
+            val definition = ".eqv \$name \$value"
+            val body = "\nli \$t0, \$name\n.end_macro\nemit(CONSTANT, 42)\n.eqv \$outside \$unbound\n"
+            val source = header + definition + body
+            val entry = directory.resolve("macro-equivalence.asm").also { it.writeText(source) }
+            val program = project.get().service<MarsSessionService>().context.assemble(listOf(entry), null, true, false)
+            assertEquals(listOf(0x2408002a), program.machineList.map { it.binaryStatement })
+            configure(source)
+            for (formal in listOf("\$name", "\$value")) {
+                withContext(Dispatchers.EDT) {
+                    fixture.editor.caretModel.moveToOffset(header.length + definition.indexOf(formal) + 1)
+                }
+                assertEquals(Target("macro-parameters.asm", formal, header.indexOf(formal)), target())
+            }
+            withContext(Dispatchers.EDT) {
+                val highlights = fixture.doHighlighting()
+                val expectedColors = mapOf(
+                    "\$name" to macroParameterColor, "\$value" to macroParameterColor,
+                    "\$outside" to equivalenceColor, "\$unbound" to equivalenceReplacementColor,
+                )
+                for ((token, color) in expectedColors) {
+                    val offset = if (token in definition) header.length + definition.indexOf(token) else source.indexOf(token)
+                    assertEquals(
+                        listOf(color),
+                        highlights.filter { it.startOffset == offset && it.endOffset == offset + token.length }
+                            .mapNotNull { it.forcedTextAttributesKey },
+                    )
+                }
+            }
+        }
 
     private data class Target(val file: String, val text: String, val offset: Int)
 

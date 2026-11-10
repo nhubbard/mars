@@ -30,8 +30,10 @@ private val equivalenceContexts = TokenSet.orSet(
     instructionOperandContexts,
     TokenSet.create(MipsTypes.psi("SEGMENT_ADDRESS_SYMBOL"), MipsTypes.psi("OPERATION_CANDIDATE"), MipsTypes.psi("INVOCATION_TOKEN"), MipsTypes.psi("LABEL")),
 )
+internal val equivalenceDefinitionParameterContexts = TokenSet.create(MipsTypes.psi("EQUIVALENCE"), MipsTypes.psi("REPLACEMENT"))
 internal val macroParameterUseContexts = TokenSet.orSet(
     equivalenceContexts, TokenSet.create(MipsTypes.psi("DIRECTIVE_STATEMENT")),
+    equivalenceDefinitionParameterContexts,
 )
 
 internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsiElement(type, text) {
