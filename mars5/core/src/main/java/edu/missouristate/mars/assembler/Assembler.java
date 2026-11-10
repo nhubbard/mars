@@ -77,7 +77,8 @@ public final class Assembler {
         var entry = Path.of(program.getFilename()).toAbsolutePath().normalize();
         locals.put(entry, definitions(program.getLocalSymbolTable(), checkCancellation));
       }
-      symbolMap = new AssemblySymbolMap(locals, definitions(context.symbols(), checkCancellation));
+      symbolMap = new AssemblySymbolMap(
+          locals, definitions(context.symbols(), checkCancellation), first.nestedMacroTargets);
       sourceMap = result.sourceMap();
       return result.instructions();
     }

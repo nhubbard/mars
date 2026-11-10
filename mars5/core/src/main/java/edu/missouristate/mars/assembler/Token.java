@@ -134,6 +134,7 @@ public class Token {
     copy.setOriginal(originalMIPSprogram, originalSourceLine);
     copy.originalStartPos = originalStartPos;
     copy.diagnosticOrigin = diagnosticOrigin;
+    copy.expansionSource = expansionSource;
     return copy;
   }
 
@@ -209,5 +210,15 @@ public class Token {
     if (origin != null) {
       diagnosticOrigin = origin.getDiagnosticOrigin();
     }
+  }
+
+  private Token expansionSource;
+
+  Token writtenOrigin() {
+    return expansionSource == null ? this : expansionSource;
+  }
+
+  void setExpansionSource(Token source) {
+    expansionSource = source;
   }
 }

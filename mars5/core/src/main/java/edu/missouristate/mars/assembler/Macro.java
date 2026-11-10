@@ -52,6 +52,7 @@ public class Macro {
   private int fromLine, toLine;
 
   private int origFromLine, origToLine;
+  int nameColumn;
 
   /** arguments like <code>%arg</code> will be substituted by macro expansion */
   private ArrayList<String> args;
@@ -150,10 +151,18 @@ public class Macro {
     return expandLine(line, args, counter, Set.of(), errors).text();
   }
 
-  record ExpandedLine(String text, Set<String> renamedLabels, NavigableMap<Integer, Token> origins) {
-    Token originAt(int column) {
+  record TokenOrigin(Token written, Token diagnostic) {}
+
+  record ExpandedLine(
+      String text, Set<String> renamedLabels, NavigableMap<Integer, TokenOrigin> origins) {
+    TokenOrigin tokenOriginAt(int column) {
       var entry = origins.ceilingEntry(text.length() - column + 1);
       return entry == null ? null : entry.getValue();
+    }
+
+    Token originAt(int column) {
+      var origin = tokenOriginAt(column);
+      return origin == null ? null : origin.diagnostic();
     }
   }
 
@@ -162,7 +171,7 @@ public class Macro {
     TokenList tokens = program.getTokenList().get(line - 1);
     var source = new StringBuilder(tokens.getProcessedLine());
     HashSet<String> renamedLabels = null;
-    var origins = new TreeMap<Integer, Token>();
+    var origins = new TreeMap<Integer, TokenOrigin>();
 
     // Replace from right to left so earlier offsets stay valid. Record token starts
     // as distances from the end because the remaining replacements are all to the left.
@@ -192,7 +201,7 @@ public class Macro {
         substitute = token.getValue() + "_M" + counter;
         renamed = true;
       } else {
-        origins.put(source.length() - start, origin);
+        origins.put(source.length() - start, new TokenOrigin(token, origin));
         continue;
       }
       if (renamed) {
@@ -202,7 +211,7 @@ public class Macro {
         renamedLabels.add(substitute);
       }
       source.replace(start, token.getEndPos() - 1, substitute);
-      origins.put(source.length() - start, origin);
+      origins.put(source.length() - start, new TokenOrigin(token, origin));
     }
     return new ExpandedLine(source.toString(), renamedLabels == null ? Set.of() : renamedLabels, origins);
   }

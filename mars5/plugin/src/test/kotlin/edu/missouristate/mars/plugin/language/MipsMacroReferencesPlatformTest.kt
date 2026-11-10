@@ -9,6 +9,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
@@ -23,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -245,8 +247,8 @@ class MipsMacroReferencesPlatformTest {
             val file = fixture.file as MipsFile
             val use = file.findElementAt(fixture.editor.caretModel.offset)!!
             val analysis = current.service<MarsAnalysisService>()
-            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertNull(analysis.macroTarget(file, use)) }
-            assertEquals(7, analysis.macroTarget(file, use)?.textOffset)
+            DumbModeTestUtils.runInDumbModeSynchronously(current) { assertTrue(analysis.macroTargets(file, use).isEmpty()) }
+            assertEquals(7, analysis.macroTargets(file, use).single().textOffset)
         }
     }
 
@@ -256,7 +258,59 @@ class MipsMacroReferencesPlatformTest {
         readAction {
             val file = fixture.file as MipsFile
             val use = file.findElementAt(fixture.editor.caretModel.offset)!!
-            assertNull(project.get().service<MarsAnalysisService>().macroTarget(file, use))
+            assertTrue(project.get().service<MarsAnalysisService>().macroTargets(file, use).isEmpty())
+        }
+    }
+
+    @Test
+    fun `navigation reports each realized nested macro definition including empty expansions`() = timeoutRunBlocking<Unit> {
+        val source = """
+            .eqv NEW .macro inner
+            .include "extra.inc"
+            .macro outer
+                body: inner
+                external
+                nop
+            .end_macro
+            .macro inner
+            .end_macro
+            outer
+            NEW
+            .end_macro
+            outer
+            nop
+        """.trimIndent()
+        val current = project.get()
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("extra.inc", ".macro external\n.end_macro\n")
+            val file = fixture.addFileToProject("expanded-calls.asm", source)
+            fixture.configureFromExistingVirtualFile(file.virtualFile)
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        val useOffset = source.indexOf("body: inner") + "body: ".length
+        val targets = setOf(source.lastIndexOf(".macro inner") + ".macro ".length, source.indexOf("\nNEW\n") + 1)
+        withContext(Dispatchers.EDT) {
+            val file = fixture.file
+            val reference = file.findReferenceAt(useOffset + 1) as PsiPolyVariantReference
+            assertTrue(reference.multiResolve(false).isEmpty())
+            fixture.doHighlighting()
+            assertEquals(targets, reference.multiResolve(false).map { it.element!!.textOffset }.toSet())
+            val external = file.findReferenceAt(source.indexOf("external")) as PsiPolyVariantReference
+            assertTrue(external.multiResolve(false).isEmpty())
+            val instruction = file.findElementAt(source.indexOf("nop"))!!
+            assertTrue(current.service<MarsAnalysisService>().macroTargets(file as MipsFile, instruction).isEmpty())
+            WriteCommandAction.runWriteCommandAction(current) {
+                fixture.editor.document.deleteString(source.lastIndexOf("\nouter\n") + 1, source.lastIndexOf("\nouter\n") + 7)
+            }
+            assertTrue(reference.multiResolve(false).isEmpty())
+            PsiDocumentManager.getInstance(current).commitDocument(fixture.editor.document)
+            assertTrue(reference.multiResolve(false).isEmpty())
+            fixture.doHighlighting()
+            fixture.editor.caretModel.moveToOffset(useOffset + 1)
+        }
+        readAction {
+            assertEquals(targets.min(),
+                GotoDeclarationAction.findTargetElement(current, fixture.editor, useOffset + 1)?.textOffset)
         }
     }
 

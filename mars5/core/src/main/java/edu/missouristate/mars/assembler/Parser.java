@@ -2,12 +2,14 @@ package edu.missouristate.mars.assembler;
 
 import edu.missouristate.mars.ErrorMessage;
 import edu.missouristate.mars.ProgramStatement;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Location;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.mips.instructions.ExtendedInstruction;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Set;
 
 /*
@@ -128,6 +130,12 @@ final class Parser {
         //                }
         var invocation = origin(physicalLine, caller);
         var physicalLines = pass.fileCurrentlyBeingAssembled.getSourceLineList();
+        if (caller != null) {
+          var call = new SourceToken(invocation.location(), token.writtenOrigin().getOriginalStartPos());
+          var header = physicalLines.get(macro.getFromLine() - 1);
+          var target = new SourceToken(origin(header, null).location(), macro.nameColumn);
+          pass.nestedMacroTargets.computeIfAbsent(call, ignored -> new HashSet<>()).add(target);
+        }
         for (int i = macro.getFromLine() + 1; i < macro.getToLine(); i++) {
           pass.checkCancellation.run();
           if (pass.errors.errorLimitExceeded()) {

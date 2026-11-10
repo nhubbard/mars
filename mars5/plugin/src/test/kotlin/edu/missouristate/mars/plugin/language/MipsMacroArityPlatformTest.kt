@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -53,12 +52,12 @@ class MipsMacroArityPlatformTest {
             fixture.configureByText("arity.asm", source)
             val file = fixture.file as MipsFile
             val analysis = file.project.service<MarsAnalysisService>()
-            assertNull(analysis.macroTarget(file, file.findElementAt(source.indexOf("emit 1 2"))!!))
-            assertNull(analysis.macroTarget(file, file.findElementAt(source.lastIndexOf("emit 1 2 3"))!!))
-            assertNull(analysis.macroTarget(file, file.findElementAt(source.lastIndexOf("nop"))!!))
+            assertTrue(analysis.macroTargets(file, file.findElementAt(source.indexOf("emit 1 2"))!!).isEmpty())
+            assertTrue(analysis.macroTargets(file, file.findElementAt(source.lastIndexOf("emit 1 2 3"))!!).isEmpty())
+            assertTrue(analysis.macroTargets(file, file.findElementAt(source.lastIndexOf("nop"))!!).isEmpty())
             assertEquals(
                 source.indexOf("emit (%left"),
-                analysis.macroTarget(file, file.findElementAt(source.indexOf("emit (-7"))!!)?.textOffset,
+                analysis.macroTargets(file, file.findElementAt(source.indexOf("emit (-7"))!!).single().textOffset,
             )
             assertEquals(
                 listOf(

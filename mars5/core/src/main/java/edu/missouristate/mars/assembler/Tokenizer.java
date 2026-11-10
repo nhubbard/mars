@@ -358,7 +358,11 @@ public class Tokenizer {
         expansion);
     for (int i = 0; i < tokens.size(); i++) {
       Token token = tokens.get(i);
-      token.setDiagnosticOrigin(expansion.originAt(token.getOriginalStartPos()));
+      var origin = expansion.tokenOriginAt(token.getOriginalStartPos());
+      if (origin != null) {
+        token.setDiagnosticOrigin(origin.diagnostic());
+        token.setExpansionSource(origin.written());
+      }
     }
     return tokens;
   }

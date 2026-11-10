@@ -87,6 +87,7 @@ public class MacroPool {
     current.setName(nameToken.getValue());
     current.setFromLine(nameToken.getSourceLine());
     current.setOriginalFromLine(nameToken.getOriginalSourceLine());
+    current.nameColumn = nameToken.writtenOrigin().getOriginalStartPos();
     current.setProgram(program);
   }
 

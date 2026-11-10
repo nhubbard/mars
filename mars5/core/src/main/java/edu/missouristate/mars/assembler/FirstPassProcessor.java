@@ -6,12 +6,15 @@ import edu.missouristate.mars.MIPSprogram;
 import edu.missouristate.mars.ProcessingException;
 import edu.missouristate.mars.ProgramStatement;
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind;
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken;
 import edu.missouristate.mars.api.InstructionSourceMap.Origin;
 import edu.missouristate.mars.core.AssemblyContext;
 import edu.missouristate.mars.mips.hardware.AddressErrorException;
 import edu.missouristate.mars.mips.instructions.Instruction;
 import edu.missouristate.mars.util.Binary;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -46,6 +49,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 final class FirstPassProcessor {
   final AssemblyContext context;
   final Runnable checkCancellation;
+  final Map<SourceToken, Set<SourceToken>> nestedMacroTargets = new HashMap<>();
 
   FirstPassProcessor(AssemblyContext context, Runnable checkCancellation) {
     this.context = context;

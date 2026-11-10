@@ -25,6 +25,8 @@ import com.intellij.util.text.CharArrayUtil
 import edu.missouristate.mars.ErrorList
 import edu.missouristate.mars.api.AssemblySymbolMap
 import edu.missouristate.mars.api.AssemblySymbolMap.Kind
+import edu.missouristate.mars.api.AssemblySymbolMap.SourceToken
+import edu.missouristate.mars.api.InstructionSourceMap.Location
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenList
@@ -274,12 +276,39 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         return names.takeIf { valid }
     }
 
-    internal fun macroTarget(root: MipsFile, position: PsiElement): PsiElement? {
-        val owner = operationOwner(position) ?: return null
-        val site = operationSite(root, owner.operationHead) ?: return null
-        val definition = site.macroDefinition?.takeIf { site.range.startOffset == position.textOffset } ?: return null
-        val header = definition.header
-        return header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset)
+    internal fun macroTargets(root: MipsFile, position: PsiElement): List<PsiElement> {
+        val owner = operationOwner(position) ?: return emptyList()
+        val site = operationSite(root, owner.operationHead)
+        val definition = site?.macroDefinition?.takeIf { site.range.startOffset == position.textOffset }
+        if (definition != null) {
+            val header = definition.header
+            return listOfNotNull(header as? MipsDeclaration ?: header.containingFile.findElementAt(definition.nameOffset))
+        }
+        if (macroBodyPrefix(root, position)?.openMacro == null) return emptyList()
+        return fromAssemblySymbols(root) { snapshot, path ->
+            val offset = position.textOffset
+            val document = root.fileDocument
+            val line = document.getLineNumber(offset)
+            val column = offset - document.getLineStartOffset(line) + 1
+            val targets = snapshot.symbols.nestedMacroTargets()[SourceToken(Location(path, line + 1), column)] ?: return@fromAssemblySymbols null
+            val manager = PsiDocumentManager.getInstance(project)
+            val current = snapshot.revisions.validateSourceDocuments { _, source, revision ->
+                manager.isCommitted(source) && source.modificationStamp == revision
+            }
+            if (!current) return@fromAssemblySymbols null
+            targets.mapNotNull(::macroDeclarationAt)
+        }.orEmpty()
+    }
+
+    private fun macroDeclarationAt(target: SourceToken): PsiElement? {
+        val location = target.location()
+        // The source snapshot has already validated each physical file and its committed document.
+        val source = VirtualFileManager.getInstance().findFileByNioPath(location.file())!!
+        val file = PsiManager.getInstance(project).findFile(source) as? MipsFile ?: return null
+        val line = location.line() - 1
+        val token = file.findElementAt(file.fileDocument.getLineStartOffset(line) + target.column() - 1)!!
+        val declaration = token.parent
+        return if (declaration.elementType == MipsTypes.psi("MACRO_SIGNATURE")) declaration else token
     }
 
     internal fun macroCompletionSignatures(root: MipsFile, offset: Int, namePrefix: String): Map<String, List<String>> {
