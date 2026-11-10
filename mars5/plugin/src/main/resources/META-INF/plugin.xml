@@ -32,6 +32,8 @@
   </extensions>
   <extensions defaultExtensionNs="com.intellij">
     <newProjectWizard.generator implementation="edu.missouristate.mars.plugin.project.MarsNewProjectWizard"/>
+    <internalFileTemplate name="MIPS Assembly"/>
+    <internalFileTemplate name="MIPS Source"/>
     <projectTaskRunner implementation="edu.missouristate.mars.plugin.build.MarsProjectTaskRunner"/>
     <stepsBeforeRunProvider implementation="edu.missouristate.mars.plugin.run.MarsBeforeLaunchTaskProvider"/>
     <projectConfigurable id="mars.assembly" groupId="build" nonDefaultProject="true"
@@ -117,6 +119,9 @@
               topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
   </projectListeners>
   <actions resource-bundle="messages.MarsBundle">
+    <action id="Mars.NewMipsFile" class="edu.missouristate.mars.plugin.project.MarsNewFileAction" icon="AllIcons.FileTypes.Custom">
+      <add-to-group group-id="NewGroup"/>
+    </action>
     <action id="Mars.OpenReference" class="edu.missouristate.mars.plugin.help.MarsReferenceAction">
       <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
     </action>

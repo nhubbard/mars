@@ -2094,7 +2094,20 @@ and process startup use the same resolved options for that launch. A run configu
 different policy without changing diagnostics in the editor. Promoted warnings appear as errors
 with the original source locations.
 
-## New MIPS projects
+## New MIPS files and projects
+
+In an existing project, select a directory in the Project view and choose
+**New → MIPS File**. The native template popup offers `.asm` and `.s`. An
+explicit `.asm` or `.s` suffix in the name takes precedence over the selected
+kind. The starter contains `.text` and `nop`, so it assembles without
+introducing global symbols. IntelliJ opens the new file in the editor and
+handles name conflicts and nested paths. The project's ordered assembly sources
+are configured separately in MARS Assembly settings.
+
+`MarsNewFilePlatformTest` invokes the registered action and checks the actual
+MIPS PSI, editor opening, assembly, and preservation of an existing file.
+The `mars-new-file-playback` scenario submits the native popup from the
+installed ZIP and assembles the new source through the Build action.
 
 Choose **File → New → Project → MARS MIPS**. The wizard creates a general
 IntelliJ module with `src` as its source root. The default starter is
