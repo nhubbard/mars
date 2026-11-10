@@ -431,6 +431,29 @@ class MarsCliTest {
     assertTrue(error.toString().contains(source.getFileName().toString()));
   }
 
+  @Test
+  void distinguishesInterruptedExecutionFromTheStepLimit() throws Exception {
+    var source = directory.resolve("cancel.s");
+    Files.writeString(source, "li $a0,42\nli $v0,1\nsyscall\nloop: b loop\n");
+    var output = new ByteArrayOutputStream() {
+      @Override
+      public synchronized void write(byte[] bytes, int start, int length) {
+        super.write(bytes, start, length);
+        Thread.currentThread().interrupt();
+      }
+    };
+    var error = new ByteArrayOutputStream();
+
+    try {
+      assertEquals(130, execute(new String[] {"--max-steps", "40", source.toString()}, output, error));
+      assertTrue(Thread.currentThread().isInterrupted());
+    } finally {
+      Thread.interrupted();
+    }
+    assertEquals("42", output.toString());
+    assertEquals("Execution cancelled.", error.toString().strip());
+  }
+
   private static int execute(String[] args, ByteArrayOutputStream out, ByteArrayOutputStream err) {
     return MarsCli.execute(
         args, InputStream.nullInputStream(), new PrintStream(out), new PrintStream(err));

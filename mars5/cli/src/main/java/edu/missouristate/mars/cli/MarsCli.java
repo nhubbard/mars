@@ -149,6 +149,10 @@ public final class MarsCli {
                 : program.simulate(maximumSteps);
             status = finished ? program.getExitCode() : 3;
             if (!finished) {
+              if (Thread.currentThread().isInterrupted()) {
+                error.println("Execution cancelled.");
+                return 130;
+              }
               error.println("Execution reached the step limit.");
             }
           }
@@ -239,7 +243,8 @@ public final class MarsCli {
       --assembly-error-exit-code CODE     Override the assembly error status (aeCODE)
       --simulation-error-exit-code CODE   Override the simulation error status (seCODE)
       --help                 Show this help
-    Exit codes: simulated exit code, 1 for assembly/runtime errors, 2 for invalid arguments.
+    Exit codes: simulated exit code, 1 for assembly/runtime errors, 2 for invalid arguments,
+                3 for a step limit, or 130 for interrupted execution.
     """.formatted(
         String.join(", ", DumpFormatLoader.FORMATS.stream().map(DumpFormat::getCommandDescriptor).toList()));
   }
