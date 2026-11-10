@@ -119,6 +119,20 @@ Authored plugin code retains 100% line and branch coverage.
 The second `clean cleanSandbox runIde` launch passed all 1,238 tests and loaded the packaged
 plugin without a plugin error. The visual acceptance limit above still applies.
 
+## Editor breadcrumbs
+
+The breadcrumb bar follows the caret through the current file's written
+segments, macro definitions and labels. Click a crumb to move to its source.
+A segment switch starts a new label region. Within a macro definition, the
+bar shows the macro and its own labels, including parameterized spellings
+such as `%name`.
+
+Breadcrumbs use file-local PSI, so they work while indexing and while code
+is incomplete. Labels and macro definitions supplied by includes or
+substitutions are available through the semantic navigation features. The
+breadcrumb bar stays anchored to the file open in the editor. Its visibility
+is controlled under **Editor → General → Breadcrumbs**.
+
 ## Native Structure view
 
 IntelliJ's Structure view and File Structure popup list labels, macros, `.eqv`

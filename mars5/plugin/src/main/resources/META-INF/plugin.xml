@@ -75,6 +75,7 @@
     <liveTemplateContext contextId="MARS_MIPS_TOP_LEVEL" baseContextId="MARS_MIPS_STATEMENT"
                          implementation="edu.missouristate.mars.plugin.language.MipsTopLevelTemplateContext"/>
     <lang.psiStructureViewFactory language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsStructureViewFactory"/>
+    <breadcrumbsInfoProvider implementation="edu.missouristate.mars.plugin.language.MipsBreadcrumbsProvider"/>
     <lang.foldingBuilder language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFoldingBuilder"/>
     <lang.findUsagesProvider language="MARS_MIPS" implementationClass="edu.missouristate.mars.plugin.language.MipsFindUsagesProvider"/>
     <referencesSearch implementation="edu.missouristate.mars.plugin.language.MipsAssembledReferencesSearcher"/>
