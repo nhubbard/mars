@@ -7,6 +7,7 @@ import edu.missouristate.mars.mips.hardware.AccessOrigin.EXECUTION
 import edu.missouristate.mars.mips.hardware.Coprocessor0State.STATUS
 import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.mips.hardware.MemoryState
+import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_DISPLAY
 import edu.missouristate.mars.simulator.Exceptions.EXTERNAL_INTERRUPT_KEYBOARD
 import java.util.SplittableRandom
@@ -98,8 +99,8 @@ internal class KeyboardDisplayDevice(
     }
 
     @Synchronized
-    fun reset() {
-        display = MmioTerminalDisplay()
+    fun reset(geometry: Geometry? = null) {
+        display = MmioTerminalDisplay(geometry ?: display.geometry)
         sequence = 0L
         clearControls()
         initialize = connected
@@ -215,7 +216,7 @@ internal class KeyboardDisplayDevice(
 
     @Synchronized
     private fun capture(session: MarsContext): Runnable {
-        if (!hasConnected) restoreCheckpoint?.let { return it }
+        if (!hasConnected && checkpoint?.display === display) return restoreCheckpoint!!
         val source = session.memory
         val start = source.memoryMapBaseAddress
         val ports = if (connected) Ports(source.getWordNoNotify(start),

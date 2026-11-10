@@ -19,6 +19,9 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.launchOnShow
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
+import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry
+import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry.Companion.columnRange
+import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry.Companion.rowRange
 import edu.missouristate.mars.util.Binary
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
@@ -52,6 +55,10 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
     }
     private val instructions = JSpinner(SpinnerNumberModel(5, 1, 1_000_000, 1))
     private val delayedOutput = JBCheckBox(toolsMessages.getMessage("keyboardDisplay.delay.output"))
+    private lateinit var columns: JBTextField
+    private lateinit var rows: JBTextField
+    private lateinit var resize: JButton
+    private val output = JBLabel()
     private val ports = JBLabel()
     private val remaining = JBLabel()
     private val emptyDisplay = MmioTerminalDisplay()
@@ -65,12 +72,17 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
             cell(reset)
         }
         row { cell(ports) }
-        row { label(toolsMessages.getMessage("keyboardDisplay.output")) }
+        row { cell(output) }
         row { cell(editor.component).align(Align.FILL).resizableColumn() }.resizableRow()
         row(toolsMessages.getMessage("keyboardDisplay.input")) { cell(keyboard).align(AlignX.FILL).resizableColumn() }
         row(toolsMessages.getMessage("keyboardDisplay.delay.mode")) { cell(delayMode) }
         row(toolsMessages.getMessage("keyboardDisplay.delay.instructions")) { cell(instructions) }
         row { cell(delayedOutput) }
+        row {
+            columns = intTextField(columnRange).label(toolsMessages.getMessage("keyboardDisplay.columns")).component
+            rows = intTextField(rowRange).label(toolsMessages.getMessage("keyboardDisplay.rows")).component
+            resize = button(toolsMessages.getMessage("keyboardDisplay.resize")) { resizeDisplay() }.component
+        }
         row { cell(remaining) }
         row { comment(toolsMessages.getMessage("keyboardDisplay.help"), maxLineLength = 45) }
     }
@@ -96,6 +108,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         delayMode.addActionListener { configure() }
         instructions.addChangeListener { configure() }
         delayedOutput.addActionListener { configure() }
+        component.registerValidators(this)
         selector.refresh()
         selectionChanged()
     }
@@ -112,12 +125,27 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
 
     private fun selectionChanged() {
         select(selector.process?.keyboardDisplay)
-        val options = selected?.snapshot()?.options ?: Options()
+        val snapshot = selected?.snapshot()
+        val options = snapshot?.options ?: Options()
         updatingOptions = true
         delayMode.selectedItem = options.delay
         instructions.value = options.instructions
         delayedOutput.isSelected = options.displayAfterDelay
         updatingOptions = false
+        syncGeometry(snapshot?.display?.geometry ?: emptyDisplay.geometry)
+        render()
+    }
+
+    private fun syncGeometry(geometry: Geometry) {
+        columns.text = geometry.columns.toString()
+        rows.text = geometry.rows.toString()
+        output.text = toolsMessages.getMessage("keyboardDisplay.output.size", columns.text, rows.text)
+    }
+
+    private fun resizeDisplay() {
+        val width = columns.text.toIntOrNull()?.takeIf { it in columnRange } ?: return
+        val height = rows.text.toIntOrNull()?.takeIf { it in rowRange } ?: return
+        selected!!.reset(Geometry(width, height))
         render()
     }
 
@@ -140,6 +168,9 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         toggle.text = toolsMessages.getMessage(if (connected) "counter.disconnect" else "counter.connect")
         keyboard.isEnabled = toggle.isEnabled && connected
         reset.isEnabled = snapshot != null
+        columns.isEnabled = reset.isEnabled
+        rows.isEnabled = reset.isEnabled
+        resize.isEnabled = reset.isEnabled
         delayMode.isEnabled = toggle.isEnabled
         instructions.isEnabled = toggle.isEnabled
         delayedOutput.isEnabled = toggle.isEnabled
@@ -154,11 +185,12 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
 
     private fun showDisplay(display: MmioTerminalDisplay) {
         if (display === displayed) return
+        if (display.geometry != displayed?.geometry) syncGeometry(display.geometry)
         displayed = display
-        val cursor = display.cursor
-        editor.settings.isUseSoftWraps = cursor == null
+        val caret = display.caretOffset
+        editor.settings.isUseSoftWraps = caret == null
         document.setText(StringUtil.convertLineSeparators(display.text))
-        editor.caretModel.moveToOffset(cursor?.let { it + it / MmioTerminalDisplay.columns } ?: document.textLength)
+        editor.caretModel.moveToOffset(caret ?: document.textLength)
         editor.scrollingModel.scrollToCaret(ScrollType.MAKE_VISIBLE)
     }
 

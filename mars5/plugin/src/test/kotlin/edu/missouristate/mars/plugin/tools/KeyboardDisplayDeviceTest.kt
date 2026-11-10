@@ -6,6 +6,7 @@ import edu.missouristate.mars.mips.hardware.MemoryAccessNotice
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
+import edu.missouristate.mars.plugin.tools.MmioTerminalDisplay.Geometry
 import java.nio.file.Path
 import java.util.function.Consumer
 import kotlin.io.path.writeText
@@ -195,6 +196,14 @@ class KeyboardDisplayDeviceTest {
                         program.executeSessionInstruction()
                         device.instructionCompleted(session)
                     }
+                    step()
+                    val resized = Geometry(12, 4)
+                    device.reset(resized)
+                    step()
+                    session.backStepper.backStep()
+                    assertEquals(resized, device.snapshot().display.geometry)
+                    session.backStepper.backStep()
+                    assertEquals(Geometry(), device.snapshot().display.geometry)
                     repeat(2) { step() }
                     device.setConnected(true)
                     repeat(2) { step() }
@@ -247,5 +256,22 @@ class KeyboardDisplayDeviceTest {
         repeat(9000) { full = full.transmit('A'.code) }
         assertEquals("A".repeat(9000), full.text)
         assertEquals("A".repeat(9000) + 'B', full.transmit('B'.code).text)
+    }
+
+    @Test
+    fun `custom geometry defines the grid wrap clamp and caret without changing sequential output`() {
+        assertThrows(IllegalArgumentException::class.java) { Geometry(columns = 0) }
+        assertThrows(IllegalArgumentException::class.java) { Geometry(columns = 257) }
+        assertThrows(IllegalArgumentException::class.java) { Geometry(rows = 0) }
+        assertThrows(IllegalArgumentException::class.java) { Geometry(rows = 129) }
+        val dimensions = Geometry(3, 2)
+        val sequential = MmioTerminalDisplay(dimensions).transmit('x'.code)
+        assertEquals("x", sequential.text)
+        assertEquals(dimensions, sequential.transmit(12).geometry)
+        val grid = sequential.transmit((2 shl 20) or 7).transmit('A'.code).transmit('B'.code)
+        assertEquals("  A\nB  ", grid.text)
+        assertEquals(5, grid.caretOffset)
+        assertEquals("  A\nB Z", grid.transmit(-249).transmit('Z'.code).text)
+        assertEquals("   \n   ", grid.transmit(12).text)
     }
 }

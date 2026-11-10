@@ -57,7 +57,8 @@ class KeyboardDisplayPlatformTest {
                 sb ${'$'}t1, 12(${'$'}t0)
                 li ${'$'}v0, 12
                 syscall
-                li ${'$'}t1, 7
+                lui ${'$'}t1, 0x00b0
+                ori ${'$'}t1, ${'$'}t1, 0x0107
                 sw ${'$'}t1, 12(${'$'}t0)
                 nop
                 nop
@@ -101,7 +102,27 @@ class KeyboardDisplayPlatformTest {
                 }
             }
             withContext(Dispatchers.EDT) {
-                val keyboard = UIUtil.findComponentsOfType(view.component, JBTextField::class.java).single()
+                val keyboard = view.inputComponent
+                val fields = UIUtil.findComponentsOfType(view.component, JBTextField::class.java).filter { it !== keyboard }
+                val (columns, rows) = fields
+                assertTrue("Display · 80 × 24" in labels())
+                columns.text = "invalid"
+                button("Resize and Reset").doClick()
+                columns.text = "0"
+                button("Resize and Reset").doClick()
+                columns.text = "257"
+                button("Resize and Reset").doClick()
+                columns.text = "12"
+                rows.text = "invalid"
+                button("Resize and Reset").doClick()
+                rows.text = "0"
+                button("Resize and Reset").doClick()
+                rows.text = "129"
+                button("Resize and Reset").doClick()
+                assertTrue("Display · 80 × 24" in labels())
+                rows.text = "4"
+                button("Resize and Reset").doClick()
+                assertTrue("Display · 12 × 4" in labels())
                 fun type(character: Char): Boolean {
                     val event = KeyEvent(keyboard, KeyEvent.KEY_TYPED, 0, 0, KeyEvent.VK_UNDEFINED, character)
                     keyboard.keyListeners.forEach { it.keyTyped(event) }
@@ -129,15 +150,17 @@ class KeyboardDisplayPlatformTest {
             process.processInput.write("x\n".toByteArray())
             pollAssertionsAsync(5.seconds, 30.milliseconds) {
                 withContext(Dispatchers.EDT) {
-                    assertEquals('X', editor.document.text.firstOrNull())
-                    assertEquals(24, editor.document.lineCount)
+                    val lines = editor.document.text.lines()
+                    assertEquals(List(4) { 12 }, lines.map(String::length))
+                    assertEquals('X', lines[1].last())
                     assertFalse(editor.settings.isUseSoftWraps)
-                    assertEquals(1, editor.caretModel.offset)
+                    assertEquals(26, editor.caretModel.offset)
                 }
             }
             withContext(Dispatchers.EDT) {
                 button("Reset").doClick()
                 assertEquals("", editor.document.text)
+                assertTrue("Display · 12 × 4" in labels())
                 button("Disconnect").doClick()
                 assertFalse(process.keyboardDisplay.snapshot().connected)
                 button("Connect").doClick()

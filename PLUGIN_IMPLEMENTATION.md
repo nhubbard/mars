@@ -1768,8 +1768,16 @@ base + `0x00` and `0x04` and the transmitter control and data words at
 `0x08` and `0x0c`. It applies host input at instruction boundaries and
 counts completed instructions for fixed, uniform, and normal transmit delays.
 Output can appear when a write is accepted or after the delay. Form feed
-clears the display and bell with packed coordinates addresses an 80-column,
-24-row screen. Carriage return and line feed move the cursor in screen mode.
+clears the display. Bell activates screen mode with the column in bits 20–31
+and the row in bits 8–19 of the transmitter word. Coordinates start at zero.
+Carriage return and line feed move the cursor in screen mode.
+
+The addressed grid starts at 80 columns by 24 rows. Enter **Columns** and
+**Rows** and choose **Resize and Reset** to apply dimensions to the selected
+execution. The bounds are 1–256 columns and 1–128 rows. Resizing resets the
+device, and **Reset** alone retains the current dimensions. The grid stays
+fixed when the IDE window or font size changes. Backstep restores the grid
+dimensions recorded with the display checkpoint.
 
 Instruction checkpoints restore the display, ready bits, receiver data,
 pending interrupts, and the delay sequence. Unapplied host keystrokes are
