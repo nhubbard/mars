@@ -2,6 +2,7 @@ package edu.missouristate.mars.plugin.language
 
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
@@ -9,15 +10,21 @@ import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsigh
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.junit5.TestApplication
+import edu.missouristate.mars.ProcessingException
 import edu.missouristate.mars.plugin.MarsSessionService
 import edu.missouristate.mars.plugin.build.MarsAssemblySettings
 import edu.missouristate.mars.plugin.build.MarsBuildService
 import edu.missouristate.mars.plugin.language.inspection.MipsMacroParameterInspection
+import edu.missouristate.mars.plugin.language.psi.MipsDeclaration
+import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.io.TempDir
 
 @TestApplication
 class MipsMacroInspectionPlatformTest {
@@ -105,6 +112,80 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `a malformed expanded closer reports its written token and leaves the macro open`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv CLOSE .EnD_MaCrO
+                .eqv BAD .end_macro extra
+                .eqv LABEL outside:
+                .macro emit (%value)
+                CLOSE 7
+                BAD
+                body: addiu ${'$'}t0, ${'$'}zero, %value
+                CLOSE # actual closer
+                emit(42)
+                LABEL .end_macro extra
+            """.trimIndent()
+            val entry = directory.resolve("bad-closers.asm").also { it.writeText(source.replace("emit(42)\n", "")) }
+            val context = projectFixture.get().service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertEquals(
+                List(3) { "invalid text after .END_MACRO" },
+                failure.errors().errorMessages.map { it.message },
+            )
+            withContext(Dispatchers.EDT) { fixture.configureByText("bad-closers.asm", source) }
+            IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+            withContext(Dispatchers.EDT) {
+                assertEquals(
+                    listOf("CLOSE" to trailingCloseMessage, "BAD" to trailingCloseMessage, ".end_macro" to trailingCloseMessage),
+                    errors(),
+                )
+                readAction {
+                    val file = fixture.file
+                    assertEquals("%value", file.findReferenceAt(source.lastIndexOf("%value") + 1)?.resolve()?.text)
+                    assertEquals("emit", (file.findReferenceAt(source.indexOf("emit(42)"))?.resolve() as? MipsDeclaration)?.name)
+                }
+                WriteCommandAction.runWriteCommandAction(fixture.project) {
+                    fixture.editor.document.setText(source.replace("CLOSE 7\nBAD\n", "").substringBefore("\nLABEL "))
+                }
+                assertTrue(errors().isEmpty())
+            }
+        }
+
+    @Test
+    fun `a shared malformed closer waits for the selected entry`() = timeoutRunBlocking<Unit> {
+        val current = projectFixture.get()
+        val entry = withContext(Dispatchers.EDT) {
+            val first = fixture.addFileToProject("first.asm", ".include \"shared-close.s\"\n")
+            fixture.addFileToProject("second.asm", ".include \"shared-close.s\"\n")
+            val shared = fixture.addFileToProject("shared-close.s", ".eqv STOP .end_macro\n.macro emit\nSTOP extra\n.end_macro\n")
+            fixture.configureFromExistingVirtualFile(shared.virtualFile)
+            first.virtualFile
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(current)
+        withContext(Dispatchers.EDT) {
+            assertTrue(errors().isEmpty())
+            current.service<MarsAssemblySettings>().changeSources(listOf(entry.path))
+            assertEquals(listOf("STOP" to trailingCloseMessage), errors())
+        }
+    }
+
+    @Test
+    fun `a malformed alias closer waits for an unresolved earlier include`() = timeoutRunBlocking<Unit> {
+        val source = ".include \"pending.s\"\n.eqv STOP .end_macro\n.macro emit\nSTOP extra\n.end_macro\n"
+        withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("entry.asm", source).also { fixture.configureFromExistingVirtualFile(it.virtualFile) }
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) {
+            assertTrue(errors().none { it.second == trailingCloseMessage })
+            fixture.addFileToProject("pending.s", "nop\n")
+        }
+        IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
+        withContext(Dispatchers.EDT) { assertEquals(listOf("STOP" to trailingCloseMessage), errors()) }
+    }
+
+    @Test
     fun `invalid expanded formals point to their written tokens and refresh after edits`() = timeoutRunBlocking<Unit> {
         val source = """
             .eqv FORMS %kept, 7, 8
@@ -128,7 +209,7 @@ class MipsMacroInspectionPlatformTest {
                     "9" to "Invalid MARS macro parameter",
                     "ordinary" to "Invalid MARS macro parameter 'ordinary'",
                 ),
-                formalErrors(),
+                errors(),
             )
             val use = source.indexOf("%kept", source.indexOf("li"))
             assertEquals("FORMS", fixture.file.findReferenceAt(use + 1)?.resolve()?.text)
@@ -137,7 +218,7 @@ class MipsMacroInspectionPlatformTest {
                     source.replace("7, 8", "%second, %third").replace("9)", "%second)").replace("(ordinary)", "(%ordinary)"),
                 )
             }
-            assertTrue(formalErrors().isEmpty())
+            assertTrue(errors().isEmpty())
         }
     }
 
@@ -147,7 +228,7 @@ class MipsMacroInspectionPlatformTest {
         withContext(Dispatchers.EDT) { fixture.configureByText("bad-generated-formal.asm", source) }
         IndexingTestUtil.suspendUntilIndexesAreReady(projectFixture.get())
         withContext(Dispatchers.EDT) {
-            assertEquals(1, formalErrors().size)
+            assertEquals(1, errors().size)
             assertEquals("FORM", fixture.file.findReferenceAt(source.lastIndexOf("%value") + 1)?.resolve()?.text)
         }
     }
@@ -164,16 +245,18 @@ class MipsMacroInspectionPlatformTest {
         }
         IndexingTestUtil.suspendUntilIndexesAreReady(current)
         withContext(Dispatchers.EDT) {
-            assertTrue(formalErrors().isEmpty())
+            assertTrue(errors().isEmpty())
             val settings = current.service<MarsAssemblySettings>()
             settings.changeSources(listOf(invalid.path))
-            assertEquals(listOf("FORM" to "Invalid MARS macro parameter '17'"), formalErrors())
+            assertEquals(listOf("FORM" to "Invalid MARS macro parameter '17'"), errors())
             settings.changeSources(listOf(valid.path))
-            assertTrue(formalErrors().isEmpty())
+            assertTrue(errors().isEmpty())
         }
     }
 
-    private fun formalErrors(): List<Pair<String, String>> = fixture.doHighlighting()
+    private val trailingCloseMessage = "Unexpected text after .end_macro"
+
+    private fun errors(): List<Pair<String, String>> = fixture.doHighlighting()
         .filter { it.severity == HighlightSeverity.ERROR }
         .sortedBy { it.startOffset }
         .map { fixture.file.text.substring(it.startOffset, it.endOffset) to it.description.orEmpty() }

@@ -42,6 +42,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
 
     enter(entry)
     var macro: Begin? = null
+    var incompleteIncludes = false
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
@@ -113,6 +114,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 macro = null
                 macroBoundaries[eventCount] = null
             }
+            is MipsSourceEvent.RejectedEnd -> if (!incompleteIncludes) {
+                cursor.locations.rejectedMacroEnds.add(event.offset)
+            }
             is MipsSourceEvent.DataDirective -> if (macro == null) {
                 when (event.directive) {
                     Directives.DATA, Directives.KDATA -> inData = true
@@ -132,7 +136,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 if (included is MipsFile && included.viewProvider.virtualFile !in files) {
                     dependencies.add(included)
                     enter(included)
-                }
+                } else incompleteIncludes = true
             }
         }
         if (macro == null && inData && Directives.isIntegerDirective(dataList)) integerDataPrefixes.set(eventCount)
@@ -191,6 +195,9 @@ internal class MipsSourceTimeline(
 
     fun localMacroBodies(file: MipsFile): List<MacroBody> =
         files.getValue(file.viewProvider.virtualFile).localMacroBodies
+
+    fun rejectedMacroEnds(file: MipsFile): List<Int> =
+        files.getValue(file.viewProvider.virtualFile).rejectedMacroEnds
 
     fun localMacros(file: MipsFile): Map<PsiElement, Begin> =
         files.getValue(file.viewProvider.virtualFile).localMacros
@@ -300,6 +307,7 @@ internal class SourceFileEvents(val file: MipsFile) {
     val replacedExternals = HashSet<Int>()
     val expandedExternals = LinkedHashMap<PsiElement, MipsSourceEvent.External>()
     val macroClosingLines = HashSet<Int>()
+    val rejectedMacroEnds = ArrayList<Int>()
     val localMacros = LinkedHashMap<PsiElement, Begin>()
     val generatedMacroNames = HashSet<Int>()
     val localMacroBodies = ArrayList<MacroBody>()

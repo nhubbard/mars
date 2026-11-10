@@ -318,6 +318,11 @@ records the accepted formal prefix for navigation. This also applies when the di
 or a preceding label comes from an alias. A cycle interrupts substitution and prevents
 the partial header from opening a semantic scope.
 
+A macro closer supplied by an alias must expand to a standalone `.end_macro` after
+comments are removed. If the expansion has extra tokens, the editor reports the
+written directive or alias and keeps the macro open. This diagnostic uses the selected
+or uniquely inferred entry and waits for unresolved earlier includes.
+
 Macro headers preserve aliases that supply the name, the formal list, or its parentheses.
 The editor uses the Java tokenizer to expand definitions visible before the header,
 including definitions from earlier includes. Calls use the expanded name and arity

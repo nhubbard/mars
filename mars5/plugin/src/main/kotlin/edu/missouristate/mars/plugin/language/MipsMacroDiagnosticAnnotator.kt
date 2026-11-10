@@ -12,8 +12,8 @@ import com.intellij.psi.util.PsiTreeUtil
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import edu.missouristate.mars.plugin.analysis.mipsAssemblyRoots
 
-/** Reports invalid expanded formals from the same timeline used for macro scope and navigation. */
-internal class MipsMacroFormalAnnotator : Annotator {
+/** Reports macro expansion errors from the same timeline used for scope and navigation. */
+internal class MipsMacroDiagnosticAnnotator : Annotator {
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val file = element as? MipsFile ?: return
         val analysis = file.project.service<MarsAnalysisService>()
@@ -32,9 +32,16 @@ internal class MipsMacroFormalAnnotator : Annotator {
             holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.formal.expanded", invalid.value))
                 .range(site.textRange).create()
         }
+        for (offset in timeline.rejectedMacroEnds(file)) {
+            ProgressManager.checkCanceled()
+            if (!hasEntry) return
+            val site = file.findElementAt(offset)!!
+            holder.newAnnotation(HighlightSeverity.ERROR, bundle.getMessage("syntax.macro.end.trailing"))
+                .range(site.textRange).create()
+        }
     }
 
     private companion object {
-        val bundle = DynamicBundle(MipsMacroFormalAnnotator::class.java, "messages.MarsBundle")
+        val bundle = DynamicBundle(MipsMacroDiagnosticAnnotator::class.java, "messages.MarsBundle")
     }
 }

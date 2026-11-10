@@ -130,6 +130,7 @@ internal sealed interface MipsSourceEvent {
     data class MacroFormal(val value: String, val offset: Int)
 
     data class End(override val offset: Int) : Effective
+    data class RejectedEnd(override val offset: Int) : Effective
 
     data class Include(val literal: MipsStringLiteral, val path: String) : Effective {
         override val offset = literal.textOffset
@@ -199,7 +200,10 @@ private fun expandedDirective(
     if (hasErrors && directive != Directives.MACRO) return null
     return when (directive) {
         Directives.MACRO -> macroSignature(head, tokens, operation + 1, start, expanded)
-        Directives.END_MACRO -> MipsSourceEvent.End(head.textOffset).takeIf { tokens.size() == operation + 1 }
+        Directives.END_MACRO -> {
+            val offset = start + expanded.originalOffset(tokens[operation].startPos - 1)
+            if (tokens.size() == operation + 1) MipsSourceEvent.End(offset) else MipsSourceEvent.RejectedEnd(offset)
+        }
         Directives.EXTERN -> externalReservation(head, tokens, operation)
         in dataStateDirectives -> MipsSourceEvent.DataDirective(head.textOffset, directive)
         else -> null
