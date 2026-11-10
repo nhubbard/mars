@@ -22,6 +22,8 @@ import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.InstructionSet
 import edu.missouristate.mars.plugin.MarsSessionService
+import edu.missouristate.mars.plugin.analysis.MacroBoundaryProblem.Kind
+import edu.missouristate.mars.plugin.analysis.mipsSourceTimeline
 import java.nio.file.Path
 import kotlin.io.path.writeText
 import org.junit.jupiter.api.Assertions.*
@@ -462,14 +464,10 @@ class MipsParserPlatformTest {
                 assertEquals(listOf(expected), diagnostics, header)
 
                 readAction {
-                    val file = PsiFileFactory.getInstance(project.get()).createFileFromText("bad-header.asm", MipsFileType, source)
-                    assertEquals(source, file.node.text)
-                    val error = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).single()
-                    assertEquals(name, error.text)
-                    assertEquals(
-                        if (name.isEmpty()) "Expected a macro name" else "Invalid MARS macro name",
-                        error.errorDescription,
-                    )
+                    val file = assertParses(source)
+                    val issue = mipsSourceTimeline(file).macroBoundaryProblems(file).single()
+                    assertEquals(if (name.isEmpty()) Kind.MISSING_NAME else Kind.INVALID_NAME, issue.kind)
+                    assertEquals(name.ifEmpty { ".MaCrO" }, file.findElementAt(issue.offset)?.text)
                     val macro = descendants(file.node, "MACRO_DEFINITION").single()
                     assertEquals(listOf("inside:"), descendants(macro, "LABEL").map { it.text }.toList())
                     assertEquals(listOf("emit (%value)"), descendants(file.node, "MACRO_SIGNATURE").map { it.text }.toList())

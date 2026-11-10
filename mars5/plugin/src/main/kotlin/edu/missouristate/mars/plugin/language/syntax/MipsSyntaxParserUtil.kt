@@ -9,6 +9,7 @@ import com.intellij.platform.syntax.util.runtime.SyntaxGeneratedParserRuntime
 import com.intellij.util.text.CharArrayUtil
 import com.intellij.util.text.CharSequenceSubSequence
 import edu.missouristate.mars.ErrorList
+import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.assembler.Tokenizer
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.BAD_CHARACTER
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes.CHARACTER
@@ -116,25 +117,39 @@ internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level
 @Suppress("UNUSED_PARAMETER")
 internal fun recoverInvalidMacroName(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
     val builder = runtime.syntaxBuilder
-    if (builder.tokenType.endsLine()) {
-        builder.error(syntaxMessages.getMessage("syntax.macro.name.missing"))
-    } else {
-        builder.rejectMacroToken("syntax.macro.name.invalid")
-    }
+    val message = if (builder.tokenType.endsLine()) "syntax.macro.name.missing" else "syntax.macro.name.invalid"
+    builder.recoverMacroTail(message)
     return true
 }
 
 /** The rejected formal ends parameter collection, but the valid name still opens the body. */
 @Suppress("UNUSED_PARAMETER")
 internal fun recoverInvalidMacroFormal(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
-    runtime.syntaxBuilder.rejectMacroToken("syntax.macro.formal.invalid")
+    runtime.syntaxBuilder.recoverMacroTail("syntax.macro.formal.invalid")
     return true
 }
 
-private fun SyntaxTreeBuilder.rejectMacroToken(messageKey: String) {
-    val marker = mark()
-    advanceLexer()
-    marker.error(syntaxMessages.getMessage(messageKey))
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverMalformedMacroEnd(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
+    runtime.syntaxBuilder.recoverMacroTail("syntax.macro.end.trailing")
+    return true
+}
+
+private fun SyntaxTreeBuilder.recoverMacroTail(messageKey: String) {
+    // A labeled directive is only interpreted outside an effective macro body.
+    val offset = currentOffset
+    val start = CharArrayUtil.shiftBackwardUntil(text, offset - 1, "\r\n") + 1
+    val prefix = Tokenizer().tokenizeLine(1, text.subSequence(start, offset).toString(), ErrorList(), false)
+    if (prefix.size() < 2 || prefix[1].type != TokenTypes.COLON) {
+        val message = syntaxMessages.getMessage(messageKey)
+        if (tokenType.endsLine()) {
+            error(message)
+        } else {
+            val marker = mark()
+            advanceLexer()
+            marker.error(message)
+        }
+    }
     while (!tokenType.endsLine()) advanceLexer()
 }
 

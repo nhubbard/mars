@@ -269,6 +269,60 @@ class MipsMacroInspectionPlatformTest {
     }
 
     @Test
+    fun `labeled macro syntax is checked only when the selected entry executes the directive`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = """
+                .eqv LABEL alias_tail
+                bad: .macro 7
+                missing: .macro
+                tail: .end_macro .end_macro
+                LABEL: .end_macro extra
+                formal: .macro emit (7)
+                .end_macro
+                nop
+            """.trimIndent()
+            val validSource = ".macro outer\n.include \"shared.s\"\n"
+            val invalidSource = ".include \"shared.s\"\n"
+            directory.resolve("shared.s").writeText(source)
+            val validEntry = directory.resolve("valid.asm").also { it.writeText(validSource) }
+            val invalidEntry = directory.resolve("invalid.asm").also { it.writeText(invalidSource) }
+            val project = projectFixture.get()
+            val context = project.service<MarsSessionService>().context
+            assertEquals(1, context.assemble(listOf(validEntry), null, true, false).machineList.size)
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(invalidEntry), null, true, false) }
+            assertEquals(
+                listOf(
+                    "Invalid Macro name \"7\"", "\".macro\" directive requires at least one argument.",
+                    "invalid text after .END_MACRO", "invalid text after .END_MACRO", "Invalid macro argument '7'",
+                ),
+                failure.errors().errorMessages.map { it.message },
+            )
+            val (valid, invalid) = withContext(Dispatchers.EDT) {
+                val shared = fixture.addFileToProject("shared.s", source)
+                val valid = fixture.addFileToProject("valid.asm", validSource)
+                val invalid = fixture.addFileToProject("invalid.asm", invalidSource)
+                fixture.configureFromExistingVirtualFile(shared.virtualFile)
+                valid.virtualFile to invalid.virtualFile
+            }
+            IndexingTestUtil.suspendUntilIndexesAreReady(project)
+            withContext(Dispatchers.EDT) {
+                assertTrue(errors().isEmpty())
+                val settings = project.service<MarsAssemblySettings>()
+                settings.changeSources(listOf(invalid.path))
+                assertEquals(
+                    listOf(
+                        "7" to invalidNameMessage, ".macro" to "Expected a macro name",
+                        ".end_macro" to trailingCloseMessage, ".end_macro" to trailingCloseMessage,
+                        "7" to "Invalid MARS macro parameter '7'",
+                    ),
+                    errors(),
+                )
+                settings.changeSources(listOf(valid.path))
+                assertTrue(errors().isEmpty())
+            }
+        }
+
+    @Test
     fun `a pending include can supply either macro boundary`() = timeoutRunBlocking<Unit> {
         val source = ".include \"start.s\"\n.end_macro\n.macro second\n.include \"finish.s\"\n"
         withContext(Dispatchers.EDT) {

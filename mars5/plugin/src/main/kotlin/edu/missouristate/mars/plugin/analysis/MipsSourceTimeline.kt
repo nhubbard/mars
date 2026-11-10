@@ -76,7 +76,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 expanded.reservation ?: continue
             }
             is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
-            is MipsSourceEvent.LabeledEnd -> physical.bind(macro != null, replacement) ?: continue
+            is MipsSourceEvent.LabeledMacro -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.LabelDeclaration -> {
                 val expanded = physical.bind(macro != null, replacement) ?: continue
                 cursor.locations.replacedLabels.add(physical.offset)
