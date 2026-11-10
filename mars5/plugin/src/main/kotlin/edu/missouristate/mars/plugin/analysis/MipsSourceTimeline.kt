@@ -33,7 +33,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     val visited = HashSet<VirtualFile>()
     val equivalences = HashMap<String, IndexedEquivalence>()
     val externalStorage = LinkedHashMap<String, PsiElement>()
-    val generatedLabels = LinkedHashMap<String, MutableList<GeneratedLabel>>()
+    val unindexedLabels = LinkedHashMap<String, MutableList<TimelineLabel>>()
     val macroBoundaries = TreeMap<Int, Begin?>()
     val macroNames = HashSet<String>()
     val closedMacros = LinkedHashMap<String, MutableMap<Int, TreeMap<Int, Begin>>>()
@@ -53,9 +53,9 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
     var inData = false
     var dataList = Directives.WORD
     val replacement: (String) -> String? = { equivalences[it]?.definition?.replacement }
-    fun addLabel(name: String, site: PsiElement) {
+    fun addLabel(name: String, site: PsiElement, generated: Boolean) {
         if (macro != null && Macro.tokenIsMacroParameter(name, true)) return
-        generatedLabels.getOrPut(name, ::ArrayList).add(GeneratedLabel(name, site, macro))
+        unindexedLabels.getOrPut(name, ::ArrayList).add(TimelineLabel(name, site, macro, generated))
     }
     while (pending.isNotEmpty()) {
         ProgressManager.checkCanceled()
@@ -81,12 +81,20 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
                 if (expanded.replaced) cursor.locations.replacedExternals.add(physical.offset)
                 expanded.reservation ?: continue
             }
-            is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement, ::addLabel) ?: continue
+            is MipsSourceEvent.OperationCandidate -> physical.bind(macro != null, replacement) { name, site ->
+                addLabel(name, site, generated = true)
+            } ?: continue
             is MipsSourceEvent.LabeledMacro -> physical.bind(macro != null, replacement) ?: continue
             is MipsSourceEvent.LabelDeclaration -> {
-                val expanded = physical.bind(macro != null, replacement) ?: continue
+                val expanded = physical.bind(macro != null, replacement)
+                if (expanded == null) {
+                    if (cursor.locations.isPlainInclude) {
+                        physical.declaration.name?.let { addLabel(it, physical.declaration, generated = false) }
+                    }
+                    continue
+                }
                 cursor.locations.replacedLabels.add(physical.offset)
-                expanded.name?.let { addLabel(it, physical.declaration) }
+                expanded.name?.let { addLabel(it, physical.declaration, generated = true) }
                 cursor.ignoreBefore = expanded.ignoreBefore
                 expanded.directive ?: continue
             }
@@ -179,7 +187,7 @@ internal fun mipsSourceTimeline(entry: MipsFile): MipsSourceTimeline = CachedVal
         files.getValue(openingFile).macroBoundaryProblems.add(MacroBoundaryProblem(unclosed.directiveOffset, Kind.MISSING_END))
     }
     CachedValueProvider.Result.create(
-        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, generatedLabels, macroBoundaries,
+        MipsSourceTimeline(files, equivalences, integerDataPrefixes, externalStorage, unindexedLabels, macroBoundaries,
             macroNames, closedMacros, incompleteIncludes, plainIncludes),
         dependencies,
     )
@@ -190,7 +198,7 @@ internal class MipsSourceTimeline(
     private val equivalences: Map<String, IndexedEquivalence>,
     private val integerDataPrefixes: BitSet,
     val externalStorage: Map<String, PsiElement>,
-    val generatedLabels: Map<String, List<GeneratedLabel>>,
+    val unindexedLabels: Map<String, List<TimelineLabel>>,
     private val macroBoundaries: TreeMap<Int, Begin?>,
     val macroNames: Set<String>,
     private val closedMacros: Map<String, Map<Int, TreeMap<Int, Begin>>>,
@@ -199,15 +207,17 @@ internal class MipsSourceTimeline(
 ) {
     private val equivalenceUsesByLine = ConcurrentHashMap<Pair<MipsFile, Int>, LineEquivalenceUses>()
 
+    private val generatedLabels by lazy { unindexedLabels.values.asSequence().flatten().filter(TimelineLabel::generated).toList() }
+
     val generatedLabelSites: Set<PsiElement> by lazy {
-        generatedLabels.values.flatten().mapTo(HashSet(), GeneratedLabel::site)
+        generatedLabels.mapTo(HashSet(), TimelineLabel::site)
     }
 
     private val generatedLabelsByFile by lazy {
-        generatedLabels.values.flatten().groupBy { it.site.containingFile }
+        generatedLabels.groupBy { it.site.containingFile }
     }
 
-    fun generatedLabelsIn(file: MipsFile): List<GeneratedLabel> = generatedLabelsByFile[file].orEmpty()
+    fun generatedLabelsIn(file: MipsFile): List<TimelineLabel> = generatedLabelsByFile[file].orEmpty()
 
     private val generatedEquivalencesByFile by lazy {
         equivalences.values.map(IndexedEquivalence::definition).filter { it.site !is MipsDeclaration }
@@ -228,8 +238,8 @@ internal class MipsSourceTimeline(
     fun includes(file: MipsFile): Boolean = file.viewProvider.virtualFile in files
 
     // Index callers need the physical MARS PSI files, not the contextual parse copies.
-    fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().map(SourceFileEvents::file)
-        .filter { it.originalFile is MipsFile }
+    fun sourceFiles(): Sequence<MipsFile> = files.values.asSequence().filterNot(SourceFileEvents::isPlainInclude)
+        .map(SourceFileEvents::file)
 
     fun replacesLabel(file: MipsFile, offset: Int): Boolean = offset in files.getValue(file.viewProvider.virtualFile).replacedLabels
 
@@ -358,6 +368,7 @@ internal data class MacroBoundaryProblem(val offset: Int, val kind: Kind) {
 }
 
 internal class SourceFileEvents(val file: MipsFile) {
+    val isPlainInclude = file.originalFile is PsiPlainTextFile
     val sites = ArrayList<SourceEventSite>()
     val generatedMacroParts = HashMap<Int, MacroPart>()
     val replacedLabels = HashSet<Int>()
@@ -378,7 +389,7 @@ internal data class EquivalenceUse(val target: PsiElement, val type: TokenTypes?
 
 private data class LineEquivalenceUses(val types: Map<Int, TokenTypes?>, val operationOffset: Int)
 
-internal data class GeneratedLabel(val name: String, val site: PsiElement, val macro: MipsSourceEvent.Begin?)
+internal data class TimelineLabel(val name: String, val site: PsiElement, val macro: Begin?, val generated: Boolean)
 
 private class SourceCursor(val locations: SourceFileEvents, val events: Iterator<MipsSourceEvent>) {
     var ignoreBefore = -1

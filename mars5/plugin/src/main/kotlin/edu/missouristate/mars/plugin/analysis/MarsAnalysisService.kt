@@ -207,7 +207,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     }) add(name)
                 }
             }
-            for ((name, labels) in timeline.generatedLabels) {
+            for ((name, labels) in timeline.unindexedLabels) {
                 ProgressManager.checkCanceled()
                 if (name.startsWith(prefix) && labels.any { it.macro == null || it.macro === macro }) add(name)
             }
@@ -233,7 +233,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
                     matches.addAll(listOfNotNull(MipsDeclaration.findAt(file, site.offset, name)))
                 }
             }
-            for (label in timeline.generatedLabels[name].orEmpty()) {
+            for (label in timeline.unindexedLabels[name].orEmpty()) {
                 ProgressManager.checkCanceled()
                 if (label.macro == null) outer.add(label.site.writtenDeclarationAt())
                 else if (label.macro === macro) local.add(label.site.writtenDeclarationAt())
@@ -454,7 +454,7 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
     private fun isGeneratedMnemonicLabel(root: MipsFile, head: PsiElement): Boolean {
         if (DumbService.isDumb(project) || followingEquivalenceName(head) == null) return false
         val original = root.findElementAt(head.textOffset)
-        return editorTimeline(root).generatedLabels[head.text].orEmpty().any { it.site == original }
+        return editorTimeline(root).unindexedLabels[head.text].orEmpty().any { it.site == original }
     }
 
     private fun expandedOperationAlias(root: MipsFile, head: PsiElement, source: String): TokenList? {

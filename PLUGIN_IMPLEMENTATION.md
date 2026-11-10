@@ -188,13 +188,14 @@ expects an identifier. The project analysis service reads per-file declarations 
 file index for the current source file and reachable indexed MIPS includes. It shares cached
 include paths and native file reference resolution with include navigation, and visits each file
 once per request. It reads the index only after indexing is ready and never scans project-wide
-symbol keys. Completion accepts forward labels and committed unsaved edits.
+symbol keys. Plain-text includes contribute labels through the cached source timeline without
+changing their file association. Completion accepts forward labels and committed unsaved edits.
 
-This query uses the current file as the entry and filters by physical macro scope. Separate
-build entries, macro expansion that changes the physical scope, and labels in includes without
-the MARS file type require build-context binding. Fixtures exercise nested and cyclic includes,
-an unrelated export, an unresolved include, unsaved label edits, macro-local visibility,
-indexing mode and Tab replacement of dotted names.
+The live query follows the editor's entry context and filters labels by the macro scope in
+include order. Labels created by executing a macro and visibility across separate build
+entries use assembled symbols. Fixtures exercise nested and cyclic includes, an unrelated
+export, an unresolved include, unsaved label edits, macro-local visibility, indexing mode
+and Tab replacement of dotted names.
 
 ## Instruction Parameter Info
 
@@ -260,7 +261,8 @@ by equivalence expansion. A generated prefix opens the written operation alias. 
 physical label opens its declaration and appears in completion under the expanded spelling.
 Written and generated labels both follow the expanded macro boundaries, including across
 includes. An included editor can look up forward labels in its selected entry using live
-source, including after a failed build.
+source, including after a failed build. For a plain-text include, Go to Declaration opens
+the physical file at the written label's offset, including after an unsaved edit moves it.
 The IDE fixtures check these bindings alongside case sensitivity, macro shadowing, duplicate
 declarations, and non-label operands. Labels supplied by macro arguments still use assembly
 results.

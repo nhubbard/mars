@@ -3,9 +3,12 @@ package edu.missouristate.mars.plugin.language
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightFixture
 import com.intellij.platform.testFramework.junit5.codeInsight.fixture.codeInsightProjectFixture
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.IndexingTestUtil
@@ -50,13 +53,47 @@ class MipsLabelReferencesPlatformTest {
     }
 
     @Test
+    fun `go to declaration uses the physical offset of a forward label in a plain include`() = timeoutRunBlocking<Unit> {
+        val current = project.get()
+        val contents = "# plain source\n    target.label: nop\n"
+        val include = withContext(Dispatchers.EDT) {
+            fixture.addFileToProject("parts/outer.txt", ".include \"inner.txt\"\n")
+            fixture.addFileToProject("parts/inner.txt", contents)
+        }
+        configure("b target.<caret>label\n.include \"parts/outer.txt\"\n")
+        val original = readAction {
+            val reference = referenceAtCaret()!!
+            val declaration = reference.resolve()!!
+            assertEquals(include, declaration.containingFile)
+            assertEquals("target.label", declaration.text)
+            assertEquals(contents.indexOf("target.label"), declaration.textOffset)
+            assertEquals(declaration, GotoDeclarationAction.findTargetElement(current, fixture.editor, fixture.editor.caretModel.offset))
+            declaration
+        }
+        withContext(Dispatchers.EDT) {
+            val document = FileDocumentManager.getInstance().getDocument(include.virtualFile)!!
+            WriteCommandAction.runWriteCommandAction(current) { document.insertString(0, "\n") }
+            PsiDocumentManager.getInstance(current).commitAllDocuments()
+        }
+        readAction {
+            assertTrue(!original.isValid)
+            assertEquals(original.textOffset + 1, referenceAtCaret()?.resolve()?.textOffset)
+        }
+    }
+
+    @Test
     fun `macro local labels shadow outer labels including when introduced by an include`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("inner.s", "target: nop\n")
             fixture.addFileToProject("outer.s", ".include \"inner.s\"\n")
+            fixture.addFileToProject("plain.txt", "  target: nop\n")
         }
         configure("target: nop\n.macro emit\n.include \"outer.s\"\nb tar<caret>get\n.end_macro\n")
         readAction { assertEquals("inner.s", referenceAtCaret()?.resolve()?.containingFile?.name) }
+        configure("target: nop\n.macro emit\n.include \"plain.txt\"\nb tar<caret>get\n.end_macro\n")
+        readAction { assertEquals("plain.txt", referenceAtCaret()?.resolve()?.containingFile?.name) }
+        configure("target: nop\n.macro emit\n.include \"plain.txt\"\n.end_macro\nb tar<caret>get\n")
+        readAction { assertEquals(fixture.file, referenceAtCaret()?.resolve()?.containingFile) }
         configure("target: nop\n.macro emit\ntarget: nop\nb tar<caret>get\n.end_macro\n")
         readAction { assertEquals(fixture.file.text.lastIndexOf("target:"), referenceAtCaret()?.resolve()?.textOffset) }
         configure("target: nop\n.macro emit\ntarget: nop\n.end_macro\nb tar<caret>get\n")

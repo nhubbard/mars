@@ -357,12 +357,14 @@ class MipsCompletionPlatformTest {
         val current = project.get()
         val included = withContext(Dispatchers.EDT) {
             fixture.addFileToProject("parts/inner.s", "Target.nested: nop\n.include \"outer.s\"\n")
+            fixture.addFileToProject("parts/plain.txt", "Target.plain: nop\n.eqv Target.renamed Target.effective\nTarget.renamed: nop\n")
             fixture.addFileToProject("unrelated.asm", ".globl Target.unrelated\nTarget.unrelated: nop\n")
             fixture.addFileToProject("parts/outer.s", "Target.included: nop\n.include \"inner.s\"\n")
         }
         withContext(Dispatchers.EDT) {
             fixture.configureByText("labels.asm", """
                 .include "parts/outer.s"
+                .include "parts/plain.txt"
                 .include "missing.s"
                 .eqv Target.constant 2
                 .macro Target.macro
@@ -381,7 +383,8 @@ class MipsCompletionPlatformTest {
                 PsiDocumentManager.getInstance(current).commitAllDocuments()
             }
             val matches = fixture.completeBasic().orEmpty().filter { it.lookupString.startsWith("Target.") }
-            assertEquals(setOf("Target.local", "Target.nested", "Target.updated"), matches.map { it.lookupString }.toSet())
+            assertEquals(setOf("Target.local", "Target.nested", "Target.updated", "Target.plain", "Target.effective"),
+                matches.map { it.lookupString }.toSet())
             assertTrue("target.lowercase" !in fixture.lookupElementStrings.orEmpty())
             fixture.lookup.setCurrentItem(matches.single { it.lookupString == "Target.updated" })
             fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR)
@@ -393,6 +396,7 @@ class MipsCompletionPlatformTest {
     fun `labels inside macros stay in their physical macro scope`() = timeoutRunBlocking<Unit> {
         withContext(Dispatchers.EDT) {
             fixture.addFileToProject("macro-part.s", "injectedLabel: nop\n\$includedParameterLabel: nop\n")
+            fixture.addFileToProject("macro-extra.txt", "plainLabel: nop\n%generatedLabel: nop\n\$plainParameterLabel: nop\n")
             fixture.addFileToProject("other-part.s", "hiddenLabel: nop\n")
             fixture.configureByText("macro.asm", """
                 outerLabel: nop
@@ -401,8 +405,9 @@ class MipsCompletionPlatformTest {
                   .include "other-part.s"
                   otherLabel: nop
                 .end_macro
-                .macro emit (${'$'}parameterLabel, ${'$'}includedParameterLabel)
+                .macro emit (${'$'}parameterLabel, ${'$'}includedParameterLabel, ${'$'}plainParameterLabel, %generatedLabel)
                   .include "macro-part.s"
+                  .include "macro-extra.txt"
                   currentLabel: nop
                   ${'$'}parameterLabel: nop
                   j <caret>
@@ -415,8 +420,10 @@ class MipsCompletionPlatformTest {
             val (parameters, labels) = choices.partition {
                 LookupElementPresentation().also(it::renderElement).typeText == "Macro parameter"
             }
-            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel"), labels.map { it.lookupString }.toSet())
-            assertEquals(setOf("\$includedParameterLabel", "\$parameterLabel"), parameters.map { it.lookupString }.toSet())
+            assertEquals(setOf("outerLabel", "\$gccLabel", "currentLabel", "injectedLabel", "plainLabel"),
+                labels.map { it.lookupString }.toSet())
+            assertEquals(setOf("\$includedParameterLabel", "\$parameterLabel", "\$plainParameterLabel", "%generatedLabel"),
+                parameters.map { it.lookupString }.toSet())
         }
     }
 

@@ -78,7 +78,7 @@ class MipsMacroParameterReferencesPlatformTest {
         readAction {
             val file = fixture.file as MipsFile
             val timeline = project.get().service<MarsAnalysisService>().editorTimeline(file)
-            assertTrue(timeline.generatedLabels.isEmpty())
+            assertTrue(timeline.generatedLabelsIn(file).isEmpty())
             assertTrue(timeline.expandedExternalsIn(file).isEmpty())
         }
     }
