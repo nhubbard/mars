@@ -147,6 +147,7 @@ class MipsCompletionPlatformTest {
         val cases = listOf(
             "$header    <caret>\n$end" to formals,
             "$header    %<caret>\n$end" to percent,
+            "$header    li \$t0, %<caret>\n$end" to percent,
             "$header    %va<caret>: nop\n$end" to percent,
             "$header    other(%va<caret>)\n$end" to percent,
             "$header    lw \$t0, 0(\$d<caret>)\n$end" to spim,

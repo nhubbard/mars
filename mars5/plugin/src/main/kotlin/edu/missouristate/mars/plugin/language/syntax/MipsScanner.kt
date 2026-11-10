@@ -111,14 +111,14 @@ object MipsScanner {
                 }
             }
             first == '%' -> {
-                // MARS accepts any percent-prefixed token as a parameter name.
+                // MARS accepts punctuation in parameter names, but requires something after '%'.
                 while (position < end) {
                     val character = source[position]
                     if (character in assemblyDelimiters ||
                         character in "+-" && !continuesSignedExponent(source, position, end)) break
                     position++
                 }
-                MipsTokenKind.PARAMETER
+                if (position == start + 1 && !debuggerExpression) MipsTokenKind.BAD_CHARACTER else MipsTokenKind.PARAMETER
             }
             first.isNameCharacter() || !debuggerExpression -> {
                 val numeric = first.isDigit() || (first == '.' && position < end && source[position].isDigit())

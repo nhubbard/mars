@@ -12,7 +12,6 @@ import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
-import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.plugin.analysis.MacroPart
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
@@ -39,7 +38,7 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
     override fun getReference(): PsiReference? {
         val identifier = TokenTypes.isValidIdentifier(text)
         val context = PsiUtilCore.getElementType(parent)
-        val parameter = elementType in parameterTypes && context in macroParameterUseContexts && Macro.tokenIsMacroParameter(text, true)
+        val parameter = elementType in parameterTypes && context in macroParameterUseContexts
         val label = identifier && context in instructionOperandContexts &&
             MipsInstructionOperand.at(this, containingFile as MipsFile)?.acceptsLabel == true
         val aliasOperand = identifier && context == invocationToken

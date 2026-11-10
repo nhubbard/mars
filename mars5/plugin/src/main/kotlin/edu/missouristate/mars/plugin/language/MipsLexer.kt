@@ -4,7 +4,7 @@ import com.intellij.platform.syntax.SyntaxElementType
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.util.lexer.LexerBase
 import edu.missouristate.mars.assembler.Directives
-import edu.missouristate.mars.assembler.RegisterNames
+import edu.missouristate.mars.assembler.Macro
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes
 import edu.missouristate.mars.plugin.language.syntax.MipsScanner
@@ -48,13 +48,10 @@ class MipsLexer(private val debuggerExpression: Boolean = false) : LexerBase() {
                 null -> MipsSyntaxTypes.WORD
                 else -> MipsSyntaxTypes.DIRECTIVE
             }
-            MipsTokenKind.REGISTER -> {
-                val text = textOf(current)
-                if (RegisterNames.integer(text) != null || RegisterNames.floating(text) != null) {
-                    MipsSyntaxTypes.REGISTER
-                } else {
-                    MipsSyntaxTypes.DOLLAR_WORD
-                }
+            MipsTokenKind.REGISTER -> if (Macro.tokenIsMacroParameter(textOf(current), true)) {
+                MipsSyntaxTypes.DOLLAR_WORD
+            } else {
+                MipsSyntaxTypes.REGISTER
             }
             MipsTokenKind.WORD -> {
                 val text = textOf(current)

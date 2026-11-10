@@ -53,6 +53,10 @@ zero-padded signed hexadecimal minimum in a macro argument or `.eqv`
 replacement. After an identifier, a sign remains a separate assembler
 token even when adjacent to the digits. Formatting preserves both cases.
 
+The editor flags a lone `%` as invalid assembly while still offering macro
+parameter completion at that position. Nonempty percent names can contain
+punctuation, including `%!` and `%%`.
+
 The editor colors instruction mnemonics from the parsed operation, including built-in and
 pseudo-instructions. A label or operand with the same spelling retains its ordinary styling.
 An operation-head alias receives the mnemonic style when its expansion supplies an instruction.

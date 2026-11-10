@@ -21,7 +21,8 @@ class MipsScannerTest {
         val tokens = MipsScanner.scan(source)
         assertEquals(listOf("%value-7", "(", "%name+8", ")"), tokens.map { source.substring(it.start, it.end) })
         assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, 6), MipsScanner.next(source, 0, 7))
-        assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, 1), MipsScanner.next("%", 0))
+        assertEquals(MipsToken(MipsTokenKind.BAD_CHARACTER, 0, 1), MipsScanner.next("%", 0))
+        assertEquals(MipsToken(MipsTokenKind.PARAMETER, 0, 1), MipsScanner.next("%", 0, debuggerExpression = true))
     }
 
     @Test
@@ -137,6 +138,7 @@ class MipsScannerTest {
             ".double 0x1p2, 1e2, 2147483648",
             ".word 0xG, 0x, 1oops, 1e, 0b101, 0x123456789",
             ".macro emit (%value!@?, \$argument)",
+            ".macro emit (%, %!, %%, %value-7, \$)",
         )) {
             val assembly = tokenizer.tokenizeLine(1, source, ErrorList(), false)
             val tokens = MipsScanner.scan(source).filter { it.kind !in setOf(MipsTokenKind.SPACE, MipsTokenKind.COMMA) }

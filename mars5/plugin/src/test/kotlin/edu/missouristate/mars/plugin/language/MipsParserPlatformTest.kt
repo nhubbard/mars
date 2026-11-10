@@ -110,6 +110,8 @@ class MipsParserPlatformTest {
         val signatures = listOf(
             "%value!" to ")%value!(,",
             "%value-7" to "(%value-7",
+            "%!" to "(%!)",
+            "%%" to "(%%)",
             "\$value" to "\$value)",
         )
         for ((name, signature) in signatures) {
@@ -151,7 +153,11 @@ class MipsParserPlatformTest {
     private fun assertAssembles(directory: Path, source: String, expectedInstruction: Int = 0x24080007) {
         val entry = directory.resolve("entry.asm").also { it.writeText(source) }
         val context = project.get().service<MarsSessionService>().context
-        val program = context.assemble(listOf(entry), null, true, false)
+        val program = try {
+            context.assemble(listOf(entry), null, true, false)
+        } catch (failure: ProcessingException) {
+            fail(failure.errors().errorMessages.joinToString("\n") { it.message }, failure)
+        }
         assertEquals(listOf(expectedInstruction), program.machineList.map { it.binaryStatement })
     }
 
@@ -389,7 +395,7 @@ class MipsParserPlatformTest {
     @Test
     fun `malformed macro parameters preserve the header prefix and body scope`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (tail in listOf("7)", "@)", "\"oops\" .eqv PHANTOM 7")) {
+            for (tail in listOf("7)", "@)", "%)", "\"oops\" .eqv PHANTOM 7")) {
                 val source = ".macro emit (%value, $tail\nbody: li \$t0, %value\n.end_macro\nemit(7)\n"
                 val file = PsiFileFactory.getInstance(project.get()).createFileFromText("macro.asm", MipsFileType, source)
                 assertEquals(source, file.node.text)
@@ -404,6 +410,25 @@ class MipsParserPlatformTest {
             }
         }
     }
+
+    @Test
+    fun `bare percent is invalid in the assembler and editor without closing the macro`(@TempDir directory: Path) =
+        timeoutRunBlocking<Unit> {
+            val source = ".macro emit (%value)\nli \$t0, %\nbody: nop\n.end_macro\nemit(7)"
+            val entry = directory.resolve("unfinished.asm").also { it.writeText(source) }
+            val context = project.get().service<MarsSessionService>().context
+            val failure = assertThrows<ProcessingException> { context.assemble(listOf(entry), null, true, false) }
+            assertTrue(failure.errors().errorMessages.any { it.message.endsWith("Invalid language element: %") })
+            readAction {
+                val file = PsiFileFactory.getInstance(project.get()).createFileFromText("unfinished.asm", MipsFileType, source)
+                val percent = file.findElementAt(source.indexOf("%\n"))!!
+                assertEquals(MipsTypes.psi("BAD_CHARACTER"), percent.node.elementType)
+                assertEquals("%", percent.text)
+                val macro = descendants(file.node, "MACRO_DEFINITION").single()
+                assertEquals("body:", descendants(macro, "LABEL").single().text)
+                assertEquals("emit(7)", descendants(file.node, "OPERATION_CANDIDATE").single().text)
+            }
+        }
 
     @Test
     fun `a nested macro opener does not consume the outer terminator`(@TempDir directory: Path) = timeoutRunBlocking<Unit> {
