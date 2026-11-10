@@ -519,18 +519,19 @@ class MarsImportVenusPreferencesPlatformTest {
         }
     }
 
-    private class MemoryPreferences(parent: MemoryPreferences? = null, name: String = "") : AbstractPreferences(parent, name) {
-        val entries = mutableMapOf<String, String>()
-        private val children = mutableMapOf<String, MemoryPreferences>()
+}
 
-        override fun putSpi(key: String, value: String) { entries[key] = value }
-        override fun getSpi(key: String): String? = entries[key]
-        override fun removeSpi(key: String) { entries.remove(key) }
-        override fun removeNodeSpi() { (parent() as MemoryPreferences).children.remove(name()) }
-        override fun keysSpi() = entries.keys.toTypedArray()
-        override fun childrenNamesSpi() = children.keys.toTypedArray()
-        override fun childSpi(name: String) = children.getOrPut(name) { MemoryPreferences(this, name) }
-        override fun syncSpi() = Unit
-        override fun flushSpi() = Unit
-    }
+internal class MemoryPreferences(parent: MemoryPreferences? = null, name: String = "") : AbstractPreferences(parent, name) {
+    val entries = mutableMapOf<String, String>()
+    private val children = mutableMapOf<String, MemoryPreferences>()
+
+    override fun putSpi(key: String, value: String) { entries[key] = value }
+    override fun getSpi(key: String): String? = entries[key]
+    override fun removeSpi(key: String) { entries.remove(key) }
+    override fun removeNodeSpi() { (parent() as MemoryPreferences).children.remove(name()) }
+    override fun keysSpi() = entries.keys.toTypedArray()
+    override fun childrenNamesSpi() = children.keys.toTypedArray()
+    override fun childSpi(name: String) = children.getOrPut(name) { MemoryPreferences(this, name) }
+    override fun syncSpi() = Unit
+    override fun flushSpi() = Unit
 }

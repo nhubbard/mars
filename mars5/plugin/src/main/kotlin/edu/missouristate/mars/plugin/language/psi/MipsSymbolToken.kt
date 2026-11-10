@@ -25,6 +25,8 @@ import edu.missouristate.mars.plugin.language.macroColor
 import edu.missouristate.mars.plugin.language.macroParameterColor
 import edu.missouristate.mars.plugin.language.operationHead
 import edu.missouristate.mars.plugin.language.punctuationColor
+import edu.missouristate.mars.plugin.language.registerColor
+import edu.missouristate.mars.plugin.language.stringColor
 
 private val instructionOperandContexts = TokenSet.create(MipsTypes.psi("REFERENCE_EXPR"), MipsTypes.psi("OPERAND_FRAGMENT"))
 private val equivalenceContexts = TokenSet.orSet(
@@ -115,9 +117,9 @@ internal class MipsSymbolToken(type: IElementType, text: CharSequence) : LeafPsi
                 if (aliasOperand && use.suppliesOperation) return null
                 return when (use.type) {
                     in numericTypes -> DefaultLanguageHighlighterColors.NUMBER
-                    in registerTypes -> DefaultLanguageHighlighterColors.INSTANCE_FIELD
+                    in registerTypes -> registerColor
                     in punctuationTypes -> punctuationColor
-                    TokenTypes.QUOTED_STRING -> DefaultLanguageHighlighterColors.STRING
+                    TokenTypes.QUOTED_STRING -> stringColor
                     TokenTypes.MACRO_PARAMETER -> macroParameterColor
                     TokenTypes.IDENTIFIER, TokenTypes.OPERATOR -> if (analysis.isGeneratedLabel(file, element.parent)) {
                         labelColor

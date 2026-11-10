@@ -90,7 +90,7 @@ class MipsEditorPlatformTest {
                 }
                 val register = editor.highlighter.createIterator(source.indexOf("${'$'}t0")).textAttributes
                 assertEquals(
-                    editor.colorsScheme.getAttributes(DefaultLanguageHighlighterColors.INSTANCE_FIELD).foregroundColor,
+                    editor.colorsScheme.getAttributes(registerColor).foregroundColor,
                     register.foregroundColor,
                 )
             }
@@ -220,7 +220,7 @@ class MipsEditorPlatformTest {
             assertColor("CALL (COUNT)", DefaultLanguageHighlighterColors.NUMBER, "COUNT")
             assertColor("(${'$'}parameter)\n", macroParameterColor, "${'$'}parameter")
             assertColor("paint (${'$'}parameter)", macroParameterColor, "${'$'}parameter")
-            assertColor("DATA\n.extern", DefaultLanguageHighlighterColors.KEYWORD, "DATA")
+            assertColor("DATA\n.extern", directiveColor, "DATA")
         }
     }
 
@@ -262,7 +262,7 @@ class MipsEditorPlatformTest {
                     it.startOffset == start && it.endOffset == start + word.length && it.forcedTextAttributesKey != null
                 }?.forcedTextAttributesKey
             }
-            assertEquals(DefaultLanguageHighlighterColors.KEYWORD, color("OPEN NAME FORMALS", "OPEN"))
+            assertEquals(directiveColor, color("OPEN NAME FORMALS", "OPEN"))
             assertEquals(macroColor, color("OPEN NAME FORMALS", "NAME"))
             assertEquals(equivalenceColor, color("OPEN NAME FORMALS", "FORMALS"))
             assertEquals(macroColor, color("OPEN simple", "simple"))
@@ -340,11 +340,11 @@ class MipsEditorPlatformTest {
                     it.forcedTextAttributesKey != null }?.forcedTextAttributesKey
             }
             assertEquals(DefaultLanguageHighlighterColors.NUMBER, color("NUMBER OPEN", "NUMBER"))
-            assertEquals(DefaultLanguageHighlighterColors.INSTANCE_FIELD, color("BASE CLOSE", "BASE"))
+            assertEquals(registerColor, color("BASE CLOSE", "BASE"))
             assertEquals(punctuationColor, color("OPEN BASE", "OPEN"))
             assertEquals(punctuationColor, color("BASE CLOSE", "CLOSE"))
             assertEquals(labelColor, color("j DEST", "DEST"))
-            assertEquals(DefaultLanguageHighlighterColors.STRING, color(".asciiz MESSAGE", "MESSAGE"))
+            assertEquals(stringColor, color(".asciiz MESSAGE", "MESSAGE"))
             assertEquals(macroParameterColor, color("li \$t0, VALUE", "VALUE"))
             assertEquals(macroParameterColor, color("\n    %op\n", "%op"))
             assertEquals(macroParameterColor, color("\n    HEAD\n", "HEAD"))
@@ -482,7 +482,9 @@ class MipsEditorPlatformTest {
             mapOf("Instruction mnemonic" to instructionMnemonicColor, "Label" to labelColor,
                 "Macro name" to macroColor, "Equivalence" to equivalenceColor,
                 "Equivalence replacement symbol" to equivalenceReplacementColor, "Macro parameter" to macroParameterColor,
-                "Punctuation and operators" to punctuationColor),
+                "Punctuation and operators" to punctuationColor, "Assembler directive" to directiveColor,
+                "String literal" to stringColor, "Character literal" to characterColor, "Invalid token" to invalidColor,
+                "Comment" to commentColor, "Register" to registerColor),
             page.attributeDescriptors.associate { it.displayName to it.key },
         )
         assertEquals(

@@ -82,7 +82,7 @@ internal class MipsInstructionHighlighter : Annotator, DumbAware {
                 site.type == TokenTypes.OPERATOR -> instructionMnemonicColor
                 site.type == TokenTypes.IDENTIFIER -> macroColor
                 site.type == TokenTypes.MACRO_PARAMETER -> macroParameterColor
-                else -> DefaultLanguageHighlighterColors.KEYWORD
+                else -> directiveColor
             }
             holder.color(site.range, color)
         }

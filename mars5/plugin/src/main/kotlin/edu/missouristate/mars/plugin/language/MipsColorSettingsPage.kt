@@ -11,13 +11,17 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
     override fun getHighlighter() = MipsSyntaxHighlighter()
     override fun getColorDescriptors(): Array<ColorDescriptor> = emptyArray()
 
-    override fun getAttributeDescriptors() = semanticColors.map { (tag, key) ->
+    override fun getAttributeDescriptors() = (semanticColors + syntaxColors).map { (tag, key) ->
         AttributesDescriptor(bundle.getMessage("colors.$tag"), key)
     }.toTypedArray()
 
     override fun getAdditionalHighlightingTagToDescriptorMap() = semanticColors
 
     override fun getDemoText() = """
+        # MIPS source
+        .data
+        .asciiz "MARS"
+        .byte 'A', 'bad'
         .eqv <equivalence>COUNT</equivalence> 3
         .eqv <equivalence>AGAIN</equivalence> <replacement>loop</replacement>
         .macro <macro>decrement</macro> (%counter)
@@ -41,6 +45,14 @@ internal class MipsColorSettingsPage : ColorSettingsPage {
             "replacement" to equivalenceReplacementColor,
             "parameter" to macroParameterColor,
             "punctuation" to punctuationColor,
+        )
+        val syntaxColors = mapOf(
+            "directive" to directiveColor,
+            "string" to stringColor,
+            "character" to characterColor,
+            "invalid" to invalidColor,
+            "comment" to commentColor,
+            "register" to registerColor,
         )
     }
 }

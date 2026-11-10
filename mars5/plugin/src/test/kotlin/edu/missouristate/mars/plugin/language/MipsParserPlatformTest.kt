@@ -5,7 +5,6 @@ import com.intellij.lang.LanguageParserDefinitions
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.DefaultLanguageHighlighterColors
-import com.intellij.openapi.editor.HighlighterColors
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.platform.syntax.element.SyntaxTokenTypes
 import com.intellij.platform.syntax.psi.PsiSyntaxBuilderFactory
@@ -1024,7 +1023,7 @@ class MipsParserPlatformTest {
             assertEquals(listOf("(", "''", "'\\,'", "10", ")"),
                 descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
             assertEquals("next:", descendants(file.node, "LABEL").single().text)
-            assertArrayEquals(arrayOf(HighlighterColors.BAD_CHARACTER),
+            assertArrayEquals(arrayOf(invalidColor),
                 MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("INVALID_CHARACTER")))
         }
     }
@@ -1106,7 +1105,7 @@ class MipsParserPlatformTest {
         readAction {
             assertParses(".set: nop\nb .set\n")
             assertArrayEquals(
-                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
+                arrayOf(directiveColor),
                 MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("SET")),
             )
         }
@@ -1145,7 +1144,7 @@ class MipsParserPlatformTest {
             )
             assertEquals(listOf("USER_DATA"), descendants(file.node, "SEGMENT_ADDRESS_SYMBOL").map { it.text }.toList())
             assertArrayEquals(
-                arrayOf(DefaultLanguageHighlighterColors.KEYWORD),
+                arrayOf(directiveColor),
                 MipsSyntaxHighlighter().getTokenHighlights(MipsTypes.psi("SEGMENT")),
             )
         }

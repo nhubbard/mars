@@ -16,19 +16,26 @@ internal val punctuationColor = TextAttributesKey.createTextAttributesKey(
 internal val macroParameterColor = TextAttributesKey.createTextAttributesKey(
     "MARS_MIPS_MACRO_PARAMETER", DefaultLanguageHighlighterColors.PARAMETER,
 )
+internal val directiveColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_DIRECTIVE", DefaultLanguageHighlighterColors.KEYWORD)
+internal val stringColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_STRING", DefaultLanguageHighlighterColors.STRING)
+internal val characterColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_CHARACTER", DefaultLanguageHighlighterColors.STRING)
+internal val invalidColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_INVALID", HighlighterColors.BAD_CHARACTER)
+internal val commentColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_COMMENT", DefaultLanguageHighlighterColors.LINE_COMMENT)
+internal val registerColor = TextAttributesKey.createTextAttributesKey("MARS_MIPS_REGISTER", DefaultLanguageHighlighterColors.INSTANCE_FIELD)
 
 class MipsSyntaxHighlighter(private val debuggerExpression: Boolean = false) : SyntaxHighlighterBase() {
     private val colors = buildMap<IElementType, TextAttributesKey> {
         for (name in listOf("DIRECTIVE", "MACRO", "END_MACRO", "EQV", "INCLUDE", "SET", "SEGMENT", "EXTERN")) {
-            put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.KEYWORD)
+            put(MipsTypes.psi(name), directiveColor)
         }
-        for (name in listOf("STRING", "UNCLOSED_STRING", "CHARACTER")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.STRING)
+        for (name in listOf("STRING", "UNCLOSED_STRING")) put(MipsTypes.psi(name), stringColor)
+        put(MipsTypes.psi("CHARACTER"), characterColor)
         for (name in listOf("UNCLOSED_CHARACTER", "INVALID_CHARACTER", "BAD_CHARACTER")) {
-            put(MipsTypes.psi(name), HighlighterColors.BAD_CHARACTER)
+            put(MipsTypes.psi(name), invalidColor)
         }
-        put(MipsTypes.psi("COMMENT"), DefaultLanguageHighlighterColors.LINE_COMMENT)
+        put(MipsTypes.psi("COMMENT"), commentColor)
         put(MipsTypes.psi("NUMBER"), DefaultLanguageHighlighterColors.NUMBER)
-        put(MipsTypes.psi("REGISTER"), DefaultLanguageHighlighterColors.INSTANCE_FIELD)
+        put(MipsTypes.psi("REGISTER"), registerColor)
         put(MipsTypes.psi("PARAMETER"), macroParameterColor)
         for (name in listOf("WORD", "DOLLAR_WORD", "MNEMONIC")) put(MipsTypes.psi(name), DefaultLanguageHighlighterColors.IDENTIFIER)
         for (name in listOf("COMMA", "COLON", "LEFT_PAREN", "RIGHT_PAREN", "PLUS", "MINUS")) {

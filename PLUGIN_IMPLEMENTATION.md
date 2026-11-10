@@ -2159,6 +2159,24 @@ The packaged IntelliJ 2026.3 smoke test confirmed that an open MIPS editor
 adopted the imported line-number setting and default font. The IDE also saved
 the caret interval and completion marker in its local settings.
 
+### Import Venus syntax styles
+
+**File → Import Venus Syntax Styles** previews saved foreground colors and
+bold and italic settings. It covers Venus's nine MIPS editor categories.
+Confirming creates a named **MARS Venus** copy of the active color scheme.
+If that name is in use, the preview shows the numbered name for the new copy.
+Select the new scheme in **Settings → Editor → Color Scheme** to apply it.
+
+The imported categories are independently editable under **Color Scheme →
+MARS MIPS**. The copy preserves the source scheme's values and fallbacks
+where Venus supplies no override, including effects and backgrounds. Settings
+are scoped to MIPS syntax keys, and the syntax import has its own local
+completion marker.
+
+The packaged IntelliJ 2026.3 smoke test created the scheme from sample Venus
+preferences, selected it, and verified the imported comment and directive
+styles in an open MIPS editor. IntelliJ wrote the scheme to an `.icls` file.
+
 ## New MIPS files and projects
 
 In an existing project, select a directory in the Project view and choose
