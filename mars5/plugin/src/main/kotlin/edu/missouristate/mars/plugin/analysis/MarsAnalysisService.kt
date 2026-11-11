@@ -638,9 +638,8 @@ class MarsAnalysisService(private val project: Project, scope: CoroutineScope) :
         val tokens = Tokenizer.tokenizeWithEquivalences(
             source, errors, { prefix.equivalence(it)?.replacement }, ProgressManager::checkCanceled,
         )
-        // On a circular expansion the tokenizer restores the original source, so the token spans
-        // cannot be used to highlight an operand. Other errors can be unfinished operand tokens.
-        if (errors.errorsOccurred() && (!allowIncompleteOperand || tokens.processedLine == source)) return null
+        // An unfinished operand still has a usable token span after a complete expansion.
+        if (!tokens.hasCompleteEquivalenceExpansion() || !allowIncompleteOperand && errors.errorsOccurred()) return null
         return tokens
     }
 

@@ -198,6 +198,26 @@ class MipsParameterInfoPlatformTest {
     }
 
     @Test
+    fun `parameter info counts later operands after malformed tokens without expanding a cycle`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val definition = ".macro emit (%first, %second, %third)\nnop\n.end_macro\n"
+            val second = "emit (%first, <b>%second</b>, %third)"
+            val third = "emit (%first, %second, <b>%third</b>)"
+            assertEquals("emit (<b>%first</b>, %second, %third)", info(definition + "emit(0x<caret>, \$t0, target)"))
+            assertEquals(second, info(definition + "emit(0x, \$t<caret>0, target)"))
+            assertEquals(third, info(definition + "emit(0x, \$t0, <caret>target)"))
+            assertEquals(third, info(definition + "emit(0x, \$t0, <caret>"))
+            assertEquals(third, info(definition + ".eqv CALL emit\nCALL(0x, \$t0, <caret>target)"))
+            assertNull(info(definition + "emit(0x, \$t0, target)<caret>"))
+            assertEquals("sll \$t1,\$t2,<b>10</b>",
+                info(".eqv SHIFT sll \$t0\nSHIFT bad%, <caret>4"))
+            val cycle = ".eqv FIRST SECOND\n.eqv SECOND FIRST\n"
+            assertEquals(second, info(definition + cycle + "emit(0x, <caret>FIRST, target)"))
+            assertNull(info(definition + cycle + "emit(FIRST, \$t0, <caret>target)"))
+        }
+    }
+
+    @Test
     fun `macro hints follow included redefinitions aliases and edits`() = timeoutRunBlocking<Unit> {
         val current = project.get()
         withContext(Dispatchers.EDT) {
