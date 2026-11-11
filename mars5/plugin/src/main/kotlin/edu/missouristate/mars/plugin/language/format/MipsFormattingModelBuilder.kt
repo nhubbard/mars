@@ -176,6 +176,8 @@ private class MipsBlock(
             // Without assembly context, a written gap can be part of an expanded string.
             timelines.value == null -> readOnly
             left.elementType in protectedSpacing || right.elementType in protectedSpacing -> readOnly
+            // A recovered operand may wrap an invalid token containing non-assembler whitespace.
+            before == badCharacter || after == badCharacter -> readOnly
             line?.verbatimOperandRanges.orEmpty().any { it.startOffset < left.textRange.endOffset && right.startOffset < it.endOffset } -> readOnly
             right.elementType == externalName -> oneSpace
             left.elementType == externalName -> if (after == comma) noSpaces else oneSpace
@@ -205,6 +207,7 @@ private class MipsBlock(
         val leftParen = MipsTypes.psi("LEFT_PAREN")
         val colon = MipsTypes.psi("COLON")
         val comma = MipsTypes.psi("COMMA")
+        val badCharacter = MipsTypes.psi("BAD_CHARACTER")
         val trivia = TokenSet.create(TokenType.WHITE_SPACE, newline)
         val signs = TokenSet.create(MipsTypes.psi("PLUS"), MipsTypes.psi("MINUS"))
         val closingPunctuation = TokenSet.create(comma, colon, MipsTypes.psi("RIGHT_PAREN"))

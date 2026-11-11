@@ -122,12 +122,19 @@ internal fun inspectMipsInclude(source: CharSequence, start: Int, end: Int): Tok
 
 /** Report the invalid token without losing the path or resuming normal statement parsing. */
 @Suppress("UNUSED_PARAMETER")
-internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean {
-    val builder = runtime.syntaxBuilder
-    if (builder.tokenType != BAD_CHARACTER) return false
-    val marker = builder.mark()
-    builder.advanceLexer()
-    marker.error(syntaxMessages.getMessage("syntax.include.invalid.token"))
+internal fun recoverBadIncludeToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
+    runtime.syntaxBuilder.recoverBadToken("syntax.include.invalid.token")
+
+/** Keep the following operand or replacement token available while the bad token is being edited. */
+@Suppress("UNUSED_PARAMETER")
+internal fun recoverBadOperandToken(runtime: SyntaxGeneratedParserRuntime, level: Int): Boolean =
+    runtime.syntaxBuilder.recoverBadToken("syntax.operand.invalid.token")
+
+private fun SyntaxTreeBuilder.recoverBadToken(messageKey: String): Boolean {
+    if (tokenType != BAD_CHARACTER) return false
+    val marker = mark()
+    advanceLexer()
+    marker.error(syntaxMessages.getMessage(messageKey))
     return true
 }
 

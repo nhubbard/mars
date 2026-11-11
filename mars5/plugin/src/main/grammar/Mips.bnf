@@ -1,7 +1,7 @@
 {
   generate=[psi="no" parser-api="syntax"]
   parserClass="edu.missouristate.mars.plugin.language.parser.MipsParser"
-  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteMacroOperands"]
+  parserImports=["edu.missouristate.mars.plugin.language.syntax.continueOperand" "edu.missouristate.mars.plugin.language.syntax.startsSignedNumber" "edu.missouristate.mars.plugin.language.syntax.isShortEquivalence" "edu.missouristate.mars.plugin.language.syntax.isIncludeLine" "edu.missouristate.mars.plugin.language.syntax.recoverBadIncludeToken" "edu.missouristate.mars.plugin.language.syntax.recoverBadOperandToken" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroName" "edu.missouristate.mars.plugin.language.syntax.recoverInvalidMacroFormal" "edu.missouristate.mars.plugin.language.syntax.recoverMalformedMacroEnd" "edu.missouristate.mars.plugin.language.syntax.recoverCharacterLiteral" "edu.missouristate.mars.plugin.language.syntax.recoverStatement" "edu.missouristate.mars.plugin.language.syntax.parseCompleteMacroOperands"]
   syntaxElementTypeHolderClass="edu.missouristate.mars.plugin.language.parser.MipsSyntaxTypes"
   extends(".*_expr")=expr
   tokens=[
@@ -47,7 +47,7 @@ file ::= (NEWLINE | statement)*
 statement ::= (include_line | label body? | body) {recoverWhile=line_recover}
 // The assembler replaces the physical line before interpreting labels, macros, or operands.
 include_line ::= <<isIncludeLine>> include_token+
-private include_token ::= assembly_token | <<recoverBadIncludeToken>>
+private include_token ::= <<recoverBadIncludeToken>> | assembly_token
 private body ::= macro_definition | macro_header | non_macro_body | data_continuation | <<recoverStatement>>
 private non_macro_body ::= macro_end | malformed_macro_end | short_equivalence | equivalence | ignored_set | segment_switch | external_statement | directive_statement | instruction | operation_candidate
 private line_recover ::= !NEWLINE
@@ -77,7 +77,7 @@ macro_parameter ::= PARAMETER | DOLLAR_WORD | WORD
 short_equivalence ::= EQV <<isShortEquivalence>> raw_operand? &line_end {elementType=directive_statement}
 equivalence ::= EQV name replacement+ {pin=1}
 replacement ::= assembly_token
-private assembly_token ::= signed_number | single_assembly_token | unfinished_character
+private assembly_token ::= signed_number | single_assembly_token | unfinished_character | <<recoverBadOperandToken>>
 private single_assembly_token ::= WORD | MNEMONIC | DIRECTIVE | REGISTER | DOLLAR_WORD | PARAMETER | NUMBER | quoted_operand | CHARACTER | COLON | LEFT_PAREN | RIGHT_PAREN | PLUS | MINUS | MACRO | END_MACRO | EQV | INCLUDE | SET | SEGMENT | EXTERN
 private signed_number ::= <<startsSignedNumber>> (PLUS | MINUS) NUMBER
 // MARS warns and ignores .set, so its payload is a sequence of assembler tokens.
@@ -104,9 +104,9 @@ operation ::= MNEMONIC
 operation_candidate ::= candidate_head invocation_token*
 private candidate_head ::= WORD | DOLLAR_WORD | PARAMETER
 invocation_token ::= assembly_token
-data_continuation ::= operand_line
+data_continuation ::= !BAD_CHARACTER operand_line
 // A body line without a written operation is also deferred until expansion.
-macro_data_continuation ::= macro_operand_line {elementType=data_continuation}
+macro_data_continuation ::= !BAD_CHARACTER macro_operand_line {elementType=data_continuation}
 private operand_line ::= complete_operand_list | operand_fragment | operand_list
 private complete_operand_list ::= operand_list &(NEWLINE | <<eof>>)
 // Substitution can introduce syntax that balances the row only after expansion.
@@ -114,7 +114,7 @@ operand_fragment ::= &(fixed_operand_token* substitutable_operand_token) assembl
 private fixed_operand_token ::= !substitutable_operand_token assembly_token
 private substitutable_operand_token ::= WORD | DOLLAR_WORD | PARAMETER
 operand_list ::= operand+
-operand ::= expr repetition?
+operand ::= expr repetition? | <<recoverBadOperandToken>>
 repetition ::= COLON expr {pin=1}
 // The debugger lexer alone emits comparison and bitwise tokens.
 debugger_expression ::= expr <<eof>> {extraRoot=true}

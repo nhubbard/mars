@@ -530,7 +530,10 @@ class MipsParserPlatformTest {
                 val file = factory.createFileFromText("main.s", MipsFileType, "$line\nnext: nop")
                 assertEquals(line, descendants(file.node, "INCLUDE_LINE").single().text)
                 assertEquals(listOf("next:"), descendants(file.node, "LABEL").map { it.text }.toList())
-                assertEquals(expectedErrors, PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java).map { it.text })
+                val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+                assertEquals(expectedErrors, errors.map { it.text })
+                assertTrue(errors.filter { it.firstChild.node.elementType == MipsTypes.psi("BAD_CHARACTER") }
+                    .all { it.errorDescription == "Invalid MARS token on include line" })
                 assertEquals(".include", descendants(file.node, "INCLUDE").single().text)
                 assertEquals("\"part.s\"", descendants(file.node, "STRING").single().text)
             }
@@ -1227,6 +1230,34 @@ class MipsParserPlatformTest {
     }
 
     @Test
+    fun `malformed operands keep later arguments and replacement tokens on the same line`() = timeoutRunBlocking<Unit> {
+        readAction {
+            val source = """
+                .data
+                .word 0x, 7
+                .eqv VALUE @bad, 8
+                .text
+                .macro emit (%a, %b, %c)
+                addiu ${'$'}t0, 1e, %b
+                .end_macro
+                emit(0x, ${'$'}t0, target)
+                target: nop
+            """.trimIndent()
+            val file = PsiFileFactory.getInstance(project.get()).createFileFromText("editing.mars", MipsFileType, source)
+            assertEquals(source, file.text)
+            val errors = PsiTreeUtil.findChildrenOfType(file, PsiErrorElement::class.java)
+            assertEquals(listOf("0x", "@bad", "1e", "0x"), errors.map { it.text })
+            assertTrue(errors.all { it.errorDescription == "Invalid MARS operand token" })
+            assertEquals(listOf("0x", "7"), descendants(file.node, "OPERAND").map { it.text }.toList())
+            assertEquals(listOf("@bad", "8"), descendants(file.node, "REPLACEMENT").map { it.text }.toList())
+            assertEquals("\$t0, 1e, %b", descendants(file.node, "OPERAND_FRAGMENT").single().text)
+            assertEquals(listOf("(", "0x", "\$t0", "target", ")"),
+                descendants(file.node, "INVOCATION_TOKEN").map { it.text }.toList())
+            assertEquals("target:", descendants(file.node, "LABEL").single().text)
+        }
+    }
+
+    @Test
     fun `punctuation in percent formals survives parsing and macro substitution`(@TempDir directory: Path) =
         timeoutRunBlocking<Unit> {
             val formal = "%value!@?.part"
@@ -1743,7 +1774,7 @@ class MipsParserPlatformTest {
     @Test
     fun `incomplete and malformed statements preserve later source lines`() = timeoutRunBlocking<Unit> {
         readAction {
-            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv @", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
+            for (broken in listOf("lw \$t0,4(\$sp", "add \$t0,+", "bad @ token", ".eqv @", ".eqv -0xG", ".eqv ,,, 7 8", ".macro foo (1", ".macro 7",
                 ".word 1 != 2", ".word 1 <= 2", ".word (1+2)",
                 ".word 1 | 2", ".word 1 ^ 2", ".word 1 & 2", ".word ~1", ".word 1 << 2", ".word 1 >>> 2")) {
                 val text = broken + "\nnext: nop\n"
