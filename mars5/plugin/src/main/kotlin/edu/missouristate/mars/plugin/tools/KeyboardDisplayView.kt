@@ -65,7 +65,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
     private var displayed: MmioTerminalDisplay? = null
     private var updatingOptions = false
 
-    val component = panel {
+    private val controls = panel {
         row(toolsMessages.getMessage("counter.selector")) { cell(selector.component).align(AlignX.FILL).resizableColumn() }
         row {
             cell(toggle)
@@ -86,6 +86,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         row { cell(remaining) }
         row { comment(toolsMessages.getMessage("keyboardDisplay.help"), maxLineLength = 45) }
     }
+    val component = scrollableToolPanel(this, controls, mapOf(editor.contentComponent to editor.component))
 
     init {
         toggle.addActionListener {
@@ -108,7 +109,7 @@ internal class KeyboardDisplayView(project: Project) : Disposable {
         delayMode.addActionListener { configure() }
         instructions.addChangeListener { configure() }
         delayedOutput.addActionListener { configure() }
-        component.registerValidators(this)
+        controls.registerValidators(this)
         selector.refresh()
         selectionChanged()
     }

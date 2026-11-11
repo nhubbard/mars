@@ -22,11 +22,11 @@ import com.intellij.util.ui.UIUtil
 import edu.missouristate.mars.plugin.run.MarsProcessHandler
 import edu.missouristate.mars.plugin.tools.MemoryGridDisplay.Mode
 import edu.missouristate.mars.plugin.tools.xray.XRayView
-import java.awt.Rectangle
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JProgressBar
+import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -89,9 +89,9 @@ internal fun scrollableToolPanel(
 ) = ScrollPaneFactory.createScrollPane(body, true).also {
     UIUtil.uiTraverser(body).filter(JComponent::class.java).forEach { control ->
         control.whenFocusGained(owner) {
-            // Reveal the inner viewport in the tool panel without changing its own scroll position.
+            // Scroll the tool panel even when the focused control handles scrolling internally.
             val target = nestedScrollPanes.getOrDefault(control, control)
-            target.scrollRectToVisible(Rectangle(0, 0, target.width, target.height))
+            body.scrollRectToVisible(SwingUtilities.convertRectangle(target.parent, target.bounds, body))
         }
     }
 }

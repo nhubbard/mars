@@ -18,16 +18,20 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.content.ContentFactory
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.withForcedRespectIsShowingClientProperty
 import com.intellij.util.ui.withShowingChanged
 import edu.missouristate.mars.plugin.run.MarsRunService
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Delay
 import edu.missouristate.mars.plugin.tools.KeyboardDisplayDevice.Options
+import java.awt.Dimension
+import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JPanel
+import javax.swing.JScrollPane
 import javax.swing.JSpinner
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
@@ -37,6 +41,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -44,6 +49,34 @@ import org.junit.jupiter.api.Test
 class KeyboardDisplayPlatformTest {
     private val projectFixture = codeInsightProjectFixture()
     private val fixture by codeInsightFixture(projectFixture)
+
+    @Test
+    fun `tool panel reveals focused text fields outside the viewport`() = timeoutRunBlocking<Unit> {
+        withContext(Dispatchers.EDT) {
+            val owner = Disposer.newDisposable()
+            try {
+                val field = JBTextField()
+                val originalListeners = field.focusListeners.toSet()
+                val body = JPanel(null).apply {
+                    preferredSize = Dimension(200, 400)
+                    add(field)
+                    field.setBounds(20, 300, 160, 26)
+                }
+                val scroll = scrollableToolPanel(owner, body, emptyMap())
+                scroll.setSize(220, 160)
+                scroll.doLayout()
+                val viewport = scroll.viewport
+                viewport.doLayout()
+                assertFalse(viewport.viewRect.contains(field.bounds))
+                // Simulate only the tool's listener. AWT remembers the last focused text component.
+                val reveal = field.focusListeners.single { it !in originalListeners }
+                reveal.focusGained(FocusEvent(field, FocusEvent.FOCUS_GAINED))
+                assertTrue(viewport.viewRect.contains(field.bounds))
+            } finally {
+                Disposer.dispose(owner)
+            }
+        }
+    }
 
     @Test
     fun `tool keyboard drives a real receiver and renders sequential and addressed output`() = timeoutRunBlocking<Unit>(20.seconds) {
@@ -130,6 +163,22 @@ class KeyboardDisplayPlatformTest {
                 }
                 assertFalse(type('X'))
                 button("Connect").doClick()
+                val scroll = assertInstanceOf(JScrollPane::class.java, view.component)
+                scroll.setSize(JBUI.scale(380), JBUI.scale(175))
+                scroll.doLayout()
+                val viewport = scroll.viewport
+                viewport.doLayout()
+                val body = viewport.view
+                body.doLayout()
+                val resize = button("Resize and Reset")
+                resize.parent.doLayout()
+                val bounds = SwingUtilities.convertRectangle(resize.parent, resize.bounds, body)
+                assertTrue(bounds.height > 0)
+                assertFalse(viewport.viewRect.contains(bounds))
+                resize.focusListeners.forEach { it.focusGained(FocusEvent(resize, FocusEvent.FOCUS_GAINED)) }
+                assertTrue(viewport.viewRect.y <= bounds.y && viewport.viewRect.maxY >= bounds.maxY) {
+                    "Resize bounds ${bounds} must be vertically visible in ${viewport.viewRect}"
+                }
                 assertTrue(type('M'))
                 val delay = UIUtil.findComponentsOfType(view.component, JComboBox::class.java).single { it.itemCount == 3 }
                 delay.selectedItem = Delay.UNIFORM

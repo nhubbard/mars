@@ -1993,6 +1993,17 @@ The **Display** uses the IDE console editor and font settings. The panel
 offers fixed, uniform, and normal delay modes and a **Display after delay**
 toggle. Try the echo program in `examples/mmio-terminal/echo.asm`.
 
+The tool scrolls to the focused control when the dock is too short. A
+Jupiter fixture verifies that focus reveals a text field outside the
+viewport and that the connected tool reveals **Resize and Reset**. In
+the packaged macOS replay at 150% zoom in High Contrast, activating
+**Connect** with Space revealed and focused **Keyboard**. The simulator
+echoed a typed `M` into the display document, and **Resize and Reset**
+received focus and remained reachable with Space. In the narrow dock,
+revealing the keyboard field also scrolled horizontally, putting the
+left edge of the output beyond the viewport. The log and screenshots
+are under `mars5/.gradle/release-host-checks/keyboard-display-layout`.
+
 The Kotlin device implements the receiver control and data words at MMIO
 base + `0x00` and `0x04` and the transmitter control and data words at
 `0x08` and `0x0c`. It applies host input at instruction boundaries and
