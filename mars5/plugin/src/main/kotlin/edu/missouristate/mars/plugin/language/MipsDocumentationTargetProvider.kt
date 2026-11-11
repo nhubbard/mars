@@ -24,6 +24,7 @@ import com.intellij.psi.util.PsiUtilCore
 import edu.missouristate.mars.assembler.Directives
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.BasicInstruction
+import edu.missouristate.mars.mips.instructions.Instruction
 import edu.missouristate.mars.mips.instructions.InstructionDefaults
 import edu.missouristate.mars.plugin.analysis.MarsAnalysisService
 import java.util.TreeMap
@@ -133,11 +134,13 @@ internal class MipsDocumentationTargetProvider : DocumentationTargetProvider, Lo
     }
 }
 
+internal data class MipsCompletionTails(val symbolic: String, val numeric: String)
+
 /** Catalog documentation is immutable and does not retain PSI or editor state. */
 internal class MipsCatalogEntry(
     val name: String,
-    val completionTail: String,
-    val basicCompletionTail: String?,
+    private val completionTails: MipsCompletionTails,
+    private val basicCompletionTails: MipsCompletionTails?,
     private val forms: List<Pair<String, String>>,
 ) : DocumentationTarget {
     override fun createPointer(): Pointer<MipsCatalogEntry> = Pointer.hardPointer(this)
@@ -145,6 +148,11 @@ internal class MipsCatalogEntry(
     override fun computePresentation(): TargetPresentation = TargetPresentation.builder(name).presentation()
 
     val searchText: String = forms.joinToString(" ") { (example, description) -> "$example $description" }
+
+    fun completionTail(allowPseudo: Boolean, bareMachine: Boolean): String? {
+        val tails = (if (allowPseudo) completionTails else basicCompletionTails) ?: return null
+        return if (bareMachine) tails.numeric else tails.symbolic
+    }
 
     fun referenceHtml(): String = buildString {
         for ((example, description) in forms) {
@@ -163,19 +171,26 @@ internal object MipsDocumentationCatalog {
         TreeMap<String, MipsCatalogEntry>(String.CASE_INSENSITIVE_ORDER).apply {
             for ((name, instructions) in InstructionDefaults.get().instructionList.groupBy { it.name }) {
                 val forms = instructions.map { it.exampleFormat to it.description }.distinct()
-                val basic = instructions.firstOrNull { it is BasicInstruction }
-                put(name, MipsCatalogEntry(name, forms.first().first.removePrefix(name), basic?.exampleFormat?.removePrefix(name), forms))
+                val tails = completionTails(instructions.first())
+                val basicTails = instructions.firstOrNull { it is BasicInstruction }?.let(::completionTails)
+                put(name, MipsCatalogEntry(name, tails, basicTails, forms))
             }
             for (directive in Directives.getDirectiveList()) {
                 val name = directive.name
                 val description = directive.description
                 val tail = "  $description"
-                put(name, MipsCatalogEntry(name, tail, tail, listOf(name to description)))
+                val tails = MipsCompletionTails(tail, tail)
+                put(name, MipsCatalogEntry(name, tails, tails, listOf(name to description)))
             }
         }
     }
 
     val entries: Collection<MipsCatalogEntry> get() = byName.values
+
+    private fun completionTails(instruction: Instruction) = MipsCompletionTails(
+        instruction.exampleFormat.removePrefix(instruction.name),
+        renderInstructionExample(instruction, bareMachine = true).text.removePrefix(instruction.name),
+    )
 
     operator fun get(name: String): MipsCatalogEntry = byName.getValue(name)
 }

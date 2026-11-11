@@ -61,6 +61,27 @@ class MipsCompletionPlatformTest {
     }
 
     @Test
+    fun `bare-machine mnemonic completion shows numeric instruction examples`() = timeoutRunBlocking<Unit> {
+        IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
+        withContext(Dispatchers.EDT) {
+            val settings = project.get().service<MarsAssemblySettings>()
+            settings.changeBareMachine(true)
+            for (allowPseudo in listOf(true, false)) {
+                settings.changeAssemblerOptions(allowPseudo, warningsAreErrors = false)
+                fixture.configureByText("numeric-examples.asm", "  <caret>")
+                val items = fixture.completeBasic().orEmpty().associateBy { it.lookupString }
+                fun tail(name: String) = LookupElementPresentation().also(items.getValue(name)::renderElement).tailText
+                assertEquals(" \$9,\$10", tail("div"))
+                assertEquals(" \$9,\$8", tail("mtc0"))
+                assertEquals(" \$f0,\$f1,\$f3", tail("add.s"))
+                assertEquals("  " + Directives.TEXT.description, tail(".text"))
+                assertEquals(allowPseudo, "li" in items)
+                if (allowPseudo) assertEquals(" \$9,-100", tail("li"))
+            }
+        }
+    }
+
+    @Test
     fun `catalog completion inserts a dotted mnemonic after a label and a directive inside a macro`() = timeoutRunBlocking<Unit> {
         IndexingTestUtil.suspendUntilIndexesAreReady(project.get())
         withContext(Dispatchers.EDT) {

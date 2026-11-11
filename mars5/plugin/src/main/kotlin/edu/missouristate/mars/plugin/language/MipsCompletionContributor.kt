@@ -28,9 +28,9 @@ class MipsCompletionContributor : CompletionContributor(), DumbAware {
                 val file = parameters.originalFile as MipsFile
                 val prefix = prefix(parameters)
                 val lookup = result.withPrefixMatcher(prefix)
-                val allowPseudo = file.project.service<MarsAssemblySettings>().executionOptions.allowPseudoInstructions
+                val options = file.project.service<MarsAssemblySettings>().executionOptions
                 val items = MipsDocumentationCatalog.entries.mapNotNull { entry ->
-                    val tail = if (allowPseudo) entry.completionTail else entry.basicCompletionTail
+                    val tail = entry.completionTail(options.allowPseudoInstructions, options.bareMachine)
                     tail?.let { LookupElementBuilder.create(entry, entry.name).withTailText(it, true) }
                 }
                 lookup.caseInsensitive().addAllElements(items)

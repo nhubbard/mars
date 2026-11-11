@@ -325,10 +325,20 @@ completion, and Parameter Info to basic instruction forms. For example, `div`
 keeps its two-register form, and the editor offers no third-register operand.
 The same rule applies when an `.eqv` alias supplies the mnemonic. The reference
 catalog still documents every form, and macros keep their own hints.
+In a bare-machine project, mnemonic completion uses the same numeric
+general-purpose register examples as Parameter Info. The catalog caches
+the text for both spellings. Directives and Coprocessor 0 and floating-point
+operands use their catalog text.
+
 In the packaged macOS IDE, completion offered `addiu` and excluded `abs`.
 Selecting `addiu` produced a runnable program that printed `42`. All 2,030
 Jupiter tests and both coverage gates passed. The log and screenshots are under
 `mars5/.gradle/release-host-checks/pseudo-instruction-assistance`.
+With both bare-machine mode enabled and pseudo-instructions disabled, a
+subsequent packaged replay displayed `addiu $9,$10,-100` in the lookup and
+ran the selected instruction in a program that printed `42`. All 2,032
+Jupiter tests and both coverage gates passed. Evidence is under
+`mars5/.gradle/release-host-checks/bare-machine-mnemonics`.
 
 The contributor uses no indexes and caches only catalog text. It creates new lookup elements
 per request because IntelliJ attaches editor and project state to them. Native Jupiter fixtures

@@ -1,10 +1,12 @@
 package edu.missouristate.mars.plugin.language
 
 import com.intellij.openapi.components.service
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.tree.TokenSet
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
+import edu.missouristate.mars.assembler.RegisterNames
 import edu.missouristate.mars.assembler.TokenList
 import edu.missouristate.mars.assembler.TokenTypes
 import edu.missouristate.mars.mips.instructions.BasicInstruction
@@ -35,6 +37,30 @@ internal val Instruction.hasCoprocessor0Register: Boolean get() = this is InstrM
 internal fun enabledInstructionFormats(name: String, allowPseudo: Boolean): List<Instruction> {
     val formats = InstructionDefaults.get().matchOperator(name)
     return if (allowPseudo) formats else formats.filterIsInstance<BasicInstruction>()
+}
+
+internal data class MipsParameterRow(val text: String, val ranges: List<TextRange>)
+
+internal fun renderInstructionExample(instruction: Instruction, bareMachine: Boolean): MipsParameterRow {
+    val example = instruction.exampleFormat
+    val format = instruction.tokenList
+    val text = StringBuilder(example.length)
+    var previousEnd = 0
+    val ranges = (1 until format.size()).map { index ->
+        val token = format[index]
+        val start = token.startPos - 1
+        val end = token.endPos - 1
+        text.append(example, previousEnd, start)
+        val renderedStart = text.length
+        if (bareMachine && token.type == TokenTypes.REGISTER_NAME) {
+            text.append('$').append(RegisterNames.integer(token.value).number)
+        } else {
+            text.append(example, start, end)
+        }
+        previousEnd = end
+        TextRange(renderedStart, text.length)
+    }
+    return MipsParameterRow(text.append(example, previousEnd, example.length).toString(), ranges)
 }
 
 internal class MipsInstructionOperand(val index: Int, val formats: List<Instruction>) {
