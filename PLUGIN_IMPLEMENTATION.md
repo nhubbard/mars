@@ -2593,6 +2593,12 @@ the same three Bitmap Display positions using the arrow keys. Its
 screenshot and saved theme ID are under
 `mars5/.gradle/release-host-checks/bitmap-high-contrast`.
 
+A separate clean Ubuntu ARM64 replay opened `pixels.asm` and invoked
+IntelliJ's Print action. The dialog selected the assembly file and exposed
+line numbers and syntax printing. The test captured the dialog, dismissed
+it with Escape, and exited the IDE. The screenshot and replay log are
+under `mars5/.gradle/release-host-checks/linux-arm64-print`.
+
 ## IntelliJ plugin release preflight
 
 The GitHub Actions build runs the same Java 25 test, CLI smoke, and plugin
